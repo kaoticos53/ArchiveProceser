@@ -81,7 +81,12 @@ public static class VariableTemplateResolver
                 return Path.GetDirectoryName(originalPath) ?? string.Empty;
 
             case "relativepath":
-                return CalculateRelativePath(currentPath, effectiveRootPath);
+            case "relativedir":
+            case "relativedirectory":
+                return CalculateRelativeDirectory(currentPath, effectiveRootPath);
+
+            case "relativefilepath":
+                return CalculateRelativeFilePath(currentPath, effectiveRootPath);
 
             default:
                 if (item.Metadata.TryGetValue(varName, out var metaVal) && metaVal != null)
@@ -123,6 +128,8 @@ public static class VariableTemplateResolver
                name.Equals("CurrentPath", StringComparison.OrdinalIgnoreCase) ||
                name.Equals("OriginalPath", StringComparison.OrdinalIgnoreCase) ||
                name.Equals("RelativePath", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("RelativeDir", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("RelativeFilePath", StringComparison.OrdinalIgnoreCase) ||
                name.Equals("DateTaken", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -179,7 +186,34 @@ public static class VariableTemplateResolver
         return dateInput;
     }
 
-    private static string CalculateRelativePath(string fullPath, string? rootPath)
+    private static string CalculateRelativeDirectory(string fullPath, string? rootPath)
+    {
+        if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            string normFull = Path.GetFullPath(fullPath);
+            string normRoot = Path.GetFullPath(rootPath);
+
+            string relPath = Path.GetRelativePath(normRoot, normFull);
+            if (relPath.Equals(".", StringComparison.Ordinal))
+            {
+                return string.Empty;
+            }
+
+            string? relDir = Path.GetDirectoryName(relPath);
+            return string.IsNullOrEmpty(relDir) || relDir.Equals(".", StringComparison.Ordinal) ? string.Empty : relDir;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string CalculateRelativeFilePath(string fullPath, string? rootPath)
     {
         if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
         {
@@ -188,7 +222,9 @@ public static class VariableTemplateResolver
 
         try
         {
-            string rel = Path.GetRelativePath(rootPath, fullPath);
+            string normFull = Path.GetFullPath(fullPath);
+            string normRoot = Path.GetFullPath(rootPath);
+            string rel = Path.GetRelativePath(normRoot, normFull);
             return rel.Equals(".", StringComparison.Ordinal) ? Path.GetFileName(fullPath) : rel;
         }
         catch
