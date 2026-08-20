@@ -4,6 +4,23 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Gestión Dinámica de Variables en `VariableInjectorNode` (Botones ➕ y 🗑️)
+
+### 🛠 Cambios Implementados
+1. **Controles UI Dinámicos en la Tarjeta del Nodo (`EditorView.xaml`):**
+   - Añadido botón verde **`➕ Variable`** en la cabecera del panel de ajustes del nodo.
+   - Cada fila de variable cuenta con:
+     - `TextBox` editable para el **Nombre de la Variable** (Clave).
+     - `TextBox` editable para la **Expresión / Valor**.
+     - Botón selector visual **`[{x}]`** para insertar variables de nodos anteriores.
+     - Botón rojo **`🗑` (Papelera)** para eliminar esa variable individual al instante.
+
+2. **Gestión MVVM y Sincronización en Tiempo Real (`NodeViewModel.cs` / `NodeParameterViewModel.cs`):**
+   - Implementados los comandos `AddVariableCommand` y `RemoveParameterCommand`.
+   - Sincronización bidireccional automática con `_nodeInstance.Parameters`.
+
+---
+
 ## [2026-08-20] - Inyección Multivariable en `VariableInjectorNode`
 
 ### 🛠 Cambios Implementados
