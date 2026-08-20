@@ -210,4 +210,6 @@
 
   <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Inyector de Variables</value></data>
   <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calcula e inyecta una variable personalizada en los metadatos del elemento para nodos posteriores.</value></data>
+
+  <data name="ExportLog" xml:space="preserve"><value>💾 Exportar Log</value></data>
 </root>

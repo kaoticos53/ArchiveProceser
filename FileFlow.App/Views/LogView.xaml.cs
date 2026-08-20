@@ -8,4 +8,12 @@ public partial class LogView : UserControl
     {
         InitializeComponent();
     }
+
+    private void LogConsoleTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox textBox && !textBox.IsFocused)
+        {
+            textBox.ScrollToEnd();
+        }
+    }
 }
