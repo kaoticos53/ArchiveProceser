@@ -10,7 +10,7 @@ public class VariableInjectorNode : IFlowNode
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Inyector de Variables");
     public string Category => "Utility";
-    public string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calcula e inyecta múltiples variables personalizadas en los metadatos del elemento para nodos posteriores.");
+    public string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calcula e inyecta variables personalizadas dinámicas en los metadatos del elemento para nodos posteriores.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -24,16 +24,7 @@ public class VariableInjectorNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Key1"] = "CustomCategory",
-        ["Value1"] = "{FileNameNoExt}_processed",
-        ["Key2"] = "CustomYear",
-        ["Value2"] = "{Year(DateNow)}",
-        ["Key3"] = "",
-        ["Value3"] = "",
-        ["Key4"] = "",
-        ["Value4"] = "",
-        ["Key5"] = "",
-        ["Value5"] = ""
+        ["CustomCategory"] = "{FileNameNoExt}_processed"
     };
 
     public async Task ExecuteAsync(
@@ -42,22 +33,16 @@ public class VariableInjectorNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        foreach (var (k, v) in Parameters)
+        foreach (var (key, value) in Parameters)
         {
-            if (k.StartsWith("Key", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(key))
             {
-                string suffix = k["Key".Length..];
-                string varName = v?.ToString() ?? string.Empty;
-                if (!string.IsNullOrWhiteSpace(varName))
-                {
-                    string valKey = "Value" + suffix;
-                    string exprValue = Parameters.TryGetValue(valKey, out var valObj) ? valObj?.ToString() ?? string.Empty : string.Empty;
-                    string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
-                    item.Metadata[varName] = resolvedValue;
+                string exprValue = value?.ToString() ?? string.Empty;
+                string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
+                item.Metadata[key] = resolvedValue;
 
-                    context.Log($"[Inyector de Variables] Inyectado '{varName}' = '{resolvedValue}'", LogLevel.Information);
-                    item.AddLog($"VariableInjectorNode inyectó {varName}={resolvedValue}");
-                }
+                context.Log($"[Inyector de Variables] Inyectado '{key}' = '{resolvedValue}'", LogLevel.Information);
+                item.AddLog($"VariableInjectorNode inyectó {key}={resolvedValue}");
             }
         }
 

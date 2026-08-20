@@ -13,10 +13,9 @@ public class VariableInjectorNodeTests
     {
         // Arrange
         var node = new VariableInjectorNode();
-        node.Parameters["Key1"] = "CustomCategory";
-        node.Parameters["Value1"] = "{FileNameNoExt}_processed";
-        node.Parameters["Key2"] = "CustomYear";
-        node.Parameters["Value2"] = "{Year(DateNow)}";
+        node.Parameters.Clear();
+        node.Parameters["CustomCategory"] = "{FileNameNoExt}_processed";
+        node.Parameters["CustomYear"] = "{Year(DateNow)}";
 
         var item = new FileItemContext(@"C:\Photos\vacation.jpg", isDirectory: false);
         var mockContext = new Mock<IFlowExecutionContext>();

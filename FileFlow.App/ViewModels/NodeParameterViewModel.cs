@@ -43,7 +43,22 @@ public partial class NodeParameterViewModel : ObservableObject
 
     public bool HasBrowseButton => IsFolderPath || IsFilePath;
 
-    public bool IsStandardInput => !HasOptions && !IsBooleanAndNoOptions && !HasBrowseButton;
+    public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
+
+    public bool IsStandardInput => !HasOptions && !IsBooleanAndNoOptions && !HasBrowseButton && !IsVariableInjectorNode;
+
+    partial void OnKeyChanged(string? oldValue, string newValue)
+    {
+        if (oldValue != null)
+        {
+            NodeOwner?.OnParameterKeyRenamed(oldValue, newValue, Value);
+        }
+    }
+
+    partial void OnValueChanged(object? oldValue, object? newValue)
+    {
+        NodeOwner?.OnParameterValueChanged(Key, newValue);
+    }
 
     public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null)
     {
