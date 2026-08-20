@@ -33,17 +33,22 @@ public class VariableInjectorNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        foreach (var (key, value) in Parameters)
+        KeyValuePair<string, object?>[] snapshot;
+        lock (Parameters)
         {
-            if (!string.IsNullOrWhiteSpace(key))
-            {
-                string exprValue = value?.ToString() ?? string.Empty;
-                string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
-                item.Metadata[key] = resolvedValue;
+            snapshot = Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Key)).ToArray();
+        }
 
-                context.Log($"[Inyector de Variables] Inyectado '{key}' = '{resolvedValue}'", LogLevel.Information);
-                item.AddLog($"VariableInjectorNode inyectó {key}={resolvedValue}");
-            }
+        foreach (var (key, value) in snapshot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string exprValue = value?.ToString() ?? string.Empty;
+            string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
+            item.Metadata[key] = resolvedValue;
+
+            context.Log($"[Inyector de Variables] Inyectado '{key}' = '{resolvedValue}'", LogLevel.Information);
+            item.AddLog($"VariableInjectorNode inyectó {key}={resolvedValue}");
         }
 
         await context.EmitAsync("Out", item);

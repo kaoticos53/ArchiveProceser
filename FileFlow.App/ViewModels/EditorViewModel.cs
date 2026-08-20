@@ -178,7 +178,10 @@ public partial class EditorViewModel : ObservableObject
                 NodeTypeName = n.NodeTypeName,
                 X = n.Location.X,
                 Y = n.Location.Y,
-                Parameters = n.Parameters.ToDictionary(p => p.Key, p => p.Value, StringComparer.OrdinalIgnoreCase)
+                Parameters = n.Parameters
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+                    .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase)
             };
             graph.Nodes.Add(nodeDto);
         }

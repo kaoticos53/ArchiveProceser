@@ -29,7 +29,7 @@ public class GraphValidator
             }
 
             instance.Id = nodeDto.Id;
-            // Transfer parameters
+            instance.Parameters.Clear();
             foreach (var (k, v) in nodeDto.Parameters)
             {
                 instance.Parameters[k] = v;

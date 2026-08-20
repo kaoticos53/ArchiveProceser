@@ -96,13 +96,16 @@ public partial class NodeViewModel : ObservableObject
     {
         int count = Parameters.Count + 1;
         string newKey = $"Variable_{count}";
-        while (_nodeInstance.Parameters.ContainsKey(newKey) || Parameters.Any(p => p.Key.Equals(newKey, StringComparison.OrdinalIgnoreCase)))
+        lock (_nodeInstance.Parameters)
         {
-            count++;
-            newKey = $"Variable_{count}";
-        }
+            while (_nodeInstance.Parameters.ContainsKey(newKey) || Parameters.Any(p => p.Key.Equals(newKey, StringComparison.OrdinalIgnoreCase)))
+            {
+                count++;
+                newKey = $"Variable_{count}";
+            }
 
-        _nodeInstance.Parameters[newKey] = "";
+            _nodeInstance.Parameters[newKey] = "";
+        }
         var paramVM = new NodeParameterViewModel(newKey, "", nodeOwner: this);
         Parameters.Add(paramVM);
     }
@@ -112,17 +115,23 @@ public partial class NodeViewModel : ObservableObject
     {
         if (param == null) return;
         Parameters.Remove(param);
-        _nodeInstance.Parameters.Remove(param.Key);
+        lock (_nodeInstance.Parameters)
+        {
+            _nodeInstance.Parameters.Remove(param.Key);
+        }
     }
 
     public void OnParameterKeyRenamed(string oldKey, string newKey, object? value)
     {
         if (oldKey != newKey)
         {
-            _nodeInstance.Parameters.Remove(oldKey);
-            if (!string.IsNullOrWhiteSpace(newKey))
+            lock (_nodeInstance.Parameters)
             {
-                _nodeInstance.Parameters[newKey] = value;
+                _nodeInstance.Parameters.Remove(oldKey);
+                if (!string.IsNullOrWhiteSpace(newKey))
+                {
+                    _nodeInstance.Parameters[newKey] = value;
+                }
             }
         }
     }
@@ -131,7 +140,10 @@ public partial class NodeViewModel : ObservableObject
     {
         if (!string.IsNullOrWhiteSpace(key))
         {
-            _nodeInstance.Parameters[key] = newValue;
+            lock (_nodeInstance.Parameters)
+            {
+                _nodeInstance.Parameters[key] = newValue;
+            }
         }
     }
 
