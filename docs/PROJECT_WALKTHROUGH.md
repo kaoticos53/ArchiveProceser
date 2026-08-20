@@ -4,6 +4,18 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Corrección de Bloqueo al Ejecutar Flujos con `VariableInjectorNode`
+
+### 🛠 Cambios Implementados
+1. **Sincronización de Hilos (*Thread-Safety*) en `VariableInjectorNode.cs` y `NodeViewModel.cs`:**
+   - La ejecución del flujo ocurre en un hilo secundario (`Task.Run`), mientras la UI modifica los parámetros. Se añadió sincronización `lock (Parameters)` y la creación de instantáneas (*snapshots*) previas a la iteración para evitar bucles infinitos por corrupción interna del diccionario.
+2. **Filtrado Seguro en `ExportToGraphModel` (`EditorViewModel.cs`):**
+   - Agrupación e ignorado de claves vacías o en proceso de edición mediante `.Where(p => !string.IsNullOrWhiteSpace(p.Key)).GroupBy(...)` evitando excepciones `ArgumentException` al serializar el grafo.
+3. **Limpieza de Parámetros en `GraphValidator.cs`:**
+   - `instance.Parameters.Clear()` antes de asignar los parámetros exportados.
+
+---
+
 ## [2026-08-20] - Gestión Dinámica de Variables en `VariableInjectorNode` (Botones ➕ y 🗑️)
 
 ### 🛠 Cambios Implementados
