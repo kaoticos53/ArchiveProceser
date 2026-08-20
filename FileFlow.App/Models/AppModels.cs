@@ -14,3 +14,15 @@ public record NodeToolboxItem(
     string Description,
     string TypeName
 );
+
+public record VariableItem(
+    string Name,
+    string Token,
+    string Description
+);
+
+public class VariableGroupItem(string groupName)
+{
+    public string GroupName { get; set; } = groupName;
+    public List<VariableItem> Variables { get; } = [];
+}

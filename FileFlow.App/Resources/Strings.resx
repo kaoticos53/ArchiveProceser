@@ -207,4 +207,7 @@
 
   <data name="ExifMetadataNode_Name" xml:space="preserve"><value>EXIF Metadata</value></data>
   <data name="ExifMetadataNode_Desc" xml:space="preserve"><value>Extracts EXIF metadata (Date Taken, Camera Model, GPS) from images.</value></data>
+
+  <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Variable Injector</value></data>
+  <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calculates and injects custom metadata key-value into file context for downstream nodes.</value></data>
 </root>

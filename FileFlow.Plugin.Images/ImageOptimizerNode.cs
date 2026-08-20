@@ -48,6 +48,7 @@ public class ImageOptimizerNode : IFlowNode
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? fVal?.ToString() ?? "WebP" : "WebP";
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? Convert.ToInt32(qVal) : 80;
         string outputDir = Parameters.TryGetValue("OutputDirectory", out var oVal) ? oVal?.ToString() ?? @"C:\FileFlowOptimized" : @"C:\FileFlowOptimized";
+        outputDir = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(outputDir, item);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && Convert.ToBoolean(dryVal);
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))

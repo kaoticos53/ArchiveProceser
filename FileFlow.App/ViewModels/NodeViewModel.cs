@@ -83,7 +83,7 @@ public partial class NodeViewModel : ObservableObject
 
         foreach (var (k, v) in node.Parameters)
         {
-            Parameters.Add(new NodeParameterViewModel(k, v));
+            Parameters.Add(new NodeParameterViewModel(k, v, nodeOwner: this));
         }
 
         LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;

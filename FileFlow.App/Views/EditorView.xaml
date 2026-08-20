@@ -251,6 +251,7 @@
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
 
                                                                 <TextBox Grid.Column="0" 
@@ -277,6 +278,26 @@
                                                                         ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}">
                                                                     <Button.Resources>
                                                                         <Style TargetType="Border">
+                                                                            <Setter Property="CornerRadius" Value="0" />
+                                                                        </Style>
+                                                                    </Button.Resources>
+                                                                </Button>
+
+                                                                <Button Grid.Column="2" 
+                                                                        Command="{Binding OpenVariablePickerCommand}"
+                                                                        CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                                        Content="{}{x}" 
+                                                                        Background="#222736" 
+                                                                        Foreground="{StaticResource AccentGlowBrush}" 
+                                                                        BorderThickness="0" 
+                                                                        Padding="5,2" 
+                                                                        FontSize="10" 
+                                                                        FontWeight="Bold" 
+                                                                        Cursor="Hand"
+                                                                        ToolTip="Insertar variable dinámicamente ({x})">
+                                                                    <Button.Resources>
+                                                                        <Style TargetType="Border">
                                                                             <Setter Property="CornerRadius" Value="0,4,4,0" />
                                                                         </Style>
                                                                     </Button.Resources>
@@ -284,18 +305,46 @@
                                                             </Grid>
 
                                                             <!-- TextBox for standard text/numeric parameters -->
-                                                            <TextBox Grid.Column="1"
-                                                                     Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                     Visibility="{Binding IsStandardInput, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                     Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
-                                                                     BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="5,3"
-                                                                     HorizontalAlignment="Stretch">
-                                                                <TextBox.Resources>
-                                                                    <Style TargetType="Border">
-                                                                        <Setter Property="CornerRadius" Value="4" />
-                                                                    </Style>
-                                                                </TextBox.Resources>
-                                                            </TextBox>
+                                                            <Grid Grid.Column="1"
+                                                                  Visibility="{Binding IsStandardInput, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                  HorizontalAlignment="Stretch">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <TextBox Grid.Column="0"
+                                                                         Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                         Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
+                                                                         BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="5,3"
+                                                                         HorizontalAlignment="Stretch">
+                                                                    <TextBox.Resources>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="CornerRadius" Value="4,0,0,4" />
+                                                                        </Style>
+                                                                    </TextBox.Resources>
+                                                                </TextBox>
+
+                                                                <Button Grid.Column="1" 
+                                                                        Command="{Binding OpenVariablePickerCommand}"
+                                                                        CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                                        Content="{}{x}" 
+                                                                        Background="#222736" 
+                                                                        Foreground="{StaticResource AccentGlowBrush}" 
+                                                                        BorderThickness="0" 
+                                                                        Padding="5,2" 
+                                                                        FontSize="10" 
+                                                                        FontWeight="Bold" 
+                                                                        Cursor="Hand"
+                                                                        ToolTip="Insertar variable dinámicamente ({x})">
+                                                                    <Button.Resources>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="CornerRadius" Value="0,4,4,0" />
+                                                                        </Style>
+                                                                    </Button.Resources>
+                                                                </Button>
+                                                            </Grid>
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

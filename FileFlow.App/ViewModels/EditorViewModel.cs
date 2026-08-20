@@ -235,4 +235,83 @@ public partial class EditorViewModel : ObservableObject
             }
         }
     }
+
+    public List<FileFlow.App.Models.VariableGroupItem> GetUpstreamAvailableVariables(NodeViewModel targetNode)
+    {
+        var result = new List<FileFlow.App.Models.VariableGroupItem>();
+
+        // 1. Built-in System Variables (Always available)
+        var systemGroup = new FileFlow.App.Models.VariableGroupItem("🌐 System Variables");
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FileName", "{FileName}", "Full file name (e.g. photo.jpg)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FileNameNoExt", "{FileNameNoExt}", "File name without extension (e.g. photo)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Extension", "{Extension}", "File extension (e.g. jpg)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("CurrentPath", "{CurrentPath}", "Current absolute item path"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("OriginalPath", "{OriginalPath}", "Original source item path"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("RelativePath", "{RelativePath}", "Relative path from source root"));
+        result.Add(systemGroup);
+
+        // 2. Upstream Traversal
+        var visitedNodes = new HashSet<NodeViewModel>();
+        var queue = new Queue<NodeViewModel>();
+        queue.Enqueue(targetNode);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var incomingConns = Connections.Where(c => c.Target.NodeOwner == current).ToList();
+
+            foreach (var conn in incomingConns)
+            {
+                var upstreamNode = conn.Source.NodeOwner;
+                if (visitedNodes.Add(upstreamNode))
+                {
+                    queue.Enqueue(upstreamNode);
+
+                    string typeName = upstreamNode.NodeTypeName;
+                    var upstreamGroup = new FileFlow.App.Models.VariableGroupItem($"🔗 {upstreamNode.Title}");
+
+                    if (typeName.Contains("ExifMetadataNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("DateTaken", "{DateTaken}", "Date/Time Original EXIF"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Year", "{Year(DateTaken)}", "4-Digit Year"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Month", "{Month(DateTaken)}", "2-Digit Month"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Day", "{Day(DateTaken)}", "2-Digit Day"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("CameraModel", "{CameraModel}", "Camera Model EXIF"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("CameraMake", "{CameraMake}", "Camera Make EXIF"));
+                    }
+                    else if (typeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var varNameParam = upstreamNode.Parameters.FirstOrDefault(p => p.Key.Equals("VariableName", StringComparison.OrdinalIgnoreCase));
+                        string keyName = varNameParam?.Value?.ToString() ?? "CustomKey";
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem(keyName, $"{{{keyName}}}", $"Injected by {upstreamNode.Title}"));
+                    }
+                    else if (typeName.Contains("SmartUnpackNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("UnpackedFrom", "{UnpackedFrom}", "Original Archive Path"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("HasSingleWrapper", "{HasSingleWrapper}", "Is Single Folder Wrapper"));
+                    }
+                    else if (typeName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("OptimizedFormat", "{OptimizedFormat}", "Output Format (WebP/Jpeg/Png)"));
+                    }
+
+                    if (upstreamGroup.Variables.Count > 0)
+                    {
+                        result.Add(upstreamGroup);
+                    }
+                }
+            }
+        }
+
+        // 3. Transformation Functions Group
+        var fnGroup = new FileFlow.App.Models.VariableGroupItem("🔤 Expression Functions");
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Upper", "{Upper(FileNameNoExt)}", "Convert text to uppercase"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Lower", "{Lower(Extension)}", "Convert text to lowercase"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FormatDate", "{FormatDate(DateTaken, \"yyyy-MM\")}", "Custom Date Format"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Replace", "{Replace(FileNameNoExt, \"old\", \"new\")}", "Replace string pattern"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Default", "{Default(DateTaken, \"2026-01-01\")}", "Fallback value if empty"));
+        result.Add(fnGroup);
+
+        return result;
+    }
 }

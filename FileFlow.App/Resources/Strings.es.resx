@@ -207,4 +207,7 @@
 
   <data name="ExifMetadataNode_Name" xml:space="preserve"><value>Metadatos EXIF</value></data>
   <data name="ExifMetadataNode_Desc" xml:space="preserve"><value>Extrae metadatos EXIF (Fecha de captura, Modelo de cámara, Marca) de imágenes.</value></data>
+
+  <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Inyector de Variables</value></data>
+  <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calcula e inyecta una variable personalizada en los metadatos del elemento para nodos posteriores.</value></data>
 </root>

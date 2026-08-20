@@ -34,7 +34,8 @@ public class DestinationSinkNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string destRoot = Parameters.TryGetValue("DestinationRoot", out var val) ? val?.ToString() ?? @"C:\FileFlowOutput" : @"C:\FileFlowOutput";
+        string destRoot = Parameters.TryGetValue("DestinationRoot", out var val) ? val?.ToString() ?? @"C:\FileFlowSalida" : @"C:\FileFlowSalida";
+        destRoot = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(destRoot, item);
         string strategy = Parameters.TryGetValue("ConflictStrategy", out var sVal) ? sVal?.ToString() ?? "RenameIncremental" : "RenameIncremental";
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && Convert.ToBoolean(dryVal);
 

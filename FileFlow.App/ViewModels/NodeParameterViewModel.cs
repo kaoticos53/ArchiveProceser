@@ -1,11 +1,15 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Models;
 
 namespace FileFlow.App.ViewModels;
 
 public partial class NodeParameterViewModel : ObservableObject
 {
+    public NodeViewModel? NodeOwner { get; set; }
+
     [ObservableProperty]
     private string _key = string.Empty;
 
@@ -26,6 +30,9 @@ public partial class NodeParameterViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
     private ObservableCollection<string> _options = [];
 
+    [ObservableProperty]
+    private List<VariableGroupItem> _availableVariables = [];
+
     public bool HasOptions => Options.Count > 0;
 
     public bool IsBooleanAndNoOptions => !HasOptions && (Value is bool || (Value != null && bool.TryParse(Value.ToString(), out _)));
@@ -38,10 +45,11 @@ public partial class NodeParameterViewModel : ObservableObject
 
     public bool IsStandardInput => !HasOptions && !IsBooleanAndNoOptions && !HasBrowseButton;
 
-    public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null)
+    public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null)
     {
         _key = key;
         _value = value;
+        NodeOwner = nodeOwner;
 
         if (options != null)
         {
@@ -58,6 +66,60 @@ public partial class NodeParameterViewModel : ObservableObject
                 _options.Add(opt);
             }
         }
+    }
+
+    [RelayCommand]
+    public void OpenVariablePicker(object? targetObject)
+    {
+        if (targetObject is FrameworkElement element && element.Tag is EditorViewModel editor && NodeOwner != null)
+        {
+            RefreshAvailableVariables(editor);
+
+            var cm = new System.Windows.Controls.ContextMenu();
+            foreach (var group in AvailableVariables)
+            {
+                var groupHeader = new System.Windows.Controls.MenuItem
+                {
+                    Header = group.GroupName,
+                    IsEnabled = false,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.DimGray
+                };
+                cm.Items.Add(groupHeader);
+
+                foreach (var v in group.Variables)
+                {
+                    var mi = new System.Windows.Controls.MenuItem
+                    {
+                        Header = $"{v.Token}  —  {v.Description}",
+                        Command = InsertVariableTokenCommand,
+                        CommandParameter = v.Token
+                    };
+                    cm.Items.Add(mi);
+                }
+
+                cm.Items.Add(new System.Windows.Controls.Separator());
+            }
+
+            cm.PlacementTarget = element;
+            cm.IsOpen = true;
+        }
+    }
+
+    [RelayCommand]
+    public void RefreshAvailableVariables(EditorViewModel editor)
+    {
+        if (NodeOwner != null && editor != null)
+        {
+            AvailableVariables = editor.GetUpstreamAvailableVariables(NodeOwner);
+        }
+    }
+
+    [RelayCommand]
+    public void InsertVariableToken(string token)
+    {
+        string currentVal = Value?.ToString() ?? string.Empty;
+        Value = currentVal + token;
     }
 
     [RelayCommand]
