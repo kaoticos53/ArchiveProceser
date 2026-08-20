@@ -4,6 +4,19 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Optimización de Rendimiento UI: Actualización en Tiempo Real de Logs y Barra de Progreso
+
+### 🛠 Cambios Implementados
+1. **Búfer de Logs Asíncrono e Inmune a Saturación de UI (`LogViewModel.cs`):**
+   - Se reemplazó el despacho síncrono e inmediato por línea de log en la UI por una cola de concurrencia thread-safe (`ConcurrentQueue<LogEntry>`).
+   - Implementado un temporizador `DispatcherTimer` a nivel de fondo (`DispatcherPriority.Background`) que refresca el cuadro de texto y la consola cada 50ms (20 FPS).
+2. **Despacho de Barra de Progreso y Estado de Baja Prioridad:**
+   - `UpdateProgress` utiliza `DispatcherPriority.Background` evitando acaparar el hilo principal de renderizado WPF.
+3. **Resultado:**
+   - La consola muestra la transmisión de logs **en tiempo real a medida que ocurre la ejecución** sin congelar el renderizado visual ni bloquear la interfaz ni los controles de la aplicación.
+
+---
+
 ## [2026-08-20] - Solución Definitiva al Bloqueo de Flujos (Eliminación de Interbloqueo / Deadlock de Semáforo)
 
 ### 🛠 Cambios Implementados
