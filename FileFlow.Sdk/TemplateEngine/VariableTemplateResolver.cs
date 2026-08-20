@@ -134,16 +134,20 @@ public static class VariableTemplateResolver
         var parts = argsStr.Split(',');
         foreach (var p in parts)
         {
-            string trimmed = p.Trim(' ', '"', '\'');
-            if (trimmed.StartsWith('{') && trimmed.EndsWith('}'))
+            string trimmed = p.Trim();
+            if (trimmed.Length >= 2 && ((trimmed.StartsWith('"') && trimmed.EndsWith('"')) || (trimmed.StartsWith('\'') && trimmed.EndsWith('\''))))
             {
-                string token = trimmed[1..^1];
-                result.Add(GetVariableValue(token, item, sourceRootPath));
+                result.Add(trimmed[1..^1]);
+            }
+            else if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) ||
+                     double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            {
+                result.Add(trimmed);
             }
             else
             {
-                string resolved = GetVariableValue(trimmed, item, sourceRootPath);
-                result.Add(string.IsNullOrEmpty(resolved) && !IsKnownVariable(trimmed) ? trimmed : resolved);
+                string token = (trimmed.StartsWith('{') && trimmed.EndsWith('}')) ? trimmed[1..^1] : trimmed;
+                result.Add(GetVariableValue(token, item, sourceRootPath));
             }
         }
         return result;

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <LangVersion>13</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" Version="7.0.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
+    <ProjectReference Include="..\FileFlow.Core\FileFlow.Core.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.FileSystem\FileFlow.Plugin.FileSystem.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Archives\FileFlow.Plugin.Archives.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Images\FileFlow.Plugin.Images.csproj" />
+    <ProjectReference Include="..\FileFlow.App\FileFlow.App.csproj" />
+  </ItemGroup>
+
+</Project>

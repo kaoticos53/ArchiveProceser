@@ -5,4 +5,5 @@
   <Project Path="FileFlow.Plugin.FileSystem/FileFlow.Plugin.FileSystem.csproj" />
   <Project Path="FileFlow.Plugin.Images/FileFlow.Plugin.Images.csproj" />
   <Project Path="FileFlow.Sdk/FileFlow.Sdk.csproj" />
+  <Project Path="FileFlow.Tests/FileFlow.Tests.csproj" />
 </Solution>
