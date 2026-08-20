@@ -4,6 +4,28 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Suite Exhaustiva de Automatización de Pruebas (xUnit, FluentAssertions, Moq)
+
+### 🛠 Cambios Implementados
+1. **Nuevo Proyecto de Pruebas (`FileFlow.Tests/FileFlow.Tests.csproj`):**
+   - Configurado en .NET 9 (`net9.0-windows` con `UseWPF=true`) e integrado en `FileFlow.slnx`.
+   - Incluye **xUnit**, **FluentAssertions** y **Moq**.
+
+2. **Tests Unitarios (`FileFlow.Tests/Unit/`):**
+   - **`VariableTemplateResolverTests`:** Reemplazo de variables, funciones de fecha, transformaciones de texto (`Upper`, `Lower`, `PadLeft`), saneamiento de caracteres ilegales (`Sanitize`), cascadas `Coalesce` e interpolación dinámica.
+   - **`LocalizationManagerTests`:** Verificación de singleton y disparo del evento `LanguageChanged`.
+   - **`WorkflowExecutorTests`:** Ejecución topológica y validación de nodos.
+   - **`FolderSourceNodeTests` & `VariableInjectorNodeTests`:** Inyección de metadatos (`Counter`, `SourceRootPath`, `CustomCategory`) e I/O.
+   - **`EditorViewModelTests`:** Travesía topológica inversa (`GetUpstreamAvailableVariables`) y cálculo dinámico de variables en la interfaz.
+
+3. **Tests de Integración (`FileFlow.Tests/Integration/`):**
+   - **`WorkflowIntegrationTests`:** Flujo E2E desde `FolderSourceNode` $\rightarrow$ `VariableInjectorNode` $\rightarrow$ `DestinationSinkNode` validando la tubería completa de archivos reales.
+
+4. **Tests de Estrés / Rendimiento (`FileFlow.Tests/Performance/`):**
+   - **`PerformanceStressTests`:** Procesamiento de **10,000 elementos masivos** evaluando el motor de plantillas en menos de 1 segundo (651 ms).
+
+---
+
 ## [2026-08-20] - Variables Avanzadas de Sistema, Metadatos Multimedia/Compresión y Funciones de Expresión
 
 ### 🛠 Cambios Implementados
