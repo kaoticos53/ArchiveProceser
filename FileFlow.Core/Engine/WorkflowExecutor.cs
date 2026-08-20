@@ -178,16 +178,14 @@ public class WorkflowExecutor
             {
                 dispatchTasks.Add(Task.Run(async () =>
                 {
-                    await _concurrencyThrottle.WaitAsync(cancellationToken);
+                    await WaitIfPausedAsync(cancellationToken);
+                    var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
                     try
                     {
-                        await WaitIfPausedAsync(cancellationToken);
-                        var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
                         await targetNode.ExecuteAsync(edge.TargetPortName, item, targetContext, cancellationToken);
                     }
                     finally
                     {
-                        _concurrencyThrottle.Release();
                         long currentProcessed = Interlocked.Increment(ref _processedItemsCount);
                         double pct = _totalItemsCount > 0 ? (double)currentProcessed / _totalItemsCount * 100.0 : 100.0;
                         NotifyProgress(pct, $"Processed {currentProcessed}/{_totalItemsCount} node outputs");

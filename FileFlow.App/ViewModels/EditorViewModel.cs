@@ -297,21 +297,12 @@ public partial class EditorViewModel : ObservableObject
                     }
                     else if (typeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase))
                     {
-                        foreach (var param in upstreamNode.Parameters.Where(p => p.Key.StartsWith("Key", StringComparison.OrdinalIgnoreCase)))
+                        foreach (var param in upstreamNode.Parameters)
                         {
-                            string keyName = param.Value?.ToString() ?? string.Empty;
+                            string keyName = param.Key;
                             if (!string.IsNullOrWhiteSpace(keyName))
                             {
                                 upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem(keyName, $"{{{keyName}}}", $"Injected by {upstreamNode.Title}"));
-                            }
-                        }
-
-                        var legacyParam = upstreamNode.Parameters.FirstOrDefault(p => p.Key.Equals("VariableName", StringComparison.OrdinalIgnoreCase));
-                        if (legacyParam.Value?.ToString() is string legacyKey && !string.IsNullOrWhiteSpace(legacyKey))
-                        {
-                            if (!upstreamGroup.Variables.Any(v => v.Name.Equals(legacyKey, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem(legacyKey, $"{{{legacyKey}}}", $"Injected by {upstreamNode.Title}"));
                             }
                         }
                     }
