@@ -51,6 +51,7 @@ public class FolderSourceNode : IFlowNode
         {
             cancellationToken.ThrowIfCancellationRequested();
             var fileItem = new FileItemContext(filePath, isDirectory: false);
+            fileItem.Metadata["SourceRootPath"] = sourcePath;
             fileItem.AddLog($"Emitted by FolderSourceNode from {sourcePath}");
             await context.EmitAsync("Out", fileItem);
             count++;

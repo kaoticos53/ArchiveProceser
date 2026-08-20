@@ -42,14 +42,26 @@ public static class VariableTemplateResolver
         string currentPath = item.CurrentPath ?? string.Empty;
         string originalPath = item.OriginalPath ?? string.Empty;
 
+        // Use SourceRootPath from metadata if available
+        string? effectiveRootPath = sourceRootPath;
+        if (string.IsNullOrEmpty(effectiveRootPath) &&
+            item.Metadata.TryGetValue("SourceRootPath", out var rootVal) &&
+            rootVal != null)
+        {
+            effectiveRootPath = rootVal.ToString();
+        }
+
+        if (string.IsNullOrEmpty(effectiveRootPath))
+        {
+            effectiveRootPath = Path.GetDirectoryName(originalPath);
+        }
+
         switch (varName.ToLowerInvariant())
         {
             case "filename":
-            case "nombrearchivo":
                 return Path.GetFileName(currentPath);
 
             case "filenamenoext":
-            case "nombrearchivosinext":
                 return Path.GetFileNameWithoutExtension(currentPath);
 
             case "extension":
@@ -57,24 +69,19 @@ public static class VariableTemplateResolver
                 return Path.GetExtension(currentPath).TrimStart('.');
 
             case "currentpath":
-            case "rutaactual":
                 return currentPath;
 
             case "originalpath":
-            case "rutaoriginal":
                 return originalPath;
 
             case "currentdir":
-            case "directorioactual":
                 return Path.GetDirectoryName(currentPath) ?? string.Empty;
 
             case "originaldir":
-            case "directoriooriginal":
                 return Path.GetDirectoryName(originalPath) ?? string.Empty;
 
             case "relativepath":
-            case "rutarelativa":
-                return CalculateRelativePath(currentPath, sourceRootPath ?? Path.GetDirectoryName(originalPath));
+                return CalculateRelativePath(currentPath, effectiveRootPath);
 
             default:
                 if (item.Metadata.TryGetValue(varName, out var metaVal) && metaVal != null)
@@ -101,7 +108,6 @@ public static class VariableTemplateResolver
             }
             else
             {
-                // Try resolving as variable first, fallback to literal string
                 string resolved = GetVariableValue(trimmed, item, sourceRootPath);
                 result.Add(string.IsNullOrEmpty(resolved) && !IsKnownVariable(trimmed) ? trimmed : resolved);
             }
@@ -116,6 +122,7 @@ public static class VariableTemplateResolver
                name.Equals("Extension", StringComparison.OrdinalIgnoreCase) ||
                name.Equals("CurrentPath", StringComparison.OrdinalIgnoreCase) ||
                name.Equals("OriginalPath", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("RelativePath", StringComparison.OrdinalIgnoreCase) ||
                name.Equals("DateTaken", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -126,36 +133,28 @@ public static class VariableTemplateResolver
         switch (fnName.ToLowerInvariant())
         {
             case "year":
-            case "año":
-            case "anio":
                 return ExtractDatePart(arg0, "yyyy");
 
             case "month":
-            case "mes":
                 return ExtractDatePart(arg0, "MM");
 
             case "day":
-            case "dia":
                 return ExtractDatePart(arg0, "dd");
 
             case "formatdate":
-            case "formatofecha":
                 string fmt = args.Count > 1 ? args[1] : "yyyy-MM-dd";
                 return ExtractDatePart(arg0, fmt);
 
             case "upper":
-            case "mayusculas":
                 return arg0.ToUpperInvariant();
 
             case "lower":
-            case "minusculas":
                 return arg0.ToLowerInvariant();
 
             case "trim":
                 return arg0.Trim();
 
             case "replace":
-            case "reemplazar":
                 if (args.Count >= 3)
                 {
                     return arg0.Replace(args[1], args[2], StringComparison.OrdinalIgnoreCase);
@@ -163,7 +162,6 @@ public static class VariableTemplateResolver
                 return arg0;
 
             case "default":
-            case "predeterminado":
                 return string.IsNullOrWhiteSpace(arg0) && args.Count > 1 ? args[1] : arg0;
 
             default:
@@ -190,7 +188,8 @@ public static class VariableTemplateResolver
 
         try
         {
-            return Path.GetRelativePath(rootPath, fullPath);
+            string rel = Path.GetRelativePath(rootPath, fullPath);
+            return rel.Equals(".", StringComparison.Ordinal) ? Path.GetFileName(fullPath) : rel;
         }
         catch
         {
