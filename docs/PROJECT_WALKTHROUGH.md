@@ -1,0 +1,83 @@
+# FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
+
+Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
+
+---
+
+## [2026-08-20] - Consola de Ejecución Seleccionable, Exportación y Categorización de Nodos
+
+### 🛠 Cambios Implementados
+1. **Exportación de Logs a Archivo:**
+   - Se añadió la acción `ExportLogsCommand` en `LogViewModel.cs` y el botón **`💾 Exportar Log`** / **`💾 Export Log`** en la barra de herramientas de la consola (`LogView.xaml`).
+   - Permite guardar todo el historial formateado con marcas de tiempo en archivos `.log` o `.txt` mediante `SaveFileDialog`.
+
+2. **Selección y Copiado de Texto con el Ratón:**
+   - Se reemplazó el control estático por un visor de texto editable/seleccionable (`TextBox` en modo `IsReadOnly="True"`) en `LogView.xaml`.
+   - Los usuarios pueden arrastrar el ratón para seleccionar cualquier bloque de texto y copiarlo directamente con `Ctrl+C` o el menú contextual.
+   - Implementado autodesplazamiento hacia la última línea recibida (`LogConsoleTextBox_TextChanged`).
+
+3. **Corrección de Categoría del Nodo Inyector de Variables:**
+   - Se actualizó `VariableInjectorNode.cs` asignándole la categoría **`Utility`** (*Utilidades*).
+   - Ahora aparece correctamente clasificado junto a herramientas como `Log Inspector` dentro del panel lateral de herramientas (*Toolbox*).
+
+---
+
+## [2026-08-20] - Subsistema de Variables Dinámicas, Motor de Expresiones e Inyector de Variables
+
+### 🛠 Cambios Implementados
+1. **Motor de Plantillas de Variables (`VariableTemplateResolver.cs`):**
+   - Interpolación de tokens dinámicos en cualquier parámetro de texto o ruta de nodo.
+   - **Variables del Sistema Estandarizadas al Inglés:** `{FileName}`, `{FileNameNoExt}`, `{Extension}`, `{CurrentPath}`, `{OriginalPath}`, `{CurrentDir}`, `{OriginalDir}`, `{RelativePath}`.
+   - **Funciones de Expresión Integradas:**
+     - **Fechas:** `{Year(date)}`, `{Month(date)}`, `{Day(date)}`, `{FormatDate(date, "yyyy-MM")}`.
+     - **Texto:** `{Upper(text)}`, `{Lower(text)}`, `{Trim(text)}`, `{Replace(text, "old", "new")}`, `{Default(val, "fallback")}`.
+
+2. **Cálculo de `RelativePath` (Estructura de Directorio Relativo):**
+   - Se actualizó `FolderSourceNode.cs` para adjuntar la metadata `SourceRootPath` al escanear directorios.
+   - `VariableTemplateResolver` calcula la ruta de subcarpetas relativa exacta (ej. `mami/antiguo`) excluyendo el nombre del archivo.
+
+3. **Nodo `Inyector de Variables` (`VariableInjectorNode.cs`):**
+   - Permite calcular e inyectar claves de metadatos personalizadas (`item.Metadata["VariableName"] = ResolvedValue`) en el flujo para nodos posteriores.
+
+4. **Selector Gráfico de Variables `{x}` con Travesía Topológica Inversa:**
+   - Se agregó el botón gráfico **`[{x}]`** al lado de los campos de entrada de parámetros en `EditorView.xaml`.
+   - Al pulsar **`[{x}]`**, `EditorViewModel.GetUpstreamAvailableVariables` recorre el grafo hacia atrás (*Upstream Traversal*) para ofrecer únicamente las variables exportadas por los nodos conectados previamente (EXIF, origen de descompresión, variables inyectadas).
+
+---
+
+## [2026-08-20] - Sistema de Internacionalización Multilingüe (Español / Inglés)
+
+### 🛠 Cambios Implementados
+1. **Gestor de Localización Estándar de .NET (`LocalizationManager.cs`):**
+   - Singleton encargado de administrar el cambio de cultura al vuelo (`CultureInfo`) entre Español (`es-ES`) e Inglés (`en-US`).
+   - Notificación de cambio mediante el evento `LanguageChanged` y propiedad indexadora `this[string key]`.
+
+2. **Ficheros de Recursos `.resx`:**
+   - Creación de `Strings.resx` (Inglés por defecto) y `Strings.es.resx` (Español).
+
+3. **Selector Dinámico de Idioma en Barra de Control:**
+   - Desplegable en `ControlBarView.xaml` reactivo en tiempo real para traducir al instante la UI, los títulos de los nodos en lienzo, las descripciones y el catálogo de herramientas.
+
+---
+
+## [2026-08-20] - Descubrimiento y Carga Robusta de Plugins
+
+### 🛠 Cambios Implementados
+1. **Contexto de Carga Desacoplado (`PluginAssemblyLoadContext.cs`):**
+   - Carga de ensamblados `.dll` en memoria para evitar bloqueos del sistema operativo sobre los archivos en disco.
+   - Búsqueda de dependencias de plugins con fallback a `AppDomain.CurrentDomain.BaseDirectory` para librerías como `SixLabors.ImageSharp`, `MetadataExtractor` y `SharpCompress`.
+
+---
+
+## [2026-08-20] - Estructura de Documentación y Repositorio Git Initial
+
+### 🛠 Cambios Implementados
+1. **Repositorio Git (`.gitignore` & `git init`):**
+   - Configuración de exclusión de binarios `bin/`, `obj/` y archivos de cache `.antigravity/`.
+   - Registro del commit inicial en la rama `main`.
+
+2. **Documentación del Proyecto (`docs/`):**
+   - `docs/README.md`: Centro de documentación y visión general del proyecto.
+   - `docs/nodes/CREATING_NODES.md`: Guía de desarrollo de nodos personalizados.
+   - `docs/nodes/examples/SampleMultiPortNode.cs`: Ejemplo de nodo de código completo para desarrolladores.
+   - `docs/ARCHITECTURE_DEEP_DIVE.md`: Guía arquitectónica detallada en 4 niveles de complejidad.

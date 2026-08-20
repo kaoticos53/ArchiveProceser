@@ -6,6 +6,7 @@ Bienvenido a la documentación oficial de **FileFlow Studio**, un motor de proce
 
 ## 📁 Estructura de la Documentación
 
+- **[Historial de Cambios y Walkthrough (`docs/PROJECT_WALKTHROUGH.md`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/PROJECT_WALKTHROUGH.md)**: Registro cronológico continuo de todas las implementaciones, mejoras y correcciones realizadas en el proyecto con sus fechas.
 - **[Arquitectura y Funcionamiento de Principiante a Experto (`docs/ARCHITECTURE_DEEP_DIVE.md`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/ARCHITECTURE_DEEP_DIVE.md)**: Explicación completa del funcionamiento interno en 4 niveles (visión general, componentes, motor asíncrono y subsistema UI).
 - **[Guía de Creación de Nodos (`docs/nodes/CREATING_NODES.md`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/nodes/CREATING_NODES.md)**: Manual paso a paso para desarrolladores sobre cómo crear, compilar y distribuir nuevos nodos de procesamiento.
 - **[Ejemplo Completo de Nodo (`docs/nodes/examples/SampleMultiPortNode.cs`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/nodes/examples/SampleMultiPortNode.cs)**: Código fuente de ejemplo de un nodo con múltiples entradas, múltiples salidas, parámetros personalizables y manejo de errores.
