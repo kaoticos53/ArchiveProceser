@@ -4,6 +4,33 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Variables Avanzadas de Sistema, Metadatos Multimedia/Compresión y Funciones de Expresión
+
+### 🛠 Cambios Implementados
+1. **Nuevas Variables del Sistema y Ejecución (`VariableTemplateResolver.cs`):**
+   - Incorporación de `{DateNow}` (`yyyy-MM-dd`), `{TimeNow}` (`HH-mm-ss`), `{DateTimeNow}` (`yyyy-MM-dd_HH-mm-ss`).
+   - Contador incremental de secuencia por lote `{Counter}` / `{Index}` inyectado desde `FolderSourceNode.cs`.
+   - Métricas de peso de archivo: `{SizeMB}`, `{SizeKB}`, `{SizeBytes}`.
+   - Variables de entorno del sistema: `{UserName}`, `{MachineName}`.
+
+2. **Nuevos Metadatos de Imagen y Archivos Comprimidos:**
+   - **`ExifMetadataNode.cs`:** Extracción de `{ImageWidth}`, `{ImageHeight}`, `{Orientation}` (`Landscape`/`Portrait`/`Square`), `{AspectRatio}` (ej. `16:9`) y `{Megapixels}` (ej. `24.1MP`).
+   - **`SmartUnpackNode.cs`:** Extracción de `{ArchiveFormat}` (`ZIP`/`7Z`/`RAR`) y `{UnpackedFileCount}`.
+
+3. **Nuevas Funciones de Expresión Prácticas:**
+   - `{Sanitize(text)}`: Limpieza automática de caracteres ilegales en Windows (`\ / : * ? " < > |`).
+   - `{PadLeft(val, length, char)}`: Relleno de números con ceros u otros caracteres (ej. `{PadLeft(Counter, 4, "0")}`).
+   - `{Substring(text, start, length)}`: Extracción segura de subcadenas sin desbordamientos de índice.
+   - `{RegexMatch(text, pattern)}`: Extracción por expresión regular.
+   - `{RegexReplace(text, pattern, replacement)}`: Reemplazo con expresiones regulares.
+   - `{Coalesce(val1, val2, ...)}`: Evaluación en cascada retornando el primer valor no vacío.
+   - `{FileAgeDays(dateStr)}`: Cálculo de antigüedad en días transcurridos.
+
+4. **Integración en el Selector Gráfico `[{x}]` (`EditorViewModel.cs`):**
+   - Actualización de `GetUpstreamAvailableVariables` clasificando y ofreciendo todas las nuevas variables y funciones ordenadas por grupos (`🌐 System & Environment`, `📷 Image & Media`, `📦 Archives`, `🔤 Expression Functions`).
+
+---
+
 ## [2026-08-20] - Consola de Ejecución Seleccionable, Exportación y Categorización de Nodos
 
 ### 🛠 Cambios Implementados
