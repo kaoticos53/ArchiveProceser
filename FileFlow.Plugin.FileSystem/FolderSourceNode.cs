@@ -49,12 +49,13 @@ public class FolderSourceNode : IFlowNode
         int count = 0;
         foreach (string filePath in files)
         {
+            count++;
             cancellationToken.ThrowIfCancellationRequested();
             var fileItem = new FileItemContext(filePath, isDirectory: false);
             fileItem.Metadata["SourceRootPath"] = sourcePath;
+            fileItem.Metadata["Counter"] = count;
             fileItem.AddLog($"Emitted by FolderSourceNode from {sourcePath}");
             await context.EmitAsync("Out", fileItem);
-            count++;
         }
 
         context.Log($"FolderSourceNode scanned and emitted {count} items.", LogLevel.Information);

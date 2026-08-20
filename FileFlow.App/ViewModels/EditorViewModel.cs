@@ -240,14 +240,22 @@ public partial class EditorViewModel : ObservableObject
     {
         var result = new List<FileFlow.App.Models.VariableGroupItem>();
 
-        // 1. Built-in System Variables (Always available)
-        var systemGroup = new FileFlow.App.Models.VariableGroupItem("🌐 System Variables");
+        // 1. Built-in System & Environment Variables (Always available)
+        var systemGroup = new FileFlow.App.Models.VariableGroupItem("🌐 System & Environment");
         systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FileName", "{FileName}", "Full file name (e.g. photo.jpg)"));
         systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FileNameNoExt", "{FileNameNoExt}", "File name without extension (e.g. photo)"));
         systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Extension", "{Extension}", "File extension (e.g. jpg)"));
         systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("CurrentPath", "{CurrentPath}", "Current absolute item path"));
         systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("OriginalPath", "{OriginalPath}", "Original source item path"));
-        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("RelativePath", "{RelativePath}", "Relative path from source root"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("RelativePath", "{RelativePath}", "Relative subfolder path from source root"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("DateNow", "{DateNow}", "Current execution date (yyyy-MM-dd)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("TimeNow", "{TimeNow}", "Current execution time (HH-mm-ss)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("DateTimeNow", "{DateTimeNow}", "Combined timestamp (yyyy-MM-dd_HH-mm-ss)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Counter", "{Counter}", "Item sequence index in batch (e.g. 1, 2, 3)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("SizeMB", "{SizeMB}", "File size in Megabytes (e.g. 4.25MB)"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("SizeKB", "{SizeKB}", "File size in Kilobytes"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("UserName", "{UserName}", "Windows user name"));
+        systemGroup.Variables.Add(new FileFlow.App.Models.VariableItem("MachineName", "{MachineName}", "Environment host computer name"));
         result.Add(systemGroup);
 
         // 2. Upstream Traversal
@@ -278,6 +286,11 @@ public partial class EditorViewModel : ObservableObject
                         upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Day", "{Day(DateTaken)}", "2-Digit Day"));
                         upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("CameraModel", "{CameraModel}", "Camera Model EXIF"));
                         upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("CameraMake", "{CameraMake}", "Camera Make EXIF"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("ImageWidth", "{ImageWidth}", "Image width in pixels"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("ImageHeight", "{ImageHeight}", "Image height in pixels"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Orientation", "{Orientation}", "Landscape, Portrait, or Square"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("AspectRatio", "{AspectRatio}", "Calculated Aspect Ratio (e.g. 16:9)"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Megapixels", "{Megapixels}", "Image resolution in Megapixels"));
                     }
                     else if (typeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase))
                     {
@@ -288,7 +301,8 @@ public partial class EditorViewModel : ObservableObject
                     else if (typeName.Contains("SmartUnpackNode", StringComparison.OrdinalIgnoreCase))
                     {
                         upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("UnpackedFrom", "{UnpackedFrom}", "Original Archive Path"));
-                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("HasSingleWrapper", "{HasSingleWrapper}", "Is Single Folder Wrapper"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("ArchiveFormat", "{ArchiveFormat}", "Archive format (ZIP/7Z/RAR)"));
+                        upstreamGroup.Variables.Add(new FileFlow.App.Models.VariableItem("UnpackedFileCount", "{UnpackedFileCount}", "Total extracted file count"));
                     }
                     else if (typeName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase))
                     {
@@ -305,10 +319,16 @@ public partial class EditorViewModel : ObservableObject
 
         // 3. Transformation Functions Group
         var fnGroup = new FileFlow.App.Models.VariableGroupItem("🔤 Expression Functions");
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Sanitize", "{Sanitize(CameraModel)}", "Clean illegal Windows path characters"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("PadLeft", "{PadLeft(Counter, 4, \"0\")}", "Pad number with leading characters"));
         fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Upper", "{Upper(FileNameNoExt)}", "Convert text to uppercase"));
         fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Lower", "{Lower(Extension)}", "Convert text to lowercase"));
         fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FormatDate", "{FormatDate(DateTaken, \"yyyy-MM\")}", "Custom Date Format"));
-        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Replace", "{Replace(FileNameNoExt, \"old\", \"new\")}", "Replace string pattern"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Substring", "{Substring(FileNameNoExt, 0, 8)}", "Extract text substring"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("RegexMatch", "{RegexMatch(FileNameNoExt, \"[0-9]+\")}", "Extract regular expression match"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("RegexReplace", "{RegexReplace(FileNameNoExt, \"[^a-zA-Z0-9]\", \"_\")}", "Replace regex pattern"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Coalesce", "{Coalesce(DateTaken, FileCreatedDate, DateNow)}", "First non-empty value in list"));
+        fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("FileAgeDays", "{FileAgeDays(DateTaken)}", "Days elapsed since date"));
         fnGroup.Variables.Add(new FileFlow.App.Models.VariableItem("Default", "{Default(DateTaken, \"2026-01-01\")}", "Fallback value if empty"));
         result.Add(fnGroup);
 

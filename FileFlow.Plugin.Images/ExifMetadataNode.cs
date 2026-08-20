@@ -1,6 +1,8 @@
+using System.Globalization;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using MetadataExtractor;
+using SixLabors.ImageSharp;
 
 namespace FileFlow.Plugin.Images;
 
@@ -10,7 +12,7 @@ public class ExifMetadataNode : IFlowNode
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExifMetadataNode_Name", "EXIF Metadata");
     public string Category => "Images";
-    public string Description => LocalizationManager.Instance.GetString("ExifMetadataNode_Desc", "Extracts EXIF metadata (Date Taken, Camera Model, GPS) from images.");
+    public string Description => LocalizationManager.Instance.GetString("ExifMetadataNode_Desc", "Extracts EXIF metadata (Date Taken, Camera Model, Dimensions, Orientation) from images.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -74,12 +76,33 @@ public class ExifMetadataNode : IFlowNode
 
             if (string.IsNullOrEmpty(dateTaken) && fallbackToCreation)
             {
-                dateTaken = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
+                dateTaken = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             }
 
             item.Metadata["DateTaken"] = dateTaken ?? "Unknown";
             item.Metadata["CameraModel"] = cameraModel ?? "Unknown";
             item.Metadata["CameraMake"] = make ?? "Unknown";
+
+            // Extract Image Dimensions and Orientation
+            try
+            {
+                var info = Image.Identify(filePath);
+                if (info != null)
+                {
+                    int width = info.Width;
+                    int height = info.Height;
+                    item.Metadata["ImageWidth"] = width;
+                    item.Metadata["ImageHeight"] = height;
+                    string orientation = width > height ? "Landscape" : (height > width ? "Portrait" : "Square");
+                    item.Metadata["Orientation"] = orientation;
+                    item.Metadata["AspectRatio"] = CalculateAspectRatio(width, height);
+                    item.Metadata["Megapixels"] = ((width * (double)height) / 1_000_000.0).ToString("F1", CultureInfo.InvariantCulture) + "MP";
+                }
+            }
+            catch
+            {
+                // Non-critical image format fallback
+            }
 
             context.Log($"EXIF Extracted - DateTaken: {dateTaken}, Model: {cameraModel}", LogLevel.Information);
             item.AddLog($"ExifMetadataNode extracted DateTaken={dateTaken}, Model={cameraModel}");
@@ -89,10 +112,18 @@ public class ExifMetadataNode : IFlowNode
             context.Log($"ExifMetadataNode warning reading '{filePath}': {ex.Message}", LogLevel.Warning);
             if (fallbackToCreation)
             {
-                item.Metadata["DateTaken"] = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
+                item.Metadata["DateTaken"] = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             }
         }
 
         await context.EmitAsync("Out", item);
     }
+
+    private static string CalculateAspectRatio(int width, int height)
+    {
+        int gcd = GCD(width, height);
+        return gcd > 0 ? $"{width / gcd}:{height / gcd}" : $"{width}:{height}";
+    }
+
+    private static int GCD(int a, int b) => b == 0 ? a : GCD(b, a % b);
 }

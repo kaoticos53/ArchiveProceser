@@ -39,6 +39,7 @@ public class SmartUnpackNode : IFlowNode
     {
         string archivePath = item.CurrentPath;
         string destFolder = Parameters.TryGetValue("DestinationFolder", out var val) ? val?.ToString() ?? @"C:\FileFlowUnpacked" : @"C:\FileFlowUnpacked";
+        destFolder = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(destFolder, item);
         bool cleanWrapper = Parameters.TryGetValue("CleanWrapper", out var cwVal) && Convert.ToBoolean(cwVal);
         bool autoDelete = Parameters.TryGetValue("AutoDeleteAfterExtraction", out var adVal) && Convert.ToBoolean(adVal);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && Convert.ToBoolean(dryVal);
@@ -106,6 +107,8 @@ public class SmartUnpackNode : IFlowNode
             var outputItem = new FileItemContext(finalExtractDir, isDirectory: true);
             outputItem.Metadata["UnpackedFrom"] = archivePath;
             outputItem.Metadata["HasSingleWrapper"] = hasSingleWrapper;
+            outputItem.Metadata["ArchiveFormat"] = Path.GetExtension(archivePath).TrimStart('.').ToUpperInvariant();
+            outputItem.Metadata["UnpackedFileCount"] = entryKeys.Count;
             outputItem.AddLog($"SmartUnpackNode extracted to {finalExtractDir}");
 
             await context.EmitAsync("Out", outputItem);
