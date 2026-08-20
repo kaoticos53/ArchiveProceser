@@ -4,6 +4,17 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Solución Definitiva al Bloqueo de Flujos (Eliminación de Interbloqueo / Deadlock de Semáforo)
+
+### 🛠 Cambios Implementados
+1. **Eliminación del Interbloqueo Canónico (*Semaphore Deadlock*) en `WorkflowExecutor.cs`:**
+   - Se identificó la causa raíz: en `DispatchEmitAsync`, se llamaba a `_concurrencyThrottle.WaitAsync` mientras el nodo padre estaba esperando a que los nodos hijos terminasen `ExecuteAsync`. Al encadenar 2 o más nodos (ej. `FolderSourceNode` -> `VariableInjectorNode` -> `DestinationSinkNode`), los hilos padres bloqueaban todas las fichas del semáforo esperando a los hijos, mientras los hijos esperaban una ficha libre del semáforo, provocando un **Interbloqueo Recursivo (Deadlock)** absoluto.
+   - Se eliminó el estrangulamiento anidado en `DispatchEmitAsync`, permitiendo que la tubería de emisión asíncrona procese lotes de archivos de forma fluida y sin bloqueos de aplicación.
+2. **Extracción Directa de Metadatos Dinámicos en `EditorViewModel.cs`:**
+   - Se corrigió la función de travesía `GetUpstreamAvailableVariables` para extraer las claves directas de `VariableInjectorNode` de forma inmediata.
+
+---
+
 ## [2026-08-20] - Corrección de Bloqueo al Ejecutar Flujos con `VariableInjectorNode`
 
 ### 🛠 Cambios Implementados
