@@ -4,6 +4,18 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
+## [2026-08-20] - Inyección Multivariable en `VariableInjectorNode`
+
+### 🛠 Cambios Implementados
+1. **Soporte Multivariable en `VariableInjectorNode.cs`:**
+   - Rediseño del nodo para permitir definir y resolver múltiples pares de variables (`Key1`/`Value1`, `Key2`/`Value2`, ..., `Key5`/`Value5`) de forma simultánea dentro del mismo nodo.
+2. **Actualización de la Travesía Topológica `EditorViewModel.cs`:**
+   - La travesía del grafo hacia atrás (*Upstream Traversal*) inspecciona todas las claves no vacías de `VariableInjectorNode` y las ofrece automáticamente en el menú desplegable **`[{x}]`** de los nodos conectados posteriormente.
+3. **Actualización de Pruebas Unitarias (`VariableInjectorNodeTests.cs`):**
+   - Cobertura completa de resolución e inyección simultánea de múltiples variables.
+
+---
+
 ## [2026-08-20] - Suite Exhaustiva de Automatización de Pruebas (xUnit, FluentAssertions, Moq)
 
 ### 🛠 Cambios Implementados
