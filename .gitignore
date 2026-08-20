@@ -1,0 +1,30 @@
+## Visual Studio / .NET
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+.idea/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.cache
+
+# Build outputs
+FileFlow.App/bin/
+FileFlow.App/obj/
+FileFlow.Core/bin/
+FileFlow.Core/obj/
+FileFlow.Sdk/bin/
+FileFlow.Sdk/obj/
+FileFlow.Plugin.FileSystem/bin/
+FileFlow.Plugin.FileSystem/obj/
+FileFlow.Plugin.Archives/bin/
+FileFlow.Plugin.Archives/obj/
+FileFlow.Plugin.Images/bin/
+FileFlow.Plugin.Images/obj/
+
+# Local configuration & temporary folders
+.antigravity/

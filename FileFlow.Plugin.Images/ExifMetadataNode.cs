@@ -1,0 +1,98 @@
+using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
+using MetadataExtractor;
+
+namespace FileFlow.Plugin.Images;
+
+[NodeDefinition("ExifMetadataNode_Name", "Images", "ExifMetadataNode_Desc")]
+public class ExifMetadataNode : IFlowNode
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name => LocalizationManager.Instance.GetString("ExifMetadataNode_Name", "EXIF Metadata");
+    public string Category => "Images";
+    public string Description => LocalizationManager.Instance.GetString("ExifMetadataNode_Desc", "Extracts EXIF metadata (Date Taken, Camera Model, GPS) from images.");
+
+    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    {
+        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+    };
+
+    public IReadOnlyList<NodePort> Outputs { get; } = new[]
+    {
+        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+    };
+
+    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["FallbackToCreationDate"] = true
+    };
+
+    public async Task ExecuteAsync(
+        string inputPortName,
+        FileItemContext item,
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        string filePath = item.CurrentPath;
+        bool fallbackToCreation = Parameters.TryGetValue("FallbackToCreationDate", out var fVal) && Convert.ToBoolean(fVal);
+
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            context.Log($"ExifMetadataNode: File '{filePath}' not found.", LogLevel.Warning);
+            await context.EmitAsync("Out", item);
+            return;
+        }
+
+        try
+        {
+            context.Log($"Extracting EXIF metadata for: {filePath}", LogLevel.Information);
+            var directories = ImageMetadataReader.ReadMetadata(filePath);
+
+            string? dateTaken = null;
+            string? cameraModel = null;
+            string? make = null;
+
+            foreach (var directory in directories)
+            {
+                foreach (var tag in directory.Tags)
+                {
+                    if (tag.Name.Equals("Date/Time Original", StringComparison.OrdinalIgnoreCase) ||
+                        tag.Name.Equals("Date/Time", StringComparison.OrdinalIgnoreCase))
+                    {
+                        dateTaken ??= tag.Description;
+                    }
+                    else if (tag.Name.Equals("Model", StringComparison.OrdinalIgnoreCase))
+                    {
+                        cameraModel ??= tag.Description;
+                    }
+                    else if (tag.Name.Equals("Make", StringComparison.OrdinalIgnoreCase))
+                    {
+                        make ??= tag.Description;
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(dateTaken) && fallbackToCreation)
+            {
+                dateTaken = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
+            }
+
+            item.Metadata["DateTaken"] = dateTaken ?? "Unknown";
+            item.Metadata["CameraModel"] = cameraModel ?? "Unknown";
+            item.Metadata["CameraMake"] = make ?? "Unknown";
+
+            context.Log($"EXIF Extracted - DateTaken: {dateTaken}, Model: {cameraModel}", LogLevel.Information);
+            item.AddLog($"ExifMetadataNode extracted DateTaken={dateTaken}, Model={cameraModel}");
+        }
+        catch (Exception ex)
+        {
+            context.Log($"ExifMetadataNode warning reading '{filePath}': {ex.Message}", LogLevel.Warning);
+            if (fallbackToCreation)
+            {
+                item.Metadata["DateTaken"] = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss");
+            }
+        }
+
+        await context.EmitAsync("Out", item);
+    }
+}

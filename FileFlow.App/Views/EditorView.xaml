@@ -1,0 +1,388 @@
+<UserControl x:Class="FileFlow.App.Views.EditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:nodify="clr-namespace:Nodify;assembly=Nodify"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="800">
+    <UserControl.InputBindings>
+        <KeyBinding Key="Delete" Command="{Binding DeleteSelectedNodesCommand}" />
+    </UserControl.InputBindings>
+
+    <Grid Background="{StaticResource BgEditorBrush}" AllowDrop="True" Drop="Editor_Drop">
+        <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
+                             Connections="{Binding Connections}"
+                             PendingConnection="{Binding PendingConnection}"
+                             DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
+                             ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
+                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
+                             GridCellSize="24">
+            
+            <nodify:NodifyEditor.ItemContainerStyle>
+                <Style TargetType="{x:Type nodify:ItemContainer}">
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
+                    <Setter Property="MinWidth" Value="180" />
+                    <Setter Property="MaxWidth" Value="{Binding MaxWidth}" />
+                </Style>
+            </nodify:NodifyEditor.ItemContainerStyle>
+
+            <!-- Custom Node Card Template with Resizable Handle and Category/Custom Colors -->
+            <nodify:NodifyEditor.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:NodeViewModel}">
+                    <Grid HorizontalAlignment="Stretch">
+                        <nodify:Node Style="{StaticResource BlenderNodeStyle}" 
+                                     Header="{Binding}" 
+                                     HorizontalAlignment="Stretch"
+                                     HorizontalContentAlignment="Stretch"
+                                     Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}">
+                            <nodify:Node.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ChangeColor]}">
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorEmerald]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#10B981">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#10B981" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorCyan]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#06B6D4">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#06B6D4" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPurple]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#A855F7">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#A855F7" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorAmber]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#F59E0B">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#F59E0B" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorRed]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#EF4444">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#EF4444" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorIndigo]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#818CF8">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#818CF8" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorMagenta]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#EC4899">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#EC4899" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorSlate]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="#64748B">
+                                            <MenuItem.Icon>
+                                                <Ellipse Width="14" Height="14" Fill="#64748B" Stroke="#12141D" StrokeThickness="1" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <Separator />
+
+                                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CustomColor]}"
+                                                  Command="{Binding PlacementTarget.DataContext.ChooseCustomColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    </MenuItem>
+
+                                    <Separator />
+
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteNode]}"
+                                              Command="{Binding PlacementTarget.Tag.DeleteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                </ContextMenu>
+                            </nodify:Node.ContextMenu>
+
+                            <nodify:Node.HeaderTemplate>
+                                <DataTemplate DataType="{x:Type vm:NodeViewModel}">
+                                    <Border Background="{Binding HeaderColor}" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="12,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" />
+                                            <Border Grid.Column="1" Background="#12151F" CornerRadius="10" Padding="8,3" Margin="8,0,0,0">
+                                                <TextBlock Text="{Binding Category}" Foreground="{Binding AccentColor}" FontSize="10" FontWeight="SemiBold" />
+                                            </Border>
+                                            <ToggleButton Grid.Column="2"
+                                                          IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                          Content="⚙"
+                                                          Foreground="{StaticResource TextSecondaryBrush}"
+                                                          Background="Transparent"
+                                                          BorderThickness="0"
+                                                          Padding="6,2"
+                                                          Margin="6,0,0,0"
+                                                          Cursor="Hand"
+                                                          ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToggleParametersToolTip]}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </nodify:Node.HeaderTemplate>
+
+                            <Border Padding="2,6">
+                                <StackPanel>
+                                    <!-- Ports Row -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Input Ports -->
+                                        <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:PortViewModel}">
+                                                    <nodify:NodeInput DataContext="{Binding}"
+                                                                       Header="{Binding DisplayName}" 
+                                                                       IsConnected="True" 
+                                                                       Anchor="{Binding Anchor, Mode=OneWayToSource}" 
+                                                                       DisconnectCommand="{Binding DataContext.DisconnectConnectorCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                                       HorizontalAlignment="Left"
+                                                                       Margin="-12,4,0,4">
+                                                        <nodify:NodeInput.HeaderTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <Ellipse Width="10" Height="10" Fill="{Binding DataContext.PortColor, RelativeSource={RelativeSource AncestorType=nodify:NodeInput}}" Stroke="#181B24" StrokeThickness="1.5" Margin="0,0,6,0" ToolTip="{Binding DataContext.DataType.Name, RelativeSource={RelativeSource AncestorType=nodify:NodeInput}}" />
+                                                                    <TextBlock Text="{Binding}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </nodify:NodeInput.HeaderTemplate>
+                                                    </nodify:NodeInput>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Output Ports -->
+                                        <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputPorts}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:PortViewModel}">
+                                                    <nodify:NodeOutput DataContext="{Binding}"
+                                                                        Header="{Binding DisplayName}" 
+                                                                        IsConnected="True" 
+                                                                        Anchor="{Binding Anchor, Mode=OneWayToSource}" 
+                                                                        DisconnectCommand="{Binding DataContext.DisconnectConnectorCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                                        HorizontalAlignment="Right"
+                                                                        Margin="0,4,-12,4">
+                                                        <nodify:NodeOutput.HeaderTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,6,0" />
+                                                                    <Ellipse Width="10" Height="10" Fill="{Binding DataContext.PortColor, RelativeSource={RelativeSource AncestorType=nodify:NodeOutput}}" Stroke="#181B24" StrokeThickness="1.5" ToolTip="{Binding DataContext.DataType.Name, RelativeSource={RelativeSource AncestorType=nodify:NodeOutput}}" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </nodify:NodeOutput.HeaderTemplate>
+                                                    </nodify:NodeOutput>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+
+                                    <!-- Collapsible Node Parameters Panel -->
+                                    <Border Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Background="#11131C"
+                                            BorderBrush="{StaticResource BorderDarkBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="8,6"
+                                            Margin="0,8,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SettingsTitle]}" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentGlowBrush}" Margin="0,0,0,6" />
+                                            <ItemsControl ItemsSource="{Binding Parameters}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:NodeParameterViewModel}">
+                                                        <Grid Margin="0,3">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="ParamKey" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Grid.Column="0" Text="{Binding Key}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                                                            <!-- Dropdown ComboBox for parameters with options -->
+                                                            <ComboBox Grid.Column="1"
+                                                                      ItemsSource="{Binding Options}"
+                                                                      SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                      Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                      Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
+                                                                      BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="4,2"
+                                                                      HorizontalAlignment="Stretch" />
+
+                                                            <!-- CheckBox for Boolean parameters -->
+                                                            <CheckBox Grid.Column="1"
+                                                                      IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                      Visibility="{Binding IsBooleanAndNoOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                      VerticalAlignment="Center" Margin="2,0,0,0" />
+
+                                                            <!-- Path Selector Input -->
+                                                            <Grid Grid.Column="1" 
+                                                                  Visibility="{Binding HasBrowseButton, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                  HorizontalAlignment="Stretch">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <TextBox Grid.Column="0" 
+                                                                         Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                                         Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
+                                                                         BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="5,3"
+                                                                         HorizontalAlignment="Stretch">
+                                                                    <TextBox.Resources>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="CornerRadius" Value="4,0,0,4" />
+                                                                        </Style>
+                                                                    </TextBox.Resources>
+                                                                </TextBox>
+
+                                                                <Button Grid.Column="1" 
+                                                                        Command="{Binding BrowsePathCommand}" 
+                                                                        Content="📁" 
+                                                                        Background="{StaticResource AccentPrimaryBrush}" 
+                                                                        Foreground="White" 
+                                                                        BorderThickness="0" 
+                                                                        Padding="6,2" 
+                                                                        FontSize="10" 
+                                                                        Cursor="Hand"
+                                                                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}">
+                                                                    <Button.Resources>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="CornerRadius" Value="0,4,4,0" />
+                                                                        </Style>
+                                                                    </Button.Resources>
+                                                                </Button>
+                                                            </Grid>
+
+                                                            <!-- TextBox for standard text/numeric parameters -->
+                                                            <TextBox Grid.Column="1"
+                                                                     Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Visibility="{Binding IsStandardInput, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                     Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
+                                                                     BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="5,3"
+                                                                     HorizontalAlignment="Stretch">
+                                                                <TextBox.Resources>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="CornerRadius" Value="4" />
+                                                                    </Style>
+                                                                </TextBox.Resources>
+                                                            </TextBox>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </nodify:Node>
+
+                        <!-- Bottom Right Interactive Resize Handle -->
+                        <Thumb Width="14" Height="14"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Bottom"
+                               Cursor="SizeNWSE"
+                               Margin="0,0,4,4"
+                               DragDelta="ResizeThumb_DragDelta">
+                            <Thumb.Template>
+                                <ControlTemplate>
+                                    <Path Data="M 8 0 L 8 8 L 0 8 Z" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.7" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Grid>
+                </DataTemplate>
+            </nodify:NodifyEditor.ItemTemplate>
+
+            <!-- Smooth Pending Connection Curve -->
+            <nodify:NodifyEditor.PendingConnectionTemplate>
+                <DataTemplate DataType="{x:Type vm:PendingConnectionViewModel}">
+                    <nodify:PendingConnection StartedCommand="{Binding DataContext.StartConnectionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                               CompletedCommand="{Binding DataContext.FinishConnectionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                               Source="{Binding Source.Anchor}"
+                                               Target="{Binding TargetLocation, Mode=TwoWay}"
+                                               Direction="Forward"
+                                               Stroke="{StaticResource AccentGlowBrush}"
+                                               StrokeThickness="2.5"
+                                               StrokeDashArray="5 3" />
+                </DataTemplate>
+            </nodify:NodifyEditor.PendingConnectionTemplate>
+
+            <!-- Smooth Connection Wires with Native Context Menu -->
+            <nodify:NodifyEditor.ConnectionTemplate>
+                <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
+                    <nodify:Connection Source="{Binding Source.Anchor}"
+                                       Target="{Binding Target.Anchor}"
+                                       Stroke="{StaticResource ConnectionWireBrush}"
+                                       StrokeThickness="3"
+                                       Direction="Forward"
+                                       Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}">
+                        <nodify:Connection.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
+                                          Command="{Binding PlacementTarget.Tag.DeleteConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            </ContextMenu>
+                        </nodify:Connection.ContextMenu>
+                    </nodify:Connection>
+                </DataTemplate>
+            </nodify:NodifyEditor.ConnectionTemplate>
+        </nodify:NodifyEditor>
+
+        <!-- Floating Canvas Zoom / Scale Overlay Toolbar -->
+        <Border HorizontalAlignment="Right" 
+                VerticalAlignment="Bottom" 
+                Margin="0,0,18,18" 
+                Background="#181B26" 
+                BorderBrush="{StaticResource BorderDarkBrush}" 
+                BorderThickness="1" 
+                CornerRadius="8" 
+                Padding="8,5">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Color="#000000" Opacity="0.4" />
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Command="{Binding ZoomOutCommand}" Content="➖" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomOutToolTip]}" Background="Transparent" Foreground="{StaticResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
+                <Slider Minimum="0.2" Maximum="2.5" Value="{Binding ViewportZoom, Mode=TwoWay}" Width="110" VerticalAlignment="Center" Margin="6,0" SmallChange="0.05" LargeChange="0.1" IsSnapToTickEnabled="False" />
+                <Button Command="{Binding ZoomInCommand}" Content="➕" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomInToolTip]}" Background="Transparent" Foreground="{StaticResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
+                <TextBlock Text="{Binding ViewportZoom, StringFormat={}{0:P0}}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontWeight="Bold" Width="44" TextAlignment="Center" VerticalAlignment="Center" Margin="4,0" />
+                <Button Command="{Binding ResetZoomCommand}" Content="1:1" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ResetZoomToolTip]}" Background="#252A38" Foreground="{StaticResource AccentGlowBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="10" FontWeight="Bold" Margin="4,0,0,0">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4" />
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

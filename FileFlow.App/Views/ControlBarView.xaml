@@ -1,0 +1,53 @@
+<UserControl x:Class="FileFlow.App.Views.ControlBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+             mc:Ignorable="d" 
+             d:DesignHeight="60" d:DesignWidth="1000">
+    <Border Background="{StaticResource BgHeaderBrush}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="12,8">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- App Title & Workflow Name -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="⚡ FileFlow Studio" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,16,0" />
+                <TextBox Text="{Binding WorkflowName, UpdateSourceTrigger=PropertyChanged}" 
+                         FontSize="14" Foreground="{StaticResource TextPrimaryBrush}" Background="#222632" 
+                         BorderBrush="{StaticResource BorderDarkBrush}" Padding="8,4" Width="220" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Language Selector & Execution Controls -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Language Selector Dropdown -->
+                <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}"
+                          SelectedValuePath="Tag"
+                          Background="#222632" Foreground="{StaticResource TextPrimaryBrush}" 
+                          BorderBrush="{StaticResource BorderDarkBrush}" Padding="6,4" Width="115" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
+                    <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
+                </ComboBox>
+
+                <CheckBox Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" IsChecked="{Binding IsDryRun}" 
+                          Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,16,0" FontWeight="SemiBold" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RunFlow]}" Command="{Binding ExecuteWorkflowCommand}" Style="{StaticResource IconButton}" 
+                        Background="{StaticResource AccentSuccessBrush}" Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Pause]}" Command="{Binding TogglePauseCommand}" Style="{StaticResource SecondaryButton}" 
+                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Stop]}" Command="{Binding StopWorkflowCommand}" Style="{StaticResource DangerButton}" 
+                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Save]}" Command="{Binding SaveWorkflowCommand}" Style="{StaticResource SecondaryButton}" Margin="12,0,4,0" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Load]}" Command="{Binding LoadWorkflowCommand}" Style="{StaticResource SecondaryButton}" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

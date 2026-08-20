@@ -1,0 +1,82 @@
+<Window x:Class="FileFlow.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:FileFlow.App.Views"
+        xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+        mc:Ignorable="d"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AppTitle]}" Height="800" Width="1280"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource BgDarkBrush}">
+    
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="200" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="200" MinHeight="60" MaxHeight="550" />
+        </Grid.RowDefinitions>
+
+        <!-- Top Control Bar -->
+        <views:ControlBarView Grid.Row="0" DataContext="{Binding ControlBar}" />
+
+        <!-- Main Workspace (Toolbox + Resizer + Canvas Editor) -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" MinWidth="180" MaxWidth="480" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: Node Toolbox -->
+            <views:NodeToolboxView Grid.Column="0" DataContext="{Binding Toolbox}" />
+
+            <!-- Vertical Resizer Bar for Toolbox -->
+            <GridSplitter Grid.Column="1" 
+                          Width="5" 
+                          HorizontalAlignment="Center" 
+                          VerticalAlignment="Stretch" 
+                          Background="#181B26" 
+                          ShowsPreview="True" 
+                          Cursor="SizeWE"
+                          ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToolboxResizeToolTip]}">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1,0,1,0">
+                            <Rectangle Width="1" Height="24" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.5" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
+            <!-- Main Canvas Editor -->
+            <views:EditorView Grid.Column="2" DataContext="{Binding Editor}" />
+        </Grid>
+
+        <!-- Horizontal Resizer Bar for Bottom Execution Log Console -->
+        <GridSplitter Grid.Row="2" 
+                      Height="5" 
+                      HorizontalAlignment="Stretch" 
+                      VerticalAlignment="Center" 
+                      Background="#181B26" 
+                      ShowsPreview="True" 
+                      Cursor="SizeNS"
+                      ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ConsoleResizeToolTip]}">
+            <GridSplitter.Template>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,1,0,1">
+                        <Rectangle Width="24" Height="1" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.5" HorizontalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </GridSplitter.Template>
+        </GridSplitter>
+
+        <!-- Bottom Realtime Execution Console -->
+        <views:LogView Grid.Row="3" DataContext="{Binding LogConsole}" />
+    </Grid>
+</Window>

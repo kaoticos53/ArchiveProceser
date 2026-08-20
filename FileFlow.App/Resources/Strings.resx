@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Application Window -->
+  <data name="AppTitle" xml:space="preserve">
+    <value>FileFlow Studio - Modular File Processing Workflow Engine</value>
+  </data>
+  <data name="DefaultWorkflowName" xml:space="preserve">
+    <value>File Processing Pipeline</value>
+  </data>
+  
+  <!-- Control Bar -->
+  <data name="DryRun" xml:space="preserve">
+    <value>🧪 Dry-Run (Simulation)</value>
+  </data>
+  <data name="RunFlow" xml:space="preserve">
+    <value>▶ Run Flow</value>
+  </data>
+  <data name="Pause" xml:space="preserve">
+    <value>⏸ Pause</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>⏹ Stop</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>💾 Save</value>
+  </data>
+  <data name="Load" xml:space="preserve">
+    <value>📂 Load</value>
+  </data>
+
+  <!-- Node Toolbox -->
+  <data name="NodeToolboxTitle" xml:space="preserve">
+    <value>🧩 Node Library</value>
+  </data>
+  <data name="ToolboxResizeToolTip" xml:space="preserve">
+    <value>Drag to resize node toolbox panel</value>
+  </data>
+
+  <!-- Execution Console -->
+  <data name="ExecutionConsoleTitle" xml:space="preserve">
+    <value>💻 Execution Console</value>
+  </data>
+  <data name="ClearLog" xml:space="preserve">
+    <value>🗑 Clear Log</value>
+  </data>
+  <data name="StatusReady" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="ConsoleResizeToolTip" xml:space="preserve">
+    <value>Drag to resize execution console panel</value>
+  </data>
+
+  <!-- Context Menu -->
+  <data name="ChangeColor" xml:space="preserve">
+    <value>🎨 Change Node Color</value>
+  </data>
+  <data name="CustomColor" xml:space="preserve">
+    <value>🎨 Custom Color...</value>
+  </data>
+  <data name="DeleteNode" xml:space="preserve">
+    <value>🗑 Delete Node</value>
+  </data>
+  <data name="DeleteConnection" xml:space="preserve">
+    <value>🗑 Delete Connection</value>
+  </data>
+
+  <!-- Colors -->
+  <data name="ColorEmerald" xml:space="preserve">
+    <value>Emerald Green</value>
+  </data>
+  <data name="ColorCyan" xml:space="preserve">
+    <value>Cyan Blue</value>
+  </data>
+  <data name="ColorPurple" xml:space="preserve">
+    <value>Purple</value>
+  </data>
+  <data name="ColorAmber" xml:space="preserve">
+    <value>Amber Orange</value>
+  </data>
+  <data name="ColorRed" xml:space="preserve">
+    <value>Coral Red</value>
+  </data>
+  <data name="ColorIndigo" xml:space="preserve">
+    <value>Indigo Blue</value>
+  </data>
+  <data name="ColorMagenta" xml:space="preserve">
+    <value>Magenta Pink</value>
+  </data>
+  <data name="ColorSlate" xml:space="preserve">
+    <value>Slate Gray</value>
+  </data>
+
+  <!-- Node Parameters Panel -->
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>⚙ Configuration</value>
+  </data>
+  <data name="ToggleParametersToolTip" xml:space="preserve">
+    <value>Show/Hide Parameters</value>
+  </data>
+  <data name="BrowseExplorerToolTip" xml:space="preserve">
+    <value>Browse with Windows Explorer</value>
+  </data>
+
+  <!-- Zoom Toolbar -->
+  <data name="ZoomOutToolTip" xml:space="preserve">
+    <value>Zoom Out</value>
+  </data>
+  <data name="ZoomInToolTip" xml:space="preserve">
+    <value>Zoom In</value>
+  </data>
+  <data name="ResetZoomToolTip" xml:space="preserve">
+    <value>Reset Scale (100%)</value>
+  </data>
+
+  <!-- Execution Logs -->
+  <data name="LogStartingExecution" xml:space="preserve">
+    <value>--- Starting Execution ---</value>
+  </data>
+  <data name="LogExecutionFinished" xml:space="preserve">
+    <value>--- Execution Finished ---</value>
+  </data>
+  <data name="LogExecutionCancelled" xml:space="preserve">
+    <value>Execution cancelled by user.</value>
+  </data>
+  <data name="LogCancellationRequested" xml:space="preserve">
+    <value>Cancellation requested...</value>
+  </data>
+  <data name="LogSavedWorkflow" xml:space="preserve">
+    <value>Saved workflow to {0}</value>
+  </data>
+  <data name="LogLoadedWorkflow" xml:space="preserve">
+    <value>Loaded workflow from {0}</value>
+  </data>
+
+  <!-- Node Names & Descriptions -->
+  <data name="FolderSourceNode_Name" xml:space="preserve"><value>Folder Source</value></data>
+  <data name="FolderSourceNode_Desc" xml:space="preserve"><value>Scans directory tree and emits each file or folder found.</value></data>
+  
+  <data name="DestinationSinkNode_Name" xml:space="preserve"><value>Destination Sink</value></data>
+  <data name="DestinationSinkNode_Desc" xml:space="preserve"><value>Writes or moves final processed file to target path.</value></data>
+
+  <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Directory Inspector</value></data>
+  <data name="DirectoryInspectorNode_Desc" xml:space="preserve"><value>Evaluates folder contents to classify archive and file composition.</value></data>
+
+  <data name="LogOutputNode_Name" xml:space="preserve"><value>Log Inspector</value></data>
+  <data name="LogOutputNode_Desc" xml:space="preserve"><value>Logs detailed context, metadata, tags, and history of incoming items to console.</value></data>
+
+  <data name="OriginalFileActionNode_Name" xml:space="preserve"><value>Original File Action</value></data>
+  <data name="OriginalFileActionNode_Desc" xml:space="preserve"><value>Applies lifecycle policy to the original file (keep, quarantine, or delete).</value></data>
+
+  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Smart Unpack</value></data>
+  <data name="SmartUnpackNode_Desc" xml:space="preserve"><value>Inspects archive structure and extracts intelligently.</value></data>
+
+  <data name="ImageOptimizerNode_Name" xml:space="preserve"><value>Image Optimizer</value></data>
+  <data name="ImageOptimizerNode_Desc" xml:space="preserve"><value>Resizes images keeping aspect ratio and converts to modern formats.</value></data>
+
+  <data name="ExifMetadataNode_Name" xml:space="preserve"><value>EXIF Metadata</value></data>
+  <data name="ExifMetadataNode_Desc" xml:space="preserve"><value>Extracts EXIF metadata (Date Taken, Camera Model, GPS) from images.</value></data>
+</root>
