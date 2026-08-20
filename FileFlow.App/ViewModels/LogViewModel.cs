@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
@@ -24,6 +26,8 @@ public partial class LogViewModel : ObservableObject
     private string _fullLogText = string.Empty;
 
     private readonly StringBuilder _logTextBuffer = new();
+    private readonly ConcurrentQueue<LogEntry> _pendingLogs = new();
+    private readonly DispatcherTimer _flushTimer;
 
     public LogViewModel()
     {
@@ -35,36 +39,59 @@ public partial class LogViewModel : ObservableObject
                 StatusMessage = LocalizationManager.Instance["StatusReady"];
             }
         };
+
+        _flushTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(50)
+        };
+        _flushTimer.Tick += FlushPendingLogs;
+        _flushTimer.Start();
     }
 
     public void AddLog(LogLevel level, string message)
     {
-        Application.Current?.Dispatcher.InvokeAsync(() =>
+        var entry = new LogEntry(DateTime.Now, level, message);
+        _pendingLogs.Enqueue(entry);
+    }
+
+    private void FlushPendingLogs(object? sender, EventArgs? e)
+    {
+        if (_pendingLogs.IsEmpty) return;
+
+        bool addedAny = false;
+        while (_pendingLogs.TryDequeue(out var entry))
         {
-            var entry = new LogEntry(DateTime.Now, level, message);
             Logs.Add(entry);
             if (Logs.Count > 1000)
             {
                 Logs.RemoveAt(0);
             }
-
             _logTextBuffer.AppendLine($"[{entry.Timestamp:HH:mm:ss}] [{entry.Level}] {entry.Message}");
+            addedAny = true;
+        }
+
+        if (addedAny)
+        {
             FullLogText = _logTextBuffer.ToString();
-        });
+        }
     }
 
     public void UpdateProgress(double percentage, string statusMessage)
     {
-        Application.Current?.Dispatcher.InvokeAsync(() =>
+        if (Application.Current != null)
         {
-            ProgressPercentage = percentage;
-            StatusMessage = statusMessage;
-        });
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ProgressPercentage = percentage;
+                StatusMessage = statusMessage;
+            }, DispatcherPriority.Background);
+        }
     }
 
     [RelayCommand]
     public void ClearLogs()
     {
+        while (_pendingLogs.TryDequeue(out _)) { }
         Logs.Clear();
         _logTextBuffer.Clear();
         FullLogText = string.Empty;
@@ -75,6 +102,7 @@ public partial class LogViewModel : ObservableObject
     [RelayCommand]
     public void ExportLogs()
     {
+        FlushPendingLogs(null, null);
         if (Logs.Count == 0) return;
 
         var dialog = new Microsoft.Win32.SaveFileDialog
