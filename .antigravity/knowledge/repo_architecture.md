@@ -97,6 +97,7 @@ ArchiveProceser/
   - [`IVariableDiscoveryService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/IVariableDiscoveryService.cs) & `VariableDiscoveryService`: Catálogo e introspección de variables de sistema, upstream y funciones.
   - [`ThemeManager`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/ThemeManager.cs): Gestor dinámico de temas (`Dark`, `Light`, `Pastel`, `Cyber`, `System`).
 - **Componentes y Plantillas Modulares XAML**:
+  - [`NodeCardView.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/NodeCardView.xaml): UserControl modular de la tarjeta de nodo completa (menú contextual, cabecera con LED, breakpoint, puertos y redimensionamiento).
   - [`EditorZoomBarView.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/EditorZoomBarView.xaml): Control de escala y zoom flotante reutilizable.
   - [`NodeParameterTemplates.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Themes/Templates/NodeParameterTemplates.xaml): Diccionario de plantillas para parámetros de nodos.
   - [`InspectorTemplates.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Themes/Templates/InspectorTemplates.xaml): Diccionario de plantillas de telemetría y snapshots.
