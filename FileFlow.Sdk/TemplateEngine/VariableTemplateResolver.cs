@@ -5,7 +5,9 @@ namespace FileFlow.Sdk.TemplateEngine;
 
 public static class VariableTemplateResolver
 {
-    private static readonly Regex TokenRegex = new(@"\{(?<expr>[^}]+)\}", RegexOptions.Compiled);
+    private static readonly System.Buffers.SearchValues<char> InvalidCharsSearch =
+        System.Buffers.SearchValues.Create(Path.GetInvalidFileNameChars().Union(Path.GetInvalidPathChars()).Distinct().ToArray());
+
     private static readonly Regex FunctionRegex = new(@"^(?<fn>\w+)\((?<args>.*)\)$", RegexOptions.Compiled);
 
     public static string Resolve(string template, FileItemContext item, string? sourceRootPath = null)
@@ -15,11 +17,34 @@ public static class VariableTemplateResolver
             return template;
         }
 
-        return TokenRegex.Replace(template, match =>
+        var sb = new System.Text.StringBuilder(template.Length + 32);
+        int i = 0;
+        while (i < template.Length)
         {
-            string expr = match.Groups["expr"].Value.Trim();
-            return EvaluateExpression(expr, item, sourceRootPath);
-        });
+            int openIdx = template.IndexOf('{', i);
+            if (openIdx < 0)
+            {
+                sb.Append(template, i, template.Length - i);
+                break;
+            }
+
+            int closeIdx = template.IndexOf('}', openIdx + 1);
+            if (closeIdx < 0)
+            {
+                sb.Append(template, i, template.Length - i);
+                break;
+            }
+
+            sb.Append(template, i, openIdx - i);
+
+            string expr = template.Substring(openIdx + 1, closeIdx - openIdx - 1).Trim();
+            string resolved = EvaluateExpression(expr, item, sourceRootPath);
+            sb.Append(resolved);
+
+            i = closeIdx + 1;
+        }
+
+        return sb.ToString();
     }
 
     private static string EvaluateExpression(string expr, FileItemContext item, string? sourceRootPath)
@@ -285,12 +310,20 @@ public static class VariableTemplateResolver
     private static string SanitizeFileName(string input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
-        var invalidChars = Path.GetInvalidFileNameChars().Concat(Path.GetInvalidPathChars()).Distinct();
-        foreach (char c in invalidChars)
+        if (!input.AsSpan().ContainsAny(InvalidCharsSearch))
         {
-            input = input.Replace(c, '-');
+            return input;
         }
-        return input;
+
+        char[] buffer = input.ToCharArray();
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            if (InvalidCharsSearch.Contains(buffer[i]))
+            {
+                buffer[i] = '-';
+            }
+        }
+        return new string(buffer);
     }
 
     private static string CalculateDaysElapsed(string dateInput)
