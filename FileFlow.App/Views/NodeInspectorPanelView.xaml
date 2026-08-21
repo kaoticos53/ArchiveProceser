@@ -173,7 +173,7 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <!-- PESTAÑA 2: Snapshots de Salida -->
+                    <!-- PESTAÑA 2: Snapshots de Salida (Virtualizado) -->
                     <TabItem Header="📤 Salidas">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
@@ -181,13 +181,42 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="Salidas Generadas (Click en ▶ para ver metadata):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
-                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding InspectedNode.OutputSnapshots}" ItemTemplate="{StaticResource SnapshotExpanderTemplate}" />
-                            </ScrollViewer>
+                            <ListBox Grid.Row="1" 
+                                     ItemsSource="{Binding InspectedNode.OutputSnapshots}" 
+                                     SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
+                                     ItemTemplate="{StaticResource SnapshotExpanderTemplate}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     ScrollViewer.CanContentScroll="True"
+                                     VirtualizingStackPanel.IsVirtualizing="True"
+                                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                     VirtualizingStackPanel.ScrollUnit="Pixel"
+                                     HorizontalContentAlignment="Stretch">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <ContentPresenter HorizontalAlignment="Stretch" />
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
                         </Grid>
                     </TabItem>
 
-                    <!-- PESTAÑA 3: Snapshots de Entrada -->
+                    <!-- PESTAÑA 3: Snapshots de Entrada (Virtualizado) -->
                     <TabItem Header="📥 Entradas">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
@@ -195,9 +224,38 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="Entradas Recibidas (Click en ▶ para ver metadata):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
-                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding InspectedNode.InputSnapshots}" ItemTemplate="{StaticResource SnapshotExpanderTemplate}" />
-                            </ScrollViewer>
+                            <ListBox Grid.Row="1" 
+                                     ItemsSource="{Binding InspectedNode.InputSnapshots}" 
+                                     SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
+                                     ItemTemplate="{StaticResource SnapshotExpanderTemplate}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                     ScrollViewer.CanContentScroll="True"
+                                     VirtualizingStackPanel.IsVirtualizing="True"
+                                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                     VirtualizingStackPanel.ScrollUnit="Pixel"
+                                     HorizontalContentAlignment="Stretch">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <ContentPresenter HorizontalAlignment="Stretch" />
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
                         </Grid>
                     </TabItem>
 

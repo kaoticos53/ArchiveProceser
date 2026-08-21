@@ -1,6 +1,10 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sdk="clr-namespace:FileFlow.Sdk;assembly=FileFlow.Sdk">
+                    xmlns:sdk="clr-namespace:FileFlow.Sdk;assembly=FileFlow.Sdk"
+                    xmlns:conv="clr-namespace:FileFlow.App.Converters">
+
+    <conv:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
+    <conv:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
 
     <!-- Snapshot Item DataTemplate (Outputs & Inputs) -->
     <DataTemplate x:Key="SnapshotExpanderTemplate" DataType="{x:Type sdk:NodeDataSnapshot}">

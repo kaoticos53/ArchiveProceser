@@ -14,6 +14,8 @@
             <converters:DiffChangeTypeToBrushConverter x:Key="DiffChangeTypeToBrushConverter" />
             <converters:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
             <converters:BooleanToGridLengthConverter x:Key="BooleanToGridLengthConverter" />
+            <converters:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
+            <converters:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
             
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/DarkTheme.xaml" />

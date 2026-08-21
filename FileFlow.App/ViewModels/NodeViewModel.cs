@@ -305,18 +305,18 @@ public partial class NodeViewModel : ObservableObject
         HasBreakpoint = !HasBreakpoint;
     }
 
+    public const int MaxRecordedSnapshots = 500;
+
     public void AddSnapshot(NodeDataSnapshot snapshot)
     {
         Application.Current?.Dispatcher?.Invoke(() =>
         {
-            if (snapshot.IsInput)
+            var targetCollection = snapshot.IsInput ? InputSnapshots : OutputSnapshots;
+            if (targetCollection.Count >= MaxRecordedSnapshots)
             {
-                InputSnapshots.Add(snapshot);
+                targetCollection.RemoveAt(0);
             }
-            else
-            {
-                OutputSnapshots.Add(snapshot);
-            }
+            targetCollection.Add(snapshot);
         });
     }
 
