@@ -2,12 +2,14 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:nodify="clr-namespace:Nodify;assembly=Nodify">
 
-    <!-- Color Palette -->
-    <SolidColorBrush x:Key="BgDarkBrush" Color="#0B0C10" />
-    <SolidColorBrush x:Key="BgEditorBrush" Color="#0E1017" />
-    <SolidColorBrush x:Key="BgCardBrush" Color="#181B24" />
-    <SolidColorBrush x:Key="BgSurfaceBrush" Color="#131620" />
-    <SolidColorBrush x:Key="BgHeaderBrush" Color="#12141C" />
+    <!-- Fluent Dark Color Palette (GitHub/Windows 11 Dark Mode) -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0D1117" />
+    <SolidColorBrush x:Key="BgDarkBrush" Color="#0D1117" />
+    <SolidColorBrush x:Key="BgEditorBrush" Color="#10131B" />
+    <SolidColorBrush x:Key="BgCardBrush" Color="#161B22" />
+    <SolidColorBrush x:Key="BgSurfaceBrush" Color="#131720" />
+    <SolidColorBrush x:Key="BgHeaderBrush" Color="#1A1F29" />
+    <SolidColorBrush x:Key="BgHoverBrush" Color="#21262D" />
     
     <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#6366F1" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="#4F46E5" />
@@ -18,12 +20,17 @@
     <SolidColorBrush x:Key="AccentCyanBrush" Color="#06B6D4" />
     <SolidColorBrush x:Key="AccentPurpleBrush" Color="#A855F7" />
 
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F8FAFC" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8" />
-    <SolidColorBrush x:Key="BorderDarkBrush" Color="#272C3D" />
-    <SolidColorBrush x:Key="GridLineBrush" Color="#1E2333" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F0F6FC" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8B949E" />
+    <SolidColorBrush x:Key="BorderDarkBrush" Color="#30363D" />
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#21262D" />
+    <SolidColorBrush x:Key="GridLineBrush" Color="#1A202C" />
 
-    <!-- Connection Gradient Brush -->
+    <!-- Scrollbar Brushes -->
+    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#384152" />
+    <SolidColorBrush x:Key="ScrollbarThumbHoverBrush" Color="#4F5B73" />
+
+    <!-- Connection Wire Gradient Brush -->
     <LinearGradientBrush x:Key="ConnectionWireBrush" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="#818CF8" Offset="0.0" />
         <GradientStop Color="#6366F1" Offset="0.5" />
@@ -31,187 +38,5 @@
     </LinearGradientBrush>
 
     <!-- Node Drop Shadow Effect -->
-    <DropShadowEffect x:Key="NodeShadowEffect" BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.5" />
-
-    <!-- Dark ComboBox & ComboBoxItem Styling -->
-    <Style TargetType="ComboBoxItem">
-        <Setter Property="Background" Value="#181B26" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="Padding" Value="8,5" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ComboBoxItem">
-                    <Border Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#33394D" />
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentPrimaryBrush}" />
-                            <Setter Property="Foreground" Value="#FFFFFF" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- Custom Dark ComboBox ToggleButton Template -->
-    <ControlTemplate x:Key="ComboBoxToggleButton" TargetType="ToggleButton">
-        <Border x:Name="templateRoot" 
-                Background="#181B26" 
-                BorderBrush="{StaticResource BorderDarkBrush}" 
-                BorderThickness="1" 
-                CornerRadius="4">
-            <Border x:Name="splitBorder" 
-                    HorizontalAlignment="Right" 
-                    Width="18" 
-                    Margin="0">
-                <Path x:Name="arrow" 
-                      Data="M 0 0 L 4 4 L 8 0 Z" 
-                      Fill="{StaticResource TextSecondaryBrush}" 
-                      HorizontalAlignment="Center" 
-                      VerticalAlignment="Center" />
-            </Border>
-        </Border>
-        <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="templateRoot" Property="Background" Value="#252A38" />
-                <Setter TargetName="templateRoot" Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}" />
-                <Setter TargetName="arrow" Property="Fill" Value="{StaticResource TextPrimaryBrush}" />
-            </Trigger>
-        </ControlTemplate.Triggers>
-    </ControlTemplate>
-
-    <!-- Custom Dark ComboBox Style -->
-    <Style TargetType="ComboBox">
-        <Style.Resources>
-            <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#181B26" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#F8FAFC" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#6366F1" />
-            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
-        </Style.Resources>
-        <Setter Property="Background" Value="#181B26" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderDarkBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="6,4" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ComboBox">
-                    <Grid x:Name="templateRoot">
-                        <ToggleButton x:Name="toggleButton" 
-                                      Template="{StaticResource ComboBoxToggleButton}" 
-                                      Focusable="False" 
-                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
-                        <ContentPresenter x:Name="contentTemplate" 
-                                          Content="{TemplateBinding SelectionBoxItem}" 
-                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" 
-                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" 
-                                          Margin="{TemplateBinding Padding}" 
-                                          HorizontalAlignment="Left" 
-                                          VerticalAlignment="Center" 
-                                          IsHitTestVisible="False" />
-                        <Popup x:Name="PART_Popup" 
-                               AllowsTransparency="True" 
-                               IsOpen="{TemplateBinding IsDropDownOpen}" 
-                               Placement="Bottom" 
-                               PopupAnimation="Slide">
-                            <Border x:Name="dropDownBorder" 
-                                    Background="#181B26" 
-                                    BorderBrush="{StaticResource BorderDarkBrush}" 
-                                    BorderThickness="1" 
-                                    CornerRadius="6" 
-                                    Margin="0,2,0,0">
-                                <ScrollViewer x:Name="DropDownScrollViewer">
-                                    <ItemsPresenter x:Name="ItemsPresenter" 
-                                                    KeyboardNavigation.DirectionalNavigation="Contained" />
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- Button Style -->
-    <Style x:Key="IconButton" TargetType="Button">
-        <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="14,8" />
-        <Setter Property="Margin" Value="4,0" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            CornerRadius="6"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
-        <Setter Property="Background" Value="#252A38" />
-    </Style>
-
-    <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
-        <Setter Property="Background" Value="{StaticResource AccentErrorBrush}" />
-    </Style>
-
-    <!-- Nodify Custom Node Style (Blender Aesthetic) -->
-    <Style x:Key="BlenderNodeStyle" TargetType="{x:Type nodify:Node}">
-        <Setter Property="Background" Value="#181B24" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderDarkBrush}" />
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="Effect" Value="{StaticResource NodeShadowEffect}" />
-        <Setter Property="HorizontalAlignment" Value="Stretch" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type nodify:Node}">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="10"
-                            HorizontalAlignment="Stretch">
-                        <Grid HorizontalAlignment="Stretch">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Node Header -->
-                            <Border Grid.Row="0" Background="#202430" CornerRadius="8,8,0,0" Padding="12,8" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,0,0,1" HorizontalAlignment="Stretch">
-                                <ContentPresenter ContentSource="Header" HorizontalAlignment="Stretch" />
-                            </Border>
-
-                            <!-- Node Body -->
-                            <Border Grid.Row="1" Padding="10" HorizontalAlignment="Stretch">
-                                <ContentPresenter HorizontalAlignment="Stretch" />
-                            </Border>
-                        </Grid>
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
+    <DropShadowEffect x:Key="NodeShadowEffect" BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.55" />
 </ResourceDictionary>

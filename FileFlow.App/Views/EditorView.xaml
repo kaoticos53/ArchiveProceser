@@ -13,14 +13,15 @@
         <KeyBinding Key="Delete" Command="{Binding DeleteSelectedNodesCommand}" />
     </UserControl.InputBindings>
 
-    <Grid Background="{StaticResource BgEditorBrush}" AllowDrop="True" Drop="Editor_Drop">
-        <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
+    <Grid Background="{DynamicResource BgEditorBrush}" AllowDrop="True" Drop="Editor_Drop">
+        <nodify:NodifyEditor Background="{DynamicResource BgEditorBrush}"
+                             GridCellSize="24"
+                             ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              PendingConnection="{Binding PendingConnection}"
                              DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
-                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
-                             GridCellSize="24">
+                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}">
             
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
@@ -29,6 +30,16 @@
                     <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
                     <Setter Property="MinWidth" Value="180" />
                     <Setter Property="MaxWidth" Value="{Binding MaxWidth}" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type nodify:ItemContainer}">
+                                <ContentPresenter />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 
@@ -36,14 +47,20 @@
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
                     <Grid HorizontalAlignment="Stretch">
-                        <!-- Execution Status Glow & Border Indicator -->
-                        <Border BorderBrush="{Binding ExecutionStatus, Converter={StaticResource NodeExecutionStatusToBrushConverter}}" 
-                                BorderThickness="2.5" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False" />
+                        <!-- Selection Glow Indicator (ONLY when selected) -->
+                        <Border BorderBrush="{DynamicResource AccentPrimaryBrush}" 
+                                BorderThickness="2" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False"
+                                Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="#4F46E5" Opacity="0.45" />
+                            </Border.Effect>
+                        </Border>
 
                         <nodify:Node Style="{StaticResource BlenderNodeStyle}" 
                                      Header="{Binding}" 
                                      HorizontalAlignment="Stretch"
                                      HorizontalContentAlignment="Stretch"
+                                     MouseDoubleClick="Node_MouseDoubleClick"
                                      Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}">
                             <nodify:Node.ContextMenu>
                                 <ContextMenu>
@@ -143,8 +160,11 @@
                             </nodify:Node.ContextMenu>
                             <nodify:Node.HeaderTemplate>
                                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
-                                    <Border Background="{Binding HeaderColor}" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="10,8">
+                                    <Border Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="10,8">
                                         <StackPanel>
+                                            <!-- Top Accent Strip for Custom/Category Node Colors -->
+                                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="2" Margin="-10,-8,-10,6" />
+
                                             <!-- Main Header Row -->
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -161,7 +181,7 @@
                                                         Cursor="Hand" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}">
                                                     <Ellipse Width="11" Height="11" 
                                                              Fill="{Binding HasBreakpoint, Converter={StaticResource BreakpointToBrushConverter}}" 
-                                                             Stroke="#0F172A" StrokeThickness="1.5" />
+                                                             Stroke="{DynamicResource BorderDarkBrush}" StrokeThickness="1.5" />
                                                 </Button>
 
                                                 <!-- LED Execution Indicator (Off / Running / Paused / Error) -->
@@ -177,7 +197,7 @@
                                                                 <!-- Running: Bright Purple LED Glow (Morado Procesando) -->
                                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Running}">
                                                                     <Setter Property="Background" Value="#A855F7" />
-                                                                    <Setter Property="BorderBrush" Value="#C084FC" />
+                                                                    <Setter Property="BorderBrush" Value="#D8B4FE" />
                                                                     <Setter Property="ToolTip" Value="Procesando..." />
                                                                     <Setter Property="Effect">
                                                                         <Setter.Value>
@@ -185,14 +205,14 @@
                                                                         </Setter.Value>
                                                                     </Setter>
                                                                 </DataTrigger>
-                                                                <!-- Completed: Solid Emerald Green -->
+                                                                <!-- Completed: Emerald Green Glow -->
                                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Completed}">
                                                                     <Setter Property="Background" Value="#10B981" />
-                                                                    <Setter Property="BorderBrush" Value="#059669" />
+                                                                    <Setter Property="BorderBrush" Value="#6EE7B7" />
                                                                     <Setter Property="ToolTip" Value="Completado con éxito" />
                                                                     <Setter Property="Effect">
                                                                         <Setter.Value>
-                                                                            <DropShadowEffect Color="#10B981" BlurRadius="6" ShadowDepth="0" Opacity="0.7" />
+                                                                            <DropShadowEffect Color="#10B981" BlurRadius="8" ShadowDepth="0" Opacity="0.9" />
                                                                         </Setter.Value>
                                                                     </Setter>
                                                                 </DataTrigger>
@@ -234,18 +254,18 @@
                                                 </Border>
 
                                                 <!-- Title -->
-                                                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                                 
                                                 <!-- Category Tag -->
-                                                <Border Grid.Column="3" Background="#12151F" CornerRadius="10" Padding="8,3" Margin="6,0,0,0">
-                                                    <TextBlock Text="{Binding Category}" Foreground="{Binding AccentColor}" FontSize="10" FontWeight="SemiBold" />
+                                                <Border Grid.Column="3" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
+                                                    <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="10" FontWeight="SemiBold" />
                                                 </Border>
                                                 
                                                 <!-- Parameters Toggle -->
                                                 <ToggleButton Grid.Column="4"
                                                               IsChecked="{Binding IsExpanded, Mode=TwoWay}"
                                                               Content="⚙"
-                                                              Foreground="{StaticResource TextSecondaryBrush}"
+                                                              Foreground="{DynamicResource TextSecondaryBrush}"
                                                               Background="Transparent"
                                                               BorderThickness="0"
                                                               Padding="6,2"
@@ -263,7 +283,7 @@
 
                                                 <!-- Progress Track -->
                                                 <ProgressBar Grid.Row="0" Value="{Binding ProgressPercentage, Mode=OneWay}" Minimum="0" Maximum="100" Height="4" 
-                                                             Background="#121520" Foreground="{StaticResource AccentSuccessBrush}" BorderThickness="0">
+                                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource AccentSuccessBrush}" BorderThickness="0">
                                                     <ProgressBar.Template>
                                                         <ControlTemplate TargetType="ProgressBar">
                                                             <Border Background="{TemplateBinding Background}" CornerRadius="2">
@@ -277,7 +297,7 @@
                                                 </ProgressBar>
 
                                                 <!-- Progress Count / Detail String -->
-                                                <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Foreground="#94A3B8" FontSize="9" Margin="0,2,0,0" 
+                                                <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="9" Margin="0,2,0,0" 
                                                            HorizontalAlignment="Right" />
                                             </Grid>
                                         </StackPanel>
@@ -285,7 +305,7 @@
                                 </DataTemplate>
                             </nodify:Node.HeaderTemplate>
 
-                            <Border Padding="2,6">
+                            <Border Padding="0,4">
                                 <StackPanel>
                                     <!-- Ports Row -->
                                     <Grid>
@@ -300,17 +320,34 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:PortViewModel}">
                                                     <nodify:NodeInput DataContext="{Binding}"
-                                                                       Header="{Binding DisplayName}" 
-                                                                       IsConnected="True" 
-                                                                       Anchor="{Binding Anchor, Mode=OneWayToSource}" 
-                                                                       DisconnectCommand="{Binding DataContext.DisconnectConnectorCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                                       HorizontalAlignment="Left"
-                                                                       Margin="-12,4,0,4">
+                                                                      Header="{Binding}" 
+                                                                      IsConnected="True" 
+                                                                      Anchor="{Binding Anchor, Mode=OneWayToSource}" 
+                                                                      DisconnectCommand="{Binding DataContext.DisconnectConnectorCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                                      HorizontalAlignment="Left"
+                                                                      Background="Transparent"
+                                                                      BorderBrush="Transparent"
+                                                                      BorderThickness="0"
+                                                                      Margin="-7,3,0,3">
                                                         <nodify:NodeInput.HeaderTemplate>
-                                                            <DataTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:PortViewModel}">
                                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                    <Ellipse Width="10" Height="10" Fill="{Binding DataContext.PortColor, RelativeSource={RelativeSource AncestorType=nodify:NodeInput}}" Stroke="#181B24" StrokeThickness="1.5" Margin="0,0,6,0" ToolTip="{Binding DataContext.DataType.Name, RelativeSource={RelativeSource AncestorType=nodify:NodeInput}}" />
-                                                                    <TextBlock Text="{Binding}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" />
+                                                                    <!-- Círculo / Pin de Entrada en el borde exterior -->
+                                                                    <Border Width="14" Height="14" CornerRadius="7" 
+                                                                            Background="{Binding PortColor}" 
+                                                                            BorderBrush="{DynamicResource BgCardBrush}" 
+                                                                            BorderThickness="2" 
+                                                                            ToolTip="{Binding DataTypeDescription}"
+                                                                            Margin="0,0,6,0">
+                                                                        <Border.Effect>
+                                                                            <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.35" />
+                                                                        </Border.Effect>
+                                                                    </Border>
+                                                                    <!-- Nombre del Puerto de Entrada -->
+                                                                    <TextBlock Text="{Binding DisplayName}" 
+                                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                               FontSize="11" FontWeight="SemiBold" 
+                                                                               VerticalAlignment="Center" />
                                                                 </StackPanel>
                                                             </DataTemplate>
                                                         </nodify:NodeInput.HeaderTemplate>
@@ -324,17 +361,33 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:PortViewModel}">
                                                     <nodify:NodeOutput DataContext="{Binding}"
-                                                                        Header="{Binding DisplayName}" 
-                                                                        IsConnected="True" 
-                                                                        Anchor="{Binding Anchor, Mode=OneWayToSource}" 
-                                                                        DisconnectCommand="{Binding DataContext.DisconnectConnectorCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                                        HorizontalAlignment="Right"
-                                                                        Margin="0,4,-12,4">
+                                                                       Header="{Binding}" 
+                                                                       IsConnected="True" 
+                                                                       Anchor="{Binding Anchor, Mode=OneWayToSource}" 
+                                                                       HorizontalAlignment="Right"
+                                                                       Background="Transparent"
+                                                                       BorderBrush="Transparent"
+                                                                       BorderThickness="0"
+                                                                       Margin="0,3,-7,3">
                                                         <nodify:NodeOutput.HeaderTemplate>
-                                                            <DataTemplate>
+                                                            <DataTemplate DataType="{x:Type vm:PortViewModel}">
                                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                    <TextBlock Text="{Binding}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,6,0" />
-                                                                    <Ellipse Width="10" Height="10" Fill="{Binding DataContext.PortColor, RelativeSource={RelativeSource AncestorType=nodify:NodeOutput}}" Stroke="#181B24" StrokeThickness="1.5" ToolTip="{Binding DataContext.DataType.Name, RelativeSource={RelativeSource AncestorType=nodify:NodeOutput}}" />
+                                                                    <!-- Nombre del Puerto de Salida -->
+                                                                    <TextBlock Text="{Binding DisplayName}" 
+                                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                               FontSize="11" FontWeight="SemiBold" 
+                                                                               VerticalAlignment="Center" 
+                                                                               Margin="0,0,6,0" />
+                                                                    <!-- Círculo / Pin de Salida en el borde exterior -->
+                                                                    <Border Width="14" Height="14" CornerRadius="7" 
+                                                                            Background="{Binding PortColor}" 
+                                                                            BorderBrush="{DynamicResource BgCardBrush}" 
+                                                                            BorderThickness="2" 
+                                                                            ToolTip="{Binding DataTypeDescription}">
+                                                                        <Border.Effect>
+                                                                            <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.35" />
+                                                                        </Border.Effect>
+                                                                    </Border>
                                                                 </StackPanel>
                                                             </DataTemplate>
                                                         </nodify:NodeOutput.HeaderTemplate>
@@ -346,20 +399,20 @@
 
                                     <!-- Collapsible Node Parameters Panel -->
                                     <Border Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            Background="#11131C"
-                                            BorderBrush="{StaticResource BorderDarkBrush}"
+                                            Background="{DynamicResource BgSurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderDarkBrush}"
                                             BorderThickness="1"
                                             CornerRadius="6"
                                             Padding="8,6"
-                                            Margin="0,8,0,0">
+                                            Margin="8,8,8,0">
                                         <StackPanel>
                                             <Grid Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SettingsTitle]}" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentGlowBrush}" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SettingsTitle]}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
                                                 <Button HorizontalAlignment="Right"
                                                         Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                         Command="{Binding AddVariableCommand}"
                                                         Content="➕ Variable"
-                                                        Background="#10B981" Foreground="White"
+                                                        Background="{DynamicResource AccentSuccessBrush}" Foreground="White"
                                                         BorderThickness="0" Padding="6,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
                                                         ToolTip="Añadir nueva variable personalizada">
                                                     <Button.Resources>
@@ -381,15 +434,15 @@
                                                                     <ColumnDefinition Width="*" />
                                                                 </Grid.ColumnDefinitions>
 
-                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
 
                                                                 <!-- Dropdown ComboBox for parameters with options -->
                                                                 <ComboBox Grid.Column="1"
                                                                           ItemsSource="{Binding Options}"
                                                                           SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                           Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                          Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
-                                                                          BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="4,2"
+                                                                          Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                          BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,2"
                                                                           HorizontalAlignment="Stretch" />
 
                                                                 <!-- CheckBox for Boolean parameters -->
@@ -410,8 +463,8 @@
 
                                                                     <TextBox Grid.Column="0" 
                                                                              Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                                             Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
-                                                                             BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="5,3"
+                                                                             Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="5,3"
                                                                              HorizontalAlignment="Stretch">
                                                                         <TextBox.Resources>
                                                                             <Style TargetType="Border">
@@ -423,7 +476,7 @@
                                                                     <Button Grid.Column="1" 
                                                                             Command="{Binding BrowsePathCommand}" 
                                                                             Content="📁" 
-                                                                            Background="{StaticResource AccentPrimaryBrush}" 
+                                                                            Background="{DynamicResource AccentPrimaryBrush}" 
                                                                             Foreground="White" 
                                                                             BorderThickness="0" 
                                                                             Padding="6,2" 
@@ -442,8 +495,8 @@
                                                                             CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
                                                                             Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
                                                                             Content="{}{x}" 
-                                                                            Background="#222736" 
-                                                                            Foreground="{StaticResource AccentGlowBrush}" 
+                                                                            Background="{DynamicResource BgHoverBrush}" 
+                                                                            Foreground="{DynamicResource AccentGlowBrush}" 
                                                                             BorderThickness="0" 
                                                                             Padding="5,2" 
                                                                             FontSize="10" 
@@ -469,8 +522,8 @@
 
                                                                     <TextBox Grid.Column="0"
                                                                              Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
-                                                                             BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="5,3"
+                                                                             Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="5,3"
                                                                              HorizontalAlignment="Stretch">
                                                                         <TextBox.Resources>
                                                                             <Style TargetType="Border">
@@ -484,8 +537,8 @@
                                                                             CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
                                                                             Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
                                                                             Content="{}{x}" 
-                                                                            Background="#222736" 
-                                                                            Foreground="{StaticResource AccentGlowBrush}" 
+                                                                            Background="{DynamicResource BgHoverBrush}" 
+                                                                            Foreground="{DynamicResource AccentGlowBrush}" 
                                                                             BorderThickness="0" 
                                                                             Padding="5,2" 
                                                                             FontSize="10" 
@@ -513,8 +566,8 @@
                                                                 <!-- Variable Key / Name TextBox -->
                                                                 <TextBox Grid.Column="0"
                                                                          Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                         Background="#181B26" Foreground="#818CF8" 
-                                                                         BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="4,3"
+                                                                         Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource AccentPrimaryBrush}" 
+                                                                         BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
                                                                          Margin="0,0,4,0" FontWeight="SemiBold"
                                                                          ToolTip="Nombre de la variable">
                                                                     <TextBox.Resources>
@@ -527,12 +580,12 @@
                                                                 <!-- Variable Value / Expression TextBox -->
                                                                 <TextBox Grid.Column="1"
                                                                          Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                         Background="#181B26" Foreground="{StaticResource TextPrimaryBrush}" 
-                                                                         BorderBrush="{StaticResource BorderDarkBrush}" FontSize="10" Padding="4,3"
+                                                                         Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                         BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
                                                                          HorizontalAlignment="Stretch">
                                                                     <TextBox.Resources>
                                                                         <Style TargetType="Border">
-                                                                            <Setter Property="CornerRadius" Value="4,0,0,4" />
+                                                                            <Setter Property="CornerRadius" Value="4" />
                                                                         </Style>
                                                                     </TextBox.Resources>
                                                                 </TextBox>
@@ -543,8 +596,8 @@
                                                                         CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
                                                                         Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
                                                                         Content="{}{x}" 
-                                                                        Background="#222736" 
-                                                                        Foreground="{StaticResource AccentGlowBrush}" 
+                                                                        Background="{DynamicResource BgHoverBrush}" 
+                                                                        Foreground="{DynamicResource AccentGlowBrush}" 
                                                                         BorderThickness="0" 
                                                                         Padding="5,2" 
                                                                         FontSize="10" 
@@ -563,7 +616,7 @@
                                                                         Command="{Binding NodeOwner.RemoveParameterCommand}"
                                                                         CommandParameter="{Binding}"
                                                                         Content="🗑"
-                                                                        Background="#3B1818" Foreground="#EF4444"
+                                                                        Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentErrorBrush}" 
                                                                         BorderThickness="0" Padding="6,2" FontSize="10" Cursor="Hand"
                                                                         ToolTip="Eliminar variable">
                                                                     <Button.Resources>
@@ -592,7 +645,7 @@
                                DragDelta="ResizeThumb_DragDelta">
                             <Thumb.Template>
                                 <ControlTemplate>
-                                    <Path Data="M 8 0 L 8 8 L 0 8 Z" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.7" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                                    <Path Data="M 8 0 L 8 8 L 0 8 Z" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.7" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
                                 </ControlTemplate>
                             </Thumb.Template>
                         </Thumb>
@@ -608,7 +661,7 @@
                                                Source="{Binding Source.Anchor}"
                                                Target="{Binding TargetLocation, Mode=TwoWay}"
                                                Direction="Forward"
-                                               Stroke="{StaticResource AccentGlowBrush}"
+                                               Stroke="{DynamicResource AccentGlowBrush}"
                                                StrokeThickness="2.5"
                                                StrokeDashArray="5 3" />
                 </DataTemplate>
@@ -619,7 +672,7 @@
                 <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
                     <nodify:Connection Source="{Binding Source.Anchor}"
                                        Target="{Binding Target.Anchor}"
-                                       Stroke="{StaticResource ConnectionWireBrush}"
+                                       Stroke="{DynamicResource ConnectionWireBrush}"
                                        StrokeThickness="3"
                                        Direction="Forward"
                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}">
@@ -639,20 +692,20 @@
         <Border HorizontalAlignment="Right" 
                 VerticalAlignment="Bottom" 
                 Margin="0,0,18,18" 
-                Background="#181B26" 
-                BorderBrush="{StaticResource BorderDarkBrush}" 
+                Background="{DynamicResource BgCardBrush}" 
+                BorderBrush="{DynamicResource BorderDarkBrush}" 
                 BorderThickness="1" 
                 CornerRadius="8" 
                 Padding="8,5">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Color="#000000" Opacity="0.4" />
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Color="#000000" Opacity="0.25" />
             </Border.Effect>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Command="{Binding ZoomOutCommand}" Content="➖" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomOutToolTip]}" Background="Transparent" Foreground="{StaticResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
+                <Button Command="{Binding ZoomOutCommand}" Content="➖" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomOutToolTip]}" Background="Transparent" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
                 <Slider Minimum="0.2" Maximum="2.5" Value="{Binding ViewportZoom, Mode=TwoWay}" Width="110" VerticalAlignment="Center" Margin="6,0" SmallChange="0.05" LargeChange="0.1" IsSnapToTickEnabled="False" />
-                <Button Command="{Binding ZoomInCommand}" Content="➕" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomInToolTip]}" Background="Transparent" Foreground="{StaticResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
-                <TextBlock Text="{Binding ViewportZoom, StringFormat={}{0:P0}}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontWeight="Bold" Width="44" TextAlignment="Center" VerticalAlignment="Center" Margin="4,0" />
-                <Button Command="{Binding ResetZoomCommand}" Content="1:1" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ResetZoomToolTip]}" Background="#252A38" Foreground="{StaticResource AccentGlowBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="10" FontWeight="Bold" Margin="4,0,0,0">
+                <Button Command="{Binding ZoomInCommand}" Content="➕" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomInToolTip]}" Background="Transparent" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
+                <TextBlock Text="{Binding ViewportZoom, StringFormat={}{0:P0}}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" FontWeight="Bold" Width="44" TextAlignment="Center" VerticalAlignment="Center" Margin="4,0" />
+                <Button Command="{Binding ResetZoomCommand}" Content="1:1" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ResetZoomToolTip]}" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="10" FontWeight="Bold" Margin="4,0,0,0">
                     <Button.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="4" />

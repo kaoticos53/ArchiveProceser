@@ -38,10 +38,7 @@ public partial class NodeViewModel : ObservableObject
 
     partial void OnIsSelectedChanged(bool value)
     {
-        if (value)
-        {
-            NodeSelected?.Invoke(this);
-        }
+        // La selección simple no abre forzosamente el inspector
     }
 
     [RelayCommand]

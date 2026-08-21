@@ -6,7 +6,10 @@
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DesignHeight="180" d:DesignWidth="1000">
-    <Border Background="#12141C" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="10">
+    <Border Background="{DynamicResource BgSurfaceBrush}" 
+            BorderBrush="{DynamicResource BorderDarkBrush}" 
+            BorderThickness="0,1,0,0" 
+            Padding="12,10">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -14,7 +17,7 @@
             </Grid.RowDefinitions>
 
             <!-- Console Header & Status Bar -->
-            <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid Grid.Row="0" Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -22,31 +25,53 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExecutionConsoleTitle]}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" Margin="0,0,16,0" />
-                    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExecutionConsoleTitle]}" 
+                               FontWeight="Bold" 
+                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                               FontSize="13" 
+                               Margin="0,0,16,0" 
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StatusMessage}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" 
+                               FontSize="12" 
+                               VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Progress Bar -->
-                <ProgressBar Grid.Column="1" Value="{Binding ProgressPercentage}" Minimum="0" Maximum="100" Height="8" Margin="20,0" Foreground="{StaticResource AccentSuccessBrush}" Background="#1E222D" BorderThickness="0" />
+                <!-- Fluent Progress Bar -->
+                <ProgressBar Grid.Column="1" 
+                             Value="{Binding ProgressPercentage}" 
+                             Minimum="0" 
+                             Maximum="100" 
+                             Height="6" 
+                             Margin="24,0" 
+                             Foreground="{DynamicResource AccentSuccessBrush}" 
+                             Background="{DynamicResource BgHoverBrush}" 
+                             BorderThickness="0">
+                    <ProgressBar.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="3" />
+                        </Style>
+                    </ProgressBar.Resources>
+                </ProgressBar>
 
                 <!-- Action Buttons: Export & Clear -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExportLog]}" 
                             Command="{Binding ExportLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
-                            Padding="8,4" 
+                            Padding="10,5" 
                             FontSize="11" 
                             Margin="0,0,8,0" />
 
                     <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ClearLog]}" 
                             Command="{Binding ClearLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
-                            Padding="8,4" 
+                            Padding="10,5" 
                             FontSize="11" />
                 </StackPanel>
             </Grid>
 
-            <!-- Log Text Console (Fully Selectable & Copyable with Mouse) -->
+            <!-- Log Text Console (Modern Typography, Clean Background) -->
             <TextBox x:Name="LogConsoleTextBox"
                      Grid.Row="1"
                      Text="{Binding FullLogText, Mode=OneWay}"
@@ -54,14 +79,14 @@
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
                      HorizontalScrollBarVisibility="Auto"
-                     Background="#0D0E15"
-                     Foreground="{StaticResource TextPrimaryBrush}"
-                     BorderBrush="{StaticResource BorderDarkBrush}"
+                     Background="{DynamicResource BgCardBrush}"
+                     Foreground="{DynamicResource TextPrimaryBrush}"
+                     BorderBrush="{DynamicResource BorderDarkBrush}"
                      BorderThickness="1"
-                     FontFamily="Consolas"
-                     FontSize="12"
-                     Padding="8"
-                     SelectionBrush="{StaticResource AccentPrimaryBrush}"
+                     FontFamily="Cascadia Code, Consolas, monospace"
+                     FontSize="11.5"
+                     Padding="10"
+                     SelectionBrush="{DynamicResource AccentPrimaryBrush}"
                      IsReadOnlyCaretVisible="True"
                      TextChanged="LogConsoleTextBox_TextChanged" />
         </Grid>

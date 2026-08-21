@@ -1,0 +1,47 @@
+{
+  "entities": [
+    {
+      "name": "FileFlowStudio",
+      "entityType": "Application",
+      "observations": [
+        "Modern desktop workflow automation system in .NET 9 and C# 13",
+        "Uses WPF with Fluent Design architecture and Nodify graph editor",
+        "Includes interactive step-by-step workflow debugger with breakpoint inspection"
+      ]
+    },
+    {
+      "name": "FileFlow.Sdk",
+      "entityType": "Module",
+      "observations": [
+        "Pure contracts and base types for flow nodes and execution context",
+        "Zero heavy external dependencies"
+      ]
+    },
+    {
+      "name": "FileFlow.Core",
+      "entityType": "Module",
+      "observations": [
+        "Asynchronous engine with topological sorting and WorkflowDebugSession"
+      ]
+    },
+    {
+      "name": "FileFlow.App",
+      "entityType": "Module",
+      "observations": [
+        "MVVM desktop presentation layer with Dark/Light theme dynamic switching and NodeInspector"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "FileFlow.App",
+      "to": "FileFlow.Core",
+      "relationType": "dependsOn"
+    },
+    {
+      "from": "FileFlow.Core",
+      "to": "FileFlow.Sdk",
+      "relationType": "dependsOn"
+    }
+  ]
+}

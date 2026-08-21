@@ -9,6 +9,7 @@
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
             <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+            <converters:InverseNullToVisibilityConverter x:Key="InverseNullToVisibilityConverter" />
             <converters:NodeExecutionStatusToBrushConverter x:Key="NodeExecutionStatusToBrushConverter" />
             <converters:DiffChangeTypeToBrushConverter x:Key="DiffChangeTypeToBrushConverter" />
             <converters:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
@@ -16,6 +17,7 @@
             
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/DarkTheme.xaml" />
+                <ResourceDictionary Source="Themes/FluentStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -27,4 +27,8 @@ FileFlow.Plugin.Images/bin/
 FileFlow.Plugin.Images/obj/
 
 # Local configuration & temporary folders
-.antigravity/
+.antigravity/*
+!.antigravity/knowledge/
+!.antigravity/knowledge/**
+!.antigravity/mcp.json
+!.antigravity/memory_store.json

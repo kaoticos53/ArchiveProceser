@@ -7,8 +7,13 @@
         xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
         xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         mc:Ignorable="d"
-        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AppTitle]}" Height="800" Width="1280"
-        WindowStartupLocation="CenterScreen" Background="{StaticResource BgDarkBrush}">
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AppTitle]}" Height="850" Width="1340"
+        WindowStartupLocation="CenterScreen" 
+        Background="{DynamicResource AppBackgroundBrush}"
+        FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True">
     
     <Window.DataContext>
         <vm:MainViewModel />
@@ -64,14 +69,14 @@
                           Width="5" 
                           HorizontalAlignment="Center" 
                           VerticalAlignment="Stretch" 
-                          Background="#181B26" 
+                          Background="{DynamicResource BgSurfaceBrush}" 
                           ShowsPreview="True" 
                           Cursor="SizeWE"
                           ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToolboxResizeToolTip]}">
                 <GridSplitter.Template>
                     <ControlTemplate TargetType="GridSplitter">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1,0,1,0">
-                            <Rectangle Width="1" Height="24" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.5" VerticalAlignment="Center" />
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1,0,1,0">
+                            <Rectangle Width="1" Height="24" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.5" VerticalAlignment="Center" />
                         </Border>
                     </ControlTemplate>
                 </GridSplitter.Template>
@@ -85,14 +90,14 @@
                           Width="5" 
                           HorizontalAlignment="Center" 
                           VerticalAlignment="Stretch" 
-                          Background="#181B26" 
+                          Background="{DynamicResource BgSurfaceBrush}" 
                           ShowsPreview="True" 
                           Cursor="SizeWE"
                           Visibility="{Binding NodeInspector.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <GridSplitter.Template>
                     <ControlTemplate TargetType="GridSplitter">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1,0,1,0">
-                            <Rectangle Width="1" Height="24" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.5" VerticalAlignment="Center" />
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1,0,1,0">
+                            <Rectangle Width="1" Height="24" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.5" VerticalAlignment="Center" />
                         </Border>
                     </ControlTemplate>
                 </GridSplitter.Template>
@@ -111,14 +116,14 @@
                       Height="5" 
                       HorizontalAlignment="Stretch" 
                       VerticalAlignment="Center" 
-                      Background="#181B26" 
+                      Background="{DynamicResource BgSurfaceBrush}" 
                       ShowsPreview="True" 
                       Cursor="SizeNS"
                       ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ConsoleResizeToolTip]}">
             <GridSplitter.Template>
                 <ControlTemplate TargetType="GridSplitter">
-                    <Border Background="{TemplateBinding Background}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,1,0,1">
-                        <Rectangle Width="24" Height="1" Fill="{StaticResource TextSecondaryBrush}" Opacity="0.5" HorizontalAlignment="Center" />
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,1">
+                        <Rectangle Width="24" Height="1" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.5" HorizontalAlignment="Center" />
                     </Border>
                 </ControlTemplate>
             </GridSplitter.Template>

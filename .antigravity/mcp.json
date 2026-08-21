@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory",
+        "./.antigravity/memory_store.json"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "./.antigravity/memory_store.json"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
+    }
+  }
+}

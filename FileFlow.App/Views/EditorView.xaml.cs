@@ -29,4 +29,13 @@ public partial class EditorView : UserControl
             node.UpdateWidth(node.Width + e.HorizontalChange);
         }
     }
+
+    private void Node_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement element && element.DataContext is NodeViewModel node)
+        {
+            node.InspectNode();
+            e.Handled = true;
+        }
+    }
 }

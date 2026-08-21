@@ -5,8 +5,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
-             d:DesignHeight="60" d:DesignWidth="1000">
-    <Border Background="{StaticResource BgHeaderBrush}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="12,8">
+             d:DesignHeight="60" d:DesignWidth="1100">
+    <Border Background="{DynamicResource BgHeaderBrush}" 
+            BorderBrush="{DynamicResource BorderDarkBrush}" 
+            BorderThickness="0,0,0,1" 
+            Padding="14,8">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -14,57 +17,120 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- App Title & Workflow Name -->
+            <!-- App Brand & Workflow Title -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="⚡ FileFlow Studio" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,16,0" />
+                <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="6" Width="28" Height="28" Margin="0,0,10,0">
+                    <TextBlock Text="⚡" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                </Border>
+                <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
                 <TextBox Text="{Binding WorkflowName, UpdateSourceTrigger=PropertyChanged}" 
-                         FontSize="14" Foreground="{StaticResource TextPrimaryBrush}" Background="#222632" 
-                         BorderBrush="{StaticResource BorderDarkBrush}" Padding="8,4" Width="220" VerticalAlignment="Center" />
+                         FontSize="13" 
+                         Foreground="{DynamicResource TextPrimaryBrush}" 
+                         Background="{DynamicResource BgSurfaceBrush}" 
+                         BorderBrush="{DynamicResource BorderDarkBrush}" 
+                         Padding="8,5" 
+                         Width="240" 
+                         VerticalAlignment="Center" />
             </StackPanel>
 
-            <!-- Language Selector & Execution Controls -->
+            <!-- Language, Theme & Workflow Execution Controls -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- Language Selector Dropdown -->
+                <!-- Theme Selector -->
+                <ComboBox SelectedValue="{Binding SelectedTheme, Mode=TwoWay}"
+                          SelectedValuePath="Tag"
+                          Width="135" 
+                          VerticalAlignment="Center" 
+                          Margin="0,0,8,0"
+                          ToolTip="Tema de la interfaz (Oscuro / Claro / Primavera Pastel / Cyber Neón / Sistema)">
+                    <ComboBoxItem Tag="Dark">🌙 Oscuro</ComboBoxItem>
+                    <ComboBoxItem Tag="Light">☀️ Claro</ComboBoxItem>
+                    <ComboBoxItem Tag="Pastel">🌸 Primavera</ComboBoxItem>
+                    <ComboBoxItem Tag="Cyber">🔮 Cyber Neón</ComboBoxItem>
+                    <ComboBoxItem Tag="System">💻 Sistema</ComboBoxItem>
+                </ComboBox>
+
+                <!-- Language Selector -->
                 <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}"
                           SelectedValuePath="Tag"
-                          Background="#222632" Foreground="{StaticResource TextPrimaryBrush}" 
-                          BorderBrush="{StaticResource BorderDarkBrush}" Padding="6,4" Width="115" VerticalAlignment="Center" Margin="0,0,14,0">
+                          Width="115" 
+                          VerticalAlignment="Center" 
+                          Margin="0,0,12,0"
+                          ToolTip="Idioma de la aplicación">
                     <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
                     <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
                 </ComboBox>
 
-                <CheckBox Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" IsChecked="{Binding IsDryRun}" 
-                          Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,16,0" FontWeight="SemiBold" />
+                <!-- Dry Run Checkbox -->
+                <CheckBox Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" 
+                          IsChecked="{Binding IsDryRun}" 
+                          Foreground="{DynamicResource TextSecondaryBrush}" 
+                          VerticalAlignment="Center" 
+                          Margin="0,0,14,0" 
+                          FontWeight="SemiBold" />
 
                 <!-- Run Normal -->
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RunFlow]}" Command="{Binding ExecuteWorkflowCommand}" Style="{StaticResource IconButton}" 
-                        Background="{StaticResource AccentSuccessBrush}" Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" Margin="0,0,6,0" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RunFlow]}" 
+                        Command="{Binding ExecuteWorkflowCommand}" 
+                        Style="{StaticResource IconButton}" 
+                        Background="{DynamicResource AccentSuccessBrush}" 
+                        Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" 
+                        Margin="0,0,6,0" />
 
                 <!-- Start Debugging -->
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DebugFlow]}" Command="{Binding DebugWorkflowCommand}" Style="{StaticResource IconButton}" 
-                        Background="#8B5CF6" Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" Margin="0,0,6,0" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DebugFlow]}" 
+                        Command="{Binding DebugWorkflowCommand}" 
+                        Style="{StaticResource IconButton}" 
+                        Background="{DynamicResource AccentPurpleBrush}" 
+                        Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" 
+                        Margin="0,0,6,0" />
 
                 <!-- Debug Stepping Controls (visible during debugging) -->
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StepNext]}" Command="{Binding StepNextCommand}" Style="{StaticResource IconButton}" 
-                        Background="#F59E0B" Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,6,0" ToolTip="Avanzar al siguiente paso (F10)" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StepNext]}" 
+                        Command="{Binding StepNextCommand}" 
+                        Style="{StaticResource IconButton}" 
+                        Background="{DynamicResource AccentWarningBrush}" 
+                        Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" 
+                        Margin="0,0,6,0" 
+                        ToolTip="Avanzar al siguiente paso (F10)" />
 
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ContinueFlow]}" Command="{Binding ContinueWorkflowCommand}" Style="{StaticResource IconButton}" 
-                        Background="{StaticResource AccentSuccessBrush}" Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,6,0" ToolTip="Continuar ejecución normal (F5)" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ContinueFlow]}" 
+                        Command="{Binding ContinueWorkflowCommand}" 
+                        Style="{StaticResource IconButton}" 
+                        Background="{DynamicResource AccentSuccessBrush}" 
+                        Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" 
+                        Margin="0,0,6,0" 
+                        ToolTip="Continuar ejecución normal (F5)" />
 
                 <!-- Pause / Resume Button -->
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Pause]}" Command="{Binding TogglePauseCommand}" Style="{StaticResource SecondaryButton}" 
-                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,6,0" ToolTip="Pausar o Reanudar el flujo" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Pause]}" 
+                        Command="{Binding TogglePauseCommand}" 
+                        Style="{StaticResource SecondaryButton}" 
+                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" 
+                        Margin="0,0,6,0" 
+                        ToolTip="Pausar o Reanudar el flujo" />
 
                 <!-- Stop Execution / Debugging -->
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Stop]}" Command="{Binding StopWorkflowCommand}" Style="{StaticResource DangerButton}" 
-                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" ToolTip="Detener ejecución (Shift+F5)" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Stop]}" 
+                        Command="{Binding StopWorkflowCommand}" 
+                        Style="{StaticResource DangerButton}" 
+                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" 
+                        ToolTip="Detener ejecución (Shift+F5)" />
 
                 <!-- Toggle Inspector Panel Button -->
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorBtn]}" Command="{Binding ToggleInspectorCommand}" 
-                        Style="{StaticResource SecondaryButton}" Margin="10,0,4,0" ToolTip="Abrir / Ocultar Inspector de Datos del Nodo" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorBtn]}" 
+                        Command="{Binding ToggleInspectorCommand}" 
+                        Style="{StaticResource SecondaryButton}" 
+                        Margin="8,0,4,0" 
+                        ToolTip="Abrir / Ocultar Inspector de Datos del Nodo" />
 
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Save]}" Command="{Binding SaveWorkflowCommand}" Style="{StaticResource SecondaryButton}" Margin="4,0,4,0" />
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Load]}" Command="{Binding LoadWorkflowCommand}" Style="{StaticResource SecondaryButton}" />
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Save]}" 
+                        Command="{Binding SaveWorkflowCommand}" 
+                        Style="{StaticResource SecondaryButton}" 
+                        Margin="4,0,4,0" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Load]}" 
+                        Command="{Binding LoadWorkflowCommand}" 
+                        Style="{StaticResource SecondaryButton}" />
             </StackPanel>
         </Grid>
     </Border>

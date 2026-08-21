@@ -5,8 +5,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="260">
-    <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="0,0,1,0" Padding="10">
+             d:DesignHeight="600" d:DesignWidth="280">
+    <Border Background="{DynamicResource BgCardBrush}" 
+            BorderBrush="{DynamicResource BorderDarkBrush}" 
+            BorderThickness="0,0,1,0" 
+            Padding="12">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -14,33 +17,78 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[NodeToolboxTitle]}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,10" />
+            <!-- Title -->
+            <TextBlock Grid.Row="0" 
+                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[NodeToolboxTitle]}" 
+                       FontSize="14" 
+                       FontWeight="Bold" 
+                       Foreground="{DynamicResource TextPrimaryBrush}" 
+                       Margin="0,0,0,12"
+                       VerticalAlignment="Center" />
 
-            <!-- Search Input -->
-            <TextBox Grid.Row="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
-                     Background="#14171F" Foreground="{StaticResource TextPrimaryBrush}" 
-                     BorderBrush="{StaticResource BorderDarkBrush}" Padding="8,6" Margin="0,0,0,10">
-                <TextBox.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="6" />
-                    </Style>
-                </TextBox.Resources>
-            </TextBox>
+            <!-- Search Input with Fluent Placeholder -->
+            <Grid Grid.Row="1" Margin="0,0,0,12">
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                         Background="{DynamicResource BgSurfaceBrush}" 
+                         Foreground="{DynamicResource TextPrimaryBrush}" 
+                         BorderBrush="{DynamicResource BorderDarkBrush}" 
+                         Padding="26,6,8,6" 
+                         FontSize="12" />
+                <TextBlock Text="🔍" 
+                           FontSize="11" 
+                           Foreground="{DynamicResource TextSecondaryBrush}" 
+                           HorizontalAlignment="Left" 
+                           VerticalAlignment="Center" 
+                           Margin="8,0,0,0" 
+                           IsHitTestVisible="False" />
+            </Grid>
 
             <!-- Categorized Nodes List -->
             <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding CategoryGroups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Expander Header="{Binding CategoryName}" IsExpanded="True" Foreground="{StaticResource AccentPrimaryBrush}" FontWeight="Bold" Margin="0,0,0,8">
+                            <Expander IsExpanded="True" 
+                                      Margin="0,0,0,10">
+                                <Expander.Header>
+                                    <TextBlock Text="{Binding CategoryName}" 
+                                               Foreground="{DynamicResource AccentGlowBrush}" 
+                                               FontWeight="Bold" 
+                                               FontSize="12.5" 
+                                               VerticalAlignment="Center" />
+                                </Expander.Header>
                                 <ItemsControl ItemsSource="{Binding Items}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="#161922" BorderBrush="{StaticResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,4" Cursor="Hand"
+                                            <Border Background="{DynamicResource BgSurfaceBrush}" 
+                                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                                    BorderThickness="1" 
+                                                    CornerRadius="8" 
+                                                    Padding="10,8" 
+                                                    Margin="0,3" 
+                                                    Cursor="Hand"
                                                     MouseLeftButtonDown="NodeItem_MouseLeftButtonDown">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" />
-                                                    <TextBlock Text="{Binding Description}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                                    <TextBlock Text="{Binding Name}" 
+                                                               FontWeight="SemiBold" 
+                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                               FontSize="12.5" />
+                                                    <TextBlock Text="{Binding Description}" 
+                                                               Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                               FontSize="11" 
+                                                               TextWrapping="Wrap" 
+                                                               Margin="0,3,0,0" 
+                                                               LineHeight="14" />
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>

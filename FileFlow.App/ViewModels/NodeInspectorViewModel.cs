@@ -44,9 +44,9 @@ public partial class NodeInspectorViewModel : ObservableObject
         {
             if (e.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
-                if (_editorViewModel.SelectedNode != null)
+                if (_editorViewModel.SelectedNode != null && IsOpen)
                 {
-                    InspectNode(_editorViewModel.SelectedNode, autoOpen: true);
+                    InspectNode(_editorViewModel.SelectedNode, autoOpen: false);
                 }
             }
         };

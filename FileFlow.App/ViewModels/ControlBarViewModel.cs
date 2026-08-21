@@ -45,6 +45,17 @@ public partial class ControlBarViewModel : ObservableObject
         FileFlow.Sdk.Localization.LocalizationManager.Instance.SetCulture(value);
     }
 
+    [ObservableProperty]
+    private string _selectedTheme = "Dark";
+
+    partial void OnSelectedThemeChanged(string value)
+    {
+        if (Enum.TryParse<Services.AppTheme>(value, true, out var theme))
+        {
+            Services.ThemeManager.Instance.SetTheme(theme);
+        }
+    }
+
     public ControlBarViewModel(EditorViewModel editorViewModel, PluginLoader pluginLoader, LogViewModel logViewModel, NodeInspectorViewModel nodeInspectorViewModel)
     {
         _editorViewModel = editorViewModel;
