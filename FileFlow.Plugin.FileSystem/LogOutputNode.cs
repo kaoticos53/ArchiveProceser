@@ -35,9 +35,9 @@ public class LogOutputNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        bool logMetadata = Parameters.TryGetValue("LogMetadata", out var mVal) && Convert.ToBoolean(mVal);
-        bool logHistory = Parameters.TryGetValue("LogExecutionHistory", out var hVal) && Convert.ToBoolean(hVal);
-        string levelStr = Parameters.TryGetValue("LogLevel", out var lVal) ? lVal?.ToString() ?? "Information" : "Information";
+        bool logMetadata = Parameters.TryGetValue("LogMetadata", out var mVal) && ParameterHelper.GetBoolean(mVal, true);
+        bool logHistory = Parameters.TryGetValue("LogExecutionHistory", out var hVal) && ParameterHelper.GetBoolean(hVal, true);
+        string levelStr = Parameters.TryGetValue("LogLevel", out var lVal) ? ParameterHelper.GetString(lVal, "Information") : "Information";
 
         if (!Enum.TryParse<LogLevel>(levelStr, true, out var parsedLevel))
         {

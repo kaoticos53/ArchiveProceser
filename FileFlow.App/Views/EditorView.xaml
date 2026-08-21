@@ -17,7 +17,7 @@
                              Connections="{Binding Connections}"
                              PendingConnection="{Binding PendingConnection}"
                              SelectedItems="{Binding SelectedNodes}"
-                             ViewportZoom="{Binding Zoom, Mode=TwoWay}"
+                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
                              MinViewportZoom="0.2"
                              MaxViewportZoom="2.5"

@@ -36,7 +36,7 @@ public class ExifMetadataNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string filePath = item.CurrentPath;
-        bool fallbackToCreation = Parameters.TryGetValue("FallbackToCreationDate", out var fVal) && Convert.ToBoolean(fVal);
+        bool fallbackToCreation = Parameters.TryGetValue("FallbackToCreationDate", out var fVal) && ParameterHelper.GetBoolean(fVal, true);
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {

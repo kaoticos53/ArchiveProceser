@@ -25,7 +25,7 @@
             
             <!-- Zoom Slider -->
             <Slider Width="90" Minimum="0.2" Maximum="2.0" Value="{Binding ViewportZoom, Mode=TwoWay}"
-                    SmallChange="0.05" LargeChange="0.1" VerticalAlignment="Center" Margin="8,0" />
+                    SmallChange="0.05" LargeChange="0.05" VerticalAlignment="Center" Margin="8,0" />
             
             <!-- Zoom In Button -->
             <Button Command="{Binding ZoomInCommand}" Style="{DynamicResource SecondaryButton}" Padding="6,2" Width="28" Height="24" ToolTip="Aumentar Zoom (Ctrl + +)">
@@ -37,9 +37,12 @@
                        FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" 
                        VerticalAlignment="Center" Width="40" TextAlignment="Center" Margin="4,0,2,0"/>
             
-            <!-- 1:1 Reset Button -->
-            <Button Command="{Binding ResetZoomCommand}" Style="{DynamicResource SecondaryButton}" Padding="6,2" Height="24" ToolTip="Restablecer Zoom al 100% (Ctrl + 0)" Margin="2,0,0,0">
-                <TextBlock Text="1:1" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- Fit To Screen Button -->
+            <Button Command="{Binding FitToScreenCommand}" Style="{DynamicResource SecondaryButton}" Padding="6,2" Height="24" ToolTip="Ajustar todo el flujo en pantalla (Ctrl + 0)" Margin="2,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="⛶" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="Ajustar" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                </StackPanel>
             </Button>
         </StackPanel>
     </Border>

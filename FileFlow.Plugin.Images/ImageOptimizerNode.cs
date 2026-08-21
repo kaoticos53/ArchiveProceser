@@ -43,13 +43,13 @@ public class ImageOptimizerNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string filePath = item.CurrentPath;
-        int maxWidth = Parameters.TryGetValue("MaxWidth", out var wVal) ? Convert.ToInt32(wVal) : 1920;
-        int maxHeight = Parameters.TryGetValue("MaxHeight", out var hVal) ? Convert.ToInt32(hVal) : 1080;
-        string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? fVal?.ToString() ?? "WebP" : "WebP";
-        int quality = Parameters.TryGetValue("Quality", out var qVal) ? Convert.ToInt32(qVal) : 80;
-        string outputDir = Parameters.TryGetValue("OutputDirectory", out var oVal) ? oVal?.ToString() ?? @"C:\FileFlowOptimized" : @"C:\FileFlowOptimized";
+        int maxWidth = Parameters.TryGetValue("MaxWidth", out var wVal) ? ParameterHelper.GetInt32(wVal, 1920) : 1920;
+        int maxHeight = Parameters.TryGetValue("MaxHeight", out var hVal) ? ParameterHelper.GetInt32(hVal, 1080) : 1080;
+        string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
+        int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
+        string outputDir = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, @"C:\FileFlowOptimized") : @"C:\FileFlowOptimized";
         outputDir = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(outputDir, item);
-        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && Convert.ToBoolean(dryVal);
+        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {

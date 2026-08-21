@@ -34,9 +34,9 @@ public class OriginalFileActionNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string actionType = Parameters.TryGetValue("ActionType", out var val) ? val?.ToString() ?? "Keep" : "Keep";
-        string quarantinePath = Parameters.TryGetValue("QuarantinePath", out var qVal) ? qVal?.ToString() ?? @"C:\Quarantine" : @"C:\Quarantine";
-        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && Convert.ToBoolean(dryVal);
+        string actionType = Parameters.TryGetValue("ActionType", out var val) ? ParameterHelper.GetString(val, "Keep") : "Keep";
+        string quarantinePath = Parameters.TryGetValue("QuarantinePath", out var qVal) ? ParameterHelper.GetString(qVal, @"C:\Quarantine") : @"C:\Quarantine";
+        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         string targetFilePath = item.OriginalPath;
         if (string.IsNullOrWhiteSpace(targetFilePath) || (!File.Exists(targetFilePath) && !Directory.Exists(targetFilePath)))

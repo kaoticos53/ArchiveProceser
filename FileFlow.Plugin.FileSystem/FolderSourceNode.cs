@@ -33,18 +33,11 @@ public class FolderSourceNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string sourcePath = Parameters.TryGetValue("SourcePath", out var val) ? val?.ToString() ?? string.Empty : string.Empty;
-        bool recursive = !Parameters.TryGetValue("Recursive", out var recVal) || Convert.ToBoolean(recVal);
-        string emitMode = Parameters.TryGetValue("EmitMode", out var modeVal) ? modeVal?.ToString() ?? "FilesOnly" : "FilesOnly";
+        string sourcePath = Parameters.TryGetValue("SourcePath", out var val) ? ParameterHelper.GetString(val) : string.Empty;
+        bool recursive = !Parameters.TryGetValue("Recursive", out var recVal) || ParameterHelper.GetBoolean(recVal, true);
+        string emitMode = Parameters.TryGetValue("EmitMode", out var modeVal) ? ParameterHelper.GetString(modeVal, "FilesOnly") : "FilesOnly";
         
-        int maxDepth = -1;
-        if (Parameters.TryGetValue("MaxRecursionDepth", out var depthVal) && depthVal != null)
-        {
-            if (int.TryParse(depthVal.ToString(), out int parsedDepth))
-            {
-                maxDepth = parsedDepth;
-            }
-        }
+        int maxDepth = Parameters.TryGetValue("MaxRecursionDepth", out var depthVal) ? ParameterHelper.GetInt32(depthVal, -1) : -1;
 
         if (!recursive)
         {

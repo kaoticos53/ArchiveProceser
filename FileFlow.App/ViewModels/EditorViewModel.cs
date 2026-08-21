@@ -28,19 +28,61 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void ZoomIn()
     {
-        ViewportZoom = Math.Min(2.5, Math.Round(ViewportZoom + 0.1, 2));
+        ViewportZoom = Math.Min(2.5, Math.Round(ViewportZoom + 0.05, 2));
     }
 
     [RelayCommand]
     public void ZoomOut()
     {
-        ViewportZoom = Math.Max(0.2, Math.Round(ViewportZoom - 0.1, 2));
+        ViewportZoom = Math.Max(0.2, Math.Round(ViewportZoom - 0.05, 2));
     }
 
     [RelayCommand]
     public void ResetZoom()
     {
-        ViewportZoom = 1.0;
+        FitToScreen();
+    }
+
+    [RelayCommand]
+    public void FitToScreen()
+    {
+        if (Nodes.Count == 0)
+        {
+            ViewportZoom = 1.0;
+            ViewportLocation = new Point(0, 0);
+            return;
+        }
+
+        double minX = Nodes.Min(n => n.Location.X);
+        double minY = Nodes.Min(n => n.Location.Y);
+        double maxX = Nodes.Max(n => n.Location.X + (n.Width > 0 ? n.Width : 280));
+        double maxY = Nodes.Max(n => n.Location.Y + 220);
+
+        double graphWidth = Math.Max(maxX - minX, 100);
+        double graphHeight = Math.Max(maxY - minY, 100);
+
+        double viewWidth = 900;
+        double viewHeight = 500;
+
+        double paddingX = 120;
+        double paddingY = 120;
+
+        double scaleX = (viewWidth - paddingX) / graphWidth;
+        double scaleY = (viewHeight - paddingY) / graphHeight;
+
+        double targetZoom = Math.Clamp(Math.Min(scaleX, scaleY), 0.3, 1.8);
+        ViewportZoom = Math.Round(targetZoom, 2);
+
+        double visibleCanvasWidth = viewWidth / ViewportZoom;
+        double visibleCanvasHeight = viewHeight / ViewportZoom;
+
+        double extraCanvasX = Math.Max(50, (visibleCanvasWidth - graphWidth) / 2.0);
+        double extraCanvasY = Math.Max(50, (visibleCanvasHeight - graphHeight) / 2.0);
+
+        double locX = minX - extraCanvasX;
+        double locY = minY - extraCanvasY;
+
+        ViewportLocation = new Point(Math.Round(locX, 1), Math.Round(locY, 1));
     }
 
     public EditorViewModel(PluginLoader pluginLoader, Services.IVariableDiscoveryService? variableDiscoveryService = null)

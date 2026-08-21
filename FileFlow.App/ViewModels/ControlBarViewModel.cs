@@ -37,6 +37,9 @@ public partial class ControlBarViewModel : ObservableObject
     private bool _isDryRun;
 
     [ObservableProperty]
+    private bool _isMenuOpen;
+
+    [ObservableProperty]
     private string _workflowName = "Flujo de Procesamiento de Archivos";
 
     [ObservableProperty]
@@ -79,6 +82,12 @@ public partial class ControlBarViewModel : ObservableObject
     }
 
     public NodeInspectorViewModel NodeInspector => _nodeInspectorViewModel;
+
+    [RelayCommand]
+    public void ToggleMenu()
+    {
+        IsMenuOpen = !IsMenuOpen;
+    }
 
     [RelayCommand]
     public void ToggleInspector()
@@ -308,8 +317,27 @@ public partial class ControlBarViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void NewWorkflow()
+    {
+        IsMenuOpen = false;
+        if (_editorViewModel.Nodes.Count > 0)
+        {
+            var result = MessageBox.Show("¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.", "Nuevo Flujo", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
+        _editorViewModel.ClearGraph();
+        WorkflowName = "Flujo de Procesamiento de Archivos";
+        _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, "Nuevo flujo creado.");
+    }
+
+    [RelayCommand]
     public async Task SaveWorkflowAsync()
     {
+        IsMenuOpen = false;
         var filePath = _fileDialogService.ShowSaveFileDialog("Guardar Flujo", "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json", "flujo.json");
         if (!string.IsNullOrEmpty(filePath))
         {
@@ -329,6 +357,7 @@ public partial class ControlBarViewModel : ObservableObject
     [RelayCommand]
     public async Task LoadWorkflowAsync()
     {
+        IsMenuOpen = false;
         var filePath = _fileDialogService.ShowOpenFileDialog("Cargar Flujo", "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json");
         if (!string.IsNullOrEmpty(filePath))
         {

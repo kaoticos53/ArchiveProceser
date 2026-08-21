@@ -17,12 +17,24 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- App Brand & Workflow Title -->
+            <!-- App Brand & Hamburger Side Drawer Toggle -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Command="{Binding ToggleMenuCommand}" 
+                        Style="{StaticResource SecondaryButton}" 
+                        Padding="10,6"
+                        Margin="0,0,12,0"
+                        ToolTip="Abrir Menú Principal de Navegación">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="☰" FontSize="15" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Menú" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="6" Width="28" Height="28" Margin="0,0,10,0">
                     <TextBlock Text="⚡" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
                 </Border>
                 <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
+
                 <TextBox Text="{Binding WorkflowName, UpdateSourceTrigger=PropertyChanged}" 
                          FontSize="13" 
                          Foreground="{DynamicResource TextPrimaryBrush}" 
@@ -33,32 +45,8 @@
                          VerticalAlignment="Center" />
             </StackPanel>
 
-            <!-- Language, Theme & Workflow Execution Controls -->
+            <!-- Workflow Execution Controls -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- Theme Selector -->
-                <ComboBox SelectedValue="{Binding SelectedTheme, Mode=TwoWay}"
-                          SelectedValuePath="Tag"
-                          Width="135" 
-                          VerticalAlignment="Center" 
-                          Margin="0,0,8,0"
-                          ToolTip="Tema de la interfaz (Oscuro / Claro / Primavera Pastel / Cyber Neón / Sistema)">
-                    <ComboBoxItem Tag="Dark">🌙 Oscuro</ComboBoxItem>
-                    <ComboBoxItem Tag="Light">☀️ Claro</ComboBoxItem>
-                    <ComboBoxItem Tag="Pastel">🌸 Primavera</ComboBoxItem>
-                    <ComboBoxItem Tag="Cyber">🔮 Cyber Neón</ComboBoxItem>
-                    <ComboBoxItem Tag="System">💻 Sistema</ComboBoxItem>
-                </ComboBox>
-
-                <!-- Language Selector -->
-                <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}"
-                          SelectedValuePath="Tag"
-                          Width="115" 
-                          VerticalAlignment="Center" 
-                          Margin="0,0,12,0"
-                          ToolTip="Idioma de la aplicación">
-                    <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
-                    <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
-                </ComboBox>
 
                 <!-- Dry Run Checkbox -->
                 <CheckBox Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" 
@@ -120,17 +108,8 @@
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorBtn]}" 
                         Command="{Binding ToggleInspectorCommand}" 
                         Style="{StaticResource SecondaryButton}" 
-                        Margin="8,0,4,0" 
+                        Margin="8,0,0,0" 
                         ToolTip="Abrir / Ocultar Inspector de Datos del Nodo" />
-
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Save]}" 
-                        Command="{Binding SaveWorkflowCommand}" 
-                        Style="{StaticResource SecondaryButton}" 
-                        Margin="4,0,4,0" />
-
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Load]}" 
-                        Command="{Binding LoadWorkflowCommand}" 
-                        Style="{StaticResource SecondaryButton}" />
             </StackPanel>
         </Grid>
     </Border>

@@ -2,6 +2,7 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SharpCompress.Archives;
 using SharpCompress.Common;
+using SharpCompress.Readers;
 
 namespace FileFlow.Plugin.Archives;
 
@@ -28,7 +29,8 @@ public class SmartUnpackNode : IFlowNode
     {
         ["DestinationFolder"] = @"C:\FileFlowUnpacked",
         ["CleanWrapper"] = true,
-        ["AutoDeleteAfterExtraction"] = false
+        ["AutoDeleteAfterExtraction"] = false,
+        ["RecursiveUnpack"] = true
     };
 
     public async Task ExecuteAsync(
@@ -38,11 +40,12 @@ public class SmartUnpackNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string archivePath = item.CurrentPath;
-        string destFolder = Parameters.TryGetValue("DestinationFolder", out var val) ? val?.ToString() ?? @"C:\FileFlowUnpacked" : @"C:\FileFlowUnpacked";
+        string destFolder = Parameters.TryGetValue("DestinationFolder", out var val) ? ParameterHelper.GetString(val, @"C:\FileFlowUnpacked") : @"C:\FileFlowUnpacked";
         destFolder = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(destFolder, item);
-        bool cleanWrapper = Parameters.TryGetValue("CleanWrapper", out var cwVal) && Convert.ToBoolean(cwVal);
-        bool autoDelete = Parameters.TryGetValue("AutoDeleteAfterExtraction", out var adVal) && Convert.ToBoolean(adVal);
-        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && Convert.ToBoolean(dryVal);
+        bool cleanWrapper = Parameters.TryGetValue("CleanWrapper", out var cwVal) ? ParameterHelper.GetBoolean(cwVal, true) : true;
+        bool autoDelete = Parameters.TryGetValue("AutoDeleteAfterExtraction", out var adVal) && ParameterHelper.GetBoolean(adVal, false);
+        bool recursiveUnpack = !Parameters.TryGetValue("RecursiveUnpack", out var ruVal) || ParameterHelper.GetBoolean(ruVal, true);
+        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         if (string.IsNullOrWhiteSpace(archivePath) || !File.Exists(archivePath))
         {
@@ -55,7 +58,7 @@ public class SmartUnpackNode : IFlowNode
         {
             context.Log($"SmartUnpackNode inspecting archive: {archivePath}", LogLevel.Information);
 
-            using var archive = ArchiveFactory.Open(archivePath);
+            using var archive = ArchiveFactory.OpenArchive(new FileInfo(archivePath), new ReaderOptions());
 
             var entryKeys = archive.Entries
                 .Where(e => !e.IsDirectory)
@@ -71,8 +74,8 @@ public class SmartUnpackNode : IFlowNode
 
             if (hasSingleWrapper && cleanWrapper)
             {
-                finalExtractDir = Path.Combine(destFolder, archiveNameNoExt);
-                context.Log($"SmartUnpackNode: Single wrapper detected ('{commonRoot}'). Extracting directly to: {finalExtractDir}", LogLevel.Information);
+                finalExtractDir = destFolder;
+                context.Log($"SmartUnpackNode: Single wrapper detected ('{commonRoot}'). Cleaning redundant wrapper level and extracting directly to: {finalExtractDir}", LogLevel.Information);
             }
             else
             {
@@ -108,10 +111,15 @@ public class SmartUnpackNode : IFlowNode
                     });
                 }
 
+                if (recursiveUnpack)
+                {
+                    ExtractNestedArchives(finalExtractDir, context, cancellationToken);
+                }
+
                 if (autoDelete)
                 {
                     File.Delete(archivePath);
-                    context.Log($"SmartUnpackNode: Auto-deleted archive file '{archivePath}'.", LogLevel.Information);
+                    context.Log($"SmartUnpackNode: Auto-deleted original archive file '{archivePath}'.", LogLevel.Information);
                 }
             }
 
@@ -130,6 +138,95 @@ public class SmartUnpackNode : IFlowNode
             item.AddLog($"SmartUnpackNode error: {ex.Message}");
             await context.EmitAsync("Error", item);
         }
+    }
+
+    private static void ExtractNestedArchives(string targetDir, IFlowExecutionContext context, CancellationToken cancellationToken)
+    {
+        const int maxDepth = 5;
+
+        for (int depth = 0; depth < maxDepth; depth++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var allFiles = Directory.EnumerateFiles(targetDir, "*.*", SearchOption.AllDirectories).ToList();
+
+            var nestedPrimaryArchives = allFiles
+                .Where(f => IsPrimaryArchiveFile(f))
+                .ToList();
+
+            if (nestedPrimaryArchives.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var nestedArchive in nestedPrimaryArchives)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                context.Log($"SmartUnpackNode: Found nested archive '{Path.GetFileName(nestedArchive)}'. Extracting recursively...", LogLevel.Information);
+
+                try
+                {
+                    using var archive = ArchiveFactory.OpenArchive(new FileInfo(nestedArchive), new ReaderOptions());
+                    string nestedExtractDir = Path.GetDirectoryName(nestedArchive) ?? targetDir;
+
+                    foreach (var entry in archive.Entries.Where(e => !e.IsDirectory))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        string entryPath = entry.Key ?? string.Empty;
+                        string destPath = Path.GetFullPath(Path.Combine(nestedExtractDir, entryPath));
+
+                        if (!destPath.StartsWith(Path.GetFullPath(nestedExtractDir), StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new System.Security.SecurityException($"Zip Slip attempt detected in nested archive '{entryPath}'");
+                        }
+
+                        entry.WriteToDirectory(nestedExtractDir, new ExtractionOptions
+                        {
+                            ExtractFullPath = true,
+                            Overwrite = true
+                        });
+                    }
+
+                    // Delete intermediate nested primary archive
+                    File.Delete(nestedArchive);
+                    context.Log($"SmartUnpackNode: Deleted intermediate nested archive '{Path.GetFileName(nestedArchive)}'.", LogLevel.Information);
+                }
+                catch (Exception ex)
+                {
+                    context.Log($"SmartUnpackNode: Failed to unpack nested archive '{nestedArchive}': {ex.Message}", LogLevel.Warning);
+                }
+            }
+
+            // Clean up any intermediate secondary volume files (.r01, .r02, .z01, .part02.rar) in targetDir
+            var secondaryVolumes = Directory.EnumerateFiles(targetDir, "*.*", SearchOption.AllDirectories)
+                .Where(f => IsSecondaryVolumeFile(f))
+                .ToList();
+
+            foreach (var secVol in secondaryVolumes)
+            {
+                try
+                {
+                    File.Delete(secVol);
+                    context.Log($"SmartUnpackNode: Deleted intermediate secondary volume '{Path.GetFileName(secVol)}'.", LogLevel.Information);
+                }
+                catch { }
+            }
+        }
+    }
+
+    private static bool IsPrimaryArchiveFile(string filePath)
+    {
+        string fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        if (fileName.EndsWith(".part01.rar") || fileName.EndsWith(".part1.rar")) return true;
+        if (System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\.part(?!0*1\.)\d+\.rar$")) return false;
+        string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext is ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".tgz" or ".bz2";
+    }
+
+    private static bool IsSecondaryVolumeFile(string filePath)
+    {
+        string fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        return System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\.(r\d{2,3}|z\d{2,3}|part(?!0*1\.)\d+\.rar)$");
     }
 
     private static string? GetCommonRootFolder(List<string> entryKeys)

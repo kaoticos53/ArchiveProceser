@@ -23,6 +23,15 @@
         <KeyBinding Key="F5" Command="{Binding ControlBar.ContinueWorkflowCommand}" />
         <KeyBinding Key="F10" Command="{Binding ControlBar.StepNextCommand}" />
         <KeyBinding Key="F5" Modifiers="Shift" Command="{Binding ControlBar.StopWorkflowCommand}" />
+        <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding ControlBar.SaveWorkflowCommand}" />
+        <KeyBinding Key="O" Modifiers="Ctrl" Command="{Binding ControlBar.LoadWorkflowCommand}" />
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding ControlBar.NewWorkflowCommand}" />
+        <KeyBinding Key="OemPlus" Modifiers="Ctrl" Command="{Binding Editor.ZoomInCommand}" />
+        <KeyBinding Key="Add" Modifiers="Ctrl" Command="{Binding Editor.ZoomInCommand}" />
+        <KeyBinding Key="OemMinus" Modifiers="Ctrl" Command="{Binding Editor.ZoomOutCommand}" />
+        <KeyBinding Key="Subtract" Modifiers="Ctrl" Command="{Binding Editor.ZoomOutCommand}" />
+        <KeyBinding Key="D0" Modifiers="Ctrl" Command="{Binding Editor.FitToScreenCommand}" />
+        <KeyBinding Key="NumPad0" Modifiers="Ctrl" Command="{Binding Editor.FitToScreenCommand}" />
     </Window.InputBindings>
 
     <Grid>
@@ -131,5 +140,134 @@
 
         <!-- Bottom Realtime Execution Console -->
         <views:LogView Grid.Row="3" DataContext="{Binding LogConsole}" />
+
+        <!-- Semi-Transparent Backdrop Overlay for Side Navigation Drawer -->
+        <Border Grid.RowSpan="4"
+                Panel.ZIndex="99"
+                Background="#60000000"
+                Visibility="{Binding ControlBar.IsMenuOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border.InputBindings>
+                <MouseBinding MouseAction="LeftClick" Command="{Binding ControlBar.ToggleMenuCommand}" />
+            </Border.InputBindings>
+        </Border>
+
+        <!-- Modern Side Navigation Drawer Panel (Supports Theme DynamicResources) -->
+        <Border Grid.RowSpan="4"
+                Panel.ZIndex="100"
+                HorizontalAlignment="Left"
+                Width="320"
+                Background="{DynamicResource BgSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="0,0,1,0"
+                Visibility="{Binding ControlBar.IsMenuOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Drawer Header -->
+                <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="18,16">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="8" Width="34" Height="34" Margin="0,0,12,0">
+                                <TextBlock Text="⚡" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="FileFlow Studio" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="Gestor de Flujos v1.0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Command="{Binding ControlBar.ToggleMenuCommand}" 
+                                HorizontalAlignment="Right" 
+                                VerticalAlignment="Center"
+                                Style="{StaticResource SecondaryButton}" 
+                                Padding="8,4"
+                                Width="30" Height="30" 
+                                ToolTip="Cerrar Menú">
+                            <TextBlock Text="✕" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Drawer Content Actions -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,14">
+                        <!-- Section: Flow Management -->
+                        <TextBlock Text="GESTIÓN DE FLUJOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <Button Command="{Binding ControlBar.NewWorkflowCommand}" Style="{StaticResource DrawerMenuItemButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📄" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Nuevo Flujo" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.LoadWorkflowCommand}" Style="{StaticResource DrawerMenuItemButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📂" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Cargar Flujo..." FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.SaveWorkflowCommand}" Style="{StaticResource DrawerMenuItemButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💾" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Guardar Flujo..." FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Section: Theme & Language Customization -->
+                        <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
+                        <TextBlock Text="APARIENCIA E IDIOMA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <!-- Theme Selector in Drawer -->
+                        <Grid Margin="4,6,4,8">
+                            <TextBlock Text="Tema Visual:" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <ComboBox SelectedValue="{Binding ControlBar.SelectedTheme, Mode=TwoWay}"
+                                      SelectedValuePath="Tag"
+                                      HorizontalAlignment="Right"
+                                      Width="140">
+                                <ComboBoxItem Tag="Dark">🌙 Oscuro</ComboBoxItem>
+                                <ComboBoxItem Tag="Light">☀️ Claro</ComboBoxItem>
+                                <ComboBoxItem Tag="Pastel">🌸 Primavera</ComboBoxItem>
+                                <ComboBoxItem Tag="Cyber">🔮 Cyber Neón</ComboBoxItem>
+                                <ComboBoxItem Tag="System">💻 Sistema</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- Language Selector in Drawer -->
+                        <Grid Margin="4,4,4,8">
+                            <TextBlock Text="Idioma:" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <ComboBox SelectedValue="{Binding ControlBar.SelectedLanguage, Mode=TwoWay}"
+                                      SelectedValuePath="Tag"
+                                      HorizontalAlignment="Right"
+                                      Width="140">
+                                <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
+                                <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- Section: Panels & Tools -->
+                        <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
+                        <TextBlock Text="PANELES Y HERRAMIENTAS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <Button Command="{Binding ControlBar.ToggleInspectorCommand}" Style="{StaticResource DrawerMenuItemButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔍" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Inspector de Datos" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Drawer Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,12">
+                    <TextBlock Text="Engine .NET 9 | C# 13" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                </Border>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

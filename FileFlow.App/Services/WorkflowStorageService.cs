@@ -12,7 +12,8 @@ public class WorkflowStorageService : IWorkflowStorageService
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new FileFlow.Sdk.Serialization.ObjectToInferredTypesConverter() }
     };
 
     public async ValueTask SaveWorkflowAsync(string filePath, WorkflowGraph graph, CancellationToken ct = default)
