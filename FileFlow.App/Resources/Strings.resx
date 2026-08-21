@@ -212,4 +212,23 @@
   <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calculates and injects custom metadata key-value into file context for downstream nodes.</value></data>
 
   <data name="ExportLog" xml:space="preserve"><value>💾 Export Log</value></data>
+
+  <!-- Debugger -->
+  <data name="DebugFlow" xml:space="preserve"><value>🐞 Debug</value></data>
+  <data name="StepNext" xml:space="preserve"><value>⏭ Step Next</value></data>
+  <data name="ContinueFlow" xml:space="preserve"><value>⏯ Continue</value></data>
+  <data name="StopDebug" xml:space="preserve"><value>⏹ Stop Debug</value></data>
+  <data name="InspectorTitle" xml:space="preserve"><value>Node Data Inspector</value></data>
+  <data name="InspectorNoSelection" xml:space="preserve"><value>Select a node or pause at a breakpoint to inspect data.</value></data>
+  <data name="InspectorInputs" xml:space="preserve"><value>Inputs</value></data>
+  <data name="InspectorOutputs" xml:space="preserve"><value>Outputs</value></data>
+  <data name="InspectorMetadataDiff" xml:space="preserve"><value>Metadata Changes (Diff)</value></data>
+  <data name="InspectorExecutionLog" xml:space="preserve"><value>Execution Log</value></data>
+  <data name="InspectorErrorTitle" xml:space="preserve"><value>Node Failure / Error</value></data>
+  <data name="TestNodeMock" xml:space="preserve"><value>🧪 Test Node</value></data>
+  <data name="BreakpointToggle" xml:space="preserve"><value>Toggle Breakpoint</value></data>
+  <data name="StatusPausedBreakpoint" xml:space="preserve"><value>Paused at Breakpoint</value></data>
+  <data name="StatusPausedError" xml:space="preserve"><value>Paused on Error</value></data>
+  <data name="CloseInspector" xml:space="preserve"><value>Close Inspector</value></data>
+  <data name="InspectorBtn" xml:space="preserve"><value>🔍 Inspector</value></data>
 </root>

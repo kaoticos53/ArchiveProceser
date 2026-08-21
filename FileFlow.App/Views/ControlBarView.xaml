@@ -36,16 +36,34 @@
                 <CheckBox Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" IsChecked="{Binding IsDryRun}" 
                           Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,16,0" FontWeight="SemiBold" />
 
+                <!-- Run Normal -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RunFlow]}" Command="{Binding ExecuteWorkflowCommand}" Style="{StaticResource IconButton}" 
-                        Background="{StaticResource AccentSuccessBrush}" Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                        Background="{StaticResource AccentSuccessBrush}" Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" Margin="0,0,6,0" />
 
+                <!-- Start Debugging -->
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DebugFlow]}" Command="{Binding DebugWorkflowCommand}" Style="{StaticResource IconButton}" 
+                        Background="#8B5CF6" Visibility="{Binding IsRunning, Converter={StaticResource InverseBooleanToVisibilityConverter}}" Margin="0,0,6,0" />
+
+                <!-- Debug Stepping Controls (visible during debugging) -->
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StepNext]}" Command="{Binding StepNextCommand}" Style="{StaticResource IconButton}" 
+                        Background="#F59E0B" Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,6,0" ToolTip="Avanzar al siguiente paso (F10)" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ContinueFlow]}" Command="{Binding ContinueWorkflowCommand}" Style="{StaticResource IconButton}" 
+                        Background="{StaticResource AccentSuccessBrush}" Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,6,0" ToolTip="Continuar ejecución normal (F5)" />
+
+                <!-- Pause / Resume Button -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Pause]}" Command="{Binding TogglePauseCommand}" Style="{StaticResource SecondaryButton}" 
-                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,6,0" ToolTip="Pausar o Reanudar el flujo" />
 
+                <!-- Stop Execution / Debugging -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Stop]}" Command="{Binding StopWorkflowCommand}" Style="{StaticResource DangerButton}" 
-                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" ToolTip="Detener ejecución (Shift+F5)" />
 
-                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Save]}" Command="{Binding SaveWorkflowCommand}" Style="{StaticResource SecondaryButton}" Margin="12,0,4,0" />
+                <!-- Toggle Inspector Panel Button -->
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorBtn]}" Command="{Binding ToggleInspectorCommand}" 
+                        Style="{StaticResource SecondaryButton}" Margin="10,0,4,0" ToolTip="Abrir / Ocultar Inspector de Datos del Nodo" />
+
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Save]}" Command="{Binding SaveWorkflowCommand}" Style="{StaticResource SecondaryButton}" Margin="4,0,4,0" />
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Load]}" Command="{Binding LoadWorkflowCommand}" Style="{StaticResource SecondaryButton}" />
             </StackPanel>
         </Grid>

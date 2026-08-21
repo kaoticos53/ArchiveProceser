@@ -34,6 +34,23 @@ public partial class NodeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
+    public static event Action<NodeViewModel>? NodeSelected;
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        if (value)
+        {
+            NodeSelected?.Invoke(this);
+        }
+    }
+
+    [RelayCommand]
+    public void InspectNode()
+    {
+        IsSelected = true;
+        NodeSelected?.Invoke(this);
+    }
+
     [ObservableProperty]
     private bool _isExpanded;
 
@@ -55,9 +72,56 @@ public partial class NodeViewModel : ObservableObject
     [ObservableProperty]
     private string _accentColor = "#818CF8";
 
+    [ObservableProperty]
+    private bool _hasBreakpoint;
+
+    [ObservableProperty]
+    private NodeExecutionStatus _executionStatus = NodeExecutionStatus.Idle;
+
+    [ObservableProperty]
+    private bool _isLedOn;
+
+    [ObservableProperty]
+    private double _progressPercentage;
+
+    [ObservableProperty]
+    private string _progressMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isProgressActive;
+
+    partial void OnExecutionStatusChanged(NodeExecutionStatus value)
+    {
+        IsLedOn = value == NodeExecutionStatus.Running || value == NodeExecutionStatus.Completed;
+        if (value == NodeExecutionStatus.Idle)
+        {
+            IsProgressActive = false;
+            ProgressPercentage = 0;
+            ProgressMessage = string.Empty;
+        }
+        else if (value == NodeExecutionStatus.Completed)
+        {
+            IsProgressActive = false;
+        }
+    }
+
+    public void UpdateProgress(double percentage, string message)
+    {
+        ProgressPercentage = percentage;
+        ProgressMessage = message;
+        IsProgressActive = percentage > 0 && percentage < 100;
+    }
+
+    [ObservableProperty]
+    private string? _lastErrorDetails;
+
+    public IFlowNode NodeInstance => _nodeInstance;
+
     public ObservableCollection<PortViewModel> InputPorts { get; } = [];
     public ObservableCollection<PortViewModel> OutputPorts { get; } = [];
     public ObservableCollection<NodeParameterViewModel> Parameters { get; } = [];
+    public ObservableCollection<NodeDataSnapshot> InputSnapshots { get; } = [];
+    public ObservableCollection<NodeDataSnapshot> OutputSnapshots { get; } = [];
 
     public NodeViewModel(IFlowNode node, Point location)
     {
@@ -273,5 +337,46 @@ public partial class NodeViewModel : ObservableObject
         {
             CollapsedWidth = Width;
         }
+    }
+
+    [RelayCommand]
+    public void ToggleBreakpoint()
+    {
+        HasBreakpoint = !HasBreakpoint;
+    }
+
+    public void AddSnapshot(NodeDataSnapshot snapshot)
+    {
+        Application.Current?.Dispatcher?.Invoke(() =>
+        {
+            if (snapshot.IsInput)
+            {
+                InputSnapshots.Add(snapshot);
+            }
+            else
+            {
+                OutputSnapshots.Add(snapshot);
+            }
+        });
+    }
+
+    public void SetExecutionStatus(NodeExecutionStatus status, string? errorDetails = null)
+    {
+        Application.Current?.Dispatcher?.Invoke(() =>
+        {
+            ExecutionStatus = status;
+            LastErrorDetails = errorDetails;
+        });
+    }
+
+    public void ClearDebugData()
+    {
+        Application.Current?.Dispatcher?.Invoke(() =>
+        {
+            ExecutionStatus = NodeExecutionStatus.Idle;
+            LastErrorDetails = null;
+            InputSnapshots.Clear();
+            OutputSnapshots.Clear();
+        });
     }
 }

@@ -149,11 +149,15 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
+    [ObservableProperty]
+    private NodeViewModel? _selectedNode;
+
     [RelayCommand]
     public void ClearGraph()
     {
         Connections.Clear();
         Nodes.Clear();
+        SelectedNode = null;
     }
 
     public NodeViewModel? AddNode(string nodeTypeName, Point position)
@@ -162,8 +166,23 @@ public partial class EditorViewModel : ObservableObject
         if (nodeInstance == null) return null;
 
         var nodeVm = new NodeViewModel(nodeInstance, position);
+        nodeVm.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(NodeViewModel.IsSelected) && nodeVm.IsSelected)
+            {
+                SelectedNode = nodeVm;
+            }
+        };
         Nodes.Add(nodeVm);
         return nodeVm;
+    }
+
+    public void ClearDebugStates()
+    {
+        foreach (var node in Nodes)
+        {
+            node.ClearDebugData();
+        }
     }
 
     public WorkflowGraph ExportToGraphModel(string name = "FileFlow Workflow")
@@ -178,12 +197,18 @@ public partial class EditorViewModel : ObservableObject
                 NodeTypeName = n.NodeTypeName,
                 X = n.Location.X,
                 Y = n.Location.Y,
+                HasBreakpoint = n.HasBreakpoint,
                 Parameters = n.Parameters
                     .Where(p => !string.IsNullOrWhiteSpace(p.Key))
                     .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase)
             };
             graph.Nodes.Add(nodeDto);
+
+            if (n.HasBreakpoint)
+            {
+                graph.BreakpointNodeIds.Add(n.Id);
+            }
         }
 
         foreach (var c in Connections)
@@ -218,7 +243,19 @@ public partial class EditorViewModel : ObservableObject
                 instance.Parameters[k] = v;
             }
 
-            var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y));
+            var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y))
+            {
+                HasBreakpoint = nodeDto.HasBreakpoint || graph.BreakpointNodeIds.Contains(nodeDto.Id)
+            };
+
+            nodeVm.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(NodeViewModel.IsSelected) && nodeVm.IsSelected)
+                {
+                    SelectedNode = nodeVm;
+                }
+            };
+
             Nodes.Add(nodeVm);
             nodeLookup[nodeDto.Id] = nodeVm;
         }

@@ -6,6 +6,7 @@
     <SolidColorBrush x:Key="BgDarkBrush" Color="#0B0C10" />
     <SolidColorBrush x:Key="BgEditorBrush" Color="#0E1017" />
     <SolidColorBrush x:Key="BgCardBrush" Color="#181B24" />
+    <SolidColorBrush x:Key="BgSurfaceBrush" Color="#131620" />
     <SolidColorBrush x:Key="BgHeaderBrush" Color="#12141C" />
     
     <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#6366F1" />

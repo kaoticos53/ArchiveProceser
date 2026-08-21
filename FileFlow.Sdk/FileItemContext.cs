@@ -33,4 +33,30 @@ public record FileItemContext
         string timestamped = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
         ExecutionLog.Add(timestamped);
     }
+
+    public FileItemContext DeepClone()
+    {
+        var clone = new FileItemContext
+        {
+            Id = Id,
+            CurrentPath = CurrentPath,
+            OriginalPath = OriginalPath,
+            IsDirectory = IsDirectory,
+            FileSizeBytes = FileSizeBytes
+        };
+
+        foreach (var (k, v) in Metadata)
+        {
+            clone.Metadata[k] = v;
+        }
+
+        foreach (var tag in Tags)
+        {
+            clone.Tags.Add(tag);
+        }
+
+        clone.ExecutionLog.AddRange(ExecutionLog);
+
+        return clone;
+    }
 }

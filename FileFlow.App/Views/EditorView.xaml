@@ -6,6 +6,7 @@
              xmlns:nodify="clr-namespace:Nodify;assembly=Nodify"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+             xmlns:sdk="clr-namespace:FileFlow.Sdk;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="800">
     <UserControl.InputBindings>
@@ -35,6 +36,10 @@
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
                     <Grid HorizontalAlignment="Stretch">
+                        <!-- Execution Status Glow & Border Indicator -->
+                        <Border BorderBrush="{Binding ExecutionStatus, Converter={StaticResource NodeExecutionStatusToBrushConverter}}" 
+                                BorderThickness="2.5" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False" />
+
                         <nodify:Node Style="{StaticResource BlenderNodeStyle}" 
                                      Header="{Binding}" 
                                      HorizontalAlignment="Stretch"
@@ -42,6 +47,22 @@
                                      Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}">
                             <nodify:Node.ContextMenu>
                                 <ContextMenu>
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorTitle]}"
+                                              Command="{Binding PlacementTarget.DataContext.InspectNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🔍" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}"
+                                              Command="{Binding PlacementTarget.DataContext.ToggleBreakpointCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                        <MenuItem.Icon>
+                                            <Ellipse Width="12" Height="12" Fill="#EF4444" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+
+                                    <Separator />
+
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ChangeColor]}">
                                         <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorEmerald]}"
                                                   Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
@@ -120,31 +141,146 @@
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                 </ContextMenu>
                             </nodify:Node.ContextMenu>
-
                             <nodify:Node.HeaderTemplate>
                                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
-                                    <Border Background="{Binding HeaderColor}" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="12,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" />
-                                            <Border Grid.Column="1" Background="#12151F" CornerRadius="10" Padding="8,3" Margin="8,0,0,0">
-                                                <TextBlock Text="{Binding Category}" Foreground="{Binding AccentColor}" FontSize="10" FontWeight="SemiBold" />
-                                            </Border>
-                                            <ToggleButton Grid.Column="2"
-                                                          IsChecked="{Binding IsExpanded, Mode=TwoWay}"
-                                                          Content="⚙"
-                                                          Foreground="{StaticResource TextSecondaryBrush}"
-                                                          Background="Transparent"
-                                                          BorderThickness="0"
-                                                          Padding="6,2"
-                                                          Margin="6,0,0,0"
-                                                          Cursor="Hand"
-                                                          ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToggleParametersToolTip]}" />
-                                        </Grid>
+                                    <Border Background="{Binding HeaderColor}" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="10,8">
+                                        <StackPanel>
+                                            <!-- Main Header Row -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Breakpoint Toggle Circle -->
+                                                <Button Grid.Column="0" Command="{Binding ToggleBreakpointCommand}" 
+                                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,6,0"
+                                                        Cursor="Hand" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}">
+                                                    <Ellipse Width="11" Height="11" 
+                                                             Fill="{Binding HasBreakpoint, Converter={StaticResource BreakpointToBrushConverter}}" 
+                                                             Stroke="#0F172A" StrokeThickness="1.5" />
+                                                </Button>
+
+                                                <!-- LED Execution Indicator (Off / Running / Paused / Error) -->
+                                                <Border Grid.Column="1" Width="9" Height="9" CornerRadius="4.5" Margin="0,0,7,0" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <!-- Default: Off (Dark Slate) -->
+                                                            <Setter Property="Background" Value="#1C212E" />
+                                                            <Setter Property="BorderBrush" Value="#323B4E" />
+                                                            <Setter Property="BorderThickness" Value="1.2" />
+                                                            <Setter Property="ToolTip" Value="Inactivo" />
+                                                            <Style.Triggers>
+                                                                <!-- Running: Bright Purple LED Glow (Morado Procesando) -->
+                                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Running}">
+                                                                    <Setter Property="Background" Value="#A855F7" />
+                                                                    <Setter Property="BorderBrush" Value="#C084FC" />
+                                                                    <Setter Property="ToolTip" Value="Procesando..." />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#A855F7" BlurRadius="12" ShadowDepth="0" Opacity="1.0" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                                <!-- Completed: Solid Emerald Green -->
+                                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Completed}">
+                                                                    <Setter Property="Background" Value="#10B981" />
+                                                                    <Setter Property="BorderBrush" Value="#059669" />
+                                                                    <Setter Property="ToolTip" Value="Completado con éxito" />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#10B981" BlurRadius="6" ShadowDepth="0" Opacity="0.7" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                                <!-- Paused: Amber Glow -->
+                                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.PausedAtBreakpoint}">
+                                                                    <Setter Property="Background" Value="#F59E0B" />
+                                                                    <Setter Property="BorderBrush" Value="#FDE68A" />
+                                                                    <Setter Property="ToolTip" Value="Pausado en Breakpoint" />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#F59E0B" BlurRadius="8" ShadowDepth="0" Opacity="0.9" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                                <!-- PausedOnError / Faulted: Red Glow -->
+                                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.PausedOnError}">
+                                                                    <Setter Property="Background" Value="#EF4444" />
+                                                                    <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                                                    <Setter Property="ToolTip" Value="Pausado por Error" />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#EF4444" BlurRadius="10" ShadowDepth="0" Opacity="1.0" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Faulted}">
+                                                                    <Setter Property="Background" Value="#EF4444" />
+                                                                    <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                                                    <Setter Property="ToolTip" Value="Error en nodo" />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#EF4444" BlurRadius="10" ShadowDepth="0" Opacity="1.0" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                </Border>
+
+                                                <!-- Title -->
+                                                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                
+                                                <!-- Category Tag -->
+                                                <Border Grid.Column="3" Background="#12151F" CornerRadius="10" Padding="8,3" Margin="6,0,0,0">
+                                                    <TextBlock Text="{Binding Category}" Foreground="{Binding AccentColor}" FontSize="10" FontWeight="SemiBold" />
+                                                </Border>
+                                                
+                                                <!-- Parameters Toggle -->
+                                                <ToggleButton Grid.Column="4"
+                                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                              Content="⚙"
+                                                              Foreground="{StaticResource TextSecondaryBrush}"
+                                                              Background="Transparent"
+                                                              BorderThickness="0"
+                                                              Padding="6,2"
+                                                              Margin="6,0,0,0"
+                                                              Cursor="Hand"
+                                                              ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToggleParametersToolTip]}" />
+                                            </Grid>
+
+                                            <!-- Iterative Progress Bar Below Title -->
+                                            <Grid Margin="0,6,0,0" Visibility="{Binding IsProgressActive, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Progress Track -->
+                                                <ProgressBar Grid.Row="0" Value="{Binding ProgressPercentage, Mode=OneWay}" Minimum="0" Maximum="100" Height="4" 
+                                                             Background="#121520" Foreground="{StaticResource AccentSuccessBrush}" BorderThickness="0">
+                                                    <ProgressBar.Template>
+                                                        <ControlTemplate TargetType="ProgressBar">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="2">
+                                                                <Grid>
+                                                                    <Border Name="PART_Track" />
+                                                                    <Border Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" CornerRadius="2" />
+                                                                </Grid>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </ProgressBar.Template>
+                                                </ProgressBar>
+
+                                                <!-- Progress Count / Detail String -->
+                                                <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Foreground="#94A3B8" FontSize="9" Margin="0,2,0,0" 
+                                                           HorizontalAlignment="Right" />
+                                            </Grid>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </nodify:Node.HeaderTemplate>

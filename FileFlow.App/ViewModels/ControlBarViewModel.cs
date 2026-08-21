@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
+using FileFlow.Sdk;
 using Microsoft.Win32;
 
 namespace FileFlow.App.ViewModels;
@@ -13,14 +14,22 @@ public partial class ControlBarViewModel : ObservableObject
     private readonly EditorViewModel _editorViewModel;
     private readonly PluginLoader _pluginLoader;
     private readonly LogViewModel _logViewModel;
+    private readonly NodeInspectorViewModel _nodeInspectorViewModel;
     private WorkflowExecutor? _activeExecutor;
+    private WorkflowDebugSession? _activeDebugSession;
     private CancellationTokenSource? _cts;
 
     [ObservableProperty]
     private bool _isRunning;
 
     [ObservableProperty]
+    private bool _isDebugging;
+
+    [ObservableProperty]
     private bool _isPaused;
+
+    [ObservableProperty]
+    private bool _isPausedAtBreakpointOrError;
 
     [ObservableProperty]
     private bool _isDryRun;
@@ -36,30 +45,121 @@ public partial class ControlBarViewModel : ObservableObject
         FileFlow.Sdk.Localization.LocalizationManager.Instance.SetCulture(value);
     }
 
-    public ControlBarViewModel(EditorViewModel editorViewModel, PluginLoader pluginLoader, LogViewModel logViewModel)
+    public ControlBarViewModel(EditorViewModel editorViewModel, PluginLoader pluginLoader, LogViewModel logViewModel, NodeInspectorViewModel nodeInspectorViewModel)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
         _logViewModel = logViewModel;
+        _nodeInspectorViewModel = nodeInspectorViewModel;
+    }
+
+    public NodeInspectorViewModel NodeInspector => _nodeInspectorViewModel;
+
+    [RelayCommand]
+    public void ToggleInspector()
+    {
+        _nodeInspectorViewModel.TogglePanel();
     }
 
     [RelayCommand]
     public async Task ExecuteWorkflowAsync()
+    {
+        await RunWorkflowCoreAsync(isDebug: false);
+    }
+
+    [RelayCommand]
+    public async Task DebugWorkflowAsync()
+    {
+        await RunWorkflowCoreAsync(isDebug: true);
+    }
+
+    private async Task RunWorkflowCoreAsync(bool isDebug)
     {
         if (IsRunning) return;
 
         try
         {
             IsRunning = true;
+            IsDebugging = isDebug;
             IsPaused = false;
+            IsPausedAtBreakpointOrError = false;
             _cts = new CancellationTokenSource();
+
+            _editorViewModel.ClearDebugStates();
 
             var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
 
             _activeExecutor = new WorkflowExecutor
             {
                 IsDryRun = IsDryRun,
-                MaxDegreeOfParallelism = Environment.ProcessorCount
+                MaxDegreeOfParallelism = isDebug ? 1 : Environment.ProcessorCount // En depuración ejecutamos de forma secuencial para inspección clara
+            };
+
+            if (isDebug)
+            {
+                _activeDebugSession = new WorkflowDebugSession
+                {
+                    IsDebugMode = true,
+                    BreakOnError = true
+                };
+
+                _activeDebugSession.NodeStatusChanged += (nodeId, status, details) =>
+                {
+                    Application.Current?.Dispatcher.InvokeAsync(() =>
+                    {
+                        var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                        if (node != null)
+                        {
+                            node.SetExecutionStatus(status, details);
+
+                            if (status == NodeExecutionStatus.PausedAtBreakpoint || status == NodeExecutionStatus.PausedOnError)
+                            {
+                                IsPausedAtBreakpointOrError = true;
+                                _nodeInspectorViewModel.InspectNode(node, autoOpen: true);
+                            }
+                            else if (status == NodeExecutionStatus.Running)
+                            {
+                                IsPausedAtBreakpointOrError = false;
+                            }
+                        }
+                    });
+                };
+
+                _activeDebugSession.SnapshotRecorded += (snapshot) =>
+                {
+                    Application.Current?.Dispatcher.InvokeAsync(() =>
+                    {
+                        var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(snapshot.NodeId, StringComparison.OrdinalIgnoreCase));
+                        node?.AddSnapshot(snapshot);
+                    });
+                };
+
+                _activeExecutor.DebugSession = _activeDebugSession;
+            }
+
+            _activeExecutor.NodeStatusChanged += (nodeId, status) =>
+            {
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                    if (node != null)
+                    {
+                        if (_activeDebugSession != null && _activeDebugSession.IsPaused && _activeDebugSession.CurrentPausedNodeId == nodeId)
+                        {
+                            return;
+                        }
+                        node.SetExecutionStatus(status);
+                    }
+                });
+            };
+
+            _activeExecutor.NodeProgressChanged += (nodeId, pct, message) =>
+            {
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                    node?.UpdateProgress(pct, message);
+                });
             };
 
             _activeExecutor.ProgressChanged += (pct, status) =>
@@ -72,7 +172,8 @@ public partial class ControlBarViewModel : ObservableObject
                 _logViewModel.AddLog(level, msg);
             };
 
-            _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"]);
+            string startMsg = isDebug ? "Iniciando depuración del flujo..." : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"];
+            _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, startMsg);
 
             await Task.Run(async () =>
             {
@@ -88,15 +189,56 @@ public partial class ControlBarViewModel : ObservableObject
         catch (Exception ex)
         {
             _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Error, $"Error de Ejecución: {ex.Message}");
-            MessageBox.Show($"Error al ejecutar el flujo: {ex.Message}", "Error de Ejecución", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (!isDebug)
+            {
+                MessageBox.Show($"Error al ejecutar el flujo: {ex.Message}", "Error de Ejecución", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         finally
         {
             IsRunning = false;
+            IsDebugging = false;
             IsPaused = false;
+            IsPausedAtBreakpointOrError = false;
             _cts?.Dispose();
             _cts = null;
             _activeExecutor = null;
+            _activeDebugSession = null;
+        }
+    }
+
+    [RelayCommand]
+    public void StepNext()
+    {
+        if (_activeDebugSession != null)
+        {
+            if (_activeDebugSession.IsPaused)
+            {
+                _activeDebugSession.StepNext();
+            }
+            else
+            {
+                _activeDebugSession.IsStepMode = true;
+            }
+            _activeExecutor?.Resume();
+            IsPaused = false;
+        }
+    }
+
+    [RelayCommand]
+    public void ContinueWorkflow()
+    {
+        if (_activeDebugSession != null)
+        {
+            _activeDebugSession.Continue();
+            _activeExecutor?.Resume();
+            IsPaused = false;
+            IsPausedAtBreakpointOrError = false;
+        }
+        else if (_activeExecutor != null && IsPaused)
+        {
+            _activeExecutor.Resume();
+            IsPaused = false;
         }
     }
 
@@ -105,16 +247,28 @@ public partial class ControlBarViewModel : ObservableObject
     {
         if (!IsRunning || _activeExecutor == null) return;
 
-        if (IsPaused)
+        if (IsPaused || IsPausedAtBreakpointOrError)
         {
-            _activeExecutor.Resume();
-            IsPaused = false;
+            ContinueWorkflow();
         }
         else
         {
+            if (_activeDebugSession != null)
+            {
+                _activeDebugSession.Pause();
+            }
             _activeExecutor.Pause();
             IsPaused = true;
         }
+    }
+
+    [RelayCommand]
+    public void PauseDebug()
+    {
+        if (!IsRunning || _activeExecutor == null) return;
+        _activeDebugSession?.Pause();
+        _activeExecutor.Pause();
+        IsPaused = true;
     }
 
     [RelayCommand]
@@ -123,6 +277,7 @@ public partial class ControlBarViewModel : ObservableObject
         if (_cts != null && !_cts.IsCancellationRequested)
         {
             _cts.Cancel();
+            _activeDebugSession?.Continue(); // Desbloquear si estaba esperando en breakpoint
             _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Warning, "Cancelación solicitada...");
         }
     }

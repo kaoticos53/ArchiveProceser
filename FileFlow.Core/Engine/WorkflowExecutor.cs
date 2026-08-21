@@ -25,6 +25,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
 
     public void ReportProgress(double percentage, string statusMessage)
     {
+        _executor.NotifyNodeProgress(_sourceNodeId, percentage, statusMessage);
         _executor.NotifyProgress(percentage, statusMessage);
     }
 
@@ -48,7 +49,11 @@ public class WorkflowExecutor
     private long _processedItemsCount;
     private long _totalItemsCount;
 
+    public WorkflowDebugSession? DebugSession { get; set; }
+
     public event Action<double, string>? ProgressChanged;
+    public event Action<string, double, string>? NodeProgressChanged;
+    public event Action<string, NodeExecutionStatus>? NodeStatusChanged;
     public event Action<string, LogLevel>? LogEmitted;
 
     public int MaxDegreeOfParallelism
@@ -114,6 +119,12 @@ public class WorkflowExecutor
             throw new InvalidOperationException($"Workflow validation failed with {validation.Errors.Count} errors.");
         }
 
+        // Sincronizar breakpoints si hay una sesión de depuración
+        if (DebugSession != null)
+        {
+            DebugSession.SetBreakpoints(graph.BreakpointNodeIds);
+        }
+
         // Build node dictionary & outgoing edges map
         foreach (var node in validation.TopologicalOrder)
         {
@@ -121,7 +132,7 @@ public class WorkflowExecutor
             _outgoingEdges[node.Id] = graph.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
         }
 
-        NotifyLog($"Starting workflow execution '{graph.Name}' with {validation.TopologicalOrder.Count} nodes (DryRun={IsDryRun}).", LogLevel.Information);
+        NotifyLog($"Starting workflow execution '{graph.Name}' with {validation.TopologicalOrder.Count} nodes (DryRun={IsDryRun}, Debug={DebugSession != null}).", LogLevel.Information);
 
         // Find entry nodes (nodes with no connected input edges)
         HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
@@ -145,7 +156,29 @@ public class WorkflowExecutor
                 {
                     dummyItem.Metadata["DryRun"] = true;
                 }
-                await startNode.ExecuteAsync(string.Empty, dummyItem, ctx, cancellationToken);
+
+                if (DebugSession != null)
+                {
+                    DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(startNode.Id, string.Empty, dummyItem));
+                    await DebugSession.CheckBreakpointOrStepAsync(startNode.Id, string.Empty, dummyItem, cancellationToken);
+                }
+
+                NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
+
+                try
+                {
+                    await startNode.ExecuteAsync(string.Empty, dummyItem, ctx, cancellationToken);
+                    NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Completed);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Faulted);
+                    if (DebugSession != null)
+                    {
+                        await DebugSession.HandleNodeErrorAsync(startNode.Id, string.Empty, dummyItem, ex, cancellationToken);
+                    }
+                    throw;
+                }
             }, cancellationToken));
         }
 
@@ -160,6 +193,11 @@ public class WorkflowExecutor
         if (IsDryRun)
         {
             item.Metadata["DryRun"] = true;
+        }
+
+        if (DebugSession != null)
+        {
+            DebugSession.RecordSnapshot(NodeDataSnapshot.CreateOutput(sourceNodeId, outputPortName, item));
         }
 
         Interlocked.Increment(ref _totalItemsCount);
@@ -180,9 +218,28 @@ public class WorkflowExecutor
                 {
                     await WaitIfPausedAsync(cancellationToken);
                     var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
+
+                    if (DebugSession != null)
+                    {
+                        DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, item));
+                        await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, item, cancellationToken);
+                    }
+
+                    NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
+
                     try
                     {
                         await targetNode.ExecuteAsync(edge.TargetPortName, item, targetContext, cancellationToken);
+                        NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
+                        if (DebugSession != null)
+                        {
+                            await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, item, ex, cancellationToken);
+                        }
+                        throw;
                     }
                     finally
                     {
@@ -204,6 +261,17 @@ public class WorkflowExecutor
             await _pauseSemaphore.WaitAsync(cancellationToken);
             _pauseSemaphore.Release();
         }
+    }
+
+    internal void NotifyNodeStatus(string nodeId, NodeExecutionStatus status)
+    {
+        NodeStatusChanged?.Invoke(nodeId, status);
+        DebugSession?.NotifyNodeStatus(nodeId, status);
+    }
+
+    internal void NotifyNodeProgress(string nodeId, double percentage, string statusMessage)
+    {
+        NodeProgressChanged?.Invoke(nodeId, percentage, statusMessage);
     }
 
     internal void NotifyProgress(double percentage, string statusMessage)

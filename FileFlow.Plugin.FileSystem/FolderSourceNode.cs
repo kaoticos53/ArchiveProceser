@@ -47,10 +47,28 @@ public class FolderSourceNode : IFlowNode
         string[] files = Directory.GetFiles(sourcePath, "*.*", searchOption);
 
         int count = 0;
-        foreach (string filePath in files)
+        int totalFiles = files.Length;
+
+        if (totalFiles == 0)
         {
+            context.ReportProgress(100.0, "0 archivos");
+        }
+
+        long lastReportTicks = 0;
+        for (int i = 0; i < totalFiles; i++)
+        {
+            string filePath = files[i];
             count++;
             cancellationToken.ThrowIfCancellationRequested();
+
+            long nowTicks = Environment.TickCount64;
+            if (i == 0 || i == totalFiles - 1 || nowTicks - lastReportTicks > 60)
+            {
+                lastReportTicks = nowTicks;
+                double pct = ((double)(i + 1) / totalFiles) * 100.0;
+                context.ReportProgress(pct, $"{count}/{totalFiles} ({pct:F0}%)");
+            }
+
             var fileItem = new FileItemContext(filePath, isDirectory: false);
             fileItem.Metadata["SourceRootPath"] = sourcePath;
             fileItem.Metadata["Counter"] = count;
@@ -58,6 +76,7 @@ public class FolderSourceNode : IFlowNode
             await context.EmitAsync("Out", fileItem);
         }
 
+        context.ReportProgress(100.0, $"{count}/{totalFiles} (100%)");
         context.Log($"FolderSourceNode scanned and emitted {count} items.", LogLevel.Information);
     }
 }
