@@ -1,9 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using FileFlow.App.Messages;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -34,8 +35,6 @@ public partial class NodeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public static event Action<NodeViewModel>? NodeSelected;
-
     partial void OnIsSelectedChanged(bool value)
     {
         // La selección simple no abre forzosamente el inspector
@@ -45,7 +44,7 @@ public partial class NodeViewModel : ObservableObject
     public void InspectNode()
     {
         IsSelected = true;
-        NodeSelected?.Invoke(this);
+        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new FileFlow.App.Messages.NodeSelectedMessage(this, autoOpenInspector: true));
     }
 
     [ObservableProperty]
@@ -222,49 +221,13 @@ public partial class NodeViewModel : ObservableObject
         AccentColor = colorHex;
     }
 
-    private static readonly int[] CustomColors = new int[16];
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct CHOOSECOLOR
-    {
-        public int lStructSize;
-        public IntPtr hwndOwner;
-        public IntPtr hInstance;
-        public int rgbResult;
-        public IntPtr lpCustColors;
-        public int Flags;
-        public IntPtr lCustData;
-        public IntPtr lpfnHook;
-        public IntPtr lpTemplateName;
-    }
-
-    [DllImport("comdlg32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern bool ChooseColor(ref CHOOSECOLOR cc);
-
     [RelayCommand]
     public void ChooseCustomColor()
     {
-        var gch = GCHandle.Alloc(CustomColors, GCHandleType.Pinned);
-        try
+        var hexColor = Services.ColorPickerService.Instance.PickColorHex();
+        if (!string.IsNullOrEmpty(hexColor))
         {
-            var cc = new CHOOSECOLOR();
-            cc.lStructSize = Marshal.SizeOf(cc);
-            cc.lpCustColors = gch.AddrOfPinnedObject();
-            cc.Flags = 0x00000002 | 0x00000001; // CC_FULLOPEN | CC_RGBINIT
-
-            if (ChooseColor(ref cc))
-            {
-                int rgb = cc.rgbResult;
-                byte r = (byte)(rgb & 0xFF);
-                byte g = (byte)((rgb >> 8) & 0xFF);
-                byte b = (byte)((rgb >> 16) & 0xFF);
-                string hexColor = $"#{r:X2}{g:X2}{b:X2}";
-                ChangeColor(hexColor);
-            }
-        }
-        finally
-        {
-            gch.Free();
+            ChangeColor(hexColor);
         }
     }
 

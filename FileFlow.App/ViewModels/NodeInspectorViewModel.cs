@@ -3,17 +3,20 @@ using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using FileFlow.App.Messages;
+using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk;
-using Microsoft.Win32;
 
 namespace FileFlow.App.ViewModels;
 
 public record MetadataDiffItem(string Key, string? OldValue, string? NewValue, string ChangeType);
 
-public partial class NodeInspectorViewModel : ObservableObject
+public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeSelectedMessage>
 {
     private readonly EditorViewModel _editorViewModel;
+    private readonly IFileDialogService _fileDialogService;
 
     [ObservableProperty]
     private NodeViewModel? _inspectedNode;
@@ -29,16 +32,12 @@ public partial class NodeInspectorViewModel : ObservableObject
 
     public ObservableCollection<MetadataDiffItem> MetadataDiffs { get; } = [];
 
-    public NodeInspectorViewModel(EditorViewModel editorViewModel)
+    public NodeInspectorViewModel(EditorViewModel editorViewModel, IFileDialogService fileDialogService)
     {
         _editorViewModel = editorViewModel;
-        NodeViewModel.NodeSelected += (node) =>
-        {
-            if (node != null)
-            {
-                InspectNode(node, autoOpen: true);
-            }
-        };
+        _fileDialogService = fileDialogService;
+
+        WeakReferenceMessenger.Default.RegisterAll(this);
 
         _editorViewModel.PropertyChanged += (s, e) =>
         {
@@ -50,6 +49,14 @@ public partial class NodeInspectorViewModel : ObservableObject
                 }
             }
         };
+    }
+
+    public void Receive(NodeSelectedMessage message)
+    {
+        if (message.Value != null)
+        {
+            InspectNode(message.Value, message.AutoOpenInspector);
+        }
     }
 
     public void InspectNode(NodeViewModel node, bool autoOpen = true)
@@ -136,17 +143,12 @@ public partial class NodeInspectorViewModel : ObservableObject
     {
         if (InspectedNode == null) return;
 
-        var ofd = new OpenFileDialog
-        {
-            Title = "Seleccionar archivo para prueba aislada del nodo",
-            Filter = "Todos los archivos (*.*)|*.*"
-        };
-
-        if (ofd.ShowDialog() == true)
+        var filePath = _fileDialogService.ShowOpenFileDialog("Seleccionar archivo para prueba aislada del nodo", "Todos los archivos (*.*)|*.*");
+        if (!string.IsNullOrEmpty(filePath))
         {
             try
             {
-                var item = new FileItemContext(ofd.FileName, isDirectory: false);
+                var item = new FileItemContext(filePath, isDirectory: false);
                 string inputPort = InspectedNode.InputPorts.FirstOrDefault()?.Name ?? string.Empty;
 
                 var snapshotIn = NodeDataSnapshot.CreateInput(InspectedNode.Id, inputPort, item);

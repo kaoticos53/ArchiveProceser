@@ -135,3 +135,27 @@ public class BooleanToGridLengthConverter : IValueConverter
     }
 }
 
+public class InputOutputBulletConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        bool isInput = value is bool b && b;
+        return isInput ? "🔵 " : "🟢 ";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+}
+
+public class InputOutputBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        bool isInput = value is bool b && b;
+        return isInput 
+            ? Application.Current?.FindResource("AccentCyanBrush") ?? System.Windows.Media.Brushes.Cyan
+            : Application.Current?.FindResource("AccentSuccessBrush") ?? System.Windows.Media.Brushes.LimeGreen;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+}
+

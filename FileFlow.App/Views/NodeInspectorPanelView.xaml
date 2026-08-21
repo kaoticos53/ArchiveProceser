@@ -4,16 +4,33 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             xmlns:conv="clr-namespace:FileFlow.App.Converters"
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=vm:NodeInspectorViewModel}"
              d:DesignHeight="750" d:DesignWidth="380">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+            <conv:InverseNullToVisibilityConverter x:Key="InverseNullToVisibilityConverter" />
+            <conv:DiffChangeTypeToBrushConverter x:Key="DiffChangeTypeToBrushConverter" />
+            <conv:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
+            <conv:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
+
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Templates/InspectorTemplates.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
     <Border Background="{DynamicResource BgSurfaceBrush}" 
             BorderBrush="{DynamicResource BorderDarkBrush}" 
             BorderThickness="1,0,0,0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <!-- State 1: When NO node is selected -->
+            <!-- Estado 1: Sin nodo seleccionado -->
             <Grid Visibility="{Binding InspectedNode, Converter={StaticResource InverseNullToVisibilityConverter}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -36,7 +53,7 @@
                 </StackPanel>
             </Grid>
 
-            <!-- State 2: When a node is selected -->
+            <!-- Estado 2: Nodo Seleccionado -->
             <Grid Visibility="{Binding InspectedNode, Converter={StaticResource NullToVisibilityConverter}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -44,7 +61,7 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <!-- Panel Header -->
+                <!-- Encabezado del Panel de Inspección -->
                 <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="14,12">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -63,20 +80,20 @@
                             <TextBlock Text="{Binding InspectedNode.Category}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
                         </StackPanel>
 
-                        <!-- Test Node Button -->
+                        <!-- Botón Probar Nodo -->
                         <Button Grid.Column="1" Command="{Binding TestNodeWithCustomFileCommand}" Style="{StaticResource SecondaryButton}" 
                                 Padding="10,5" Margin="0,0,8,0" ToolTip="Probar este nodo de forma aislada con un archivo">
                             <TextBlock Text="🧪 Probar" FontSize="11" FontWeight="SemiBold" />
                         </Button>
 
-                        <!-- Close Button -->
+                        <!-- Botón Cerrar -->
                         <Button Grid.Column="2" Command="{Binding ClosePanelCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="Cerrar Inspector">
                             <TextBlock Text="✕" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Button>
                     </Grid>
                 </Border>
 
-                <!-- Error Alert Banner (if node faulted) -->
+                <!-- Banner de Alerta de Error (si el nodo falló) -->
                 <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentErrorBrush}" BorderThickness="0,0,0,1" Padding="12"
                         Visibility="{Binding InspectedNode.LastErrorDetails, Converter={StaticResource NullToVisibilityConverter}}">
                     <StackPanel>
@@ -89,14 +106,13 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Modern Segmented Tabs -->
+                <!-- Pestañas del Inspector -->
                 <TabControl Grid.Row="2" Margin="12,10,12,12">
                     
-                    <!-- TAB 1: Node Config & Parameters (ALWAYS VISIBLE & EDITABLE) -->
+                    <!-- PESTAÑA 1: Parámetros del Nodo -->
                     <TabItem Header="⚙️ Parámetros">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
                             <StackPanel>
-                                <!-- Description Box -->
                                 <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                     <StackPanel>
                                         <TextBlock Text="Descripción del Nodo" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4" />
@@ -104,35 +120,22 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Parameters Form -->
                                 <TextBlock Text="Configuración de Parámetros:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
                                 
                                 <ItemsControl ItemsSource="{Binding InspectedNode.Parameters}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource BgCardBrush}" 
-                                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                    BorderThickness="1" 
-                                                    CornerRadius="6" 
-                                                    Padding="10,8" 
-                                                    Margin="0,0,0,8">
+                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding Key}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4" />
-                                                    
-                                                    <!-- String / Path / Number Value Input -->
                                                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" 
-                                                             Background="{DynamicResource BgSurfaceBrush}" 
-                                                             Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                             BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                             Padding="8,5" 
-                                                             FontSize="12" />
+                                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="12" />
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <!-- Ports Summary -->
                                 <TextBlock Text="Puertos de Conexión:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,8,0,8" />
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -140,7 +143,6 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Inputs -->
                                     <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,4,0">
                                         <StackPanel>
                                             <TextBlock Text="Entradas (In)" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,0,0,6" />
@@ -154,7 +156,6 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Outputs -->
                                     <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="4,0,0,0">
                                         <StackPanel>
                                             <TextBlock Text="Salidas (Out)" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentSuccessBrush}" Margin="0,0,0,6" />
@@ -172,226 +173,42 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <!-- TAB 2: Outputs Snapshots with Expandable Metadata -->
+                    <!-- PESTAÑA 2: Snapshots de Salida -->
                     <TabItem Header="📤 Salidas">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-
                             <TextBlock Grid.Row="0" Text="Salidas Generadas (Click en ▶ para ver metadata):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
-
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding InspectedNode.OutputSnapshots}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{DynamicResource BgCardBrush}" 
-                                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                    BorderThickness="1" 
-                                                    CornerRadius="6" 
-                                                    Margin="0,0,0,8">
-                                                <Expander IsExpanded="False" Padding="8,6">
-                                                    <Expander.Header>
-                                                        <Grid HorizontalAlignment="Stretch">
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition Height="Auto" />
-                                                                <RowDefinition Height="Auto" />
-                                                            </Grid.RowDefinitions>
-                                                            <!-- Header Row 1: Port + Timestamp -->
-                                                            <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                                                <TextBlock Text="🟢 " FontSize="11" />
-                                                                <TextBlock Text="{Binding PortName}" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" FontSize="12" />
-                                                                <TextBlock Text=" • " Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
-                                                            </StackPanel>
-                                                            <!-- Header Row 2: Current Path -->
-                                                            <TextBlock Grid.Row="1" Text="{Binding ItemSnapshot.CurrentPath}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                       FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" ToolTip="{Binding ItemSnapshot.CurrentPath}" />
-                                                        </Grid>
-                                                    </Expander.Header>
-                                                    <!-- Expandable Content: Full Metadata, Paths & Tags -->
-                                                    <Border Background="{DynamicResource BgSurfaceBrush}" 
-                                                            BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                            BorderThickness="0,1,0,0" 
-                                                            Padding="10,8" 
-                                                            Margin="-4,6,-4,-4">
-                                                        <StackPanel>
-                                                            <!-- Original Path -->
-                                                            <TextBlock Text="Ruta Original:" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                            <TextBox Text="{Binding ItemSnapshot.OriginalPath, Mode=OneWay}" 
-                                                                     IsReadOnly="True" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,1,0,6" />
-
-                                                            <!-- File Size & IsDirectory -->
-                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                                <TextBlock Text="Tamaño: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                                <TextBlock Text="{Binding ItemSnapshot.FileSizeBytes}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                                <TextBlock Text=" bytes" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0" />
-                                                                <TextBlock Text="Carpeta: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                                <TextBlock Text="{Binding ItemSnapshot.IsDirectory}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                            </StackPanel>
-
-                                                            <!-- Metadata Dictionary -->
-                                                            <TextBlock Text="Metadatos Asociados:" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,4" />
-                                                            <ItemsControl ItemsSource="{Binding ItemSnapshot.Metadata}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,1">
-                                                                            <Grid>
-                                                                                <Grid.ColumnDefinitions>
-                                                                                    <ColumnDefinition Width="Auto" MinWidth="90" />
-                                                                                    <ColumnDefinition Width="*" />
-                                                                                </Grid.ColumnDefinitions>
-                                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
-                                                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10.5" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" FontFamily="Cascadia Code, Consolas, monospace" VerticalAlignment="Center" Margin="6,0,0,0" />
-                                                                            </Grid>
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-
-                                                            <!-- Tags -->
-                                                            <TextBlock Text="Etiquetas (Tags):" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,3" />
-                                                            <ItemsControl ItemsSource="{Binding ItemSnapshot.Tags}">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <WrapPanel Orientation="Horizontal" />
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Border Background="{DynamicResource AccentHoverBrush}" CornerRadius="8" Padding="6,2" Margin="0,0,4,4">
-                                                                            <TextBlock Text="{Binding}" FontSize="10" Foreground="#FFFFFF" FontWeight="SemiBold" />
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </Expander>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding InspectedNode.OutputSnapshots}" ItemTemplate="{StaticResource SnapshotExpanderTemplate}" />
                             </ScrollViewer>
                         </Grid>
                     </TabItem>
 
-                    <!-- TAB 3: Inputs Snapshots with Expandable Metadata -->
+                    <!-- PESTAÑA 3: Snapshots de Entrada -->
                     <TabItem Header="📥 Entradas">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-
                             <TextBlock Grid.Row="0" Text="Entradas Recibidas (Click en ▶ para ver metadata):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
-
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding InspectedNode.InputSnapshots}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{DynamicResource BgCardBrush}" 
-                                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                    BorderThickness="1" 
-                                                    CornerRadius="6" 
-                                                    Margin="0,0,0,8">
-                                                <Expander IsExpanded="False" Padding="8,6">
-                                                    <Expander.Header>
-                                                        <Grid HorizontalAlignment="Stretch">
-                                                            <Grid.RowDefinitions>
-                                                                <RowDefinition Height="Auto" />
-                                                                <RowDefinition Height="Auto" />
-                                                            </Grid.RowDefinitions>
-                                                            <!-- Header Row 1: Port + Timestamp -->
-                                                            <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                                                <TextBlock Text="🔵 " FontSize="11" />
-                                                                <TextBlock Text="{Binding PortName}" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" FontSize="12" />
-                                                                <TextBlock Text=" • " Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
-                                                            </StackPanel>
-                                                            <!-- Header Row 2: Current Path -->
-                                                            <TextBlock Grid.Row="1" Text="{Binding ItemSnapshot.CurrentPath}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                       FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" ToolTip="{Binding ItemSnapshot.CurrentPath}" />
-                                                        </Grid>
-                                                    </Expander.Header>
-                                                    <!-- Expandable Content: Full Metadata, Paths & Tags -->
-                                                    <Border Background="{DynamicResource BgSurfaceBrush}" 
-                                                            BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                            BorderThickness="0,1,0,0" 
-                                                            Padding="10,8" 
-                                                            Margin="-4,6,-4,-4">
-                                                        <StackPanel>
-                                                            <!-- Original Path -->
-                                                            <TextBlock Text="Ruta Original:" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                            <TextBox Text="{Binding ItemSnapshot.OriginalPath, Mode=OneWay}" 
-                                                                     IsReadOnly="True" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,1,0,6" />
-
-                                                            <!-- File Size & IsDirectory -->
-                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                                                <TextBlock Text="Tamaño: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                                <TextBlock Text="{Binding ItemSnapshot.FileSizeBytes}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                                <TextBlock Text=" bytes" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0" />
-                                                                <TextBlock Text="Carpeta: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                                <TextBlock Text="{Binding ItemSnapshot.IsDirectory}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                            </StackPanel>
-
-                                                            <!-- Metadata Dictionary -->
-                                                            <TextBlock Text="Metadatos Asociados:" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,4" />
-                                                            <ItemsControl ItemsSource="{Binding ItemSnapshot.Metadata}">
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,1">
-                                                                            <Grid>
-                                                                                <Grid.ColumnDefinitions>
-                                                                                    <ColumnDefinition Width="Auto" MinWidth="90" />
-                                                                                    <ColumnDefinition Width="*" />
-                                                                                </Grid.ColumnDefinitions>
-                                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
-                                                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10.5" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" FontFamily="Cascadia Code, Consolas, monospace" VerticalAlignment="Center" Margin="6,0,0,0" />
-                                                                            </Grid>
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-
-                                                            <!-- Tags -->
-                                                            <TextBlock Text="Etiquetas (Tags):" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,3" />
-                                                            <ItemsControl ItemsSource="{Binding ItemSnapshot.Tags}">
-                                                                <ItemsControl.ItemsPanel>
-                                                                    <ItemsPanelTemplate>
-                                                                        <WrapPanel Orientation="Horizontal" />
-                                                                    </ItemsPanelTemplate>
-                                                                </ItemsControl.ItemsPanel>
-                                                                <ItemsControl.ItemTemplate>
-                                                                    <DataTemplate>
-                                                                        <Border Background="{DynamicResource AccentHoverBrush}" CornerRadius="8" Padding="6,2" Margin="0,0,4,4">
-                                                                            <TextBlock Text="{Binding}" FontSize="10" Foreground="#FFFFFF" FontWeight="SemiBold" />
-                                                                        </Border>
-                                                                    </DataTemplate>
-                                                                </ItemsControl.ItemTemplate>
-                                                            </ItemsControl>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </Expander>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding InspectedNode.InputSnapshots}" ItemTemplate="{StaticResource SnapshotExpanderTemplate}" />
                             </ScrollViewer>
                         </Grid>
                     </TabItem>
 
-                    <!-- TAB 4: Metadata Diff -->
+                    <!-- PESTAÑA 4: Diferencias de Metadatos (Diff) -->
                     <TabItem Header="📊 Diff">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-
                             <TextBlock Grid.Row="0" Text="Diferencias de Metadatos (Entrada vs Salida):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
-
                             <DataGrid Grid.Row="1" ItemsSource="{Binding MetadataDiffs}" AutoGenerateColumns="False" 
                                       IsReadOnly="True" 
                                       Background="{DynamicResource BgCardBrush}" 
@@ -419,18 +236,12 @@
                         </Grid>
                     </TabItem>
 
-                    <!-- TAB 5: Trace & Execution History -->
+                    <!-- PESTAÑA 5: Historial y Trazabilidad -->
                     <TabItem Header="📜 Historial">
                         <ScrollViewer Margin="0,4,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Detalles del Archivo Seleccionado:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
-                                
-                                <Border Background="{DynamicResource BgCardBrush}" 
-                                        BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                        BorderThickness="1" 
-                                        CornerRadius="6" 
-                                        Padding="10" 
-                                        Margin="0,0,0,10">
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                                     <StackPanel>
                                         <TextBlock Text="Ruta Actual:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         <TextBox Text="{Binding SelectedSnapshot.ItemSnapshot.CurrentPath, Mode=OneWay}" 
@@ -452,12 +263,7 @@
                                 <ItemsControl ItemsSource="{Binding SelectedSnapshot.ItemSnapshot.ExecutionLog}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource BgSurfaceBrush}" 
-                                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                    BorderThickness="1" 
-                                                    Padding="8,6" 
-                                                    Margin="0,0,0,4" 
-                                                    CornerRadius="4">
+                                            <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Padding="8,6" Margin="0,0,0,4" CornerRadius="4">
                                                 <TextBlock Text="{Binding}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" FontFamily="Cascadia Code, Consolas, monospace" TextWrapping="Wrap" />
                                             </Border>
                                         </DataTemplate>

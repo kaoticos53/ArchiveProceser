@@ -1,0 +1,72 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:nodify="clr-namespace:Nodify;assembly=Nodify">
+
+    <!-- NODIFY BLENDER NODE STYLE -->
+    <Style x:Key="BlenderNodeStyle" TargetType="{x:Type nodify:Node}">
+        <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="Effect" Value="{DynamicResource NodeShadowEffect}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type nodify:Node}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10"
+                            HorizontalAlignment="Stretch">
+                        <Grid HorizontalAlignment="Stretch">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Node Header -->
+                            <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" CornerRadius="8,8,0,0" Padding="12,8" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" HorizontalAlignment="Stretch">
+                                <ContentPresenter ContentSource="Header" HorizontalAlignment="Stretch" />
+                            </Border>
+
+                            <!-- Node Body -->
+                            <Border Grid.Row="1" Padding="0,8" HorizontalAlignment="Stretch">
+                                <ContentPresenter HorizontalAlignment="Stretch" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- NODIFY PORTS (INPUT / OUTPUT) STYLES -->
+    <Style TargetType="{x:Type nodify:NodeInput}">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style TargetType="{x:Type nodify:NodeOutput}">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style TargetType="{x:Type nodify:Connector}">
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+
+    <!-- NODIFY CANVAS / EDITOR STYLE -->
+    <Style TargetType="{x:Type nodify:NodifyEditor}">
+        <Setter Property="Background" Value="{DynamicResource BgEditorBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+</ResourceDictionary>

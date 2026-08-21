@@ -2,10 +2,10 @@ using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
-using Microsoft.Win32;
 
 namespace FileFlow.App.ViewModels;
 
@@ -15,6 +15,8 @@ public partial class ControlBarViewModel : ObservableObject
     private readonly PluginLoader _pluginLoader;
     private readonly LogViewModel _logViewModel;
     private readonly NodeInspectorViewModel _nodeInspectorViewModel;
+    private readonly IFileDialogService _fileDialogService;
+    private readonly IWorkflowStorageService _workflowStorageService;
     private WorkflowExecutor? _activeExecutor;
     private WorkflowDebugSession? _activeDebugSession;
     private CancellationTokenSource? _cts;
@@ -56,8 +58,20 @@ public partial class ControlBarViewModel : ObservableObject
         }
     }
 
-    public ControlBarViewModel(EditorViewModel editorViewModel, PluginLoader pluginLoader, LogViewModel logViewModel, NodeInspectorViewModel nodeInspectorViewModel)
+    public ControlBarViewModel(
+        EditorViewModel editorViewModel, 
+        PluginLoader pluginLoader, 
+        LogViewModel logViewModel, 
+        NodeInspectorViewModel nodeInspectorViewModel,
+        IFileDialogService fileDialogService,
+        IWorkflowStorageService workflowStorageService)
     {
+        _editorViewModel = editorViewModel;
+        _pluginLoader = pluginLoader;
+        _logViewModel = logViewModel;
+        _nodeInspectorViewModel = nodeInspectorViewModel;
+        _fileDialogService = fileDialogService;
+        _workflowStorageService = workflowStorageService;
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
         _logViewModel = logViewModel;
@@ -294,23 +308,16 @@ public partial class ControlBarViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void SaveWorkflow()
+    public async Task SaveWorkflowAsync()
     {
-        var saveFileDialog = new SaveFileDialog
-        {
-            Filter = "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*",
-            DefaultExt = ".json",
-            FileName = "flujo.json"
-        };
-
-        if (saveFileDialog.ShowDialog() == true)
+        var filePath = _fileDialogService.ShowSaveFileDialog("Guardar Flujo", "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json", "flujo.json");
+        if (!string.IsNullOrEmpty(filePath))
         {
             try
             {
                 var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
-                string json = graph.ToJson();
-                File.WriteAllText(saveFileDialog.FileName, json);
-                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Flujo guardado en {saveFileDialog.FileName}");
+                await _workflowStorageService.SaveWorkflowAsync(filePath, graph);
+                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Flujo guardado en {filePath}");
             }
             catch (Exception ex)
             {
@@ -320,23 +327,17 @@ public partial class ControlBarViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void LoadWorkflow()
+    public async Task LoadWorkflowAsync()
     {
-        var openFileDialog = new OpenFileDialog
-        {
-            Filter = "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*",
-            DefaultExt = ".json"
-        };
-
-        if (openFileDialog.ShowDialog() == true)
+        var filePath = _fileDialogService.ShowOpenFileDialog("Cargar Flujo", "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json");
+        if (!string.IsNullOrEmpty(filePath))
         {
             try
             {
-                string json = File.ReadAllText(openFileDialog.FileName);
-                var graph = WorkflowGraph.FromJson(json);
+                var graph = await _workflowStorageService.LoadWorkflowAsync(filePath);
                 _editorViewModel.LoadFromGraphModel(graph);
                 WorkflowName = graph.Name;
-                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Flujo cargado desde {openFileDialog.FileName}");
+                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Flujo cargado desde {filePath}");
             }
             catch (Exception ex)
             {

@@ -2,52 +2,63 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:nodify="clr-namespace:Nodify;assembly=Nodify"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:nodify="https://miroiu.github.io/nodify"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             xmlns:conv="clr-namespace:FileFlow.App.Converters"
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              xmlns:sdk="clr-namespace:FileFlow.Sdk;assembly=FileFlow.Sdk"
+             xmlns:components="clr-namespace:FileFlow.App.Views.Components"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="800">
-    <UserControl.InputBindings>
-        <KeyBinding Key="Delete" Command="{Binding DeleteSelectedNodesCommand}" />
-    </UserControl.InputBindings>
+             d:DataContext="{d:DesignInstance Type=vm:EditorViewModel}"
+             d:DesignHeight="700" d:DesignWidth="1000">
 
-    <Grid Background="{DynamicResource BgEditorBrush}" AllowDrop="True" Drop="Editor_Drop">
-        <nodify:NodifyEditor Background="{DynamicResource BgEditorBrush}"
-                             GridCellSize="24"
-                             ItemsSource="{Binding Nodes}"
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Templates/NodeParameterTemplates.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
+            <conv:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource BgEditorBrush}">
+        <!-- Canvas Nodify con soporte para Drag & Drop y Selección de Nodos -->
+        <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              PendingConnection="{Binding PendingConnection}"
                              DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
-                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}">
-            
+                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
+                             AllowDrop="True"
+                             Drop="Editor_Drop"
+                             Background="{DynamicResource BgEditorBrush}">
+
+            <!-- Quitar bordes parásitos del ItemContainer por defecto de Nodify -->
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                    <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
-                    <Setter Property="MinWidth" Value="180" />
-                    <Setter Property="MaxWidth" Value="{Binding MaxWidth}" />
-                    <Setter Property="BorderBrush" Value="Transparent" />
-                    <Setter Property="BorderThickness" Value="0" />
-                    <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="{x:Type nodify:ItemContainer}">
-                                <ContentPresenter />
+                                <Border Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Padding="0" Margin="0">
+                                    <ContentPresenter />
+                                </Border>
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 
-            <!-- Custom Node Card Template with Resizable Handle and Category/Custom Colors -->
+            <!-- Plantilla de la Tarjeta del Nodo -->
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
                     <Grid HorizontalAlignment="Stretch">
-                        <!-- Selection Glow Indicator (ONLY when selected) -->
+                        <!-- Resplandor exterior exclusivo de Selección -->
                         <Border BorderBrush="{DynamicResource AccentPrimaryBrush}" 
                                 BorderThickness="2" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False"
                                 Visibility="{Binding IsSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -62,6 +73,8 @@
                                      HorizontalContentAlignment="Stretch"
                                      MouseDoubleClick="Node_MouseDoubleClick"
                                      Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}">
+                            
+                            <!-- Menú contextual del nodo -->
                             <nodify:Node.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorTitle]}"
@@ -80,6 +93,7 @@
 
                                     <Separator />
 
+                                    <!-- Paleta de colores rápidos -->
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ChangeColor]}">
                                         <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorEmerald]}"
                                                   Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
@@ -158,14 +172,16 @@
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                 </ContextMenu>
                             </nodify:Node.ContextMenu>
+
+                            <!-- Encabezado de la Tarjeta del Nodo -->
                             <nodify:Node.HeaderTemplate>
                                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
                                     <Border Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="10,8">
                                         <StackPanel>
-                                            <!-- Top Accent Strip for Custom/Category Node Colors -->
+                                            <!-- Barra de acento superior -->
                                             <Border Height="3" Background="{Binding AccentColor}" CornerRadius="2" Margin="-10,-8,-10,6" />
 
-                                            <!-- Main Header Row -->
+                                            <!-- Fila principal de cabecera -->
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
@@ -175,7 +191,7 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- Breakpoint Toggle Circle -->
+                                                <!-- Botón Breakpoint -->
                                                 <Button Grid.Column="0" Command="{Binding ToggleBreakpointCommand}" 
                                                         Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,6,0"
                                                         Cursor="Hand" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}">
@@ -184,17 +200,15 @@
                                                              Stroke="{DynamicResource BorderDarkBrush}" StrokeThickness="1.5" />
                                                 </Button>
 
-                                                <!-- LED Execution Indicator (Off / Running / Paused / Error) -->
+                                                <!-- Indicador LED de Estado de Ejecución -->
                                                 <Border Grid.Column="1" Width="9" Height="9" CornerRadius="4.5" Margin="0,0,7,0" VerticalAlignment="Center">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
-                                                            <!-- Default: Off (Dark Slate) -->
                                                             <Setter Property="Background" Value="#1C212E" />
                                                             <Setter Property="BorderBrush" Value="#323B4E" />
                                                             <Setter Property="BorderThickness" Value="1.2" />
                                                             <Setter Property="ToolTip" Value="Inactivo" />
                                                             <Style.Triggers>
-                                                                <!-- Running: Bright Purple LED Glow (Morado Procesando) -->
                                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Running}">
                                                                     <Setter Property="Background" Value="#A855F7" />
                                                                     <Setter Property="BorderBrush" Value="#D8B4FE" />
@@ -205,7 +219,6 @@
                                                                         </Setter.Value>
                                                                     </Setter>
                                                                 </DataTrigger>
-                                                                <!-- Completed: Emerald Green Glow -->
                                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Completed}">
                                                                     <Setter Property="Background" Value="#10B981" />
                                                                     <Setter Property="BorderBrush" Value="#6EE7B7" />
@@ -216,7 +229,6 @@
                                                                         </Setter.Value>
                                                                     </Setter>
                                                                 </DataTrigger>
-                                                                <!-- Paused: Amber Glow -->
                                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.PausedAtBreakpoint}">
                                                                     <Setter Property="Background" Value="#F59E0B" />
                                                                     <Setter Property="BorderBrush" Value="#FDE68A" />
@@ -227,7 +239,6 @@
                                                                         </Setter.Value>
                                                                     </Setter>
                                                                 </DataTrigger>
-                                                                <!-- PausedOnError / Faulted: Red Glow -->
                                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.PausedOnError}">
                                                                     <Setter Property="Background" Value="#EF4444" />
                                                                     <Setter Property="BorderBrush" Value="#FCA5A5" />
@@ -253,15 +264,15 @@
                                                     </Border.Style>
                                                 </Border>
 
-                                                <!-- Title -->
+                                                <!-- Título del Nodo -->
                                                 <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                                 
-                                                <!-- Category Tag -->
+                                                <!-- Etiqueta de Categoría -->
                                                 <Border Grid.Column="3" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
                                                     <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="10" FontWeight="SemiBold" />
                                                 </Border>
                                                 
-                                                <!-- Parameters Toggle -->
+                                                <!-- Botón Expandir/Colapsar Parámetros -->
                                                 <ToggleButton Grid.Column="4"
                                                               IsChecked="{Binding IsExpanded, Mode=TwoWay}"
                                                               Content="⚙"
@@ -274,14 +285,13 @@
                                                               ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToggleParametersToolTip]}" />
                                             </Grid>
 
-                                            <!-- Iterative Progress Bar Below Title -->
+                                            <!-- Barra de Progreso Iterativa -->
                                             <Grid Margin="0,6,0,0" Visibility="{Binding IsProgressActive, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
 
-                                                <!-- Progress Track -->
                                                 <ProgressBar Grid.Row="0" Value="{Binding ProgressPercentage, Mode=OneWay}" Minimum="0" Maximum="100" Height="4" 
                                                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource AccentSuccessBrush}" BorderThickness="0">
                                                     <ProgressBar.Template>
@@ -296,7 +306,6 @@
                                                     </ProgressBar.Template>
                                                 </ProgressBar>
 
-                                                <!-- Progress Count / Detail String -->
                                                 <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="9" Margin="0,2,0,0" 
                                                            HorizontalAlignment="Right" />
                                             </Grid>
@@ -305,9 +314,10 @@
                                 </DataTemplate>
                             </nodify:Node.HeaderTemplate>
 
+                            <!-- Cuerpo del Nodo: Puertos y Parámetros -->
                             <Border Padding="0,4">
                                 <StackPanel>
-                                    <!-- Ports Row -->
+                                    <!-- Fila de Puertos (Entradas y Salidas en borde exterior) -->
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -315,7 +325,7 @@
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Input Ports -->
+                                        <!-- Puertos de Entrada -->
                                         <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:PortViewModel}">
@@ -356,7 +366,7 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
 
-                                        <!-- Output Ports -->
+                                        <!-- Puertos de Salida -->
                                         <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputPorts}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type vm:PortViewModel}">
@@ -397,7 +407,7 @@
                                         </ItemsControl>
                                     </Grid>
 
-                                    <!-- Collapsible Node Parameters Panel -->
+                                    <!-- Panel de Parámetros Colapsable -->
                                     <Border Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
                                             Background="{DynamicResource BgSurfaceBrush}"
                                             BorderBrush="{DynamicResource BorderDarkBrush}"
@@ -423,220 +433,15 @@
                                                 </Button>
                                             </Grid>
 
-                                            <ItemsControl ItemsSource="{Binding Parameters}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate DataType="{x:Type vm:NodeParameterViewModel}">
-                                                        <Grid Margin="0,3">
-                                                            <!-- Standard Node Parameter Row -->
-                                                            <Grid Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="ParamKey" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                </Grid.ColumnDefinitions>
-
-                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
-
-                                                                <!-- Dropdown ComboBox for parameters with options -->
-                                                                <ComboBox Grid.Column="1"
-                                                                          ItemsSource="{Binding Options}"
-                                                                          SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                          Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                          Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                          BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,2"
-                                                                          HorizontalAlignment="Stretch" />
-
-                                                                <!-- CheckBox for Boolean parameters -->
-                                                                <CheckBox Grid.Column="1"
-                                                                          IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                          Visibility="{Binding IsBooleanAndNoOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                          VerticalAlignment="Center" Margin="2,0,0,0" />
-
-                                                                <!-- Path Selector Input -->
-                                                                <Grid Grid.Column="1" 
-                                                                      Visibility="{Binding HasBrowseButton, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                      HorizontalAlignment="Stretch">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*" />
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                    </Grid.ColumnDefinitions>
-
-                                                                    <TextBox Grid.Column="0" 
-                                                                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                                                             Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="5,3"
-                                                                             HorizontalAlignment="Stretch">
-                                                                        <TextBox.Resources>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="CornerRadius" Value="4,0,0,4" />
-                                                                            </Style>
-                                                                        </TextBox.Resources>
-                                                                    </TextBox>
-
-                                                                    <Button Grid.Column="1" 
-                                                                            Command="{Binding BrowsePathCommand}" 
-                                                                            Content="📁" 
-                                                                            Background="{DynamicResource AccentPrimaryBrush}" 
-                                                                            Foreground="White" 
-                                                                            BorderThickness="0" 
-                                                                            Padding="6,2" 
-                                                                            FontSize="10" 
-                                                                            Cursor="Hand"
-                                                                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}">
-                                                                        <Button.Resources>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="CornerRadius" Value="0" />
-                                                                            </Style>
-                                                                        </Button.Resources>
-                                                                    </Button>
-
-                                                                    <Button Grid.Column="2" 
-                                                                            Command="{Binding OpenVariablePickerCommand}"
-                                                                            CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
-                                                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                                            Content="{}{x}" 
-                                                                            Background="{DynamicResource BgHoverBrush}" 
-                                                                            Foreground="{DynamicResource AccentGlowBrush}" 
-                                                                            BorderThickness="0" 
-                                                                            Padding="5,2" 
-                                                                            FontSize="10" 
-                                                                            FontWeight="Bold" 
-                                                                            Cursor="Hand"
-                                                                            ToolTip="Insertar variable dinámicamente ({x})">
-                                                                        <Button.Resources>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="CornerRadius" Value="0,4,4,0" />
-                                                                            </Style>
-                                                                        </Button.Resources>
-                                                                    </Button>
-                                                                </Grid>
-
-                                                                <!-- TextBox for standard text/numeric parameters -->
-                                                                <Grid Grid.Column="1"
-                                                                      Visibility="{Binding IsStandardInput, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                      HorizontalAlignment="Stretch">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*" />
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                    </Grid.ColumnDefinitions>
-
-                                                                    <TextBox Grid.Column="0"
-                                                                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="5,3"
-                                                                             HorizontalAlignment="Stretch">
-                                                                        <TextBox.Resources>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="CornerRadius" Value="4,0,0,4" />
-                                                                            </Style>
-                                                                        </TextBox.Resources>
-                                                                    </TextBox>
-
-                                                                    <Button Grid.Column="1" 
-                                                                            Command="{Binding OpenVariablePickerCommand}"
-                                                                            CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
-                                                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                                            Content="{}{x}" 
-                                                                            Background="{DynamicResource BgHoverBrush}" 
-                                                                            Foreground="{DynamicResource AccentGlowBrush}" 
-                                                                            BorderThickness="0" 
-                                                                            Padding="5,2" 
-                                                                            FontSize="10" 
-                                                                            FontWeight="Bold" 
-                                                                            Cursor="Hand"
-                                                                            ToolTip="Insertar variable dinámicamente ({x})">
-                                                                        <Button.Resources>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="CornerRadius" Value="0,4,4,0" />
-                                                                            </Style>
-                                                                        </Button.Resources>
-                                                                    </Button>
-                                                                </Grid>
-                                                            </Grid>
-
-                                                            <!-- Dynamic Variable Row for VariableInjectorNode -->
-                                                            <Grid Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="100" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-
-                                                                <!-- Variable Key / Name TextBox -->
-                                                                <TextBox Grid.Column="0"
-                                                                         Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                         Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource AccentPrimaryBrush}" 
-                                                                         BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
-                                                                         Margin="0,0,4,0" FontWeight="SemiBold"
-                                                                         ToolTip="Nombre de la variable">
-                                                                    <TextBox.Resources>
-                                                                        <Style TargetType="Border">
-                                                                            <Setter Property="CornerRadius" Value="4" />
-                                                                        </Style>
-                                                                    </TextBox.Resources>
-                                                                </TextBox>
-
-                                                                <!-- Variable Value / Expression TextBox -->
-                                                                <TextBox Grid.Column="1"
-                                                                         Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                         Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                         BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
-                                                                         HorizontalAlignment="Stretch">
-                                                                    <TextBox.Resources>
-                                                                        <Style TargetType="Border">
-                                                                            <Setter Property="CornerRadius" Value="4" />
-                                                                        </Style>
-                                                                    </TextBox.Resources>
-                                                                </TextBox>
-
-                                                                <!-- Insert Variable [{x}] Picker Button -->
-                                                                <Button Grid.Column="2" 
-                                                                        Command="{Binding OpenVariablePickerCommand}"
-                                                                        CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
-                                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                                        Content="{}{x}" 
-                                                                        Background="{DynamicResource BgHoverBrush}" 
-                                                                        Foreground="{DynamicResource AccentGlowBrush}" 
-                                                                        BorderThickness="0" 
-                                                                        Padding="5,2" 
-                                                                        FontSize="10" 
-                                                                        FontWeight="Bold" 
-                                                                        Cursor="Hand"
-                                                                        ToolTip="Insertar variable ({x})">
-                                                                    <Button.Resources>
-                                                                        <Style TargetType="Border">
-                                                                            <Setter Property="CornerRadius" Value="0" />
-                                                                        </Style>
-                                                                    </Button.Resources>
-                                                                </Button>
-
-                                                                <!-- Delete Variable Trash Button -->
-                                                                <Button Grid.Column="3"
-                                                                        Command="{Binding NodeOwner.RemoveParameterCommand}"
-                                                                        CommandParameter="{Binding}"
-                                                                        Content="🗑"
-                                                                        Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentErrorBrush}" 
-                                                                        BorderThickness="0" Padding="6,2" FontSize="10" Cursor="Hand"
-                                                                        ToolTip="Eliminar variable">
-                                                                    <Button.Resources>
-                                                                        <Style TargetType="Border">
-                                                                            <Setter Property="CornerRadius" Value="0,4,4,0" />
-                                                                        </Style>
-                                                                    </Button.Resources>
-                                                                </Button>
-                                                            </Grid>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                            <!-- Lista de Parámetros Modularizada -->
+                                            <ItemsControl ItemsSource="{Binding Parameters}" ItemTemplate="{StaticResource NodeParameterItemTemplate}" />
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
                             </Border>
                         </nodify:Node>
 
-                        <!-- Bottom Right Interactive Resize Handle -->
+                        <!-- Tirador interactivo de Redimensionamiento -->
                         <Thumb Width="14" Height="14"
                                HorizontalAlignment="Right"
                                VerticalAlignment="Bottom"
@@ -653,7 +458,7 @@
                 </DataTemplate>
             </nodify:NodifyEditor.ItemTemplate>
 
-            <!-- Smooth Pending Connection Curve -->
+            <!-- Curva de Conexión Pendiente -->
             <nodify:NodifyEditor.PendingConnectionTemplate>
                 <DataTemplate DataType="{x:Type vm:PendingConnectionViewModel}">
                     <nodify:PendingConnection StartedCommand="{Binding DataContext.StartConnectionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
@@ -667,7 +472,7 @@
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
 
-            <!-- Smooth Connection Wires with Native Context Menu -->
+            <!-- Conectores / Cables con Menú contextual para eliminar -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
                     <nodify:Connection Source="{Binding Source.Anchor}"
@@ -688,31 +493,7 @@
             </nodify:NodifyEditor.ConnectionTemplate>
         </nodify:NodifyEditor>
 
-        <!-- Floating Canvas Zoom / Scale Overlay Toolbar -->
-        <Border HorizontalAlignment="Right" 
-                VerticalAlignment="Bottom" 
-                Margin="0,0,18,18" 
-                Background="{DynamicResource BgCardBrush}" 
-                BorderBrush="{DynamicResource BorderDarkBrush}" 
-                BorderThickness="1" 
-                CornerRadius="8" 
-                Padding="8,5">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Color="#000000" Opacity="0.25" />
-            </Border.Effect>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Command="{Binding ZoomOutCommand}" Content="➖" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomOutToolTip]}" Background="Transparent" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
-                <Slider Minimum="0.2" Maximum="2.5" Value="{Binding ViewportZoom, Mode=TwoWay}" Width="110" VerticalAlignment="Center" Margin="6,0" SmallChange="0.05" LargeChange="0.1" IsSnapToTickEnabled="False" />
-                <Button Command="{Binding ZoomInCommand}" Content="➕" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomInToolTip]}" Background="Transparent" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="11" />
-                <TextBlock Text="{Binding ViewportZoom, StringFormat={}{0:P0}}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" FontWeight="Bold" Width="44" TextAlignment="Center" VerticalAlignment="Center" Margin="4,0" />
-                <Button Command="{Binding ResetZoomCommand}" Content="1:1" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ResetZoomToolTip]}" Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentPrimaryBrush}" BorderThickness="0" Padding="6,2" Cursor="Hand" FontSize="10" FontWeight="Bold" Margin="4,0,0,0">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="4" />
-                        </Style>
-                    </Button.Resources>
-                </Button>
-            </StackPanel>
-        </Border>
+        <!-- Barra Flotante de Zoom Modularizada -->
+        <components:EditorZoomBarView />
     </Grid>
 </UserControl>

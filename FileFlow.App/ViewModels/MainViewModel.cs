@@ -1,5 +1,6 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
+using FileFlow.App.Services;
 using FileFlow.Core.Plugins;
 
 namespace FileFlow.App.ViewModels;
@@ -12,6 +13,8 @@ public partial class MainViewModel : ObservableObject
     public NodeInspectorViewModel NodeInspector { get; }
     public ControlBarViewModel ControlBar { get; }
     public LogViewModel LogConsole { get; }
+    public IFileDialogService FileDialogService { get; }
+    public IWorkflowStorageService WorkflowStorageService { get; }
 
     public MainViewModel()
     {
@@ -28,11 +31,13 @@ public partial class MainViewModel : ObservableObject
 
         PluginLoader.LoadPluginDirectory(pluginsDirectory);
 
+        FileDialogService = new FileDialogService();
+        WorkflowStorageService = new WorkflowStorageService();
         LogConsole = new LogViewModel();
         Editor = new EditorViewModel(PluginLoader);
         Toolbox = new ToolboxViewModel(PluginLoader);
-        NodeInspector = new NodeInspectorViewModel(Editor);
-        ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector);
+        NodeInspector = new NodeInspectorViewModel(Editor, FileDialogService);
+        ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector, FileDialogService, WorkflowStorageService);
 
         LogConsole.AddLog(Sdk.LogLevel.Information, $"FileFlow Studio initialized with {PluginLoader.DiscoveredNodeTypes.Count} active plugin nodes.");
     }
