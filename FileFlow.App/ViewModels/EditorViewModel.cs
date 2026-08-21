@@ -138,6 +138,7 @@ public partial class EditorViewModel : ObservableObject
             Connections.Remove(conn);
         }
 
+        node.Cleanup();
         Nodes.Remove(node);
     }
 
@@ -158,6 +159,10 @@ public partial class EditorViewModel : ObservableObject
     public void ClearGraph()
     {
         Connections.Clear();
+        foreach (var node in Nodes)
+        {
+            node.Cleanup();
+        }
         Nodes.Clear();
         SelectedNode = null;
     }

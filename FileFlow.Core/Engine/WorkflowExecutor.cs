@@ -62,7 +62,9 @@ public class WorkflowExecutor
         set
         {
             _maxDegreeOfParallelism = Math.Max(1, value);
+            var oldThrottle = _concurrencyThrottle;
             _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
+            oldThrottle?.Dispose();
         }
     }
 
@@ -81,7 +83,7 @@ public class WorkflowExecutor
             if (!_isPaused)
             {
                 _isPaused = true;
-                _pauseSemaphore.WaitAsync();
+                _pauseSemaphore.Wait(0);
                 NotifyLog("Execution paused.", LogLevel.Information);
             }
         }
@@ -94,7 +96,10 @@ public class WorkflowExecutor
             if (_isPaused)
             {
                 _isPaused = false;
-                _pauseSemaphore.Release();
+                if (_pauseSemaphore.CurrentCount == 0)
+                {
+                    _pauseSemaphore.Release();
+                }
                 NotifyLog("Execution resumed.", LogLevel.Information);
             }
         }
@@ -208,12 +213,15 @@ public class WorkflowExecutor
         }
 
         var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
+        bool isMultipleTargets = matchingEdges.Count > 1;
 
         List<Task> dispatchTasks = [];
         foreach (var edge in matchingEdges)
         {
             if (_nodeInstances.TryGetValue(edge.TargetNodeId, out var targetNode))
             {
+                var targetItem = isMultipleTargets ? item.DeepClone() : item;
+
                 dispatchTasks.Add(Task.Run(async () =>
                 {
                     await WaitIfPausedAsync(cancellationToken);
@@ -221,15 +229,15 @@ public class WorkflowExecutor
 
                     if (DebugSession != null)
                     {
-                        DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, item));
-                        await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, item, cancellationToken);
+                        DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, targetItem));
+                        await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, targetItem, cancellationToken);
                     }
 
                     NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
 
                     try
                     {
-                        await targetNode.ExecuteAsync(edge.TargetPortName, item, targetContext, cancellationToken);
+                        await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken);
                         NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
@@ -237,7 +245,7 @@ public class WorkflowExecutor
                         NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
                         if (DebugSession != null)
                         {
-                            await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, item, ex, cancellationToken);
+                            await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, targetItem, ex, cancellationToken);
                         }
                         throw;
                     }

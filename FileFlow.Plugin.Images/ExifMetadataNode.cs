@@ -99,9 +99,9 @@ public class ExifMetadataNode : IFlowNode
                     item.Metadata["Megapixels"] = ((width * (double)height) / 1_000_000.0).ToString("F1", CultureInfo.InvariantCulture) + "MP";
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Non-critical image format fallback
+                context.Log($"ExifMetadataNode: Could not read image dimensions: {ex.Message}", LogLevel.Warning);
             }
 
             context.Log($"EXIF Extracted - DateTaken: {dateTaken}, Model: {cameraModel}", LogLevel.Information);

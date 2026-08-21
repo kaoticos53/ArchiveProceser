@@ -43,12 +43,13 @@ public class VariableInjectorNode : IFlowNode
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            string cleanKey = System.Text.RegularExpressions.Regex.Replace(key, @"[^\w]", "_");
             string exprValue = value?.ToString() ?? string.Empty;
             string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
-            item.Metadata[key] = resolvedValue;
+            item.Metadata[cleanKey] = resolvedValue;
 
-            context.Log($"[Inyector de Variables] Inyectado '{key}' = '{resolvedValue}'", LogLevel.Information);
-            item.AddLog($"VariableInjectorNode inyectó {key}={resolvedValue}");
+            context.Log($"[Inyector de Variables] Inyectado '{cleanKey}' = '{resolvedValue}'", LogLevel.Information);
+            item.AddLog($"VariableInjectorNode inyectó {cleanKey}={resolvedValue}");
         }
 
         await context.EmitAsync("Out", item);

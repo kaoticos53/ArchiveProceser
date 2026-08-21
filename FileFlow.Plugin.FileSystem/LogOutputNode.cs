@@ -39,7 +39,12 @@ public class LogOutputNode : IFlowNode
         bool logHistory = Parameters.TryGetValue("LogExecutionHistory", out var hVal) && Convert.ToBoolean(hVal);
         string levelStr = Parameters.TryGetValue("LogLevel", out var lVal) ? lVal?.ToString() ?? "Information" : "Information";
 
-        LogLevel level = Enum.TryParse<LogLevel>(levelStr, true, out var parsedLevel) ? parsedLevel : LogLevel.Information;
+        if (!Enum.TryParse<LogLevel>(levelStr, true, out var parsedLevel))
+        {
+            context.Log($"LogOutputNode: Invalid log level '{levelStr}', defaulting to Information.", LogLevel.Warning);
+            parsedLevel = LogLevel.Information;
+        }
+        LogLevel level = parsedLevel;
 
         var sb = new StringBuilder();
         sb.AppendLine($"=== [Log Inspector Output] ===");

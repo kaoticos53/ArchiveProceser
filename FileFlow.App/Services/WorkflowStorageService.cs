@@ -26,8 +26,22 @@ public class WorkflowStorageService : IWorkflowStorageService
             Directory.CreateDirectory(directory);
         }
 
-        await using var stream = File.Create(filePath);
-        await JsonSerializer.SerializeAsync(stream, graph, JsonOptions, ct).ConfigureAwait(false);
+        string tempPath = filePath + ".tmp_" + Guid.NewGuid().ToString("N");
+        try
+        {
+            await using (var stream = File.Create(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, graph, JsonOptions, ct).ConfigureAwait(false);
+            }
+            File.Move(tempPath, filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
     }
 
     public async ValueTask<WorkflowGraph> LoadWorkflowAsync(string filePath, CancellationToken ct = default)

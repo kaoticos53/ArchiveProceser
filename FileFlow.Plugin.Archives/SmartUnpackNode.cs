@@ -87,9 +87,20 @@ public class SmartUnpackNode : IFlowNode
                     Directory.CreateDirectory(finalExtractDir);
                 }
 
+                string fullTargetDir = Path.GetFullPath(finalExtractDir);
+
                 foreach (var entry in archive.Entries.Where(e => !e.IsDirectory))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
+                    string entryPath = entry.Key ?? string.Empty;
+                    string destinationPath = Path.GetFullPath(Path.Combine(finalExtractDir, entryPath));
+
+                    if (!destinationPath.StartsWith(fullTargetDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new System.Security.SecurityException($"Zip Slip attempt detected! Entry '{entryPath}' targets outside of extraction directory.");
+                    }
+
                     entry.WriteToDirectory(finalExtractDir, new ExtractionOptions
                     {
                         ExtractFullPath = true,

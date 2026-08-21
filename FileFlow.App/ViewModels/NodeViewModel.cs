@@ -214,6 +214,14 @@ public partial class NodeViewModel : ObservableObject
         Category = _nodeInstance.Category;
     }
 
+    public void Cleanup()
+    {
+        LocalizationManager.Instance.LanguageChanged -= OnLanguageChanged;
+        Parameters.Clear();
+        InputSnapshots.Clear();
+        OutputSnapshots.Clear();
+    }
+
     [RelayCommand]
     public void ChangeColor(string colorHex)
     {
