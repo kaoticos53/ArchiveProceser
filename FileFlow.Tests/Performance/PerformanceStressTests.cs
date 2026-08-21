@@ -37,4 +37,43 @@ public class PerformanceStressTests
         // Assert
         sw.ElapsedMilliseconds.Should().BeLessThan(1000, "10,000 template resolutions should complete in less than 1 second");
     }
+
+    [Fact]
+    public void NodeViewModel_SnapshotHistory_ShouldBeTrimmedToMaxRecordedSnapshots_UnderHighLoad()
+    {
+        // Arrange
+        var mockNode = new MockFlowNode();
+        var nodeVm = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new System.Windows.Point(0, 0));
+
+        // Act - Add 1,000 snapshots (exceeding MaxRecordedSnapshots of 500)
+        for (int i = 0; i < 1_000; i++)
+        {
+            var item = new FileItemContext($@"C:\Test\File_{i}.txt");
+            var snap = NodeDataSnapshot.CreateInput(nodeVm.Id, "In", item);
+            nodeVm.InputSnapshots.Add(snap);
+
+            if (nodeVm.InputSnapshots.Count > FileFlow.App.ViewModels.NodeViewModel.MaxRecordedSnapshots)
+            {
+                nodeVm.InputSnapshots.RemoveAt(0);
+            }
+        }
+
+        // Assert
+        nodeVm.InputSnapshots.Should().HaveCount(FileFlow.App.ViewModels.NodeViewModel.MaxRecordedSnapshots);
+        nodeVm.InputSnapshots[0].ItemSnapshot.CurrentPath.Should().Be(@"C:\Test\File_500.txt");
+        nodeVm.InputSnapshots.Last().ItemSnapshot.CurrentPath.Should().Be(@"C:\Test\File_999.txt");
+    }
+
+    private class MockFlowNode : IFlowNode
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Name => "Mock Node";
+        public string Category => "Testing";
+        public string Description => "Mock Node for Stress Testing";
+        public IReadOnlyList<NodePort> Inputs { get; } = Array.Empty<NodePort>();
+        public IReadOnlyList<NodePort> Outputs { get; } = Array.Empty<NodePort>();
+        public Dictionary<string, object?> Parameters { get; } = new();
+        public Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
 }
+
