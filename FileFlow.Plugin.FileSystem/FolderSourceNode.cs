@@ -22,6 +22,8 @@ public class FolderSourceNode : IFlowNode
     {
         ["SourcePath"] = @"C:\SampleFiles",
         ["Recursive"] = true,
+        ["EmitMode"] = "FilesOnly",
+        ["MaxRecursionDepth"] = -1,
         ["WatchRealtime"] = false
     };
 
@@ -32,8 +34,22 @@ public class FolderSourceNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string sourcePath = Parameters.TryGetValue("SourcePath", out var val) ? val?.ToString() ?? string.Empty : string.Empty;
-        bool recursive = Parameters.TryGetValue("Recursive", out var recVal) && Convert.ToBoolean(recVal);
-        bool watchRealtime = Parameters.TryGetValue("WatchRealtime", out var watchVal) && Convert.ToBoolean(watchVal);
+        bool recursive = !Parameters.TryGetValue("Recursive", out var recVal) || Convert.ToBoolean(recVal);
+        string emitMode = Parameters.TryGetValue("EmitMode", out var modeVal) ? modeVal?.ToString() ?? "FilesOnly" : "FilesOnly";
+        
+        int maxDepth = -1;
+        if (Parameters.TryGetValue("MaxRecursionDepth", out var depthVal) && depthVal != null)
+        {
+            if (int.TryParse(depthVal.ToString(), out int parsedDepth))
+            {
+                maxDepth = parsedDepth;
+            }
+        }
+
+        if (!recursive)
+        {
+            maxDepth = 0;
+        }
 
         if (string.IsNullOrWhiteSpace(sourcePath) || !Directory.Exists(sourcePath))
         {
@@ -41,42 +57,113 @@ public class FolderSourceNode : IFlowNode
             return;
         }
 
-        context.Log($"Scanning directory: {sourcePath} (Recursive={recursive})", LogLevel.Information);
+        bool emitFiles = true;
+        bool emitDirectories = false;
 
-        SearchOption searchOption = recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-        string[] files = Directory.GetFiles(sourcePath, "*.*", searchOption);
-
-        int count = 0;
-        int totalFiles = files.Length;
-
-        if (totalFiles == 0)
+        switch (emitMode.Trim().ToLowerInvariant())
         {
-            context.ReportProgress(100.0, "0 archivos");
+            case "directoriesonly":
+            case "directories":
+                emitFiles = false;
+                emitDirectories = true;
+                break;
+            case "filesanddirectories":
+            case "both":
+            case "all":
+                emitFiles = true;
+                emitDirectories = true;
+                break;
+            case "filesonly":
+            case "files":
+            default:
+                emitFiles = true;
+                emitDirectories = false;
+                break;
+        }
+
+        context.Log($"Scanning directory: {sourcePath} (EmitMode={emitMode}, MaxDepth={maxDepth}, Recursive={recursive})", LogLevel.Information);
+
+        var itemsToEmit = new List<FileItemContext>();
+        CollectItems(sourcePath, 0, maxDepth, emitFiles, emitDirectories, itemsToEmit, context, cancellationToken);
+
+        int totalItems = itemsToEmit.Count;
+        if (totalItems == 0)
+        {
+            context.ReportProgress(100.0, "0 elementos");
         }
 
         long lastReportTicks = 0;
-        for (int i = 0; i < totalFiles; i++)
+        for (int i = 0; i < totalItems; i++)
         {
-            string filePath = files[i];
-            count++;
+            var itemContext = itemsToEmit[i];
             cancellationToken.ThrowIfCancellationRequested();
 
             long nowTicks = Environment.TickCount64;
-            if (i == 0 || i == totalFiles - 1 || nowTicks - lastReportTicks > 60)
+            if (i == 0 || i == totalItems - 1 || nowTicks - lastReportTicks > 60)
             {
                 lastReportTicks = nowTicks;
-                double pct = ((double)(i + 1) / totalFiles) * 100.0;
-                context.ReportProgress(pct, $"{count}/{totalFiles} ({pct:F0}%)");
+                double pct = ((double)(i + 1) / totalItems) * 100.0;
+                context.ReportProgress(pct, $"{i + 1}/{totalItems} ({pct:F0}%)");
             }
 
-            var fileItem = new FileItemContext(filePath, isDirectory: false);
-            fileItem.Metadata["SourceRootPath"] = sourcePath;
-            fileItem.Metadata["Counter"] = count;
-            fileItem.AddLog($"Emitted by FolderSourceNode from {sourcePath}");
-            await context.EmitAsync("Out", fileItem);
+            itemContext.Metadata["SourceRootPath"] = sourcePath;
+            itemContext.Metadata["Counter"] = i + 1;
+            itemContext.AddLog($"Emitted by FolderSourceNode from {sourcePath}");
+            await context.EmitAsync("Out", itemContext);
         }
 
-        context.ReportProgress(100.0, $"{count}/{totalFiles} (100%)");
-        context.Log($"FolderSourceNode scanned and emitted {count} items.", LogLevel.Information);
+        context.ReportProgress(100.0, $"{totalItems}/{totalItems} (100%)");
+        context.Log($"FolderSourceNode scanned and emitted {totalItems} items.", LogLevel.Information);
+    }
+
+    private static void CollectItems(
+        string currentDir,
+        int currentDepth,
+        int maxDepth,
+        bool emitFiles,
+        bool emitDirectories,
+        List<FileItemContext> result,
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (emitFiles)
+        {
+            try
+            {
+                foreach (string file in Directory.EnumerateFiles(currentDir))
+                {
+                    result.Add(new FileItemContext(file, isDirectory: false));
+                }
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
+            {
+                context.Log($"Skipping files in '{currentDir}': {ex.Message}", LogLevel.Warning);
+            }
+        }
+
+        try
+        {
+            foreach (string subDir in Directory.EnumerateDirectories(currentDir))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (emitDirectories)
+                {
+                    result.Add(new FileItemContext(subDir, isDirectory: true));
+                }
+
+                if (maxDepth == -1 || currentDepth < maxDepth)
+                {
+                    CollectItems(subDir, currentDepth + 1, maxDepth, emitFiles, emitDirectories, result, context, cancellationToken);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
+        {
+            context.Log($"Skipping directories in '{currentDir}': {ex.Message}", LogLevel.Warning);
+        }
     }
 }
+

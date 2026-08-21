@@ -189,6 +189,7 @@ public partial class NodeParameterViewModel : ObservableObject
             "conflictstrategy" => ["Overwrite", "Skip", "RenameIncremental"],
             "targetformat" => ["WebP", "Jpeg", "Png"],
             "loglevel" => ["Information", "Warning", "Error", "Debug", "Critical"],
+            "emitmode" => ["FilesOnly", "DirectoriesOnly", "FilesAndDirectories"],
             _ => []
         };
     }
