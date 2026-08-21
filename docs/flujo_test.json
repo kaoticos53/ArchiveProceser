@@ -1,0 +1,96 @@
+{
+  "Name": "Flujo de Procesamiento de Archivos",
+  "Nodes": [
+    {
+      "Id": "5b345bca-0861-4aae-8921-a5d13581ecdc",
+      "NodeTypeName": "FileFlow.Plugin.FileSystem.FolderSourceNode",
+      "X": 10,
+      "Y": 15,
+      "HasBreakpoint": false,
+      "Parameters": {
+        "SourcePath": "E:\\Users\\kaoti\\Documentos\\GitHub\\ArchiveProceser\\Directorio Test\\Origen",
+        "Recursive": true,
+        "EmitMode": "FilesOnly",
+        "MaxRecursionDepth": -1,
+        "WatchRealtime": false
+      }
+    },
+    {
+      "Id": "1aa7ddea-ae37-4aa7-a283-d86aa82dd89d",
+      "NodeTypeName": "FileFlow.Plugin.Archives.ArchiveFilterNode",
+      "X": 180,
+      "Y": 166,
+      "HasBreakpoint": false,
+      "Parameters": {
+        "FilterSecondaryVolumes": true
+      }
+    },
+    {
+      "Id": "baab03e5-08be-4818-9b84-b30382178223",
+      "NodeTypeName": "FileFlow.Plugin.FileSystem.DestinationSinkNode",
+      "X": 485,
+      "Y": 369,
+      "HasBreakpoint": false,
+      "Parameters": {
+        "DestinationRoot": "E:\\Users\\kaoti\\Documentos\\GitHub\\ArchiveProceser\\Directorio Test\\Destino\\{RelativePath}",
+        "ConflictStrategy": "RenameIncremental"
+      }
+    },
+    {
+      "Id": "627f52a7-4278-40be-810e-5e9b0804910e",
+      "NodeTypeName": "FileFlow.Plugin.FileSystem.LogOutputNode",
+      "X": 1137,
+      "Y": 42,
+      "HasBreakpoint": false,
+      "Parameters": {
+        "LogMetadata": true,
+        "LogExecutionHistory": true,
+        "LogLevel": "Information"
+      }
+    },
+    {
+      "Id": "51cdae8e-7b45-4690-8493-1ff002736e47",
+      "NodeTypeName": "FileFlow.Plugin.Archives.SmartUnpackNode",
+      "X": 484,
+      "Y": 42,
+      "HasBreakpoint": false,
+      "Parameters": {
+        "DestinationFolder": "E:\\Users\\kaoti\\Documentos\\GitHub\\ArchiveProceser\\Directorio Test\\Destino\\{RelativePath}",
+        "CleanWrapper": true,
+        "AutoDeleteAfterExtraction": false,
+        "RecursiveUnpack": true
+      }
+    }
+  ],
+  "Edges": [
+    {
+      "Id": "b8d7141d-72b6-4603-812f-fd86aefde81b",
+      "SourceNodeId": "5b345bca-0861-4aae-8921-a5d13581ecdc",
+      "SourcePortName": "Out",
+      "TargetNodeId": "1aa7ddea-ae37-4aa7-a283-d86aa82dd89d",
+      "TargetPortName": "In"
+    },
+    {
+      "Id": "f9e4f561-0e7a-4edf-bc4d-229beb2a8556",
+      "SourceNodeId": "1aa7ddea-ae37-4aa7-a283-d86aa82dd89d",
+      "SourcePortName": "RegularFile",
+      "TargetNodeId": "baab03e5-08be-4818-9b84-b30382178223",
+      "TargetPortName": "In"
+    },
+    {
+      "Id": "2b330c9d-e552-4e6b-9c95-73d96a8f330e",
+      "SourceNodeId": "1aa7ddea-ae37-4aa7-a283-d86aa82dd89d",
+      "SourcePortName": "Archive",
+      "TargetNodeId": "51cdae8e-7b45-4690-8493-1ff002736e47",
+      "TargetPortName": "In"
+    },
+    {
+      "Id": "12fa8b8e-f64e-47ae-a24e-47f7e87f6f83",
+      "SourceNodeId": "51cdae8e-7b45-4690-8493-1ff002736e47",
+      "SourcePortName": "Out",
+      "TargetNodeId": "627f52a7-4278-40be-810e-5e9b0804910e",
+      "TargetPortName": "In"
+    }
+  ],
+  "BreakpointNodeIds": []
+}
