@@ -25,7 +25,7 @@ public class OriginalFileActionNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["ActionType"] = "Keep",
-        ["QuarantinePath"] = @"C:\Quarantine"
+        ["QuarantinePath"] = @"{RelativeDir}\Quarantine"
     };
 
     public async Task ExecuteAsync(
@@ -35,7 +35,8 @@ public class OriginalFileActionNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string actionType = Parameters.TryGetValue("ActionType", out var val) ? ParameterHelper.GetString(val, "Keep") : "Keep";
-        string quarantinePath = Parameters.TryGetValue("QuarantinePath", out var qVal) ? ParameterHelper.GetString(qVal, @"C:\Quarantine") : @"C:\Quarantine";
+        string quarantinePattern = Parameters.TryGetValue("QuarantinePath", out var qVal) ? ParameterHelper.GetString(qVal, @"{RelativeDir}\Quarantine") : @"{RelativeDir}\Quarantine";
+        string quarantinePath = ParameterHelper.ResolveOutputPath(quarantinePattern, item);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         string targetFilePath = item.OriginalPath;

@@ -12,6 +12,14 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
+public enum LogFilterLevel
+{
+    All,
+    ErrorsOnly,
+    WarningsOnly,
+    InfoOnly
+}
+
 public partial class LogViewModel : ObservableObject
 {
     public ObservableCollection<LogEntry> Logs { get; } = [];
@@ -24,6 +32,22 @@ public partial class LogViewModel : ObservableObject
 
     [ObservableProperty]
     private string _fullLogText = string.Empty;
+
+    [ObservableProperty]
+    private LogFilterLevel _activeFilter = LogFilterLevel.All;
+
+    [ObservableProperty]
+    private int _errorCount;
+
+    [ObservableProperty]
+    private int _warningCount;
+
+    [ObservableProperty]
+    private int _infoCount;
+
+    public event Action<LogEntry>? OnLogAdded;
+    public event Action? OnLogsCleared;
+    public event Action? OnFilterChanged;
 
     private readonly StringBuilder _logTextBuffer = new();
     private readonly ConcurrentQueue<LogEntry> _pendingLogs = new();
@@ -42,7 +66,7 @@ public partial class LogViewModel : ObservableObject
 
         _flushTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromMilliseconds(50)
+            Interval = TimeSpan.FromMilliseconds(40)
         };
         _flushTimer.Tick += FlushPendingLogs;
         _flushTimer.Start();
@@ -58,16 +82,26 @@ public partial class LogViewModel : ObservableObject
     {
         if (_pendingLogs.IsEmpty) return;
 
+        int maxLogs = Services.UserPreferencesService.Instance.Preferences.MaxLogEntries;
+        if (maxLogs <= 0) maxLogs = 100000;
+
         bool addedAny = false;
         while (_pendingLogs.TryDequeue(out var entry))
         {
             Logs.Add(entry);
-            if (Logs.Count > 1000)
+            if (Logs.Count > maxLogs)
             {
                 Logs.RemoveAt(0);
             }
+
+            if (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ErrorCount++;
+            else if (entry.Level == LogLevel.Warning) WarningCount++;
+            else if (entry.Level == LogLevel.Information) InfoCount++;
+
             _logTextBuffer.AppendLine($"[{entry.Timestamp:HH:mm:ss}] [{entry.Level}] {entry.Message}");
             addedAny = true;
+
+            OnLogAdded?.Invoke(entry);
         }
 
         if (addedAny)
@@ -89,14 +123,31 @@ public partial class LogViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void SetFilter(string filterName)
+    {
+        ActiveFilter = filterName.ToLowerInvariant() switch
+        {
+            "errors" => LogFilterLevel.ErrorsOnly,
+            "warnings" => LogFilterLevel.WarningsOnly,
+            "info" => LogFilterLevel.InfoOnly,
+            _ => LogFilterLevel.All
+        };
+        OnFilterChanged?.Invoke();
+    }
+
+    [RelayCommand]
     public void ClearLogs()
     {
         while (_pendingLogs.TryDequeue(out _)) { }
         Logs.Clear();
         _logTextBuffer.Clear();
         FullLogText = string.Empty;
+        ErrorCount = 0;
+        WarningCount = 0;
+        InfoCount = 0;
         ProgressPercentage = 0;
         StatusMessage = LocalizationManager.Instance["StatusReady"];
+        OnLogsCleared?.Invoke();
     }
 
     [RelayCommand]

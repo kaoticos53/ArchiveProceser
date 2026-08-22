@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.TemplateEngine;
@@ -31,6 +32,8 @@ public class ExpressionFilterNode : IFlowNode
         ["ComparisonValue"] = "10"
     };
 
+    private static readonly Regex NumericRegex = new(@"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.Compiled);
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
@@ -58,19 +61,22 @@ public class ExpressionFilterNode : IFlowNode
     {
         string actualValue = VariableTemplateResolver.GetVariableValue(prop, item, null);
 
-        if (double.TryParse(actualValue, System.Globalization.CultureInfo.InvariantCulture, out double numActual) &&
-            double.TryParse(compVal, System.Globalization.CultureInfo.InvariantCulture, out double numComp))
+        if (op is ">" or ">=" or "<" or "<=" or "==" or "=" or "!=")
         {
-            return op switch
+            if (TryParseSmartNumeric(actualValue, out double numActual) &&
+                TryParseSmartNumeric(compVal, out double numComp))
             {
-                ">" => numActual > numComp,
-                ">=" => numActual >= numComp,
-                "<" => numActual < numComp,
-                "<=" => numActual <= numComp,
-                "==" or "=" => Math.Abs(numActual - numComp) < 0.0001,
-                "!=" => Math.Abs(numActual - numComp) >= 0.0001,
-                _ => false
-            };
+                return op switch
+                {
+                    ">" => numActual > numComp,
+                    ">=" => numActual >= numComp,
+                    "<" => numActual < numComp,
+                    "<=" => numActual <= numComp,
+                    "==" or "=" => Math.Abs(numActual - numComp) < 0.0001,
+                    "!=" => Math.Abs(numActual - numComp) >= 0.0001,
+                    _ => false
+                };
+            }
         }
 
         return op switch
@@ -80,5 +86,47 @@ public class ExpressionFilterNode : IFlowNode
             "Contains" => actualValue.Contains(compVal, StringComparison.OrdinalIgnoreCase),
             _ => false
         };
+    }
+
+    private static bool TryParseSmartNumeric(string text, out double value)
+    {
+        value = 0;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        string t = text.Trim();
+
+        double multiplier = 1.0;
+        if (t.EndsWith("TB", StringComparison.OrdinalIgnoreCase))
+        {
+            multiplier = 1024.0 * 1024.0 * 1024.0 * 1024.0;
+        }
+        else if (t.EndsWith("GB", StringComparison.OrdinalIgnoreCase))
+        {
+            multiplier = 1024.0 * 1024.0 * 1024.0;
+        }
+        else if (t.EndsWith("MB", StringComparison.OrdinalIgnoreCase))
+        {
+            multiplier = 1024.0 * 1024.0;
+        }
+        else if (t.EndsWith("KB", StringComparison.OrdinalIgnoreCase))
+        {
+            multiplier = 1024.0;
+        }
+        else if (t.EndsWith("Bytes", StringComparison.OrdinalIgnoreCase) || t.EndsWith("B", StringComparison.OrdinalIgnoreCase))
+        {
+            multiplier = 1.0;
+        }
+
+        var match = NumericRegex.Match(t);
+        if (!match.Success) return false;
+
+        string numStr = match.Value.Replace(',', '.');
+        if (double.TryParse(numStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double parsed))
+        {
+            value = parsed * multiplier;
+            return true;
+        }
+
+        return false;
     }
 }

@@ -90,6 +90,32 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                     {
                         upstreamGroup.Variables.Add(new VariableItem("OptimizedFormat", "{OptimizedFormat}", "Output Format (WebP/Jpeg/Png)"));
                     }
+                    else if (typeName.Contains("HashCalculatorNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string storeKey = upstreamNode.Parameters.FirstOrDefault(p => p.Key.Equals("StoreInMetadataKey", StringComparison.OrdinalIgnoreCase))?.Value?.ToString() ?? "Hash:SHA256";
+                        upstreamGroup.Variables.Add(new VariableItem(storeKey, $"{{{storeKey}}}", $"Hash calculated by {upstreamNode.Title}"));
+                        upstreamGroup.Variables.Add(new VariableItem("Hash", "{Hash}", $"Generic hash from {upstreamNode.Title}"));
+                    }
+                    else if (typeName.Contains("DeduplicationFilterNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new VariableItem("DuplicateOf", "{DuplicateOf}", "Path of original file if duplicate"));
+                    }
+                    else if (typeName.Contains("CliExecutionNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new VariableItem("Cli:StdOut", "{Cli:StdOut}", "Standard output of CLI execution"));
+                        upstreamGroup.Variables.Add(new VariableItem("Cli:StdErr", "{Cli:StdErr}", "Standard error of CLI execution"));
+                        upstreamGroup.Variables.Add(new VariableItem("Cli:ExitCode", "{Cli:ExitCode}", "Process exit code"));
+                    }
+                    else if (typeName.Contains("ArchiveFilterNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new VariableItem("IsSecondaryArchiveVolume", "{IsSecondaryArchiveVolume}", "True if file is split RAR/ZIP volume"));
+                    }
+                    else if (typeName.Contains("DirectoryInspectorNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        upstreamGroup.Variables.Add(new VariableItem("Directory:FilesCount", "{Directory:FilesCount}", "Number of files in inspected directory"));
+                        upstreamGroup.Variables.Add(new VariableItem("Directory:SubdirsCount", "{Directory:SubdirsCount}", "Number of subdirectories"));
+                        upstreamGroup.Variables.Add(new VariableItem("Directory:ArchivesCount", "{Directory:ArchivesCount}", "Number of archives in directory"));
+                    }
 
                     if (upstreamGroup.Variables.Count > 0)
                     {

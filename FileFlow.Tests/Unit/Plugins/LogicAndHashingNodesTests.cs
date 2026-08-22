@@ -36,6 +36,33 @@ public class LogicAndHashingNodesTests
     }
 
     [Fact]
+    public async Task SwitchCaseNode_RoutesCorrectlyBySmartSizeRanges()
+    {
+        var node = new SwitchCaseNode();
+        node.Parameters["Expression"] = "{SizeMB}";
+        node.SetCases([
+            new SwitchCaseRule("Small", "< 10 MB"),
+            new SwitchCaseRule("Medium", "10 MB..1 GB"),
+            new SwitchCaseRule("Large", ">= 1 GB")
+        ]);
+
+        var contextMock = new Mock<IFlowExecutionContext>();
+        string? emittedPort = null;
+        contextMock.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((port, _) => emittedPort = port)
+            .Returns(Task.CompletedTask);
+
+        var item = new FileItemContext(@"C:\files\video.mp4")
+        {
+            FileSizeBytes = 50L * 1024 * 1024
+        };
+
+        await node.ExecuteAsync("In", item, contextMock.Object, CancellationToken.None);
+
+        emittedPort.Should().Be("Medium");
+    }
+
+    [Fact]
     public async Task SwitchCaseNode_RoutesToDefaultWhenNoMatch()
     {
         var node = new SwitchCaseNode();
@@ -77,6 +104,29 @@ public class LogicAndHashingNodesTests
         {
             FileSizeBytes = 10 * 1024 * 1024 // 10MB
         };
+
+        await node.ExecuteAsync("In", item, contextMock.Object, CancellationToken.None);
+
+        emittedPort.Should().Be("True");
+    }
+
+    [Fact]
+    public async Task ExpressionFilterNode_EvaluatesAlphanumericWithUnits()
+    {
+        var node = new ExpressionFilterNode();
+        node.Parameters["Property"] = "CustomSize";
+        node.Parameters["Operator"] = "<";
+        node.Parameters["ComparisonValue"] = "10 MB";
+
+        var contextMock = new Mock<IFlowExecutionContext>();
+        string? emittedPort = null;
+
+        contextMock.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((port, _) => emittedPort = port)
+            .Returns(Task.CompletedTask);
+
+        var item = new FileItemContext(@"C:\files\photo.jpg");
+        item.Metadata["CustomSize"] = "4.25 MB";
 
         await node.ExecuteAsync("In", item, contextMock.Object, CancellationToken.None);
 

@@ -4,12 +4,12 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("LogOutputNode_Name", "Utility", "LogOutputNode_Desc")]
+[NodeDefinition("LogOutputNode_Name", "Integrations", "LogOutputNode_Desc")]
 public class LogOutputNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LogOutputNode_Name", "Log Inspector");
-    public string Category => "Utility";
+    public string Category => "Integrations";
     public string Description => LocalizationManager.Instance.GetString("LogOutputNode_Desc", "Logs detailed context, metadata, tags, and history of incoming items to console.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

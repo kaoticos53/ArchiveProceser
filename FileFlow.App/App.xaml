@@ -16,6 +16,7 @@
             <converters:BooleanToGridLengthConverter x:Key="BooleanToGridLengthConverter" />
             <converters:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
             <converters:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
+            <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter" />
             
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/DarkTheme.xaml" />

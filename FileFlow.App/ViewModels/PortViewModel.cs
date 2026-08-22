@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FileFlow.Sdk;
@@ -13,6 +15,9 @@ public partial class PortViewModel : ObservableObject
     private string _displayName = string.Empty;
 
     [ObservableProperty]
+    private string _description = string.Empty;
+
+    [ObservableProperty]
     private PortDirection _direction;
 
     [ObservableProperty]
@@ -21,19 +26,78 @@ public partial class PortViewModel : ObservableObject
     [ObservableProperty]
     private Point _anchor;
 
+    [ObservableProperty]
+    private int _transmittedCount;
+
+    [ObservableProperty]
+    private string _lastItemInfoText = "Ninguno";
+
+    [ObservableProperty]
+    private ObservableCollection<KeyValuePair<string, string>> _metadataVariables = new();
+
+    [ObservableProperty]
+    private bool _hasMetadataVariables;
+
+    [ObservableProperty]
+    private bool _isConnected;
+
+    [ObservableProperty]
+    private string _connectionStatusText = "Puerto libre (Sin conexión)";
+
+    [ObservableProperty]
+    private string _connectionStatusIcon = "⚪";
+
     public NodeViewModel NodeOwner { get; }
 
     public string PortColor => GetColorForDataType(DataType);
 
     public string DataTypeDescription => GetDescriptionForDataType(DataType);
 
-    public PortViewModel(NodeViewModel owner, string name, string displayName, PortDirection direction, Type dataType)
+    public string DirectionIcon => Direction == PortDirection.Input ? "📥 ENTRADA" : "📤 SALIDA";
+
+    public string DataTypeSimpleName => DataType == typeof(FileItemContext) ? "FileContext" : DataType.Name;
+
+    public string TransmittedCountText => TransmittedCount == 1 ? "1 elemento" : $"{TransmittedCount} elementos";
+
+    public PortViewModel(NodeViewModel owner, string name, string displayName, PortDirection direction, Type dataType, string description = "")
     {
         NodeOwner = owner;
         _name = name;
         _displayName = displayName;
         _direction = direction;
         _dataType = dataType;
+        _description = string.IsNullOrWhiteSpace(description) ? GetDescriptionForDataType(dataType) : description;
+    }
+
+    public void UpdatePortContext(FileItemContext item)
+    {
+        TransmittedCount++;
+        string fileName = Path.GetFileName(item.CurrentPath);
+        if (string.IsNullOrWhiteSpace(fileName)) fileName = item.CurrentPath;
+        
+        string size = item.Metadata.TryGetValue("FileSizeFormatted", out var sz) && sz != null ? sz.ToString() ?? "" : "";
+        LastItemInfoText = string.IsNullOrWhiteSpace(size) ? fileName : $"{fileName} ({size})";
+
+        MetadataVariables.Clear();
+        foreach (var kvp in item.Metadata)
+        {
+            if (kvp.Value != null)
+            {
+                MetadataVariables.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value.ToString() ?? ""));
+            }
+        }
+
+        HasMetadataVariables = MetadataVariables.Count > 0;
+        OnPropertyChanged(nameof(TransmittedCountText));
+    }
+
+    public void UpdateConnectionState(bool isConnected, string targetNodesSummary = "")
+    {
+        IsConnected = isConnected;
+        ConnectionStatusIcon = isConnected ? "🟢" : "⚪";
+        ConnectionStatusText = isConnected 
+            ? (string.IsNullOrWhiteSpace(targetNodesSummary) ? "Conectado" : $"Conectado a {targetNodesSummary}")
+            : "Puerto libre (Sin conexión)";
     }
 
     public static string GetColorForDataType(Type type)
@@ -53,13 +117,13 @@ public partial class PortViewModel : ObservableObject
 
     public static string GetDescriptionForDataType(Type type)
     {
-        if (type == typeof(FileItemContext)) return "Contexto de Archivo (FileItemContext)";
-        if (type == typeof(string)) return "Texto / Ruta (String)";
-        if (type == typeof(bool)) return "Booleano (True/False)";
-        if (type == typeof(int) || type == typeof(long)) return "Entero (Integer)";
-        if (type == typeof(double) || type == typeof(float) || type == typeof(decimal)) return "Número Decimal (Float/Double)";
-        if (type == typeof(byte[]) || typeof(System.IO.Stream).IsAssignableFrom(type)) return "Datos Binarios (Binary/Stream)";
-        if (type == typeof(object)) return "Universal (Acepta cualquier tipo de dato)";
+        if (type == typeof(FileItemContext)) return "Recibe o emite contexto completo de archivo con metadatos.";
+        if (type == typeof(string)) return "Cadena de texto o ruta de archivo.";
+        if (type == typeof(bool)) return "Valor condicional booleano (Verdadero / Falso).";
+        if (type == typeof(int) || type == typeof(long)) return "Valor numérico entero.";
+        if (type == typeof(double) || type == typeof(float) || type == typeof(decimal)) return "Valor numérico decimal.";
+        if (type == typeof(byte[]) || typeof(System.IO.Stream).IsAssignableFrom(type)) return "Flujo de datos binarios o stream en memoria.";
+        if (type == typeof(object)) return "Universal (Acepta cualquier tipo de dato).";
         return type.Name;
     }
 }

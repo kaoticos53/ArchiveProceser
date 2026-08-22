@@ -41,11 +41,73 @@ public partial class NodeParameterViewModel : ObservableObject
 
     public bool IsFilePath => !HasOptions && !IsBooleanAndNoOptions && DetectIsFilePath(Key);
 
+    public bool IsPasswordList => Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsMediaPreset => Key.Equals("Preset", StringComparison.OrdinalIgnoreCase);
+
     public bool HasBrowseButton => IsFolderPath || IsFilePath;
 
     public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
 
     public bool IsStandardInput => !HasOptions && !IsBooleanAndNoOptions && !HasBrowseButton && !IsVariableInjectorNode;
+
+    [RelayCommand]
+    public void OpenMediaPresetManager()
+    {
+        try
+        {
+            var win = new Views.Components.MediaPresetManagerWindow();
+            if (Application.Current?.MainWindow != null)
+            {
+                win.Owner = Application.Current.MainWindow;
+            }
+            if (win.ShowDialog() == true)
+            {
+                RefreshMediaPresetOptions();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir el Gestor de Presets: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    public void RefreshMediaPresetOptions()
+    {
+        if (IsMediaPreset)
+        {
+            var names = Services.MediaPresetManagerService.Instance.GetPresetNames();
+            Options.Clear();
+            foreach (var n in names) Options.Add(n);
+
+            string? valStr = Value?.ToString();
+            if (valStr == null || !Options.Contains(valStr))
+            {
+                Value = Options.FirstOrDefault();
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void OpenPasswordManager()
+    {
+        try
+        {
+            var win = new Views.Components.PasswordManagerWindow(Value?.ToString() ?? string.Empty);
+            if (Application.Current?.MainWindow != null)
+            {
+                win.Owner = Application.Current.MainWindow;
+            }
+            if (win.ShowDialog() == true)
+            {
+                Value = win.PasswordsText;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir el Gestor de Contraseñas: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     partial void OnKeyChanged(string? oldValue, string newValue)
     {
@@ -80,6 +142,25 @@ public partial class NodeParameterViewModel : ObservableObject
             {
                 _options.Add(opt);
             }
+        }
+
+        if (_options.Count > 0 && value != null)
+        {
+            string valStr = value.ToString() ?? string.Empty;
+            var matchedOpt = _options.FirstOrDefault(o => o.Equals(valStr, StringComparison.OrdinalIgnoreCase));
+            if (matchedOpt != null)
+            {
+                _value = matchedOpt;
+            }
+            else if (!string.IsNullOrWhiteSpace(valStr))
+            {
+                _options.Insert(0, valStr);
+            }
+        }
+
+        if (IsMediaPreset)
+        {
+            Services.MediaPresetManagerService.Instance.PresetsChanged += (_, _) => RefreshMediaPresetOptions();
         }
     }
 
@@ -187,9 +268,18 @@ public partial class NodeParameterViewModel : ObservableObject
         {
             "actiontype" => ["Keep", "MoveToQuarantine", "PermanentDelete"],
             "conflictstrategy" => ["Overwrite", "Skip", "RenameIncremental"],
+            "collisionstrategy" => ["AutoIncrement", "Overwrite", "Skip", "Fail"],
             "targetformat" => ["WebP", "Jpeg", "Png"],
             "loglevel" => ["Information", "Warning", "Error", "Debug", "Critical"],
             "emitmode" => ["FilesOnly", "DirectoriesOnly", "FilesAndDirectories"],
+            "casetransformation" => ["None", "Lowercase", "Uppercase", "TitleCase"],
+            "operation" => ["Move", "Copy"],
+            "algorithm" => ["SHA256", "MD5", "SHA512", "SHA1"],
+            "operator" => [">", ">=", "<", "<=", "==", "!=", "Contains"],
+            "hashmetadatakey" => ["Hash:SHA256", "Hash:MD5", "Hash:SHA512", "Hash:SHA1", "Hash"],
+            "archiveformat" => ["ZIP", "TAR", "GZ", "7Z"],
+            "compressiontype" => ["Deflate", "Store", "LZMA", "BZip2"],
+            "preset" => Services.MediaPresetManagerService.Instance.GetPresetNames(),
             _ => []
         };
     }

@@ -64,6 +64,14 @@ public static class VariableTemplateResolver
 
     public static string GetVariableValue(string varName, FileItemContext item, string? sourceRootPath)
     {
+        if (string.IsNullOrWhiteSpace(varName)) return string.Empty;
+
+        varName = varName.Trim();
+        if (varName.StartsWith('{') && varName.EndsWith('}'))
+        {
+            varName = varName[1..^1].Trim();
+        }
+
         string currentPath = item.CurrentPath ?? string.Empty;
         string originalPath = item.OriginalPath ?? string.Empty;
 
@@ -244,6 +252,14 @@ public static class VariableTemplateResolver
             case "counter":
             case "index":
                 return item.Metadata.TryGetValue("Counter", out var cVal) && cVal != null ? cVal.ToString()! : "1";
+
+            case "globaloutputdir":
+            case "defaultoutputdir":
+                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && godVal != null && !string.IsNullOrWhiteSpace(godVal.ToString()))
+                {
+                    return godVal.ToString()!;
+                }
+                return Path.Combine(Environment.CurrentDirectory, "Output");
 
             case "sizemb":
                 return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);

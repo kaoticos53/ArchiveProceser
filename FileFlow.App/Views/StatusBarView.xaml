@@ -1,0 +1,105 @@
+<UserControl x:Class="FileFlow.App.Views.StatusBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="28" d:DesignWidth="1200"
+             Background="{DynamicResource BgCardBrush}">
+
+    <Border BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="10,3">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <!-- Contexto del Lienzo -->
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                
+                <!-- Mensaje de Estado del Motor (Auto) -->
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+
+                <!-- Ruta de Salida Global (Espacio Expansible *) -->
+                <ColumnDefinition Width="*" />
+
+                <!-- Rendimiento y Zoom -->
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Nodos del Grafo -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="Nodos presentes en el lienzo actual">
+                <TextBlock Text="🧩" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding NodeCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text=" nodos" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Separador -->
+            <Border Grid.Column="1" Width="1" Height="12" Background="{DynamicResource BorderDarkBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+
+            <!-- Conexiones -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="Conexiones activas entre nodos">
+                <TextBlock Text="🔗" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding ConnectionCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text=" conexiones" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Separador -->
+            <Border Grid.Column="3" Width="1" Height="12" Background="{DynamicResource BorderDarkBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+
+            <!-- Mensaje de Estado del Motor -->
+            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                <TextBlock Text="{Binding StatusMessage}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Separador -->
+            <Border Grid.Column="5" Width="1" Height="12" Background="{DynamicResource BorderDarkBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+
+            <!-- Ruta de Salida Global (Expansible con espacio dinámico) -->
+            <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,12,0">
+                <Button Command="{Binding OpenGlobalOutputFolderCommand}" 
+                        Style="{DynamicResource SecondaryButton}" 
+                        Padding="8,2" 
+                        Cursor="Hand"
+                        ToolTip="Carpeta de Salida Global. Clic para abrir en el Explorador de Windows.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📁 Salida: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding GlobalOutputDir}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" MaxWidth="520" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- Metricas de Sistema y Zoom -->
+            <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+
+                <!-- Consumo RAM -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="Uso actual de Memoria RAM por FileFlow Studio">
+                    <TextBlock Text="🧠 RAM: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding RamText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Consumo CPU -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="Uso actual de CPU por el proceso de ejecucion">
+                    <TextBlock Text="💻 CPU: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding CpuText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Separador -->
+                <Border Width="1" Height="12" Background="{DynamicResource BorderDarkBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+
+                <!-- Zoom del Lienzo -->
+                <Button Command="{Binding FitToScreenCommand}" 
+                        Style="{DynamicResource SecondaryButton}" 
+                        Padding="6,2" 
+                        Cursor="Hand"
+                        ToolTip="Nivel de zoom actual. Clic para ajustar todo el flujo a la pantalla.">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔍 " FontSize="10.5" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ZoomPercentage}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="%" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

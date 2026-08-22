@@ -190,68 +190,80 @@
   <data name="DestinationSinkNode_Name" xml:space="preserve"><value>Carpeta Destino</value></data>
   <data name="DestinationSinkNode_Desc" xml:space="preserve"><value>Guarda o mueve el archivo procesado al directorio destino final.</value></data>
 
-  <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Inspector de Directorios</value></data>
+  <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Escanear Carpeta</value></data>
   <data name="DirectoryInspectorNode_Desc" xml:space="preserve"><value>Evalúa el contenido de una carpeta para clasificar su composición de archivos.</value></data>
 
-  <data name="LogOutputNode_Name" xml:space="preserve"><value>Inspector de Registros</value></data>
+  <data name="LogOutputNode_Name" xml:space="preserve"><value>Registrar Log</value></data>
   <data name="LogOutputNode_Desc" xml:space="preserve"><value>Muestra información detallada, metadatos e historial del elemento en la consola.</value></data>
 
-  <data name="OriginalFileActionNode_Name" xml:space="preserve"><value>Acción sobre Archivo Original</value></data>
+  <data name="OriginalFileActionNode_Name" xml:space="preserve"><value>Acción en Origen</value></data>
   <data name="OriginalFileActionNode_Desc" xml:space="preserve"><value>Aplica una regla sobre el archivo original (conservar, mover a cuarentena o eliminar).</value></data>
 
-  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Descompresión Inteligente</value></data>
+  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Descomprimir</value></data>
   <data name="SmartUnpackNode_Desc" xml:space="preserve"><value>Inspecciona y extrae automáticamente el contenido de archivos comprimidos.</value></data>
 
-  <data name="ImageOptimizerNode_Name" xml:space="preserve"><value>Optimizador de Imágenes</value></data>
+  <data name="ArchiveCompressorNode_Name" xml:space="preserve"><value>Comprimir ZIP / 7z</value></data>
+  <data name="ArchiveCompressorNode_Desc" xml:space="preserve"><value>Empaqueta y comprime archivos o carpetas entrantes en un archivo ZIP o 7z.</value></data>
+
+  <data name="ArchiveFilterNode_Name" xml:space="preserve"><value>Filtrar Comprimidos</value></data>
+  <data name="ArchiveFilterNode_Desc" xml:space="preserve"><value>Filtra y enruta archivos según su tipo de compresión o si son volúmenes divididos.</value></data>
+
+  <data name="ImageOptimizerNode_Name" xml:space="preserve"><value>Optimizar Imagen</value></data>
   <data name="ImageOptimizerNode_Desc" xml:space="preserve"><value>Redimensiona imágenes manteniendo su proporción y las convierte a formatos modernos.</value></data>
+
+  <data name="MediaTranscoderNode_Name" xml:space="preserve"><value>Transcodificar Media</value></data>
+  <data name="MediaTranscoderNode_Desc" xml:space="preserve"><value>Transcodifica archivos de audio y vídeo mediante presets o comandos externos FFmpeg.</value></data>
+
+  <data name="DocumentProcessorNode_Name" xml:space="preserve"><value>Procesar Documento</value></data>
+  <data name="DocumentProcessorNode_Desc" xml:space="preserve"><value>Inspecciona documentos y archivos PDF, contando páginas y extrayendo metadatos clave.</value></data>
 
   <data name="ExifMetadataNode_Name" xml:space="preserve"><value>Metadatos EXIF</value></data>
   <data name="ExifMetadataNode_Desc" xml:space="preserve"><value>Extrae metadatos EXIF (Fecha de captura, Modelo de cámara, Marca) de imágenes.</value></data>
 
-  <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Inyector de Variables</value></data>
+  <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Inyectar Variable</value></data>
   <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calcula e inyecta una variable personalizada en los metadatos del elemento para nodos posteriores.</value></data>
 
   <!-- New Nodes: FileSystem -->
-  <data name="SafeRecycleDeleteNode_Name" xml:space="preserve"><value>Borrado Seguro a Papelera</value></data>
+  <data name="SafeRecycleDeleteNode_Name" xml:space="preserve"><value>Enviar a Papelera</value></data>
   <data name="SafeRecycleDeleteNode_Desc" xml:space="preserve"><value>Envía archivos o carpetas a la Papelera de reciclaje de Windows mediante la API nativa del Shell, garantizando que sean recuperables y permitiendo deshacer la operación (Rollback).</value></data>
 
-  <data name="AdvancedRenamerNode_Name" xml:space="preserve"><value>Renombrador Avanzado con Tokens</value></data>
+  <data name="AdvancedRenamerNode_Name" xml:space="preserve"><value>Renombrar Archivo</value></data>
   <data name="AdvancedRenamerNode_Desc" xml:space="preserve"><value>Renombra archivos masivamente evaluando plantillas dinámicas con tokens ({ParentDir}, {CreationDate:yyyyMMdd}, {Hash:SHA256:8}), transformaciones de mayúsculas/minúsculas y resolución automática de colisiones.</value></data>
 
-  <data name="FileRelocatorNode_Name" xml:space="preserve"><value>Reubicador y Copiador de Archivos</value></data>
+  <data name="FileRelocatorNode_Name" xml:space="preserve"><value>Mover / Copiar</value></data>
   <data name="FileRelocatorNode_Desc" xml:space="preserve"><value>Mueve o copia archivos hacia árboles de directorios destino construidos dinámicamente con tokens, verificando la integridad binaria de los datos mediante cálculo de hash SHA-256.</value></data>
 
-  <data name="EmptyDirectoryCleanerNode_Name" xml:space="preserve"><value>Limpiador de Carpetas Vacías</value></data>
+  <data name="EmptyDirectoryCleanerNode_Name" xml:space="preserve"><value>Limpiar Carpetas</value></data>
   <data name="EmptyDirectoryCleanerNode_Desc" xml:space="preserve"><value>Recorre recursivamente un directorio objetivo tras procesar un lote y elimina todas las subcarpetas que hayan quedado completamente vacías (ignorando opcionalmente archivos de sistema como Thumbs.db y .DS_Store).</value></data>
 
   <!-- New Nodes: Logic -->
-  <data name="BatchBufferNode_Name" xml:space="preserve"><value>Agrupador de Lotes (Batch Buffer)</value></data>
+  <data name="BatchBufferNode_Name" xml:space="preserve"><value>Agrupar por Lotes</value></data>
   <data name="BatchBufferNode_Desc" xml:space="preserve"><value>Acumula archivos entrantes en memoria hasta alcanzar una cantidad de N elementos o un tamaño total en MB antes de liberarlos juntos, optimizando procesos por lotes.</value></data>
 
-  <data name="ThrottleDelayNode_Name" xml:space="preserve"><value>Control de Tasa y Pausa (Throttle)</value></data>
+  <data name="ThrottleDelayNode_Name" xml:space="preserve"><value>Pausa / Throttle</value></data>
   <data name="ThrottleDelayNode_Desc" xml:space="preserve"><value>Regula y desacelera la velocidad del flujo de archivos introduciendo una pausa controlada en milisegundos entre elementos para evitar saturar discos HDD, CPUs o conexiones de red.</value></data>
 
-  <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Barrera de Sincronización (Fork &amp; Join)</value></data>
+  <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Barrera Fork &amp; Join</value></data>
   <data name="ForkJoinBarrierNode_Desc" xml:space="preserve"><value>Bifurca un archivo hacia múltiples ramas paralelas independientes y actúa como barrera de sincronización, esperando a que todas las ramas finalicen su tarea antes de liberar el flujo.</value></data>
 
-  <data name="SwitchCaseNode_Name" xml:space="preserve"><value>Enrutador Condicional (Switch / Case)</value></data>
+  <data name="SwitchCaseNode_Name" xml:space="preserve"><value>Enrutador Switch</value></data>
   <data name="SwitchCaseNode_Desc" xml:space="preserve"><value>Evalúa una propiedad o extensión del archivo y lo enruta dinámicamente hacia uno de varios puertos de salida (Case 1, 2, 3 o Default) según listas de patrones configurables.</value></data>
 
-  <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Filtro por Condición Lógica</value></data>
+  <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Filtro Condicional</value></data>
   <data name="ExpressionFilterNode_Desc" xml:space="preserve"><value>Evalúa condiciones numéricas o de texto sobre propiedades del archivo (ej. tamaño en MB, extensión, fecha, tags) y desvía el flujo por los puertos True o False.</value></data>
 
   <!-- New Nodes: Hashing -->
-  <data name="HashCalculatorNode_Name" xml:space="preserve"><value>Calculador de Hash Criptográfico</value></data>
+  <data name="HashCalculatorNode_Name" xml:space="preserve"><value>Calcular Hash</value></data>
   <data name="HashCalculatorNode_Desc" xml:space="preserve"><value>Calcula el checksum o hash del contenido del archivo (SHA-256, MD5, SHA-512, SHA-1) y lo almacena en los metadatos para renombrado, verificación de integridad o deduplicación.</value></data>
 
-  <data name="DeduplicationFilterNode_Name" xml:space="preserve"><value>Filtro de Deduplicación por Hash</value></data>
+  <data name="DeduplicationFilterNode_Name" xml:space="preserve"><value>Filtrar Duplicados</value></data>
   <data name="DeduplicationFilterNode_Desc" xml:space="preserve"><value>Compara el hash del contenido para detectar archivos repetidos en el lote actual, separando los archivos originales (Unique) de las copias duplicadas redundantes (Duplicate).</value></data>
 
   <!-- New Nodes: Integrations -->
-  <data name="CliExecutionNode_Name" xml:space="preserve"><value>Ejecutor de Comandos y Procesos CLI</value></data>
+  <data name="CliExecutionNode_Name" xml:space="preserve"><value>Ejecutar Comando CLI</value></data>
   <data name="CliExecutionNode_Desc" xml:space="preserve"><value>Lanza ejecutables externos y scripts de sistema (FFmpeg, PowerShell, Python, Node.js) inyectando la ruta y metadatos del archivo mediante argumentos con tokens.</value></data>
 
-  <data name="WebhookNotificationNode_Name" xml:space="preserve"><value>Notificador Webhook (HTTP POST)</value></data>
+  <data name="WebhookNotificationNode_Name" xml:space="preserve"><value>Enviar Webhook</value></data>
   <data name="WebhookNotificationNode_Desc" xml:space="preserve"><value>Envía una petición HTTP POST con un cuerpo JSON dinámico hacia servicios externos (Discord, Slack, n8n, Zapier o servidores propios) al procesar cada archivo.</value></data>
 
   <data name="ExportLog" xml:space="preserve"><value>💾 Exportar Log</value></data>

@@ -33,28 +33,31 @@
                 <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="6" Width="28" Height="28" Margin="0,0,10,0">
                     <TextBlock Text="⚡" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
                 </Border>
-                <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
-
-                <TextBox Text="{Binding WorkflowName, UpdateSourceTrigger=PropertyChanged}" 
-                         FontSize="13" 
-                         Foreground="{DynamicResource TextPrimaryBrush}" 
-                         Background="{DynamicResource BgSurfaceBrush}" 
-                         BorderBrush="{DynamicResource BorderDarkBrush}" 
-                         Padding="8,5" 
-                         Width="240" 
-                         VerticalAlignment="Center" />
+                <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
             </StackPanel>
 
             <!-- Workflow Execution Controls -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
 
-                <!-- Dry Run Checkbox -->
-                <CheckBox Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" 
-                          IsChecked="{Binding IsDryRun}" 
-                          Foreground="{DynamicResource TextSecondaryBrush}" 
-                          VerticalAlignment="Center" 
-                          Margin="0,0,14,0" 
-                          FontWeight="SemiBold" />
+                <!-- Compact Dry Run Toggle Button -->
+                <ToggleButton Content="🧪 Modo Prueba" 
+                              IsChecked="{Binding IsDryRun}" 
+                              Style="{DynamicResource SecondaryToggleButton}" 
+                              Padding="8,5" 
+                              Margin="0,0,8,0" 
+                              ToolTip="Modo simulación: Ejecuta el flujo sin modificar ni borrar archivos reales en disco" />
+
+                <!-- Workflow Settings Modal Button -->
+                <Button Command="{Binding OpenWorkflowSettingsCommand}" 
+                        Style="{DynamicResource SecondaryButton}" 
+                        Padding="8,5" 
+                        Margin="0,0,8,0" 
+                        ToolTip="Configurar la Ruta de Salida Global y opciones del proyecto">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⚙️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Ajustes del Flujo" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
 
                 <!-- Run Normal -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RunFlow]}" 

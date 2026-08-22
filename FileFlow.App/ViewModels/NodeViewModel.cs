@@ -140,7 +140,7 @@ public partial class NodeViewModel : ObservableObject
 
         foreach (var inPort in node.Inputs)
         {
-            InputPorts.Add(new PortViewModel(this, inPort.Name, inPort.DisplayName, inPort.Direction, inPort.DataType));
+            InputPorts.Add(new PortViewModel(this, inPort.Name, inPort.DisplayName, inPort.Direction, inPort.DataType, inPort.Description));
         }
 
         bool isSwitch = node.GetType().Name.Contains("SwitchCaseNode", StringComparison.OrdinalIgnoreCase);
@@ -191,7 +191,7 @@ public partial class NodeViewModel : ObservableObject
         {
             foreach (var outPort in node.Outputs)
             {
-                OutputPorts.Add(new PortViewModel(this, outPort.Name, outPort.DisplayName, outPort.Direction, outPort.DataType));
+                OutputPorts.Add(new PortViewModel(this, outPort.Name, outPort.DisplayName, outPort.Direction, outPort.DataType, outPort.Description));
             }
         }
 
@@ -352,6 +352,20 @@ public partial class NodeViewModel : ObservableObject
             {
                 _nodeInstance.Parameters[key] = newValue;
             }
+
+            if (key.Equals("Preset", StringComparison.OrdinalIgnoreCase) && newValue != null)
+            {
+                string presetName = newValue.ToString() ?? string.Empty;
+                var preset = Services.MediaPresetManagerService.Instance.GetPresetByName(presetName);
+                if (preset != null)
+                {
+                    var customArgsParam = Parameters.FirstOrDefault(p => p.Key.Equals("CustomArguments", StringComparison.OrdinalIgnoreCase));
+                    if (customArgsParam != null)
+                    {
+                        customArgsParam.Value = preset.FfmpegArguments;
+                    }
+                }
+            }
         }
     }
 
@@ -473,6 +487,14 @@ public partial class NodeViewModel : ObservableObject
                 targetCollection.RemoveAt(0);
             }
             targetCollection.Add(snapshot);
+
+            var ports = snapshot.IsInput ? InputPorts : OutputPorts;
+            var port = ports.FirstOrDefault(p => p.Name.Equals(snapshot.PortName, StringComparison.OrdinalIgnoreCase))
+                      ?? ports.FirstOrDefault();
+            if (port != null && snapshot.ItemSnapshot != null)
+            {
+                port.UpdatePortContext(snapshot.ItemSnapshot);
+            }
         });
     }
 

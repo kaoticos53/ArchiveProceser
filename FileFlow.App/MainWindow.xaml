@@ -40,6 +40,7 @@
             <RowDefinition Height="*" MinHeight="200" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="200" MinHeight="60" MaxHeight="550" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Top Control Bar -->
@@ -141,8 +142,11 @@
         <!-- Bottom Realtime Execution Console -->
         <views:LogView Grid.Row="3" DataContext="{Binding LogConsole}" />
 
+        <!-- Bottom Interactive Status Bar -->
+        <views:StatusBarView Grid.Row="4" DataContext="{Binding StatusBar}" />
+
         <!-- Semi-Transparent Backdrop Overlay for Side Navigation Drawer -->
-        <Border Grid.RowSpan="4"
+        <Border Grid.RowSpan="5"
                 Panel.ZIndex="99"
                 Background="#60000000"
                 Visibility="{Binding ControlBar.IsMenuOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -152,7 +156,7 @@
         </Border>
 
         <!-- Modern Side Navigation Drawer Panel (Supports Theme DynamicResources) -->
-        <Border Grid.RowSpan="4"
+        <Border Grid.RowSpan="5"
                 Panel.ZIndex="100"
                 HorizontalAlignment="Left"
                 Width="320"

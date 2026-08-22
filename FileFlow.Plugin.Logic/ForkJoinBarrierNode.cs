@@ -65,6 +65,28 @@ public class ForkJoinBarrierNode : IFlowNode
 
             lock (_lock)
             {
+                // Merge metadata from completing branch
+                foreach (var (k, v) in item.Metadata)
+                {
+                    state.OriginalItem.Metadata[k] = v;
+                }
+
+                // Update current path if modified in branch
+                if (!string.IsNullOrWhiteSpace(item.CurrentPath) &&
+                    !string.Equals(item.CurrentPath, state.OriginalItem.CurrentPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    state.OriginalItem.CurrentPath = item.CurrentPath;
+                }
+
+                // Merge logs
+                foreach (var log in item.ExecutionLog)
+                {
+                    if (!state.OriginalItem.ExecutionLog.Contains(log))
+                    {
+                        state.OriginalItem.ExecutionLog.Add(log);
+                    }
+                }
+
                 state.CompletedBranches.Add(inputPortName);
                 if (state.CompletedBranches.Count >= requiredBranches)
                 {

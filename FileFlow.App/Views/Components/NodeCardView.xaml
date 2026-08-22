@@ -308,16 +308,90 @@
                                         <nodify:NodeInput.HeaderTemplate>
                                             <DataTemplate DataType="{x:Type vm:PortViewModel}">
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <!-- Círculo / Pin de Entrada en el borde exterior -->
+                                                    <!-- Círculo / Pin de Entrada en el borde exterior con ToolTip Rico -->
                                                     <Border Width="14" Height="14" CornerRadius="7" 
                                                             Background="{Binding PortColor}" 
                                                             BorderBrush="{DynamicResource BgCardBrush}" 
                                                             BorderThickness="2" 
-                                                            ToolTip="{Binding DataTypeDescription}"
                                                             Margin="0,0,6,0">
                                                         <Border.Effect>
                                                             <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.35" />
                                                         </Border.Effect>
+                                                        <Border.ToolTip>
+                                                            <ToolTip Background="Transparent" BorderThickness="0" Padding="0">
+                                                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1.5" CornerRadius="8" Padding="12,10" Width="310">
+                                                                    <Border.Effect>
+                                                                        <DropShadowEffect BlurRadius="12" ShadowDepth="3" Color="#000000" Opacity="0.55" />
+                                                                    </Border.Effect>
+                                                                    <StackPanel>
+                                                                        <!-- Encabezado del Puerto -->
+                                                                        <Grid Margin="0,0,0,6">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                <TextBlock Text="{Binding DirectionIcon}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="0,0,6,0" />
+                                                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                                            </StackPanel>
+
+                                                                            <Border Grid.Column="1" Background="{Binding PortColor}" CornerRadius="4" Padding="6,1.5">
+                                                                                <TextBlock Text="{Binding DataTypeSimpleName}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                                                                            </Border>
+                                                                        </Grid>
+
+                                                                        <Separator Background="{DynamicResource BorderDarkBrush}" Margin="0,0,0,6" />
+
+                                                                        <!-- Descripción del Puerto -->
+                                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8" LineHeight="15" />
+
+                                                                        <!-- Panel de Métricas de Transmisión -->
+                                                                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
+                                                                            <StackPanel>
+                                                                                <Grid Margin="0,0,0,3">
+                                                                                    <TextBlock Text="📦 Elementos procesados:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding TransmittedCountText}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
+                                                                                </Grid>
+
+                                                                                <Grid>
+                                                                                    <TextBlock Text="📄 Último elemento:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding LastItemInfoText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentSuccessBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" HorizontalAlignment="Right" />
+                                                                                </Grid>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <!-- Inspección de Metadatos y Variables (Modo Depuración) -->
+                                                                        <Border Visibility="{Binding HasMetadataVariables, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                                Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="🔍 Variables y Metadatos del Contexto:" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,0,0,4" />
+                                                                                <ItemsControl ItemsSource="{Binding MetadataVariables}">
+                                                                                    <ItemsControl.ItemTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <Grid Margin="0,1">
+                                                                                                <Grid.ColumnDefinitions>
+                                                                                                    <ColumnDefinition Width="110" />
+                                                                                                    <ColumnDefinition Width="*" />
+                                                                                                </Grid.ColumnDefinitions>
+                                                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="4,0,0,0" />
+                                                                                            </Grid>
+                                                                                        </DataTemplate>
+                                                                                    </ItemsControl.ItemTemplate>
+                                                                                </ItemsControl>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <!-- Estado de Conexión -->
+                                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                            <TextBlock Text="{Binding ConnectionStatusIcon}" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                                                            <TextBlock Text="{Binding ConnectionStatusText}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                                        </StackPanel>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </ToolTip>
+                                                        </Border.ToolTip>
                                                     </Border>
                                                     <!-- Nombre del Puerto de Entrada -->
                                                     <TextBlock Text="{Binding DisplayName}" 
@@ -354,15 +428,89 @@
                                                                FontSize="11" FontWeight="SemiBold" 
                                                                VerticalAlignment="Center" 
                                                                Margin="0,0,6,0" />
-                                                    <!-- Círculo / Pin de Salida en el borde exterior -->
+                                                    <!-- Círculo / Pin de Salida en el borde exterior con ToolTip Rico -->
                                                     <Border Width="14" Height="14" CornerRadius="7" 
                                                             Background="{Binding PortColor}" 
                                                             BorderBrush="{DynamicResource BgCardBrush}" 
-                                                            BorderThickness="2" 
-                                                            ToolTip="{Binding DataTypeDescription}">
+                                                            BorderThickness="2">
                                                         <Border.Effect>
                                                             <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#000000" Opacity="0.35" />
                                                         </Border.Effect>
+                                                        <Border.ToolTip>
+                                                            <ToolTip Background="Transparent" BorderThickness="0" Padding="0">
+                                                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1.5" CornerRadius="8" Padding="12,10" Width="310">
+                                                                    <Border.Effect>
+                                                                        <DropShadowEffect BlurRadius="12" ShadowDepth="3" Color="#000000" Opacity="0.55" />
+                                                                    </Border.Effect>
+                                                                    <StackPanel>
+                                                                        <!-- Encabezado del Puerto -->
+                                                                        <Grid Margin="0,0,0,6">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                <TextBlock Text="{Binding DirectionIcon}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="0,0,6,0" />
+                                                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                                            </StackPanel>
+
+                                                                            <Border Grid.Column="1" Background="{Binding PortColor}" CornerRadius="4" Padding="6,1.5">
+                                                                                <TextBlock Text="{Binding DataTypeSimpleName}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                                                                            </Border>
+                                                                        </Grid>
+
+                                                                        <Separator Background="{DynamicResource BorderDarkBrush}" Margin="0,0,0,6" />
+
+                                                                        <!-- Descripción del Puerto -->
+                                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8" LineHeight="15" />
+
+                                                                        <!-- Panel de Métricas de Transmisión -->
+                                                                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
+                                                                            <StackPanel>
+                                                                                <Grid Margin="0,0,0,3">
+                                                                                    <TextBlock Text="📦 Elementos procesados:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding TransmittedCountText}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
+                                                                                </Grid>
+
+                                                                                <Grid>
+                                                                                    <TextBlock Text="📄 Último elemento:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding LastItemInfoText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentSuccessBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" HorizontalAlignment="Right" />
+                                                                                </Grid>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <!-- Inspección de Metadatos y Variables (Modo Depuración) -->
+                                                                        <Border Visibility="{Binding HasMetadataVariables, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                                Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="🔍 Variables y Metadatos del Contexto:" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,0,0,4" />
+                                                                                <ItemsControl ItemsSource="{Binding MetadataVariables}">
+                                                                                    <ItemsControl.ItemTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <Grid Margin="0,1">
+                                                                                                <Grid.ColumnDefinitions>
+                                                                                                    <ColumnDefinition Width="110" />
+                                                                                                    <ColumnDefinition Width="*" />
+                                                                                                </Grid.ColumnDefinitions>
+                                                                                                <TextBlock Grid.Column="0" Text="{Binding Key}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="4,0,0,0" />
+                                                                                            </Grid>
+                                                                                        </DataTemplate>
+                                                                                    </ItemsControl.ItemTemplate>
+                                                                                </ItemsControl>
+                                                                            </StackPanel>
+                                                                        </Border>
+
+                                                                        <!-- Estado de Conexión -->
+                                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                            <TextBlock Text="{Binding ConnectionStatusIcon}" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                                                            <TextBlock Text="{Binding ConnectionStatusText}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                                        </StackPanel>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </ToolTip>
+                                                        </Border.ToolTip>
                                                     </Border>
                                                 </StackPanel>
                                             </DataTemplate>

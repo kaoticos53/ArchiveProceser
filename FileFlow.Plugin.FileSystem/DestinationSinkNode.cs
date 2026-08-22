@@ -24,7 +24,7 @@ public class DestinationSinkNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["DestinationRoot"] = @"C:\FileFlowOutput",
+        ["DestinationRoot"] = @"{RelativeDir}\Output",
         ["ConflictStrategy"] = "RenameIncremental"
     };
 
@@ -34,8 +34,8 @@ public class DestinationSinkNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string destRoot = Parameters.TryGetValue("DestinationRoot", out var val) ? ParameterHelper.GetString(val, @"C:\FileFlowSalida") : @"C:\FileFlowSalida";
-        destRoot = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(destRoot, item);
+        string destPattern = Parameters.TryGetValue("DestinationRoot", out var val) ? ParameterHelper.GetString(val, string.Empty) : string.Empty;
+        string destRoot = ParameterHelper.ResolveOutputPath(destPattern, item);
         string strategy = Parameters.TryGetValue("ConflictStrategy", out var sVal) ? ParameterHelper.GetString(sVal, "RenameIncremental") : "RenameIncremental";
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 

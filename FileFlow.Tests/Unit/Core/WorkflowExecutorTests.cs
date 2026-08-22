@@ -41,4 +41,15 @@ public class WorkflowExecutorTests
             if (Directory.Exists(tempSource)) Directory.Delete(tempSource, true);
         }
     }
+
+    [Fact]
+    public void WorkflowExecutor_MaxDegreeOfParallelism_ShouldUpdateThrottleSemaphore()
+    {
+        var executor = new WorkflowExecutor();
+        executor.MaxDegreeOfParallelism = 4;
+        Assert.Equal(4, executor.MaxDegreeOfParallelism);
+
+        executor.MaxDegreeOfParallelism = 1;
+        Assert.Equal(1, executor.MaxDegreeOfParallelism);
+    }
 }

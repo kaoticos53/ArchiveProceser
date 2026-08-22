@@ -13,6 +13,8 @@ public partial class MainViewModel : ObservableObject
     public NodeInspectorViewModel NodeInspector { get; }
     public ControlBarViewModel ControlBar { get; }
     public LogViewModel LogConsole { get; }
+    public StatusBarViewModel StatusBar { get; }
+    public SystemPerformanceMonitor PerformanceMonitor { get; }
     public IFileDialogService FileDialogService { get; }
     public IWorkflowStorageService WorkflowStorageService { get; }
 
@@ -33,11 +35,13 @@ public partial class MainViewModel : ObservableObject
 
         FileDialogService = new FileDialogService();
         WorkflowStorageService = new WorkflowStorageService();
+        PerformanceMonitor = new SystemPerformanceMonitor();
         LogConsole = new LogViewModel();
         Editor = new EditorViewModel(PluginLoader);
         Toolbox = new ToolboxViewModel(PluginLoader);
         NodeInspector = new NodeInspectorViewModel(Editor, FileDialogService);
         ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector, FileDialogService, WorkflowStorageService);
+        StatusBar = new StatusBarViewModel(Editor, ControlBar, PerformanceMonitor);
 
         LogConsole.AddLog(Sdk.LogLevel.Information, $"FileFlow Studio initialized with {PluginLoader.DiscoveredNodeTypes.Count} active plugin nodes.");
     }

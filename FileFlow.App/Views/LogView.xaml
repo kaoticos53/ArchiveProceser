@@ -29,11 +29,40 @@
                                FontWeight="Bold" 
                                Foreground="{DynamicResource TextPrimaryBrush}" 
                                FontSize="13" 
-                               Margin="0,0,16,0" 
+                               Margin="0,0,14,0" 
                                VerticalAlignment="Center" />
+
+                    <!-- Filtros Rápidos por Nivel de Log -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <RadioButton Content="Todos" 
+                                     Command="{Binding SetFilterCommand}" CommandParameter="all"
+                                     IsChecked="True" Style="{StaticResource FilterRadioButton}" 
+                                     Padding="8,2" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand" />
+                        
+                        <RadioButton Command="{Binding SetFilterCommand}" CommandParameter="errors"
+                                     Style="{StaticResource FilterRadioButton}" 
+                                     Padding="8,2" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔴 Errores (" FontWeight="Bold" />
+                                <TextBlock Text="{Binding ErrorCount}" FontWeight="Bold" />
+                                <TextBlock Text=")" FontWeight="Bold" />
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton Command="{Binding SetFilterCommand}" CommandParameter="warnings"
+                                     Style="{StaticResource FilterRadioButton}" 
+                                     Padding="8,2" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🟠 Advertencias (" FontWeight="Bold" />
+                                <TextBlock Text="{Binding WarningCount}" FontWeight="Bold" />
+                                <TextBlock Text=")" FontWeight="Bold" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+
                     <TextBlock Text="{Binding StatusMessage}" 
                                Foreground="{DynamicResource TextSecondaryBrush}" 
-                               FontSize="12" 
+                               FontSize="11.5" 
                                VerticalAlignment="Center" />
                 </StackPanel>
 
@@ -43,7 +72,7 @@
                              Minimum="0" 
                              Maximum="100" 
                              Height="6" 
-                             Margin="24,0" 
+                             Margin="16,0" 
                              Foreground="{DynamicResource AccentSuccessBrush}" 
                              Background="{DynamicResource BgHoverBrush}" 
                              BorderThickness="0">
@@ -59,36 +88,37 @@
                     <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExportLog]}" 
                             Command="{Binding ExportLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
-                            Padding="10,5" 
+                            Padding="10,4" 
                             FontSize="11" 
                             Margin="0,0,8,0" />
 
                     <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ClearLog]}" 
                             Command="{Binding ClearLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
-                            Padding="10,5" 
+                            Padding="10,4" 
                             FontSize="11" />
                 </StackPanel>
             </Grid>
 
-            <!-- Log Text Console (Modern Typography, Clean Background) -->
-            <TextBox x:Name="LogConsoleTextBox"
-                     Grid.Row="1"
-                     Text="{Binding FullLogText, Mode=OneWay}"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"
-                     Background="{DynamicResource BgCardBrush}"
-                     Foreground="{DynamicResource TextPrimaryBrush}"
-                     BorderBrush="{DynamicResource BorderDarkBrush}"
-                     BorderThickness="1"
-                     FontFamily="Cascadia Code, Consolas, monospace"
-                     FontSize="11.5"
-                     Padding="10"
-                     SelectionBrush="{DynamicResource AccentPrimaryBrush}"
-                     IsReadOnlyCaretVisible="True"
-                     TextChanged="LogConsoleTextBox_TextChanged" />
+            <!-- Rich Colored Log Console (100% Selectable & Copyable Text) -->
+            <RichTextBox x:Name="LogConsoleRichTextBox"
+                         Grid.Row="1"
+                         IsReadOnly="True"
+                         IsDocumentEnabled="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         Background="{DynamicResource BgCardBrush}"
+                         Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderBrush="{DynamicResource BorderDarkBrush}"
+                         BorderThickness="1"
+                         FontFamily="Cascadia Code, Consolas, monospace"
+                         FontSize="11.5"
+                         Padding="10"
+                         SelectionBrush="{DynamicResource AccentPrimaryBrush}">
+                <FlowDocument PagePadding="0">
+                    <Paragraph x:Name="LogDocumentParagraph" Margin="0" />
+                </FlowDocument>
+            </RichTextBox>
         </Grid>
     </Border>
 </UserControl>

@@ -20,7 +20,7 @@ public class FolderSourceNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["SourcePath"] = @"C:\SampleFiles",
+        ["SourcePath"] = @"{RelativeDir}\Input",
         ["Recursive"] = true,
         ["EmitMode"] = "FilesOnly",
         ["MaxRecursionDepth"] = -1,
@@ -33,7 +33,8 @@ public class FolderSourceNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string sourcePath = Parameters.TryGetValue("SourcePath", out var val) ? ParameterHelper.GetString(val) : string.Empty;
+        string rawSourcePattern = Parameters.TryGetValue("SourcePath", out var val) ? ParameterHelper.GetString(val, @"{RelativeDir}\Input") : @"{RelativeDir}\Input";
+        string sourcePath = ParameterHelper.ResolveOutputPath(rawSourcePattern, item);
         bool recursive = !Parameters.TryGetValue("Recursive", out var recVal) || ParameterHelper.GetBoolean(recVal, true);
         string emitMode = Parameters.TryGetValue("EmitMode", out var modeVal) ? ParameterHelper.GetString(modeVal, "FilesOnly") : "FilesOnly";
         

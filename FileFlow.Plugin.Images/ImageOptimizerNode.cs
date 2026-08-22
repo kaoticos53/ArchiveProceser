@@ -8,12 +8,12 @@ using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.Images;
 
-[NodeDefinition("ImageOptimizerNode_Name", "Images", "ImageOptimizerNode_Desc")]
+[NodeDefinition("ImageOptimizerNode_Name", "MediaDocs", "ImageOptimizerNode_Desc")]
 public class ImageOptimizerNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ImageOptimizerNode_Name", "Image Optimizer");
-    public string Category => "Images";
+    public string Category => "MediaDocs";
     public string Description => LocalizationManager.Instance.GetString("ImageOptimizerNode_Desc", "Resizes images keeping aspect ratio and converts to modern formats.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
@@ -33,7 +33,7 @@ public class ImageOptimizerNode : IFlowNode
         ["MaxHeight"] = 1080,
         ["TargetFormat"] = "WebP",
         ["Quality"] = 80,
-        ["OutputDirectory"] = @"C:\FileFlowOptimized"
+        ["OutputDirectory"] = @"{RelativeDir}\OptimizedImages"
     };
 
     public async Task ExecuteAsync(
@@ -47,8 +47,8 @@ public class ImageOptimizerNode : IFlowNode
         int maxHeight = Parameters.TryGetValue("MaxHeight", out var hVal) ? ParameterHelper.GetInt32(hVal, 1080) : 1080;
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
-        string outputDir = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, @"C:\FileFlowOptimized") : @"C:\FileFlowOptimized";
-        outputDir = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(outputDir, item);
+        string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, @"{RelativeDir}\OptimizedImages") : @"{RelativeDir}\OptimizedImages";
+        string outputDir = ParameterHelper.ResolveOutputPath(outputPattern, item);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))

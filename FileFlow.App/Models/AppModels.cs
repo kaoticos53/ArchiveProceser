@@ -12,7 +12,10 @@ public record NodeToolboxItem(
     string Name,
     string Category,
     string Description,
-    string TypeName
+    string TypeName,
+    string Icon = "🧩",
+    bool IsFavorite = false,
+    int UsageCount = 0
 );
 
 public record VariableItem(

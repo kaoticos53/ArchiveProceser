@@ -75,13 +75,26 @@ public partial class ControlBarViewModel : ObservableObject
         _nodeInspectorViewModel = nodeInspectorViewModel;
         _fileDialogService = fileDialogService;
         _workflowStorageService = workflowStorageService;
-        _editorViewModel = editorViewModel;
-        _pluginLoader = pluginLoader;
-        _logViewModel = logViewModel;
-        _nodeInspectorViewModel = nodeInspectorViewModel;
+
+        SyncFromPreferences();
+        UserPreferencesService.Instance.PreferencesChanged += SyncFromPreferences;
     }
 
+    private void SyncFromPreferences()
+    {
+        var prefs = UserPreferencesService.Instance.Preferences;
+        SelectedTheme = prefs.ActiveTheme;
+        IsDryRun = prefs.DefaultDryRunState;
+    }
+
+    public EditorViewModel Editor => _editorViewModel;
     public NodeInspectorViewModel NodeInspector => _nodeInspectorViewModel;
+
+    [RelayCommand]
+    public void OpenWorkflowSettings()
+    {
+        _editorViewModel.OpenWorkflowSettings();
+    }
 
     [RelayCommand]
     public void ToggleMenu()
@@ -123,10 +136,13 @@ public partial class ControlBarViewModel : ObservableObject
 
             var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
 
+            int maxParallelThreads = UserPreferencesService.Instance.Preferences.MaxParallelThreads;
+            if (maxParallelThreads <= 0) maxParallelThreads = Environment.ProcessorCount;
+
             _activeExecutor = new WorkflowExecutor
             {
                 IsDryRun = IsDryRun,
-                MaxDegreeOfParallelism = isDebug ? 1 : Environment.ProcessorCount // En depuración ejecutamos de forma secuencial para inspección clara
+                MaxDegreeOfParallelism = isDebug ? 1 : maxParallelThreads
             };
 
             if (isDebug)

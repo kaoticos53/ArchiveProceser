@@ -159,3 +159,21 @@ public class InputOutputBrushConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
 }
 
+public class StringEqualsToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        string? valStr = value?.ToString();
+        string? paramStr = parameter?.ToString();
+
+        if (string.Equals(valStr, paramStr, StringComparison.OrdinalIgnoreCase))
+        {
+            return Visibility.Visible;
+        }
+
+        return Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+}
+

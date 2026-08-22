@@ -190,68 +190,80 @@
   <data name="DestinationSinkNode_Name" xml:space="preserve"><value>Destination Sink</value></data>
   <data name="DestinationSinkNode_Desc" xml:space="preserve"><value>Writes or moves final processed file to target path.</value></data>
 
-  <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Directory Inspector</value></data>
+  <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Scan Folder</value></data>
   <data name="DirectoryInspectorNode_Desc" xml:space="preserve"><value>Evaluates folder contents to classify archive and file composition.</value></data>
 
   <data name="LogOutputNode_Name" xml:space="preserve"><value>Log Inspector</value></data>
   <data name="LogOutputNode_Desc" xml:space="preserve"><value>Logs detailed context, metadata, tags, and history of incoming items to console.</value></data>
 
-  <data name="OriginalFileActionNode_Name" xml:space="preserve"><value>Original File Action</value></data>
+  <data name="OriginalFileActionNode_Name" xml:space="preserve"><value>Source File Action</value></data>
   <data name="OriginalFileActionNode_Desc" xml:space="preserve"><value>Applies lifecycle policy to the original file (keep, quarantine, or delete).</value></data>
 
-  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Smart Unpack</value></data>
+  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Unpack Archive</value></data>
   <data name="SmartUnpackNode_Desc" xml:space="preserve"><value>Inspects archive structure and extracts intelligently.</value></data>
 
-  <data name="ImageOptimizerNode_Name" xml:space="preserve"><value>Image Optimizer</value></data>
+  <data name="ArchiveCompressorNode_Name" xml:space="preserve"><value>Compress ZIP / 7z</value></data>
+  <data name="ArchiveCompressorNode_Desc" xml:space="preserve"><value>Packs and compresses incoming files or folders into a ZIP or 7z archive.</value></data>
+
+  <data name="ArchiveFilterNode_Name" xml:space="preserve"><value>Filter Archives</value></data>
+  <data name="ArchiveFilterNode_Desc" xml:space="preserve"><value>Filters and routes files based on compression type or split volumes.</value></data>
+
+  <data name="ImageOptimizerNode_Name" xml:space="preserve"><value>Optimize Image</value></data>
   <data name="ImageOptimizerNode_Desc" xml:space="preserve"><value>Resizes images keeping aspect ratio and converts to modern formats.</value></data>
+
+  <data name="MediaTranscoderNode_Name" xml:space="preserve"><value>Transcode Media</value></data>
+  <data name="MediaTranscoderNode_Desc" xml:space="preserve"><value>Transcodes audio and video files using presets or external FFmpeg commands.</value></data>
+
+  <data name="DocumentProcessorNode_Name" xml:space="preserve"><value>Process Document</value></data>
+  <data name="DocumentProcessorNode_Desc" xml:space="preserve"><value>Inspects documents and PDF files, counting pages and extracting key metadata.</value></data>
 
   <data name="ExifMetadataNode_Name" xml:space="preserve"><value>EXIF Metadata</value></data>
   <data name="ExifMetadataNode_Desc" xml:space="preserve"><value>Extracts EXIF metadata (Date Taken, Camera Model, GPS) from images.</value></data>
 
-  <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Variable Injector</value></data>
+  <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Inject Variable</value></data>
   <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calculates and injects custom metadata key-value into file context for downstream nodes.</value></data>
 
   <!-- New Nodes: FileSystem -->
-  <data name="SafeRecycleDeleteNode_Name" xml:space="preserve"><value>Safe Recycle Delete</value></data>
+  <data name="SafeRecycleDeleteNode_Name" xml:space="preserve"><value>Move to Recycle Bin</value></data>
   <data name="SafeRecycleDeleteNode_Desc" xml:space="preserve"><value>Sends files or folders safely to Windows Recycle Bin using native Shell API with undo/rollback support.</value></data>
 
-  <data name="AdvancedRenamerNode_Name" xml:space="preserve"><value>Advanced Token Renamer</value></data>
+  <data name="AdvancedRenamerNode_Name" xml:space="preserve"><value>Rename File</value></data>
   <data name="AdvancedRenamerNode_Desc" xml:space="preserve"><value>Renames files using dynamic token templates, case transforms, and automatic collision resolution.</value></data>
 
-  <data name="FileRelocatorNode_Name" xml:space="preserve"><value>File Relocator &amp; Copier</value></data>
+  <data name="FileRelocatorNode_Name" xml:space="preserve"><value>Move / Copy</value></data>
   <data name="FileRelocatorNode_Desc" xml:space="preserve"><value>Moves or copies files to dynamic target folder trees with SHA-256 checksum integrity verification.</value></data>
 
-  <data name="EmptyDirectoryCleanerNode_Name" xml:space="preserve"><value>Empty Directory Cleaner</value></data>
+  <data name="EmptyDirectoryCleanerNode_Name" xml:space="preserve"><value>Clean Empty Folders</value></data>
   <data name="EmptyDirectoryCleanerNode_Desc" xml:space="preserve"><value>Recursively removes all empty folders in target directory tree after batch processing.</value></data>
 
   <!-- New Nodes: Logic -->
   <data name="BatchBufferNode_Name" xml:space="preserve"><value>Batch Buffer</value></data>
   <data name="BatchBufferNode_Desc" xml:space="preserve"><value>Accumulates incoming files into batches of N items or total size before emitting downstream.</value></data>
 
-  <data name="ThrottleDelayNode_Name" xml:space="preserve"><value>Rate Limiter &amp; Throttle Delay</value></data>
+  <data name="ThrottleDelayNode_Name" xml:space="preserve"><value>Pause / Throttle</value></data>
   <data name="ThrottleDelayNode_Desc" xml:space="preserve"><value>Throttles file flow rate by introducing a controlled millisecond delay between items.</value></data>
 
-  <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Synchronization Barrier (Fork &amp; Join)</value></data>
+  <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Fork &amp; Join Barrier</value></data>
   <data name="ForkJoinBarrierNode_Desc" xml:space="preserve"><value>Forks an item to parallel branches and acts as a barrier, waiting for all branches to finish before emitting.</value></data>
 
-  <data name="SwitchCaseNode_Name" xml:space="preserve"><value>Conditional Router (Switch / Case)</value></data>
+  <data name="SwitchCaseNode_Name" xml:space="preserve"><value>Switch Router</value></data>
   <data name="SwitchCaseNode_Desc" xml:space="preserve"><value>Evaluates a file property or extension and dynamically routes it to output ports based on configurable pattern lists.</value></data>
 
-  <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Expression Logic Filter</value></data>
+  <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Conditional Filter</value></data>
   <data name="ExpressionFilterNode_Desc" xml:space="preserve"><value>Evaluates numeric or text conditions on file properties and branches flow to True or False ports.</value></data>
 
   <!-- New Nodes: Hashing -->
-  <data name="HashCalculatorNode_Name" xml:space="preserve"><value>Cryptographic Hash Calculator</value></data>
+  <data name="HashCalculatorNode_Name" xml:space="preserve"><value>Calculate Hash</value></data>
   <data name="HashCalculatorNode_Desc" xml:space="preserve"><value>Calculates file content hashes (SHA-256, MD5, SHA-512, SHA-1) and injects into metadata.</value></data>
 
-  <data name="DeduplicationFilterNode_Name" xml:space="preserve"><value>Hash Deduplication Filter</value></data>
+  <data name="DeduplicationFilterNode_Name" xml:space="preserve"><value>Filter Duplicates</value></data>
   <data name="DeduplicationFilterNode_Desc" xml:space="preserve"><value>Compares content hashes to detect duplicate files, separating originals from redundant copies.</value></data>
 
   <!-- New Nodes: Integrations -->
-  <data name="CliExecutionNode_Name" xml:space="preserve"><value>CLI &amp; Process Runner</value></data>
+  <data name="CliExecutionNode_Name" xml:space="preserve"><value>Run CLI Command</value></data>
   <data name="CliExecutionNode_Desc" xml:space="preserve"><value>Runs external executables and scripts with dynamic token arguments.</value></data>
 
-  <data name="WebhookNotificationNode_Name" xml:space="preserve"><value>Webhook Notifier (HTTP POST)</value></data>
+  <data name="WebhookNotificationNode_Name" xml:space="preserve"><value>Send Webhook</value></data>
   <data name="WebhookNotificationNode_Desc" xml:space="preserve"><value>Sends an HTTP POST request with a dynamic JSON payload to external webhooks.</value></data>
 
   <data name="ExportLog" xml:space="preserve"><value>💾 Export Log</value></data>

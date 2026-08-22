@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
@@ -19,6 +20,9 @@ public partial class EditorViewModel : ObservableObject
 
     [ObservableProperty]
     private string _currentWorkflowTitle = "Root Workflow";
+
+    [ObservableProperty]
+    private string _globalOutputDir = @"C:\FileFlowOutput";
 
     [ObservableProperty]
     private PendingConnectionViewModel? _pendingConnection;
@@ -94,6 +98,37 @@ public partial class EditorViewModel : ObservableObject
     {
         _pluginLoader = pluginLoader;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
+        _globalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
+        UserPreferencesService.Instance.PreferencesChanged += () =>
+        {
+            GlobalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
+        };
+        Connections.CollectionChanged += (s, e) => UpdatePortConnectionStates();
+        Nodes.CollectionChanged += (s, e) => UpdatePortConnectionStates();
+    }
+
+    public void UpdatePortConnectionStates()
+    {
+        foreach (var node in Nodes)
+        {
+            foreach (var inPort in node.InputPorts)
+            {
+                var connectedSources = Connections
+                    .Where(c => c.Target == inPort)
+                    .Select(c => $"{c.Source.NodeOwner.Title} (\"{c.Source.DisplayName}\")")
+                    .ToList();
+                inPort.UpdateConnectionState(connectedSources.Count > 0, string.Join(", ", connectedSources));
+            }
+
+            foreach (var outPort in node.OutputPorts)
+            {
+                var connectedTargets = Connections
+                    .Where(c => c.Source == outPort)
+                    .Select(c => $"{c.Target.NodeOwner.Title} (\"{c.Target.DisplayName}\")")
+                    .ToList();
+                outPort.UpdateConnectionState(connectedTargets.Count > 0, string.Join(", ", connectedTargets));
+            }
+        }
     }
 
     public void CreateConnection(PortViewModel source, PortViewModel target)
@@ -228,6 +263,7 @@ public partial class EditorViewModel : ObservableObject
             }
         };
         Nodes.Add(nodeVm);
+        UserPreferencesService.Instance.IncrementNodeUsage(nodeTypeName);
         return nodeVm;
     }
 
@@ -239,9 +275,49 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    public void OpenWorkflowSettings()
+    {
+        try
+        {
+            var win = new Views.Components.WorkflowSettingsWindow(GlobalOutputDir);
+            if (Application.Current?.MainWindow != null)
+            {
+                win.Owner = Application.Current.MainWindow;
+            }
+            if (win.ShowDialog() == true)
+            {
+                GlobalOutputDir = win.GlobalOutputDir;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir la Configuración del Flujo: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    public void BrowseGlobalOutputDir()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Seleccionar Ruta de Salida Global",
+            InitialDirectory = GlobalOutputDir
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            GlobalOutputDir = dialog.FolderName;
+        }
+    }
+
     public WorkflowGraph ExportToGraphModel(string name = "FileFlow Workflow")
     {
-        var graph = new WorkflowGraph { Name = name };
+        var graph = new WorkflowGraph
+        {
+            Name = name,
+            GlobalOutputDir = GlobalOutputDir
+        };
 
         foreach (var n in Nodes)
         {
@@ -283,6 +359,11 @@ public partial class EditorViewModel : ObservableObject
     public void LoadFromGraphModel(WorkflowGraph graph)
     {
         ClearGraph();
+
+        if (!string.IsNullOrWhiteSpace(graph.GlobalOutputDir))
+        {
+            GlobalOutputDir = graph.GlobalOutputDir;
+        }
 
         Dictionary<string, NodeViewModel> nodeLookup = [];
 

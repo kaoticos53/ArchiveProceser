@@ -96,6 +96,8 @@ public class WorkflowExecutor
         }
     }
 
+    public string GlobalOutputDir { get; set; } = string.Empty;
+
     public bool IsDryRun
     {
         get => _isDryRun;
@@ -185,6 +187,11 @@ public class WorkflowExecutor
                 var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken);
                 // Trigger entry node with null or empty input port name
                 var dummyItem = new FileItemContext(string.Empty);
+                if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
+                {
+                    dummyItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                }
+
                 if (IsDryRun)
                 {
                     dummyItem.Metadata["DryRun"] = true;
@@ -223,6 +230,11 @@ public class WorkflowExecutor
     {
         await WaitIfPausedAsync(cancellationToken);
 
+        if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
+        {
+            item.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+        }
+
         if (IsDryRun)
         {
             item.Metadata["DryRun"] = true;
@@ -257,33 +269,38 @@ public class WorkflowExecutor
 
                 dispatchTasks.Add(Task.Run(async () =>
                 {
-                    await WaitIfPausedAsync(cancellationToken);
-                    var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
-
-                    if (DebugSession != null)
-                    {
-                        DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, targetItem));
-                        await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, targetItem, cancellationToken);
-                    }
-
-                    NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
-
+                    await _concurrencyThrottle.WaitAsync(cancellationToken);
                     try
                     {
-                        await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken);
-                        NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
+                        await WaitIfPausedAsync(cancellationToken);
+                        var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
+
                         if (DebugSession != null)
                         {
-                            await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, targetItem, ex, cancellationToken);
+                            DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, targetItem));
+                            await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, targetItem, cancellationToken);
                         }
-                        throw;
+
+                        NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
+
+                        try
+                        {
+                            await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken);
+                            NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
+                            if (DebugSession != null)
+                            {
+                                await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, targetItem, ex, cancellationToken);
+                            }
+                            throw;
+                        }
                     }
                     finally
                     {
+                        _concurrencyThrottle.Release();
                         long currentProcessed = Interlocked.Increment(ref _processedItemsCount);
                         double pct = _totalItemsCount > 0 ? (double)currentProcessed / _totalItemsCount * 100.0 : 100.0;
                         NotifyProgress(pct, $"Processed {currentProcessed}/{_totalItemsCount} node outputs");

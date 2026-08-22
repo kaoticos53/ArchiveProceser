@@ -25,6 +25,7 @@ public class WorkflowEdge
 public class WorkflowGraph
 {
     public string Name { get; set; } = "Untitled Workflow";
+    public string GlobalOutputDir { get; set; } = string.Empty;
     public List<WorkflowNode> Nodes { get; set; } = [];
     public List<WorkflowEdge> Edges { get; set; } = [];
     public HashSet<string> BreakpointNodeIds { get; set; } = new(StringComparer.OrdinalIgnoreCase);
