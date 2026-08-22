@@ -1,18 +1,24 @@
+using System.Buffers;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using FileFlow.Sdk.TemplateEngine.Functions;
 
 namespace FileFlow.Sdk.TemplateEngine;
 
 public static class VariableTemplateResolver
 {
-    private static readonly System.Buffers.SearchValues<char> InvalidCharsSearch =
-        System.Buffers.SearchValues.Create(Path.GetInvalidFileNameChars().Union(Path.GetInvalidPathChars()).Distinct().ToArray());
-
     private static readonly Regex FunctionRegex = new(@"^(?<fn>\w+)\((?<args>.*)\)$", RegexOptions.Compiled);
+    private static readonly SearchValues<char> OpenBraceSearch = SearchValues.Create(['{']);
+
+    private static readonly List<ITemplateFunctionEvaluator> FunctionEvaluators = new()
+    {
+        new StringFunctionsEvaluator(),
+        new DateTimeFunctionsEvaluator()
+    };
 
     public static string Resolve(string template, FileItemContext item, string? sourceRootPath = null)
     {
-        if (string.IsNullOrEmpty(template) || !template.Contains('{'))
+        if (string.IsNullOrEmpty(template) || !template.AsSpan().ContainsAny(OpenBraceSearch))
         {
             return template;
         }
@@ -64,234 +70,15 @@ public static class VariableTemplateResolver
 
     public static string GetVariableValue(string varName, FileItemContext item, string? sourceRootPath)
     {
-        if (string.IsNullOrWhiteSpace(varName)) return string.Empty;
-
-        varName = varName.Trim();
-        if (varName.StartsWith('{') && varName.EndsWith('}'))
-        {
-            varName = varName[1..^1].Trim();
-        }
-
-        string currentPath = item.CurrentPath ?? string.Empty;
-        string originalPath = item.OriginalPath ?? string.Empty;
-
-        // Use SourceRootPath from metadata if available
-        string? effectiveRootPath = sourceRootPath;
-        if (string.IsNullOrEmpty(effectiveRootPath) &&
-            item.Metadata.TryGetValue("SourceRootPath", out var rootVal) &&
-            rootVal != null)
-        {
-            effectiveRootPath = rootVal.ToString();
-        }
-
-        if (string.IsNullOrEmpty(effectiveRootPath))
-        {
-            effectiveRootPath = Path.GetDirectoryName(originalPath);
-        }
-
-        // Check for domain-specific tokens with colon, e.g. "Exif:CameraModel", "Hash:MD5:8", "Date:yyyy-MM-dd", "Env:PATH", "Regex:Capture1"
-        if (varName.Contains(':'))
-        {
-            var parts = varName.Split(':', 3);
-            string domain = parts[0].Trim();
-            string key = parts.Length > 1 ? parts[1].Trim() : string.Empty;
-            string? modifier = parts.Length > 2 ? parts[2].Trim() : null;
-
-            switch (domain.ToLowerInvariant())
-            {
-                case "exif":
-                    if (item.Metadata.TryGetValue($"Exif:{key}", out var exifVal) ||
-                        item.Metadata.TryGetValue(key, out exifVal))
-                    {
-                        return exifVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "regex":
-                    if (item.Metadata.TryGetValue($"Regex:{key}", out var regVal) ||
-                        item.Metadata.TryGetValue(key, out regVal))
-                    {
-                        return regVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "hash":
-                    string hashKey = $"Hash:{key}";
-                    string hashValStr = string.Empty;
-                    if (item.Metadata.TryGetValue(hashKey, out var hVal) && hVal != null)
-                    {
-                        hashValStr = hVal.ToString() ?? string.Empty;
-                    }
-                    else if (item.Metadata.TryGetValue("Hash", out var directHash) && directHash != null)
-                    {
-                        hashValStr = directHash.ToString() ?? string.Empty;
-                    }
-
-                    if (!string.IsNullOrEmpty(hashValStr) && !string.IsNullOrEmpty(modifier) && int.TryParse(modifier, out int hashLen) && hashLen > 0)
-                    {
-                        return hashValStr.Length <= hashLen ? hashValStr : hashValStr[..hashLen];
-                    }
-                    return hashValStr;
-
-                case "env":
-                    return Environment.GetEnvironmentVariable(key) ?? string.Empty;
-
-                case "date":
-                case "creationdate":
-                    string format = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
-                    if (item.Metadata.TryGetValue("CreationTimeUtc", out var ctVal) && ctVal is DateTime cdt)
-                    {
-                        return cdt.ToLocalTime().ToString(format, CultureInfo.InvariantCulture);
-                    }
-                    if (File.Exists(currentPath))
-                    {
-                        return File.GetCreationTime(currentPath).ToString(format, CultureInfo.InvariantCulture);
-                    }
-                    return DateTime.Now.ToString(format, CultureInfo.InvariantCulture);
-
-                case "modifieddate":
-                    string mFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
-                    if (item.Metadata.TryGetValue("LastWriteTimeUtc", out var mtVal) && mtVal is DateTime mdt)
-                    {
-                        return mdt.ToLocalTime().ToString(mFormat, CultureInfo.InvariantCulture);
-                    }
-                    if (File.Exists(currentPath))
-                    {
-                        return File.GetLastWriteTime(currentPath).ToString(mFormat, CultureInfo.InvariantCulture);
-                    }
-                    return DateTime.Now.ToString(mFormat, CultureInfo.InvariantCulture);
-
-                case "now":
-                    string nFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd_HH-mm-ss" : key;
-                    return DateTime.Now.ToString(nFormat, CultureInfo.InvariantCulture);
-
-                case "index":
-                case "counter":
-                    string idxVal = item.Metadata.TryGetValue("Counter", out var cObj) && cObj != null ? cObj.ToString()! : "1";
-                    if (int.TryParse(idxVal, out int num) && !string.IsNullOrEmpty(key))
-                    {
-                        return num.ToString(key, CultureInfo.InvariantCulture);
-                    }
-                    return idxVal;
-
-                case "filesize":
-                case "size":
-                    if (key.Equals("mb", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string spec = modifier ?? "F2";
-                        return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString(spec, CultureInfo.InvariantCulture);
-                    }
-                    if (key.Equals("kb", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string spec = modifier ?? "F1";
-                        return (item.FileSizeBytes / 1024.0).ToString(spec, CultureInfo.InvariantCulture);
-                    }
-                    if (key.Equals("bytes", StringComparison.OrdinalIgnoreCase) || key.Equals("b", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return item.FileSizeBytes.ToString(CultureInfo.InvariantCulture);
-                    }
-                    return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
-            }
-        }
-
-        switch (varName.ToLowerInvariant())
-        {
-            case "filename":
-                return Path.GetFileName(currentPath);
-
-            case "filenamenoext":
-                return Path.GetFileNameWithoutExtension(currentPath);
-
-            case "extension":
-            case "ext":
-                return Path.GetExtension(currentPath).TrimStart('.');
-
-            case "currentpath":
-                return currentPath;
-
-            case "originalpath":
-                return originalPath;
-
-            case "currentdir":
-                return Path.GetDirectoryName(currentPath) ?? string.Empty;
-
-            case "originaldir":
-                return Path.GetDirectoryName(originalPath) ?? string.Empty;
-
-            case "parentdir":
-                string? pDir = Path.GetDirectoryName(currentPath);
-                return string.IsNullOrEmpty(pDir) ? string.Empty : Path.GetFileName(pDir);
-
-            case "year":
-                return DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
-
-            case "month":
-                return DateTime.Now.ToString("MM", CultureInfo.InvariantCulture);
-
-            case "day":
-                return DateTime.Now.ToString("dd", CultureInfo.InvariantCulture);
-
-            case "relativepath":
-            case "relativedir":
-            case "relativedirectory":
-                return CalculateRelativeDirectory(currentPath, effectiveRootPath);
-
-            case "relativefilepath":
-                return CalculateRelativeFilePath(currentPath, effectiveRootPath);
-
-            // New System & Environment Variables
-            case "datenow":
-                return DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-
-            case "timenow":
-                return DateTime.Now.ToString("HH-mm-ss", CultureInfo.InvariantCulture);
-
-            case "datetimenow":
-                return DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture);
-
-            case "counter":
-            case "index":
-                return item.Metadata.TryGetValue("Counter", out var cVal) && cVal != null ? cVal.ToString()! : "1";
-
-            case "globaloutputdir":
-            case "defaultoutputdir":
-                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && godVal != null && !string.IsNullOrWhiteSpace(godVal.ToString()))
-                {
-                    return godVal.ToString()!;
-                }
-                return Path.Combine(Environment.CurrentDirectory, "Output");
-
-            case "sizemb":
-                return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
-
-            case "sizekb":
-                return (item.FileSizeBytes / 1024.0).ToString("F1", CultureInfo.InvariantCulture);
-
-            case "sizebytes":
-                return item.FileSizeBytes.ToString(CultureInfo.InvariantCulture);
-
-            case "username":
-                return Environment.UserName;
-
-            case "machinename":
-                return Environment.MachineName;
-
-            default:
-                if (item.Metadata.TryGetValue(varName, out var metaVal) && metaVal != null)
-                {
-                    return metaVal.ToString() ?? string.Empty;
-                }
-                return string.Empty;
-        }
+        return SystemVariablesResolver.GetVariableValue(varName, item, sourceRootPath);
     }
-
 
     private static List<string> ParseArguments(string argsStr, FileItemContext item, string? sourceRootPath)
     {
         if (string.IsNullOrWhiteSpace(argsStr)) return [];
 
         var result = new List<string>();
-        var parts = argsStr.Split(',');
+        var parts = SplitArguments(argsStr);
         foreach (var p in parts)
         {
             string trimmed = p.Trim();
@@ -313,219 +100,53 @@ public static class VariableTemplateResolver
         return result;
     }
 
-    private static bool IsKnownVariable(string name)
+    private static List<string> SplitArguments(string argsStr)
     {
-        return name.Equals("FileName", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("FileNameNoExt", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("Extension", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("CurrentPath", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("OriginalPath", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("RelativePath", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("RelativeDir", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("RelativeFilePath", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("DateTaken", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("DateNow", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("TimeNow", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("DateTimeNow", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("Counter", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("SizeMB", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("SizeKB", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("SizeBytes", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("UserName", StringComparison.OrdinalIgnoreCase) ||
-               name.Equals("MachineName", StringComparison.OrdinalIgnoreCase);
+        var list = new List<string>();
+        var sb = new System.Text.StringBuilder();
+        bool inQuotes = false;
+        char quoteChar = '\0';
+
+        foreach (char c in argsStr)
+        {
+            if ((c == '"' || c == '\'') && !inQuotes)
+            {
+                inQuotes = true;
+                quoteChar = c;
+                sb.Append(c);
+            }
+            else if (c == quoteChar && inQuotes)
+            {
+                inQuotes = false;
+                sb.Append(c);
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                list.Add(sb.ToString());
+                sb.Clear();
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+        if (sb.Length > 0)
+        {
+            list.Add(sb.ToString());
+        }
+        return list;
     }
 
     private static string ExecuteFunction(string fnName, List<string> args, FileItemContext item, string? sourceRootPath)
     {
-        string arg0 = args.Count > 0 ? args[0] : string.Empty;
-
-        switch (fnName.ToLowerInvariant())
+        foreach (var evaluator in FunctionEvaluators)
         {
-            case "year":
-                return ExtractDatePart(arg0, "yyyy");
-
-            case "month":
-                return ExtractDatePart(arg0, "MM");
-
-            case "day":
-                return ExtractDatePart(arg0, "dd");
-
-            case "formatdate":
-                string fmt = args.Count > 1 ? args[1] : "yyyy-MM-dd";
-                return ExtractDatePart(arg0, fmt);
-
-            case "upper":
-                return arg0.ToUpperInvariant();
-
-            case "lower":
-                return arg0.ToLowerInvariant();
-
-            case "trim":
-                return arg0.Trim();
-
-            case "replace":
-                if (args.Count >= 3)
-                {
-                    return arg0.Replace(args[1], args[2], StringComparison.OrdinalIgnoreCase);
-                }
-                return arg0;
-
-            case "default":
-                return string.IsNullOrWhiteSpace(arg0) && args.Count > 1 ? args[1] : arg0;
-
-            // New Practical Functions
-            case "sanitize":
-                return SanitizeFileName(arg0);
-
-            case "padleft":
-                if (args.Count >= 2 && int.TryParse(args[1], out int len))
-                {
-                    char padChar = args.Count >= 3 && args[2].Length > 0 ? args[2][0] : '0';
-                    return arg0.PadLeft(len, padChar);
-                }
-                return arg0;
-
-            case "substring":
-                if (args.Count >= 2 && int.TryParse(args[1], out int startIndex))
-                {
-                    if (startIndex < 0 || startIndex >= arg0.Length) return string.Empty;
-                    if (args.Count >= 3 && int.TryParse(args[2], out int length))
-                    {
-                        length = Math.Min(length, arg0.Length - startIndex);
-                        return arg0.Substring(startIndex, length);
-                    }
-                    return arg0[startIndex..];
-                }
-                return arg0;
-
-            case "regexmatch":
-                if (args.Count >= 2)
-                {
-                    try
-                    {
-                        var match = Regex.Match(arg0, args[1]);
-                        return match.Success ? match.Value : string.Empty;
-                    }
-                    catch
-                    {
-                        return string.Empty;
-                    }
-                }
-                return arg0;
-
-            case "regexreplace":
-                if (args.Count >= 3)
-                {
-                    try
-                    {
-                        return Regex.Replace(arg0, args[1], args[2]);
-                    }
-                    catch
-                    {
-                        return arg0;
-                    }
-                }
-                return arg0;
-
-            case "coalesce":
-                foreach (var arg in args)
-                {
-                    if (!string.IsNullOrWhiteSpace(arg)) return arg;
-                }
-                return string.Empty;
-
-            case "fileagedays":
-                return CalculateDaysElapsed(arg0);
-
-            default:
-                return arg0;
-        }
-    }
-
-    private static string SanitizeFileName(string input)
-    {
-        if (string.IsNullOrEmpty(input)) return string.Empty;
-        if (!input.AsSpan().ContainsAny(InvalidCharsSearch))
-        {
-            return input;
-        }
-
-        char[] buffer = input.ToCharArray();
-        for (int i = 0; i < buffer.Length; i++)
-        {
-            if (InvalidCharsSearch.Contains(buffer[i]))
+            if (evaluator.CanEvaluate(fnName))
             {
-                buffer[i] = '-';
+                return evaluator.Evaluate(fnName, args, item, sourceRootPath);
             }
         }
-        return new string(buffer);
-    }
 
-    private static string CalculateDaysElapsed(string dateInput)
-    {
-        if (DateTime.TryParse(dateInput, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt) ||
-            DateTime.TryParse(dateInput, out dt))
-        {
-            int days = (int)(DateTime.Now - dt).TotalDays;
-            return days.ToString(CultureInfo.InvariantCulture);
-        }
-        return "0";
-    }
-
-    private static string ExtractDatePart(string dateInput, string format)
-    {
-        if (DateTime.TryParse(dateInput, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt) ||
-            DateTime.TryParse(dateInput, out dt))
-        {
-            return dt.ToString(format, CultureInfo.InvariantCulture);
-        }
-        return dateInput;
-    }
-
-    private static string CalculateRelativeDirectory(string fullPath, string? rootPath)
-    {
-        if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
-        {
-            return string.Empty;
-        }
-
-        try
-        {
-            string normFull = Path.GetFullPath(fullPath);
-            string normRoot = Path.GetFullPath(rootPath);
-
-            string relPath = Path.GetRelativePath(normRoot, normFull);
-            if (relPath.Equals(".", StringComparison.Ordinal))
-            {
-                return string.Empty;
-            }
-
-            string? relDir = Path.GetDirectoryName(relPath);
-            return string.IsNullOrEmpty(relDir) || relDir.Equals(".", StringComparison.Ordinal) ? string.Empty : relDir;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
-
-    private static string CalculateRelativeFilePath(string fullPath, string? rootPath)
-    {
-        if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
-        {
-            return Path.GetFileName(fullPath);
-        }
-
-        try
-        {
-            string normFull = Path.GetFullPath(fullPath);
-            string normRoot = Path.GetFullPath(rootPath);
-            string rel = Path.GetRelativePath(normRoot, normFull);
-            return rel.Equals(".", StringComparison.Ordinal) ? Path.GetFileName(fullPath) : rel;
-        }
-        catch
-        {
-            return Path.GetFileName(fullPath);
-        }
+        return args.Count > 0 ? args[0] : string.Empty;
     }
 }

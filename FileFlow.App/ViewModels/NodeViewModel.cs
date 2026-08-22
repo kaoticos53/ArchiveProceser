@@ -10,9 +10,11 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
-public partial class NodeViewModel : ObservableObject
+public partial class NodeViewModel : ObservableObject, IDisposable
 {
+    private bool _disposed;
     private readonly IFlowNode _nodeInstance;
+    private readonly NodeParameterManager _parameterManager;
 
     [ObservableProperty]
     private string _id = Guid.NewGuid().ToString();
@@ -37,14 +39,13 @@ public partial class NodeViewModel : ObservableObject
 
     partial void OnIsSelectedChanged(bool value)
     {
-        // La selección simple no abre forzosamente el inspector
     }
 
     [RelayCommand]
     public void InspectNode()
     {
         IsSelected = true;
-        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.Send(new FileFlow.App.Messages.NodeSelectedMessage(this, autoOpenInspector: true));
+        WeakReferenceMessenger.Default.Send(new NodeSelectedMessage(this, autoOpenInspector: true));
     }
 
     [ObservableProperty]
@@ -119,10 +120,9 @@ public partial class NodeViewModel : ObservableObject
 
     public IFlowNode NodeInstance => _nodeInstance;
 
-
     public ObservableCollection<PortViewModel> InputPorts { get; } = [];
     public ObservableCollection<PortViewModel> OutputPorts { get; } = [];
-    public ObservableCollection<NodeParameterViewModel> Parameters { get; } = [];
+    public ObservableCollection<NodeParameterViewModel> Parameters => _parameterManager.Parameters;
     public ObservableCollection<NodeDataSnapshot> InputSnapshots { get; } = [];
     public ObservableCollection<NodeDataSnapshot> OutputSnapshots { get; } = [];
 
@@ -195,12 +195,7 @@ public partial class NodeViewModel : ObservableObject
             }
         }
 
-        foreach (var (k, v) in node.Parameters)
-        {
-            if (isSwitch && k.Equals("CasesJson", StringComparison.OrdinalIgnoreCase))
-                continue;
-            Parameters.Add(new NodeParameterViewModel(k, v, nodeOwner: this));
-        }
+        _parameterManager = new NodeParameterManager(node, this);
 
         if (isSwitch)
         {
@@ -297,76 +292,26 @@ public partial class NodeViewModel : ObservableObject
         }
     }
 
-
     [RelayCommand]
     public void AddVariable()
     {
-        int count = Parameters.Count + 1;
-        string newKey = $"Variable_{count}";
-        lock (_nodeInstance.Parameters)
-        {
-            while (_nodeInstance.Parameters.ContainsKey(newKey) || Parameters.Any(p => p.Key.Equals(newKey, StringComparison.OrdinalIgnoreCase)))
-            {
-                count++;
-                newKey = $"Variable_{count}";
-            }
-
-            _nodeInstance.Parameters[newKey] = "";
-        }
-        var paramVM = new NodeParameterViewModel(newKey, "", nodeOwner: this);
-        Parameters.Add(paramVM);
+        _parameterManager.AddVariable();
     }
-
 
     [RelayCommand]
     public void RemoveParameter(NodeParameterViewModel param)
     {
-        if (param == null) return;
-        Parameters.Remove(param);
-        lock (_nodeInstance.Parameters)
-        {
-            _nodeInstance.Parameters.Remove(param.Key);
-        }
+        _parameterManager.RemoveParameter(param);
     }
 
     public void OnParameterKeyRenamed(string oldKey, string newKey, object? value)
     {
-        if (oldKey != newKey)
-        {
-            lock (_nodeInstance.Parameters)
-            {
-                _nodeInstance.Parameters.Remove(oldKey);
-                if (!string.IsNullOrWhiteSpace(newKey))
-                {
-                    _nodeInstance.Parameters[newKey] = value;
-                }
-            }
-        }
+        _parameterManager.OnParameterKeyRenamed(oldKey, newKey, value);
     }
 
     public void OnParameterValueChanged(string key, object? newValue)
     {
-        if (!string.IsNullOrWhiteSpace(key))
-        {
-            lock (_nodeInstance.Parameters)
-            {
-                _nodeInstance.Parameters[key] = newValue;
-            }
-
-            if (key.Equals("Preset", StringComparison.OrdinalIgnoreCase) && newValue != null)
-            {
-                string presetName = newValue.ToString() ?? string.Empty;
-                var preset = Services.MediaPresetManagerService.Instance.GetPresetByName(presetName);
-                if (preset != null)
-                {
-                    var customArgsParam = Parameters.FirstOrDefault(p => p.Key.Equals("CustomArguments", StringComparison.OrdinalIgnoreCase));
-                    if (customArgsParam != null)
-                    {
-                        customArgsParam.Value = preset.FfmpegArguments;
-                    }
-                }
-            }
-        }
+        _parameterManager.OnParameterValueChanged(key, newValue);
     }
 
     private void OnLanguageChanged(object? sender, CultureInfo culture)
@@ -379,9 +324,16 @@ public partial class NodeViewModel : ObservableObject
     public void Cleanup()
     {
         LocalizationManager.Instance.LanguageChanged -= OnLanguageChanged;
-        Parameters.Clear();
+        _parameterManager.Dispose();
         InputSnapshots.Clear();
         OutputSnapshots.Clear();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Cleanup();
     }
 
     [RelayCommand]
@@ -407,19 +359,19 @@ public partial class NodeViewModel : ObservableObject
         {
             case "filesystem":
                 HeaderColor = "#143328";
-                AccentColor = "#10B981"; // Emerald
+                AccentColor = "#10B981";
                 break;
             case "archives":
                 HeaderColor = "#362713";
-                AccentColor = "#F59E0B"; // Amber
+                AccentColor = "#F59E0B";
                 break;
             case "images":
                 HeaderColor = "#301438";
-                AccentColor = "#A855F7"; // Purple
+                AccentColor = "#A855F7";
                 break;
             default:
                 HeaderColor = "#1F2433";
-                AccentColor = "#818CF8"; // Indigo
+                AccentColor = "#818CF8";
                 break;
         }
     }
@@ -444,12 +396,12 @@ public partial class NodeViewModel : ObservableObject
     {
         if (oldValue == newValue) return;
 
-        if (newValue) // Expanding
+        if (newValue)
         {
             CollapsedWidth = Width;
             Width = ExpandedWidth;
         }
-        else // Collapsing
+        else
         {
             ExpandedWidth = Width;
             Width = CollapsedWidth;
@@ -518,38 +470,3 @@ public partial class NodeViewModel : ObservableObject
         });
     }
 }
-
-public partial class SwitchCaseItemViewModel : ObservableObject
-{
-    public NodeViewModel NodeOwner { get; }
-    public PortViewModel? Port { get; set; }
-
-    [ObservableProperty]
-    private string _name = string.Empty;
-
-    [ObservableProperty]
-    private string _pattern = string.Empty;
-
-    public SwitchCaseItemViewModel(NodeViewModel owner, string name, string pattern)
-    {
-        NodeOwner = owner;
-        _name = name;
-        _pattern = pattern;
-    }
-
-
-    partial void OnNameChanged(string? oldValue, string newValue)
-    {
-        if (oldValue != null && oldValue != newValue)
-        {
-            NodeOwner.OnSwitchCaseRenamed(oldValue, newValue, this);
-        }
-    }
-
-
-    partial void OnPatternChanged(string value)
-    {
-        NodeOwner.SyncSwitchCasesToNodeInstance();
-    }
-}
-

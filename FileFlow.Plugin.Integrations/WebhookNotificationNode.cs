@@ -50,6 +50,15 @@ public class WebhookNotificationNode : IFlowNode
             string resolvedUrl = VariableTemplateResolver.Resolve(url, item);
             string resolvedPayload = VariableTemplateResolver.Resolve(payloadTemplate, item);
 
+            if (!Uri.TryCreate(resolvedUrl, UriKind.Absolute, out var parsedUri) ||
+                (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps))
+            {
+                context.Log($"[WebhookNotificationNode] URL inválida o esquema no soportado: '{resolvedUrl}'", LogLevel.Error);
+                item.AddLog($"Webhook Error: URL invalida '{resolvedUrl}'");
+                await context.EmitAsync("Failed", item);
+                return;
+            }
+
             if (context.IsDryRun)
             {
                 context.RegisterPlannedAction(new PlannedAction(
@@ -70,7 +79,7 @@ public class WebhookNotificationNode : IFlowNode
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(timeoutSec));
 
-            var response = await HttpClient.PostAsync(resolvedUrl, content, cts.Token).ConfigureAwait(false);
+            using var response = await HttpClient.PostAsync(resolvedUrl, content, cts.Token).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 item.AddLog($"Webhook POST succeeded ({response.StatusCode}) to {resolvedUrl}");

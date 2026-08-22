@@ -1,3 +1,4 @@
+using FileFlow.Plugin.Archives.Services;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SharpCompress.Archives;
@@ -74,7 +75,7 @@ public class SmartUnpackNode : IFlowNode
                     .Where(k => !string.IsNullOrWhiteSpace(k))
                     .ToList();
 
-                string? commonRoot = GetCommonRootFolder(entryKeys);
+                string? commonRoot = ArchiveVolumeResolver.GetCommonRootFolder(entryKeys);
                 bool hasSingleWrapper = !string.IsNullOrEmpty(commonRoot);
 
                 string archiveNameNoExt = Path.GetFileNameWithoutExtension(archivePath);
@@ -150,7 +151,7 @@ public class SmartUnpackNode : IFlowNode
             context.Log($"SmartUnpackNode Extraction Failed for '{archivePath}': {ex.Message}", LogLevel.Error);
             item.AddLog($"SmartUnpackNode error: {ex.Message}");
 
-            var relatedVolumes = FindRelatedVolumeFiles(archivePath);
+            var relatedVolumes = ArchiveVolumeResolver.FindRelatedVolumeFiles(archivePath);
             item.Metadata["RelatedVolumeFiles"] = string.Join(";", relatedVolumes);
             item.Metadata["IsMultipartArchive"] = relatedVolumes.Count > 1;
 
@@ -242,7 +243,7 @@ public class SmartUnpackNode : IFlowNode
             var allFiles = Directory.EnumerateFiles(targetDir, "*.*", SearchOption.AllDirectories).ToList();
 
             var nestedPrimaryArchives = allFiles
-                .Where(f => IsPrimaryArchiveFile(f))
+                .Where(f => ArchiveVolumeResolver.IsPrimaryArchiveFile(f))
                 .ToList();
 
             if (nestedPrimaryArchives.Count == 0)
@@ -291,7 +292,7 @@ public class SmartUnpackNode : IFlowNode
             }
 
             var secondaryVolumes = Directory.EnumerateFiles(targetDir, "*.*", SearchOption.AllDirectories)
-                .Where(f => IsSecondaryVolumeFile(f))
+                .Where(f => ArchiveVolumeResolver.IsSecondaryVolumeFile(f))
                 .ToList();
 
             foreach (var secVol in secondaryVolumes)
@@ -304,73 +305,5 @@ public class SmartUnpackNode : IFlowNode
                 catch { }
             }
         }
-    }
-
-    private static List<string> FindRelatedVolumeFiles(string archivePath)
-    {
-        var volumes = new List<string> { archivePath };
-        string? dir = Path.GetDirectoryName(archivePath);
-        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return volumes;
-
-        string fileNameNoExt = Path.GetFileNameWithoutExtension(archivePath);
-
-        var matchPart = System.Text.RegularExpressions.Regex.Match(fileNameNoExt, @"^(.*?\.part)\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        if (matchPart.Success)
-        {
-            string prefix = matchPart.Groups[1].Value;
-            var siblingParts = Directory.EnumerateFiles(dir, prefix + "*.rar", SearchOption.TopDirectoryOnly);
-            foreach (var f in siblingParts)
-            {
-                if (!volumes.Contains(f, StringComparer.OrdinalIgnoreCase))
-                    volumes.Add(f);
-            }
-            return volumes;
-        }
-
-        string baseName = Path.GetFileNameWithoutExtension(archivePath);
-        var siblingZips = Directory.EnumerateFiles(dir, baseName + ".z*", SearchOption.TopDirectoryOnly);
-        foreach (var f in siblingZips)
-        {
-            if (!volumes.Contains(f, StringComparer.OrdinalIgnoreCase))
-                volumes.Add(f);
-        }
-
-        return volumes;
-    }
-
-    private static bool IsPrimaryArchiveFile(string filePath)
-    {
-        string fileName = Path.GetFileName(filePath).ToLowerInvariant();
-        if (fileName.EndsWith(".part01.rar") || fileName.EndsWith(".part1.rar")) return true;
-        if (System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\.part(?!0*1\.)\d+\.rar$")) return false;
-        string ext = Path.GetExtension(filePath).ToLowerInvariant();
-        return ext is ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".tgz" or ".bz2";
-    }
-
-    private static bool IsSecondaryVolumeFile(string filePath)
-    {
-        string fileName = Path.GetFileName(filePath).ToLowerInvariant();
-        return System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\.(r\d{2,3}|z\d{2,3}|part(?!0*1\.)\d+\.rar)$");
-    }
-
-    private static string? GetCommonRootFolder(List<string> entryKeys)
-    {
-        if (entryKeys.Count == 0) return null;
-
-        string firstKey = entryKeys[0];
-        int slashIndex = firstKey.IndexOf('/');
-        if (slashIndex <= 0) return null;
-
-        string root = firstKey[..slashIndex];
-
-        foreach (string key in entryKeys)
-        {
-            if (!key.StartsWith(root + "/", StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-        }
-
-        return root;
     }
 }

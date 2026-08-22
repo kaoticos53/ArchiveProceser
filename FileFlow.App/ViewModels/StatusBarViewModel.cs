@@ -37,14 +37,18 @@ public partial class StatusBarViewModel : ObservableObject
     [ObservableProperty]
     private double _zoomPercentage = 100;
 
+    private readonly LogViewModel _logViewModel;
+
     public StatusBarViewModel(
         EditorViewModel editorViewModel, 
         ControlBarViewModel controlBarViewModel, 
-        SystemPerformanceMonitor performanceMonitor)
+        SystemPerformanceMonitor performanceMonitor,
+        LogViewModel logViewModel)
     {
         _editorViewModel = editorViewModel;
         _controlBarViewModel = controlBarViewModel;
         _performanceMonitor = performanceMonitor;
+        _logViewModel = logViewModel;
 
         // Subscripciones a eventos de EditorViewModel
         _editorViewModel.PropertyChanged += (s, e) =>
@@ -72,7 +76,14 @@ public partial class StatusBarViewModel : ObservableObject
         {
             if (e.PropertyName == nameof(ControlBarViewModel.IsRunning))
             {
-                StatusMessage = _controlBarViewModel.IsRunning ? "⚡ Ejecutando flujo..." : "🟢 Listo";
+                if (_controlBarViewModel.IsRunning)
+                {
+                    UpdateActiveStatusMessage(_logViewModel.StatusMessage);
+                }
+                else
+                {
+                    StatusMessage = "🟢 Listo";
+                }
             }
             else if (e.PropertyName == nameof(ControlBarViewModel.IsPaused))
             {
@@ -80,6 +91,25 @@ public partial class StatusBarViewModel : ObservableObject
                 {
                     StatusMessage = "⏸️ Flujo pausado";
                 }
+            }
+        };
+
+        // Subscripción reactiva a LogViewModel para estado en vivo
+        _logViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(LogViewModel.StatusMessage))
+            {
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    if (_controlBarViewModel.IsRunning)
+                    {
+                        UpdateActiveStatusMessage(_logViewModel.StatusMessage);
+                    }
+                    else
+                    {
+                        StatusMessage = "🟢 Listo";
+                    }
+                });
             }
         };
 
@@ -92,6 +122,28 @@ public partial class StatusBarViewModel : ObservableObject
                 CpuText = metrics.CpuFormatted;
             });
         };
+    }
+
+    private void UpdateActiveStatusMessage(string? rawMessage)
+    {
+        if (string.IsNullOrWhiteSpace(rawMessage) || rawMessage == "Listo" || rawMessage == "Ready" || rawMessage == FileFlow.Sdk.Localization.LocalizationManager.Instance["StatusReady"])
+        {
+            StatusMessage = "⚡ Ejecutando flujo de trabajo...";
+            return;
+        }
+
+        if (rawMessage.StartsWith("⚡"))
+        {
+            StatusMessage = rawMessage;
+        }
+        else if (rawMessage.StartsWith("🟢"))
+        {
+            StatusMessage = $"⚡ {rawMessage[1..].TrimStart()}";
+        }
+        else
+        {
+            StatusMessage = $"⚡ {rawMessage}";
+        }
     }
 
     private void UpdateSelectedNodeInfo()

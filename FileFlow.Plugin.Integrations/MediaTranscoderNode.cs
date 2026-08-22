@@ -135,13 +135,31 @@ public class MediaTranscoderNode : IFlowNode
                         }
                     };
 
-                    process.Start();
-                    process.BeginErrorReadLine();
-                    process.BeginOutputReadLine();
+                    try
+                    {
+                        process.Start();
+                        process.BeginErrorReadLine();
+                        process.BeginOutputReadLine();
 
-                    await process.WaitForExitAsync(cancellationToken);
-
-                    transcodeSuccess = process.ExitCode == 0 && File.Exists(targetPath);
+                        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                        transcodeSuccess = process.ExitCode == 0 && File.Exists(targetPath);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        try
+                        {
+                            if (!process.HasExited)
+                            {
+                                process.Kill(entireProcessTree: true);
+                            }
+                        }
+                        catch { }
+                        throw;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch
                 {
@@ -247,7 +265,15 @@ public class MediaTranscoderNode : IFlowNode
                 CreateNoWindow = true,
                 UseShellExecute = false
             });
-            return proc != null;
+            if (proc != null)
+            {
+                if (!proc.WaitForExit(2000))
+                {
+                    try { proc.Kill(entireProcessTree: true); } catch { }
+                }
+                return proc.ExitCode == 0;
+            }
+            return false;
         }
         catch
         {

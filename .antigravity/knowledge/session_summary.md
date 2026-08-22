@@ -8,31 +8,25 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` $\rightarrow$ **86 / 86 Pruebas Pasadas con Éxito** (Unit & Integration tests en xUnit).
-- **Git**: Repositorio sincronizado con suite de pruebas al 100%.
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **117 / 117 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
 ---
 
-## 2. Nodos y Funcionalidades Recientemente Desarrolladas
-
-### A. Biblioteca Completa de 40 Ejemplos de Flujos (`docs/examples/`)
-- **Archivos Creados (81 archivos en total)**:
-  - `docs/examples/01_basic/` (10 `.json` + 10 `.md`)
-  - `docs/examples/02_intermediate/` (10 `.json` + 10 `.md`)
-  - `docs/examples/03_advanced/` (10 `.json` + 10 `.md`)
-  - `docs/examples/04_complex/` (10 `.json` + 10 `.md`)
-  - `docs/examples/README.md` (Índice catálogo con enlaces relativos y tablas).
-- **Validación Automática**: Creada prueba unitaria `AllFortyGeneratedWorkflowExamples_ShouldDeserializeSuccessfully` en `WorkflowStorageServiceTests.cs`.
-
-### B. Migración Completa a Rutas Relativas por Defecto en Todos los Nodos
-- **Rutas Relativas en Nodos**: Se eliminaron las rutas absolutas residuales (`C:\...`) de `FolderSourceNode`, `DestinationSinkNode`, `OriginalFileActionNode`, `SmartUnpackNode` e `ImageOptimizerNode`.
-- **Anclaje Dinámico Global**: Todos los nodos utilizan ahora plantillas relativas (`{RelativeDir}\Input`, `{RelativeDir}\Output`, `{RelativeDir}\Unpacked`, etc.), las cuales son resueltas dinámicamente por `ParameterHelper.ResolveOutputPath`.
+## 2. Sincronización Simultánea en Tiempo Real de Barra de Progreso y Logs (Agosto 2026)
+1. **Sincronización en Tiempo Real a 30 FPS (`ControlBarViewModel.cs`)**:
+   - Integrada la actualización de progreso (`ProgressPercentage` y `StatusMessage`) directamente en el temporizador `visualFlushTimer` con prioridad normal.
+   - Eliminado el encolamiento retrasado de miles de delegados del Dispatcher. La barra de progreso avanza **simultáneamente y acompasada con la salida de logs**.
+2. **Cálculo Preciso en Vivo (`WorkflowExecutor.cs`)**:
+   - `_totalItemsCount` calculado únicamente sobre aristas reales activas y reporte de avance en vivo (`⚡ Procesando: X/Y (N%)`).
+   - Cierre explícito de progreso al 100% al concluir todas las tareas.
+3. **Vaciado Adaptativo e Instantáneo de Logs (`LogViewModel.cs`)**:
+   - Escalado dinámico de vaciado de logs y vaciado final `FlushAllPendingLogs()`.
 
 ---
 
-## 3. Capa SDK y Motor de Plantillas (`FileFlow.Sdk`)
-- **`NodePort`**: Record extendido con parámetro opcional `Description`.
-- **`ParameterHelper`**: Extracción inteligente global de unidades de tiempo, porcentajes y dimensiones.
+## 3. Suite Completa de Documentación Técnica (`docs/`)
+- `docs/architecture.md`, `docs/setup_and_deployment.md`, `docs/api_reference.md`, `docs/user_guide.md`, `docs/contributing.md`, `docs/README.md`.
 
 ---
 

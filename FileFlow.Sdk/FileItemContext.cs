@@ -28,6 +28,22 @@ public record FileItemContext
         }
     }
 
+    public FileItemContext(FileInfo fileInfo)
+    {
+        CurrentPath = fileInfo.FullName;
+        OriginalPath = fileInfo.FullName;
+        IsDirectory = false;
+        FileSizeBytes = fileInfo.Length;
+    }
+
+    public FileItemContext(DirectoryInfo dirInfo)
+    {
+        CurrentPath = dirInfo.FullName;
+        OriginalPath = dirInfo.FullName;
+        IsDirectory = true;
+        FileSizeBytes = 0;
+    }
+
     public void AddLog(string message)
     {
         string timestamped = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}";
@@ -42,7 +58,10 @@ public record FileItemContext
             CurrentPath = CurrentPath,
             OriginalPath = OriginalPath,
             IsDirectory = IsDirectory,
-            FileSizeBytes = FileSizeBytes
+            FileSizeBytes = FileSizeBytes,
+            Metadata = new Dictionary<string, object?>(Metadata.Count, StringComparer.OrdinalIgnoreCase),
+            Tags = new HashSet<string>(Tags.Count, StringComparer.OrdinalIgnoreCase),
+            ExecutionLog = new List<string>(ExecutionLog.Count)
         };
 
         foreach (var (k, v) in Metadata)

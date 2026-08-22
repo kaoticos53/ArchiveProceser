@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -77,46 +78,78 @@ public class FolderSourceNode : IFlowNode
 
         context.Log($"Scanning directory: {sourcePath} (EmitMode={emitMode}, MaxDepth={maxDepth}, Recursive={recursive})", LogLevel.Information);
 
-        var itemsToEmit = new List<FileItemContext>();
-        CollectItems(sourcePath, 0, maxDepth, emitFiles, emitDirectories, itemsToEmit, context, cancellationToken);
-
-        int totalItems = itemsToEmit.Count;
-        if (totalItems == 0)
+        // Bounded channel with 1000 items capacity to provide backpressure control
+        var channel = Channel.CreateBounded<FileItemContext>(new BoundedChannelOptions(1000)
         {
-            context.ReportProgress(100.0, "0 elementos");
-        }
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleWriter = true,
+            SingleReader = false
+        });
 
-        long lastReportTicks = 0;
-        for (int i = 0; i < totalItems; i++)
+        long emittedCount = 0;
+        long totalBytesEmitted = 0;
+        long lastReportTicks = Environment.TickCount64;
+
+        context.ReportProgress(0, "⚡ Escaneando y emitiendo elementos...");
+
+        var dirInfo = new DirectoryInfo(sourcePath);
+
+        // Consumer task reading from channel and emitting downstream
+        var consumerTask = Task.Run(async () =>
         {
-            var itemContext = itemsToEmit[i];
-            cancellationToken.ThrowIfCancellationRequested();
-
-            long nowTicks = Environment.TickCount64;
-            if (i == 0 || i == totalItems - 1 || nowTicks - lastReportTicks > 60)
+            await foreach (var itemContext in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
-                lastReportTicks = nowTicks;
-                double pct = ((double)(i + 1) / totalItems) * 100.0;
-                context.ReportProgress(pct, $"{i + 1}/{totalItems} ({pct:F0}%)");
-            }
+                long currentCount = Interlocked.Increment(ref emittedCount);
+                Interlocked.Add(ref totalBytesEmitted, itemContext.FileSizeBytes);
 
-            itemContext.Metadata["SourceRootPath"] = sourcePath;
-            itemContext.Metadata["Counter"] = i + 1;
-            itemContext.AddLog($"Emitted by FolderSourceNode from {sourcePath}");
-            await context.EmitAsync("Out", itemContext);
+                long nowTicks = Environment.TickCount64;
+                if (currentCount == 1 || nowTicks - lastReportTicks > 100)
+                {
+                    lastReportTicks = nowTicks;
+                    double mb = totalBytesEmitted / (1024.0 * 1024.0);
+                    context.ReportProgress(0, $"⚡ Escaneando y emitiendo: {currentCount:N0} archivos ({mb:F1} MB)...");
+                }
+
+                itemContext.Metadata["SourceRootPath"] = sourcePath;
+                itemContext.Metadata["Counter"] = currentCount;
+                itemContext.Metadata["TotalEmittedBytes"] = totalBytesEmitted;
+                itemContext.AddLog($"Emitted by FolderSourceNode from {sourcePath}");
+                await context.EmitAsync("Out", itemContext).ConfigureAwait(false);
+            }
+        }, cancellationToken);
+
+        // Producer: Scan directory tree with 1-pass DirectoryInfo/FileInfo I/O and write to channel
+        try
+        {
+            await StreamAndEmitDirAsync(
+                dirInfo,
+                0,
+                maxDepth,
+                emitFiles,
+                emitDirectories,
+                channel.Writer,
+                context,
+                cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            channel.Writer.Complete();
         }
 
-        context.ReportProgress(100.0, $"{totalItems}/{totalItems} (100%)");
-        context.Log($"FolderSourceNode scanned and emitted {totalItems} items.", LogLevel.Information);
+        await consumerTask.ConfigureAwait(false);
+
+        double totalMB = totalBytesEmitted / (1024.0 * 1024.0);
+        context.ReportProgress(100.0, $"{emittedCount:N0} elementos emmitidos ({totalMB:F1} MB - 100%)");
+        context.Log($"FolderSourceNode scanned and emitted {emittedCount:N0} items ({totalMB:F1} MB).", LogLevel.Information);
     }
 
-    private static void CollectItems(
-        string currentDir,
+    private static async Task StreamAndEmitDirAsync(
+        DirectoryInfo currentDir,
         int currentDepth,
         int maxDepth,
         bool emitFiles,
         bool emitDirectories,
-        List<FileItemContext> result,
+        ChannelWriter<FileItemContext> writer,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
@@ -126,37 +159,47 @@ public class FolderSourceNode : IFlowNode
         {
             try
             {
-                foreach (string file in Directory.EnumerateFiles(currentDir))
+                int fileCounter = 0;
+                foreach (FileInfo file in currentDir.EnumerateFiles())
                 {
-                    result.Add(new FileItemContext(file, isDirectory: false));
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var itemContext = new FileItemContext(file);
+                    await writer.WriteAsync(itemContext, cancellationToken).ConfigureAwait(false);
+
+                    fileCounter++;
+                    if (fileCounter % 100 == 0)
+                    {
+                        await Task.Yield();
+                    }
                 }
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
             {
-                context.Log($"Skipping files in '{currentDir}': {ex.Message}", LogLevel.Warning);
+                context.Log($"Skipping files in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
             }
         }
 
         try
         {
-            foreach (string subDir in Directory.EnumerateDirectories(currentDir))
+            foreach (DirectoryInfo subDir in currentDir.EnumerateDirectories())
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 if (emitDirectories)
                 {
-                    result.Add(new FileItemContext(subDir, isDirectory: true));
+                    var dirContext = new FileItemContext(subDir);
+                    await writer.WriteAsync(dirContext, cancellationToken).ConfigureAwait(false);
                 }
 
                 if (maxDepth == -1 || currentDepth < maxDepth)
                 {
-                    CollectItems(subDir, currentDepth + 1, maxDepth, emitFiles, emitDirectories, result, context, cancellationToken);
+                    await StreamAndEmitDirAsync(subDir, currentDepth + 1, maxDepth, emitFiles, emitDirectories, writer, context, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
         {
-            context.Log($"Skipping directories in '{currentDir}': {ex.Message}", LogLevel.Warning);
+            context.Log($"Skipping directories in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
         }
     }
 }

@@ -26,6 +26,7 @@ public class LogOutputNode : IFlowNode
     {
         ["LogMetadata"] = true,
         ["LogExecutionHistory"] = true,
+        ["CompactFormat"] = false,
         ["LogLevel"] = "Information"
     };
 
@@ -37,6 +38,7 @@ public class LogOutputNode : IFlowNode
     {
         bool logMetadata = Parameters.TryGetValue("LogMetadata", out var mVal) && ParameterHelper.GetBoolean(mVal, true);
         bool logHistory = Parameters.TryGetValue("LogExecutionHistory", out var hVal) && ParameterHelper.GetBoolean(hVal, true);
+        bool compactFormat = Parameters.TryGetValue("CompactFormat", out var cVal) && ParameterHelper.GetBoolean(cVal, false);
         string levelStr = Parameters.TryGetValue("LogLevel", out var lVal) ? ParameterHelper.GetString(lVal, "Information") : "Information";
 
         if (!Enum.TryParse<LogLevel>(levelStr, true, out var parsedLevel))
@@ -45,6 +47,16 @@ public class LogOutputNode : IFlowNode
             parsedLevel = LogLevel.Information;
         }
         LogLevel level = parsedLevel;
+
+        if (compactFormat)
+        {
+            double mb = item.FileSizeBytes / (1024.0 * 1024.0);
+            string metaSummary = item.Metadata.Count > 0 ? string.Join(", ", item.Metadata.Select(kv => $"{kv.Key}={kv.Value}")) : "none";
+            context.Log($"[Log Inspector] {item.CurrentPath} ({mb:F2} MB) | Meta: [{metaSummary}]", level);
+            item.AddLog($"LogInspectorNode logged compact item state ({item.CurrentPath})");
+            await context.EmitAsync("Out", item);
+            return;
+        }
 
         var sb = new StringBuilder();
         sb.AppendLine($"=== [Log Inspector Output] ===");

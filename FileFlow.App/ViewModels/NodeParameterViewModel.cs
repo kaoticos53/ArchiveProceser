@@ -6,8 +6,11 @@ using FileFlow.App.Models;
 
 namespace FileFlow.App.ViewModels;
 
-public partial class NodeParameterViewModel : ObservableObject
+public partial class NodeParameterViewModel : ObservableObject, IDisposable
 {
+    private bool _disposed;
+    private EventHandler? _presetsChangedHandler;
+
     public NodeViewModel? NodeOwner { get; set; }
 
     [ObservableProperty]
@@ -160,7 +163,8 @@ public partial class NodeParameterViewModel : ObservableObject
 
         if (IsMediaPreset)
         {
-            Services.MediaPresetManagerService.Instance.PresetsChanged += (_, _) => RefreshMediaPresetOptions();
+            _presetsChangedHandler = (_, _) => RefreshMediaPresetOptions();
+            Services.MediaPresetManagerService.Instance.PresetsChanged += _presetsChangedHandler;
         }
     }
 
@@ -246,6 +250,18 @@ public partial class NodeParameterViewModel : ObservableObject
             {
                 Value = dialog.FileName;
             }
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        if (IsMediaPreset && _presetsChangedHandler != null)
+        {
+            Services.MediaPresetManagerService.Instance.PresetsChanged -= _presetsChangedHandler;
+            _presetsChangedHandler = null;
         }
     }
 

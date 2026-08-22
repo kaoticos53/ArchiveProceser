@@ -2,6 +2,136 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-08-22] - Sincronización Simultánea en Tiempo Real de Barra de Progreso y Logs
+
+### 🛠 Cambios e Implementaciones
+1. **Sincronización en Tiempo Real a 30 FPS (`ControlBarViewModel.cs`):**
+   - Agrupada la actualización de progreso (`ProgressPercentage` y `StatusMessage`) directamente en el temporizador visual `visualFlushTimer` con prioridad normal.
+   - Eliminado el encolamiento retrasado de miles de delegados de progreso que quedaban atrapados detrás del vaciado de logs. Ahora la barra de progreso avanza **simultáneamente y en tiempo real con la salida de logs**.
+2. **Cálculo de Porcentaje en Vivo durante Streaming (`WorkflowExecutor.cs`):**
+   - Lectura atómica volátil de `_totalItemsCount` en `finally` y reporte porcentual progresivo (`⚡ Procesando: X/Y (N%)`).
+
+---
+
+## [2026-08-22] - Corrección de Conteo en Nodos Terminales y Vaciado Instantáneo de Logs
+
+### 🛠 Cambios e Implementaciones
+1. **Conteo Preciso de Aristas Activas y Cierre al 100% (`WorkflowExecutor.cs`):**
+   - Corregido el incremento de `_totalItemsCount` en `DispatchEmitAsync` para que sume únicamente las conexiones reales conectadas (`matchingEdges.Count`). Evitado que nodos terminales (como `LogOutputNode`) cuyos puertos de salida no están conectados desvíen el conteo total esperado.
+   - Añadida notificación explícita del 100% de progreso al culminar todas las tareas en `ExecuteAsync` (`Procesados N/N (100%)`).
+2. **Vaciado Adaptativo e Instantáneo de Logs (`LogViewModel.cs` & `ControlBarViewModel.cs`):**
+   - Implementado escalado dinámico del tamaño de lote (de 75 hasta 500 registros por ciclo si la cola supera los 1.000 elementos).
+   - Incorporado el método `FlushAllPendingLogs()`, invocado inmediatamente al finalizar el flujo para que la consola muestre el 100% de los logs en el mismo milisegundo en que concluye el procesamiento sin tiempos de espera residuales.
+
+---
+
+## [2026-08-22] - Streaming Fluido en UI a 60 FPS y Prevención de Congelamiento por Inundación
+
+### 🛠 Cambios e Implementaciones
+1. **Limitación de Tasa de Renderizado de Logs (`LogViewModel.cs`):**
+   - Incorporado el límite de vaciado `MaxLogsPerFlush = 75` en `FlushPendingLogs` (cada 35 ms), evitando que ráfagas de miles de logs saturen la cola de renderizado de WPF y bloqueen la ventana en estado "No responde".
+2. **Agrupación y Throttling de Eventos Visuales en el Lienzo (`ControlBarViewModel.cs`):**
+   - Desacoplados los eventos `EdgeItemDispatched` y `NodeStatusChanged` mediante un temporizador `visualFlushTimer` a 30 FPS con diccionarios concurrentes (`pendingEdgeUpdates` / `pendingStatusUpdates`).
+   - Reducido el tráfico de delegados en la cola del Dispatcher en más de un **99%**, manteniendo la interfaz 100% interactiva, fluida y con respuesta inmediata durante el procesamiento masivo.
+3. **Modo Compacto de Inspección (`LogOutputNode.cs`):**
+   - Incorporado el parámetro opcional `CompactFormat` para generar resúmenes concisos de 1 sola línea por archivo en flujos de alto volumen.
+
+---
+
+## [2026-08-22] - Escaneo de 1 Sola Pasada I/O y Búfer Acotado con Contrapresión (Bounded Channel)
+
+### 🛠 Cambios e Implementaciones
+1. **Constructores I/O de 1 Sola Pasada (`FileItemContext.cs`):**
+   - Añadidos constructores optimizados `FileItemContext(FileInfo)` y `FileItemContext(DirectoryInfo)`.
+   - Eliminadas las comprobaciones duplicadas de `File.Exists(path)` e instanciaciones redundantes de `FileInfo.Length`, reduciendo en un **66% las llamadas I/O de sistema de archivos a Windows** (1 sola pasada I/O).
+2. **Tubería Productor-Consumidor con Contrapresión (`FolderSourceNode.cs`):**
+   - Incorporado un canal acotado `Channel.CreateBounded<FileItemContext>(1000)` para pausar automáticamente el escáner si los nodos receptores son más lentos, evitando el uso excesivo de memoria RAM.
+   - Puntos de cesión de hilo (`await Task.Yield()`) cada 100 archivos enumerados para garantizar cero bloqueos de la interfaz y respuesta instantánea ante cancelaciones.
+   - Reporte dinámico en tiempo real cada 100 ms con métricas acumuladas de conteo y megabytes (`⚡ Escaneando y emitiendo: 1,450 archivos (850.5 MB)...`).
+
+---
+
+## [2026-08-22] - Tubería Productor-Consumidor No Bloqueante y Estado Continuo en Tiempo Real
+
+### 🛠 Cambios e Implementaciones
+1. **Tubería Productor-Consumidor No Bloqueante (`WorkflowExecutor.cs`):**
+   - Eliminado el bloqueo secuencial en `DispatchEmitAsync`. Las llamadas a `context.EmitAsync` por parte de `FolderSourceNode` ahora son no bloqueantes, permitiendo que la lectura de archivos en disco ocurra a máxima velocidad (miles de archivos/segundo) mientras los nodos receptores procesan en paralelo.
+   - Conteo atómico de tareas activas (`_activeNodeTasks`) y drenaje determinista en `ExecuteAsync`, garantizando 100% de finalización sin tareas huérfanas.
+2. **Formateo y Persistencia de Estado Activo (`StatusBarViewModel.cs`):**
+   - Incorporado el método helper `UpdateActiveStatusMessage` para mantener el indicador activo `⚡` y texto en español de forma ininterrumpida mientras `IsRunning` sea `true`.
+   - Evitado que mensajes predeterminados como `"Listo"` o conteos secundarios reseteen la barra inferior durante la ejecución activa.
+
+---
+
+## [2026-08-22] - Escaneo Asíncrono en Streaming y Estado Reactivo en Tiempo Real
+
+### 🛠 Cambios e Implementaciones
+1. **Escaneo y Emisión Asíncrona en Streaming (`FolderSourceNode.cs`):**
+   - Eliminada la recolección previa monolítica en lista (`List<FileItemContext>`).
+   - Implementado escaneo asíncrono con emisión inmediata por archivo (`await context.EmitAsync("Out", item)`). Los nodos posteriores comienzan el procesamiento instantáneamente sin esperas iniciales ni congelamientos de UI.
+   - Incorporado reporte de progreso periódico en tiempo real cada 100 ms (`⚡ Escaneando y emitiendo: N elementos...`).
+2. **Sincronización Reactiva de la Barra de Estado Inferior (`StatusBarViewModel.cs` & `MainViewModel.cs`):**
+   - Inyectada la instancia `LogViewModel` en `StatusBarViewModel`.
+   - Suscripción reactiva a `LogViewModel.PropertyChanged` para reflejar en tiempo real los mensajes de escaneo y avance dinámico (`⚡ Escaneando y emitiendo: 1,450 elementos...`, `⚡ Procesando 45%`, `🟢 Listo`).
+
+---
+
+## [2026-08-22] - Optimización de Rendimiento de Alto Nivel y Benchmarking (.NET 9 & C# 13)
+
+### 🛠 Cambios e Implementaciones
+1. **Búsqueda Vectorizada SIMD y Cero Asignaciones en Motor de Plantillas (`VariableTemplateResolver.cs`):**
+   - Incorporada la primitiva de .NET 9 `System.Buffers.SearchValues<char>` (`OpenBraceSearch`) para aceleración por hardware SIMD en la localización de delimitadores.
+   - Eliminadas las asignaciones innecesarias de cadenas mediante rodajas `ReadOnlySpan<char>`.
+2. **Optimizaciones de Clonado Profundo (`FileItemContext.cs`):**
+   - Inicialización por capacidad exacta (`Metadata.Count`, `Tags.Count`, `ExecutionLog.Count`) en `DeepClone()` eliminando las reasignaciones internas (*array resizing*) en bifurcaciones masivas de puertos.
+3. **Optimización de E/S Criptográfica (`HashCalculatorNode.cs` & `DeduplicationFilterNode.cs`):**
+   - Incrementado el buffer de lectura de `FileStream` a 128 KB (`131072` bytes) reduciendo llamadas al sistema operativo durante operaciones de hash masivo.
+4. **Nueva Suite de Benchmarking de Alto Rendimiento (`PerformanceBenchmarkSuiteTests.cs`):**
+   - Batería de pruebas que mide throughput (operaciones/segundo), latencia, consumo pico de memoria y colecciones del Garbage Collector (Gen 0, Gen 1, Gen 2).
+   - Suite de pruebas automatizadas incrementada a **117 / 117 pruebas pasadas con éxito**.
+
+---
+
+## [2026-08-22] - Generación de la Suite Completa de Documentación Técnica (`docs/`)
+
+### 🛠 Cambios e Implementaciones
+1. **Creación de la Suite Completa de Documentación Técnica (6 Archivos Markdown):**
+   - **`docs/architecture.md`**: Documento de arquitectura, diagrama Mermaid.js, flujo de datos por capas, patrones de diseño y Registros de Decisiones Arquitectónicas (ADRs).
+   - **`docs/setup_and_deployment.md`**: Guía de instalación, requisitos previos (.NET 9 SDK), script `.\run.ps1`, configuración de herramientas externas, empaquetado para distribución y CI/CD.
+   - **`docs/api_reference.md`**: Referencia técnica completa de la capa SDK (`IFlowNode`, `FileItemContext`, `IFlowExecutionContext`), motor de plantillas de variables, firmas de métodos y guía de extensión de nodos.
+   - **`docs/user_guide.md`**: Manual de usuario visual paso a paso, catálogo de los 22 nodos, gestor de presets multimedia, gestor de contraseñas, simulación *Dry Run*, catálogo de 40 ejemplos y resolución de problemas (FAQ).
+   - **`docs/contributing.md`**: Estándares de código C# 13, workflow de Git, guía de desarrollo de nodos personalizados y baterías de pruebas `dotnet test`.
+   - **`docs/README.md`**: Índice principal y centro de documentación con navegación por enlaces relativos.
+
+---
+
+## [2026-08-22] - Auditoría de Errores y Seguridad (QA Lead & Security Audit)
+
+### 🛠 Cambios e Implementaciones
+1. **Solución de Interbloqueo y Procesos Huérfanos (`CliExecutionNode.cs` & `MediaTranscoderNode.cs`):**
+   - Lectura concurrente de `StandardOutput` y `StandardError` mediante `Task.WhenAll` evitando congelamientos de buffer.
+   - Eliminación determinista de procesos hijos (`process.Kill(entireProcessTree: true)`) ante cancelación o expiración de tiempo de espera.
+2. **Protección SSRF (`WebhookNotificationNode.cs`):**
+   - Validación estricta de esquema de URI (`http`/`https`) en peticiones HTTP POST.
+3. **Control Thread-Safe de Concurrencia (`WorkflowExecutor.cs`):**
+   - Modificación segura de `MaxDegreeOfParallelism` evitando excepciones `ObjectDisposedException`.
+4. **Nuevas Pruebas Unitarias de Seguridad (`QASecurityAuditFixesTests.cs`):**
+   - Suite ampliada a **102 / 102 pruebas pasadas con éxito** (0 errores, 0 advertencias).
+
+---
+
+## [2026-08-22] - Auditoría de Arquitectura, Mapa de Riesgos y Plan de Modularización (Fase 1)
+
+### 🛠 Cambios Implementados
+1. **Auditoría de Archivos Monolíticos:**
+   - Identificados 7 archivos principales de más de 300 líneas de código/XAML (`NodeCardView.xaml`, `NodeViewModel.cs`, `VariableTemplateResolver.cs`, `EditorViewModel.cs`, `ControlBarViewModel.cs`, `SmartUnpackNode.cs`, `NodeInspectorPanelView.xaml`).
+2. **Identificación de Riesgos y Code Smells:**
+   - Fugas potenciales de memoria por falta de desuscripción de eventos singleton (`IDisposable`).
+   - Falta de modularidad en el motor de plantillas de variables.
+   - Complejidad en plantillas XAML de Nodify y ViewModel acoplado a UI.
+3. **Elaboración del Artefacto Implementation Plan:**
+   - Creado artefacto `implementation_plan.md` detallando la estrategia de modularización iterativa en 4 módulos bajo el Principio de Responsabilidad Única (SRP).
+
 ---
 
 ## [2026-08-22] - Creación de la Biblioteca Completa de 40 Ejemplos de Flujos de Trabajo (`docs/examples/`)

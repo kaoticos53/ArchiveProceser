@@ -41,12 +41,20 @@ public class ForkJoinBarrierNode : IFlowNode
         ["RequiredBranchesCount"] = 2
     };
 
+    private string? _lastExecutionId;
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)
+        {
+            _lastExecutionId = execId;
+            _activeBarriers.Clear();
+        }
+
         int requiredBranches = Parameters.TryGetValue("RequiredBranchesCount", out var rVal) ? ParameterHelper.GetInt32(rVal, 2) : 2;
 
         if (inputPortName.Equals("In", StringComparison.OrdinalIgnoreCase))

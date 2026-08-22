@@ -132,7 +132,7 @@ public class SafeRecycleDeleteNode : IFlowNode
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
     private struct SHFILEOPSTRUCT
     {
         public IntPtr hwnd;

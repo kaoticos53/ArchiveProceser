@@ -1,36 +1,33 @@
-# FileFlow Studio - Documentación Técnica y Arquitectura
+# Centro de Documentación - FileFlow Studio
 
-Bienvenido a la documentación oficial de **FileFlow Studio**, un motor de procesamiento de archivos modular y entorno gráfico basado en **.NET 9** y **WPF**.
-
----
-
-## 📁 Estructura de la Documentación
-
-- **[Historial de Cambios y Walkthrough (`docs/PROJECT_WALKTHROUGH.md`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/PROJECT_WALKTHROUGH.md)**: Registro cronológico continuo de todas las implementaciones, mejoras y correcciones realizadas en el proyecto con sus fechas.
-- **[Arquitectura y Funcionamiento de Principiante a Experto (`docs/ARCHITECTURE_DEEP_DIVE.md`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/ARCHITECTURE_DEEP_DIVE.md)**: Explicación completa del funcionamiento interno en 4 niveles (visión general, componentes, motor asíncrono y subsistema UI).
-- **[Guía de Creación de Nodos (`docs/nodes/CREATING_NODES.md`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/nodes/CREATING_NODES.md)**: Manual paso a paso para desarrolladores sobre cómo crear, compilar y distribuir nuevos nodos de procesamiento.
-- **[Ejemplo Completo de Nodo (`docs/nodes/examples/SampleMultiPortNode.cs`)](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/nodes/examples/SampleMultiPortNode.cs)**: Código fuente de ejemplo de un nodo con múltiples entradas, múltiples salidas, parámetros personalizables y manejo de errores.
+Bienvenido al centro de documentación técnica y manuales de usuario de **FileFlow Studio**, el sistema de automatización y procesamiento masivo de archivos de ultra-alta flexibilidad desarrollado en **C# 13**, **.NET 9** y **WPF**.
 
 ---
 
-## 🏗 Arquitectura del Proyecto
+## 📚 Índice General de Documentos
 
-FileFlow Studio está diseñado siguiendo el principio de **desacoplamiento estricto**:
+| Documento | Descripción | Público Objetivo |
+|---|---|---|
+| 🏗️ [**Arquitectura y Diseño Técnico**](architecture.md) | Visión general del sistema, diagrama Mermaid.js, flujo de datos, diseño por capas y Registros de Decisiones Arquitectónicas (ADRs). | Arquitectos de Software & Desarrolladores Core |
+| 🚀 [**Guía de Instalación y Despliegue**](setup_and_deployment.md) | Requisitos previos, entorno de desarrollo local, compilación, script `.\run.ps1`, empaquetado para distribución y CI/CD. | Desarrolladores & Ingenieros DevOps |
+| 🔌 [**Referencia de API y Módulos**](api_reference.md) | Documentación de contratos del SDK (`IFlowNode`, `FileItemContext`), motor de plantillas de variables, firmas de métodos y ejemplos. | Desarrolladores de Plugins & Integradores |
+| 📖 [**Manual de Usuario y Operación**](user_guide.md) | Guía paso a paso de la interfaz visual, catálogo de 22 nodos, gestor de presets multimedia, contraseñas, simulación *Dry Run* y FAQ. | Usuarios Finales & Administradores |
+| 🤝 [**Guía de Contribución y Estándares**](contributing.md) | Convenciones de código en C# 13, workflow de Git, guía para crear nuevos nodos y ejecución de la suite de pruebas. | Contribuidores & QA Engineers |
+| 💡 [**Biblioteca de 40 Ejemplos Ejecutables**](examples/README.md) | Catálogo de 40 plantillas de flujos de trabajo organizadas en 4 niveles de complejidad con archivos `.json` listos para importar. | Todos los usuarios |
+| 📜 [**Historial de Cambios (Walkthrough)**](PROJECT_WALKTHROUGH.md) | Registro cronológico por fechas de todas las implementaciones, auditorías de seguridad y refactorizaciones del proyecto. | Todos los usuarios |
 
+---
+
+## ⚡ Inicio Rápido
+
+Para compilar y ejecutar la aplicación inmediatamente en un entorno Windows con .NET 9 SDK instalado, abre una consola de PowerShell en la raíz del repositorio y ejecuta:
+
+```powershell
+.\run.ps1
 ```
-FileFlow.slnx
- ├── FileFlow.Sdk              -> Librería pura de contratos, interfaces (IFlowNode) y tipos base (.NET 9)
- ├── FileFlow.Core             -> Motor de ejecución asíncrono en paralelo y cargador dinámico de plugins
- ├── FileFlow.Plugin.FileSystem -> Plugin modular de operaciones de sistema de archivos
- ├── FileFlow.Plugin.Archives   -> Plugin modular de compresión y descompresión de archivos (SharpCompress)
- ├── FileFlow.Plugin.Images     -> Plugin modular de procesamiento de imágenes y EXIF (ImageSharp)
- └── FileFlow.App              -> Aplicación principal WPF (.NET 9-windows, MVVM, Nodify)
+
+Para ejecutar la batería completa de 115 pruebas unitarias e integración:
+
+```powershell
+dotnet test FileFlow.slnx
 ```
-
----
-
-## 🚀 Características Clave para Desarrolladores
-
-1. **Descubrimiento de Plugins:** El cargador `PluginLoader` descubre automáticamente cualquier ensamblado `.dll` ubicado en la carpeta `/Plugins` que implemente la interfaz `IFlowNode`.
-2. **Localización Multilingüe:** Todos los nombres y descripciones de los nodos admiten traducción dinámica en tiempo real mediante `LocalizationManager.Instance.GetString(...)`.
-3. **Control de Flujo Asíncrono:** La ejecución de nodos se realiza de manera 100% asíncrona (`Task` / `ValueTask`) con soporte para `CancellationToken` y ejecución en paralelo por tuberías.

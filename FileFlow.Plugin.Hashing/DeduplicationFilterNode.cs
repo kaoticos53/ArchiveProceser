@@ -9,6 +9,7 @@ namespace FileFlow.Plugin.Hashing;
 public class DeduplicationFilterNode : IFlowNode
 {
     private readonly ConcurrentDictionary<string, string> _seenHashes = new(StringComparer.OrdinalIgnoreCase);
+    private string? _lastExecutionId;
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Name", "Filtro de Deduplicación por Hash");
@@ -39,6 +40,12 @@ public class DeduplicationFilterNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)
+        {
+            _lastExecutionId = execId;
+            _seenHashes.Clear();
+        }
+
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
             context.Log($"[DeduplicationFilterNode] File not found: '{item.CurrentPath}'", LogLevel.Warning);

@@ -78,20 +78,34 @@ public partial class LogViewModel : ObservableObject
         _pendingLogs.Enqueue(entry);
     }
 
-    private void FlushPendingLogs(object? sender, EventArgs? e)
+    public void FlushAllPendingLogs()
     {
         if (_pendingLogs.IsEmpty) return;
 
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(FlushAllInternal);
+            return;
+        }
+
+        FlushAllInternal();
+    }
+
+    private void FlushAllInternal()
+    {
         int maxLogs = Services.UserPreferencesService.Instance.Preferences.MaxLogEntries;
         if (maxLogs <= 0) maxLogs = 100000;
 
         bool addedAny = false;
+        bool trimmedAny = false;
+
         while (_pendingLogs.TryDequeue(out var entry))
         {
             Logs.Add(entry);
             if (Logs.Count > maxLogs)
             {
                 Logs.RemoveAt(0);
+                trimmedAny = true;
             }
 
             if (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ErrorCount++;
@@ -102,6 +116,64 @@ public partial class LogViewModel : ObservableObject
             addedAny = true;
 
             OnLogAdded?.Invoke(entry);
+        }
+
+        if (trimmedAny)
+        {
+            _logTextBuffer.Clear();
+            foreach (var log in Logs)
+            {
+                _logTextBuffer.AppendLine($"[{log.Timestamp:HH:mm:ss}] [{log.Level}] {log.Message}");
+            }
+        }
+
+        if (addedAny)
+        {
+            FullLogText = _logTextBuffer.ToString();
+        }
+    }
+
+    private void FlushPendingLogs(object? sender, EventArgs? e)
+    {
+        if (_pendingLogs.IsEmpty) return;
+
+        int pendingCount = _pendingLogs.Count;
+        int currentBatchLimit = pendingCount > 1000 ? 500 : (pendingCount > 300 ? 250 : 75);
+
+        int maxLogs = Services.UserPreferencesService.Instance.Preferences.MaxLogEntries;
+        if (maxLogs <= 0) maxLogs = 100000;
+
+        bool addedAny = false;
+        bool trimmedAny = false;
+        int processedCount = 0;
+
+        while (processedCount < currentBatchLimit && _pendingLogs.TryDequeue(out var entry))
+        {
+            processedCount++;
+            Logs.Add(entry);
+            if (Logs.Count > maxLogs)
+            {
+                Logs.RemoveAt(0);
+                trimmedAny = true;
+            }
+
+            if (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ErrorCount++;
+            else if (entry.Level == LogLevel.Warning) WarningCount++;
+            else if (entry.Level == LogLevel.Information) InfoCount++;
+
+            _logTextBuffer.AppendLine($"[{entry.Timestamp:HH:mm:ss}] [{entry.Level}] {entry.Message}");
+            addedAny = true;
+
+            OnLogAdded?.Invoke(entry);
+        }
+
+        if (trimmedAny)
+        {
+            _logTextBuffer.Clear();
+            foreach (var log in Logs)
+            {
+                _logTextBuffer.AppendLine($"[{log.Timestamp:HH:mm:ss}] [{log.Level}] {log.Message}");
+            }
         }
 
         if (addedAny)

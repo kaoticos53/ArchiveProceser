@@ -13,7 +13,6 @@ public class CliExecutionNode : IFlowNode
     public string Category => "Integrations";
     public string Description => LocalizationManager.Instance.GetString("CliExecutionNode_Desc", "Lanza ejecutables externos y scripts de sistema (FFmpeg, PowerShell, Python, Node.js) inyectando la ruta y metadatos del archivo mediante argumentos con tokens.");
 
-
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
         new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
@@ -81,10 +80,33 @@ public class CliExecutionNode : IFlowNode
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(timeoutSec));
 
-            string stdOut = await process.StandardOutput.ReadToEndAsync(cts.Token).ConfigureAwait(false);
-            string stdErr = await process.StandardError.ReadToEndAsync(cts.Token).ConfigureAwait(false);
+            string stdOut = string.Empty;
+            string stdErr = string.Empty;
 
-            await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+            try
+            {
+                var readOutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
+                var readErrTask = process.StandardError.ReadToEndAsync(cts.Token);
+
+                await Task.WhenAll(readOutTask, readErrTask).ConfigureAwait(false);
+                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+
+                stdOut = readOutTask.Result;
+                stdErr = readErrTask.Result;
+            }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch { }
+
+                throw new TimeoutException($"CLI Execution timed out after {timeoutSec} seconds or was cancelled: {resolvedExe}");
+            }
 
             if (captureOutput)
             {

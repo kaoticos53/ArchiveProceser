@@ -33,6 +33,8 @@ public class BatchBufferNode : IFlowNode
         ["MaxBatchSizeBytes"] = 0L // 0 = disabled
     };
 
+    private string? _lastExecutionId;
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
@@ -46,6 +48,12 @@ public class BatchBufferNode : IFlowNode
 
         lock (_lock)
         {
+            if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)
+            {
+                _lastExecutionId = execId;
+                _buffer.Clear();
+            }
+
             if (inputPortName.Equals("ForceFlush", StringComparison.OrdinalIgnoreCase))
             {
                 if (_buffer.Count > 0)

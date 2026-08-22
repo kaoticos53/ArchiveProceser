@@ -132,7 +132,7 @@ public class FolderWatcherService : IDisposable
     {
         try
         {
-            using var stream = File.Open(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
             return stream.Length >= 0;
         }
         catch (IOException)

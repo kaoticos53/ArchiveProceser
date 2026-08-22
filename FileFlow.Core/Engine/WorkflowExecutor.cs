@@ -89,10 +89,15 @@ public class WorkflowExecutor
         get => _maxDegreeOfParallelism;
         set
         {
-            _maxDegreeOfParallelism = Math.Max(1, value);
-            var oldThrottle = _concurrencyThrottle;
-            _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
-            oldThrottle?.Dispose();
+            lock (_lock)
+            {
+                int newCap = Math.Max(1, value);
+                if (_maxDegreeOfParallelism != newCap)
+                {
+                    _maxDegreeOfParallelism = newCap;
+                    _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
+                }
+            }
         }
     }
 
@@ -135,12 +140,17 @@ public class WorkflowExecutor
         }
     }
 
+    private string _currentExecutionId = Guid.NewGuid().ToString("N");
+    private readonly ConcurrentBag<Task> _activeNodeTasks = new();
+
     public async Task ExecuteAsync(WorkflowGraph graph, PluginLoader loader, CancellationToken cancellationToken)
     {
+        _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
         _outgoingEdges.Clear();
         _processedItemsCount = 0;
         _totalItemsCount = 0;
+        while (_activeNodeTasks.TryTake(out _)) { }
 
         var validator = new GraphValidator();
         var validation = validator.Validate(graph, loader);
@@ -187,6 +197,7 @@ public class WorkflowExecutor
                 var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken);
                 // Trigger entry node with null or empty input port name
                 var dummyItem = new FileItemContext(string.Empty);
+                dummyItem.Metadata["WorkflowExecutionId"] = _currentExecutionId;
                 if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
                 {
                     dummyItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
@@ -222,14 +233,22 @@ public class WorkflowExecutor
             }, cancellationToken));
         }
 
-        await Task.WhenAll(startTasks);
+        await Task.WhenAll(startTasks).ConfigureAwait(false);
+
+        // Wait for all asynchronously dispatched downstream node tasks to finish
+        while (_activeNodeTasks.TryTake(out var activeTask))
+        {
+            await activeTask.ConfigureAwait(false);
+        }
+
+        long finalTotal = Volatile.Read(ref _processedItemsCount);
+        NotifyProgress(100.0, $"Procesados {finalTotal}/{finalTotal} (100%)");
         NotifyLog("Workflow execution completed successfully.", LogLevel.Information);
     }
 
-    internal async Task DispatchEmitAsync(string sourceNodeId, string outputPortName, FileItemContext item, CancellationToken cancellationToken)
+    internal Task DispatchEmitAsync(string sourceNodeId, string outputPortName, FileItemContext item, CancellationToken cancellationToken)
     {
-        await WaitIfPausedAsync(cancellationToken);
-
+        item.Metadata["WorkflowExecutionId"] = _currentExecutionId;
         if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
         {
             item.Metadata["GlobalOutputDir"] = GlobalOutputDir;
@@ -245,47 +264,50 @@ public class WorkflowExecutor
             DebugSession.RecordSnapshot(NodeDataSnapshot.CreateOutput(sourceNodeId, outputPortName, item));
         }
 
-        Interlocked.Increment(ref _totalItemsCount);
-
         if (!_outgoingEdges.TryGetValue(sourceNodeId, out var edges))
         {
-            return;
+            return Task.CompletedTask;
         }
 
         var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (matchingEdges.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        Interlocked.Add(ref _totalItemsCount, matchingEdges.Count);
+
         bool isMultipleTargets = matchingEdges.Count > 1;
 
         string edgeKey = $"{sourceNodeId}:{outputPortName}";
         int newCount = _edgeCounts.AddOrUpdate(edgeKey, 1, (_, c) => c + 1);
         EdgeItemDispatched?.Invoke(sourceNodeId, outputPortName, newCount);
 
-        List<Task> dispatchTasks = [];
         foreach (var edge in matchingEdges)
         {
             if (_nodeInstances.TryGetValue(edge.TargetNodeId, out var targetNode))
             {
-
                 var targetItem = isMultipleTargets ? item.DeepClone() : item;
 
-                dispatchTasks.Add(Task.Run(async () =>
+                var task = Task.Run(async () =>
                 {
-                    await _concurrencyThrottle.WaitAsync(cancellationToken);
+                    await _concurrencyThrottle.WaitAsync(cancellationToken).ConfigureAwait(false);
                     try
                     {
-                        await WaitIfPausedAsync(cancellationToken);
+                        await WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
                         var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
 
                         if (DebugSession != null)
                         {
                             DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, targetItem));
-                            await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, targetItem, cancellationToken);
+                            await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, targetItem, cancellationToken).ConfigureAwait(false);
                         }
 
                         NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
 
                         try
                         {
-                            await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken);
+                            await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken).ConfigureAwait(false);
                             NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -293,7 +315,7 @@ public class WorkflowExecutor
                             NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
                             if (DebugSession != null)
                             {
-                                await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, targetItem, ex, cancellationToken);
+                                await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, targetItem, ex, cancellationToken).ConfigureAwait(false);
                             }
                             throw;
                         }
@@ -302,22 +324,29 @@ public class WorkflowExecutor
                     {
                         _concurrencyThrottle.Release();
                         long currentProcessed = Interlocked.Increment(ref _processedItemsCount);
-                        double pct = _totalItemsCount > 0 ? (double)currentProcessed / _totalItemsCount * 100.0 : 100.0;
-                        NotifyProgress(pct, $"Processed {currentProcessed}/{_totalItemsCount} node outputs");
+                        long total = Volatile.Read(ref _totalItemsCount);
+                        double pct = total > 0 ? (double)currentProcessed / total * 100.0 : 0.0;
+                        if (pct > 100.0) pct = 100.0;
+                        NotifyProgress(pct, $"⚡ Procesando: {currentProcessed}/{total} ({pct:F0}%)");
                     }
-                }, cancellationToken));
+                }, cancellationToken);
+
+                _activeNodeTasks.Add(task);
             }
         }
 
-        await Task.WhenAll(dispatchTasks);
+        return Task.CompletedTask;
     }
 
     private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
     {
         if (_isPaused)
         {
-            await _pauseSemaphore.WaitAsync(cancellationToken);
-            _pauseSemaphore.Release();
+            await _pauseSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (_pauseSemaphore.CurrentCount == 0)
+            {
+                _pauseSemaphore.Release();
+            }
         }
     }
 

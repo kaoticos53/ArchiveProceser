@@ -44,6 +44,8 @@ public class VariableInjectorNode : IFlowNode
             cancellationToken.ThrowIfCancellationRequested();
 
             string cleanKey = System.Text.RegularExpressions.Regex.Replace(key, @"[^\w]", "_");
+            if (string.IsNullOrWhiteSpace(cleanKey) || cleanKey.All(c => c == '_')) continue;
+
             string exprValue = value?.ToString() ?? string.Empty;
             string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
             item.Metadata[cleanKey] = resolvedValue;

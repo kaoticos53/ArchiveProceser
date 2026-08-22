@@ -67,7 +67,7 @@ public class HashCalculatorNode : IFlowNode
 
     private static async Task<string> ComputeHashAsync(string filePath, string algorithm, CancellationToken ct)
     {
-        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 131072, useAsync: true);
 
         byte[] hashBytes = algorithm.ToUpperInvariant() switch
         {

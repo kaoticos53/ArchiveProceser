@@ -41,7 +41,7 @@ public partial class MainViewModel : ObservableObject
         Toolbox = new ToolboxViewModel(PluginLoader);
         NodeInspector = new NodeInspectorViewModel(Editor, FileDialogService);
         ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector, FileDialogService, WorkflowStorageService);
-        StatusBar = new StatusBarViewModel(Editor, ControlBar, PerformanceMonitor);
+        StatusBar = new StatusBarViewModel(Editor, ControlBar, PerformanceMonitor, LogConsole);
 
         LogConsole.AddLog(Sdk.LogLevel.Information, $"FileFlow Studio initialized with {PluginLoader.DiscoveredNodeTypes.Count} active plugin nodes.");
     }

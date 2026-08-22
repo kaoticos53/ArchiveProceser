@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
@@ -187,20 +189,49 @@ public partial class ControlBarViewModel : ObservableObject
                 _activeExecutor.DebugSession = _activeDebugSession;
             }
 
+            var pendingEdgeUpdates = new ConcurrentDictionary<string, (string src, string port, int count)>(StringComparer.OrdinalIgnoreCase);
+            var pendingStatusUpdates = new ConcurrentDictionary<string, NodeExecutionStatus>(StringComparer.OrdinalIgnoreCase);
+            (double pct, string status)? pendingProgress = null;
+
+            var visualFlushTimer = new DispatcherTimer(DispatcherPriority.Normal)
+            {
+                Interval = TimeSpan.FromMilliseconds(35)
+            };
+            visualFlushTimer.Tick += (_, _) =>
+            {
+                foreach (var key in pendingEdgeUpdates.Keys)
+                {
+                    if (pendingEdgeUpdates.TryRemove(key, out var edgeInfo))
+                    {
+                        _editorViewModel.UpdateEdgeDispatched(edgeInfo.src, edgeInfo.port, edgeInfo.count);
+                    }
+                }
+
+                foreach (var nodeId in pendingStatusUpdates.Keys)
+                {
+                    if (pendingStatusUpdates.TryRemove(nodeId, out var status))
+                    {
+                        var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                        node?.SetExecutionStatus(status);
+                    }
+                }
+
+                if (pendingProgress.HasValue)
+                {
+                    var p = pendingProgress.Value;
+                    _logViewModel.ProgressPercentage = p.pct;
+                    _logViewModel.StatusMessage = p.status;
+                }
+            };
+            visualFlushTimer.Start();
+
             _activeExecutor.NodeStatusChanged += (nodeId, status) =>
             {
-                Application.Current?.Dispatcher.InvokeAsync(() =>
+                if (_activeDebugSession != null && _activeDebugSession.IsPaused && _activeDebugSession.CurrentPausedNodeId == nodeId)
                 {
-                    var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
-                    if (node != null)
-                    {
-                        if (_activeDebugSession != null && _activeDebugSession.IsPaused && _activeDebugSession.CurrentPausedNodeId == nodeId)
-                        {
-                            return;
-                        }
-                        node.SetExecutionStatus(status);
-                    }
-                });
+                    return;
+                }
+                pendingStatusUpdates[nodeId] = status;
             };
 
             _activeExecutor.NodeProgressChanged += (nodeId, pct, message) =>
@@ -209,12 +240,12 @@ public partial class ControlBarViewModel : ObservableObject
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
                     node?.UpdateProgress(pct, message);
-                });
+                }, DispatcherPriority.Background);
             };
 
             _activeExecutor.ProgressChanged += (pct, status) =>
             {
-                _logViewModel.UpdateProgress(pct, status);
+                pendingProgress = (pct, status);
             };
 
             _activeExecutor.LogEmitted += (msg, level) =>
@@ -224,20 +255,48 @@ public partial class ControlBarViewModel : ObservableObject
 
             _activeExecutor.EdgeItemDispatched += (src, port, count) =>
             {
-                Application.Current?.Dispatcher.InvokeAsync(() =>
-                {
-                    _editorViewModel.UpdateEdgeDispatched(src, port, count);
-                });
+                pendingEdgeUpdates[$"{src}:{port}"] = (src, port, count);
             };
-
 
             string startMsg = isDebug ? "Iniciando depuración del flujo..." : (IsDryRun ? "[Dry Run] Iniciando simulación virtual..." : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"]);
             _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, startMsg);
 
-            await Task.Run(async () =>
+            try
             {
-                await _activeExecutor.ExecuteAsync(graph, _pluginLoader, _cts.Token);
-            }, _cts.Token);
+                await Task.Run(async () =>
+                {
+                    await _activeExecutor.ExecuteAsync(graph, _pluginLoader, _cts.Token);
+                }, _cts.Token);
+            }
+            finally
+            {
+                visualFlushTimer.Stop();
+                // Final flush
+                foreach (var key in pendingEdgeUpdates.Keys)
+                {
+                    if (pendingEdgeUpdates.TryRemove(key, out var edgeInfo))
+                    {
+                        _editorViewModel.UpdateEdgeDispatched(edgeInfo.src, edgeInfo.port, edgeInfo.count);
+                    }
+                }
+                foreach (var nodeId in pendingStatusUpdates.Keys)
+                {
+                    if (pendingStatusUpdates.TryRemove(nodeId, out var status))
+                    {
+                        var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                        node?.SetExecutionStatus(status);
+                    }
+                }
+
+                if (pendingProgress.HasValue)
+                {
+                    var p = pendingProgress.Value;
+                    _logViewModel.ProgressPercentage = p.pct;
+                    _logViewModel.StatusMessage = p.status;
+                }
+
+                _logViewModel.FlushAllPendingLogs();
+            }
 
             _lastJournalService = _activeExecutor.JournalService;
 

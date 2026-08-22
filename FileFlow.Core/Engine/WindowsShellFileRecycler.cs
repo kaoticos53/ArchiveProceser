@@ -13,7 +13,7 @@ public static class WindowsShellFileRecycler
     private const ushort FOF_SILENT = 0x0004;
     private const ushort FOF_NOERRORUI = 0x0400;
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
     private struct SHFILEOPSTRUCT
     {
         public IntPtr hwnd;

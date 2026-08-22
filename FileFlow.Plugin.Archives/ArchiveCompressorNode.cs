@@ -46,6 +46,7 @@ public class ArchiveCompressorNode : IFlowNode
         archiveName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(archiveName, item);
 
         string formatStr = Parameters.TryGetValue("ArchiveFormat", out var fVal) ? ParameterHelper.GetString(fVal, "ZIP").ToUpperInvariant() : "ZIP";
+        string compTypeStr = Parameters.TryGetValue("CompressionType", out var cVal) ? ParameterHelper.GetString(cVal, "Deflate").ToUpperInvariant() : "DEFLATE";
 
         if (string.IsNullOrWhiteSpace(inputPath) || (!File.Exists(inputPath) && !Directory.Exists(inputPath)))
         {
@@ -56,6 +57,16 @@ public class ArchiveCompressorNode : IFlowNode
 
         try
         {
+            if (Directory.Exists(inputPath))
+            {
+                string fullInput = Path.GetFullPath(inputPath);
+                string fullDest = Path.GetFullPath(destDir);
+                if (fullDest.StartsWith(fullInput, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"Destination directory '{destDir}' cannot be inside input source directory '{inputPath}' to prevent recursive compression loops.");
+                }
+            }
+
             if (!Directory.Exists(destDir))
             {
                 Directory.CreateDirectory(destDir);
@@ -63,7 +74,7 @@ public class ArchiveCompressorNode : IFlowNode
 
             string targetArchivePath = Path.Combine(destDir, archiveName);
 
-            context.Log($"ArchiveCompressorNode: Creating {formatStr} archive '{targetArchivePath}' from '{inputPath}'", LogLevel.Information);
+            context.Log($"ArchiveCompressorNode: Creating {formatStr} archive '{targetArchivePath}' from '{inputPath}' (Compression={compTypeStr})", LogLevel.Information);
 
             ArchiveType archiveType = formatStr switch
             {
@@ -73,8 +84,17 @@ public class ArchiveCompressorNode : IFlowNode
                 _ => ArchiveType.Zip
             };
 
+            CompressionType compType = compTypeStr switch
+            {
+                "STORE" or "NONE" => CompressionType.None,
+                "LZMA" => CompressionType.LZMA,
+                "BZIP2" => CompressionType.BZip2,
+                "PPMD" => CompressionType.PPMd,
+                _ => CompressionType.Deflate
+            };
+
             using (var stream = File.Create(targetArchivePath))
-            using (var writer = WriterFactory.OpenWriter(stream, archiveType, new WriterOptions(CompressionType.Deflate)))
+            using (var writer = WriterFactory.OpenWriter(stream, archiveType, new WriterOptions(compType)))
             {
                 if (File.Exists(inputPath))
                 {
