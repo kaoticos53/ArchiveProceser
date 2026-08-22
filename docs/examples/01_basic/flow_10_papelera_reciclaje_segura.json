@@ -1,0 +1,50 @@
+{
+  "name": "Eliminación en Papelera de Reciclaje",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-del",
+      "nodeTypeName": "SafeRecycleDeleteNode",
+      "x": 350,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "UseRecycleBin": true,
+        "DryRun": false
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 600,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-del",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-del",
+      "sourcePortName": "Done",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

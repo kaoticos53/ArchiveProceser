@@ -1,0 +1,65 @@
+{
+  "name": "Descompresión Recursiva y Limpieza",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-unp",
+      "nodeTypeName": "SmartUnpackNode",
+      "x": 330,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "RecursiveUnpack": true,
+        "CleanWrapper": true
+      }
+    },
+    {
+      "id": "node-clean",
+      "nodeTypeName": "EmptyDirectoryCleanerNode",
+      "x": 560,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 780,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-unp",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-unp",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-clean",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-clean",
+      "sourcePortName": "Done",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

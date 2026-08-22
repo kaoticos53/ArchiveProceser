@@ -8,23 +8,25 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` $\rightarrow$ **85 / 85 Pruebas Pasadas con Éxito** (Unit & Integration tests en xUnit).
+- **Suite de Pruebas**: `.\test.ps1` $\rightarrow$ **86 / 86 Pruebas Pasadas con Éxito** (Unit & Integration tests en xUnit).
 - **Git**: Repositorio sincronizado con suite de pruebas al 100%.
 
 ---
 
 ## 2. Nodos y Funcionalidades Recientemente Desarrolladas
 
-### A. Migración Completa a Rutas Relativas por Defecto en Todos los Nodos
+### A. Biblioteca Completa de 40 Ejemplos de Flujos (`docs/examples/`)
+- **Archivos Creados (81 archivos en total)**:
+  - `docs/examples/01_basic/` (10 `.json` + 10 `.md`)
+  - `docs/examples/02_intermediate/` (10 `.json` + 10 `.md`)
+  - `docs/examples/03_advanced/` (10 `.json` + 10 `.md`)
+  - `docs/examples/04_complex/` (10 `.json` + 10 `.md`)
+  - `docs/examples/README.md` (Índice catálogo con enlaces relativos y tablas).
+- **Validación Automática**: Creada prueba unitaria `AllFortyGeneratedWorkflowExamples_ShouldDeserializeSuccessfully` en `WorkflowStorageServiceTests.cs`.
+
+### B. Migración Completa a Rutas Relativas por Defecto en Todos los Nodos
 - **Rutas Relativas en Nodos**: Se eliminaron las rutas absolutas residuales (`C:\...`) de `FolderSourceNode`, `DestinationSinkNode`, `OriginalFileActionNode`, `SmartUnpackNode` e `ImageOptimizerNode`.
-- **Anclaje Dinámico Global**: Todos los nodos utilizan ahora plantillas relativas (`{RelativeDir}\Input`, `{RelativeDir}\Output`, `{RelativeDir}\Unpacked`, etc.), las cuales son resueltas dinámicamente por `ParameterHelper.ResolveOutputPath` combinándolas con la **Ruta de Salida Global** persistida en Ajustes de la Aplicación.
-
-### B. Actualización Dinámica de Parámetros de Preset y Eliminación de FFmpegPath Redundante
-- **Actualización Automática de Argumentos (`NodeViewModel.cs`)**: Al seleccionar un preset en la tarjeta del nodo `Transcodificar Media`, el campo `CustomArguments` se actualiza de forma instantánea con la configuración FFmpeg del preset elegido.
-- **Uso Estricto de Herramienta Global (`MediaTranscoderNode.cs`)**: Se eliminó el parámetro `FFmpegPath` de las tarjetas del nodo y se configuró para usar directamente la ruta de `ExternalToolsService` definida en Ajustes de la Aplicación.
-
-### C. Solución Definitiva a la Selección de Presets en ComboBox (`IsEditable=False`)
-- **Ajuste WPF (`NodeParameterTemplates.xaml`)**: Se estableció `IsEditable="False"` en el `ComboBox` de opciones de parámetros para garantizar una selección limpia y libre de fallos de foco.
+- **Anclaje Dinámico Global**: Todos los nodos utilizan ahora plantillas relativas (`{RelativeDir}\Input`, `{RelativeDir}\Output`, `{RelativeDir}\Unpacked`, etc.), las cuales son resueltas dinámicamente por `ParameterHelper.ResolveOutputPath`.
 
 ---
 

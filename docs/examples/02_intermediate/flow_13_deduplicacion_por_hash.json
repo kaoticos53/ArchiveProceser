@@ -1,0 +1,79 @@
+{
+  "name": "Deduplicación por Hash",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-hash",
+      "nodeTypeName": "HashCalculatorNode",
+      "x": 300,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-dedup",
+      "nodeTypeName": "DeduplicationFilterNode",
+      "x": 500,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 720,
+      "y": 120,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-quar",
+      "nodeTypeName": "OriginalFileActionNode",
+      "x": 720,
+      "y": 280,
+      "hasBreakpoint": false,
+      "parameters": {
+        "ActionType": "MoveToQuarantine"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-hash",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-hash",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-dedup",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-dedup",
+      "sourcePortName": "Unique",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-dedup",
+      "sourcePortName": "Duplicate",
+      "targetNodeId": "node-quar",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

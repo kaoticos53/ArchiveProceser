@@ -1,0 +1,111 @@
+{
+  "name": "Cadena de Custodia y Doble Hash",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-h1",
+      "nodeTypeName": "HashCalculatorNode",
+      "x": 300,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "HashMetadataKey": "Hash:PreHash"
+      }
+    },
+    {
+      "id": "node-exif",
+      "nodeTypeName": "ExifMetadataNode",
+      "x": 500,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-tr",
+      "nodeTypeName": "MediaTranscoderNode",
+      "x": 700,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-h2",
+      "nodeTypeName": "HashCalculatorNode",
+      "x": 900,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "HashMetadataKey": "Hash:PostHash"
+      }
+    },
+    {
+      "id": "node-web",
+      "nodeTypeName": "WebhookNotificationNode",
+      "x": 1100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 1300,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-h1",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-h1",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-exif",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-exif",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-tr",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-tr",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-h2",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-h2",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-web",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e6",
+      "sourceNodeId": "node-web",
+      "sourcePortName": "Success",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

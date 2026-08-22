@@ -1,0 +1,50 @@
+{
+  "name": "Notificación por Webhook",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-web",
+      "nodeTypeName": "WebhookNotificationNode",
+      "x": 350,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "WebhookUrl": "https://discord.com/api/webhooks/demo",
+        "HttpMethod": "POST"
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 600,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-web",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-web",
+      "sourcePortName": "Success",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

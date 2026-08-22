@@ -1,0 +1,84 @@
+{
+  "name": "Flujo Resiliente con Fallback Múltiple",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-tr",
+      "nodeTypeName": "MediaTranscoderNode",
+      "x": 330,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-opt",
+      "nodeTypeName": "ImageOptimizerNode",
+      "x": 560,
+      "y": 280,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk1",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 790,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk2",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 790,
+      "y": 280,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-tr",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-tr",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk1",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-tr",
+      "sourcePortName": "Error",
+      "targetNodeId": "node-opt",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-opt",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk1",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-opt",
+      "sourcePortName": "Error",
+      "targetNodeId": "node-snk2",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

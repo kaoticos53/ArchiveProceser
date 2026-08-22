@@ -1,0 +1,50 @@
+{
+  "name": "Empaquetado en ZIP",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-zip",
+      "nodeTypeName": "ArchiveCompressorNode",
+      "x": 350,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "ArchiveFormat": "ZIP",
+        "CompressionType": "Deflate"
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 600,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-zip",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-zip",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

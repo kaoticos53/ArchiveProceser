@@ -1,0 +1,66 @@
+{
+  "name": "Sustitución de Plantillas Avanzadas",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-inj",
+      "nodeTypeName": "VariableInjectorNode",
+      "x": 330,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "AppID": "FileFlowV1"
+      }
+    },
+    {
+      "id": "node-ren",
+      "nodeTypeName": "AdvancedRenamerNode",
+      "x": 560,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "NameTemplate": "{Year}_{AppID}_{Guid}_{FileNameNoExt}{FileExt}"
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 780,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-inj",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-inj",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-ren",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-ren",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

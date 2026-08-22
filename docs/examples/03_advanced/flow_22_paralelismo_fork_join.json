@@ -1,0 +1,93 @@
+{
+  "name": "Paralelismo Fork-Join",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-fork",
+      "nodeTypeName": "ForkJoinBarrierNode",
+      "x": 320,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {
+        "WaitForAll": true
+      }
+    },
+    {
+      "id": "node-hash",
+      "nodeTypeName": "HashCalculatorNode",
+      "x": 550,
+      "y": 100,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-opt",
+      "nodeTypeName": "ImageOptimizerNode",
+      "x": 550,
+      "y": 300,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 800,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Branch1",
+      "targetNodeId": "node-hash",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Branch2",
+      "targetNodeId": "node-opt",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-hash",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-opt",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e6",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Joined",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

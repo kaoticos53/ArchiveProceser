@@ -1,0 +1,50 @@
+{
+  "name": "Descompresión Automática",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-unpack",
+      "nodeTypeName": "SmartUnpackNode",
+      "x": 350,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "DestinationFolder": "{RelativeDir}\\Unpacked",
+        "CleanWrapper": true
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 600,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-unpack",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-unpack",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

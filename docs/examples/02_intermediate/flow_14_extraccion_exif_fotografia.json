@@ -1,0 +1,67 @@
+{
+  "name": "Organización Fotográfica EXIF",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-exif",
+      "nodeTypeName": "ExifMetadataNode",
+      "x": 320,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "InjectCameraVars": true,
+        "InjectDateVars": true
+      }
+    },
+    {
+      "id": "node-ren",
+      "nodeTypeName": "AdvancedRenamerNode",
+      "x": 540,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "NameTemplate": "{Exif:CameraModel}_{Year}-{Month}_{FileName}"
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 760,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-exif",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-exif",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-ren",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-ren",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

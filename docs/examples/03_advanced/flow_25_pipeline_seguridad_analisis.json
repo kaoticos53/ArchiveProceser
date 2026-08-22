@@ -1,0 +1,79 @@
+{
+  "name": "Pipeline de Seguridad y Análisis",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-flt",
+      "nodeTypeName": "ArchiveFilterNode",
+      "x": 300,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-hash",
+      "nodeTypeName": "HashCalculatorNode",
+      "x": 500,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "Algorithm": "SHA512"
+      }
+    },
+    {
+      "id": "node-exif",
+      "nodeTypeName": "ExifMetadataNode",
+      "x": 700,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 900,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-flt",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-flt",
+      "sourcePortName": "RegularFile",
+      "targetNodeId": "node-hash",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-hash",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-exif",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-exif",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

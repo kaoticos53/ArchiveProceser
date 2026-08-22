@@ -1,0 +1,88 @@
+{
+  "name": "Clasificación por Extensión",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-sw",
+      "nodeTypeName": "SwitchCaseNode",
+      "x": 320,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-vid",
+      "nodeTypeName": "MediaTranscoderNode",
+      "x": 550,
+      "y": 100,
+      "hasBreakpoint": false,
+      "parameters": {
+        "Preset": "Convertir 720p H.264 (MP4 Rápido)"
+      }
+    },
+    {
+      "id": "node-img",
+      "nodeTypeName": "ImageOptimizerNode",
+      "x": 550,
+      "y": 300,
+      "hasBreakpoint": false,
+      "parameters": {
+        "TargetFormat": "WebP"
+      }
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 800,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-sw",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-sw",
+      "sourcePortName": "Case 1",
+      "targetNodeId": "node-vid",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-sw",
+      "sourcePortName": "Default",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-vid",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-img",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

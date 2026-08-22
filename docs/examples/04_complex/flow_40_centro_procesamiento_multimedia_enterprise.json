@@ -1,0 +1,147 @@
+{
+  "name": "Centro de Procesamiento Multimedia Enterprise",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-th",
+      "nodeTypeName": "ThrottleDelayNode",
+      "x": 300,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {
+        "DelayMs": 200,
+        "MaxRatePerSecond": 5
+      }
+    },
+    {
+      "id": "node-sw",
+      "nodeTypeName": "SwitchCaseNode",
+      "x": 500,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-tr",
+      "nodeTypeName": "MediaTranscoderNode",
+      "x": 720,
+      "y": 100,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-opt",
+      "nodeTypeName": "ImageOptimizerNode",
+      "x": 720,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-unp",
+      "nodeTypeName": "SmartUnpackNode",
+      "x": 720,
+      "y": 400,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-fork",
+      "nodeTypeName": "ForkJoinBarrierNode",
+      "x": 950,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-web",
+      "nodeTypeName": "WebhookNotificationNode",
+      "x": 1170,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 1390,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-th",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-th",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-sw",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-sw",
+      "sourcePortName": "Case 1",
+      "targetNodeId": "node-tr",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-sw",
+      "sourcePortName": "Default",
+      "targetNodeId": "node-opt",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-tr",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e6",
+      "sourceNodeId": "node-opt",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e7",
+      "sourceNodeId": "node-unp",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e8",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Joined",
+      "targetNodeId": "node-web",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e9",
+      "sourceNodeId": "node-web",
+      "sourcePortName": "Success",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

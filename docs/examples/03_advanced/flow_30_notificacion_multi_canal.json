@@ -1,0 +1,91 @@
+{
+  "name": "Notificación Multi-Canal",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-fork",
+      "nodeTypeName": "ForkJoinBarrierNode",
+      "x": 320,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-web",
+      "nodeTypeName": "WebhookNotificationNode",
+      "x": 550,
+      "y": 100,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-log",
+      "nodeTypeName": "LogOutputNode",
+      "x": 550,
+      "y": 300,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 780,
+      "y": 200,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Branch1",
+      "targetNodeId": "node-web",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Branch2",
+      "targetNodeId": "node-log",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-web",
+      "sourcePortName": "Success",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-log",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-fork",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e6",
+      "sourceNodeId": "node-fork",
+      "sourcePortName": "Joined",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

@@ -89,4 +89,31 @@ public class WorkflowStorageServiceTests : IDisposable
         deserialized.Name.Should().Be("InMemory Pipeline");
         deserialized.Nodes.Should().HaveCount(1);
     }
+
+    [Fact]
+    public void AllFortyGeneratedWorkflowExamples_ShouldDeserializeSuccessfully()
+    {
+        // Arrange
+        string examplesDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "docs", "examples"));
+        if (!Directory.Exists(examplesDir))
+        {
+            return;
+        }
+
+        string[] jsonFiles = Directory.GetFiles(examplesDir, "*.json", SearchOption.AllDirectories);
+
+        // Assert
+        jsonFiles.Length.Should().Be(40);
+
+        foreach (var file in jsonFiles)
+        {
+            string json = File.ReadAllText(file);
+            var graph = _storageService.DeserializeGraph(json);
+
+            graph.Should().NotBeNull();
+            graph.Nodes.Should().NotBeNull();
+            graph.Edges.Should().NotBeNull();
+            graph.Nodes.Count.Should().BeGreaterThan(0);
+        }
+    }
 }

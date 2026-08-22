@@ -1,0 +1,49 @@
+{
+  "name": "Salida con Cuarentena Original",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 350,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-act",
+      "nodeTypeName": "OriginalFileActionNode",
+      "x": 600,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "ActionType": "MoveToQuarantine"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-snk",
+      "sourcePortName": "Done",
+      "targetNodeId": "node-act",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

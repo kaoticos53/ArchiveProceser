@@ -4,9 +4,19 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 
 ---
 
-## [2026-08-22] - Migración Total a Rutas Relativas por Defecto en Nodos de Plugins
+## [2026-08-22] - Creación de la Biblioteca Completa de 40 Ejemplos de Flujos de Trabajo (`docs/examples/`)
 
 ### 🛠 Cambios Implementados
+1. **Generación de 40 Flujos de Trabajo Ejecutables (`.json`) y Documentación Markdown (`.md`):**
+   - Se estructuró el directorio `docs/examples/` en 4 niveles con 10 ejemplos por nivel (80 archivos en total + catálogo principal):
+     - `docs/examples/01_basic/` (Flujos `flow_01` a `flow_10` - Canales lineales simples, optimización WebP, extracción MP3, hashes SHA-256, renombrado, etc.).
+     - `docs/examples/02_intermediate/` (Flujos `flow_11` a `flow_20` - Filtrado condicional, bifurcación por extensión, EXIF, deduplicación, webhooks HTTP).
+     - `docs/examples/03_advanced/` (Flujos `flow_21` a `flow_30` - Lotes `BatchBufferNode`, paralelismo `ForkJoinBarrierNode`, rate limit `ThrottleDelayNode`, reintentos).
+     - `docs/examples/04_complex/` (Flujos `flow_31` a `flow_40` - Scatter-Gather, doble hash inmutable, ingesta masiva empresarial, arquitectura de fallback resiliente).
+2. **Creación del Catálogo Principal (`docs/examples/README.md`):**
+   - Se generó un catálogo con enlaces a todos los ejemplos, indicando categoría, descripción y cómo importarlos en FileFlow Studio.
+3. **Prueba Unitaria de Validación de Esquema (`WorkflowStorageServiceTests.cs`):**
+   - Se incorporó la prueba unitaria `AllFortyGeneratedWorkflowExamples_ShouldDeserializeSuccessfully` (86/86 pruebas pasadas) que valida automáticamente que los 40 archivos `.json` deserializan limpiamente en objetos `WorkflowGraph` válidos.
 1. **Auditoría y Sustitución de Rutas Absolutas a Relativas:**
    - Se revisaron todos los nodos de la aplicación y se reemplazaron las rutas predeterminadas absolutas (como `C:\SampleFiles`, `C:\FileFlowOutput`, `C:\Quarantine`, `C:\FileFlowUnpacked`, `C:\FileFlowOptimized`) por patrones de rutas relativas basadas en plantillas:
      - **FolderSourceNode**: `SourcePath` $\rightarrow$ `{RelativeDir}\Input`

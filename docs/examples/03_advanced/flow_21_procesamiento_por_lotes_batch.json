@@ -1,0 +1,65 @@
+{
+  "name": "Procesamiento por Lotes",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-buf",
+      "nodeTypeName": "BatchBufferNode",
+      "x": 330,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "BatchSize": 10,
+        "FlushTimeoutMs": 5000
+      }
+    },
+    {
+      "id": "node-zip",
+      "nodeTypeName": "ArchiveCompressorNode",
+      "x": 560,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 780,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-buf",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-buf",
+      "sourcePortName": "BatchFlushed",
+      "targetNodeId": "node-zip",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-zip",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

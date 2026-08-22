@@ -1,0 +1,79 @@
+{
+  "name": "Mantenimiento Automatizado de Servidores",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {
+        "EmitMode": "DirectoriesOnly"
+      }
+    },
+    {
+      "id": "node-insp",
+      "nodeTypeName": "DirectoryInspectorNode",
+      "x": 330,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-clean",
+      "nodeTypeName": "EmptyDirectoryCleanerNode",
+      "x": 560,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-del",
+      "nodeTypeName": "SafeRecycleDeleteNode",
+      "x": 790,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-web",
+      "nodeTypeName": "WebhookNotificationNode",
+      "x": 1020,
+      "y": 150,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-insp",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-insp",
+      "sourcePortName": "DirectoriesOnly",
+      "targetNodeId": "node-clean",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-clean",
+      "sourcePortName": "Done",
+      "targetNodeId": "node-del",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-del",
+      "sourcePortName": "Done",
+      "targetNodeId": "node-web",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}

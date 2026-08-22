@@ -1,0 +1,106 @@
+{
+  "name": "Patrón Scatter-Gather Enterprise",
+  "globalOutputDir": "{RelativeDir}",
+  "nodes": [
+    {
+      "id": "node-src",
+      "nodeTypeName": "FolderSourceNode",
+      "x": 100,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-scat",
+      "nodeTypeName": "DirectoryInspectorNode",
+      "x": 320,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-unp",
+      "nodeTypeName": "SmartUnpackNode",
+      "x": 560,
+      "y": 100,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-opt",
+      "nodeTypeName": "ImageOptimizerNode",
+      "x": 560,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-tr",
+      "nodeTypeName": "MediaTranscoderNode",
+      "x": 560,
+      "y": 400,
+      "hasBreakpoint": false,
+      "parameters": {}
+    },
+    {
+      "id": "node-snk",
+      "nodeTypeName": "DestinationSinkNode",
+      "x": 820,
+      "y": 250,
+      "hasBreakpoint": false,
+      "parameters": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "sourceNodeId": "node-src",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-scat",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e2",
+      "sourceNodeId": "node-scat",
+      "sourcePortName": "SingleArchive",
+      "targetNodeId": "node-unp",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e3",
+      "sourceNodeId": "node-scat",
+      "sourcePortName": "MixedContent",
+      "targetNodeId": "node-opt",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e4",
+      "sourceNodeId": "node-scat",
+      "sourcePortName": "DirectoriesOnly",
+      "targetNodeId": "node-tr",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e5",
+      "sourceNodeId": "node-unp",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e6",
+      "sourceNodeId": "node-opt",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    },
+    {
+      "id": "e7",
+      "sourceNodeId": "node-tr",
+      "sourcePortName": "Out",
+      "targetNodeId": "node-snk",
+      "targetPortName": "In"
+    }
+  ],
+  "breakpointNodeIds": []
+}
