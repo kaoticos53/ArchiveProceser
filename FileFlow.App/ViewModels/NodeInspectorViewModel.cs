@@ -184,6 +184,8 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
             _initialItem = initialItem;
         }
 
+        public bool IsDryRun => false;
+
         public Task EmitAsync(string outputPortName, FileItemContext item)
         {
             var snapOut = NodeDataSnapshot.CreateOutput(_nodeVm.Id, outputPortName, item);
@@ -193,5 +195,8 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
 
         public void ReportProgress(double percentage, string statusMessage) { }
         public void Log(string message, LogLevel level) { }
+        public void RegisterPlannedAction(PlannedAction action) { }
+        public void RecordJournalEntry(JournalEntry entry) { }
     }
 }
+

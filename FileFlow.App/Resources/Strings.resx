@@ -211,7 +211,51 @@
   <data name="VariableInjectorNode_Name" xml:space="preserve"><value>Variable Injector</value></data>
   <data name="VariableInjectorNode_Desc" xml:space="preserve"><value>Calculates and injects custom metadata key-value into file context for downstream nodes.</value></data>
 
+  <!-- New Nodes: FileSystem -->
+  <data name="SafeRecycleDeleteNode_Name" xml:space="preserve"><value>Safe Recycle Delete</value></data>
+  <data name="SafeRecycleDeleteNode_Desc" xml:space="preserve"><value>Sends files or folders safely to Windows Recycle Bin using native Shell API with undo/rollback support.</value></data>
+
+  <data name="AdvancedRenamerNode_Name" xml:space="preserve"><value>Advanced Token Renamer</value></data>
+  <data name="AdvancedRenamerNode_Desc" xml:space="preserve"><value>Renames files using dynamic token templates, case transforms, and automatic collision resolution.</value></data>
+
+  <data name="FileRelocatorNode_Name" xml:space="preserve"><value>File Relocator &amp; Copier</value></data>
+  <data name="FileRelocatorNode_Desc" xml:space="preserve"><value>Moves or copies files to dynamic target folder trees with SHA-256 checksum integrity verification.</value></data>
+
+  <data name="EmptyDirectoryCleanerNode_Name" xml:space="preserve"><value>Empty Directory Cleaner</value></data>
+  <data name="EmptyDirectoryCleanerNode_Desc" xml:space="preserve"><value>Recursively removes all empty folders in target directory tree after batch processing.</value></data>
+
+  <!-- New Nodes: Logic -->
+  <data name="BatchBufferNode_Name" xml:space="preserve"><value>Batch Buffer</value></data>
+  <data name="BatchBufferNode_Desc" xml:space="preserve"><value>Accumulates incoming files into batches of N items or total size before emitting downstream.</value></data>
+
+  <data name="ThrottleDelayNode_Name" xml:space="preserve"><value>Rate Limiter &amp; Throttle Delay</value></data>
+  <data name="ThrottleDelayNode_Desc" xml:space="preserve"><value>Throttles file flow rate by introducing a controlled millisecond delay between items.</value></data>
+
+  <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Synchronization Barrier (Fork &amp; Join)</value></data>
+  <data name="ForkJoinBarrierNode_Desc" xml:space="preserve"><value>Forks an item to parallel branches and acts as a barrier, waiting for all branches to finish before emitting.</value></data>
+
+  <data name="SwitchCaseNode_Name" xml:space="preserve"><value>Conditional Router (Switch / Case)</value></data>
+  <data name="SwitchCaseNode_Desc" xml:space="preserve"><value>Evaluates a file property or extension and dynamically routes it to output ports based on configurable pattern lists.</value></data>
+
+  <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Expression Logic Filter</value></data>
+  <data name="ExpressionFilterNode_Desc" xml:space="preserve"><value>Evaluates numeric or text conditions on file properties and branches flow to True or False ports.</value></data>
+
+  <!-- New Nodes: Hashing -->
+  <data name="HashCalculatorNode_Name" xml:space="preserve"><value>Cryptographic Hash Calculator</value></data>
+  <data name="HashCalculatorNode_Desc" xml:space="preserve"><value>Calculates file content hashes (SHA-256, MD5, SHA-512, SHA-1) and injects into metadata.</value></data>
+
+  <data name="DeduplicationFilterNode_Name" xml:space="preserve"><value>Hash Deduplication Filter</value></data>
+  <data name="DeduplicationFilterNode_Desc" xml:space="preserve"><value>Compares content hashes to detect duplicate files, separating originals from redundant copies.</value></data>
+
+  <!-- New Nodes: Integrations -->
+  <data name="CliExecutionNode_Name" xml:space="preserve"><value>CLI &amp; Process Runner</value></data>
+  <data name="CliExecutionNode_Desc" xml:space="preserve"><value>Runs external executables and scripts with dynamic token arguments.</value></data>
+
+  <data name="WebhookNotificationNode_Name" xml:space="preserve"><value>Webhook Notifier (HTTP POST)</value></data>
+  <data name="WebhookNotificationNode_Desc" xml:space="preserve"><value>Sends an HTTP POST request with a dynamic JSON payload to external webhooks.</value></data>
+
   <data name="ExportLog" xml:space="preserve"><value>💾 Export Log</value></data>
+
 
   <!-- Debugger -->
   <data name="DebugFlow" xml:space="preserve"><value>🐞 Debug</value></data>

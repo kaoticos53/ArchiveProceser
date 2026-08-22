@@ -48,13 +48,28 @@ public partial class ToolboxViewModel : ObservableObject
 
         foreach (var (typeName, type) in _pluginLoader.DiscoveredNodeTypes)
         {
-            var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
-            string rawName = defAttr?.Name ?? type.Name;
-            string rawDesc = defAttr?.Description ?? string.Empty;
+            IFlowNode? sampleInstance = null;
+            try
+            {
+                sampleInstance = _pluginLoader.CreateNodeInstance(typeName);
+            }
+            catch { }
 
-            string name = LocalizationManager.Instance.GetString(type.Name + "_Name", rawName);
-            string category = defAttr?.Category ?? "General";
-            string description = LocalizationManager.Instance.GetString(type.Name + "_Desc", rawDesc);
+            var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
+            string name = LocalizationManager.Instance.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
+            if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Name))
+            {
+                name = sampleInstance.Name;
+            }
+
+            string category = sampleInstance?.Category ?? defAttr?.Category ?? "General";
+
+            string description = LocalizationManager.Instance.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
+            if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Description))
+            {
+                description = sampleInstance.Description;
+            }
+
 
             if (!string.IsNullOrWhiteSpace(SearchText) &&
                 !name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&

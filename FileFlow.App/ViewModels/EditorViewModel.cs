@@ -15,9 +15,14 @@ public partial class EditorViewModel : ObservableObject
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
+    public ObservableCollection<BreadcrumbItem> Breadcrumbs { get; } = [];
+
+    [ObservableProperty]
+    private string _currentWorkflowTitle = "Root Workflow";
 
     [ObservableProperty]
     private PendingConnectionViewModel? _pendingConnection;
+
 
     [ObservableProperty]
     private Point _viewportLocation;
@@ -329,4 +334,70 @@ public partial class EditorViewModel : ObservableObject
     {
         return _variableDiscoveryService.GetAvailableVariables(targetNode, Connections);
     }
+
+    [RelayCommand]
+    public void OpenSubWorkflow(NodeViewModel node)
+    {
+        if (node == null) return;
+
+        // Save current graph state into breadcrumb
+        var currentGraph = ExportToGraphModel();
+        Breadcrumbs.Add(new BreadcrumbItem(CurrentWorkflowTitle, node.Id, currentGraph));
+
+        CurrentWorkflowTitle = node.Title;
+
+        // Load inner graph if exists, or start fresh sub-graph
+        if (!string.IsNullOrWhiteSpace(node.InnerGraphJson))
+        {
+            try
+            {
+                var innerGraph = System.Text.Json.JsonSerializer.Deserialize<WorkflowGraph>(node.InnerGraphJson);
+                if (innerGraph != null)
+                {
+                    LoadFromGraphModel(innerGraph);
+                    return;
+                }
+            }
+            catch
+            {
+                // Fallback to clear
+            }
+        }
+
+        ClearGraph();
+    }
+
+    [RelayCommand]
+    public void NavigateBreadcrumb(BreadcrumbItem target)
+    {
+        if (target == null) return;
+
+        int index = Breadcrumbs.IndexOf(target);
+        if (index < 0) return;
+
+        // Restore target graph
+        LoadFromGraphModel(target.Graph);
+        CurrentWorkflowTitle = target.Name;
+
+        // Remove all subsequent breadcrumbs
+        while (Breadcrumbs.Count > index)
+        {
+            Breadcrumbs.RemoveAt(Breadcrumbs.Count - 1);
+        }
+    }
+
+    public void UpdateEdgeDispatched(string sourceNodeId, string portName, int count)
+    {
+        foreach (var conn in Connections)
+        {
+            if (conn.Source.NodeOwner.Id.Equals(sourceNodeId, StringComparison.OrdinalIgnoreCase) &&
+                conn.Source.Name.Equals(portName, StringComparison.OrdinalIgnoreCase))
+            {
+                conn.UpdateCount(count);
+            }
+        }
+    }
 }
+
+public sealed record BreadcrumbItem(string Name, string? NodeId, WorkflowGraph Graph);
+

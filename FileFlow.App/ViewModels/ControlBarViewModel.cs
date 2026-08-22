@@ -206,7 +206,16 @@ public partial class ControlBarViewModel : ObservableObject
                 _logViewModel.AddLog(level, msg);
             };
 
-            string startMsg = isDebug ? "Iniciando depuración del flujo..." : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"];
+            _activeExecutor.EdgeItemDispatched += (src, port, count) =>
+            {
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    _editorViewModel.UpdateEdgeDispatched(src, port, count);
+                });
+            };
+
+
+            string startMsg = isDebug ? "Iniciando depuración del flujo..." : (IsDryRun ? "[Dry Run] Iniciando simulación virtual..." : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"]);
             _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, startMsg);
 
             await Task.Run(async () =>
@@ -214,7 +223,16 @@ public partial class ControlBarViewModel : ObservableObject
                 await _activeExecutor.ExecuteAsync(graph, _pluginLoader, _cts.Token);
             }, _cts.Token);
 
-            _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance["LogExecutionFinished"]);
+            _lastJournalService = _activeExecutor.JournalService;
+
+            if (IsDryRun)
+            {
+                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"[Dry Run] Simulación finalizada. {_activeExecutor.PlannedActions.Count} acciones planificadas registradas.");
+            }
+            else
+            {
+                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance["LogExecutionFinished"]);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -238,6 +256,42 @@ public partial class ControlBarViewModel : ObservableObject
             _cts = null;
             _activeExecutor = null;
             _activeDebugSession = null;
+        }
+    }
+
+
+    private ExecutionJournalService? _lastJournalService;
+
+    [RelayCommand]
+    public async Task ExecuteDryRunAsync()
+    {
+        IsDryRun = true;
+        try
+        {
+            await RunWorkflowCoreAsync(isDebug: false);
+        }
+        finally
+        {
+            IsDryRun = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task RollbackLastExecutionAsync()
+    {
+        if (_lastJournalService == null || _lastJournalService.Entries.Count == 0)
+        {
+            MessageBox.Show("No hay operaciones registradas para revertir.", "Deshacer Flujo", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show($"¿Deseas revertir {_lastJournalService.Entries.Count} operaciones realizadas en la última ejecución?", "Confirmar Deshacer (Rollback)", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result == MessageBoxResult.Yes)
+        {
+            _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, "Iniciando Rollback de operaciones...");
+            int undone = await _lastJournalService.RollbackAsync();
+            _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Rollback completado con éxito: {undone} operaciones revertidas.");
+            MessageBox.Show($"Se han revertido {undone} operaciones con éxito.", "Rollback Completado", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 

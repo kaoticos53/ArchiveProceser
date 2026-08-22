@@ -81,6 +81,111 @@ public static class VariableTemplateResolver
             effectiveRootPath = Path.GetDirectoryName(originalPath);
         }
 
+        // Check for domain-specific tokens with colon, e.g. "Exif:CameraModel", "Hash:MD5:8", "Date:yyyy-MM-dd", "Env:PATH", "Regex:Capture1"
+        if (varName.Contains(':'))
+        {
+            var parts = varName.Split(':', 3);
+            string domain = parts[0].Trim();
+            string key = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+            string? modifier = parts.Length > 2 ? parts[2].Trim() : null;
+
+            switch (domain.ToLowerInvariant())
+            {
+                case "exif":
+                    if (item.Metadata.TryGetValue($"Exif:{key}", out var exifVal) ||
+                        item.Metadata.TryGetValue(key, out exifVal))
+                    {
+                        return exifVal?.ToString() ?? string.Empty;
+                    }
+                    return string.Empty;
+
+                case "regex":
+                    if (item.Metadata.TryGetValue($"Regex:{key}", out var regVal) ||
+                        item.Metadata.TryGetValue(key, out regVal))
+                    {
+                        return regVal?.ToString() ?? string.Empty;
+                    }
+                    return string.Empty;
+
+                case "hash":
+                    string hashKey = $"Hash:{key}";
+                    string hashValStr = string.Empty;
+                    if (item.Metadata.TryGetValue(hashKey, out var hVal) && hVal != null)
+                    {
+                        hashValStr = hVal.ToString() ?? string.Empty;
+                    }
+                    else if (item.Metadata.TryGetValue("Hash", out var directHash) && directHash != null)
+                    {
+                        hashValStr = directHash.ToString() ?? string.Empty;
+                    }
+
+                    if (!string.IsNullOrEmpty(hashValStr) && !string.IsNullOrEmpty(modifier) && int.TryParse(modifier, out int hashLen) && hashLen > 0)
+                    {
+                        return hashValStr.Length <= hashLen ? hashValStr : hashValStr[..hashLen];
+                    }
+                    return hashValStr;
+
+                case "env":
+                    return Environment.GetEnvironmentVariable(key) ?? string.Empty;
+
+                case "date":
+                case "creationdate":
+                    string format = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
+                    if (item.Metadata.TryGetValue("CreationTimeUtc", out var ctVal) && ctVal is DateTime cdt)
+                    {
+                        return cdt.ToLocalTime().ToString(format, CultureInfo.InvariantCulture);
+                    }
+                    if (File.Exists(currentPath))
+                    {
+                        return File.GetCreationTime(currentPath).ToString(format, CultureInfo.InvariantCulture);
+                    }
+                    return DateTime.Now.ToString(format, CultureInfo.InvariantCulture);
+
+                case "modifieddate":
+                    string mFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
+                    if (item.Metadata.TryGetValue("LastWriteTimeUtc", out var mtVal) && mtVal is DateTime mdt)
+                    {
+                        return mdt.ToLocalTime().ToString(mFormat, CultureInfo.InvariantCulture);
+                    }
+                    if (File.Exists(currentPath))
+                    {
+                        return File.GetLastWriteTime(currentPath).ToString(mFormat, CultureInfo.InvariantCulture);
+                    }
+                    return DateTime.Now.ToString(mFormat, CultureInfo.InvariantCulture);
+
+                case "now":
+                    string nFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd_HH-mm-ss" : key;
+                    return DateTime.Now.ToString(nFormat, CultureInfo.InvariantCulture);
+
+                case "index":
+                case "counter":
+                    string idxVal = item.Metadata.TryGetValue("Counter", out var cObj) && cObj != null ? cObj.ToString()! : "1";
+                    if (int.TryParse(idxVal, out int num) && !string.IsNullOrEmpty(key))
+                    {
+                        return num.ToString(key, CultureInfo.InvariantCulture);
+                    }
+                    return idxVal;
+
+                case "filesize":
+                case "size":
+                    if (key.Equals("mb", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string spec = modifier ?? "F2";
+                        return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString(spec, CultureInfo.InvariantCulture);
+                    }
+                    if (key.Equals("kb", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string spec = modifier ?? "F1";
+                        return (item.FileSizeBytes / 1024.0).ToString(spec, CultureInfo.InvariantCulture);
+                    }
+                    if (key.Equals("bytes", StringComparison.OrdinalIgnoreCase) || key.Equals("b", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return item.FileSizeBytes.ToString(CultureInfo.InvariantCulture);
+                    }
+                    return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
+            }
+        }
+
         switch (varName.ToLowerInvariant())
         {
             case "filename":
@@ -104,6 +209,19 @@ public static class VariableTemplateResolver
 
             case "originaldir":
                 return Path.GetDirectoryName(originalPath) ?? string.Empty;
+
+            case "parentdir":
+                string? pDir = Path.GetDirectoryName(currentPath);
+                return string.IsNullOrEmpty(pDir) ? string.Empty : Path.GetFileName(pDir);
+
+            case "year":
+                return DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
+
+            case "month":
+                return DateTime.Now.ToString("MM", CultureInfo.InvariantCulture);
+
+            case "day":
+                return DateTime.Now.ToString("dd", CultureInfo.InvariantCulture);
 
             case "relativepath":
             case "relativedir":
@@ -150,6 +268,7 @@ public static class VariableTemplateResolver
                 return string.Empty;
         }
     }
+
 
     private static List<string> ParseArguments(string argsStr, FileItemContext item, string? sourceRootPath)
     {

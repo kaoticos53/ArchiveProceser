@@ -14,6 +14,9 @@
     <ProjectReference Include="..\FileFlow.Plugin.FileSystem\FileFlow.Plugin.FileSystem.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Archives\FileFlow.Plugin.Archives.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Images\FileFlow.Plugin.Images.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Logic\FileFlow.Plugin.Logic.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,7 +31,11 @@
       <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0\*.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0\*.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\net9.0\*.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\net9.0\*.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\net9.0\*.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(OutDir)Plugins\" SkipUnchangedFiles="true" />
   </Target>
 </Project>
+

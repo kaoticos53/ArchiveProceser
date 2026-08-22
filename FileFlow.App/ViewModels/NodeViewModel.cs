@@ -111,7 +111,14 @@ public partial class NodeViewModel : ObservableObject
     [ObservableProperty]
     private string? _lastErrorDetails;
 
+    [ObservableProperty]
+    private bool _isSubWorkflow;
+
+    [ObservableProperty]
+    private string _innerGraphJson = string.Empty;
+
     public IFlowNode NodeInstance => _nodeInstance;
+
 
     public ObservableCollection<PortViewModel> InputPorts { get; } = [];
     public ObservableCollection<PortViewModel> OutputPorts { get; } = [];
@@ -136,20 +143,160 @@ public partial class NodeViewModel : ObservableObject
             InputPorts.Add(new PortViewModel(this, inPort.Name, inPort.DisplayName, inPort.Direction, inPort.DataType));
         }
 
-        foreach (var outPort in node.Outputs)
+        bool isSwitch = node.GetType().Name.Contains("SwitchCaseNode", StringComparison.OrdinalIgnoreCase);
+
+        if (isSwitch)
         {
-            OutputPorts.Add(new PortViewModel(this, outPort.Name, outPort.DisplayName, outPort.Direction, outPort.DataType));
+            List<(string Name, string Pattern)> initialCases = [];
+            if (node is FileFlow.Plugin.Logic.SwitchCaseNode switchNode)
+            {
+                initialCases = switchNode.GetCases().Select(c => (c.Name, c.Pattern)).ToList();
+            }
+            else if (node.Parameters.TryGetValue("CasesJson", out var jsonVal) && jsonVal != null)
+            {
+                string jsonStr = jsonVal.ToString() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(jsonStr))
+                {
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(jsonStr);
+                        foreach (var elem in doc.RootElement.EnumerateArray())
+                        {
+                            string cName = elem.TryGetProperty("Name", out var np) ? np.GetString() ?? "" : "";
+                            string cPattern = elem.TryGetProperty("Pattern", out var pp) ? pp.GetString() ?? "" : "";
+                            if (!string.IsNullOrWhiteSpace(cName))
+                            {
+                                initialCases.Add((cName, cPattern));
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            if (initialCases.Count == 0)
+            {
+                initialCases.Add(("Case 1", "jpg;jpeg;png;webp;gif"));
+            }
+
+            foreach (var c in initialCases)
+            {
+                var port = new PortViewModel(this, c.Name, c.Name, PortDirection.Output, typeof(FileItemContext));
+                OutputPorts.Add(port);
+                SwitchCases.Add(new SwitchCaseItemViewModel(this, c.Name, c.Pattern) { Port = port });
+            }
+            OutputPorts.Add(new PortViewModel(this, "Default", "Default", PortDirection.Output, typeof(FileItemContext)));
+        }
+        else
+        {
+            foreach (var outPort in node.Outputs)
+            {
+                OutputPorts.Add(new PortViewModel(this, outPort.Name, outPort.DisplayName, outPort.Direction, outPort.DataType));
+            }
         }
 
         foreach (var (k, v) in node.Parameters)
         {
+            if (isSwitch && k.Equals("CasesJson", StringComparison.OrdinalIgnoreCase))
+                continue;
             Parameters.Add(new NodeParameterViewModel(k, v, nodeOwner: this));
+        }
+
+        if (isSwitch)
+        {
+            SyncSwitchCasesToNodeInstance();
         }
 
         LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
     }
 
     public bool IsVariableInjectorNode => NodeTypeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase);
+    public bool IsSwitchCaseNode => NodeTypeName.Contains("SwitchCaseNode", StringComparison.OrdinalIgnoreCase);
+
+    public ObservableCollection<SwitchCaseItemViewModel> SwitchCases { get; } = [];
+
+    [RelayCommand]
+    public void AddSwitchCase()
+    {
+        int count = SwitchCases.Count + 1;
+        string caseName = $"Case {count}";
+        while (SwitchCases.Any(c => c.Name.Equals(caseName, StringComparison.OrdinalIgnoreCase)) ||
+               OutputPorts.Any(p => p.Name.Equals(caseName, StringComparison.OrdinalIgnoreCase)))
+        {
+            count++;
+            caseName = $"Case {count}";
+        }
+
+        var newPort = new PortViewModel(this, caseName, caseName, PortDirection.Output, typeof(FileItemContext));
+        var caseItem = new SwitchCaseItemViewModel(this, caseName, "") { Port = newPort };
+        SwitchCases.Add(caseItem);
+
+        var defaultPort = OutputPorts.FirstOrDefault(p => p.Name.Equals("Default", StringComparison.OrdinalIgnoreCase));
+        int insertIndex = defaultPort != null ? OutputPorts.IndexOf(defaultPort) : OutputPorts.Count;
+        OutputPorts.Insert(insertIndex, newPort);
+
+        SyncSwitchCasesToNodeInstance();
+    }
+
+    [RelayCommand]
+    public void RemoveSwitchCase(SwitchCaseItemViewModel caseItem)
+    {
+        if (caseItem == null) return;
+        SwitchCases.Remove(caseItem);
+
+        if (caseItem.Port != null)
+        {
+            OutputPorts.Remove(caseItem.Port);
+        }
+        else
+        {
+            var port = OutputPorts.FirstOrDefault(p => p.Name.Equals(caseItem.Name, StringComparison.OrdinalIgnoreCase));
+            if (port != null)
+            {
+                OutputPorts.Remove(port);
+            }
+        }
+
+        SyncSwitchCasesToNodeInstance();
+    }
+
+    public void OnSwitchCaseRenamed(string oldName, string newName, SwitchCaseItemViewModel item)
+    {
+        if (item.Port != null)
+        {
+            item.Port.Name = newName;
+            item.Port.DisplayName = newName;
+        }
+        else
+        {
+            var port = OutputPorts.FirstOrDefault(p => p.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
+            if (port != null)
+            {
+                port.Name = newName;
+                port.DisplayName = newName;
+                item.Port = port;
+            }
+        }
+        SyncSwitchCasesToNodeInstance();
+    }
+
+    public void SyncSwitchCasesToNodeInstance()
+    {
+        if (_nodeInstance is FileFlow.Plugin.Logic.SwitchCaseNode switchNode)
+        {
+            var rules = SwitchCases.Select(c => new FileFlow.Plugin.Logic.SwitchCaseRule(c.Name, c.Pattern)).ToList();
+            switchNode.SetCases(rules);
+        }
+        else
+        {
+            var rules = SwitchCases.Select(c => new { Name = c.Name, Pattern = c.Pattern }).ToList();
+            lock (_nodeInstance.Parameters)
+            {
+                _nodeInstance.Parameters["CasesJson"] = System.Text.Json.JsonSerializer.Serialize(rules);
+            }
+        }
+    }
+
 
     [RelayCommand]
     public void AddVariable()
@@ -169,6 +316,7 @@ public partial class NodeViewModel : ObservableObject
         var paramVM = new NodeParameterViewModel(newKey, "", nodeOwner: this);
         Parameters.Add(paramVM);
     }
+
 
     [RelayCommand]
     public void RemoveParameter(NodeParameterViewModel param)
@@ -348,3 +496,38 @@ public partial class NodeViewModel : ObservableObject
         });
     }
 }
+
+public partial class SwitchCaseItemViewModel : ObservableObject
+{
+    public NodeViewModel NodeOwner { get; }
+    public PortViewModel? Port { get; set; }
+
+    [ObservableProperty]
+    private string _name = string.Empty;
+
+    [ObservableProperty]
+    private string _pattern = string.Empty;
+
+    public SwitchCaseItemViewModel(NodeViewModel owner, string name, string pattern)
+    {
+        NodeOwner = owner;
+        _name = name;
+        _pattern = pattern;
+    }
+
+
+    partial void OnNameChanged(string? oldValue, string newValue)
+    {
+        if (oldValue != null && oldValue != newValue)
+        {
+            NodeOwner.OnSwitchCaseRenamed(oldValue, newValue, this);
+        }
+    }
+
+
+    partial void OnPatternChanged(string value)
+    {
+        NodeOwner.SyncSwitchCasesToNodeInstance();
+    }
+}
+

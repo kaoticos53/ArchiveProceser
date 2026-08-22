@@ -104,6 +104,13 @@
                         Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" 
                         ToolTip="Detener ejecución (Shift+F5)" />
 
+                <!-- Rollback / Undo Button -->
+                <Button Content="↩ Deshacer" 
+                        Command="{Binding RollbackLastExecutionCommand}" 
+                        Style="{StaticResource SecondaryButton}" 
+                        Margin="8,0,0,0" 
+                        ToolTip="Revertir y deshacer operaciones de la última ejecución (Rollback)" />
+
                 <!-- Toggle Inspector Panel Button -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorBtn]}" 
                         Command="{Binding ToggleInspectorCommand}" 
@@ -114,3 +121,4 @@
         </Grid>
     </Border>
 </UserControl>
+

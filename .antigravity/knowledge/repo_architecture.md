@@ -1,7 +1,7 @@
 # Arquitectura y Mapa del Repositorio - FileFlow Studio
 
 ## 1. Visión General del Proyecto
-**FileFlow Studio** es un entorno de procesamiento y automatización de flujos de archivos por lotes (Batch Processing & Workflow Automation) de alto rendimiento, modular y desacoplado, desarrollado en **C# 13**, **.NET 9** y **WPF (Nodify / MVVM)**.
+**FileFlow Studio** es un entorno de procesamiento y automatización de flujos de archivos por lotes (Batch Processing & Workflow Automation) de ultra-alta flexibilidad, modular y desacoplado, desarrollado en **C# 13**, **.NET 9** y **WPF (Nodify / MVVM)**.
 
 ---
 
@@ -17,12 +17,15 @@ ArchiveProceser/
 │   └── knowledge/
 │       └── repo_architecture.md      # Este documento (Knowledge Item principal)
 ├── FileFlow.Sdk/                     # Capa de Contratos puros (C# 13, Cero dependencias externas)
-├── FileFlow.Core/                    # Motor de Ejecución Asíncrono, Validación y Debugging
-├── FileFlow.App/                     # Aplicación de Escritorio WPF (.NET 9 Windows, Nodify, MVVM)
-├── FileFlow.Plugin.FileSystem/       # Plugin de E/S de disco, escaneo e inspección
+├── FileFlow.Core/                    # Motor de Ejecución Asíncrono, Dry Run, Rollback y Concurrencia
+├── FileFlow.App/                     # Aplicación de Escritorio WPF (.NET 9 Windows, Nodify, Sub-flujos, MVVM)
+├── FileFlow.Plugin.FileSystem/       # Plugin de E/S de disco, escaneo, renombrado, reubicación y reciclaje Win32
+├── FileFlow.Plugin.Logic/            # Plugin de control de flujo (BatchBuffer, Throttle, ForkJoin, SwitchCase, Filter)
+├── FileFlow.Plugin.Hashing/          # Plugin de integridad criptográfica (SHA, MD5) y deduplicación en memoria
 ├── FileFlow.Plugin.Archives/         # Plugin de descompresión inteligente (SharpCompress)
 ├── FileFlow.Plugin.Images/           # Plugin de optimización y metadatos EXIF (ImageSharp)
-└── FileFlow.Tests/                   # Suite de Pruebas Unitarias xUnit (.NET 9)
+├── FileFlow.Plugin.Integrations/     # Plugin de integraciones externas (CLI Process Runner, Webhooks HTTP)
+└── FileFlow.Tests/                   # Suite de Pruebas Unitarias e Integración xUnit (.NET 9)
 ```
 
 ---
@@ -31,10 +34,10 @@ ArchiveProceser/
 
 ### Dependencias por Módulo:
 - **`FileFlow.Sdk`**: Solo tipos base de `net9.0`. *Contratos puros, sin librerías externas*.
-- **`FileFlow.Core`**: Depende de `FileFlow.Sdk`. Manejo de canales asíncronos (`System.Threading.Channels`), grafos topológicos y sesiones de depuración.
-- **`FileFlow.Plugin.*`**: Dependen de `FileFlow.Sdk` y librerías de dominio (`SharpCompress`, `SixLabors.ImageSharp`).
-- **`FileFlow.App`**: Depende de `FileFlow.Core`, `FileFlow.Sdk`, `FileFlow.Plugin.*`, `Nodify`, `CommunityToolkit.Mvvm` y `Microsoft.Extensions.DependencyInjection`.
-- **`FileFlow.Tests`**: Depende de `FileFlow.Core`, `FileFlow.Sdk`, `FileFlow.App`, `xunit`, `Moq`, `FluentAssertions`.
+- **`FileFlow.Core`**: Depende de `FileFlow.Sdk`. Manejo de canales asíncronos (`System.Threading.Channels`), grafos topológicos, `ExecutionJournalService`, `WindowsShellFileRecycler`, `AdaptiveConcurrencyManager`.
+- **`FileFlow.Plugin.*`**: Dependen exclusivamente de `FileFlow.Sdk` y librerías de dominio específicas.
+- **`FileFlow.App`**: Depende de `FileFlow.Core`, `FileFlow.Sdk`, todos los plugins `FileFlow.Plugin.*`, `Nodify`, `CommunityToolkit.Mvvm` y `Microsoft.Extensions.DependencyInjection`.
+- **`FileFlow.Tests`**: Depende de `FileFlow.Core`, `FileFlow.Sdk`, `FileFlow.Plugin.*`, `FileFlow.App`, `xunit`, `Moq`, `FluentAssertions`.
 
 ---
 
@@ -46,61 +49,34 @@ ArchiveProceser/
   - `Dictionary<string, object?> Metadata`, `HashSet<string> Tags`, `List<string> ExecutionLog`
   - `FileItemContext DeepClone()`: Clonación profunda para snapshots y bifurcaciones de puertos.
 - [`IFlowNode`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/IFlowNode.cs): Contrato base de los nodos de procesamiento.
-  - `string Id`, `string Name`, `string Category`, `string Description`
-  - `IReadOnlyList<NodePort> Inputs`, `IReadOnlyList<NodePort> Outputs`, `Dictionary<string, object?> Parameters`
-  - `Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken ct)`
+- [`ISubWorkflowNode`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/ISubWorkflowNode.cs): Contrato base para nodos compuestos y macros con sub-grafos anidados editables.
 - [`IFlowExecutionContext`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/IFlowExecutionContext.cs): Contexto de ejecución inyectado a los nodos.
+  - `bool IsDryRun { get; }`
   - `Task EmitAsync(string outputPortName, FileItemContext item)`
   - `void ReportProgress(double percentage, string statusMessage)`
   - `void Log(string message, LogLevel level)`
-- [`NodeExecutionStatus`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/NodeExecutionStatus.cs): Enum de estados (`Idle`, `Running`, `PausedAtBreakpoint`, `PausedOnError`, `Completed`, `Faulted`).
-- [`NodeDataSnapshot`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/NodeDataSnapshot.cs): Telemetría inmutable de entradas, salidas y errores por nodo.
+  - `void RegisterPlannedAction(PlannedAction action)`
+  - `void RecordJournalEntry(JournalEntry entry)`
+- [`PlannedAction`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/PlannedAction.cs): Registro de acción virtual para simulación en modo Dry Run.
+- [`JournalEntry`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/JournalEntry.cs): Registro inmutable de operación atómica con delegado inverso `UndoAction`.
+- [`VariableTemplateResolver`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/TemplateEngine/VariableTemplateResolver.cs): Motor de resolución de tokens con soporte de dominios `{Exif:*}`, `{Regex:*}`, `{Hash:Algorithm:Length}`, `{Date:Format}`, `{Env:Var}`, `{FileSize:Unit}` y funciones.
 
 ---
 
 ### B. Capa Core (`FileFlow.Core`)
-- [`WorkflowExecutor`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowExecutor.cs): Orquestador asíncrono con control de concurrencia y semáforos.
-  - `Task ExecuteAsync(WorkflowGraph graph, PluginLoader loader, CancellationToken cancellationToken)`
-  - `Task DispatchEmitAsync(...)`: Despacho multicanal topológico con propagación de snapshots.
-  - `event Action<string, NodeExecutionStatus>? NodeStatusChanged`
-  - `event Action<string, double, string>? NodeProgressChanged`
-  - `event Action<double, string>? ProgressChanged`
-- [`WorkflowDebugSession`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowDebugSession.cs): Coordinador de depuración interactiva.
-  - `ValueTask CheckBreakpointOrStepAsync(...)`: Intercepción y pausa basada en `TaskCompletionSource` y `System.Threading.Lock`.
-  - `ValueTask HandleNodeErrorAsync(...)`: Pausa automática en excepciones (*Break on Exception*).
-  - `void StepNext()`, `void Continue()`, `void Pause()`
-  - `void SetBreakpoints(IEnumerable<string> nodeIds)`, `void ToggleBreakpoint(string nodeId)`
-- [`GraphValidator`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/GraphValidator.cs): Validación estructural, detección de ciclos y ordenación topológica (Kahn).
-- [`WorkflowGraph`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowGraph.cs): DTO serializable a JSON del grafo (`Nodes`, `Edges`, `BreakpointNodeIds`).
+- [`WorkflowExecutor`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowExecutor.cs): Orquestador asíncrono con soporte de Dry Run, Journaling, telemetría de edges y ejecución concurrente.
+- [`ExecutionJournalService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/ExecutionJournalService.cs): Gestor de transacciones y rollback LIFO de operaciones sobre archivos.
+- [`WindowsShellFileRecycler`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WindowsShellFileRecycler.cs): Borrado nativo a la Papelera de reciclaje de Windows mediante P/Invoke a `SHFileOperationW` (`FOF_ALLOWUNDO`).
+- [`AdaptiveConcurrencyManager`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/AdaptiveConcurrencyManager.cs): Particionamiento de semáforos por disco/volumen físico (I/O) y CPU.
+- [`WorkflowDebugSession`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowDebugSession.cs): Coordinador de depuración interactiva con breakpoints.
 
 ---
 
 ### C. Capa de Presentación (`FileFlow.App`)
-- [`MainViewModel`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/MainViewModel.cs): ViewModel raíz que ensambla `ControlBar`, `Editor`, `Toolbox`, `LogConsole` y `NodeInspector` con inyección de servicios.
+- [`MainViewModel`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/MainViewModel.cs): ViewModel raíz que ensambla `ControlBar`, `Editor`, `Toolbox`, `LogConsole` y `NodeInspector`.
 - [`ControlBarViewModel`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/ControlBarViewModel.cs):
-  - `ExecuteWorkflowCommand`, `DebugWorkflowCommand`, `StepNextCommand`, `ContinueWorkflowCommand`, `TogglePauseCommand`, `StopWorkflowCommand`, `ToggleInspectorCommand`, `SaveWorkflowAsyncCommand`, `LoadWorkflowAsyncCommand`.
-  - Integrado con `IFileDialogService` e `IWorkflowStorageService`.
+  - Comandos de Ejecución, Depuración, Dry Run (`ExecuteDryRunCommand`) y Rollback (`RollbackLastExecutionCommand`).
 - [`EditorViewModel`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/EditorViewModel.cs):
-  - Gestión de colecciones `Nodes` y `Connections` de Nodify.
-  - `ExportToGraphModel()`, `LoadFromGraphModel()`, `ClearDebugStates()`.
-- [`NodeViewModel`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/NodeViewModel.cs):
-  - `ExecutionStatus`, `IsLedOn`, `ProgressPercentage`, `ProgressMessage`, `IsProgressActive`, `HasBreakpoint`.
-  - Emisión de `NodeSelectedMessage` mediante `WeakReferenceMessenger.Default` (sin fugas de memoria).
-- [`NodeInspectorViewModel`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/NodeInspectorViewModel.cs):
-  - Receptor `IRecipient<NodeSelectedMessage>`.
-  - Cálculo de Diff de metadatos (`Added`, `Modified`, `Removed`, `Unchanged`).
-  - Inyección de mock files para pruebas aisladas con `IFileDialogService`.
-- **Servicios de Aplicación (`FileFlow.App.Services`)**:
-  - [`IWorkflowStorageService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/IWorkflowStorageService.cs) & `WorkflowStorageService`: Persistencia, serialización y validación asíncrona de archivos JSON/FFLOW.
-  - [`IFileDialogService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/IFileDialogService.cs) & `FileDialogService`: Abstracción desacoplada de diálogos de sistema (`OpenFileDialog`, `SaveFileDialog`, `OpenFolderDialog`).
-  - [`IColorPickerService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/IColorPickerService.cs) & `ColorPickerService`: Encapsulación desacoplada de diálogo nativo de colores Win32.
-  - [`IVariableDiscoveryService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/IVariableDiscoveryService.cs) & `VariableDiscoveryService`: Catálogo e introspección de variables de sistema, upstream y funciones.
-  - [`ThemeManager`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/ThemeManager.cs): Gestor dinámico de temas (`Dark`, `Light`, `Pastel`, `Cyber`, `System`).
-- **Componentes y Plantillas Modulares XAML**:
-  - [`NodeCardView.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/NodeCardView.xaml): UserControl modular de la tarjeta de nodo completa (menú contextual, cabecera con LED, breakpoint, puertos y redimensionamiento).
-  - [`EditorZoomBarView.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/EditorZoomBarView.xaml): Control de escala y zoom flotante reutilizable.
-  - [`NodeParameterTemplates.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Themes/Templates/NodeParameterTemplates.xaml): Diccionario de plantillas para parámetros de nodos.
-  - [`InspectorTemplates.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Themes/Templates/InspectorTemplates.xaml): Diccionario de plantillas de telemetría y snapshots.
-  - `Themes/Controls/`: Diccionarios de control individuales (`ScrollbarStyles.xaml`, `ButtonStyles.xaml`, `InputStyles.xaml`, `ContainerStyles.xaml`, `NodifyStyles.xaml`).
-- [`ValueConverters.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Converters/ValueConverters.cs):
-  - `BooleanToGridLengthConverter`, `NodeExecutionStatusToBrushConverter`, `DiffChangeTypeToBrushConverter`, `BreakpointToBrushConverter`, `NullToVisibilityConverter`, `InverseNullToVisibilityConverter`, `InputOutputBulletConverter`, `InputOutputBrushConverter`.
+  - Gestión de colecciones `Nodes`, `Connections`, y `Breadcrumbs` para navegación jerárquica de sub-flujos.
+  - Actualización en tiempo real de conteo de items en conexiones (`UpdateEdgeDispatched`).
+- [`PresetWorkflowsService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/PresetWorkflowsService.cs): Catálogo de plantillas de automatización listas para usar.

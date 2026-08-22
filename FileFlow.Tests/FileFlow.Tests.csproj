@@ -31,7 +31,11 @@
     <ProjectReference Include="..\FileFlow.Plugin.FileSystem\FileFlow.Plugin.FileSystem.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Archives\FileFlow.Plugin.Archives.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Images\FileFlow.Plugin.Images.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Logic\FileFlow.Plugin.Logic.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
     <ProjectReference Include="..\FileFlow.App\FileFlow.App.csproj" />
   </ItemGroup>
 
 </Project>
+

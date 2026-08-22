@@ -18,6 +18,8 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         _cancellationToken = cancellationToken;
     }
 
+    public bool IsDryRun => _executor.IsDryRun;
+
     public async Task EmitAsync(string outputPortName, FileItemContext item)
     {
         await _executor.DispatchEmitAsync(_sourceNodeId, outputPortName, item, _cancellationToken);
@@ -33,7 +35,18 @@ public class WorkflowExecutionContext : IFlowExecutionContext
     {
         _executor.NotifyLog($"[{_sourceNodeId}] {message}", level);
     }
+
+    public void RegisterPlannedAction(PlannedAction action)
+    {
+        _executor.RegisterPlannedAction(action);
+    }
+
+    public void RecordJournalEntry(JournalEntry entry)
+    {
+        _executor.JournalService.Record(entry);
+    }
 }
+
 
 public class WorkflowExecutor
 {
@@ -50,11 +63,26 @@ public class WorkflowExecutor
     private long _totalItemsCount;
 
     public WorkflowDebugSession? DebugSession { get; set; }
+    public ExecutionJournalService JournalService { get; } = new();
+    public List<PlannedAction> PlannedActions { get; } = [];
 
     public event Action<double, string>? ProgressChanged;
     public event Action<string, double, string>? NodeProgressChanged;
     public event Action<string, NodeExecutionStatus>? NodeStatusChanged;
     public event Action<string, LogLevel>? LogEmitted;
+    public event Action<string, string, int>? EdgeItemDispatched;
+
+    private readonly ConcurrentDictionary<string, int> _edgeCounts = new(StringComparer.OrdinalIgnoreCase);
+
+    public void RegisterPlannedAction(PlannedAction action)
+    {
+        lock (_lock)
+        {
+            PlannedActions.Add(action);
+        }
+        NotifyLog($"[DryRun] Planned: {action.OperationType} -> {action.SourcePath} ({action.Description})", LogLevel.Information);
+    }
+
 
     public int MaxDegreeOfParallelism
     {
@@ -215,11 +243,16 @@ public class WorkflowExecutor
         var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
         bool isMultipleTargets = matchingEdges.Count > 1;
 
+        string edgeKey = $"{sourceNodeId}:{outputPortName}";
+        int newCount = _edgeCounts.AddOrUpdate(edgeKey, 1, (_, c) => c + 1);
+        EdgeItemDispatched?.Invoke(sourceNodeId, outputPortName, newCount);
+
         List<Task> dispatchTasks = [];
         foreach (var edge in matchingEdges)
         {
             if (_nodeInstances.TryGetValue(edge.TargetNodeId, out var targetNode))
             {
+
                 var targetItem = isMultipleTargets ? item.DeepClone() : item;
 
                 dispatchTasks.Add(Task.Run(async () =>

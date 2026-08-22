@@ -384,23 +384,100 @@
                         <StackPanel>
                             <Grid Margin="0,0,0,6">
                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SettingsTitle]}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
-                                <Button HorizontalAlignment="Right"
-                                        Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        Command="{Binding AddVariableCommand}"
-                                        Content="➕ Variable"
-                                        Background="{DynamicResource AccentSuccessBrush}" Foreground="White"
-                                        BorderThickness="0" Padding="6,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
-                                        ToolTip="Añadir nueva variable personalizada">
-                                    <Button.Resources>
-                                        <Style TargetType="Border">
-                                            <Setter Property="CornerRadius" Value="4" />
-                                        </Style>
-                                    </Button.Resources>
-                                </Button>
+                                
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Command="{Binding AddVariableCommand}"
+                                            Content="➕ Variable"
+                                            Background="{DynamicResource AccentSuccessBrush}" Foreground="White"
+                                            BorderThickness="0" Padding="6,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
+                                            ToolTip="Añadir nueva variable personalizada"
+                                            Margin="0,0,4,0">
+                                        <Button.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="4" />
+                                            </Style>
+                                        </Button.Resources>
+                                    </Button>
+
+                                    <Button Visibility="{Binding IsSwitchCaseNode, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Command="{Binding AddSwitchCaseCommand}"
+                                            Content="➕ Caso"
+                                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="White"
+                                            BorderThickness="0" Padding="6,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
+                                            ToolTip="Añadir nuevo caso / puerto de salida">
+                                        <Button.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="4" />
+                                            </Style>
+                                        </Button.Resources>
+                                    </Button>
+                                </StackPanel>
                             </Grid>
 
                             <!-- Lista de Parámetros Modularizada -->
                             <ItemsControl ItemsSource="{Binding Parameters}" ItemTemplate="{StaticResource NodeParameterItemTemplate}" />
+
+                            <!-- Lista Dinámica de Casos para SwitchCaseNode -->
+                            <ItemsControl ItemsSource="{Binding SwitchCases}"
+                                          Visibility="{Binding IsSwitchCaseNode, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                          Margin="0,4,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:SwitchCaseItemViewModel}">
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Nombre del Caso (Nombra el puerto de salida) -->
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                     BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
+                                                     Margin="0,0,4,0" FontWeight="SemiBold"
+                                                     ToolTip="Nombre del caso y del puerto de salida">
+                                                <TextBox.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="4" />
+                                                    </Style>
+                                                </TextBox.Resources>
+                                            </TextBox>
+
+                                            <!-- Patrón de Coincidencia del Caso -->
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Pattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                     BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
+                                                     HorizontalAlignment="Stretch"
+                                                     ToolTip="Patrones separados por punto y coma (ej. jpg;png;webp)">
+                                                <TextBox.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="4,0,0,4" />
+                                                    </Style>
+                                                </TextBox.Resources>
+                                            </TextBox>
+
+                                            <!-- Botón Eliminar Caso -->
+                                            <Button Grid.Column="2"
+                                                    Command="{Binding NodeOwner.RemoveSwitchCaseCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="🗑"
+                                                    Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentErrorBrush}"
+                                                    BorderThickness="0" Padding="6,2" FontSize="10" Cursor="Hand"
+                                                    ToolTip="Eliminar este caso">
+                                                <Button.Resources>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="CornerRadius" Value="0,4,4,0" />
+                                                    </Style>
+                                                </Button.Resources>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
                         </StackPanel>
                     </Border>
                 </StackPanel>
