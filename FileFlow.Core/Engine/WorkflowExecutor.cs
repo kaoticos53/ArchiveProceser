@@ -13,13 +13,19 @@ public class WorkflowExecutionContext : IFlowExecutionContext
     private readonly string _sourceNodeId;
     private readonly WorkflowExecutor _executor;
     private readonly CancellationToken _cancellationToken;
+    public FileItemContext? CurrentItem { get; set; }
     internal bool HasEmittedAnyDownstream { get; private set; }
 
-    public WorkflowExecutionContext(string sourceNodeId, WorkflowExecutor executor, CancellationToken cancellationToken)
+    public WorkflowExecutionContext(
+        string sourceNodeId,
+        WorkflowExecutor executor,
+        CancellationToken cancellationToken,
+        FileItemContext? currentItem = null)
     {
         _sourceNodeId = sourceNodeId;
         _executor = executor;
         _cancellationToken = cancellationToken;
+        CurrentItem = currentItem;
     }
 
     public bool IsDryRun => _executor.IsDryRun;
@@ -44,12 +50,32 @@ public class WorkflowExecutionContext : IFlowExecutionContext
 
     public void Log(string message, LogLevel level)
     {
-        _executor.NotifyLog(_sourceNodeId, message, level);
+        Log(message, level, CurrentItem, 0.0, null);
     }
 
     public void Log(string message, LogLevel level, string? filePath, double durationMs = 0.0)
     {
-        _executor.NotifyLog(_sourceNodeId, message, level, filePath, durationMs);
+        string? effectivePath = !string.IsNullOrWhiteSpace(filePath) ? filePath : CurrentItem?.CurrentPath;
+        string? itemId = CurrentItem?.Id.ToString();
+        long fileSize = CurrentItem?.FileSizeBytes ?? 0;
+        _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson: null, itemId: itemId);
+    }
+
+    public void Log(string message, LogLevel level, FileItemContext? item, double durationMs = 0.0, string? detailsJson = null)
+    {
+        var effectiveItem = item ?? CurrentItem;
+        string? path = effectiveItem?.CurrentPath;
+        string? itemId = effectiveItem?.Id.ToString();
+        long fileSize = effectiveItem?.FileSizeBytes ?? 0;
+        _executor.NotifyLog(_sourceNodeId, message, level, path, fileSize, durationMs, detailsJson, itemId);
+    }
+
+    public void Log(string message, LogLevel level, string? filePath, double durationMs, string? detailsJson, string? itemId = null)
+    {
+        string? effectivePath = !string.IsNullOrWhiteSpace(filePath) ? filePath : CurrentItem?.CurrentPath;
+        string? effectiveItemId = !string.IsNullOrWhiteSpace(itemId) ? itemId : CurrentItem?.Id.ToString();
+        long fileSize = CurrentItem?.FileSizeBytes ?? 0;
+        _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson, effectiveItemId);
     }
 
     public void RegisterPlannedAction(PlannedAction action)
@@ -313,7 +339,6 @@ public class WorkflowExecutor
                 startTasks.Add(Task.Run(async () =>
                 {
                     await WaitIfPausedAsync(cancellationToken);
-                    var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken);
                     // Trigger entry node with null or empty input port name
                     var dummyItem = new FileItemContext(string.Empty);
                     dummyItem.Metadata["WorkflowExecutionId"] = _currentExecutionId;
@@ -326,6 +351,8 @@ public class WorkflowExecutor
                     {
                         dummyItem.Metadata["DryRun"] = true;
                     }
+
+                    var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, dummyItem);
 
                     if (DebugSession != null)
                     {
@@ -430,7 +457,7 @@ public class WorkflowExecutor
                 var task = Task.Run(async () =>
                 {
                     await _concurrencyThrottle.WaitAsync(cancellationToken).ConfigureAwait(false);
-                    var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken);
+                    var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken, targetItem);
                     try
                     {
                         await WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
@@ -511,7 +538,15 @@ public class WorkflowExecutor
         ProgressChanged?.Invoke(percentage, statusMessage);
     }
 
-    internal void NotifyLog(string? nodeId, string message, LogLevel level, string? filePath = null, double durationMs = 0.0)
+    internal void NotifyLog(
+        string? nodeId,
+        string message,
+        LogLevel level,
+        string? filePath = null,
+        long fileSizeBytes = 0,
+        double durationMs = 0.0,
+        string? detailsJson = null,
+        string? itemId = null)
     {
         string? nodeName = null;
         if (!string.IsNullOrWhiteSpace(nodeId) && _nodeInstances.TryGetValue(nodeId, out var node))
@@ -525,8 +560,11 @@ public class WorkflowExecutor
             message: message,
             nodeId: nodeId,
             nodeName: nodeName,
+            itemId: itemId,
             filePath: filePath,
-            durationMs: durationMs
+            fileSizeBytes: fileSizeBytes,
+            durationMs: durationMs,
+            detailsJson: detailsJson
         );
 
         SqliteLogStore.Instance.EnqueueLog(record);

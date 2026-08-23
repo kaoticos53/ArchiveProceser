@@ -11,7 +11,9 @@ public record LogFilterCriteria(
     LogLevel? MinLevel = null,
     string? SearchText = null,
     string? NodeId = null,
+    string? ItemId = null,
     string? FilePattern = null,
+    bool? HasDetailsOnly = null,
     long? FromTimestamp = null,
     long? ToTimestamp = null,
     string? SortColumn = "Id",
@@ -79,13 +81,17 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
                     Level INTEGER NOT NULL,
                     NodeId TEXT,
                     NodeName TEXT,
+                    ItemId TEXT,
                     FilePath TEXT,
                     FileName TEXT,
+                    FileSizeBytes INTEGER DEFAULT 0,
                     DurationMs REAL DEFAULT 0.0,
-                    Message TEXT NOT NULL
+                    Message TEXT NOT NULL,
+                    DetailsJson TEXT
                 );
 
                 CREATE INDEX IF NOT EXISTS IX_Logs_Timestamp ON ExecutionLogs (Timestamp);
+                CREATE INDEX IF NOT EXISTS IX_Logs_ItemId ON ExecutionLogs (ItemId);
                 CREATE INDEX IF NOT EXISTS IX_Logs_FileName ON ExecutionLogs (FileName);
                 CREATE INDEX IF NOT EXISTS IX_Logs_FilePath ON ExecutionLogs (FilePath);
                 CREATE INDEX IF NOT EXISTS IX_Logs_NodeId ON ExecutionLogs (NodeId);
@@ -167,8 +173,8 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             await using var cmd = conn.CreateCommand();
             cmd.Transaction = (SqliteTransaction)transaction;
             cmd.CommandText = """
-                INSERT INTO ExecutionLogs (ExecutionId, Timestamp, Level, NodeId, NodeName, FilePath, FileName, DurationMs, Message)
-                VALUES (@ExecutionId, @Timestamp, @Level, @NodeId, @NodeName, @FilePath, @FileName, @DurationMs, @Message);
+                INSERT INTO ExecutionLogs (ExecutionId, Timestamp, Level, NodeId, NodeName, ItemId, FilePath, FileName, FileSizeBytes, DurationMs, Message, DetailsJson)
+                VALUES (@ExecutionId, @Timestamp, @Level, @NodeId, @NodeName, @ItemId, @FilePath, @FileName, @FileSizeBytes, @DurationMs, @Message, @DetailsJson);
             """;
 
             var pExec = cmd.Parameters.Add("@ExecutionId", SqliteType.Text);
@@ -176,10 +182,13 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             var pLevel = cmd.Parameters.Add("@Level", SqliteType.Integer);
             var pNodeId = cmd.Parameters.Add("@NodeId", SqliteType.Text);
             var pNodeName = cmd.Parameters.Add("@NodeName", SqliteType.Text);
+            var pItemId = cmd.Parameters.Add("@ItemId", SqliteType.Text);
             var pFilePath = cmd.Parameters.Add("@FilePath", SqliteType.Text);
             var pFileName = cmd.Parameters.Add("@FileName", SqliteType.Text);
+            var pFileSize = cmd.Parameters.Add("@FileSizeBytes", SqliteType.Integer);
             var pDuration = cmd.Parameters.Add("@DurationMs", SqliteType.Real);
             var pMessage = cmd.Parameters.Add("@Message", SqliteType.Text);
+            var pDetails = cmd.Parameters.Add("@DetailsJson", SqliteType.Text);
 
             foreach (var r in records)
             {
@@ -188,10 +197,13 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
                 pLevel.Value = (int)r.Level;
                 pNodeId.Value = (object?)r.NodeId ?? DBNull.Value;
                 pNodeName.Value = (object?)r.NodeName ?? DBNull.Value;
+                pItemId.Value = (object?)r.ItemId ?? DBNull.Value;
                 pFilePath.Value = (object?)r.FilePath ?? DBNull.Value;
                 pFileName.Value = (object?)r.FileName ?? DBNull.Value;
+                pFileSize.Value = r.FileSizeBytes;
                 pDuration.Value = r.DurationMs;
                 pMessage.Value = r.Message ?? string.Empty;
+                pDetails.Value = (object?)r.DetailsJson ?? DBNull.Value;
 
                 await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
@@ -238,7 +250,9 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             "timestamp" => "Timestamp",
             "level" => "Level",
             "nodename" or "node" => "NodeName",
+            "itemid" or "item" => "ItemId",
             "filename" or "file" => "FileName",
+            "filesizebytes" or "filesize" or "size" => "FileSizeBytes",
             "durationms" or "duration" => "DurationMs",
             "message" => "Message",
             _ => "Id"
@@ -249,7 +263,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             : (newestFirst ? "DESC" : "ASC");
 
         string sql = $"""
-            SELECT Id, ExecutionId, Timestamp, Level, NodeId, NodeName, FilePath, FileName, DurationMs, Message
+            SELECT Id, ExecutionId, Timestamp, Level, NodeId, NodeName, ItemId, FilePath, FileName, FileSizeBytes, DurationMs, Message, DetailsJson
             FROM ExecutionLogs
             {whereSql}
             ORDER BY {sortCol} {dir}
@@ -277,12 +291,15 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             LogLevel level = (LogLevel)reader.GetInt32(3);
             string? nodeId = reader.IsDBNull(4) ? null : reader.GetString(4);
             string? nodeName = reader.IsDBNull(5) ? null : reader.GetString(5);
-            string? filePath = reader.IsDBNull(6) ? null : reader.GetString(6);
-            string? fileName = reader.IsDBNull(7) ? null : reader.GetString(7);
-            double duration = reader.GetDouble(8);
-            string message = reader.GetString(9);
+            string? itemId = reader.IsDBNull(6) ? null : reader.GetString(6);
+            string? filePath = reader.IsDBNull(7) ? null : reader.GetString(7);
+            string? fileName = reader.IsDBNull(8) ? null : reader.GetString(8);
+            long fileSizeBytes = reader.GetInt64(9);
+            double duration = reader.GetDouble(10);
+            string message = reader.GetString(11);
+            string? detailsJson = reader.IsDBNull(12) ? null : reader.GetString(12);
 
-            results.Add(new StructuredLogRecord(id, execId, ts, level, nodeId, nodeName, filePath, fileName, duration, message));
+            results.Add(new StructuredLogRecord(id, execId, ts, level, nodeId, nodeName, itemId, filePath, fileName, fileSizeBytes, duration, message, detailsJson));
         }
 
         return results;
@@ -310,6 +327,12 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
     public async Task<IReadOnlyList<StructuredLogRecord>> GetFileTraceAsync(string fileNameOrPath)
     {
         var filter = new LogFilterCriteria(FilePattern: fileNameOrPath);
+        return await GetLogsWindowAsync(0, 1000, filter, newestFirst: false).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<StructuredLogRecord>> GetItemTraceAsync(string itemId)
+    {
+        var filter = new LogFilterCriteria(ItemId: itemId);
         return await GetLogsWindowAsync(0, 1000, filter, newestFirst: false).ConfigureAwait(false);
     }
 
@@ -369,7 +392,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
         await conn.OpenAsync().ConfigureAwait(false);
 
         var (whereSql, parameters) = BuildFilterClause(filter);
-        string sql = $"SELECT Id, ExecutionId, Timestamp, Level, NodeName, FileName, Message FROM ExecutionLogs {whereSql} ORDER BY Id ASC;";
+        string sql = $"SELECT Id, ExecutionId, Timestamp, Level, NodeName, ItemId, FileName, Message, DetailsJson FROM ExecutionLogs {whereSql} ORDER BY Id ASC;";
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
@@ -385,9 +408,11 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             DateTime ts = DateTimeOffset.FromUnixTimeMilliseconds(unixMs).LocalDateTime;
             LogLevel level = (LogLevel)reader.GetInt32(3);
             string node = reader.IsDBNull(4) ? "Core" : reader.GetString(4);
-            string msg = reader.GetString(6);
+            string? item = reader.IsDBNull(5) ? null : reader.GetString(5);
+            string msg = reader.GetString(7);
+            string itemPrefix = !string.IsNullOrWhiteSpace(item) ? $" [#{item[..Math.Min(8, item.Length)]}]" : "";
 
-            await writer.WriteLineAsync($"[{ts:yyyy-MM-dd HH:mm:ss}] [{level}] [{node}] {msg}").ConfigureAwait(false);
+            await writer.WriteLineAsync($"[{ts:yyyy-MM-dd HH:mm:ss}] [{level}]{itemPrefix} [{node}] {msg}").ConfigureAwait(false);
         }
     }
 
@@ -430,15 +455,27 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             parameters["@nodeId"] = filter.NodeId;
         }
 
+        if (!string.IsNullOrWhiteSpace(filter.ItemId))
+        {
+            clauses.Add("(ItemId = @itemId OR ItemId LIKE @itemIdLike)");
+            parameters["@itemId"] = filter.ItemId;
+            parameters["@itemIdLike"] = $"%{filter.ItemId}%";
+        }
+
         if (!string.IsNullOrWhiteSpace(filter.FilePattern))
         {
             clauses.Add("(FileName LIKE @filePattern OR FilePath LIKE @filePattern)");
             parameters["@filePattern"] = $"%{filter.FilePattern}%";
         }
 
+        if (filter.HasDetailsOnly == true)
+        {
+            clauses.Add("(DetailsJson IS NOT NULL AND Length(DetailsJson) > 0)");
+        }
+
         if (!string.IsNullOrWhiteSpace(filter.SearchText))
         {
-            clauses.Add("(Message LIKE @searchText OR FileName LIKE @searchText OR NodeName LIKE @searchText)");
+            clauses.Add("(Message LIKE @searchText OR FileName LIKE @searchText OR NodeName LIKE @searchText OR ItemId LIKE @searchText OR DetailsJson LIKE @searchText)");
             parameters["@searchText"] = $"%{filter.SearchText}%";
         }
 

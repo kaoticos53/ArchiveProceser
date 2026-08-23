@@ -103,4 +103,25 @@ public class SqliteLogStoreTests : IAsyncLifetime
         nodeAMetrics.MinDurationMs.Should().Be(10.0);
         nodeAMetrics.ErrorCount.Should().Be(1);
     }
+
+    [Fact]
+    public async Task SqliteLogStore_GetItemTrace_ShouldTrackCompleteFileLifecycleById()
+    {
+        string itemId = Guid.NewGuid().ToString("N");
+        string otherItemId = Guid.NewGuid().ToString("N");
+
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Information, "Scanned source", nodeId: "FolderSource", itemId: itemId, filePath: @"C:\Data\photo.jpg", fileSizeBytes: 1024));
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Information, "Other item scanned", nodeId: "FolderSource", itemId: otherItemId, filePath: @"C:\Data\other.jpg", fileSizeBytes: 2048));
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Information, "Renamed to 2026_photo.jpg", nodeId: "AdvancedRenamer", itemId: itemId, filePath: @"C:\Data\2026_photo.jpg", fileSizeBytes: 1024));
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Information, "Logged inspection metadata", nodeId: "LogOutput", itemId: itemId, filePath: @"C:\Data\2026_photo.jpg", fileSizeBytes: 1024, detailsJson: "{\"tags\":[\"test\"]}"));
+
+        await _store.FlushPendingLogsAsync();
+
+        var trace = await _store.GetItemTraceAsync(itemId);
+        trace.Should().HaveCount(3);
+        trace.Select(t => t.NodeId).Should().ContainInOrder("FolderSource", "AdvancedRenamer", "LogOutput");
+        trace.Last().HasDetails.Should().BeTrue();
+        trace.Last().DetailsJson.Should().Contain("test");
+        trace.Last().ShortItemId.Should().Be(itemId[..8]);
+    }
 }

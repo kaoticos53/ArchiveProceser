@@ -4,8 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+             xmlns:converters="clr-namespace:FileFlow.App.Converters"
              mc:Ignorable="d" 
-             d:DesignHeight="250" d:DesignWidth="1100">
+             d:DesignHeight="280" d:DesignWidth="1100">
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
+    </UserControl.Resources>
+
     <Border Background="{DynamicResource BgSurfaceBrush}" 
             BorderBrush="{DynamicResource BorderDarkBrush}" 
             BorderThickness="0,1,0,0" 
@@ -116,9 +122,9 @@
                             BorderThickness="1" 
                             CornerRadius="4" 
                             Padding="6,2" 
-                            Width="280">
+                            Width="300">
                         <Grid>
-                            <TextBlock Text="🔍 Buscar por archivo, nodo o mensaje..." 
+                            <TextBlock Text="🔍 Buscar por archivo, ID, nodo o JSON..." 
                                        Foreground="{DynamicResource TextSecondaryBrush}" 
                                        FontSize="11" 
                                        VerticalAlignment="Center"
@@ -167,6 +173,7 @@
             <DataGrid x:Name="LogDataGrid"
                       Grid.Row="2"
                       ItemsSource="{Binding Logs}"
+                      SelectedItem="{Binding SelectedLog, Mode=TwoWay}"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserAddRows="False"
@@ -182,8 +189,9 @@
                       FontFamily="Cascadia Code, Consolas, monospace"
                       FontSize="11"
                       RowHeight="22"
-                      SelectionMode="Extended"
+                      SelectionMode="Single"
                       SelectionUnit="FullRow"
+                      RowDetailsVisibilityMode="VisibleWhenSelected"
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
                       VirtualizingStackPanel.IsVirtualizing="True"
@@ -272,6 +280,32 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
+                    <!-- ID Fichero (Badge clicable para trazabilidad de extremo a extremo) -->
+                    <DataGridTemplateColumn Width="85">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="ID Flujo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="ItemId" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding DataContext.FilterByItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                        CommandParameter="{Binding ItemId}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="0"
+                                        Cursor="Hand"
+                                        ToolTip="Filtrar toda la trazabilidad de este archivo (ciclo de vida completo)"
+                                        Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
+                                    <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="3" Padding="4,1">
+                                        <TextBlock Text="{Binding ShortItemId, StringFormat='#{0}'}" 
+                                                   Foreground="{DynamicResource AccentCyanBrush}" 
+                                                   FontWeight="SemiBold" 
+                                                   FontSize="10" />
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
                     <!-- Fichero -->
                     <DataGridTemplateColumn Width="150">
                         <DataGridTemplateColumn.Header>
@@ -279,7 +313,20 @@
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding FileName}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding FileName}" 
+                                           Foreground="{DynamicResource TextSecondaryBrush}" 
+                                           TextTrimming="CharacterEllipsis" 
+                                           VerticalAlignment="Center">
+                                    <TextBlock.ToolTip>
+                                        <ToolTip Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FilePath, StringFormat='📁 Ruta: {0}'}" FontWeight="SemiBold" Margin="0,0,0,3" />
+                                                <TextBlock Text="{Binding FormattedFileSize, StringFormat='⚖️ Tamaño: {0}'}" Visibility="{Binding FileSizeBytes, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                                <TextBlock Text="{Binding ItemId, StringFormat='🆔 ID: {0}'}" Foreground="{DynamicResource AccentCyanBrush}" />
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </TextBlock.ToolTip>
+                                </TextBlock>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -303,11 +350,110 @@
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Badge JSON si contiene detalles estructurados -->
+                                    <Border Background="{DynamicResource AccentPurpleBrush}" 
+                                            Opacity="0.85" 
+                                            CornerRadius="3" 
+                                            Padding="4,1" 
+                                            Margin="0,0,6,0"
+                                            Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            ToolTip="Contiene detalles estructurados (haz clic para expandir fila)">
+                                        <TextBlock Text="{}{ } JSON" Foreground="White" FontSize="9.5" FontWeight="Bold" />
+                                    </Border>
+                                    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
+
+                <!-- Panel de Detalles Expansible al Seleccionar Fila -->
+                <DataGrid.RowDetailsTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource BgSurfaceBrush}" 
+                                BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                BorderThickness="0,1,0,1" 
+                                Padding="12,8" 
+                                Margin="0,2,0,4">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Header de Metadatos del Archivo e ID -->
+                                <Grid Grid.Row="0" Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,8,4">
+                                            <TextBlock Text="{Binding ItemId, StringFormat='🆔 ID de Flujo: {0}'}" 
+                                                       Foreground="{DynamicResource AccentCyanBrush}" 
+                                                       FontWeight="Bold" 
+                                                       FontSize="11" />
+                                        </Border>
+
+                                        <Border Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,8,4"
+                                                Visibility="{Binding FilePath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding FilePath, StringFormat='📁 {0}'}" 
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                       FontSize="11" />
+                                        </Border>
+
+                                        <Border Background="{DynamicResource BgCardBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,8,4"
+                                                Visibility="{Binding FormattedFileSize, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding FormattedFileSize, StringFormat='⚖️ {0}'}" 
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                       FontSize="11" />
+                                        </Border>
+                                    </WrapPanel>
+
+                                    <!-- Acciones Rápidas -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="🔍 Trazabilidad" 
+                                                Command="{Binding DataContext.FilterByItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding ItemId}"
+                                                Style="{StaticResource SecondaryButton}" 
+                                                Padding="8,2" FontSize="10.5" Margin="0,0,6,0"
+                                                Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+
+                                        <Button Content="📋 Copiar JSON" 
+                                                Command="{Binding DataContext.CopyDetailsJsonCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding DetailsJson}"
+                                                Style="{StaticResource SecondaryButton}" 
+                                                Padding="8,2" FontSize="10.5"
+                                                Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Visor JSON / Detalles Técnicos -->
+                                <Border Grid.Row="1" 
+                                        Background="{DynamicResource BgCardBrush}" 
+                                        BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                        BorderThickness="1" 
+                                        CornerRadius="4" 
+                                        Padding="8,6" 
+                                        MaxHeight="200"
+                                        Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                        <TextBox Text="{Binding DetailsJson, Mode=OneWay}" 
+                                                 IsReadOnly="True" 
+                                                 Background="Transparent" 
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                 BorderThickness="0" 
+                                                 FontFamily="Cascadia Code, Consolas, monospace" 
+                                                 FontSize="11" 
+                                                 TextWrapping="Wrap" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </DataGrid.RowDetailsTemplate>
             </DataGrid>
         </Grid>
     </Border>

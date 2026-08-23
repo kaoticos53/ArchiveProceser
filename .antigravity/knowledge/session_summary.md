@@ -8,31 +8,25 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **139 / 139 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **142 / 142 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
 ---
 
-## 2. Capa de Telemetría Atómica, Totales Dinámicos y DataGrid Fluido (Agosto 2026)
-1. **Desacoplamiento Total Motor $\leftrightarrow$ UI (Snapshot-based Pull a 30 FPS)**:
-   - Creado `TelemetrySnapshot` en `FileFlow.Sdk.Telemetry`.
-   - `WorkflowExecutor` actualiza contadores atómicos con `Interlocked` y `Stopwatch` en O(1) con 0 asignaciones de memoria en heap.
-   - `ControlBarViewModel` muestrea la instantánea a 30 FPS (~33 ms) mediante `visualFlushTimer`, coalesciendo estados de nodos, aristas y barra de progreso. Eliminada por completo la saturación del Dispatcher y la cola residual de eventos.
-2. **Cálculo Ultrarrápido de Totales y Seguimiento Integral de Elementos**:
-   - `FolderSourceNode` evalúa `EmitMode` ("FilesOnly", "DirectoriesOnly", "FilesAndDirectories") tanto en `FastCountSourceFiles` como en el streaming, adaptando la métrica y las etiquetas contextuales ("elementos", "carpetas", "archivos").
-   - Incorporado `_sourceItemsEmitted` y resolución de aristas no conectadas en `DispatchEmitAsync`, garantizando avance reactivo del porcentaje y feedback fiel.
-3. **Motor de Logs Estructurados en Memoria SQLite (`SqliteLogStore.cs`)**:
-   - Base de datos SQLite In-Memory (`Microsoft.Data.Sqlite`, `Mode=Memory;Cache=Shared`) con esquema indexado (`Timestamp`, `Level`, `NodeId`, `NodeName`, `FilePath`, `FileName`, `DurationMs`, `Message`).
-   - Coalescencia por lotes en worker con delay adaptativo de 20 ms $\rightarrow$ **0.0% de uso de CPU en reposo**.
-   - `ClearAsync` protegido con semáforo y libre de bloqueos `VACUUM`.
-   - Soporte de ordenación multi-columna dinámica (`ORDER BY DurationMs / Timestamp / Level / NodeName / FileName / Id`).
-   - Analítica profunda: trazabilidad por fichero (`GetFileTraceAsync`), detección de cuellos de botella por nodo (`GetNodeExecutionMetricsAsync`) y búsqueda en tiempo real con índices B-Tree.
-4. **DataGrid Profesional en WPF (`LogView.xaml` / `LogViewModel.cs`)**:
-   - **Renderizado Reactivo en Tiempo Real**: Visualización inmediata durante la ejecución activa con `ObservableCollection<StructuredLogRecord>` y virtualización por reciclaje (`VirtualizationMode="Recycling"`).
-   - **Ordenación Interactiva por Columnas**: Clic en cabecera **Duración** para ver operaciones más lentas, clic en **Nivel** para agrupar errores, clic en **Hora** o **Fichero**.
-   - **Exportación Asíncrona sin Congelamiento**: Exportación en segundo plano (`Task.Run`) a `.log`/`.txt` del 100% de los datos históricos.
-   - **Borrado Instantáneo**: Botón de vaciado reactivo que limpia la colección y SQLite de inmediato.
-   - **Auto-Scroll Inteligente No Invasivo**: Pausado de inmediato cuando el usuario mueve la rueda del ratón o la barra para inspeccionar líneas anteriores; reactivación instantánea al volver al final o pulsar `⚡ En Vivo`.
+## 2. Capa de Telemetría Atómica, Trazabilidad por Fichero e Inspección JSON (Agosto 2026)
+1. **Auto-Vinculación Contextual de Archivos (`WorkflowExecutionContext.cs` & `WorkflowExecutor.cs`)**:
+   - `WorkflowExecutionContext` inyecta automáticamente el `FileItemContext` activo a todos los logs del nodo.
+   - Cualquier llamada `context.Log(...)` extrae de forma automática `ItemId`, `FilePath`, `FileName` y `FileSizeBytes`. Eliminado por completo el problema de nombres de archivos vacíos.
+2. **Estructuración JSON y Mensajes Descriptivos (`LogOutputNode.cs`)**:
+   - `LogOutputNode` genera un payload JSON ordenado (`DetailsJson`) y emite un mensaje conciso de 1 sola línea (`🔍 Inspección: archivo.ext (X MB) • N tags • M metadatos • K nodos previos`).
+3. **Motor SQLite con Índice B-Tree de Trazabilidad (`SqliteLogStore.cs`)**:
+   - Esquema ampliado con `ItemId TEXT`, `FileSizeBytes INTEGER` y `DetailsJson TEXT`.
+   - Creado `IX_Logs_ItemId` y el método `GetItemTraceAsync(string itemId)` para rastrear el ciclo de vida completo de un archivo a través de todos los nodos.
+4. **DataGrid Profesional en WPF con Fila Expansible (`LogView.xaml` / `LogViewModel.cs`)**:
+   - **Columna `ID Flujo`**: Badge `#a1b2c3d4` clicable para filtrar al instante la historia completa del archivo.
+   - **ToolTips Ricos**: Información completa de ruta, tamaño e ID al pasar el ratón sobre la columna Fichero.
+   - **Panel Expansible `RowDetailsTemplate`**: Muestra datos del archivo, visor de JSON formateado monoespaciado y botones de acción rápida (`🔍 Trazabilidad` y `📋 Copiar JSON`).
+   - Virtualización por reciclaje (`VirtualizationMode="Recycling"`), auto-scroll inteligente y ordenación multi-columna dinámica.
 
 ---
 

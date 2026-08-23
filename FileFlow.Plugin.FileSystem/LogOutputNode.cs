@@ -1,4 +1,4 @@
-using System.Text;
+using System.Text.Json;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -30,6 +30,11 @@ public class LogOutputNode : IFlowNode
         ["LogLevel"] = "Information"
     };
 
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
@@ -48,52 +53,51 @@ public class LogOutputNode : IFlowNode
         }
         LogLevel level = parsedLevel;
 
-        if (compactFormat)
-        {
-            double mb = item.FileSizeBytes / (1024.0 * 1024.0);
-            string metaSummary = item.Metadata.Count > 0 ? string.Join(", ", item.Metadata.Select(kv => $"{kv.Key}={kv.Value}")) : "none";
-            context.Log($"[Log Inspector] {item.CurrentPath} ({mb:F2} MB) | Meta: [{metaSummary}]", level);
-            item.AddLog($"LogInspectorNode logged compact item state ({item.CurrentPath})");
-            await context.EmitAsync("Out", item);
-            return;
-        }
+        string fileName = !string.IsNullOrWhiteSpace(item.CurrentPath)
+            ? System.IO.Path.GetFileName(item.CurrentPath)
+            : (!string.IsNullOrWhiteSpace(item.OriginalPath) ? System.IO.Path.GetFileName(item.OriginalPath) : "Elemento");
 
-        var sb = new StringBuilder();
-        sb.AppendLine($"=== [Log Inspector Output] ===");
-        sb.AppendLine($"• ID: {item.Id}");
-        sb.AppendLine($"• Current Path: {item.CurrentPath}");
-        sb.AppendLine($"• Original Path: {item.OriginalPath}");
-        sb.AppendLine($"• Is Directory: {item.IsDirectory}");
-        sb.AppendLine($"• File Size: {item.FileSizeBytes:N0} bytes");
+        double mb = item.FileSizeBytes / (1024.0 * 1024.0);
+        string sizeText = item.FileSizeBytes > 0 ? (mb >= 1.0 ? $"{mb:F2} MB" : $"{item.FileSizeBytes / 1024.0:F1} KB") : (item.IsDirectory ? "Carpeta" : "0 B");
 
-        if (item.Tags.Count > 0)
+        var payload = new Dictionary<string, object?>
         {
-            sb.AppendLine($"• Tags: [{string.Join(", ", item.Tags)}]");
-        }
+            ["itemId"] = item.Id.ToString(),
+            ["currentPath"] = item.CurrentPath,
+            ["originalPath"] = item.OriginalPath,
+            ["isDirectory"] = item.IsDirectory,
+            ["fileSizeBytes"] = item.FileSizeBytes,
+            ["tags"] = item.Tags.ToList()
+        };
 
         if (logMetadata && item.Metadata.Count > 0)
         {
-            sb.AppendLine("• Metadata:");
-            foreach (var (k, v) in item.Metadata)
-            {
-                sb.AppendLine($"   - {k}: {v}");
-            }
+            payload["metadata"] = item.Metadata;
         }
 
         if (logHistory && item.ExecutionLog.Count > 0)
         {
-            sb.AppendLine("• Node History Log:");
-            foreach (string entry in item.ExecutionLog)
-            {
-                sb.AppendLine($"   - {entry}");
-            }
+            payload["executionLog"] = item.ExecutionLog;
         }
 
-        sb.AppendLine("==============================");
+        string detailsJson = JsonSerializer.Serialize(payload, _jsonOptions);
 
-        string logMessage = sb.ToString();
-        context.Log(logMessage, level);
-        item.AddLog($"LogInspectorNode logged item state ({item.CurrentPath})");
+        string summaryMessage;
+        if (compactFormat)
+        {
+            summaryMessage = $"🔍 {fileName} ({sizeText}) | {item.Metadata.Count} meta";
+        }
+        else
+        {
+            var parts = new List<string> { $"🔍 Inspección: {fileName} ({sizeText})" };
+            if (item.Tags.Count > 0) parts.Add($"{item.Tags.Count} tags");
+            if (item.Metadata.Count > 0) parts.Add($"{item.Metadata.Count} metadatos");
+            if (item.ExecutionLog.Count > 0) parts.Add($"{item.ExecutionLog.Count} nodos previos");
+            summaryMessage = string.Join(" • ", parts);
+        }
+
+        context.Log(summaryMessage, level, item, durationMs: 0.0, detailsJson: detailsJson);
+        item.AddLog($"LogOutputNode inspeccionó estado ({fileName})");
 
         await context.EmitAsync("Out", item);
     }

@@ -2,6 +2,29 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-08-23] - Modernización de Logs Estructurados, Trazabilidad por ID de Flujo (`ItemId`) y Visor Interactivo JSON
+
+### 🛠 Cambios e Implementaciones
+1. **Auto-Vinculación Contextual de Archivos en Motor (`WorkflowExecutionContext.cs` & `WorkflowExecutor.cs`):**
+   - Inyectada la referencia activa al `FileItemContext` en cada ciclo de ejecución de nodo.
+   - Cualquier invocación a `context.Log(...)` extrae de forma automática y transparente: `ItemId` (`item.Id`), `FilePath` (`item.CurrentPath`), `FileName` (`Path.GetFileName`), y `FileSizeBytes` (`item.FileSizeBytes`).
+   - Resuelto definitivamente el problema de nombres de archivos vacíos en los logs.
+2. **Estructuración JSON y Mensajes Descriptivos de 1 Línea (`LogOutputNode.cs`):**
+   - Empaquetamiento de metadatos, tags, tamaño e historial de ejecución en un JSON formateado (`DetailsJson`).
+   - Generación de mensajes concisos y limpios de una sola línea (`🔍 Inspección: archivo.ext (X MB) • N tags • M metadatos • K nodos previos`), eliminando el texto multilínea caótico que se cortaba en el grid.
+3. **Persistencia e Indexación en Memoria SQLite (`SqliteLogStore.cs` & `StructuredLogRecord.cs`):**
+   - Esquema de tabla `ExecutionLogs` actualizado con `ItemId TEXT`, `FileSizeBytes INTEGER` y `DetailsJson TEXT`.
+   - Creado el índice B-Tree `IX_Logs_ItemId` y el método analítico `GetItemTraceAsync(string itemId)` para recuperar toda la cadena de procesamiento de un archivo específico desde su origen hasta el final.
+4. **DataGrid Profesional en WPF con Fila Expansible (`LogView.xaml` & `LogViewModel.cs`):**
+   - **Columna `ID Flujo`**: Badge compacto (`#a1b2c3d4`) clicable que filtra al instante toda la vida del archivo.
+   - **ToolTips Ricos**: Muestra ruta completa, tamaño formateado e ID al pasar el cursor sobre la columna Fichero.
+   - **Panel Expansible `RowDetailsTemplate`**: Se despliega al seleccionar la fila con badges de metadatos, visor de JSON formateado y botones de acción rápida (`🔍 Trazabilidad` y `📋 Copiar JSON`).
+5. **Ampliación de Pruebas Automatizadas:**
+   - Nuevos tests en `StructuredLogContextTests.cs` y ampliación de `SqliteLogStoreTests.cs`.
+   - Suite total incrementada a **142 / 142 pruebas pasadas con 100% de éxito (0 errores, 0 advertencias)**.
+
+---
+
 ## [2026-08-23] - Capa de Telemetría Atómica (Snapshot Pull a 30 FPS) y Consola de Logs Virtualizada con RingBuffer
 
 ### 🛠 Cambios e Implementaciones

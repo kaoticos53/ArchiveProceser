@@ -304,6 +304,40 @@ public partial class LogViewModel : ObservableObject
         OnLogsCleared?.Invoke();
     }
 
+    [ObservableProperty]
+    private StructuredLogRecord? _selectedLog;
+
+    [RelayCommand]
+    public async Task FilterByItem(string? itemId)
+    {
+        if (string.IsNullOrWhiteSpace(itemId)) return;
+        IsLiveMode = false;
+        SearchFilter = itemId.Trim();
+        await LoadQueryResultsAsync();
+    }
+
+    [RelayCommand]
+    public void CopyDetailsJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return;
+        try
+        {
+            Clipboard.SetText(json);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void CopyText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        try
+        {
+            Clipboard.SetText(text);
+        }
+        catch { }
+    }
+
     [RelayCommand]
     public async Task ExportLogs()
     {
