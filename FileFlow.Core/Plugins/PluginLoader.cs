@@ -76,7 +76,10 @@ public class PluginLoader
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Assembly node registration error: {ex.Message}");
+        }
     }
 
     public void RegisterNodeType<T>() where T : IFlowNode, new()

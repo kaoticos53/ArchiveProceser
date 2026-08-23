@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Collections;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
@@ -24,7 +25,7 @@ public enum LogFilterLevel
 public partial class LogViewModel : ObservableObject
 {
     private const int MaxLiveBufferSize = 2000;
-    public ObservableCollection<StructuredLogRecord> Logs { get; } = [];
+    public FastObservableRingBuffer<StructuredLogRecord> Logs { get; } = new(MaxLiveBufferSize);
 
     [ObservableProperty]
     private double _progressPercentage;
@@ -131,16 +132,7 @@ public partial class LogViewModel : ObservableObject
 
             if (IsLiveMode && string.IsNullOrWhiteSpace(SearchFilter) && ActiveFilter == LogFilterLevel.All && SortColumn == "Id")
             {
-                foreach (var item in batch)
-                {
-                    Logs.Add(item);
-                }
-
-                while (Logs.Count > MaxLiveBufferSize)
-                {
-                    Logs.RemoveAt(0);
-                }
-
+                Logs.AddRange(batch);
                 OnLogBatchAdded?.Invoke();
             }
         }

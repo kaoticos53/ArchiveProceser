@@ -28,7 +28,7 @@ public class UserPreferencesService
     public static UserPreferencesService Instance => _instance.Value;
 
     private readonly string _filePath;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private UserPreferencesData _data = new();
 
     public event Action? PreferencesChanged;

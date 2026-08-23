@@ -8,7 +8,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **146 / 146 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **181 / 181 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
@@ -48,8 +48,8 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
    - Invocación segura en UI Dispatcher de `FastObservableRingBuffer.cs`.
    - Limpieza determinista de tareas en `FolderWatcherService.cs` y drenaje en `SqliteLogStore.cs`.
 10. **Batería de Testing Exhaustivo**:
-   - 32 nuevos tests unitarios y de integración para `FileItemContext`, `SystemVariablesResolver`, `AdvancedRenamerNode`, `CliExecutionNode`, `SafeRecycleDeleteNode`, `SqliteLogQueryBuilder` y `ValueConverters`.
-   - Suite total: **178 / 178 pruebas superadas con 100% de éxito (0 errores, 0 fallos)** en 1.1s.
+   - 35 nuevos tests unitarios y de integración para `FileItemContext`, `SystemVariablesResolver`, `AdvancedRenamerNode`, `CliExecutionNode`, `SafeRecycleDeleteNode`, `SqliteLogQueryBuilder`, `ValueConverters` y `WorkflowExecutor`.
+   - Suite total: **181 / 181 pruebas superadas con 100% de éxito (0 errores, 0 fallos)** en 3s.
 
 ---
 
@@ -58,7 +58,35 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ---
 
-## 4. Reglas de Mantenimiento Memorizadas
+## 4. Auditoría Integral 360° y Refactorización Ejecutada (Agosto 2026)
+Se completó la **Fase 1 (Auditoría 360°)** y la **Fase 2 (Refactorización)** corrigiendo el 100% de los 16 hallazgos detectados en 6 Sprints atómicos:
+
+### Resumen de Mejoras Aplicadas y Validadas:
+- **Sprint 1 — Fugas de Recursos y Concurrencia (Crítico)**:
+  - `AUD-01`: `_concurrencyThrottle.Dispose()` al cambiar `MaxDegreeOfParallelism`.
+  - `AUD-02`: Reemplazado `ConcurrentBag<Task>` por `List<Task>` sincronizado con `Lock` y drenaje de completados.
+  - `AUD-10`: Disposición asíncrona de `SqliteLogStore.Instance` en `App.OnExit`.
+- **Sprint 2 — Memory Leaks de Event Handlers en UI**:
+  - `AUD-05`: Invocación implícita de `Dispose()` en `NodeViewModel` en `EditorViewModel.ClearGraph()` y `LoadFromGraphModel()`.
+  - `AUD-06`: Desenganche de `PropertyChanged` mediante handler nominal `OnNodePropertyChanged`.
+  - `AUD-11`: `IDisposable` en `ControlBarViewModel` para desuscribir `PreferencesChanged`.
+- **Sprint 3 — Rendimiento UI**:
+  - `AUD-04`: Migrado `LogViewModel.Logs` a `FastObservableRingBuffer` eliminando `RemoveAt(0)` O(n).
+  - `AUD-14`: Indexado `UpdateEdgeDispatched` con `Dictionary` O(1).
+- **Sprint 4 — Calidad de Código y Convenciones .NET 9**:
+  - `AUD-07`: Migrado `object _lock` a `System.Threading.Lock` en `UserPreferencesService`, `MediaPresetManagerService` y `ExternalToolsService`.
+  - `AUD-09`: `await cmd.ExecuteNonQueryAsync()` en `InsertBatchAsync` de `SqliteLogStore.cs`.
+  - `AUD-08`: Logging contextual en bloques `catch` de `PluginLoader`.
+- **Sprint 5 — Robustez y Resiliencia**:
+  - `AUD-03`: `Volatile.Read` en `WaitIfPausedAsync`.
+  - `AUD-15`: Crash log persistente (`crash.log`) y handler `TaskScheduler.UnobservedTaskException` en `App.xaml.cs`.
+- **Sprint 6 — Tests de Cobertura Crítica**:
+  - `AUD-16`: Suite `WorkflowExecutorTests.cs` ampliada con paralelismo, pausa/resume, DryRun, errores y cancelación.
+
+---
+
+## 5. Reglas de Mantenimiento Memorizadas
 1. **Consulta al Inicio de Sesión**: Consultar siempre `.antigravity/knowledge/session_summary.md`, `docs/PROJECT_WALKTHROUGH.md` y `.antigravity/knowledge/repo_architecture.md` antes de escanear archivos.
 2. **Actualización Continua**: Mantener actualizados `docs/PROJECT_WALKTHROUGH.md` (por fechas), `.antigravity/knowledge/session_summary.md` y los artefactos de plan ante cualquier modificación de código.
 3. **Repositorio Git**: Garantizar que el repositorio Git permanezca limpio, probado y sincronizado.
+

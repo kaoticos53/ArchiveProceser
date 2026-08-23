@@ -11,13 +11,30 @@ public partial class App : Application
     {
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
         {
-            MessageBox.Show($"Error no controlado en la aplicación:\n{args.ExceptionObject}", "Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
+            LogCrashToFile(args.ExceptionObject);
+            try
+            {
+                MessageBox.Show($"Error no controlado en la aplicación:\n{args.ExceptionObject}", "Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch { }
         };
 
         DispatcherUnhandledException += (s, args) =>
         {
-            MessageBox.Show($"Error de interfaz (XAML/UI):\n{args.Exception.Message}\n\n{args.Exception.InnerException?.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            LogCrashToFile(args.Exception);
+            try
+            {
+                MessageBox.Show($"Error de interfaz (XAML/UI):\n{args.Exception.Message}\n\n{args.Exception.InnerException?.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch { }
             args.Handled = true;
+        };
+
+        TaskScheduler.UnobservedTaskException += (s, args) =>
+        {
+            LogCrashToFile(args.Exception);
+            System.Diagnostics.Debug.WriteLine($"Unobserved Task Exception: {args.Exception.Message}");
+            args.SetObserved();
         };
 
         base.OnStartup(e);
@@ -35,5 +52,32 @@ public partial class App : Application
         {
             ThemeManager.Instance.SetTheme(themeEnum);
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            FileFlow.Core.Telemetry.SqliteLogStore.Instance.Dispose();
+        }
+        catch
+        {
+            // Limpieza defensiva en apagado
+        }
+
+        base.OnExit(e);
+    }
+
+    private static void LogCrashToFile(object exception)
+    {
+        try
+        {
+            string appData = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlowStudio");
+            System.IO.Directory.CreateDirectory(appData);
+            string crashFile = System.IO.Path.Combine(appData, "crash.log");
+            string logText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Unhandled Exception:\n{exception}\n\n";
+            System.IO.File.AppendAllText(crashFile, logText);
+        }
+        catch { }
     }
 }

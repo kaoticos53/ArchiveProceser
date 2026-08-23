@@ -11,8 +11,9 @@ using FileFlow.Sdk;
 
 namespace FileFlow.App.ViewModels;
 
-public partial class ControlBarViewModel : ObservableObject
+public partial class ControlBarViewModel : ObservableObject, IDisposable
 {
+    private bool _disposed;
     private readonly EditorViewModel _editorViewModel;
     private readonly PluginLoader _pluginLoader;
     private readonly LogViewModel _logViewModel;
@@ -510,5 +511,13 @@ public partial class ControlBarViewModel : ObservableObject
                 MessageBox.Show($"Error al cargar el flujo: {ex.Message}", "Error al Cargar", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        UserPreferencesService.Instance.PreferencesChanged -= SyncFromPreferences;
+        GC.SuppressFinalize(this);
     }
 }

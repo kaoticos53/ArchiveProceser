@@ -143,6 +143,7 @@ public class WorkflowExecutor
                 if (_maxDegreeOfParallelism != newCap)
                 {
                     _maxDegreeOfParallelism = newCap;
+                    _concurrencyThrottle?.Dispose();
                     _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
                 }
             }
@@ -189,8 +190,18 @@ public class WorkflowExecutor
     }
 
     private string _currentExecutionId = Guid.NewGuid().ToString("N");
-    private readonly ConcurrentBag<Task> _activeNodeTasks = new();
+    private readonly Lock _tasksLock = new();
+    private readonly List<Task> _activeNodeTasks = [];
     private readonly HashSet<string> _disabledLoggingNodeIds = new(StringComparer.OrdinalIgnoreCase);
+
+    private void TrackTask(Task task)
+    {
+        lock (_tasksLock)
+        {
+            _activeNodeTasks.RemoveAll(t => t.IsCompleted);
+            _activeNodeTasks.Add(task);
+        }
+    }
 
     public bool IsLoggingDisabledForNode(string? nodeId) => !string.IsNullOrWhiteSpace(nodeId) && _disabledLoggingNodeIds.Contains(nodeId);
 
@@ -225,7 +236,10 @@ public class WorkflowExecutor
         _lastCustomStatusMessage = string.Empty;
         _isRunning = true;
         _stopwatch.Restart();
-        while (_activeNodeTasks.TryTake(out _)) { }
+        lock (_tasksLock)
+        {
+            _activeNodeTasks.Clear();
+        }
 
         try
         {
@@ -322,9 +336,16 @@ public class WorkflowExecutor
             await Task.WhenAll(startTasks).ConfigureAwait(false);
 
             // Wait for all asynchronously dispatched downstream node tasks to finish
-            while (_activeNodeTasks.TryTake(out var activeTask))
+            while (true)
             {
-                await activeTask.ConfigureAwait(false);
+                Task[] pending;
+                lock (_tasksLock)
+                {
+                    _activeNodeTasks.RemoveAll(t => t.IsCompleted);
+                    if (_activeNodeTasks.Count == 0) break;
+                    pending = [.. _activeNodeTasks];
+                }
+                await Task.WhenAll(pending).ConfigureAwait(false);
             }
 
             _stopwatch.Stop();
@@ -443,7 +464,7 @@ public class WorkflowExecutor
                     }
                 }, cancellationToken);
 
-                _activeNodeTasks.Add(task);
+                TrackTask(task);
             }
         }
 
@@ -452,7 +473,7 @@ public class WorkflowExecutor
 
     private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
     {
-        if (_isPaused)
+        if (Volatile.Read(ref _isPaused))
         {
             await _pauseSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (_pauseSemaphore.CurrentCount == 0)

@@ -94,6 +94,8 @@ public partial class EditorViewModel : ObservableObject
         ViewportLocation = new Point(Math.Round(locX, 1), Math.Round(locY, 1));
     }
 
+    private readonly Dictionary<string, List<ConnectionViewModel>> _connectionLookup = new(StringComparer.OrdinalIgnoreCase);
+
     public EditorViewModel(PluginLoader pluginLoader, Services.IVariableDiscoveryService? variableDiscoveryService = null)
     {
         _pluginLoader = pluginLoader;
@@ -103,8 +105,27 @@ public partial class EditorViewModel : ObservableObject
         {
             GlobalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
         };
-        Connections.CollectionChanged += (s, e) => UpdatePortConnectionStates();
+        Connections.CollectionChanged += (s, e) =>
+        {
+            RebuildConnectionLookup();
+            UpdatePortConnectionStates();
+        };
         Nodes.CollectionChanged += (s, e) => UpdatePortConnectionStates();
+    }
+
+    private void RebuildConnectionLookup()
+    {
+        _connectionLookup.Clear();
+        foreach (var conn in Connections)
+        {
+            string key = $"{conn.Source.NodeOwner.Id}:{conn.Source.Name}";
+            if (!_connectionLookup.TryGetValue(key, out var list))
+            {
+                list = [];
+                _connectionLookup[key] = list;
+            }
+            list.Add(conn);
+        }
     }
 
     public void UpdatePortConnectionStates()
@@ -209,6 +230,14 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
+    private void OnNodePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender is NodeViewModel nodeVm && e.PropertyName == nameof(NodeViewModel.IsSelected) && nodeVm.IsSelected)
+        {
+            SelectedNode = nodeVm;
+        }
+    }
+
     public void RemoveNodeWithConnections(NodeViewModel node)
     {
         var relatedConnections = Connections
@@ -220,7 +249,8 @@ public partial class EditorViewModel : ObservableObject
             Connections.Remove(conn);
         }
 
-        node.Cleanup();
+        node.PropertyChanged -= OnNodePropertyChanged;
+        node.Dispose();
         Nodes.Remove(node);
     }
 
@@ -243,7 +273,8 @@ public partial class EditorViewModel : ObservableObject
         Connections.Clear();
         foreach (var node in Nodes)
         {
-            node.Cleanup();
+            node.PropertyChanged -= OnNodePropertyChanged;
+            node.Dispose();
         }
         Nodes.Clear();
         SelectedNode = null;
@@ -255,13 +286,7 @@ public partial class EditorViewModel : ObservableObject
         if (nodeInstance == null) return null;
 
         var nodeVm = new NodeViewModel(nodeInstance, position);
-        nodeVm.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(NodeViewModel.IsSelected) && nodeVm.IsSelected)
-            {
-                SelectedNode = nodeVm;
-            }
-        };
+        nodeVm.PropertyChanged += OnNodePropertyChanged;
         Nodes.Add(nodeVm);
         UserPreferencesService.Instance.IncrementNodeUsage(nodeTypeName);
         return nodeVm;
@@ -390,13 +415,7 @@ public partial class EditorViewModel : ObservableObject
                 IsLoggingEnabled = nodeDto.IsLoggingEnabled && !graph.DisabledLoggingNodeIds.Contains(nodeDto.Id)
             };
 
-            nodeVm.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(NodeViewModel.IsSelected) && nodeVm.IsSelected)
-                {
-                    SelectedNode = nodeVm;
-                }
-            };
+            nodeVm.PropertyChanged += OnNodePropertyChanged;
 
             Nodes.Add(nodeVm);
             nodeLookup[nodeDto.Id] = nodeVm;
@@ -476,10 +495,10 @@ public partial class EditorViewModel : ObservableObject
 
     public void UpdateEdgeDispatched(string sourceNodeId, string portName, int count)
     {
-        foreach (var conn in Connections)
+        string key = $"{sourceNodeId}:{portName}";
+        if (_connectionLookup.TryGetValue(key, out var list))
         {
-            if (conn.Source.NodeOwner.Id.Equals(sourceNodeId, StringComparison.OrdinalIgnoreCase) &&
-                conn.Source.Name.Equals(portName, StringComparison.OrdinalIgnoreCase))
+            foreach (var conn in list)
             {
                 conn.UpdateCount(count);
             }

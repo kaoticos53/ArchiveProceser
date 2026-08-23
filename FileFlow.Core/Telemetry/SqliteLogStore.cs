@@ -203,7 +203,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
                 pMessage.Value = r.Message ?? string.Empty;
                 pDetails.Value = (object?)r.DetailsJson ?? DBNull.Value;
 
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
 
             await transaction.CommitAsync().ConfigureAwait(false);

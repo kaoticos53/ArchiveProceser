@@ -19,7 +19,7 @@ public class ExternalToolsService
 
     private readonly string _configFilePath;
     private ExternalToolsConfig _config = new();
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     public event EventHandler? ToolsConfigChanged;
 

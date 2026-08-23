@@ -21,7 +21,7 @@ public class MediaPresetManagerService
 
     private readonly string _presetsFilePath;
     private readonly List<MediaPreset> _presets = [];
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     public event EventHandler? PresetsChanged;
 
