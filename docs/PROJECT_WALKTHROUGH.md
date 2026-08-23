@@ -2,6 +2,37 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-08-23] - Capa de Telemetría Atómica (Snapshot Pull a 30 FPS) y Consola de Logs Virtualizada con RingBuffer
+
+### 🛠 Cambios e Implementaciones
+1. **Desacoplamiento Total Motor $\leftrightarrow$ UI mediante Snapshots Atómicos (`WorkflowExecutor.cs` & `ExecutionTelemetry.cs`):**
+   - Incorporado el struct inmutable `TelemetrySnapshot` (`ProcessedItems`, `TotalItems`, `ProcessedBytes`, `ItemsPerSecond`, `MegabytesPerSecond`, `Percentage`, `Elapsed`, `StatusMessage`).
+   - El motor de ejecución actualiza contadores atómicos con `Interlocked` y `Stopwatch` en O(1) con 0 asignaciones de memoria en heap.
+   - Eliminado el encolamiento de delegados por cada archivo procesado en la cola del Dispatcher de WPF.
+2. **Cálculo Ultrarrápido de Totales y Seguimiento Integral de Elementos (`WorkflowExecutor.cs` & `FolderSourceNode.cs`):**
+   - **Soporte Integral para Archivos, Carpetas y Mixto**: `FolderSourceNode` evalúa `EmitMode` ("FilesOnly", "DirectoriesOnly", "FilesAndDirectories") tanto en `FastCountSourceFiles` como en el streaming, adaptando la métrica y las etiquetas contextuales ("elementos", "carpetas", "archivos").
+   - **Rastreo Reactivo de Elementos en Streaming**: Incorporado `_sourceItemsEmitted` y resolución de aristas no conectadas en `DispatchEmitAsync`, garantizando que la barra de progreso refleje el avance en vivo desde el primer milisegundo independientemente de la topología o topologías abiertas.
+   - **Feedback Fiel de Estado**:
+     - Durante la ejecución: `⚡ Procesando: X/Total elementos (N%) • ops/s`
+     - Al culminar: `🟢 Completado: Total/Total elementos (100%)`
+3. **Puente de Telemetría y Coalescencia a 30 FPS (`ControlBarViewModel.cs`):**
+   - El temporizador visual `visualFlushTimer` muestrea la instantánea atómica a 30 FPS constantes (~33 ms), actualizando la barra de progreso, estados de nodos, aristas y mensajes de estado en un único ciclo por frame.
+   - Eliminada al 100% la cola residual de eventos y el retraso visual al finalizar flujos de trabajo masivos.
+4. **Motor de Logs Estructurados en Memoria SQLite y DataGrid Fluido (`SqliteLogStore.cs` y `LogViewModel.cs`):**
+   - **Cero Consumo de CPU en Reposo (0.0%)**: Añadida coalescencia de lotes (`Task.Delay(20)`) en el worker de SQLite, eliminando micro-transacciones unitarias continuas y reduciendo el consumo residual de CPU a 0%.
+   - **Renderizado Instantáneo y Reactivo en DataGrid**: Conexión directa mediante `ObservableCollection<StructuredLogRecord>` con virtualización por reciclaje (`VirtualizationMode="Recycling"`). Los logs aparecen en tiempo real durante la ejecución sin pantallas en blanco ni parpadeos.
+   - **Operaciones de Borrado y Exportación sin Bloqueos**:
+     - `ClearAsync` protegido con `_flushLock` y sin `VACUUM` bloqueante, limpiando la consola y la base de datos de inmediato.
+     - `ExportLogs` ejecutado 100% en streaming en hilo de fondo (`Task.Run`), permitiendo guardar logs de millones de registros sin congelar la ventana.
+   - **Ordenación y Filtros SQL Instantáneos**:
+     - Clic en cabecera **Duración** (`ORDER BY DurationMs DESC`) para detectar cuellos de botella al instante; clic en **Nivel**, **Hora**, **Nodo** o **Fichero**.
+     - Búsqueda en tiempo real indexada en SQLite.
+5. **Ampliación de la Suite de Pruebas Automatizadas:**
+   - Creados `AsyncVirtualizingListTests.cs`, `SqliteLogStoreTests.cs`, `PagedLogStoreTests.cs`, `FastObservableRingBufferTests.cs` y `ExecutionTelemetryTests.cs`.
+   - Suite completa superada con éxito: **139 / 139 pruebas unitarias y de integración pasadas (0 errores, 0 advertencias)**.
+
+---
+
 ## [2026-08-22] - Sincronización Simultánea en Tiempo Real de Barra de Progreso y Logs
 
 ### 🛠 Cambios e Implementaciones

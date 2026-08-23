@@ -17,6 +17,8 @@
             <converters:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
             <converters:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
             <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter" />
+            <converters:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
+            <converters:LogLevelToBadgeConverter x:Key="LogLevelToBadgeConverter" />
             
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/DarkTheme.xaml" />

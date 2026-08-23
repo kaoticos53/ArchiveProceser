@@ -5,19 +5,20 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
-             d:DesignHeight="180" d:DesignWidth="1000">
+             d:DesignHeight="250" d:DesignWidth="1100">
     <Border Background="{DynamicResource BgSurfaceBrush}" 
             BorderBrush="{DynamicResource BorderDarkBrush}" 
             BorderThickness="0,1,0,0" 
-            Padding="12,10">
+            Padding="12,8">
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <!-- Console Header & Status Bar -->
-            <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid Grid.Row="0" Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -100,25 +101,214 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Rich Colored Log Console (100% Selectable & Copyable Text) -->
-            <RichTextBox x:Name="LogConsoleRichTextBox"
-                         Grid.Row="1"
-                         IsReadOnly="True"
-                         IsDocumentEnabled="True"
-                         VerticalScrollBarVisibility="Auto"
-                         HorizontalScrollBarVisibility="Auto"
-                         Background="{DynamicResource BgCardBrush}"
-                         Foreground="{DynamicResource TextPrimaryBrush}"
-                         BorderBrush="{DynamicResource BorderDarkBrush}"
-                         BorderThickness="1"
-                         FontFamily="Cascadia Code, Consolas, monospace"
-                         FontSize="11.5"
-                         Padding="10"
-                         SelectionBrush="{DynamicResource AccentPrimaryBrush}">
-                <FlowDocument PagePadding="0">
-                    <Paragraph x:Name="LogDocumentParagraph" Margin="0" />
-                </FlowDocument>
-            </RichTextBox>
+            <!-- Search, Sort & Analytics Subheader -->
+            <Grid Grid.Row="1" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Búsqueda Instantánea por SQLite Index -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BgCardBrush}" 
+                            BorderBrush="{DynamicResource BorderDarkBrush}" 
+                            BorderThickness="1" 
+                            CornerRadius="4" 
+                            Padding="6,2" 
+                            Width="280">
+                        <Grid>
+                            <TextBlock Text="🔍 Buscar por archivo, nodo o mensaje..." 
+                                       Foreground="{DynamicResource TextSecondaryBrush}" 
+                                       FontSize="11" 
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=TxtSearch}" Value="">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBox x:Name="TxtSearch" 
+                                     Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}" 
+                                     Background="Transparent" 
+                                     Foreground="{DynamicResource TextPrimaryBrush}" 
+                                     BorderThickness="0" 
+                                     FontSize="11" 
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Text="{Binding TotalLogsCount, StringFormat='• Total: {0:N0} logs en BD'}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" 
+                               FontSize="11" 
+                               Margin="10,0,0,0" 
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Live Stream Mode Toggle -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ToggleButton Content="⚡ En Vivo" 
+                                  IsChecked="{Binding IsLiveMode, Mode=TwoWay}" 
+                                  Style="{StaticResource SecondaryToggleButton}" 
+                                  Padding="8,2" 
+                                  FontSize="10.5" 
+                                  FontWeight="SemiBold" 
+                                  Cursor="Hand" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Virtualized DataGrid (Ultra-Fast 120 FPS Database Grid) -->
+            <DataGrid x:Name="LogDataGrid"
+                      Grid.Row="2"
+                      ItemsSource="{Binding Logs}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserResizeRows="False"
+                      CanUserSortColumns="False"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="{DynamicResource BorderDarkBrush}"
+                      Background="{DynamicResource BgCardBrush}"
+                      Foreground="{DynamicResource TextPrimaryBrush}"
+                      BorderBrush="{DynamicResource BorderDarkBrush}"
+                      BorderThickness="1"
+                      FontFamily="Cascadia Code, Consolas, monospace"
+                      FontSize="11"
+                      RowHeight="22"
+                      SelectionMode="Extended"
+                      SelectionUnit="FullRow"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      ScrollViewer.CanContentScroll="True"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      ScrollViewer.IsDeferredScrollingEnabled="False">
+                
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+                        <Setter Property="BorderThickness" Value="0,0,1,1" />
+                        <Setter Property="Padding" Value="6,4" />
+                        <Setter Property="FontWeight" Value="SemiBold" />
+                        <Setter Property="FontSize" Value="10.5" />
+                        <Setter Property="Cursor" Value="Hand" />
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource BgSubtleBrush}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+
+                <DataGrid.CellStyle>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Padding" Value="4,1" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.CellStyle>
+
+                <DataGrid.Columns>
+                    <!-- Hora -->
+                    <DataGridTemplateColumn Width="95">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="Hora ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Timestamp" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Nivel -->
+                    <DataGridTemplateColumn Width="60">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="Nivel ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Level" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding BadgeText}" FontWeight="Bold" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Nodo -->
+                    <DataGridTemplateColumn Width="120">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="Nodo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="NodeName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding NodeName}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Fichero -->
+                    <DataGridTemplateColumn Width="150">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="Fichero ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="FileName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding FileName}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Duración -->
+                    <DataGridTemplateColumn Width="75">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="Duración ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="DurationMs" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1} ms'}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Mensaje -->
+                    <DataGridTemplateColumn Width="*">
+                        <DataGridTemplateColumn.Header>
+                            <Button Content="Mensaje ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Message" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                        </DataGridTemplateColumn.Header>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
         </Grid>
     </Border>
 </UserControl>

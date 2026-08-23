@@ -191,14 +191,21 @@ public partial class ControlBarViewModel : ObservableObject
 
             var pendingEdgeUpdates = new ConcurrentDictionary<string, (string src, string port, int count)>(StringComparer.OrdinalIgnoreCase);
             var pendingStatusUpdates = new ConcurrentDictionary<string, NodeExecutionStatus>(StringComparer.OrdinalIgnoreCase);
-            (double pct, string status)? pendingProgress = null;
+            var pendingNodeProgressUpdates = new ConcurrentDictionary<string, (double pct, string message)>(StringComparer.OrdinalIgnoreCase);
 
             var visualFlushTimer = new DispatcherTimer(DispatcherPriority.Normal)
             {
-                Interval = TimeSpan.FromMilliseconds(35)
+                Interval = TimeSpan.FromMilliseconds(33) // 30 FPS
             };
             visualFlushTimer.Tick += (_, _) =>
             {
+                if (_activeExecutor != null)
+                {
+                    var snapshot = _activeExecutor.GetTelemetrySnapshot();
+                    _logViewModel.ProgressPercentage = snapshot.Percentage;
+                    _logViewModel.StatusMessage = snapshot.StatusMessage;
+                }
+
                 foreach (var key in pendingEdgeUpdates.Keys)
                 {
                     if (pendingEdgeUpdates.TryRemove(key, out var edgeInfo))
@@ -216,11 +223,13 @@ public partial class ControlBarViewModel : ObservableObject
                     }
                 }
 
-                if (pendingProgress.HasValue)
+                foreach (var nodeId in pendingNodeProgressUpdates.Keys)
                 {
-                    var p = pendingProgress.Value;
-                    _logViewModel.ProgressPercentage = p.pct;
-                    _logViewModel.StatusMessage = p.status;
+                    if (pendingNodeProgressUpdates.TryRemove(nodeId, out var progressInfo))
+                    {
+                        var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                        node?.UpdateProgress(progressInfo.pct, progressInfo.message);
+                    }
                 }
             };
             visualFlushTimer.Start();
@@ -236,21 +245,12 @@ public partial class ControlBarViewModel : ObservableObject
 
             _activeExecutor.NodeProgressChanged += (nodeId, pct, message) =>
             {
-                Application.Current?.Dispatcher.InvokeAsync(() =>
-                {
-                    var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
-                    node?.UpdateProgress(pct, message);
-                }, DispatcherPriority.Background);
+                pendingNodeProgressUpdates[nodeId] = (pct, message);
             };
 
-            _activeExecutor.ProgressChanged += (pct, status) =>
+            _activeExecutor.StructuredLogEmitted += (rec) =>
             {
-                pendingProgress = (pct, status);
-            };
-
-            _activeExecutor.LogEmitted += (msg, level) =>
-            {
-                _logViewModel.AddLog(level, msg);
+                _logViewModel.AddStructuredLog(rec);
             };
 
             _activeExecutor.EdgeItemDispatched += (src, port, count) =>
@@ -272,6 +272,13 @@ public partial class ControlBarViewModel : ObservableObject
             {
                 visualFlushTimer.Stop();
                 // Final flush
+                if (_activeExecutor != null)
+                {
+                    var finalSnapshot = _activeExecutor.GetTelemetrySnapshot();
+                    _logViewModel.ProgressPercentage = finalSnapshot.Percentage;
+                    _logViewModel.StatusMessage = finalSnapshot.StatusMessage;
+                }
+
                 foreach (var key in pendingEdgeUpdates.Keys)
                 {
                     if (pendingEdgeUpdates.TryRemove(key, out var edgeInfo))
@@ -287,12 +294,13 @@ public partial class ControlBarViewModel : ObservableObject
                         node?.SetExecutionStatus(status);
                     }
                 }
-
-                if (pendingProgress.HasValue)
+                foreach (var nodeId in pendingNodeProgressUpdates.Keys)
                 {
-                    var p = pendingProgress.Value;
-                    _logViewModel.ProgressPercentage = p.pct;
-                    _logViewModel.StatusMessage = p.status;
+                    if (pendingNodeProgressUpdates.TryRemove(nodeId, out var progressInfo))
+                    {
+                        var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+                        node?.UpdateProgress(progressInfo.pct, progressInfo.message);
+                    }
                 }
 
                 _logViewModel.FlushAllPendingLogs();

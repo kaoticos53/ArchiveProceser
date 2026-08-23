@@ -177,3 +177,52 @@ public class StringEqualsToVisibilityConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
 }
 
+public class LogLevelToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is FileFlow.Sdk.LogLevel level)
+        {
+            return level switch
+            {
+                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error =>
+                    Application.Current?.TryFindResource("AccentErrorBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68)),
+                FileFlow.Sdk.LogLevel.Warning =>
+                    Application.Current?.TryFindResource("AccentWarningBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 158, 11)),
+                FileFlow.Sdk.LogLevel.Information =>
+                    Application.Current?.TryFindResource("AccentCyanBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248)),
+                FileFlow.Sdk.LogLevel.Debug =>
+                    Application.Current?.TryFindResource("AccentPurpleBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(192, 132, 252)),
+                _ => Application.Current?.TryFindResource("TextSecondaryBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184))
+            };
+        }
+        return System.Windows.Media.Brushes.Gray;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+}
+
+public class LogLevelToBadgeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is FileFlow.Sdk.LogLevel level)
+        {
+            return level switch
+            {
+                FileFlow.Sdk.LogLevel.Critical => "CRITICAL",
+                FileFlow.Sdk.LogLevel.Error => "ERROR",
+                FileFlow.Sdk.LogLevel.Warning => "WARN",
+                FileFlow.Sdk.LogLevel.Information => "INFO",
+                FileFlow.Sdk.LogLevel.Debug => "DEBUG",
+                FileFlow.Sdk.LogLevel.Trace => "TRACE",
+                _ => level.ToString().ToUpperInvariant()
+            };
+        }
+        return "LOG";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+}
+
+

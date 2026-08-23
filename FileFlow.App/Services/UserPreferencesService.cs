@@ -17,7 +17,7 @@ public class UserPreferencesData
     public string DefaultConflictStrategy { get; set; } = "RenameIncremental";
     public string DefaultLogLevel { get; set; } = "Information";
     public bool AutoScrollConsole { get; set; } = true;
-    public int MaxLogEntries { get; set; } = 1000;
+    public int MaxLogEntries { get; set; } = 50000;
     public bool EnableAutoSave { get; set; } = true;
     public int AutoSaveIntervalMinutes { get; set; } = 5;
 }

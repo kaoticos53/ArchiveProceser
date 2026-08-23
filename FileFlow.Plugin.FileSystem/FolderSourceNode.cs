@@ -78,6 +78,43 @@ public class FolderSourceNode : IFlowNode
 
         context.Log($"Scanning directory: {sourcePath} (EmitMode={emitMode}, MaxDepth={maxDepth}, Recursive={recursive})", LogLevel.Information);
 
+        // Pre-conteo ultrarrápido nativo Win32 (0-15 ms) para que el total exacto esté disponible desde el milisegundo 0
+        long fastTotal = FastCountSourceFiles(sourcePath, recursive, maxDepth, emitFiles, emitDirectories);
+        if (fastTotal > 0)
+        {
+            context.SetTotalExpectedItems(fastTotal);
+        }
+        else
+        {
+            // Fallback asíncrono en background si el directorio es remoto o bloqueado
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    var opt = new EnumerationOptions
+                    {
+                        RecurseSubdirectories = recursive,
+                        MaxRecursionDepth = maxDepth == -1 ? int.MaxValue : maxDepth,
+                        IgnoreInaccessible = true,
+                        ReturnSpecialDirectories = false,
+                        AttributesToSkip = FileAttributes.ReparsePoint
+                    };
+                    long totalFound = 0;
+                    if (emitFiles && emitDirectories) totalFound += Directory.EnumerateFileSystemEntries(sourcePath, "*", opt).LongCount();
+                    else if (emitFiles) totalFound += Directory.EnumerateFiles(sourcePath, "*", opt).LongCount();
+                    else if (emitDirectories) totalFound += Directory.EnumerateDirectories(sourcePath, "*", opt).LongCount();
+                    if (totalFound > 0)
+                    {
+                        context.SetTotalExpectedItems(totalFound);
+                    }
+                }
+                catch
+                {
+                    // Fallback silencioso
+                }
+            }, cancellationToken);
+        }
+
         // Bounded channel with 1000 items capacity to provide backpressure control
         var channel = Channel.CreateBounded<FileItemContext>(new BoundedChannelOptions(1000)
         {
@@ -90,8 +127,6 @@ public class FolderSourceNode : IFlowNode
         long totalBytesEmitted = 0;
         long lastReportTicks = Environment.TickCount64;
 
-        context.ReportProgress(0, "⚡ Escaneando y emitiendo elementos...");
-
         var dirInfo = new DirectoryInfo(sourcePath);
 
         // Consumer task reading from channel and emitting downstream
@@ -103,11 +138,12 @@ public class FolderSourceNode : IFlowNode
                 Interlocked.Add(ref totalBytesEmitted, itemContext.FileSizeBytes);
 
                 long nowTicks = Environment.TickCount64;
-                if (currentCount == 1 || nowTicks - lastReportTicks > 100)
+                if (currentCount == 1 || nowTicks - lastReportTicks > 150)
                 {
                     lastReportTicks = nowTicks;
                     double mb = totalBytesEmitted / (1024.0 * 1024.0);
-                    context.ReportProgress(0, $"⚡ Escaneando y emitiendo: {currentCount:N0} archivos ({mb:F1} MB)...");
+                    string unit = emitFiles && emitDirectories ? "elementos" : (emitDirectories ? "carpetas" : "archivos");
+                    context.ReportProgress(0, $"⚡ Escaneando y emitiendo: {currentCount:N0} {unit} ({mb:F1} MB)...");
                 }
 
                 itemContext.Metadata["SourceRootPath"] = sourcePath;
@@ -139,8 +175,8 @@ public class FolderSourceNode : IFlowNode
         await consumerTask.ConfigureAwait(false);
 
         double totalMB = totalBytesEmitted / (1024.0 * 1024.0);
-        context.ReportProgress(100.0, $"{emittedCount:N0} elementos emmitidos ({totalMB:F1} MB - 100%)");
-        context.Log($"FolderSourceNode scanned and emitted {emittedCount:N0} items ({totalMB:F1} MB).", LogLevel.Information);
+        string finalUnit = emitFiles && emitDirectories ? "elementos" : (emitDirectories ? "carpetas" : "archivos");
+        context.Log($"FolderSourceNode finalizó escaneo y emisión: {emittedCount:N0} {finalUnit} ({totalMB:F1} MB).", LogLevel.Information);
     }
 
     private static async Task StreamAndEmitDirAsync(
@@ -202,5 +238,39 @@ public class FolderSourceNode : IFlowNode
             context.Log($"Skipping directories in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
         }
     }
+
+    private static long FastCountSourceFiles(string path, bool recursive, int maxDepth, bool emitFiles, bool emitDirectories)
+    {
+        try
+        {
+            var opt = new EnumerationOptions
+            {
+                RecurseSubdirectories = recursive,
+                MaxRecursionDepth = maxDepth == -1 ? int.MaxValue : maxDepth,
+                IgnoreInaccessible = true,
+                ReturnSpecialDirectories = false,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+
+            if (emitFiles && emitDirectories)
+            {
+                return Directory.EnumerateFileSystemEntries(path, "*", opt).LongCount();
+            }
+            if (emitFiles)
+            {
+                return Directory.EnumerateFiles(path, "*", opt).LongCount();
+            }
+            if (emitDirectories)
+            {
+                return Directory.EnumerateDirectories(path, "*", opt).LongCount();
+            }
+            return 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
 }
+
 

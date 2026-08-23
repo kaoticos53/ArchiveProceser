@@ -1,14 +1,14 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using FileFlow.App.Models;
+using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.App.ViewModels;
 
@@ -22,7 +22,8 @@ public enum LogFilterLevel
 
 public partial class LogViewModel : ObservableObject
 {
-    public ObservableCollection<LogEntry> Logs { get; } = [];
+    private const int MaxLiveBufferSize = 2000;
+    public ObservableCollection<StructuredLogRecord> Logs { get; } = [];
 
     [ObservableProperty]
     private double _progressPercentage;
@@ -31,10 +32,22 @@ public partial class LogViewModel : ObservableObject
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
-    private string _fullLogText = string.Empty;
+    private LogFilterLevel _activeFilter = LogFilterLevel.All;
 
     [ObservableProperty]
-    private LogFilterLevel _activeFilter = LogFilterLevel.All;
+    private bool _isLiveMode = true;
+
+    [ObservableProperty]
+    private string _searchFilter = string.Empty;
+
+    [ObservableProperty]
+    private string _sortColumn = "Id";
+
+    [ObservableProperty]
+    private bool _isSortAscending = true;
+
+    [ObservableProperty]
+    private int _totalLogsCount;
 
     [ObservableProperty]
     private int _errorCount;
@@ -45,12 +58,11 @@ public partial class LogViewModel : ObservableObject
     [ObservableProperty]
     private int _infoCount;
 
-    public event Action<LogEntry>? OnLogAdded;
+    public event Action? OnLogBatchAdded;
     public event Action? OnLogsCleared;
     public event Action? OnFilterChanged;
 
-    private readonly StringBuilder _logTextBuffer = new();
-    private readonly ConcurrentQueue<LogEntry> _pendingLogs = new();
+    private readonly ConcurrentQueue<StructuredLogRecord> _pendingLogs = new();
     private readonly DispatcherTimer _flushTimer;
 
     public LogViewModel()
@@ -68,118 +80,179 @@ public partial class LogViewModel : ObservableObject
         {
             Interval = TimeSpan.FromMilliseconds(40)
         };
-        _flushTimer.Tick += FlushPendingLogs;
+        _flushTimer.Tick += (_, _) => FlushPendingLogs();
         _flushTimer.Start();
     }
 
     public void AddLog(LogLevel level, string message)
     {
-        var entry = new LogEntry(DateTime.Now, level, message);
-        _pendingLogs.Enqueue(entry);
+        var record = StructuredLogRecord.Create(
+            executionId: string.Empty,
+            level: level,
+            message: message
+        );
+        _pendingLogs.Enqueue(record);
+        SqliteLogStore.Instance.EnqueueLog(record);
+    }
+
+    public void AddStructuredLog(StructuredLogRecord record)
+    {
+        _pendingLogs.Enqueue(record);
+    }
+
+    private void FlushPendingLogs()
+    {
+        if (_pendingLogs.IsEmpty) return;
+
+        int count = _pendingLogs.Count;
+        var batch = new List<StructuredLogRecord>(count);
+        int errs = 0, warns = 0, infos = 0;
+
+        while (_pendingLogs.TryDequeue(out var entry))
+        {
+            batch.Add(entry);
+            if (entry.Level is LogLevel.Error or LogLevel.Critical) errs++;
+            else if (entry.Level == LogLevel.Warning) warns++;
+            else if (entry.Level == LogLevel.Information) infos++;
+        }
+
+        if (batch.Count > 0)
+        {
+            ErrorCount += errs;
+            WarningCount += warns;
+            InfoCount += infos;
+            TotalLogsCount += batch.Count;
+
+            if (IsLiveMode && string.IsNullOrWhiteSpace(SearchFilter) && ActiveFilter == LogFilterLevel.All && SortColumn == "Id")
+            {
+                foreach (var item in batch)
+                {
+                    Logs.Add(item);
+                }
+
+                while (Logs.Count > MaxLiveBufferSize)
+                {
+                    Logs.RemoveAt(0);
+                }
+
+                OnLogBatchAdded?.Invoke();
+            }
+        }
     }
 
     public void FlushAllPendingLogs()
     {
-        if (_pendingLogs.IsEmpty) return;
-
         if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
         {
-            Application.Current.Dispatcher.Invoke(FlushAllInternal);
+            Application.Current.Dispatcher.Invoke(FlushPendingLogs);
             return;
         }
 
-        FlushAllInternal();
+        FlushPendingLogs();
     }
 
-    private void FlushAllInternal()
+    private LogFilterCriteria BuildCurrentFilter()
     {
-        int maxLogs = Services.UserPreferencesService.Instance.Preferences.MaxLogEntries;
-        if (maxLogs <= 0) maxLogs = 100000;
-
-        bool addedAny = false;
-        bool trimmedAny = false;
-
-        while (_pendingLogs.TryDequeue(out var entry))
+        LogLevel? minLevel = ActiveFilter switch
         {
-            Logs.Add(entry);
-            if (Logs.Count > maxLogs)
-            {
-                Logs.RemoveAt(0);
-                trimmedAny = true;
-            }
+            LogFilterLevel.ErrorsOnly => LogLevel.Error,
+            LogFilterLevel.WarningsOnly => LogLevel.Warning,
+            LogFilterLevel.InfoOnly => LogLevel.Information,
+            _ => null
+        };
 
-            if (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ErrorCount++;
-            else if (entry.Level == LogLevel.Warning) WarningCount++;
-            else if (entry.Level == LogLevel.Information) InfoCount++;
+        string? search = !string.IsNullOrWhiteSpace(SearchFilter) ? SearchFilter.Trim() : null;
 
-            _logTextBuffer.AppendLine($"[{entry.Timestamp:HH:mm:ss}] [{entry.Level}] {entry.Message}");
-            addedAny = true;
+        return new LogFilterCriteria(
+            MinLevel: minLevel,
+            SearchText: search,
+            SortColumn: SortColumn,
+            IsAscending: IsSortAscending
+        );
+    }
 
-            OnLogAdded?.Invoke(entry);
-        }
+    async partial void OnSearchFilterChanged(string value)
+    {
+        await LoadQueryResultsAsync();
+        OnFilterChanged?.Invoke();
+    }
 
-        if (trimmedAny)
+    async partial void OnIsLiveModeChanged(bool value)
+    {
+        if (value)
         {
-            _logTextBuffer.Clear();
-            foreach (var log in Logs)
-            {
-                _logTextBuffer.AppendLine($"[{log.Timestamp:HH:mm:ss}] [{log.Level}] {log.Message}");
-            }
-        }
-
-        if (addedAny)
-        {
-            FullLogText = _logTextBuffer.ToString();
+            ActiveFilter = LogFilterLevel.All;
+            SearchFilter = string.Empty;
+            SortColumn = "Id";
+            IsSortAscending = true;
+            await LoadRecentLiveLogsAsync();
         }
     }
 
-    private void FlushPendingLogs(object? sender, EventArgs? e)
+    private async Task LoadRecentLiveLogsAsync()
     {
-        if (_pendingLogs.IsEmpty) return;
-
-        int pendingCount = _pendingLogs.Count;
-        int currentBatchLimit = pendingCount > 1000 ? 500 : (pendingCount > 300 ? 250 : 75);
-
-        int maxLogs = Services.UserPreferencesService.Instance.Preferences.MaxLogEntries;
-        if (maxLogs <= 0) maxLogs = 100000;
-
-        bool addedAny = false;
-        bool trimmedAny = false;
-        int processedCount = 0;
-
-        while (processedCount < currentBatchLimit && _pendingLogs.TryDequeue(out var entry))
+        try
         {
-            processedCount++;
-            Logs.Add(entry);
-            if (Logs.Count > maxLogs)
+            await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+            int total = await SqliteLogStore.Instance.GetTotalCountAsync().ConfigureAwait(false);
+            int offset = Math.Max(0, total - MaxLiveBufferSize);
+            var results = await SqliteLogStore.Instance.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                Logs.RemoveAt(0);
-                trimmedAny = true;
-            }
-
-            if (entry.Level == LogLevel.Error || entry.Level == LogLevel.Critical) ErrorCount++;
-            else if (entry.Level == LogLevel.Warning) WarningCount++;
-            else if (entry.Level == LogLevel.Information) InfoCount++;
-
-            _logTextBuffer.AppendLine($"[{entry.Timestamp:HH:mm:ss}] [{entry.Level}] {entry.Message}");
-            addedAny = true;
-
-            OnLogAdded?.Invoke(entry);
+                Logs.Clear();
+                foreach (var item in results)
+                {
+                    Logs.Add(item);
+                }
+                OnLogBatchAdded?.Invoke();
+            });
         }
-
-        if (trimmedAny)
+        catch
         {
-            _logTextBuffer.Clear();
-            foreach (var log in Logs)
+            // Resiliente
+        }
+    }
+
+    public async Task LoadQueryResultsAsync()
+    {
+        try
+        {
+            await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+            var filter = BuildCurrentFilter();
+            var results = await SqliteLogStore.Instance.GetLogsWindowAsync(0, 1000, filter).ConfigureAwait(false);
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                _logTextBuffer.AppendLine($"[{log.Timestamp:HH:mm:ss}] [{log.Level}] {log.Message}");
-            }
+                Logs.Clear();
+                foreach (var item in results)
+                {
+                    Logs.Add(item);
+                }
+                OnFilterChanged?.Invoke();
+            });
+        }
+        catch
+        {
+            // Resiliente
+        }
+    }
+
+    [RelayCommand]
+    public async Task SortBy(string columnName)
+    {
+        IsLiveMode = false;
+        if (SortColumn.Equals(columnName, StringComparison.OrdinalIgnoreCase))
+        {
+            IsSortAscending = !IsSortAscending;
+        }
+        else
+        {
+            SortColumn = columnName;
+            IsSortAscending = true;
         }
 
-        if (addedAny)
-        {
-            FullLogText = _logTextBuffer.ToString();
-        }
+        await LoadQueryResultsAsync();
     }
 
     public void UpdateProgress(double percentage, string statusMessage)
@@ -190,12 +263,12 @@ public partial class LogViewModel : ObservableObject
             {
                 ProgressPercentage = percentage;
                 StatusMessage = statusMessage;
-            }, DispatcherPriority.Background);
+            }, DispatcherPriority.Normal);
         }
     }
 
     [RelayCommand]
-    public void SetFilter(string filterName)
+    public async Task SetFilter(string filterName)
     {
         ActiveFilter = filterName.ToLowerInvariant() switch
         {
@@ -204,29 +277,37 @@ public partial class LogViewModel : ObservableObject
             "info" => LogFilterLevel.InfoOnly,
             _ => LogFilterLevel.All
         };
+
+        if (ActiveFilter != LogFilterLevel.All)
+        {
+            IsLiveMode = false;
+        }
+
+        await LoadQueryResultsAsync();
         OnFilterChanged?.Invoke();
     }
 
     [RelayCommand]
-    public void ClearLogs()
+    public async Task ClearLogs()
     {
         while (_pendingLogs.TryDequeue(out _)) { }
         Logs.Clear();
-        _logTextBuffer.Clear();
-        FullLogText = string.Empty;
         ErrorCount = 0;
         WarningCount = 0;
         InfoCount = 0;
+        TotalLogsCount = 0;
         ProgressPercentage = 0;
         StatusMessage = LocalizationManager.Instance["StatusReady"];
+
+        await SqliteLogStore.Instance.ClearAsync().ConfigureAwait(false);
+
         OnLogsCleared?.Invoke();
     }
 
     [RelayCommand]
-    public void ExportLogs()
+    public async Task ExportLogs()
     {
-        FlushPendingLogs(null, null);
-        if (Logs.Count == 0) return;
+        if (TotalLogsCount == 0) return;
 
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
@@ -237,11 +318,17 @@ public partial class LogViewModel : ObservableObject
 
         if (dialog.ShowDialog() == true)
         {
+            string targetPath = dialog.FileName;
             try
             {
-                var lines = Logs.Select(l => $"[{l.Timestamp:yyyy-MM-dd HH:mm:ss}] [{l.Level}] {l.Message}");
-                File.WriteAllLines(dialog.FileName, lines);
-                AddLog(LogLevel.Information, $"Log exportado exitosamente en: {dialog.FileName}");
+                await Task.Run(async () =>
+                {
+                    await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+                    await using var writer = new StreamWriter(targetPath);
+                    await SqliteLogStore.Instance.ExportLogsAsync(writer).ConfigureAwait(false);
+                }).ConfigureAwait(false);
+
+                AddLog(LogLevel.Information, $"Log exportado exitosamente en: {targetPath}");
             }
             catch (Exception ex)
             {

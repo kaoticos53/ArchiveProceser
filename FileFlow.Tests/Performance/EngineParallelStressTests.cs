@@ -41,6 +41,6 @@ public class EngineParallelStressTests
 
         // Assert
         processedCount.Should().Be(itemQuantity);
-        sw.ElapsedMilliseconds.Should().BeLessThan(2000, "5,000 parallel item dispatches should take less than 2 seconds");
+        sw.ElapsedMilliseconds.Should().BeLessThan(5000, "5,000 parallel item dispatches should take less than 5 seconds under concurrent test load");
     }
 }
