@@ -38,9 +38,11 @@ public class AdvancedRenamerNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"[AdvancedRenamerNode] File not found: '{item.CurrentPath}'", LogLevel.Warning);
+            context.Log($"[Renombrador] Archivo de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -66,21 +68,35 @@ public class AdvancedRenamerNode : IFlowNode
                     break;
             }
 
+            // Sanitizar caracteres inválidos en el nombre de archivo resultante
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            if (resolvedName.IndexOfAny(invalidChars) >= 0)
+            {
+                foreach (char c in invalidChars)
+                {
+                    resolvedName = resolvedName.Replace(c, '_');
+                }
+            }
+
             string currentDir = Path.GetDirectoryName(item.CurrentPath) ?? string.Empty;
             string targetPath = Path.Combine(currentDir, resolvedName);
 
-            if (string.Equals(item.CurrentPath, targetPath, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(item.CurrentPath, targetPath, StringComparison.Ordinal))
             {
+                context.Log($"[Renombrador] Nombre idéntico al actual, sin cambios necesarios: '{resolvedName}'", LogLevel.Debug, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
 
-            if (File.Exists(targetPath))
+            bool isSameFileDifferentCasing = string.Equals(item.CurrentPath, targetPath, StringComparison.OrdinalIgnoreCase);
+
+            if (!isSameFileDifferentCasing && File.Exists(targetPath))
             {
                 switch (collisionStrategy.ToUpperInvariant())
                 {
                     case "SKIP":
-                        context.Log($"[AdvancedRenamerNode] Target exists, skipping: {targetPath}", LogLevel.Information);
+                        sw.Stop();
+                        context.Log($"[Renombrador] Destino ya existente, omitiendo según estrategia 'Skip': '{targetPath}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds);
                         await context.EmitAsync("Skipped", item);
                         return;
 
@@ -89,10 +105,12 @@ public class AdvancedRenamerNode : IFlowNode
 
                     case "AUTOINCREMENT":
                         targetPath = GetAutoIncrementPath(currentDir, resolvedName);
+                        context.Log($"[Renombrador] Resuelta colisión con autoincremento: '{Path.GetFileName(targetPath)}'", LogLevel.Debug, item);
                         break;
 
                     case "OVERWRITE":
                     default:
+                        context.Log($"[Renombrador] Sobrescribiendo archivo existente por política 'Overwrite': '{targetPath}'", LogLevel.Debug, item);
                         break;
                 }
             }
@@ -135,14 +153,20 @@ public class AdvancedRenamerNode : IFlowNode
                 }
             ));
 
+            sw.Stop();
             item.CurrentPath = targetPath;
             item.AddLog($"Renamed to: {targetPath}");
-            context.Log($"[AdvancedRenamerNode] Renamed '{originalCurrent}' -> '{targetPath}'", LogLevel.Information);
+
+            string detailsJson = $"{{\"pattern\": \"{pattern.Replace("\"", "\\\"")}\", \"originalName\": \"{Path.GetFileName(originalCurrent).Replace("\"", "\\\"")}\", \"newName\": \"{Path.GetFileName(targetPath).Replace("\"", "\\\"")}\", \"collisionStrategy\": \"{collisionStrategy}\"}}";
+            context.Log($"[Renombrador] Renombrado con éxito: '{Path.GetFileName(originalCurrent)}' -> '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+
             await context.EmitAsync("Out", item);
         }
         catch (Exception ex)
         {
-            context.Log($"[AdvancedRenamerNode] Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"source\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Renombrador] Error en renombramiento: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Rename failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

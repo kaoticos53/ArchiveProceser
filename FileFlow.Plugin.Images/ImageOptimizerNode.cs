@@ -51,17 +51,17 @@ public class ImageOptimizerNode : IFlowNode
         string outputDir = ParameterHelper.ResolveOutputPath(outputPattern, item);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            context.Log($"ImageOptimizerNode: File '{filePath}' not found.", LogLevel.Warning);
+            context.Log($"[Optimizador Imágenes] Archivo de imagen no encontrado: '{filePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
 
         try
         {
-            context.Log($"Optimizing image '{filePath}' -> MaxSize: {maxWidth}x{maxHeight}, Format: {formatStr}, Quality: {quality}", LogLevel.Information);
-
             string ext = formatStr.ToLowerInvariant() switch
             {
                 "webp" => ".webp",
@@ -72,6 +72,9 @@ public class ImageOptimizerNode : IFlowNode
             string filenameNoExt = Path.GetFileNameWithoutExtension(filePath);
             string outputPath = Path.Combine(outputDir, $"{filenameNoExt}_optimized{ext}");
 
+            int origWidth = 0, origHeight = 0;
+            int newWidth = 0, newHeight = 0;
+
             if (!isDryRun)
             {
                 if (!Directory.Exists(outputDir))
@@ -80,12 +83,17 @@ public class ImageOptimizerNode : IFlowNode
                 }
 
                 using Image image = await Image.LoadAsync(filePath, cancellationToken);
+                origWidth = image.Width;
+                origHeight = image.Height;
 
                 image.Mutate(x => x.Resize(new ResizeOptions
                 {
                     Mode = ResizeMode.Max,
                     Size = new Size(maxWidth, maxHeight)
                 }));
+
+                newWidth = image.Width;
+                newHeight = image.Height;
 
                 switch (formatStr.ToUpperInvariant())
                 {
@@ -103,19 +111,29 @@ public class ImageOptimizerNode : IFlowNode
                 }
             }
 
+            sw.Stop();
+            long newSizeBytes = File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0;
+            double savedPct = item.FileSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / item.FileSizeBytes)) * 100.0 : 0.0;
+
             var outputItem = new FileItemContext(outputPath, isDirectory: false);
             foreach (var kvp in item.Metadata)
             {
                 outputItem.Metadata[kvp.Key] = kvp.Value;
             }
+            outputItem.FileSizeBytes = newSizeBytes;
             outputItem.Metadata["OptimizedFormat"] = formatStr;
             outputItem.AddLog($"ImageOptimizerNode output saved to {outputPath}");
+
+            string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
+            context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", outputItem);
         }
         catch (Exception ex)
         {
-            context.Log($"ImageOptimizerNode Error processing '{filePath}': {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Optimizador Imágenes] Error al optimizar imagen: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"ImageOptimizerNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

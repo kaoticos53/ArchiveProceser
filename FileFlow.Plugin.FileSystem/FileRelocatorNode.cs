@@ -39,9 +39,11 @@ public class FileRelocatorNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"[FileRelocatorNode] File not found: '{item.CurrentPath}'", LogLevel.Warning);
+            context.Log($"[Reubicador] Archivo de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -121,14 +123,20 @@ public class FileRelocatorNode : IFlowNode
                 }
             }
 
+            sw.Stop();
             item.CurrentPath = targetPath;
             item.AddLog($"{operation} completed -> {targetPath}");
-            context.Log($"[FileRelocatorNode] {operation} succeeded: {originalCurrent} -> {targetPath}", LogLevel.Information);
+
+            string detailsJson = $"{{\"operation\": \"{operation}\", \"sourcePath\": \"{originalCurrent.Replace("\\", "\\\\")}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"integrityVerified\": {verifyIntegrity.ToString().ToLowerInvariant()}, \"sha256\": \"{sourceHash}\"}}";
+            context.Log($"[Reubicador] Operación {operation.ToUpperInvariant()} completada con éxito: '{Path.GetFileName(originalCurrent)}' -> '{targetPath}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            
             await context.EmitAsync("Out", item);
         }
         catch (Exception ex)
         {
-            context.Log($"[FileRelocatorNode] Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"source\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Reubicador] Error en reubicación: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Relocation failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

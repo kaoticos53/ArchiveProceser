@@ -48,9 +48,11 @@ public class ArchiveCompressorNode : IFlowNode
         string formatStr = Parameters.TryGetValue("ArchiveFormat", out var fVal) ? ParameterHelper.GetString(fVal, "ZIP").ToUpperInvariant() : "ZIP";
         string compTypeStr = Parameters.TryGetValue("CompressionType", out var cVal) ? ParameterHelper.GetString(cVal, "Deflate").ToUpperInvariant() : "DEFLATE";
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(inputPath) || (!File.Exists(inputPath) && !Directory.Exists(inputPath)))
         {
-            context.Log($"ArchiveCompressorNode: Input path '{inputPath}' does not exist.", LogLevel.Warning);
+            context.Log($"[Compresor] Ruta de entrada no encontrada: '{inputPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -73,8 +75,6 @@ public class ArchiveCompressorNode : IFlowNode
             }
 
             string targetArchivePath = Path.Combine(destDir, archiveName);
-
-            context.Log($"ArchiveCompressorNode: Creating {formatStr} archive '{targetArchivePath}' from '{inputPath}' (Compression={compTypeStr})", LogLevel.Information);
 
             ArchiveType archiveType = formatStr switch
             {
@@ -106,19 +106,28 @@ public class ArchiveCompressorNode : IFlowNode
                 }
             }
 
+            sw.Stop();
+            long outSize = new FileInfo(targetArchivePath).Length;
+            double compressionRatio = item.FileSizeBytes > 0 ? (double)outSize / item.FileSizeBytes * 100.0 : 100.0;
+
             var outputItem = item.DeepClone();
             outputItem.CurrentPath = targetArchivePath;
             outputItem.IsDirectory = false;
-            outputItem.FileSizeBytes = new FileInfo(targetArchivePath).Length;
+            outputItem.FileSizeBytes = outSize;
             outputItem.Metadata["CompressedFrom"] = inputPath;
             outputItem.Metadata["ArchiveFormat"] = formatStr;
             outputItem.AddLog($"ArchiveCompressorNode created archive {targetArchivePath}");
+
+            string detailsJson = $"{{\"archiveFormat\": \"{formatStr}\", \"compressionType\": \"{compTypeStr}\", \"targetPath\": \"{targetArchivePath.Replace("\\", "\\\\")}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"compressedSizeBytes\": {outSize}, \"ratioPct\": {compressionRatio.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
+            context.Log($"[Compresor] Archivo {formatStr} generado ({compTypeStr}): '{Path.GetFileName(targetArchivePath)}' (Ratio: {compressionRatio:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", outputItem);
         }
         catch (Exception ex)
         {
-            context.Log($"ArchiveCompressorNode Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"input\": \"{inputPath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Compresor] Error al comprimir archivo: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"ArchiveCompressorNode error: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

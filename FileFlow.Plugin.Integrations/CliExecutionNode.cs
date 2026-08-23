@@ -38,15 +38,16 @@ public class CliExecutionNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        string exe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, "cmd.exe") : "cmd.exe";
+        string argsTemplate = Parameters.TryGetValue("ArgumentsTemplate", out var aVal) ? ParameterHelper.GetString(aVal, "") : "";
+        int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 60) : 60;
+        bool captureOutput = Parameters.TryGetValue("CaptureOutputToMetadata", out var cVal) && ParameterHelper.GetBoolean(cVal, true);
+
+        string resolvedArgs = VariableTemplateResolver.Resolve(argsTemplate, item);
+        string resolvedExe = VariableTemplateResolver.Resolve(exe, item);
+
         try
         {
-            string exe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, "cmd.exe") : "cmd.exe";
-            string argsTemplate = Parameters.TryGetValue("ArgumentsTemplate", out var aVal) ? ParameterHelper.GetString(aVal, "") : "";
-            int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 60) : 60;
-            bool captureOutput = Parameters.TryGetValue("CaptureOutputToMetadata", out var cVal) && ParameterHelper.GetBoolean(cVal, true);
-
-            string resolvedArgs = VariableTemplateResolver.Resolve(argsTemplate, item);
-            string resolvedExe = VariableTemplateResolver.Resolve(exe, item);
 
             if (context.IsDryRun)
             {
@@ -74,6 +75,7 @@ public class CliExecutionNode : IFlowNode
                 CreateNoWindow = true
             };
 
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             using var process = new Process { StartInfo = startInfo };
             process.Start();
 
@@ -107,6 +109,10 @@ public class CliExecutionNode : IFlowNode
 
                 throw new TimeoutException($"CLI Execution timed out after {timeoutSec} seconds or was cancelled: {resolvedExe}");
             }
+            finally
+            {
+                sw.Stop();
+            }
 
             if (captureOutput)
             {
@@ -115,22 +121,36 @@ public class CliExecutionNode : IFlowNode
                 item.Metadata["Cli:ExitCode"] = process.ExitCode;
             }
 
+            double durationMs = sw.Elapsed.TotalMilliseconds;
+
+            string detailsJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                executable = resolvedExe,
+                arguments = resolvedArgs,
+                exitCode = process.ExitCode,
+                stdOutLength = stdOut.Length,
+                stdErrLength = stdErr.Length,
+                stdOutSample = stdOut.Length > 200 ? stdOut[..200] + "..." : stdOut,
+                stdErrSample = stdErr.Length > 200 ? stdErr[..200] + "..." : stdErr
+            });
+
             if (process.ExitCode == 0)
             {
                 item.AddLog($"CLI command succeeded (ExitCode=0): {resolvedExe}");
-                context.Log($"[CliExecutionNode] Process completed: {resolvedExe} ({stdOut.Length} chars output)", LogLevel.Information);
+                context.Log($"[Ejecutor CLI] Proceso finalizado exitosamente (ExitCode=0): '{Path.GetFileName(resolvedExe)}'", LogLevel.Information, item, durationMs: durationMs, detailsJson: detailsJson);
                 await context.EmitAsync("Success", item);
             }
             else
             {
                 item.AddLog($"CLI command failed (ExitCode={process.ExitCode}): {stdErr}");
-                context.Log($"[CliExecutionNode] Process failed with ExitCode={process.ExitCode}: {stdErr}", LogLevel.Warning);
+                context.Log($"[Ejecutor CLI] Proceso falló con código {process.ExitCode}: {stdErr.Trim()}", LogLevel.Warning, item, durationMs: durationMs, detailsJson: detailsJson);
                 await context.EmitAsync("Failed", item);
             }
         }
         catch (Exception ex)
         {
-            context.Log($"[CliExecutionNode] Exception: {ex.Message}", LogLevel.Error);
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"executable\": \"{resolvedExe.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Ejecutor CLI] Error al ejecutar comando: {ex.Message}", LogLevel.Error, item, durationMs: 0.0, detailsJson: errJson);
             item.AddLog($"CLI Execution Exception: {ex.Message}");
             await context.EmitAsync("Failed", item);
         }

@@ -36,9 +36,11 @@ public class HashCalculatorNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"[HashCalculatorNode] File not found: '{item.CurrentPath}'", LogLevel.Warning);
+            context.Log($"[Calculador Hash] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -49,17 +51,22 @@ public class HashCalculatorNode : IFlowNode
             string metaKey = Parameters.TryGetValue("StoreInMetadataKey", out var kVal) ? ParameterHelper.GetString(kVal, $"Hash:{algo}") : $"Hash:{algo}";
 
             string hashResult = await ComputeHashAsync(item.CurrentPath, algo, cancellationToken).ConfigureAwait(false);
+            sw.Stop();
 
             item.Metadata[metaKey] = hashResult;
             item.Metadata["Hash"] = hashResult;
             item.AddLog($"Computed {algo} hash: {hashResult}");
-            context.Log($"[HashCalculatorNode] {algo} -> {hashResult}", LogLevel.Information);
+
+            string detailsJson = $"{{\"algorithm\": \"{algo}\", \"hash\": \"{hashResult}\", \"metadataKey\": \"{metaKey}\", \"fileSizeBytes\": {item.FileSizeBytes}}}";
+            context.Log($"[Calculador Hash] {algo}: {hashResult[..Math.Min(16, hashResult.Length)]}...", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", item);
         }
         catch (Exception ex)
         {
-            context.Log($"[HashCalculatorNode] Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Calculador Hash] Error al calcular hash: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Hash computation failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

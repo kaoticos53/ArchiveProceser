@@ -1,130 +1,104 @@
-# Manual de Usuario y Guía de Operación - FileFlow Studio
+# Manual de Usuario y Operación - FileFlow Studio
 
-Bienvenido a la **Guía de Usuario de FileFlow Studio**. Este documento está diseñado para guiar a usuarios finales, operadores de sistemas y administradores en la automatización de procesos de archivos sin requerir conocimientos de programación.
+Bienvenido a la guía oficial de **FileFlow Studio**, la herramienta visual para diseñar, automatizar y ejecutar flujos de procesamiento de archivos por lotes sin necesidad de escribir código complejo.
 
 ---
 
-## 1. Visión General de la Interfaz
+## 1. Conceptos Básicos
 
-La interfaz principal de FileFlow Studio está dividida en **6 áreas funcionales**:
+Un flujo de trabajo en FileFlow Studio se compone de:
+- **Nodos**: Bloques funcionales individuales que realizan una acción específica (leer carpetas, descomprimir, renombrar, optimizar imágenes, calcular hashes, filtrar o mover archivos).
+- **Pines y Conexiones**: Los puertos de entrada (azules/verdes a la izquierda) y salida (a la derecha). Conectar un pin de salida con uno de entrada define por dónde viajarán los archivos.
+- **Elementos en Tránsito (`FileItem`)**: Cada archivo que ingresa al flujo recibe un identificador único `#ShortItemId` que se conserva durante todo su ciclo de vida para garantizar trazabilidad total.
+
+---
+
+## 2. Descripción de la Interfaz Visual
 
 ```
-+-----------------------------------------------------------------------------------+
-| 1. BARRA SUPERIOR DE CONTROL (Ejecutar, Pausa, Dry Run, Rollback, Presets, Ajustes)|
-+-------------------+-------------------------------------------+-------------------+
-|                   |                                           |                   |
-| 2. CATÁLOGO DE    | 3. LIENZO INTERACTIVO DE NODOS (Nodify)   | 4. INSPECTOR DE   |
-|    HERRAMIENTAS   |                                           |    PARÁMETROS Y   |
-|    (TOOLBOX)      |    [Nodo Origen] ---> [Nodo Destino]      |    PROPIEDADES    |
-|                   |                                           |                   |
-+-------------------+-------------------------------------------+-------------------+
-| 5. CONSOLA DE REGISTROS Y LOGS EN TIEMPO REAL (Filtros, Búsqueda, Exportar)      |
-+-----------------------------------------------------------------------------------+
-| 6. BARRA DE ESTADO (🧩 Nodos, 🔗 Conexiones, 🧠 RAM, 💻 CPU, 📁 Ruta Salida Global)|
-+-----------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------------------------------+
+|  FILEFLOW STUDIO  [▶ Iniciar Flujo] [⏸ Pausa] [⏹ Detener] [🔍 Simulación Dry-Run]   [💾 Guardar] [📂 Cargar] |
++---------------------------------------------------------------------------------------------------------------+
+| PANEL DE NODOS (Izquierda) | LIENZO VISUAL DE GRAFOS (Centro)                    | INSPECTOR DE PROPIEDADES   |
+| - Origen Carpeta           |                                                     | (Derecha)                  |
+| - Descompresor Smart       |    [ 📂 Origen ] ---> [ 🗜️ SmartUnpack ]           | Parámetros del nodo        |
+| - Optimizador Imagen       |      (Breakpoint: ●)     (Logs: ≡)                  | seleccionado...            |
+| - Destino                  |                                                     |                            |
++---------------------------------------------------------------------------------------------------------------+
+| 🖥️ CONSOLA DE TELEMETRÍA: [Todos] [🔴 Errores (0)] [🟠 Warn (0)] [🔵 Info (4)] [🟣 Debug (12)] | ⚡ En Vivo |
+| [ 🔍 Filtrar por ID, nodo, archivo...       ✕ ] • 16 logs • Listo                       [💾 Exportar] [🗑 Limpiar]|
+|  17:15:02.120 | [INF] | FolderSource   | #d3b07384 | photos.zip | 0.0 ms | [Origen] 1 archivo emitido         |
+|  17:15:02.340 | [INF] | SmartUnpack    | #d3b07384 | photos.zip | 45.2 ms| [Descompresor] 12 fotos extraídas  |
++---------------------------------------------------------------------------------------------------------------+
 ```
 
-1. **Barra Superior de Control:** Botones para Iniciar (`▶ Ejecutar`), Pausar (`⏸ Pausa`), Modo Prueba (`🧪 Modo Simulación / Dry Run`), Revertir Cambios (`↩ Rollback`), Abrir Ajustes Generales (`⚙ Ajustes`) y Gestor de Presets (`⚙ Presets`).
-2. **Catálogo de Herramientas (Toolbox):** Panel lateral con el listado de 22 nodos clasificados por categorías, barra de búsqueda en tiempo real, filtro por favoritos (`⭐`) y modos de vista (Compacto/Detallado).
-3. **Lienzo de Nodos (Canvas):** Área de trabajo visual para arrastrar, conectar y organizar nodos mediante cables interactivos.
-4. **Inspector de Nodos:** Panel lateral derecho para ajustar los parámetros específicos del nodo seleccionado (rutas, plantillas, formatos, contraseñas).
-5. **Consola de Registros (Log Console):** Consola rica formateada en tiempo real con códigos de color (`🔴 ERROR`, `🟠 WARN`, `🔵 INFO`), selección libre de texto y exportación a archivo.
-6. **Barra de Estado:** Métricas en vivo del grafo (`🧩 Nodos`, `🔗 Conexiones`), consumo de recursos del sistema (`🧠 RAM`, `💻 CPU`) y acceso directo a la **Ruta de Salida Global**.
+### 2.1. Controles en la Cabecera de cada Nodo
+Cada tarjeta de nodo en el lienzo cuenta con dos botones circulares rápidos:
+1. **Punto de Interrupción (*Breakpoint*)** (Icono circular rojo `●`):
+   - Al estar encendido, el motor de ejecución detendrá el flujo cuando un archivo llegue a este nodo, permitiendo inspeccionar sus variables y metadatos.
+2. **Control de Emisión de Logs** (Icono `≡` cian brillante / gris atenuado):
+   - **Encendido (Cian)**: El nodo emite todas sus trazas y métricas a la consola.
+   - **Apagado (Gris)**: Silencia los logs de este nodo específico para no saturar la consola cuando procesas millones de archivos rutinarios.
 
 ---
 
-## 2. Catálogo de Nodos por Categorías
+## 3. Catálogo Completo de los 24 Nodos de Producción
 
-FileFlow Studio incluye **22 nodos de procesamiento** organizados en 6 categorías técnicas:
+### 📁 Sistema de Archivos (`FileSystem`)
+1. **Origen Carpeta (`FolderSourceNode`)**: Escanea directorios locales/red con soporte recursivo y filtros de extensión.
+2. **Destino de Archivos (`DestinationSinkNode`)**: Guarda o copia archivos al directorio final con gestión inteligente de colisiones (Sobrescribir, Renombrar, Omitir).
+3. **Reubicador Seguro (`FileRelocatorNode`)**: Mueve o copia archivos validando integridad criptográfica post-transferencia.
+4. **Renombrador Avanzado (`AdvancedRenamerNode`)**: Aplica plantillas dinámicas con fecha, tamaño, prefijos y reemplazo por expresiones regulares.
+5. **Inyector de Variables (`VariableInjectorNode`)**: Añade variables dinámicas al archivo para ser utilizadas por nodos posteriores.
+6. **Inspector de Carpetas (`DirectoryInspectorNode`)**: Analiza la estructura de directorios y emite métricas de conteo y tamaño.
+7. **Limpiador de Carpetas Vacías (`EmptyDirectoryCleanerNode`)**: Elimina carpetas residuales huérfanas de forma segura.
+8. **Papelera de Reciclaje Segura (`SafeRecycleDeleteNode`)**: Envía archivos obsoletos a la papelera del sistema en lugar de eliminarlos permanentemente.
+9. **Acción sobre Archivo Original (`OriginalFileActionNode`)**: Permite archivar, poner en cuarentena o purgar el archivo de origen una vez procesado.
+10. **Procesador de Documentos (`DocumentProcessorNode`)**: Clasifica y analiza metadatos de documentos PDF, Word, Excel y texto plano.
 
-### 📁 2.1 Archivos y Disco (`FileSystem`)
-- **`Escanear Carpeta` (`FolderSourceNode`):** Punto de entrada del flujo. Escanea un directorio filtrando por patrón (`*.jpg`, `*.pdf`, `*.*`) o en vivo (*Watch Folder*).
-- **`Mover / Copiar` (`FileRelocatorNode`):** Copia o mueve archivos hacia un directorio destino con estrategias anti-colisión (Renombrar incremental, Sobrescribir, Omitir).
-- **`Renombrar Archivo` (`AdvancedRenamerNode`):** Renombra archivos dinámicamente interpolando tokens (`{FileNameNoExt}_v1.{Extension}`).
-- **`Guardar en Destino` (`DestinationSinkNode`):** Salida final de archivos hacia el directorio global o personalizado.
-- **`Acción en Origen` (`OriginalFileActionNode`):** Define qué hacer con el archivo original tras procesarlo (Conservar, Eliminar, Mover a Cuarentena).
-- **`Enviar a Papelera` (`SafeRecycleDeleteNode`):** Envía archivos o carpetas a la Papelera de Reciclaje de Windows mediante la API del Shell nativo (recuperables).
-- **`Limpiar Carpetas` (`EmptyDirectoryCleanerNode`):** Elimina carpetas vacías o desiertas tras operaciones de limpieza.
+### 🗜️ Archivos Comprimidos (`Archives`)
+11. **Descompresor Inteligente (`SmartUnpackNode`)**: Extrae archivos Zip, 7z, Rar, Tar, Gz y auto-aplana carpetas contenedor únicas redundantes.
+12. **Compresor de Archivos (`ArchiveCompressorNode`)**: Comprime elementos individuales o lotes en Zip, Tar, Gz o 7z con nivel de compresión configurable.
+13. **Filtro de Partes de Archivo (`ArchiveFilterNode`)**: Detecta y procesa únicamente la primera parte de archivos multivolumen (`.part1.rar`, `.z01`).
 
-### 📦 2.2 Compresión y Empaquetado (`Archives`)
-- **`Descomprimir` (`SmartUnpackNode`):** Extrae archivos ZIP, 7Z, RAR, TAR, GZ inteligentemente. Soporta descompresión recursiva, eliminación de carpetas redundantes (*Clean Wrapper*) y listas de contraseñas.
-- **`Comprimir ZIP / 7z` (`ArchiveCompressorNode`):** Empaqueta y comprime archivos o directorios en formatos ZIP, TAR, GZ o 7Z con algoritmos configurables (`Deflate`, `Store`, `LZMA`, `BZip2`).
-- **`Filtrar Comprimidos` (`ArchiveFilterNode`):** Evalúa la integridad de un archivo comprimido separando archivos válidos de comprimidos dañados o corruptos.
+### 🖼️ Procesamiento de Imágenes (`Images`)
+14. **Optimizador de Imágenes (`ImageOptimizerNode`)**: Comprime y redimensiona imágenes a WebP, JPEG o PNG con cálculo automático del % de ahorro de espacio.
+15. **Extractor EXIF (`ExifMetadataNode`)**: Lee metadatos de cámara, modelo, fecha de captura y resolución, inyectándolos como variables del archivo.
 
-### 🎬 2.3 Multimedia y Documentos (`MediaDocs`)
-- **`Optimizar Imagen` (`ImageOptimizerNode`):** Recomprime y redimensiona imágenes (JPEG, PNG, WebP) conservando la calidad visual.
-- **`Transcodificar Media` (`MediaTranscoderNode`):** Transcodifica archivos de audio y vídeo mediante presets (MP3, AAC, 1080p H.264, WebM, GIF animado) o comandos FFmpeg personalizados.
-- **`Procesar Documento` (`DocumentProcessorNode`):** Inspecciona y procesa documentos (PDF, Word) extrayendo recuento de páginas y texto.
+### 🔐 Integridad y Criptografía (`Hashing`)
+16. **Calculador de Hash (`HashCalculatorNode`)**: Genera firmas SHA-256, MD5, SHA-1, SHA-512 o xxHash para verificación de integridad.
+17. **Filtro de Duplicados (`DeduplicationFilterNode`)**: Compara firmas criptográficas en tiempo real y desvía archivos duplicados a una rama secundaria.
 
-### 🏷️ 2.4 Metadatos e Integridad (`Metadata`)
-- **`Inyectar Variable` (`VariableInjectorNode`):** Calcula e inyecta variables personalizadas en el contexto del archivo para nodos posteriores.
-- **`Metadatos EXIF` (`ExifMetadataNode`):** Extrae metadatos fotográficos (`{ImageWidth}`, `{ImageHeight}`, `{Megapixels}`, `{Orientation}`).
-- **`Calcular Hash` (`HashCalculatorNode`):** Calcula hashes criptográficos SHA-256, MD5 o SHA-1.
-- **`Filtrar Duplicados` (`DeduplicationFilterNode`):** Compara hashes de contenido para detectar y separar archivos únicos de copias duplicadas.
+### ⚙️ Lógica y Control de Flujo (`Logic`)
+18. **Bifurcador Switch-Case (`SwitchCaseNode`)**: Enruta archivos a diferentes ramas según patrones de extensión, tamaño o variables.
+19. **Filtro de Expresiones (`ExpressionFilterNode`)**: Evalúa condiciones booleanas (`Size > 10MB`, `Ext == 'pdf'`).
+20. **Retardo y Control de Caudal (`ThrottleDelayNode`)**: Limita la tasa de procesamiento para no saturar APIs o discos.
+21. **Acumulador por Lotes (`BatchBufferNode`)**: Agrupa archivos en lotes por cantidad o tamaño total en MB antes de continuar.
+22. **Barrera de Sincronización (`ForkJoinBarrierNode`)**: Espera a que todas las ramas paralelas de un archivo se completen antes de proseguir.
 
-### 🔀 2.5 Lógica y Control (`Logic`)
-- **`Enrutador Switch` (`SwitchCaseNode`):** Bifurca el flujo según reglas lógicas por extensión, patrón de tamaño (`< 10 MB`, `10 MB..1 GB`) o coincidencia de texto.
-- **`Filtro Condicional` (`ExpressionFilterNode`):** Evalúa expresiones lógicas booleanas filtrando elementos.
-- **`Agrupar por Lotes` (`BatchBufferNode`):** Acumula archivos en memoria hasta alcanzar N elementos o MB antes de liberarlos juntos.
-- **`Pausa / Throttle` (`ThrottleDelayNode`):** Modera la velocidad de procesamiento introduciendo pausas configurables.
-- **`Barrera Fork & Join` (`ForkJoinBarrierNode`):** Bifurca un archivo hacia múltiples ramas paralelas y espera a que todas finalicen antes de continuar.
-
-### ⚡ 2.6 Integraciones (`Integrations`)
-- **`Ejecutar Comando CLI` (`CliExecutionNode`):** Lanza ejecutables externos (`cmd.exe`, PowerShell, Python, Node.js) inyectando tokens de metadatos.
-- **`Enviar Webhook` (`WebhookNotificationNode`):** Envía peticiones HTTP POST con cargas JSON dinámicas a Discord, Slack, n8n o servidores propios.
-- **`Registrar Log` (`LogOutputNode`):** Emite mensajes personalizados a la consola de registros.
+### 🌐 Integraciones y Multimedia (`Integrations`)
+23. **Ejecutor de Comandos CLI (`CliExecutionNode`)**: Lanza scripts de PowerShell, Python o ejecutables externos pasando rutas como argumentos.
+24. **Transcodificador Multimedia (`MediaTranscoderNode`)**: Convierte videos y audios mediante FFmpeg con presets de alta compatibilidad (MP4 H.264, MP3, WebM).
 
 ---
 
-## 3. Guía Paso a Paso: Cómo Crear Tu Primer Flujo
+## 4. Uso de la Consola de Logs y Trazabilidad
 
-### Ejemplo: Convertir Imágenes a WebP y Organizar en Salida Global
-
-1. **Insertar Nodo Origen:** Arrastra **`Escanear Carpeta`** desde el panel izquierdo (*Toolbox*) al lienzo. En el inspector, configura `SourcePath` como `{RelativeDir}\Input` y activa `WatchFolder = True`.
-2. **Insertar Optimizador:** Arrastra **`Optimizar Imagen`** al lienzo. Conecta el puerto `Out` de *Escanear Carpeta* con el puerto `In` de *Optimizar Imagen*. En el inspector, elige `Format = WebP` y `Quality = 85`.
-3. **Insertar Nodo Destino:** Arrastra **`Guardar en Destino`** al lienzo. Conecta `Out` de *Optimizar Imagen* con `In` de *Guardar en Destino*. Configura `DestinationRoot` como `{RelativeDir}\OptimizedImages`.
-4. **Probar con Modo Simulación (`Dry Run`):** Presiona el botón **`🧪 Modo Prueba`** en la barra superior. Al presionar **`▶ Ejecutar`**, el sistema simulará la conversión y te mostrará exactamente qué acciones realizaría en el disco sin modificar ningún archivo real.
-5. **Ejecución Real:** Desactiva el modo prueba y presiona **`▶ Ejecutar`**.
+1. **Filtros Rápidos por Severidad**: Haz clic en los botones `Todos`, `🔴 Errores`, `🟠 Warn`, `🔵 Info` o `🟣 Debug` para aislar rápidamente incidentes sin mezclar información.
+2. **Búsqueda Instantánea**: Escribe cualquier texto en la caja de búsqueda para buscar por nombre de archivo, nodo o contenido del JSON. Usa el botón `✕` para limpiar el filtro al instante.
+3. **Trazabilidad por Archivo**:
+   - Cada archivo muestra un badge como `#d3b07384`. Al hacer clic sobre él o pulsar el botón **`🔍 Trazabilidad`** en los detalles, la consola se filtrará para mostrar exclusivamente todos los nodos por los que ha viajado ese archivo en orden cronológico.
+4. **Visor de Detalles JSON**: Al seleccionar cualquier fila que tenga el badge `{ } JSON`, se desplegará un acordeón con los metadatos técnicos y un botón para **`📋 Copiar JSON`** al portapapeles.
 
 ---
 
-## 4. Funcionalidades Avanzadas
+## 5. Preguntas Frecuentes y Solución de Problemas (FAQ)
 
-### 4.1 Gestor de Presets Multimedia (`⚙ Presets`)
-Haz clic en el botón `⚙ Presets` en la barra superior o en la tarjeta del nodo `Transcodificar Media`. Se desplegará un gestor modal donde podrás:
-- Seleccionar entre 10 presets de fábrica (MP3 192k, 1080p H.264, WebM VP9, GIF animado, etc.).
-- Crear nuevos presets personalizados definiendo la extensión de salida y los argumentos de FFmpeg (`-c:v libx265 -crf 24`).
+### ¿Cómo pruebo mi flujo sin alterar archivos reales?
+Activa la casilla **Simulación (*Dry Run*)** en la barra superior antes de presionar Iniciar. El flujo simulará todas las operaciones e imprimirá los logs previstos sin mover, renombrar ni eliminar ningún archivo en disco.
 
-### 4.2 Gestor Modal de Contraseñas (`🔑 Claves`)
-En el nodo `Descomprimir`, pulsa el botón `🔑 Claves` junto al parámetro `PasswordList`. Podrás escribir, importar y exportar listas de contraseñas candidatas (`.txt`). El nodo probará secuencialmente cada clave hasta desbloquear el archivo comprimido.
+### El nodo Transcodificador Multimedia muestra advertencia de FFmpeg no encontrado
+Asegúrate de descargar `ffmpeg.exe` y colocarlo en la misma carpeta que `FileFlow.App.exe` o añadir su directorio a la variable de entorno `PATH` de Windows.
 
-### 4.3 Sistema de Reversión de Cambios (`↩ Rollback`)
-Si ejecutaste un flujo y deseas deshacer las operaciones físicas realizadas en el disco (como archivos movidos o eliminados a la papelera), presiona el botón **`↩ Rollback`** en la barra de herramientas. El motor ejecutará las transacciones inversas registradas en el `ExecutionJournalService`.
-
----
-
-## 5. Catálogo de 40 Ejemplos Listos para Usar (`docs/examples/`)
-
-FileFlow Studio incluye un catálogo de **40 plantillas de flujos ejecutables** en el directorio `docs/examples/`:
-
-- **01_basic (Ejemplos 01 al 10):** Canales lineales simples, optimización WebP, extracción MP3, generación de hashes SHA-256.
-- **02_intermediate (Ejemplos 11 al 20):** Filtrado condicional, bifurcación por extensión, EXIF, deduplicación, webhooks HTTP.
-- **03_advanced (Ejemplos 21 al 30):** Lotes por tamaño, paralelismo *Fork & Join*, limitación de tasa (*Throttle*), políticas de reintento.
-- **04_complex (Ejemplos 31 al 40):** Patrones *Scatter-Gather*, doble hash inmutable, ingesta masiva empresarial y fallback resiliente.
-
-Para cargar cualquiera de estos ejemplos, dirígete al menú superior **Archivo > Importar Flujo (.json)** y selecciona el archivo en `docs/examples/`.
-
----
-
-## 6. Resolución de Problemas (Troubleshooting & FAQ)
-
-### ❓ FFmpeg no fue detectado en el sistema
-- **Causa:** El ejecutable `ffmpeg.exe` no se encuentra en la variable `PATH` ni en rutas conocidas.
-- **Solución:** Ve a **⚙ Ajustes > 🛠 Herramientas Externas > 🔍 Auto-Detectar Herramientas** o presiona `Examinar` y selecciona manualmente la ubicación de `ffmpeg.exe`.
-
-### ❓ Los archivos de solo lectura no se procesan en carpetas supervisadas
-- **Causa:** En versiones anteriores se requería acceso de escritura para verificar el estado de bloqueo.
-- **Solución:** Asegúrate de estar usando la versión actualizada que realiza las comprobaciones con permiso de lectura (`FileAccess.Read`).
-
-### ❓ Al seleccionar un preset en el ComboBox se restaura el texto anterior
-- **Solución:** Se ha corregido el comportamiento ajustando `IsEditable="False"` en los ComboBoxes de presets del inspector. Todos los presets seleccionados se aplican al instante.
+### ¿Dónde se guardan los archivos de log exportados?
+Al presionar el botón **`💾 Exportar`** en la consola, se abrirá un diálogo para guardar el informe en formato `.log` o `.txt` con todas las marcas de tiempo e identificadores.

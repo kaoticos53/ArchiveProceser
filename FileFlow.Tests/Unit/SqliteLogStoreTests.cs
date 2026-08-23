@@ -51,6 +51,24 @@ public class SqliteLogStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SqliteLogStore_ExactLevel_ShouldFilterOnlySpecifiedLevel()
+    {
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Debug, "Debug message"));
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Information, "Info message"));
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Warning, "Warn message"));
+        _store.EnqueueLog(StructuredLogRecord.Create("exec-1", LogLevel.Error, "Error message"));
+        await _store.FlushPendingLogsAsync();
+
+        var debugLogs = await _store.GetLogsWindowAsync(0, 10, new LogFilterCriteria(ExactLevel: LogLevel.Debug));
+        debugLogs.Should().HaveCount(1);
+        debugLogs[0].Message.Should().Be("Debug message");
+
+        var infoLogs = await _store.GetLogsWindowAsync(0, 10, new LogFilterCriteria(ExactLevel: LogLevel.Information));
+        infoLogs.Should().HaveCount(1);
+        infoLogs[0].Message.Should().Be("Info message");
+    }
+
+    [Fact]
     public async Task SqliteLogStore_GetLogsWindow_ShouldReturnAccuratePages()
     {
         for (int i = 0; i < 250; i++)

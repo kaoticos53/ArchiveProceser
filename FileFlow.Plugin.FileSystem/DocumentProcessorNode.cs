@@ -36,19 +36,20 @@ public class DocumentProcessorNode : IFlowNode
     {
         string filePath = item.CurrentPath;
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            context.Log($"DocumentProcessorNode: File '{filePath}' not found.", LogLevel.Warning);
+            context.Log($"[Procesador Docs] Archivo no encontrado: '{filePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
 
         try
         {
-            context.Log($"DocumentProcessorNode processing file: {filePath}", LogLevel.Information);
-
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             int estimatedPageCount = 1;
+            int lineCount = 0;
 
             if (ext == ".pdf")
             {
@@ -57,19 +58,27 @@ public class DocumentProcessorNode : IFlowNode
             else if (ext is ".txt" or ".log" or ".json" or ".xml" or ".md" or ".csv")
             {
                 var lines = await File.ReadAllLinesAsync(filePath, cancellationToken);
+                lineCount = lines.Length;
                 estimatedPageCount = Math.Max(1, (lines.Length + 49) / 50); // 50 lines per page
             }
 
-            item.Metadata["DocumentType"] = ext.TrimStart('.').ToUpperInvariant();
+            string docType = ext.TrimStart('.').ToUpperInvariant();
+            item.Metadata["DocumentType"] = docType;
             item.Metadata["EstimatedPageCount"] = estimatedPageCount;
-            item.Metadata["DocumentLineCount"] = ext is ".txt" or ".log" or ".json" or ".xml" or ".md" or ".csv" ? File.ReadAllLines(filePath).Length : 0;
+            item.Metadata["DocumentLineCount"] = lineCount;
             item.AddLog($"DocumentProcessorNode inspected {filePath} ({estimatedPageCount} pages)");
+
+            sw.Stop();
+            string detailsJson = $"{{\"documentType\": \"{docType}\", \"estimatedPages\": {estimatedPageCount}, \"lineCount\": {lineCount}, \"fileSizeBytes\": {item.FileSizeBytes}}}";
+            context.Log($"[Procesador Docs] Documento analizado ({docType}): ~{estimatedPageCount} págs, {lineCount:N0} líneas", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", item);
         }
         catch (Exception ex)
         {
-            context.Log($"DocumentProcessorNode Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Procesador Docs] Error al procesar documento: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"DocumentProcessorNode error: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

@@ -36,6 +36,7 @@ public class ThrottleDelayNode : IFlowNode
         int delayMs = Parameters.TryGetValue("DelayMilliseconds", out var dVal) ? ParameterHelper.GetInt32(dVal, 100) : 100;
         if (delayMs > 0)
         {
+            context.Log($"[Throttle] Aplicando retardo de regulación: {delayMs} ms", LogLevel.Debug, item, durationMs: delayMs);
             await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
         }
 

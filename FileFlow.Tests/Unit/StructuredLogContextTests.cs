@@ -62,4 +62,48 @@ public class StructuredLogContextTests
         emittedRecord.DurationMs.Should().Be(4.5);
         emittedRecord.FileName.Should().Be("Report.pdf");
     }
+
+    [Fact]
+    public void WorkflowExecutionContext_WhenNodeLoggingIsDisabled_ShouldNotEmitLogs()
+    {
+        var executor = new WorkflowExecutor();
+        executor.SetNodeLoggingEnabled("Node_Silenced", false);
+
+        var item = new FileItemContext(@"C:\Docs\Secret.pdf");
+        StructuredLogRecord? emittedRecord = null;
+        executor.StructuredLogEmitted += record => emittedRecord = record;
+
+        var context = new WorkflowExecutionContext("Node_Silenced", executor, CancellationToken.None, item);
+
+        // Act
+        context.Log("Este log no debería emitirse.", LogLevel.Information);
+
+        // Assert
+        emittedRecord.Should().BeNull();
+    }
+
+    [Fact]
+    public void WorkflowExecutionContext_WhenNodeLoggingIsReEnabled_ShouldEmitLogsNormally()
+    {
+        var executor = new WorkflowExecutor();
+        executor.SetNodeLoggingEnabled("Node_A", false);
+
+        var item = new FileItemContext(@"C:\Docs\Public.pdf");
+        StructuredLogRecord? emittedRecord = null;
+        executor.StructuredLogEmitted += record => emittedRecord = record;
+
+        var context = new WorkflowExecutionContext("Node_A", executor, CancellationToken.None, item);
+
+        // Act 1: Silenciado
+        context.Log("Mensaje silenciado", LogLevel.Information);
+        emittedRecord.Should().BeNull();
+
+        // Act 2: Reactivado
+        executor.SetNodeLoggingEnabled("Node_A", true);
+        context.Log("Mensaje activo", LogLevel.Information);
+
+        // Assert
+        emittedRecord.Should().NotBeNull();
+        emittedRecord!.Message.Should().Be("Mensaje activo");
+    }
 }

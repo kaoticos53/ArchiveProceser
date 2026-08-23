@@ -39,10 +39,12 @@ public class OriginalFileActionNode : IFlowNode
         string quarantinePath = ParameterHelper.ResolveOutputPath(quarantinePattern, item);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         string targetFilePath = item.OriginalPath;
         if (string.IsNullOrWhiteSpace(targetFilePath) || (!File.Exists(targetFilePath) && !Directory.Exists(targetFilePath)))
         {
-            context.Log($"OriginalFileActionNode: Target file '{targetFilePath}' does not exist.", LogLevel.Warning);
+            context.Log($"[Acción Archivo Origen] Archivo original no encontrado: '{targetFilePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -52,16 +54,17 @@ public class OriginalFileActionNode : IFlowNode
             switch (actionType.ToUpperInvariant())
             {
                 case "KEEP":
-                    context.Log($"[OriginalFileActionNode] Keeping original file: {targetFilePath}", LogLevel.Information);
+                    context.Log($"[Acción Archivo Origen] Conservando archivo original intacto: '{targetFilePath}'", LogLevel.Information, item);
                     break;
 
                 case "MOVETOQUARANTINE":
-                    if (!Directory.Exists(quarantinePath))
+                    if (!Directory.Exists(quarantinePath) && !isDryRun)
                     {
                         Directory.CreateDirectory(quarantinePath);
                     }
                     string destPath = Path.Combine(quarantinePath, Path.GetFileName(targetFilePath));
-                    context.Log($"[OriginalFileActionNode] Moving original to quarantine: {destPath} (DryRun={isDryRun})", LogLevel.Information);
+                    string detailsMove = $"{{\"action\": \"MoveToQuarantine\", \"quarantinePath\": \"{destPath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
+                    context.Log($"[Acción Archivo Origen] Moviendo original a cuarentena: '{destPath}' (DryRun={isDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsMove);
                     if (!isDryRun)
                     {
                         if (item.IsDirectory)
@@ -76,7 +79,8 @@ public class OriginalFileActionNode : IFlowNode
                     break;
 
                 case "PERMANENTDELETE":
-                    context.Log($"[OriginalFileActionNode] Permanently deleting original: {targetFilePath} (DryRun={isDryRun})", LogLevel.Warning);
+                    string detailsDelete = $"{{\"action\": \"PermanentDelete\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
+                    context.Log($"[Acción Archivo Origen] Eliminando permanentemente original: '{targetFilePath}' (DryRun={isDryRun})", LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsDelete);
                     if (!isDryRun)
                     {
                         if (item.IsDirectory)
@@ -91,16 +95,19 @@ public class OriginalFileActionNode : IFlowNode
                     break;
 
                 default:
-                    context.Log($"[OriginalFileActionNode] Unknown action policy: '{actionType}', retaining file.", LogLevel.Warning);
+                    context.Log($"[Acción Archivo Origen] Política de acción desconocida: '{actionType}', reteniendo archivo.", LogLevel.Warning, item);
                     break;
             }
 
+            sw.Stop();
             item.AddLog($"OriginalFileActionNode applied policy '{actionType}'");
             await context.EmitAsync("Out", item);
         }
         catch (Exception ex)
         {
-            context.Log($"OriginalFileActionNode Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Acción Archivo Origen] Error al aplicar política: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"OriginalFileActionNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

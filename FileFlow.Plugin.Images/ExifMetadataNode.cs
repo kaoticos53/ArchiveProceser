@@ -38,16 +38,17 @@ public class ExifMetadataNode : IFlowNode
         string filePath = item.CurrentPath;
         bool fallbackToCreation = Parameters.TryGetValue("FallbackToCreationDate", out var fVal) && ParameterHelper.GetBoolean(fVal, true);
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            context.Log($"ExifMetadataNode: File '{filePath}' not found.", LogLevel.Warning);
+            context.Log($"[Metadatos EXIF] Archivo de imagen no encontrado: '{filePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Out", item);
             return;
         }
 
         try
         {
-            context.Log($"Extracting EXIF metadata for: {filePath}", LogLevel.Information);
             var directories = ImageMetadataReader.ReadMetadata(filePath);
 
             string? dateTaken = null;
@@ -83,33 +84,42 @@ public class ExifMetadataNode : IFlowNode
             item.Metadata["CameraModel"] = cameraModel ?? "Unknown";
             item.Metadata["CameraMake"] = make ?? "Unknown";
 
+            int imgWidth = 0, imgHeight = 0;
+            string orientation = "Unknown";
+            string megapixels = string.Empty;
+
             // Extract Image Dimensions and Orientation
             try
             {
                 var info = Image.Identify(filePath);
                 if (info != null)
                 {
-                    int width = info.Width;
-                    int height = info.Height;
-                    item.Metadata["ImageWidth"] = width;
-                    item.Metadata["ImageHeight"] = height;
-                    string orientation = width > height ? "Landscape" : (height > width ? "Portrait" : "Square");
+                    imgWidth = info.Width;
+                    imgHeight = info.Height;
+                    item.Metadata["ImageWidth"] = imgWidth;
+                    item.Metadata["ImageHeight"] = imgHeight;
+                    orientation = imgWidth > imgHeight ? "Landscape" : (imgHeight > imgWidth ? "Portrait" : "Square");
                     item.Metadata["Orientation"] = orientation;
-                    item.Metadata["AspectRatio"] = CalculateAspectRatio(width, height);
-                    item.Metadata["Megapixels"] = ((width * (double)height) / 1_000_000.0).ToString("F1", CultureInfo.InvariantCulture) + "MP";
+                    item.Metadata["AspectRatio"] = CalculateAspectRatio(imgWidth, imgHeight);
+                    megapixels = ((imgWidth * (double)imgHeight) / 1_000_000.0).ToString("F1", CultureInfo.InvariantCulture) + "MP";
+                    item.Metadata["Megapixels"] = megapixels;
                 }
             }
             catch (Exception ex)
             {
-                context.Log($"ExifMetadataNode: Could not read image dimensions: {ex.Message}", LogLevel.Warning);
+                context.Log($"[Metadatos EXIF] Dimensiones gráficas no legibles: {ex.Message}", LogLevel.Debug, item);
             }
 
-            context.Log($"EXIF Extracted - DateTaken: {dateTaken}, Model: {cameraModel}", LogLevel.Information);
+            sw.Stop();
+            string detailsJson = $"{{\"dateTaken\": \"{dateTaken ?? "N/A"}\", \"cameraModel\": \"{cameraModel ?? "N/A"}\", \"make\": \"{make ?? "N/A"}\", \"resolution\": \"{imgWidth}x{imgHeight}\", \"orientation\": \"{orientation}\", \"megapixels\": \"{megapixels}\"}}";
+            context.Log($"[Metadatos EXIF] Extraído ({cameraModel ?? "Cámara Desconocida"}): {dateTaken ?? "Sin fecha"} • {imgWidth}x{imgHeight} ({orientation})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
             item.AddLog($"ExifMetadataNode extracted DateTaken={dateTaken}, Model={cameraModel}");
         }
         catch (Exception ex)
         {
-            context.Log($"ExifMetadataNode warning reading '{filePath}': {ex.Message}", LogLevel.Warning);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\"}}";
+            context.Log($"[Metadatos EXIF] Advertencia al leer EXIF: {ex.Message}", LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             if (fallbackToCreation)
             {
                 item.Metadata["DateTaken"] = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);

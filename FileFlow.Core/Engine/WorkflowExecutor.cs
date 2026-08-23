@@ -8,88 +8,6 @@ using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.Core.Engine;
 
-public class WorkflowExecutionContext : IFlowExecutionContext
-{
-    private readonly string _sourceNodeId;
-    private readonly WorkflowExecutor _executor;
-    private readonly CancellationToken _cancellationToken;
-    public FileItemContext? CurrentItem { get; set; }
-    internal bool HasEmittedAnyDownstream { get; private set; }
-
-    public WorkflowExecutionContext(
-        string sourceNodeId,
-        WorkflowExecutor executor,
-        CancellationToken cancellationToken,
-        FileItemContext? currentItem = null)
-    {
-        _sourceNodeId = sourceNodeId;
-        _executor = executor;
-        _cancellationToken = cancellationToken;
-        CurrentItem = currentItem;
-    }
-
-    public bool IsDryRun => _executor.IsDryRun;
-
-    public async Task EmitAsync(string outputPortName, FileItemContext item)
-    {
-        HasEmittedAnyDownstream = true;
-        await _executor.DispatchEmitAsync(_sourceNodeId, outputPortName, item, _cancellationToken);
-    }
-
-    public void ReportProgress(double percentage, string statusMessage)
-    {
-        _executor.SetCustomStatusMessage(statusMessage);
-        _executor.NotifyNodeProgress(_sourceNodeId, percentage, statusMessage);
-        _executor.NotifyProgress(percentage, statusMessage);
-    }
-
-    public void SetTotalExpectedItems(long totalExpectedItems)
-    {
-        _executor.SetTotalExpectedItems(totalExpectedItems);
-    }
-
-    public void Log(string message, LogLevel level)
-    {
-        Log(message, level, CurrentItem, 0.0, null);
-    }
-
-    public void Log(string message, LogLevel level, string? filePath, double durationMs = 0.0)
-    {
-        string? effectivePath = !string.IsNullOrWhiteSpace(filePath) ? filePath : CurrentItem?.CurrentPath;
-        string? itemId = CurrentItem?.Id.ToString();
-        long fileSize = CurrentItem?.FileSizeBytes ?? 0;
-        _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson: null, itemId: itemId);
-    }
-
-    public void Log(string message, LogLevel level, FileItemContext? item, double durationMs = 0.0, string? detailsJson = null)
-    {
-        var effectiveItem = item ?? CurrentItem;
-        string? path = effectiveItem?.CurrentPath;
-        string? itemId = effectiveItem?.Id.ToString();
-        long fileSize = effectiveItem?.FileSizeBytes ?? 0;
-        _executor.NotifyLog(_sourceNodeId, message, level, path, fileSize, durationMs, detailsJson, itemId);
-    }
-
-    public void Log(string message, LogLevel level, string? filePath, double durationMs, string? detailsJson, string? itemId = null)
-    {
-        string? effectivePath = !string.IsNullOrWhiteSpace(filePath) ? filePath : CurrentItem?.CurrentPath;
-        string? effectiveItemId = !string.IsNullOrWhiteSpace(itemId) ? itemId : CurrentItem?.Id.ToString();
-        long fileSize = CurrentItem?.FileSizeBytes ?? 0;
-        _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson, effectiveItemId);
-    }
-
-    public void RegisterPlannedAction(PlannedAction action)
-    {
-        _executor.RegisterPlannedAction(action);
-    }
-
-    public void RecordJournalEntry(JournalEntry entry)
-    {
-        _executor.JournalService.Record(entry);
-    }
-}
-
-
 public class WorkflowExecutor
 {
     private readonly Lock _lock = new();
@@ -272,12 +190,34 @@ public class WorkflowExecutor
 
     private string _currentExecutionId = Guid.NewGuid().ToString("N");
     private readonly ConcurrentBag<Task> _activeNodeTasks = new();
+    private readonly HashSet<string> _disabledLoggingNodeIds = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool IsLoggingDisabledForNode(string? nodeId) => !string.IsNullOrWhiteSpace(nodeId) && _disabledLoggingNodeIds.Contains(nodeId);
+
+    public void SetNodeLoggingEnabled(string nodeId, bool enabled)
+    {
+        lock (_lock)
+        {
+            if (enabled) _disabledLoggingNodeIds.Remove(nodeId);
+            else _disabledLoggingNodeIds.Add(nodeId);
+        }
+    }
 
     public async Task ExecuteAsync(WorkflowGraph graph, PluginLoader loader, CancellationToken cancellationToken)
     {
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
         _outgoingEdges.Clear();
+        _disabledLoggingNodeIds.Clear();
+        foreach (var disabledId in graph.DisabledLoggingNodeIds)
+        {
+            _disabledLoggingNodeIds.Add(disabledId);
+        }
+        foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled))
+        {
+            _disabledLoggingNodeIds.Add(nodeDto.Id);
+        }
+
         _processedItemsCount = 0;
         _totalItemsCount = 0;
         _expectedTotalItems = 0;
@@ -546,8 +486,11 @@ public class WorkflowExecutor
         long fileSizeBytes = 0,
         double durationMs = 0.0,
         string? detailsJson = null,
-        string? itemId = null)
+        string? itemId = null,
+        string? fileName = null)
     {
+        if (IsLoggingDisabledForNode(nodeId)) return;
+
         string? nodeName = null;
         if (!string.IsNullOrWhiteSpace(nodeId) && _nodeInstances.TryGetValue(nodeId, out var node))
         {
@@ -560,11 +503,12 @@ public class WorkflowExecutor
             message: message,
             nodeId: nodeId,
             nodeName: nodeName,
-            itemId: itemId,
             filePath: filePath,
-            fileSizeBytes: fileSizeBytes,
             durationMs: durationMs,
-            detailsJson: detailsJson
+            itemId: itemId,
+            fileSizeBytes: fileSizeBytes,
+            detailsJson: detailsJson,
+            fileName: fileName
         );
 
         SqliteLogStore.Instance.EnqueueLog(record);

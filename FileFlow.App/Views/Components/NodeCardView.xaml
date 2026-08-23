@@ -16,6 +16,8 @@
         <ResourceDictionary>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <conv:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
+            <conv:LoggingToBrushConverter x:Key="LoggingToBrushConverter" />
+            <conv:LoggingToTooltipConverter x:Key="LoggingToTooltipConverter" />
 
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Themes/Templates/NodeParameterTemplates.xaml" />
@@ -54,6 +56,15 @@
                               Command="{Binding PlacementTarget.DataContext.ToggleBreakpointCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                         <MenuItem.Icon>
                             <Ellipse Width="12" Height="12" Fill="#EF4444" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LoggingToggle]}"
+                              Command="{Binding PlacementTarget.DataContext.ToggleLoggingCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                        <MenuItem.Icon>
+                            <Border Width="12" Height="12" CornerRadius="2" Background="#06B6D4">
+                                <TextBlock Text="≡" FontSize="8" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                            </Border>
                         </MenuItem.Icon>
                     </MenuItem>
 
@@ -152,6 +163,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
@@ -159,15 +171,27 @@
 
                                 <!-- Botón Breakpoint -->
                                 <Button Grid.Column="0" Command="{Binding ToggleBreakpointCommand}" 
-                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,6,0"
+                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,5,0"
                                         Cursor="Hand" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}">
                                     <Ellipse Width="11" Height="11" 
                                              Fill="{Binding HasBreakpoint, Converter={StaticResource BreakpointToBrushConverter}}" 
                                              Stroke="{DynamicResource BorderDarkBrush}" StrokeThickness="1.5" />
                                 </Button>
 
+                                <!-- Botón Toggle Logging (Emisión de logs de este nodo) -->
+                                <Button Grid.Column="1" Command="{Binding ToggleLoggingCommand}" 
+                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,6,0"
+                                        Cursor="Hand" ToolTip="{Binding IsLoggingEnabled, Converter={StaticResource LoggingToTooltipConverter}}">
+                                    <Border Width="13" Height="13" CornerRadius="3"
+                                            Background="{Binding IsLoggingEnabled, Converter={StaticResource LoggingToBrushConverter}}"
+                                            BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
+                                        <TextBlock Text="≡" FontSize="8.5" FontWeight="Bold" Foreground="White" 
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                                    </Border>
+                                </Button>
+
                                 <!-- Indicador LED de Estado de Ejecución -->
-                                <Border Grid.Column="1" Width="9" Height="9" CornerRadius="4.5" Margin="0,0,7,0" VerticalAlignment="Center">
+                                <Border Grid.Column="2" Width="9" Height="9" CornerRadius="4.5" Margin="0,0,7,0" VerticalAlignment="Center">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Background" Value="#1C212E" />
@@ -231,15 +255,15 @@
                                 </Border>
 
                                 <!-- Título del Nodo -->
-                                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="3" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                 
                                 <!-- Etiqueta de Categoría -->
-                                <Border Grid.Column="3" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
+                                <Border Grid.Column="4" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
                                     <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="10" FontWeight="SemiBold" />
                                 </Border>
                                 
                                 <!-- Botón Expandir/Colapsar Parámetros -->
-                                <ToggleButton Grid.Column="4"
+                                <ToggleButton Grid.Column="5"
                                               IsChecked="{Binding IsExpanded, Mode=TwoWay}"
                                               Content="⚙"
                                               Foreground="{DynamicResource TextSecondaryBrush}"

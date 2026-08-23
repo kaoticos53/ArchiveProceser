@@ -328,6 +328,7 @@ public partial class EditorViewModel : ObservableObject
                 X = n.Location.X,
                 Y = n.Location.Y,
                 HasBreakpoint = n.HasBreakpoint,
+                IsLoggingEnabled = n.IsLoggingEnabled,
                 Parameters = n.Parameters
                     .Where(p => !string.IsNullOrWhiteSpace(p.Key))
                     .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
@@ -338,6 +339,11 @@ public partial class EditorViewModel : ObservableObject
             if (n.HasBreakpoint)
             {
                 graph.BreakpointNodeIds.Add(n.Id);
+            }
+
+            if (!n.IsLoggingEnabled)
+            {
+                graph.DisabledLoggingNodeIds.Add(n.Id);
             }
         }
 
@@ -380,7 +386,8 @@ public partial class EditorViewModel : ObservableObject
 
             var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y))
             {
-                HasBreakpoint = nodeDto.HasBreakpoint || graph.BreakpointNodeIds.Contains(nodeDto.Id)
+                HasBreakpoint = nodeDto.HasBreakpoint || graph.BreakpointNodeIds.Contains(nodeDto.Id),
+                IsLoggingEnabled = nodeDto.IsLoggingEnabled && !graph.DisabledLoggingNodeIds.Contains(nodeDto.Id)
             };
 
             nodeVm.PropertyChanged += (s, e) =>

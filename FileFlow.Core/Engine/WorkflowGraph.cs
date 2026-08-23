@@ -10,6 +10,7 @@ public class WorkflowNode
     public double X { get; set; }
     public double Y { get; set; }
     public bool HasBreakpoint { get; set; }
+    public bool IsLoggingEnabled { get; set; } = true;
     public Dictionary<string, object?> Parameters { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
@@ -29,6 +30,7 @@ public class WorkflowGraph
     public List<WorkflowNode> Nodes { get; set; } = [];
     public List<WorkflowEdge> Edges { get; set; } = [];
     public HashSet<string> BreakpointNodeIds { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> DisabledLoggingNodeIds { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

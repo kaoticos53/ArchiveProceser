@@ -32,13 +32,13 @@ public record StructuredLogRecord(
         get
         {
             if (FileSizeBytes <= 0) return string.Empty;
-            if (FileSizeBytes >= 1024 * 1024 * 1024)
-                return FormattableString.Invariant($"{FileSizeBytes / (1024.0 * 1024.0 * 1024.0):F2} GB");
-            if (FileSizeBytes >= 1024 * 1024)
-                return FormattableString.Invariant($"{FileSizeBytes / (1024.0 * 1024.0):F2} MB");
-            if (FileSizeBytes >= 1024)
-                return FormattableString.Invariant($"{FileSizeBytes / 1024.0:F1} KB");
-            return $"{FileSizeBytes} B";
+            if (FileSizeBytes >= 1024L * 1024L * 1024L)
+                return (FileSizeBytes / (1024.0 * 1024.0 * 1024.0)).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " GB";
+            if (FileSizeBytes >= 1024L * 1024L)
+                return (FileSizeBytes / (1024.0 * 1024.0)).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " MB";
+            if (FileSizeBytes >= 1024L)
+                return (FileSizeBytes / 1024.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " KB";
+            return FileSizeBytes.ToString(System.Globalization.CultureInfo.InvariantCulture) + " B";
         }
     }
 
@@ -73,9 +73,10 @@ public record StructuredLogRecord(
         double durationMs = 0.0,
         string? itemId = null,
         long fileSizeBytes = 0,
-        string? detailsJson = null)
+        string? detailsJson = null,
+        string? fileName = null)
     {
-        string? fileName = !string.IsNullOrWhiteSpace(filePath) ? System.IO.Path.GetFileName(filePath) : null;
+        fileName ??= !string.IsNullOrWhiteSpace(filePath) ? System.IO.Path.GetFileName(filePath) : null;
         return new StructuredLogRecord(
             Id: 0,
             ExecutionId: executionId ?? string.Empty,

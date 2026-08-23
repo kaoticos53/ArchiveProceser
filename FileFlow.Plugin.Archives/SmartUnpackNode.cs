@@ -53,17 +53,17 @@ public class SmartUnpackNode : IFlowNode
         string pwdListParam = Parameters.TryGetValue("PasswordList", out var plVal) ? ParameterHelper.GetString(plVal, "") : "";
         string pwdFileParam = Parameters.TryGetValue("PasswordFile", out var pfVal) ? ParameterHelper.GetString(pfVal, "") : "";
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(archivePath) || !File.Exists(archivePath))
         {
-            context.Log($"SmartUnpackNode: Archive file '{archivePath}' not found.", LogLevel.Warning);
+            context.Log($"[Descompresor] Archivo comprimido no encontrado: '{archivePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
 
         try
         {
-            context.Log($"SmartUnpackNode inspecting archive: {archivePath}", LogLevel.Information);
-
             var passwordCandidates = GetPasswordCandidates(pwdListParam, pwdFileParam, item);
             var (archive, validPassword) = OpenArchiveWithPassword(archivePath, passwordCandidates, context);
 
@@ -84,12 +84,12 @@ public class SmartUnpackNode : IFlowNode
                 if (hasSingleWrapper && cleanWrapper)
                 {
                     finalExtractDir = destFolder;
-                    context.Log($"SmartUnpackNode: Single wrapper detected ('{commonRoot}'). Cleaning redundant wrapper level and extracting directly to: {finalExtractDir}", LogLevel.Information);
+                    context.Log($"[Descompresor] Carpeta envoltorio única detectada ('{commonRoot}'). Limpiando nivel redundante y extrayendo en: {finalExtractDir}", LogLevel.Debug, item);
                 }
                 else
                 {
                     finalExtractDir = Path.Combine(destFolder, archiveNameNoExt);
-                    context.Log($"SmartUnpackNode: Multiple root entries detected. Extracting into subfolder: {finalExtractDir}", LogLevel.Information);
+                    context.Log($"[Descompresor] Múltiples entradas raíz. Extrayendo en subcarpeta: {finalExtractDir}", LogLevel.Debug, item);
                 }
 
                 if (!isDryRun)
@@ -100,6 +100,7 @@ public class SmartUnpackNode : IFlowNode
                     }
 
                     string fullTargetDir = Path.GetFullPath(finalExtractDir);
+                    string fullTargetDirWithSep = Path.TrimEndingDirectorySeparator(fullTargetDir) + Path.DirectorySeparatorChar;
 
                     foreach (var entry in archive.Entries.Where(e => !e.IsDirectory))
                     {
@@ -108,7 +109,8 @@ public class SmartUnpackNode : IFlowNode
                         string entryPath = entry.Key ?? string.Empty;
                         string destinationPath = Path.GetFullPath(Path.Combine(finalExtractDir, entryPath));
 
-                        if (!destinationPath.StartsWith(fullTargetDir, StringComparison.OrdinalIgnoreCase))
+                        if (!destinationPath.StartsWith(fullTargetDirWithSep, StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(destinationPath, fullTargetDir, StringComparison.OrdinalIgnoreCase))
                         {
                             throw new System.Security.SecurityException($"Zip Slip attempt detected! Entry '{entryPath}' targets outside of extraction directory.");
                         }
@@ -128,10 +130,11 @@ public class SmartUnpackNode : IFlowNode
                     if (autoDelete)
                     {
                         File.Delete(archivePath);
-                        context.Log($"SmartUnpackNode: Auto-deleted original archive file '{archivePath}'.", LogLevel.Information);
+                        context.Log($"[Descompresor] Archivo comprimido original eliminado tras extracción: '{archivePath}'", LogLevel.Debug, item);
                     }
                 }
 
+                sw.Stop();
                 var outputItem = new FileItemContext(finalExtractDir, isDirectory: true);
                 outputItem.Metadata["UnpackedFrom"] = archivePath;
                 outputItem.Metadata["HasSingleWrapper"] = hasSingleWrapper;
@@ -143,12 +146,17 @@ public class SmartUnpackNode : IFlowNode
                 }
                 outputItem.AddLog($"SmartUnpackNode extracted to {finalExtractDir}");
 
+                string detailsJson = $"{{\"archive\": \"{archivePath.Replace("\\", "\\\\")}\", \"extractDir\": \"{finalExtractDir.Replace("\\", "\\\\")}\", \"entriesCount\": {entryKeys.Count}, \"hasSingleWrapper\": {hasSingleWrapper.ToString().ToLowerInvariant()}, \"passwordProtected\": {!string.IsNullOrEmpty(validPassword)}}}";
+                context.Log($"[Descompresor] Descompresión completada: {entryKeys.Count} ficheros extraídos en '{finalExtractDir}'", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+
                 await context.EmitAsync("Out", outputItem);
             }
         }
         catch (Exception ex)
         {
-            context.Log($"SmartUnpackNode Extraction Failed for '{archivePath}': {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"archive\": \"{archivePath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Descompresor] Error en descompresión: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"SmartUnpackNode error: {ex.Message}");
 
             var relatedVolumes = ArchiveVolumeResolver.FindRelatedVolumeFiles(archivePath);

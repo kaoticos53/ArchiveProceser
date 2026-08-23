@@ -17,7 +17,8 @@ public enum LogFilterLevel
     All,
     ErrorsOnly,
     WarningsOnly,
-    InfoOnly
+    InfoOnly,
+    DebugOnly
 }
 
 public partial class LogViewModel : ObservableObject
@@ -57,6 +58,9 @@ public partial class LogViewModel : ObservableObject
 
     [ObservableProperty]
     private int _infoCount;
+
+    [ObservableProperty]
+    private int _debugCount;
 
     public event Action? OnLogBatchAdded;
     public event Action? OnLogsCleared;
@@ -106,7 +110,7 @@ public partial class LogViewModel : ObservableObject
 
         int count = _pendingLogs.Count;
         var batch = new List<StructuredLogRecord>(count);
-        int errs = 0, warns = 0, infos = 0;
+        int errs = 0, warns = 0, infos = 0, dbgs = 0;
 
         while (_pendingLogs.TryDequeue(out var entry))
         {
@@ -114,6 +118,7 @@ public partial class LogViewModel : ObservableObject
             if (entry.Level is LogLevel.Error or LogLevel.Critical) errs++;
             else if (entry.Level == LogLevel.Warning) warns++;
             else if (entry.Level == LogLevel.Information) infos++;
+            else if (entry.Level == LogLevel.Debug) dbgs++;
         }
 
         if (batch.Count > 0)
@@ -121,6 +126,7 @@ public partial class LogViewModel : ObservableObject
             ErrorCount += errs;
             WarningCount += warns;
             InfoCount += infos;
+            DebugCount += dbgs;
             TotalLogsCount += batch.Count;
 
             if (IsLiveMode && string.IsNullOrWhiteSpace(SearchFilter) && ActiveFilter == LogFilterLevel.All && SortColumn == "Id")
@@ -153,22 +159,44 @@ public partial class LogViewModel : ObservableObject
 
     private LogFilterCriteria BuildCurrentFilter()
     {
-        LogLevel? minLevel = ActiveFilter switch
+        LogLevel? minLevel = null;
+        LogLevel? exactLevel = null;
+
+        switch (ActiveFilter)
         {
-            LogFilterLevel.ErrorsOnly => LogLevel.Error,
-            LogFilterLevel.WarningsOnly => LogLevel.Warning,
-            LogFilterLevel.InfoOnly => LogLevel.Information,
-            _ => null
-        };
+            case LogFilterLevel.ErrorsOnly:
+                minLevel = LogLevel.Error;
+                break;
+            case LogFilterLevel.WarningsOnly:
+                exactLevel = LogLevel.Warning;
+                break;
+            case LogFilterLevel.InfoOnly:
+                exactLevel = LogLevel.Information;
+                break;
+            case LogFilterLevel.DebugOnly:
+                exactLevel = LogLevel.Debug;
+                break;
+        }
 
         string? search = !string.IsNullOrWhiteSpace(SearchFilter) ? SearchFilter.Trim() : null;
 
         return new LogFilterCriteria(
             MinLevel: minLevel,
+            ExactLevel: exactLevel,
             SearchText: search,
             SortColumn: SortColumn,
             IsAscending: IsSortAscending
         );
+    }
+
+    async partial void OnActiveFilterChanged(LogFilterLevel value)
+    {
+        if (value != LogFilterLevel.All)
+        {
+            IsLiveMode = false;
+        }
+        await LoadQueryResultsAsync();
+        OnFilterChanged?.Invoke();
     }
 
     async partial void OnSearchFilterChanged(string value)
@@ -253,9 +281,10 @@ public partial class LogViewModel : ObservableObject
         }
 
         await LoadQueryResultsAsync();
+        OnFilterChanged?.Invoke();
     }
 
-    public void UpdateProgress(double percentage, string statusMessage)
+    public void ReportProgress(double percentage, string statusMessage)
     {
         if (Application.Current != null)
         {
@@ -268,23 +297,22 @@ public partial class LogViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task SetFilter(string filterName)
+    public void SetFilter(string filterName)
     {
         ActiveFilter = filterName.ToLowerInvariant() switch
         {
             "errors" => LogFilterLevel.ErrorsOnly,
             "warnings" => LogFilterLevel.WarningsOnly,
             "info" => LogFilterLevel.InfoOnly,
+            "debug" => LogFilterLevel.DebugOnly,
             _ => LogFilterLevel.All
         };
+    }
 
-        if (ActiveFilter != LogFilterLevel.All)
-        {
-            IsLiveMode = false;
-        }
-
-        await LoadQueryResultsAsync();
-        OnFilterChanged?.Invoke();
+    [RelayCommand]
+    public void ClearSearchFilter()
+    {
+        SearchFilter = string.Empty;
     }
 
     [RelayCommand]
@@ -295,6 +323,7 @@ public partial class LogViewModel : ObservableObject
         ErrorCount = 0;
         WarningCount = 0;
         InfoCount = 0;
+        DebugCount = 0;
         TotalLogsCount = 0;
         ProgressPercentage = 0;
         StatusMessage = LocalizationManager.Instance["StatusReady"];

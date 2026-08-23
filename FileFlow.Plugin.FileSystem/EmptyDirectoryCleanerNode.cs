@@ -37,6 +37,8 @@ public class EmptyDirectoryCleanerNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
             string dirTemplate = Parameters.TryGetValue("TargetDirectory", out var dVal) ? ParameterHelper.GetString(dVal, @"{CurrentDir}") : @"{CurrentDir}";
@@ -47,19 +49,25 @@ public class EmptyDirectoryCleanerNode : IFlowNode
 
             if (string.IsNullOrWhiteSpace(targetDir) || !Directory.Exists(targetDir))
             {
-                context.Log($"[EmptyDirectoryCleanerNode] Directory not found: '{targetDir}'", LogLevel.Warning);
+                context.Log($"[Limpiador Carpetas] Directorio no encontrado: '{targetDir}'", LogLevel.Warning, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
 
             int deletedCount = CleanEmptyDirectories(targetDir, recursive, ignoreHidden, context.IsDryRun, context, Id, Name);
-            context.Log($"[EmptyDirectoryCleanerNode] Cleaned {deletedCount} empty directories in '{targetDir}' (DryRun={context.IsDryRun}).", LogLevel.Information);
+            sw.Stop();
+
+            string detailsJson = $"{{\"targetDirectory\": \"{targetDir.Replace("\\", "\\\\")}\", \"deletedCount\": {deletedCount}, \"recursive\": {recursive.ToString().ToLowerInvariant()}, \"isDryRun\": {context.IsDryRun.ToString().ToLowerInvariant()}}}";
+            context.Log($"[Limpiador Carpetas] Eliminadas {deletedCount:N0} carpetas vacías en '{targetDir}' (DryRun={context.IsDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+
             item.AddLog($"Cleaned {deletedCount} empty directories in {targetDir}");
             await context.EmitAsync("Out", item);
         }
         catch (Exception ex)
         {
-            context.Log($"[EmptyDirectoryCleanerNode] Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\"}}";
+            context.Log($"[Limpiador Carpetas] Error al limpiar carpetas vacías: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Empty directory cleaner failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

@@ -39,6 +39,8 @@ public class VariableInjectorNode : IFlowNode
             snapshot = Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Key)).ToArray();
         }
 
+        var injectedMap = new Dictionary<string, string>();
+
         foreach (var (key, value) in snapshot)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -49,9 +51,16 @@ public class VariableInjectorNode : IFlowNode
             string exprValue = value?.ToString() ?? string.Empty;
             string resolvedValue = VariableTemplateResolver.Resolve(exprValue, item);
             item.Metadata[cleanKey] = resolvedValue;
+            injectedMap[cleanKey] = resolvedValue;
 
-            context.Log($"[Inyector de Variables] Inyectado '{cleanKey}' = '{resolvedValue}'", LogLevel.Information);
+            context.Log($"[Inyector de Variables] Variable '{cleanKey}' = '{resolvedValue}'", LogLevel.Debug, item);
             item.AddLog($"VariableInjectorNode inyectó {cleanKey}={resolvedValue}");
+        }
+
+        if (injectedMap.Count > 0)
+        {
+            string detailsJson = System.Text.Json.JsonSerializer.Serialize(injectedMap);
+            context.Log($"[Inyector de Variables] Inyectadas {injectedMap.Count} variables en metadatos", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
         }
 
         await context.EmitAsync("Out", item);

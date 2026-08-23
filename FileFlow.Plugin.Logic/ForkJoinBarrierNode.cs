@@ -96,6 +96,8 @@ public class ForkJoinBarrierNode : IFlowNode
                 }
 
                 state.CompletedBranches.Add(inputPortName);
+                context.Log($"[Barrera ForkJoin] Rama '{inputPortName}' completada ({state.CompletedBranches.Count}/{requiredBranches})", LogLevel.Debug, item);
+
                 if (state.CompletedBranches.Count >= requiredBranches)
                 {
                     _activeBarriers.TryRemove(item.Id, out _);
@@ -107,7 +109,8 @@ public class ForkJoinBarrierNode : IFlowNode
             {
                 finalItem = state.OriginalItem;
                 finalItem.AddLog($"ForkJoinBarrier: All {requiredBranches} branches completed.");
-                context.Log($"[ForkJoinBarrierNode] Item {item.Id} completed all parallel branches.", LogLevel.Information);
+                string detailsJson = $"{{\"requiredBranches\": {requiredBranches}, \"completedBranches\": [\"{string.Join("\", \"", state.CompletedBranches)}\"]}}";
+                context.Log($"[Barrera ForkJoin] Convergencia total de {requiredBranches} ramas paralelas completada con éxito", LogLevel.Information, finalItem, durationMs: 0.0, detailsJson: detailsJson);
                 await context.EmitAsync("AllCompleted", finalItem);
             }
         }

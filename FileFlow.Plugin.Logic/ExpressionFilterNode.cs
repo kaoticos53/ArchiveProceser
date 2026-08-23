@@ -44,9 +44,15 @@ public class ExpressionFilterNode : IFlowNode
         string op = Parameters.TryGetValue("Operator", out var oVal) ? ParameterHelper.GetString(oVal, ">") : ">";
         string compVal = Parameters.TryGetValue("ComparisonValue", out var cVal) ? ParameterHelper.GetString(cVal, "10") : "10";
 
+        string actualValue = VariableTemplateResolver.GetVariableValue(prop, item, null);
         bool result = EvaluateCondition(prop, op, compVal, item);
 
-        item.AddLog($"ExpressionFilter ({prop} {op} {compVal}) evaluated to {result}");
+        string outcomePort = result ? "True" : "False";
+        string detailsJson = $"{{\"property\": \"{prop}\", \"operator\": \"{op}\", \"targetValue\": \"{compVal}\", \"actualValue\": \"{actualValue}\", \"result\": {result.ToString().ToLowerInvariant()}}}";
+
+        context.Log($"[Filtro Condicional] Condición '{prop} {op} {compVal}' evaluada como {result.ToString().ToUpperInvariant()} (Valor actual: '{actualValue}') -> Rama '{outcomePort}'", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
+
+        item.AddLog($"ExpressionFilter ({prop} {op} {compVal} -> '{actualValue}') evaluated to {result}");
         if (result)
         {
             await context.EmitAsync("True", item);

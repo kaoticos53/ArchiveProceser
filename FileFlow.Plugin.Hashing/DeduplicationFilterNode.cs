@@ -46,9 +46,11 @@ public class DeduplicationFilterNode : IFlowNode
             _seenHashes.Clear();
         }
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"[DeduplicationFilterNode] File not found: '{item.CurrentPath}'", LogLevel.Warning);
+            context.Log($"[Filtro Deduplicación] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -71,9 +73,12 @@ public class DeduplicationFilterNode : IFlowNode
                 item.Metadata["Hash:SHA256"] = hashValue;
             }
 
+            sw.Stop();
+
             if (_seenHashes.TryAdd(hashValue, item.CurrentPath))
             {
                 item.AddLog($"Deduplication: Unique file (Hash={hashValue})");
+                context.Log($"[Filtro Deduplicación] Archivo único (Hash: {hashValue[..Math.Min(12, hashValue.Length)]}...) -> Rama 'Unique'", LogLevel.Debug, item, durationMs: sw.Elapsed.TotalMilliseconds);
                 await context.EmitAsync("Unique", item);
             }
             else
@@ -81,13 +86,18 @@ public class DeduplicationFilterNode : IFlowNode
                 string firstPath = _seenHashes[hashValue];
                 item.Metadata["DuplicateOf"] = firstPath;
                 item.AddLog($"Deduplication: DUPLICATE of '{firstPath}' (Hash={hashValue})");
-                context.Log($"[DeduplicationFilterNode] Duplicate detected: '{item.CurrentPath}' duplicate of '{firstPath}'", LogLevel.Information);
+
+                string detailsJson = $"{{\"hash\": \"{hashValue}\", \"duplicateOf\": \"{firstPath.Replace("\\", "\\\\")}\", \"currentPath\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
+                context.Log($"[Filtro Deduplicación] Duplicado detectado de '{Path.GetFileName(firstPath)}' -> Rama 'Duplicate'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+
                 await context.EmitAsync("Duplicate", item);
             }
         }
         catch (Exception ex)
         {
-            context.Log($"[DeduplicationFilterNode] Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Filtro Deduplicación] Error en deduplicación: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Deduplication failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

@@ -63,8 +63,15 @@ public class FolderWatcherService : IDisposable
         if (_cts != null)
         {
             _cts.Cancel();
+            try
+            {
+                _processingTask?.Wait(1000);
+            }
+            catch { }
+
             _cts.Dispose();
             _cts = null;
+            _processingTask = null;
         }
 
         _pendingFiles.Clear();

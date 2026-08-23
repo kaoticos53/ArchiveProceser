@@ -98,12 +98,16 @@ public class SwitchCaseNode : IFlowNode
         {
             if (MatchesPattern(evaluated, c.Pattern))
             {
+                string detailsJson = $"{{\"expression\": \"{expr}\", \"evaluatedValue\": \"{evaluated}\", \"matchedCase\": \"{c.Name}\", \"pattern\": \"{c.Pattern}\"}}";
+                context.Log($"[SwitchCase] Enrutado a '{c.Name}' (Valor '{evaluated}' coincidió con '{c.Pattern}')", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
                 item.AddLog($"SwitchCase routed to {c.Name} (matched: {evaluated})");
                 await context.EmitAsync(c.Name, item);
                 return;
             }
         }
 
+        string defaultDetails = $"{{\"expression\": \"{expr}\", \"evaluatedValue\": \"{evaluated}\", \"matchedCase\": \"Default\"}}";
+        context.Log($"[SwitchCase] Enrutado a 'Default' (Valor '{evaluated}' no coincidió con ningún caso)", LogLevel.Information, item, durationMs: 0.0, detailsJson: defaultDetails);
         item.AddLog($"SwitchCase routed to Default ({evaluated})");
         await context.EmitAsync("Default", item);
     }

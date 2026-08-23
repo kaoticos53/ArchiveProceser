@@ -283,6 +283,9 @@
   <data name="InspectorErrorTitle" xml:space="preserve"><value>Node Failure / Error</value></data>
   <data name="TestNodeMock" xml:space="preserve"><value>🧪 Test Node</value></data>
   <data name="BreakpointToggle" xml:space="preserve"><value>Toggle Breakpoint</value></data>
+  <data name="LoggingToggle" xml:space="preserve"><value>Toggle Node Logging</value></data>
+  <data name="LoggingEnabledToolTip" xml:space="preserve"><value>Logs: Enabled (click to silence logs from this node)</value></data>
+  <data name="LoggingDisabledToolTip" xml:space="preserve"><value>Logs: Disabled (click to emit logs from this node)</value></data>
   <data name="StatusPausedBreakpoint" xml:space="preserve"><value>Paused at Breakpoint</value></data>
   <data name="StatusPausedError" xml:space="preserve"><value>Paused on Error</value></data>
   <data name="CloseInspector" xml:space="preserve"><value>Close Inspector</value></data>

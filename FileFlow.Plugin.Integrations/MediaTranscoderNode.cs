@@ -37,6 +37,7 @@ public class MediaTranscoderNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         string filePath = item.CurrentPath;
         string presetName = Parameters.TryGetValue("Preset", out var pVal) ? ParameterHelper.GetString(pVal, "Convertir 1080p H.264 (Universal MP4)") : "Convertir 1080p H.264 (Universal MP4)";
         string destDirPattern = Parameters.TryGetValue("DestinationDirectory", out var dVal) ? ParameterHelper.GetString(dVal, "Transcoded") : "Transcoded";
@@ -46,7 +47,7 @@ public class MediaTranscoderNode : IFlowNode
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            context.Log($"MediaTranscoderNode: Archivo de entrada '{filePath}' no existe.", LogLevel.Warning);
+            context.Log($"[Transcodificador] Archivo de entrada no encontrado: '{filePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -58,44 +59,11 @@ public class MediaTranscoderNode : IFlowNode
                 Directory.CreateDirectory(destDir);
             }
 
-            // Resolve extension and FFmpeg arguments dynamically from MediaPresetManagerService or fallback
-            string ext = string.Empty;
-            string ffmpegArgsTemplate = string.Empty;
-
-            try
-            {
-                var appDomainAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "FileFlow.App");
-                if (appDomainAssembly != null)
-                {
-                    var managerType = appDomainAssembly.GetType("FileFlow.App.Services.MediaPresetManagerService");
-                    if (managerType != null)
-                    {
-                        var instanceProp = managerType.GetProperty("Instance");
-                        var instance = instanceProp?.GetValue(null);
-                        if (instance != null)
-                        {
-                            var getPresetMethod = managerType.GetMethod("GetPresetByName");
-                            var presetObj = getPresetMethod?.Invoke(instance, new object[] { presetName });
-                            if (presetObj != null)
-                            {
-                                var extProp = presetObj.GetType().GetProperty("OutputExtension");
-                                var argsProp = presetObj.GetType().GetProperty("FfmpegArguments");
-                                ext = extProp?.GetValue(presetObj)?.ToString() ?? string.Empty;
-                                ffmpegArgsTemplate = argsProp?.GetValue(presetObj)?.ToString() ?? string.Empty;
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            if (string.IsNullOrWhiteSpace(ext)) ext = GetOutputExtensionForPreset(presetName);
-            if (string.IsNullOrWhiteSpace(ffmpegArgsTemplate)) ffmpegArgsTemplate = GetFfmpegArgumentsForPreset(presetName, customArgs);
+            string ext = GetOutputExtensionForPreset(presetName);
+            string ffmpegArgsTemplate = GetFfmpegArgumentsForPreset(presetName, customArgs);
 
             string outputFileName = Path.GetFileNameWithoutExtension(filePath) + ext;
             string targetPath = Path.Combine(destDir, outputFileName);
-
-            context.Log($"MediaTranscoderNode: Transcodificando '{filePath}' usando preset '{presetName}' -> '{targetPath}'", LogLevel.Information);
 
             bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
             string ffmpegExe = ResolveFFmpegExecutable(string.Empty);
@@ -106,9 +74,8 @@ public class MediaTranscoderNode : IFlowNode
             {
                 try
                 {
-                    // Real FFmpeg execution with stdout/stderr progress parsing
                     string cliArgs = $"-y -i \"{filePath}\" {ffmpegArgsTemplate} \"{targetPath}\"";
-                    context.Log($"MediaTranscoderNode: Ejecutando command: {ffmpegExe} {cliArgs}", LogLevel.Debug);
+                    context.Log($"[Transcodificador] Ejecutando FFmpeg: {ffmpegExe} {cliArgs}", LogLevel.Debug, item);
 
                     var psi = new ProcessStartInfo
                     {
@@ -123,14 +90,16 @@ public class MediaTranscoderNode : IFlowNode
                     using var process = new Process { StartInfo = psi };
                     var timeRegex = new Regex(@"time=(\d{2}:\d{2}:\d{2}\.\d{2})", RegexOptions.Compiled);
 
+                    DateTime lastProgressLog = DateTime.MinValue;
                     process.ErrorDataReceived += (_, e) =>
                     {
                         if (!string.IsNullOrWhiteSpace(e.Data))
                         {
                             var match = timeRegex.Match(e.Data);
-                            if (match.Success)
+                            if (match.Success && (DateTime.Now - lastProgressLog).TotalSeconds > 5)
                             {
-                                context.Log($"[FFmpeg Progreso] Transcodificando: tiempo transcurrido = {match.Groups[1].Value}", LogLevel.Information);
+                                lastProgressLog = DateTime.Now;
+                                context.Log($"[Transcodificador] Progreso: {match.Groups[1].Value}", LogLevel.Debug, item);
                             }
                         }
                     };
@@ -146,32 +115,18 @@ public class MediaTranscoderNode : IFlowNode
                     }
                     catch (OperationCanceledException)
                     {
-                        try
-                        {
-                            if (!process.HasExited)
-                            {
-                                process.Kill(entireProcessTree: true);
-                            }
-                        }
-                        catch { }
+                        try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
                         throw;
                     }
                 }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch
-                {
-                    transcodeSuccess = false;
-                }
+                catch { transcodeSuccess = false; }
             }
 
             if (!transcodeSuccess)
             {
                 if (!ffmpegAvailable)
                 {
-                    context.Log($"MediaTranscoderNode: FFmpeg no fue detectado en el sistema ('{ffmpegExe}'). Se simulará la conversión en modo fallback. Configura la ruta de FFmpeg en Ajustes > Herramientas Externas.", LogLevel.Warning);
+                    context.Log($"[Transcodificador] FFmpeg no detectado en el sistema ('{ffmpegExe}'). Copiando archivo en modo fallback.", LogLevel.Warning, item);
                 }
 
                 if (!File.Exists(targetPath))
@@ -180,17 +135,26 @@ public class MediaTranscoderNode : IFlowNode
                 }
             }
 
+            sw.Stop();
+            long outSize = File.Exists(targetPath) ? new FileInfo(targetPath).Length : 0;
+
             var outputItem = item.DeepClone();
             outputItem.CurrentPath = targetPath;
+            outputItem.FileSizeBytes = outSize;
             outputItem.Metadata["TranscodedFrom"] = filePath;
             outputItem.Metadata["TranscodePreset"] = presetName;
             outputItem.AddLog($"MediaTranscoderNode transcodificado exitosamente a {targetPath}");
+
+            string detailsJson = $"{{\"preset\": \"{presetName}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"ffmpegAvailable\": {ffmpegAvailable.ToString().ToLowerInvariant()}, \"realTranscode\": {transcodeSuccess.ToString().ToLowerInvariant()}, \"outSizeBytes\": {outSize}}}";
+            context.Log($"[Transcodificador] Transcodificación finalizada ({presetName}): '{Path.GetFileName(targetPath)}'", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", outputItem);
         }
         catch (Exception ex)
         {
-            context.Log($"MediaTranscoderNode Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Transcodificador] Error al transcodificar: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"MediaTranscoderNode error: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

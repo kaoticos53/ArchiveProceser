@@ -77,7 +77,12 @@ public class BatchBufferNode : IFlowNode
 
         if (toEmit != null && toEmit.Count > 0)
         {
-            context.Log($"[BatchBufferNode] Emitting batch of {toEmit.Count} items.", LogLevel.Information);
+            long totalBytes = toEmit.Sum(b => b.FileSizeBytes);
+            double totalMB = totalBytes / (1024.0 * 1024.0);
+            string detailsJson = $"{{\"batchCount\": {toEmit.Count}, \"totalSizeBytes\": {totalBytes}, \"totalMB\": {totalMB.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}}}";
+            
+            context.Log($"[Buffer Lotes] Emitiendo lote consolidado de {toEmit.Count:N0} elementos ({totalMB:F2} MB)", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
+
             int idx = 1;
             foreach (var bufferedItem in toEmit)
             {

@@ -8,25 +8,48 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **142 / 142 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **146 / 146 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
 ---
 
-## 2. Capa de Telemetría Atómica, Trazabilidad por Fichero e Inspección JSON (Agosto 2026)
-1. **Auto-Vinculación Contextual de Archivos (`WorkflowExecutionContext.cs` & `WorkflowExecutor.cs`)**:
-   - `WorkflowExecutionContext` inyecta automáticamente el `FileItemContext` activo a todos los logs del nodo.
-   - Cualquier llamada `context.Log(...)` extrae de forma automática `ItemId`, `FilePath`, `FileName` y `FileSizeBytes`. Eliminado por completo el problema de nombres de archivos vacíos.
-2. **Estructuración JSON y Mensajes Descriptivos (`LogOutputNode.cs`)**:
-   - `LogOutputNode` genera un payload JSON ordenado (`DetailsJson`) y emite un mensaje conciso de 1 sola línea (`🔍 Inspección: archivo.ext (X MB) • N tags • M metadatos • K nodos previos`).
-3. **Motor SQLite con Índice B-Tree de Trazabilidad (`SqliteLogStore.cs`)**:
-   - Esquema ampliado con `ItemId TEXT`, `FileSizeBytes INTEGER` y `DetailsJson TEXT`.
-   - Creado `IX_Logs_ItemId` y el método `GetItemTraceAsync(string itemId)` para rastrear el ciclo de vida completo de un archivo a través de todos los nodos.
-4. **DataGrid Profesional en WPF con Fila Expansible (`LogView.xaml` / `LogViewModel.cs`)**:
-   - **Columna `ID Flujo`**: Badge `#a1b2c3d4` clicable para filtrar al instante la historia completa del archivo.
-   - **ToolTips Ricos**: Información completa de ruta, tamaño e ID al pasar el ratón sobre la columna Fichero.
-   - **Panel Expansible `RowDetailsTemplate`**: Muestra datos del archivo, visor de JSON formateado monoespaciado y botones de acción rápida (`🔍 Trazabilidad` y `📋 Copiar JSON`).
-   - Virtualización por reciclaje (`VirtualizationMode="Recycling"`), auto-scroll inteligente y ordenación multi-columna dinámica.
+## 2. Capa de Telemetría Atómica, Silenciado Selectivo y Observabilidad en 24 Nodos (Agosto 2026)
+1. **Auditoría y Estandarización de Observabilidad en los 24 Nodos de Producción**:
+   - Estandarización de `context.Log` en todos los plugins (`Logic`, `FileSystem`, `Archives`, `Images`, `Hashing`, `Integrations`).
+   - Métricas de tiempo de ejecución con `Stopwatch` (`durationMs`), identificadores y nombres de archivo no nulos auto-vinculados, y payloads estructurados JSON (`detailsJson`).
+   - Niveles disciplinados: `Debug` para trazas internas de alta frecuencia y desvíos rutinarios, `Information` para hitos de negocio enriquecidos con métricas, `Warning` y `Error` con serialización estructurada de causas y rutas.
+2. **Botón de Toggle de Emisión de Logs por Nodo (Estilo Breakpoint)**:
+   - `NodeCardView.xaml` incorpora un botón interactivo en la cabecera junto al breakpoint.
+   - Indicador visual (`≡`): cian brillante (`#06B6D4`) encendido (emite logs) y gris atenuado (`#475569`) apagado (silenciado).
+   - Menú contextual y ToolTips reactivos: *"Logs: Habilitados (clic para silenciar)"* / *"Logs: Silenciados (clic para activar)"*.
+3. **Supresión en Motor de Ejecución (`WorkflowExecutor.cs`)**:
+   - Nodos silenciados descartan de inmediato sus logs en $O(1)$ sin generar objetos ni saturar la base de datos SQLite.
+4. **Memoización en `FileItemContext.cs` (Zero-Alloc Hot Paths)**:
+   - Cacheo interno e inmutable de `IdString` y `ShortIdString`.
+   - Propiedad `FileName` reactiva a mutaciones en `CurrentPath`.
+5. **Formateo Zero-Boxing en `StructuredLogRecord.cs`**:
+   - `FormattedFileSize` optimizado con formateo numérico directo en lugar de `FormattableString.Invariant`.
+6. **Reutilización de Conexión y Transacciones Masivas en `SqliteLogStore.cs`**:
+   - `InsertBatchAsync` reutiliza `_keepAliveConnection` protegida bajo `_flushLock`.
+7. **Consola Rediseñada con Alineación Vertical Perfecta y Toolbar Compacta (`LogView.xaml` / `LogViewModel.cs`)**:
+   - Barra superior unificada con contadores en tiempo real (`Errores`, `Warn`, `Info`, `Debug`, `Todos`), input de búsqueda reactivo con botón de limpieza (`✕`), contador total de logs en BD y controles de depuración (`⚡ En Vivo`, `💾 Exportar`, `🗑 Limpiar`).
+   - Celdas estandarizadas a `RowHeight="24"` con `VerticalContentAlignment="Center"`.
+   - Pill badges de severidad con fondo translúcido y texto coloreado (`LogLevelToBadgeBackgroundConverter`, `LogLevelToBadgeForegroundConverter`).
+   - Trazabilidad sin interrupciones: resuelto el listener de scroll que interfería al filtrar por archivo.
+8. **Refactorización Modular (Clean Code & SRP)**:
+   - `WorkflowExecutionContext.cs` extraído a archivo independiente.
+   - `SqliteLogQueryBuilder.cs` encapsula la construcción de SQL parametrizado.
+   - `ValueConverters.cs` dividido en `BooleanConverters.cs`, `TelemetryConverters.cs` y `GraphConverters.cs`.
+9. **Auditoría de Seguridad y Depuración de Errores**:
+   - Mitigación estricta de Zip Slip en `SmartUnpackNode.cs` con separador final.
+   - Eliminación de borrado destructivo permanente en `SafeRecycleDeleteNode.cs` y soporte x64 en P/Invoke.
+   - Medición segura con `Stopwatch` en `CliExecutionNode.cs`.
+   - Invocación segura en UI Dispatcher de `FastObservableRingBuffer.cs`.
+   - Limpieza determinista de tareas en `FolderWatcherService.cs` y drenaje en `SqliteLogStore.cs`.
+10. **Batería de Testing Exhaustivo**:
+   - 32 nuevos tests unitarios y de integración para `FileItemContext`, `SystemVariablesResolver`, `AdvancedRenamerNode`, `CliExecutionNode`, `SafeRecycleDeleteNode`, `SqliteLogQueryBuilder` y `ValueConverters`.
+   - Suite total: **178 / 178 pruebas superadas con 100% de éxito (0 errores, 0 fallos)** en 1.1s.
 
 ---
 

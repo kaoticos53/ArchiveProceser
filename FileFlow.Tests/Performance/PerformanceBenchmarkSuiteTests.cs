@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Telemetry;
 using FileFlow.Sdk.TemplateEngine;
 using FluentAssertions;
 using Xunit;
@@ -104,5 +105,68 @@ public class PerformanceBenchmarkSuiteTests
 
         // Assert
         sw.ElapsedMilliseconds.Should().BeLessThan(1000, "20,000 deep clones with heavy metadata should take under 1 second");
+    }
+
+    [Fact]
+    public async Task Benchmark_Telemetry_HighThroughput_ParallelIngestion()
+    {
+        // Arrange
+        var store = new FileFlow.Core.Telemetry.SqliteLogStore($"BenchDb_{Guid.NewGuid():N}");
+        const int totalRecords = 50_000;
+        int workerCount = Environment.ProcessorCount;
+        int recordsPerWorker = totalRecords / workerCount;
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        int initialGen0 = GC.CollectionCount(0);
+        long initialMemory = GC.GetTotalMemory(forceFullCollection: false);
+
+        // Act
+        var sw = Stopwatch.StartNew();
+
+        var tasks = Enumerable.Range(0, workerCount).Select(workerId => Task.Run(() =>
+        {
+            int count = recordsPerWorker + (workerId == 0 ? totalRecords % workerCount : 0);
+            var item = new FileItemContext($@"C:\Photos\Batch_{workerId}\photo_{workerId}.jpg");
+            for (int i = 0; i < count; i++)
+            {
+                var record = StructuredLogRecord.Create(
+                    executionId: "exec-bench",
+                    level: LogLevel.Information,
+                    message: "Process item completed",
+                    nodeId: $"Node_{workerId}",
+                    nodeName: $"Worker #{workerId}",
+                    filePath: item.CurrentPath,
+                    durationMs: 1.25,
+                    itemId: item.IdString,
+                    fileSizeBytes: item.FileSizeBytes,
+                    fileName: item.FileName
+                );
+                store.EnqueueLog(record);
+            }
+        })).ToArray();
+
+        await Task.WhenAll(tasks);
+        await store.FlushPendingLogsAsync();
+        sw.Stop();
+
+        long finalMemory = GC.GetTotalMemory(forceFullCollection: false);
+        int gen0Collections = GC.CollectionCount(0) - initialGen0;
+        double opsPerSecond = (totalRecords / (double)sw.ElapsedMilliseconds) * 1000.0;
+
+        _output.WriteLine($"=== TELEMETRY HIGH-THROUGHPUT BENCHMARK ===");
+        _output.WriteLine($"Records Processed: {totalRecords:N0} across {workerCount} CPU cores");
+        _output.WriteLine($"Total Time (Enqueue + In-Memory SQLite Flush): {sw.ElapsedMilliseconds} ms");
+        _output.WriteLine($"Throughput: {opsPerSecond:N0} logs/sec");
+        _output.WriteLine($"Gen0 Collections: {gen0Collections}");
+        _output.WriteLine($"Memory Delta: {(finalMemory - initialMemory) / 1024.0 / 1024.0:F2} MB");
+
+        int storedCount = await store.GetTotalCountAsync();
+        storedCount.Should().Be(totalRecords);
+        opsPerSecond.Should().BeGreaterThan(25000, "Multi-core telemetry ingestion should exceed 25,000 logs/sec");
+
+        await store.DisposeAsync();
     }
 }

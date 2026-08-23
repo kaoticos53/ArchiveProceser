@@ -55,7 +55,8 @@ public class ArchiveFilterNode : IFlowNode
         // 1. Check if it's a secondary split-volume (e.g. .r01, .r02, .part02.rar)
         if (SecondaryVolumeRegex.IsMatch(fileName))
         {
-            context.Log($"ArchiveFilterNode: Multi-volume secondary file detected '{fileName}'.", LogLevel.Information);
+            string detailsJson = $"{{\"classification\": \"SecondaryVolume\", \"fileName\": \"{fileName}\"}}";
+            context.Log($"[Filtro Archivos] Volumen secundario detectado: '{fileName}' -> Rama 'SecondaryVolume'", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
             item.AddLog($"ArchiveFilterNode classified as SecondaryVolume ({fileName})");
             item.Metadata["IsSecondaryArchiveVolume"] = true;
             await context.EmitAsync("SecondaryVolume", item);
@@ -65,7 +66,8 @@ public class ArchiveFilterNode : IFlowNode
         // 2. Check if it's a primary archive (.zip, .rar, .7z, .part01.rar)
         if (PrimaryArchiveRegex.IsMatch(fileName))
         {
-            context.Log($"ArchiveFilterNode: Primary archive detected '{fileName}'.", LogLevel.Information);
+            string detailsJson = $"{{\"classification\": \"PrimaryArchive\", \"fileName\": \"{fileName}\"}}";
+            context.Log($"[Filtro Archivos] Archivo comprimido principal detectado: '{fileName}' -> Rama 'Archive'", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
             item.AddLog($"ArchiveFilterNode classified as PrimaryArchive ({fileName})");
             item.Metadata["IsPrimaryArchive"] = true;
             await context.EmitAsync("Archive", item);
@@ -73,7 +75,7 @@ public class ArchiveFilterNode : IFlowNode
         }
 
         // 3. Uncompressed regular file
-        context.Log($"ArchiveFilterNode: Regular uncompressed file detected '{fileName}'.", LogLevel.Information);
+        context.Log($"[Filtro Archivos] Archivo regular no comprimido: '{fileName}' -> Rama 'RegularFile'", LogLevel.Debug, item);
         item.AddLog($"ArchiveFilterNode classified as RegularFile ({fileName})");
         await context.EmitAsync("RegularFile", item);
     }

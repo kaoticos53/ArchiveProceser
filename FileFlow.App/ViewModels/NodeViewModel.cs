@@ -73,6 +73,9 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     private bool _hasBreakpoint;
 
     [ObservableProperty]
+    private bool _isLoggingEnabled = true;
+
+    [ObservableProperty]
     private NodeExecutionStatus _executionStatus = NodeExecutionStatus.Idle;
 
     [ObservableProperty]
@@ -425,6 +428,12 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     public void ToggleBreakpoint()
     {
         HasBreakpoint = !HasBreakpoint;
+    }
+
+    [RelayCommand]
+    public void ToggleLogging()
+    {
+        IsLoggingEnabled = !IsLoggingEnabled;
     }
 
     public const int MaxRecordedSnapshots = 500;

@@ -39,9 +39,11 @@ public class DestinationSinkNode : IFlowNode
         string strategy = Parameters.TryGetValue("ConflictStrategy", out var sVal) ? ParameterHelper.GetString(sVal, "RenameIncremental") : "RenameIncremental";
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"DestinationSinkNode: Input file '{item.CurrentPath}' not found.", LogLevel.Warning);
+            context.Log($"[Destino Final] Archivo de entrada no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -61,24 +63,23 @@ public class DestinationSinkNode : IFlowNode
                 switch (strategy.ToUpperInvariant())
                 {
                     case "SKIP":
-                        context.Log($"[DestinationSinkNode] Skipping file due to conflict: {targetPath}", LogLevel.Information);
+                        context.Log($"[Destino Final] Omitido por colisión existente (Estrategia: Skip): '{targetPath}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds);
                         item.AddLog($"DestinationSinkNode skipped due to conflict: {targetPath}");
                         await context.EmitAsync("Done", item);
                         return;
 
                     case "RENAMEINCREMENTAL":
+                        string originalTarget = targetPath;
                         targetPath = GetIncrementalFileName(destRoot, fileName);
-                        context.Log($"[DestinationSinkNode] Renamed target to avoid conflict: {targetPath}", LogLevel.Information);
+                        context.Log($"[Destino Final] Renombrado incremental para evitar colisión: '{Path.GetFileName(targetPath)}'", LogLevel.Debug, item);
                         break;
 
                     case "OVERWRITE":
                     default:
-                        context.Log($"[DestinationSinkNode] Overwriting target file: {targetPath}", LogLevel.Information);
+                        context.Log($"[Destino Final] Sobrescribiendo archivo destino existente: '{targetPath}'", LogLevel.Debug, item);
                         break;
                 }
             }
-
-            context.Log($"[DestinationSinkNode] Saving file to: {targetPath} (DryRun={isDryRun})", LogLevel.Information);
 
             if (!isDryRun)
             {
@@ -86,12 +87,18 @@ public class DestinationSinkNode : IFlowNode
                 item.CurrentPath = targetPath;
             }
 
+            sw.Stop();
+            string detailsJson = $"{{\"destinationRoot\": \"{destRoot.Replace("\\", "\\\\")}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"strategy\": \"{strategy}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}, \"sizeBytes\": {item.FileSizeBytes}}}";
+            context.Log($"[Destino Final] Guardado con éxito en '{targetPath}' (Estrategia: {strategy}, DryRun={isDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+
             item.AddLog($"DestinationSinkNode output saved to {targetPath}");
             await context.EmitAsync("Done", item);
         }
         catch (Exception ex)
         {
-            context.Log($"DestinationSinkNode Error: {ex.Message}", LogLevel.Error);
+            sw.Stop();
+            string errDetails = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"destinationRoot\": \"{destRoot.Replace("\\", "\\\\")}\"}}";
+            context.Log($"[Destino Final] Error al guardar archivo: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errDetails);
             item.AddLog($"DestinationSinkNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

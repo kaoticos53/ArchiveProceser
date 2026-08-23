@@ -41,19 +41,21 @@ public class WebhookNotificationNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        string url = Parameters.TryGetValue("Url", out var uVal) ? ParameterHelper.GetString(uVal, "https://httpbin.org/post") : "https://httpbin.org/post";
+        string payloadTemplate = Parameters.TryGetValue("PayloadTemplate", out var pVal) ? ParameterHelper.GetString(pVal, "{}") : "{}";
+        int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 15) : 15;
+
+        string resolvedUrl = VariableTemplateResolver.Resolve(url, item);
+        string resolvedPayload = VariableTemplateResolver.Resolve(payloadTemplate, item);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
-            string url = Parameters.TryGetValue("Url", out var uVal) ? ParameterHelper.GetString(uVal, "https://httpbin.org/post") : "https://httpbin.org/post";
-            string payloadTemplate = Parameters.TryGetValue("PayloadTemplate", out var pVal) ? ParameterHelper.GetString(pVal, "{}") : "{}";
-            int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 15) : 15;
-
-            string resolvedUrl = VariableTemplateResolver.Resolve(url, item);
-            string resolvedPayload = VariableTemplateResolver.Resolve(payloadTemplate, item);
 
             if (!Uri.TryCreate(resolvedUrl, UriKind.Absolute, out var parsedUri) ||
                 (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps))
             {
-                context.Log($"[WebhookNotificationNode] URL inválida o esquema no soportado: '{resolvedUrl}'", LogLevel.Error);
+                context.Log($"[Webhook] URL inválida o protocolo no soportado: '{resolvedUrl}'", LogLevel.Error, item);
                 item.AddLog($"Webhook Error: URL invalida '{resolvedUrl}'");
                 await context.EmitAsync("Failed", item);
                 return;
@@ -71,6 +73,7 @@ public class WebhookNotificationNode : IFlowNode
                     $"HTTP POST to {resolvedUrl}"
                 ));
                 item.AddLog($"[DryRun] Planned Webhook POST to {resolvedUrl}");
+                context.Log($"[Webhook] [DryRun] Planificado envío HTTP POST a '{resolvedUrl}'", LogLevel.Information, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
@@ -80,22 +83,41 @@ public class WebhookNotificationNode : IFlowNode
             cts.CancelAfter(TimeSpan.FromSeconds(timeoutSec));
 
             using var response = await HttpClient.PostAsync(resolvedUrl, content, cts.Token).ConfigureAwait(false);
+            sw.Stop();
+
+            string respBody = string.Empty;
+            try
+            {
+                respBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch { }
+
+            string detailsJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                url = resolvedUrl,
+                statusCode = (int)response.StatusCode,
+                statusText = response.StatusCode.ToString(),
+                payloadSample = resolvedPayload.Length > 250 ? resolvedPayload[..250] + "..." : resolvedPayload,
+                responseSample = respBody.Length > 250 ? respBody[..250] + "..." : respBody
+            });
+
             if (response.IsSuccessStatusCode)
             {
                 item.AddLog($"Webhook POST succeeded ({response.StatusCode}) to {resolvedUrl}");
-                context.Log($"[WebhookNotificationNode] Sent webhook successfully ({response.StatusCode})", LogLevel.Information);
+                context.Log($"[Webhook] Notificación enviada con éxito (HTTP {(int)response.StatusCode}): '{resolvedUrl}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
                 await context.EmitAsync("Out", item);
             }
             else
             {
                 item.AddLog($"Webhook POST returned error {response.StatusCode}");
-                context.Log($"[WebhookNotificationNode] HTTP Error: {response.StatusCode}", LogLevel.Warning);
+                context.Log($"[Webhook] Servidor respondió con error HTTP {(int)response.StatusCode}: {response.ReasonPhrase}", LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
                 await context.EmitAsync("Failed", item);
             }
         }
         catch (Exception ex)
         {
-            context.Log($"[WebhookNotificationNode] Exception: {ex.Message}", LogLevel.Error);
+            string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"url\": \"{url.Replace("\"", "\\\"")}\"}}";
+            context.Log($"[Webhook] Error al enviar notificación HTTP: {ex.Message}", LogLevel.Error, item, durationMs: 0.0, detailsJson: errJson);
             item.AddLog($"Webhook Exception: {ex.Message}");
             await context.EmitAsync("Failed", item);
         }

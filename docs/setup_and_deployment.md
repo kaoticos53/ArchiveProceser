@@ -1,115 +1,112 @@
-# Guía de Instalación, Configuración y Despliegue - FileFlow Studio
+# Guía de Instalación y Despliegue - FileFlow Studio
 
 ## 1. Requisitos Previos del Sistema
 
-Para compilar, ejecutar o desarrollar en **FileFlow Studio**, el sistema debe cumplir con los siguientes requisitos:
+Antes de compilar o desplegar **FileFlow Studio**, asegúrate de que el entorno cumple con los siguientes requisitos:
 
-### 1.1 Requisitos de Entorno de Desarrollo
-- **Sistema Operativo:** Windows 10 (Build 19041+) o Windows 11 (x64).
-- **SDK del Lenguaje:** [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) (versión 9.0.100 o superior).
-- **Lenguaje:** C# 13 (incluido en .NET 9 SDK).
-- **IDE Recomendado:** Visual Studio 2022 (v17.12+ con carga de trabajo `.NET Desktop Development`) o JetBrains Rider / VS Code con extensión C# Dev Kit.
+### 1.1. Entorno de Desarrollo (Compilación desde código fuente)
+- **Sistema Operativo**: Windows 10 (versión 1809 o superior) / Windows 11 (Requerido para la interfaz gráfica WPF).
+- **SDK de .NET**: [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) (versión `9.0.100` o superior).
+- **Herramientas de Línea de Comandos**: PowerShell 7+ o Windows PowerShell 5.1.
+- **IDE Recomendado**: Visual Studio 2022 (v17.12+ con carga de trabajo *.NET Desktop Development*), JetBrains Rider 2024.3+, o VS Code con extensión *C# Dev Kit*.
 
-### 1.2 Herramientas CLI Opcionales (Recomendadas para Integraciones)
-Para habilitar todas las capacidades avanzadas multimedia, de compresión y automatización, se recomienda contar con:
-- **FFmpeg / FFprobe:** (Para el nodo `Transcodificar Media`).
-- **7-Zip (`7z.exe`):** (Para extracción y compresión en formatos 7Z/RAR).
-- **Python (v3.10+):** (Para scripts en el nodo `Ejecutar Comando CLI`).
+### 1.2. Entorno de Ejecución (Para usuarios finales)
+- **Runtime**: [.NET Desktop Runtime 9.0](https://dotnet.microsoft.com/download/dotnet/9.0) (x64) si se utiliza la versión *framework-dependent*, o ninguno si se utiliza la versión autónoma (*self-contained*).
+- **Herramientas Opcionales (Integraciones de Dominio)**:
+  - **FFmpeg**: Necesario para el nodo `MediaTranscoderNode`. Se recomienda tener `ffmpeg.exe` y `ffprobe.exe` en el `PATH` del sistema o en el directorio raíz de la aplicación.
+  - **7-Zip CLI / WinRAR**: Opcional para formatos propietarios protegidos en `SmartUnpackNode`.
 
 ---
 
-## 2. Configuración del Entorno de Desarrollo Local
+## 2. Configuración del Entorno Local
 
-### 2.1 Clonar el Repositorio
+### 2.1. Clonación del Repositorio
 ```powershell
 git clone https://github.com/kaoticos53/ArchiveProceser.git
 cd ArchiveProceser
 ```
 
-### 2.2 Restauración de Paquetes NuGet
-El proyecto utiliza la nueva especificación de solución XML de .NET 9 (`FileFlow.slnx`). Ejecuta:
+### 2.2. Restauración de Paquetes NuGet
 ```powershell
 dotnet restore FileFlow.slnx
 ```
 
-### 2.3 Compilación Básica
-Para verificar que el proyecto compila limpiamente sin advertencias ni errores:
-```powershell
-dotnet build FileFlow.slnx --configuration Debug
-```
-
 ---
 
-## 3. Ejecución Rápida y Automatizada (`run.ps1`)
+## 3. Compilación y Ejecución Local
 
-El repositorio incluye el script automatizado PowerShell `run.ps1` en la raíz, el cual compila todos los módulos en el orden de dependencia correcto y lanza la aplicación:
+### 3.1. Mediante el Script Automatizado (Recomendado)
+El proyecto incluye un script de compilación y ejecución directa en PowerShell que valida dependencias y arranca el entorno de depuración:
 
 ```powershell
 .\run.ps1
 ```
 
-Este script ejecuta automáticamente los siguientes pasos:
-1. Compila `FileFlow.Sdk`.
-2. Compila `FileFlow.Core`.
-3. Compila el conjunto de plugins (`FileFlow.Plugin.*`).
-4. Copia las DLLs de plugins al directorio `Plugins/` de la aplicación.
-5. Inicia la aplicación principal `FileFlow.App.exe`.
+### 3.2. Mediante el CLI de .NET
+Para compilar la solución completa en modo Debug:
+```powershell
+dotnet build FileFlow.slnx -c Debug
+```
+
+Para arrancar la aplicación de escritorio:
+```powershell
+dotnet run --project FileFlow.App/FileFlow.App.csproj -c Debug
+```
 
 ---
 
-## 4. Estructura de Almacenamiento y Archivos de Configuración
+## 4. Ejecución de la Batería de Pruebas Automatizadas
 
-FileFlow Studio almacena automáticamente sus preferencias y configuraciones del usuario en el directorio del perfil de Windows:
+FileFlow Studio cuenta con una suite completa de pruebas unitarias, de integración, rendimiento y seguridad bajo xUnit, FluentAssertions y Moq:
 
+```powershell
+# Ejecutar todas las pruebas de la solución
+dotnet test FileFlow.slnx
+
+# Ejecutar pruebas con reporte detallado
+dotnet test FileFlow.slnx --logger "console;verbosity=detailed"
+
+# Ejecutar con medición de cobertura de código
+dotnet test FileFlow.slnx --collect:"XPlat Code Coverage"
 ```
-%APPDATA%\FileFlowStudio\
-├── user_preferences.json      # Preferencias generales (Tema, Hilos CPU, Salida Global, Logs)
-├── media_presets.json         # Presets de transcodificación multimedia (MP3, 1080p, WebM, etc.)
-└── external_tools.json        # Rutas de herramientas externas (FFmpeg, 7z, Python)
-```
-
-### 4.1 Autobúsqueda de Herramientas Externas
-Si no deseas configurar manualmente las rutas de `ffmpeg.exe` o `7z.exe`, abre la aplicación y dirígete a:
-**⚙️ Configuración del Flujo > 🛠️ Herramientas Externas > 🔍 Auto-Detectar Herramientas**
-
-El sistema escaneará automáticamente el `PATH` del sistema, variables de entorno, carpetas de programas (`Program Files`, `AppData`, `WinGet`, `Chocolatey`, `Scoop`) y el Registro de Windows.
 
 ---
 
-## 5. Empaquetado y Publicación para Producción
+## 5. Empaquetado y Distribución
 
-Para generar un ejecutable independiente optimizado para distribución (*Self-Contained Release*):
+### 5.1. Publicación Autónomo (*Self-Contained Single-File*)
+Genera un ejecutable único portable de alto rendimiento con todas las librerías de .NET 9 incluidas (no requiere que el cliente instale el runtime):
 
-### 5.1 Publicar Aplicación Principal
 ```powershell
 dotnet publish FileFlow.App/FileFlow.App.csproj `
   -c Release `
   -r win-x64 `
   --self-contained true `
   -p:PublishSingleFile=true `
-  -o ./publish/FileFlowStudio
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:EnableCompressionInSingleFile=true `
+  -o ./publish/FileFlowStudio-win-x64
 ```
 
-### 5.2 Publicar Plugins
+### 5.2. Publicación Dependiente del Marco (*Framework-Dependent*)
+Genera un paquete ligero para entornos que ya cuentan con .NET 9 Desktop Runtime instalado:
+
 ```powershell
-$plugins = @("FileSystem", "Archives", "Images", "Integrations", "Logic", "Hashing")
-foreach ($plugin in $plugins) {
-    dotnet publish FileFlow.Plugin.$plugin/FileFlow.Plugin.$plugin.csproj `
-      -c Release `
-      -o ./publish/FileFlowStudio/Plugins
-}
+dotnet publish FileFlow.App/FileFlow.App.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained false `
+  -o ./publish/FileFlowStudio-portable
 ```
-
-El directorio `./publish/FileFlowStudio` contendrá el ejecutable listo para distribución sin necesidad de instalar el SDK de .NET en el equipo cliente.
 
 ---
 
-## 6. Integración en Tuberías CI/CD (GitHub Actions / Azure DevOps)
+## 6. Pipeline de Integración Continua (CI/CD)
 
-Ejemplo de flujo de integración continua para GitHub Actions (`.github/workflows/build_and_test.yml`):
+Ejemplo de flujo de trabajo en **GitHub Actions** (`.github/workflows/ci.yml`) para validación y compilación en cada Pull Request:
 
 ```yaml
-name: FileFlow Studio CI
+name: FileFlow Studio CI/CD
 
 on:
   push:
@@ -122,19 +119,30 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout del Repositorio
+      uses: actions/checkout@v4
 
-    - name: Setup .NET 9
+    - name: Configurar .NET 9 SDK
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
 
-    - name: Restore dependencies
+    - name: Restaurar Dependencias
       run: dotnet restore FileFlow.slnx
 
-    - name: Build Solution
-      run: dotnet build FileFlow.slnx --configuration Release --no-restore
+    - name: Compilar Solución (Release)
+      run: dotnet build FileFlow.slnx -c Release --no-restore
 
-    - name: Run Test Suite
-      run: dotnet test FileFlow.slnx --configuration Release --no-build --verbosity normal
+    - name: Ejecutar Suite de Tests
+      run: dotnet test FileFlow.slnx -c Release --no-build --verbosity normal
+
+    - name: Publicar Artefacto Portable
+      run: |
+        dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./dist
+      
+    - name: Subir Binario como Artefacto
+      uses: actions/upload-artifact@v4
+      with:
+        name: FileFlowStudio-win-x64
+        path: ./dist/
 ```

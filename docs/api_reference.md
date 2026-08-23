@@ -1,232 +1,242 @@
-# Referencia de API y Módulos - FileFlow Studio
+# Referencia de API y Contratos de SDK - FileFlow Studio
 
-Este documento detalla los contratos base, firmas de métodos públicas, modelos de datos y motores principales expuestos por la capa SDK (`FileFlow.Sdk`) y el motor de ejecución (`FileFlow.Core`).
-
----
-
-## 1. Contratos Base de la Capa SDK (`FileFlow.Sdk`)
-
-### 1.1 `FileItemContext`
-Representa la unidad de datos inmutable/transmutable que fluye a través del grafo durante la ejecución de los nodos.
-
-```csharp
-public record FileItemContext
-{
-    public Guid Id { get; init; } = Guid.NewGuid();
-    public string CurrentPath { get; set; }
-    public string OriginalPath { get; init; }
-    public bool IsDirectory { get; set; }
-    public long FileSizeBytes { get; set; }
-    public Dictionary<string, object?> Metadata { get; }
-    public HashSet<string> Tags { get; }
-    public List<string> ExecutionLog { get; }
-
-    public FileItemContext(string path, bool isDirectory = false);
-    public FileItemContext DeepClone();
-    public void AddLog(string message);
-}
-```
-- **Parámetros Clave:**
-  - `CurrentPath`: Ruta física actual del archivo o carpeta en el disco.
-  - `OriginalPath`: Ruta original del archivo al ser capturado en el puerto de origen.
-  - `Metadata`: Diccionario insensible a mayúsculas/minúsculas para almacenar metadatos inyectados (`{Hash:SHA256}`, `{ImageWidth}`, `{UnpackedFileCount}`, etc.).
+Esta guía documenta los contratos principales de `FileFlow.Sdk`, tipos de datos, firmas de métodos y cómo extender el sistema creando nodos personalizados.
 
 ---
 
-### 1.2 `IFlowNode`
-Contrato fundamental que deben implementar todas las clases de nodos de procesamiento.
+## 1. Contratos Fundamentales del SDK
+
+### 1.1. `IFlowNode`
+Contrato primordial que debe implementar cualquier nodo que procese datos dentro del grafo de ejecución.
 
 ```csharp
+namespace FileFlow.Sdk;
+
 public interface IFlowNode
 {
-    string Id { get; set; }
+    string Id { get; }
     string Name { get; }
     string Category { get; }
     string Description { get; }
-    IReadOnlyList<NodePort> Inputs { get; }
-    IReadOnlyList<NodePort> Outputs { get; }
-    Dictionary<string, object?> Parameters { get; }
-
-    Task ExecuteAsync(
-        string inputPortName,
-        FileItemContext item,
-        IFlowExecutionContext context,
-        CancellationToken cancellationToken);
+    IReadOnlyList<NodePinDefinition> Inputs { get; }
+    IReadOnlyList<NodePinDefinition> Outputs { get; }
+    
+    ValueTask ExecuteAsync(FileItemContext item, IFlowExecutionContext context);
+    ValidationResult ValidateConfiguration();
 }
 ```
 
-#### Atributo `[NodeDefinition]`
-Decorador obligatorio para que el `PluginLoader` descubra dinámicamente el nodo:
+#### Métodos:
+- **`ExecuteAsync(FileItemContext item, IFlowExecutionContext context)`**: Ejecuta la lógica asíncrona del nodo sobre un elemento en tránsito. Debe propagar el token `context.CancellationToken` en todas las llamadas I/O.
+- **`ValidateConfiguration()`**: Valida que los parámetros requeridos (rutas, expresiones, patrones) estén correctamente formateados antes de iniciar el grafo.
+
+---
+
+### 1.2. `FileItemContext`
+Representa el estado y metadatos de un archivo en tránsito a lo largo de los nodos del flujo de trabajo.
+
 ```csharp
-[NodeDefinition(string nameResourceKey, string category, string descriptionResourceKey)]
+namespace FileFlow.Sdk;
+
+public class FileItemContext
+{
+    public Guid Id { get; }
+    public string OriginalPath { get; set; }
+    public string CurrentPath { get; set; }
+    public long SizeBytes { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public Dictionary<string, object?> Variables { get; }
+    public Dictionary<string, object?> Metadata { get; }
+
+    // Accesores Memoizados de Ultra-Bajo Costo (Zero-Alloc Hot Paths)
+    public string IdString { get; }
+    public string ShortIdString { get; }
+    public string FileName { get; }
+    public string FileExtension { get; }
+
+    public FileItemContext(string filePath);
+    public FileItemContext Clone();
+}
 ```
 
 ---
 
-### 1.3 `IFlowExecutionContext`
-Interfaz del contexto de ejecución inyectado al nodo para interactuar con el motor orquestador.
+### 1.3. `IFlowExecutionContext`
+Proporciona al nodo acceso al entorno de ejecución global, emisión de elementos y telemetría estructurada.
 
 ```csharp
+namespace FileFlow.Sdk;
+
 public interface IFlowExecutionContext
 {
+    CancellationToken CancellationToken { get; }
     bool IsDryRun { get; }
-    Task EmitAsync(string outputPortName, FileItemContext item);
-    void ReportProgress(double percentage, string statusMessage);
-    void Log(string message, LogLevel level);
-    void RegisterPlannedAction(PlannedAction action);
-    void RecordJournalEntry(JournalEntry entry);
+    string ExecutionId { get; }
+    
+    ValueTask EmitAsync(FileItemContext item, string outputPinName = "Output");
+    void SetGlobalVariable(string key, object? value);
+    bool TryGetGlobalVariable<T>(string key, out T? value);
+    
+    // Telemetría y Logging Estructurado
+    void Log(
+        LogLevel level, 
+        string message, 
+        string? nodeId = null, 
+        string? nodeName = null, 
+        string? filePath = null, 
+        double durationMs = 0.0, 
+        string? itemId = null, 
+        long fileSizeBytes = 0, 
+        string? detailsJson = null
+    );
 }
 ```
-- **`EmitAsync(port, item)`:** Emite el elemento procesado hacia el puerto de salida especificado, activando los nodos conectados aguas abajo.
-- **`RegisterPlannedAction`:** Registra acciones virtuales cuando `IsDryRun == true`.
-- **`RecordJournalEntry`:** Registra una transacción atómica con delegado inverso para rollback.
 
 ---
 
-### 1.4 `NodePort`
-Representa un punto de conexión (puerto de entrada o salida) en la tarjeta del nodo.
+### 1.4. `StructuredLogRecord`
+Registro inmutable de telemetría optimizado para serialización y visualización reactiva en UI.
 
 ```csharp
-public record NodePort(
-    string Name,
-    Type DataType,
-    PortDirection Direction,
-    string DisplayName,
-    string? Description = null);
+namespace FileFlow.Sdk.Telemetry;
 
-public enum PortDirection
+public record StructuredLogRecord(
+    long Id,
+    string ExecutionId,
+    DateTime Timestamp,
+    LogLevel Level,
+    string? NodeId,
+    string? NodeName,
+    string? ItemId,
+    string? FilePath,
+    string? FileName,
+    long FileSizeBytes,
+    double DurationMs,
+    string Message,
+    string? DetailsJson = null
+)
 {
-    Input,
-    Output
+    public bool HasDetails => !string.IsNullOrWhiteSpace(DetailsJson);
+    public string ShortItemId => !string.IsNullOrWhiteSpace(ItemId) ? (ItemId.Length > 8 ? ItemId[..8] : ItemId) : string.Empty;
+    public string FormattedTimestamp => $"[{Timestamp:HH:mm:ss.fff}]";
+    public string FormattedFileSize => ...;
+    public string BadgeText => ...;
 }
 ```
 
 ---
 
-## 2. Motor de Plantillas de Variables (`VariableTemplateResolver`)
+## 2. Motor de Interpolación de Variables (`VariableTemplateResolver`)
 
-El motor de plantillas evalúa expresiones encerradas en llaves `{...}` sobre cualquier parámetro de texto o ruta de nodo.
+Permite sustituir patrones dinámicos en rutas y nombres de archivos:
 
 ```csharp
+namespace FileFlow.Sdk;
+
 public static class VariableTemplateResolver
 {
-    public static string Resolve(string template, FileItemContext item, string? sourceRootPath = null);
-    public static string GetVariableValue(string varName, FileItemContext item, string? sourceRootPath = null);
+    public static string Resolve(string template, FileItemContext item, IFlowExecutionContext? context = null);
 }
 ```
 
-### 2.1 Variables del Sistema Estandarizadas
-| Token | Descripción | Ejemplo de Valor |
+### Tabla de Variables Predefinidas:
+
+| Variable | Descripción | Ejemplo de Salida |
 |---|---|---|
-| `{FileName}` | Nombre de archivo con extensión | `documento.pdf` |
-| `{FileNameNoExt}` | Nombre de archivo sin extensión | `documento` |
-| `{Extension}` | Extensión con punto | `.pdf` |
-| `{CurrentPath}` | Ruta absoluta actual | `C:\Input\documento.pdf` |
-| `{CurrentDir}` | Directorio contenedor | `C:\Input` |
-| `{RelativePath}` | Ruta de subcarpetas relativa | `facturas/2026` |
-| `{DateNow}` | Fecha actual (`yyyy-MM-dd`) | `2026-08-22` |
-| `{TimeNow}` | Hora actual (`HH-mm-ss`) | `21:40:00` |
-| `{DateTimeNow}` | Fecha y hora combinadas | `2026-08-22_21-40-00` |
-| `{Counter}` / `{Index}` | Contador numérico de lote | `1`, `2`, `3` |
-| `{SizeMB}` / `{SizeKB}` | Peso formateado | `14.5 MB` |
-| `{UserName}` | Usuario de Windows activo | `Ricardo` |
-
-### 2.2 Funciones de Expresión Soportadas
-- **Transformación de Texto:**
-  - `{Upper(text)}`: Convierte a mayúsculas.
-  - `{Lower(text)}`: Convierte a minúsculas.
-  - `{Trim(text)}`: Elimina espacios de los extremos.
-  - `{Replace(text, "buscado", "reemplazo")}`: Reemplazo consciente de comillas.
-  - `{Sanitize(text)}`: Reemplaza caracteres ilegales en Windows por `-`.
-  - `{PadLeft(text, longitud, "carácter")}`: Relleno numérico (ej. `{PadLeft(Counter, 4, "0")}` $\rightarrow$ `0005`).
-  - `{Coalesce(val1, val2, ...)}`: Retorna el primer valor no vacío.
-- **Expresiones Regulares (con protección ReDoS de 1 segundo):**
-  - `{RegexMatch(text, "patrón")}`
-  - `{RegexReplace(text, "patrón", "reemplazo")}`
-- **Fechas y Tiempos:**
-  - `{Year(fecha)}`, `{Month(fecha)}`, `{Day(fecha)}`
-  - `{FormatDate(fecha, "yyyy-MM")}`
-  - `{FileAgeDays(fecha)}`: Antigüedad calculada en días UTC.
+| `{FileName}` | Nombre del archivo con extensión | `informe_anual.pdf` |
+| `{FileNameWithoutExt}` | Nombre del archivo sin extensión | `informe_anual` |
+| `{Ext}` | Extensión sin punto | `pdf` |
+| `{Date:yyyy-MM-dd}` | Fecha actual formateada | `2026-08-23` |
+| `{Time:HH-mm-ss}` | Hora actual formateada | `17-30-00` |
+| `{SizeMB}` | Tamaño del archivo en megabytes | `14.50` |
+| `{Hash:sha256}` | Hash SHA-256 (si fue calculado) | `e3b0c44298fc1c149afbf4c8996fb924...` |
+| `{Var:MiVariable}` | Variable personalizada inyectada | `Contabilidad` |
 
 ---
 
-## 3. Capa de Ejecución (`FileFlow.Core`)
+## 3. Ejemplo Práctico: Creación de un Nodo Personalizado
 
-### 3.1 `WorkflowExecutor`
-Orquestador principal que ejecuta la topología del grafo.
-
-```csharp
-public class WorkflowExecutor
-{
-    public int MaxDegreeOfParallelism { get; set; }
-    public string GlobalOutputDir { get; set; }
-    public bool IsDryRun { get; set; }
-    public bool IsPaused { get; }
-
-    public event Action<double, string>? ProgressChanged;
-    public event Action<string, LogLevel>? LogEmitted;
-    public event Action<string, NodeExecutionStatus>? NodeStatusChanged;
-
-    public void Pause();
-    public void Resume();
-    public Task ExecuteAsync(WorkflowGraph graph, PluginLoader loader, CancellationToken cancellationToken);
-}
-```
-
----
-
-## 4. Ejemplo Práctico: Creación de un Nodo Personalizado
-
-A continuación se muestra un ejemplo completo de cómo crear un nodo personalizado implementando `IFlowNode`:
+Ejemplo completo de implementación de un nodo que valida la integridad de archivos de texto:
 
 ```csharp
+using System.Diagnostics;
+using System.Text.Json;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Telemetry;
 
-namespace MyCustomPlugin;
+namespace FileFlow.Plugin.Custom;
 
-[NodeDefinition("MiNodoFiltro_Name", "FileSystem", "MiNodoFiltro_Desc")]
-public class CustomFilterNode : IFlowNode
+public class TextFileValidatorNode : IFlowNode
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => "Filtro Personalizado";
-    public string Category => "FileSystem";
-    public string Description => "Filtra archivos que superen un tamaño en Megabytes.";
+    public string Id => "custom.text_validator";
+    public string Name => "Validador de Texto";
+    public string Category => "Validación";
+    public string Description => "Comprueba que un archivo de texto no contenga caracteres nulos y cuenta líneas.";
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public int MaxAllowedLines { get; set; } = 10000;
+
+    public IReadOnlyList<NodePinDefinition> Inputs { get; } = [
+        new("Input", "Entrada", PinDataType.File)
+    ];
+
+    public IReadOnlyList<NodePinDefinition> Outputs { get; } = [
+        new("Valid", "Válido", PinDataType.File),
+        new("Invalid", "Inválido", PinDataType.File)
+    ];
+
+    public async ValueTask ExecuteAsync(FileItemContext item, IFlowExecutionContext context)
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "Entrada")
-    };
+        var sw = Stopwatch.StartNew();
+        int lineCount = 0;
+        bool hasNullChars = false;
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Passed", typeof(FileItemContext), PortDirection.Output, "Aprobado"),
-        new NodePort("Rejected", typeof(FileItemContext), PortDirection.Output, "Rechazado")
-    };
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["MaxMB"] = 50.0
-    };
-
-    public async Task ExecuteAsync(
-        string inputPortName,
-        FileItemContext item,
-        IFlowExecutionContext context,
-        CancellationToken cancellationToken)
-    {
-        double maxMb = Parameters.TryGetValue("MaxMB", out var val) ? Convert.ToDouble(val) : 50.0;
-        double fileSizeMb = item.FileSizeBytes / (1024.0 * 1024.0);
-
-        if (fileSizeMb <= maxMb)
+        using (var reader = new StreamReader(item.CurrentPath))
         {
-            context.Log($"[CustomFilterNode] Archivo '{item.CurrentPath}' aprobado ({fileSizeMb:F2} MB).", LogLevel.Information);
-            await context.EmitAsync("Passed", item);
+            string? line;
+            while ((line = await reader.ReadLineAsync(context.CancellationToken).ConfigureAwait(false)) != null)
+            {
+                lineCount++;
+                if (line.Contains('\0'))
+                {
+                    hasNullChars = true;
+                    break;
+                }
+            }
         }
-        else
+
+        sw.Stop();
+        bool isValid = !hasNullChars && lineCount <= MaxAllowedLines;
+        string targetPin = isValid ? "Valid" : "Invalid";
+
+        var details = new
         {
-            context.Log($"[CustomFilterNode] Archivo '{item.CurrentPath}' rechazado por superar {maxMb} MB.", LogLevel.Warning);
-            await context.EmitAsync("Rejected", item);
-        }
+            lineCount,
+            maxAllowed = MaxAllowedLines,
+            hasNullChars,
+            status = isValid ? "Approved" : "Rejected"
+        };
+
+        context.Log(
+            isValid ? LogLevel.Information : LogLevel.Warning,
+            $"[Validador] Archivo {(isValid ? "aprobado" : "rechazado")}: {lineCount} líneas",
+            nodeId: Id,
+            nodeName: Name,
+            filePath: item.CurrentPath,
+            durationMs: sw.Elapsed.TotalMilliseconds,
+            itemId: item.IdString,
+            fileSizeBytes: item.SizeBytes,
+            detailsJson: JsonSerializer.Serialize(details)
+        );
+
+        await context.EmitAsync(item, targetPin).ConfigureAwait(false);
+    }
+
+    public ValidationResult ValidateConfiguration()
+    {
+        if (MaxAllowedLines <= 0)
+            return ValidationResult.Failure("MaxAllowedLines debe ser mayor a 0.");
+
+        return ValidationResult.Success();
     }
 }
 ```

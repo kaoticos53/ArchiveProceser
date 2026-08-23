@@ -2,6 +2,111 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-08-23] - Auditoría y Estandarización Exhaustiva de Observabilidad y Telemetría en los 24 Nodos del Sistema
+
+### 🛠 Cambios e Implementaciones
+1. **Auditoría Integral de Observabilidad en los 24 Nodos de Producción**:
+   - Clasificación y normalización de todos los nodos según su nivel de telemetría (eliminados nodos silenciosos y logs genéricos sin contexto).
+   - Estandarización uniforme con niveles `Debug` (ruido/traza interna), `Information` (hitos de negocio con resumen descriptivo), `Warning` (desviaciones recuperables) y `Error` (fallos críticos).
+2. **Telemetría Enriquecida con Métricas de Tiempo (`durationMs`) y Cargas Útiles JSON (`detailsJson`)**:
+   - **`FileFlow.Plugin.Logic`**:
+     - `SwitchCaseNode`: Emite `[INFO]` y `[DEBUG]` con `detailsJson` ({expression, evaluatedValue, matchedCase, pattern}).
+     - `ExpressionFilterNode`: Emite `[INFO]` con `detailsJson` ({property, operator, targetValue, actualValue, result}) y desvío a ramas.
+     - `ThrottleDelayNode`: Emite `[DEBUG]` con milisegundos de retardo aplicado.
+     - `BatchBufferNode`: Emite `[INFO]` con métricas de lote en `detailsJson` ({batchCount, totalSizeBytes, totalMB}).
+     - `ForkJoinBarrierNode`: Emite `[DEBUG]` en recepción de ramas e `[INFO]` con `detailsJson` ({requiredBranches, completedBranches}).
+   - **`FileFlow.Plugin.FileSystem`**:
+     - `DestinationSinkNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({destinationRoot, targetPath, strategy, isDryRun, sizeBytes}) y `[DEBUG]` en colisiones.
+     - `FileRelocatorNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({operation, sourcePath, targetPath, integrityVerified, sha256}) y `[DEBUG]` en validaciones.
+     - `AdvancedRenamerNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({pattern, originalName, newName, collisionStrategy}).
+     - `DocumentProcessorNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({documentType, estimatedPages, lineCount, fileSizeBytes}).
+     - `DirectoryInspectorNode`: Emite `[INFO]` con `detailsJson` ({filesCount, directoriesCount, targetDir}).
+     - `EmptyDirectoryCleanerNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({targetDirectory, deletedCount, recursive, isDryRun}).
+     - `SafeRecycleDeleteNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({targetPath, fileSizeBytes, deleteOriginal}).
+     - `OriginalFileActionNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({action, quarantinePath / targetPath, isDryRun}).
+     - `VariableInjectorNode`: Emite `[DEBUG]` por variable e `[INFO]` consolidado con `detailsJson`.
+     - `FolderSourceNode`: Emite `[INFO]` al finalizar con `detailsJson` ({sourcePath, emittedCount, totalSizeBytes, totalMB, unit}).
+   - **`FileFlow.Plugin.Archives`**:
+     - `SmartUnpackNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({archive, extractDir, entriesCount, hasSingleWrapper, passwordProtected}) y `[DEBUG]` en niveles de wrapper.
+     - `ArchiveCompressorNode`: Emite `[INFO]` con `durationMs`, cálculo de ratio de compresión % y `detailsJson` ({archiveFormat, compressionType, targetPath, originalSizeBytes, compressedSizeBytes, ratioPct}).
+     - `ArchiveFilterNode`: Emite `[DEBUG]` en archivos regulares y `[INFO]` en primarios/secundarios con `detailsJson`.
+   - **`FileFlow.Plugin.Images`**:
+     - `ImageOptimizerNode`: Emite `[INFO]` con `durationMs`, cálculo de porcentaje de ahorro de espacio (%) y `detailsJson` ({format, quality, originalDimensions, optimizedDimensions, originalSizeBytes, optimizedSizeBytes, savedPct}).
+     - `ExifMetadataNode`: Emite `[INFO]` con `durationMs`, `detailsJson` ({dateTaken, cameraModel, make, resolution, orientation, megapixels}) y `[DEBUG]` en lectura de dimensiones.
+   - **`FileFlow.Plugin.Hashing`**:
+     - `HashCalculatorNode`: Emite `[INFO]` con `durationMs`, prefijo del hash y `detailsJson` ({algorithm, hash, metadataKey, fileSizeBytes}).
+     - `DeduplicationFilterNode`: Emite `[DEBUG]` en archivos únicos e `[INFO]` en duplicados con `detailsJson` ({hash, duplicateOf, currentPath}).
+   - **`FileFlow.Plugin.Integrations`**:
+     - `CliExecutionNode`: Emite `[INFO]`/`[WARN]` con `durationMs` real del subproceso y `detailsJson` ({executable, arguments, exitCode, stdOutLength, stdErrLength, stdOutSample, stdErrSample}).
+     - `WebhookNotificationNode`: Emite `[INFO]`/`[WARN]` con `durationMs`, código de estado HTTP y `detailsJson` ({url, statusCode, statusText, payloadSample, responseSample}).
+     - `MediaTranscoderNode`: Emite `[DEBUG]` progresivo cada 5 segundos y log final `[INFO]` con `durationMs` y `detailsJson` ({preset, targetPath, ffmpegAvailable, realTranscode, outSizeBytes}).
+4. **Rediseño UI/UX y Alineación Vertical de la Consola de Logs (`LogView.xaml`, `LogViewModel.cs`, `ValueConverters.cs`)**:
+   - **Toolbar Unificada y Compacta**: Agrupación limpia con título, selector de filtros por severidad con contadores en tiempo real (Todos, Errores, Warn, Info, Debug), input de búsqueda integrado con botón de borrado inmediato (`✕`), contador total de logs y botones de acción rápida (`⚡ En Vivo`, `💾 Exportar`, `🗑 Limpiar`).
+   - **Alineación Vertical Perfecta y Altura de Fila Uniforme (`RowHeight="24"`)**: Estandarización de `VerticalContentAlignment="Center"` en todas las celdas, eliminando descuadres de texto y saltos de línea.
+   - **Pill Badges de Severidad con Fondo Translúcido**: Nuevos convertidores `LogLevelToBadgeBackgroundConverter` y `LogLevelToBadgeForegroundConverter` para renderizar etiquetas con estética moderna tipo IDE.
+   - **Columna Duración Centrada**: Alineación y encabezado centrados con ancho ampliado (`Width="80"`), evitando solapamientos con la columna adyacente de mensajes.
+   - **Corrección de Selección Reactiva de Filtros (`EnumToBooleanConverter`)**: Sincronización bidireccional de `IsChecked` y asignación de `GroupName="LogFilterGroup"` en los `RadioButton` de severidad, resolviendo la desincronización y el salto involuntario al botón "Todos".
+   - **Filtrado Estricto por Nivel (`ExactLevel`)**: Añadido soporte de `ExactLevel` en `LogFilterCriteria` y `SqliteLogStore`, garantizando que al seleccionar `🟣 Debug`, `🔵 Info` o `🟠 Warn` se muestren única y estrictamente los logs del nivel correspondiente.
+5. **Auditoría de Código y Refactorización Modular (Clean Code & SRP)**:
+   - **Desacoplamiento de `WorkflowExecutionContext.cs`**: Extraído de `WorkflowExecutor.cs` a su propio archivo independiente, reduciendo el orquestador principal a un tamaño manejable.
+   - **Extracción de `SqliteLogQueryBuilder.cs`**: Aislada toda la lógica de construcción de SQL dinámico parametrizado fuera de `SqliteLogStore.cs`.
+   - **Modularización de `ValueConverters.cs`**: Eliminado el archivo monolítico y dividido en 3 submódulos cohesivos por dominio: `BooleanConverters.cs`, `TelemetryConverters.cs` y `GraphConverters.cs`.
+6. **Auditoría de Seguridad, Robustez y Depuración de Errores**:
+   - **Mitigación Estricta de Zip Slip (`SmartUnpackNode.cs`)**: Normalizado el directorio base asegurando el separador de directorio final (`Path.TrimEndingDirectorySeparator + Path.DirectorySeparatorChar`) para evitar ataques por prefijos comunes.
+   - **Papelera Segura sin Borrado Destructivo (`SafeRecycleDeleteNode.cs`)**: Ajustada la estructura P/Invoke x64 de `SHFILEOPSTRUCT` y eliminado el fallback a `File.Delete` que borraba permanentemente los archivos en caso de fallo.
+   - **Medición Segura de Procesos (`CliExecutionNode.cs`)**: Sustituido el cálculo de tiempo por `Stopwatch.StartNew()` eliminando potenciales `InvalidOperationException` al consultar `process.ExitTime`.
+   - **Despacho Seguro en UI (`FastObservableRingBuffer.cs`)**: Comprobación de `Application.Current.Dispatcher.CheckAccess()` en `NotifyReset()` evitando excepciones de colección en hilos de fondo.
+   - **Limpieza de Tareas en Background (`FolderWatcherService.cs`)**: Cancelación y espera limpia con timeout de `_processingTask` en `Stop()`.
+   - **Sanitización de Nombres de Archivo (`AdvancedRenamerNode.cs`)**: Reemplazo automático de caracteres ilegales devueltos por plantillas (`Path.GetInvalidFileNameChars`).
+   - **Drenaje de Canal (`SqliteLogStore.cs`)**: Invocación de `_ingestionChannel.Writer.TryComplete()` en `DisposeAsync()` y `Dispose()`.
+7. **Batería de Automatización y Testing Exhaustivo (178 Pruebas)**:
+   - **`FileItemContextExhaustiveTests`**: Memoización zero-alloc de `ShortIdString`, reactividad en cambio de ruta y clonación profunda.
+   - **`SystemVariablesResolverExhaustiveTests`**: Comprobación de formato numérico de tamaños con `CultureInfo.InvariantCulture`, contadores y metadatos.
+   - **`AdvancedRenamerExhaustiveTests`**: Sanitización automática de caracteres ilegales, estrategias de colisión (`AutoIncrement`) y soporte de casing exacto.
+   - **`CliExecutionNodeExhaustiveTests`**: Ejecución con captura de stdout/stderr y modo Dry-Run.
+   - **`SafeRecycleDeleteNodeExhaustiveTests`**: Resiliencia frente a archivos inexistentes y modo Dry-Run.
+   - **`SqliteLogQueryBuilderTests`**: Validación de cláusulas SQL con `ExactLevel`, `SearchText` y rangos de fechas.
+   - **`ValueConvertersExhaustiveTests`**: Badges cortos de severidad, bindings bidireccionales y convertidores de visibilidad/ancho.
+   - Suite completa ejecutada: **178 / 178 pruebas superadas con 100% de éxito (0 errores, 0 fallos)** en 1.1s.
+
+---
+
+### 🛠 Cambios e Implementaciones
+1. **Botón Visual e Interactivo en Cabecera de Nodo (`NodeCardView.xaml` & `ValueConverters.cs`)**:
+   - Incorporado un botón interactivo al estilo del breakpoint en la cabecera de cada tarjeta de nodo.
+   - **Indicador Visual**: Icono estilizado (`≡`) con fondo cian brillante (`#06B6D4`) cuando está **Encendido (emite logs)** y gris translúcido atenuado (`#475569`) cuando está **Apagado (silenciado)**.
+   - **ToolTips y Menú Contextual**: ToolTip reactivo ("Logs: Habilitados (clic para silenciar)" / "Logs: Silenciados (clic para activar)") y opción en el menú contextual (`MenuItem: Alternar Emisión de Logs`).
+2. **Modelo de Vista y Comandos (`NodeViewModel.cs`)**:
+   - Añadida propiedad reactiva `IsLoggingEnabled` (por defecto `true`) y comando `ToggleLoggingCommand`.
+3. **Control y Supresión en el Motor de Ejecución (`WorkflowExecutor.cs` & `WorkflowGraph.cs`)**:
+   - `WorkflowGraph` y `WorkflowNode` persisten el estado `IsLoggingEnabled` y el set `DisabledLoggingNodeIds`.
+   - `WorkflowExecutionContext` y `WorkflowExecutor.NotifyLog` descartan de inmediato los logs de nodos silenciados en $O(1)$ sin asignación en memoria ni saturación de base de datos.
+4. **Pruebas Automatizadas y Validación**:
+   - Añadidas pruebas unitarias en `StructuredLogContextTests.cs` validando la supresión y re-activación de logs en caliente.
+   - Suite completa superada al 100%: **145 / 145 pruebas exitosas (0 errores, 0 advertencias)**.
+
+---
+
+## [2026-08-23] - Optimización de Rendimiento Extremo (Performance Engineering) y Zero-Alloc Hot Paths
+
+### 🛠 Cambios e Implementaciones
+1. **Memoización en `FileItemContext.cs` (Zero-Alloc Hot Paths)**:
+   - Cacheo interno e inmutable de `IdString` (`"d3b07384..."`) y `ShortIdString` (`"d3b07384"`).
+   - Propiedad `FileName` reactiva a mutaciones en `CurrentPath`.
+   - Eliminadas más de 160.000 asignaciones redundantes de strings de GUIDs y rutas por ejecución de flujo masivo.
+2. **Formateo Zero-Boxing en `StructuredLogRecord.cs`**:
+   - `FormattedFileSize` optimizado con formateo numérico directo en lugar de `FormattableString.Invariant`, eliminando allocation de factories, arrays `object[]` de parámetros y boxing.
+   - Parámetro `fileName` precalculado en `StructuredLogRecord.Create` para evitar llamadas redundantes a `Path.GetFileName`.
+3. **Reutilización de Conexión y Transacciones Masivas en `SqliteLogStore.cs`**:
+   - `InsertBatchAsync` reutiliza `_keepAliveConnection` protegida bajo `_flushLock`, eliminando la apertura y cierre repetitivo de conexiones SQLite.
+   - Ejecución sincrónica nativa dentro del worker thread para evitar la sobrecarga de `Task` en bases de datos in-memory.
+4. **Benchmarking Multinúcleo y Validación de Alta Concurrencia**:
+   - Añadido `Benchmark_Telemetry_HighThroughput_ParallelIngestion` en `PerformanceBenchmarkSuiteTests.cs` simulando ingestión paralela en todos los núcleos de CPU (28 hilos).
+   - **Throughput alcanzado**: **>82.000 logs/segundo** persistidos e indexados en SQLite In-Memory en ~600 ms con apenas 8 recolecciones Gen0.
+   - Suite completa: **143 / 143 pruebas pasadas con 100% de éxito (0 errores, 0 advertencias)**.
+
+---
+
 ## [2026-08-23] - Modernización de Logs Estructurados, Trazabilidad por ID de Flujo (`ItemId`) y Visor Interactivo JSON
 
 ### 🛠 Cambios e Implementaciones

@@ -244,6 +244,17 @@ public class FastObservableRingBuffer<T> : IList<T>, IReadOnlyList<T>, INotifyCo
 
     private void NotifyReset()
     {
+        if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+        {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(NotifyResetInternal);
+            return;
+        }
+
+        NotifyResetInternal();
+    }
+
+    private void NotifyResetInternal()
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
         CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));

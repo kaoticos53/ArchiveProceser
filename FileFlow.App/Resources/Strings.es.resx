@@ -283,6 +283,9 @@
   <data name="InspectorErrorTitle" xml:space="preserve"><value>Fallo / Error en el Nodo</value></data>
   <data name="TestNodeMock" xml:space="preserve"><value>🧪 Probar Nodo</value></data>
   <data name="BreakpointToggle" xml:space="preserve"><value>Alternar Punto de Interrupción</value></data>
+  <data name="LoggingToggle" xml:space="preserve"><value>Alternar Emisión de Logs</value></data>
+  <data name="LoggingEnabledToolTip" xml:space="preserve"><value>Logs: Habilitados (clic para silenciar)</value></data>
+  <data name="LoggingDisabledToolTip" xml:space="preserve"><value>Logs: Silenciados (clic para activar)</value></data>
   <data name="StatusPausedBreakpoint" xml:space="preserve"><value>Pausado en Punto de Interrupción</value></data>
   <data name="StatusPausedError" xml:space="preserve"><value>Pausado por Error</value></data>
   <data name="CloseInspector" xml:space="preserve"><value>Cerrar Inspector</value></data>

@@ -9,6 +9,7 @@ namespace FileFlow.Core.Telemetry;
 
 public record LogFilterCriteria(
     LogLevel? MinLevel = null,
+    LogLevel? ExactLevel = null,
     string? SearchText = null,
     string? NodeId = null,
     string? ItemId = null,
@@ -165,12 +166,9 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
         await _flushLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            await using var conn = new SqliteConnection(_connectionString);
-            await conn.OpenAsync().ConfigureAwait(false);
+            await using var transaction = await _keepAliveConnection.BeginTransactionAsync().ConfigureAwait(false);
 
-            await using var transaction = await conn.BeginTransactionAsync().ConfigureAwait(false);
-
-            await using var cmd = conn.CreateCommand();
+            await using var cmd = _keepAliveConnection.CreateCommand();
             cmd.Transaction = (SqliteTransaction)transaction;
             cmd.CommandText = """
                 INSERT INTO ExecutionLogs (ExecutionId, Timestamp, Level, NodeId, NodeName, ItemId, FilePath, FileName, FileSizeBytes, DurationMs, Message, DetailsJson)
@@ -205,7 +203,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
                 pMessage.Value = r.Message ?? string.Empty;
                 pDetails.Value = (object?)r.DetailsJson ?? DBNull.Value;
 
-                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                cmd.ExecuteNonQuery();
             }
 
             await transaction.CommitAsync().ConfigureAwait(false);
@@ -437,66 +435,11 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
     }
 
     private static (string WhereClause, Dictionary<string, object> Parameters) BuildFilterClause(LogFilterCriteria? filter)
-    {
-        if (filter == null) return (string.Empty, []);
-
-        var clauses = new List<string>();
-        var parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
-        if (filter.MinLevel.HasValue)
-        {
-            clauses.Add("Level >= @minLevel");
-            parameters["@minLevel"] = (int)filter.MinLevel.Value;
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.NodeId))
-        {
-            clauses.Add("(NodeId = @nodeId OR NodeName = @nodeId)");
-            parameters["@nodeId"] = filter.NodeId;
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.ItemId))
-        {
-            clauses.Add("(ItemId = @itemId OR ItemId LIKE @itemIdLike)");
-            parameters["@itemId"] = filter.ItemId;
-            parameters["@itemIdLike"] = $"%{filter.ItemId}%";
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.FilePattern))
-        {
-            clauses.Add("(FileName LIKE @filePattern OR FilePath LIKE @filePattern)");
-            parameters["@filePattern"] = $"%{filter.FilePattern}%";
-        }
-
-        if (filter.HasDetailsOnly == true)
-        {
-            clauses.Add("(DetailsJson IS NOT NULL AND Length(DetailsJson) > 0)");
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.SearchText))
-        {
-            clauses.Add("(Message LIKE @searchText OR FileName LIKE @searchText OR NodeName LIKE @searchText OR ItemId LIKE @searchText OR DetailsJson LIKE @searchText)");
-            parameters["@searchText"] = $"%{filter.SearchText}%";
-        }
-
-        if (filter.FromTimestamp.HasValue)
-        {
-            clauses.Add("Timestamp >= @fromTs");
-            parameters["@fromTs"] = filter.FromTimestamp.Value;
-        }
-
-        if (filter.ToTimestamp.HasValue)
-        {
-            clauses.Add("Timestamp <= @toTs");
-            parameters["@toTs"] = filter.ToTimestamp.Value;
-        }
-
-        string where = clauses.Count > 0 ? "WHERE " + string.Join(" AND ", clauses) : string.Empty;
-        return (where, parameters);
-    }
+        => SqliteLogQueryBuilder.BuildFilterClause(filter);
 
     public async ValueTask DisposeAsync()
     {
+        _ingestionChannel.Writer.TryComplete();
         _cts.Cancel();
         try
         {
@@ -510,6 +453,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
 
     public void Dispose()
     {
+        _ingestionChannel.Writer.TryComplete();
         _cts.Cancel();
         try
         {

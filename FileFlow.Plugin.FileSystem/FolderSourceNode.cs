@@ -176,7 +176,8 @@ public class FolderSourceNode : IFlowNode
 
         double totalMB = totalBytesEmitted / (1024.0 * 1024.0);
         string finalUnit = emitFiles && emitDirectories ? "elementos" : (emitDirectories ? "carpetas" : "archivos");
-        context.Log($"FolderSourceNode finalizó escaneo y emisión: {emittedCount:N0} {finalUnit} ({totalMB:F1} MB).", LogLevel.Information);
+        string detailsJson = $"{{\"sourcePath\": \"{sourcePath.Replace("\\", "\\\\")}\", \"emittedCount\": {emittedCount}, \"totalSizeBytes\": {totalBytesEmitted}, \"totalMB\": {totalMB.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, \"unit\": \"{finalUnit}\"}}";
+        context.Log($"[Origen Carpeta] Finalizado escaneo y emisión: {emittedCount:N0} {finalUnit} ({totalMB:F1} MB)", LogLevel.Information, null, durationMs: 0.0, detailsJson: detailsJson);
     }
 
     private static async Task StreamAndEmitDirAsync(

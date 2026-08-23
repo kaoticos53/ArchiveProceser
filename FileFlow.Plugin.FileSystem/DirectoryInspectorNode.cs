@@ -41,16 +41,18 @@ public class DirectoryInspectorNode : IFlowNode
 
         if (!Directory.Exists(dirPath))
         {
-            context.Log($"DirectoryInspectorNode: Path '{dirPath}' does not exist.", LogLevel.Warning);
+            context.Log($"[Inspector Directorio] Ruta no existe: '{dirPath}' -> Clasificado como 'MixedContent'", LogLevel.Warning, item);
             await context.EmitAsync("MixedContent", item);
             return;
         }
 
         string[] files = Directory.GetFiles(dirPath);
         string[] subdirs = Directory.GetDirectories(dirPath);
+        string detailsJson = $"{{\"filesCount\": {files.Length}, \"directoriesCount\": {subdirs.Length}, \"targetDir\": \"{dirPath.Replace("\\", "\\\\")}\"}}";
 
         if (files.Length == 0 && subdirs.Length > 0)
         {
+            context.Log($"[Inspector Directorio] Clasificado como 'DirectoriesOnly' ({subdirs.Length} subdirectorios, 0 archivos)", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
             item.AddLog("DirectoryInspectorNode classified as DirectoriesOnly");
             await context.EmitAsync("DirectoriesOnly", item);
             return;
@@ -61,12 +63,14 @@ public class DirectoryInspectorNode : IFlowNode
             string ext = Path.GetExtension(files[0]);
             if (ArchiveExtensions.Contains(ext))
             {
+                context.Log($"[Inspector Directorio] Clasificado como 'SingleArchive' ({Path.GetFileName(files[0])})", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
                 item.AddLog($"DirectoryInspectorNode classified as SingleArchive ({files[0]})");
                 await context.EmitAsync("SingleArchive", item);
                 return;
             }
         }
 
+        context.Log($"[Inspector Directorio] Clasificado como 'MixedContent' ({files.Length} archivos, {subdirs.Length} subdirectorios)", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
         item.AddLog("DirectoryInspectorNode classified as MixedContent");
         await context.EmitAsync("MixedContent", item);
     }

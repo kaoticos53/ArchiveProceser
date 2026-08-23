@@ -37,7 +37,16 @@ public partial class LogView : UserControl
     {
         if (_scrollViewer == null || _viewModel == null) return;
 
-        if (Math.Abs(e.VerticalChange) > 0.001)
+        // No forzar modo en vivo si el usuario tiene un filtro de búsqueda o de nivel activo
+        if (_viewModel.ActiveFilter != LogFilterLevel.All || !string.IsNullOrWhiteSpace(_viewModel.SearchFilter))
+        {
+            return;
+        }
+
+        // Ignorar cambios generados por redimensionamiento o vaciado de la lista
+        if (e.ExtentHeightChange != 0) return;
+
+        if (Math.Abs(e.VerticalChange) > 0.001 && _scrollViewer.ScrollableHeight > 5)
         {
             bool isAtBottom = _scrollViewer.VerticalOffset >= _scrollViewer.ScrollableHeight - 5;
             if (_viewModel.IsLiveMode != isAtBottom)

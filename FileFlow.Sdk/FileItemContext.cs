@@ -2,8 +2,38 @@ namespace FileFlow.Sdk;
 
 public record FileItemContext
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
-    public string CurrentPath { get; set; } = string.Empty;
+    private readonly Guid _id = Guid.NewGuid();
+    private string? _idString;
+    private string? _shortIdString;
+    private string _currentPath = string.Empty;
+    private string? _fileName;
+
+    public Guid Id
+    {
+        get => _id;
+        init
+        {
+            _id = value;
+            _idString = value.ToString();
+            _shortIdString = _idString.Length > 8 ? _idString[..8] : _idString;
+        }
+    }
+
+    public string IdString => _idString ??= _id.ToString();
+    public string ShortIdString => _shortIdString ??= (IdString.Length > 8 ? IdString[..8] : IdString);
+
+    public string CurrentPath
+    {
+        get => _currentPath;
+        set
+        {
+            _currentPath = value ?? string.Empty;
+            _fileName = null; // Invalidate cached filename
+        }
+    }
+
+    public string FileName => _fileName ??= (!string.IsNullOrWhiteSpace(_currentPath) ? Path.GetFileName(_currentPath) : string.Empty);
+
     public string OriginalPath { get; set; } = string.Empty;
     public bool IsDirectory { get; set; }
     public long FileSizeBytes { get; set; }

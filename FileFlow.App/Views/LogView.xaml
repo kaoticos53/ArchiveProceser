@@ -10,12 +10,16 @@
     <UserControl.Resources>
         <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
+        <converters:LogLevelToBadgeBackgroundConverter x:Key="LogLevelToBadgeBackgroundConverter" />
+        <converters:LogLevelToBadgeForegroundConverter x:Key="LogLevelToBadgeForegroundConverter" />
+        <converters:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
+        <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
     </UserControl.Resources>
 
     <Border Background="{DynamicResource BgSurfaceBrush}" 
             BorderBrush="{DynamicResource BorderDarkBrush}" 
             BorderThickness="0,1,0,0" 
-            Padding="12,8">
+            Padding="10,6,10,8">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -23,7 +27,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Console Header & Status Bar -->
+            <!-- Unified Modern Toolbar -->
             <Grid Grid.Row="0" Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -31,102 +35,100 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
+                <!-- Grupo Izquierdo: Título y Filtros Rápidos por Severidad -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExecutionConsoleTitle]}" 
+                    <TextBlock Text="🖥️ Consola" 
                                FontWeight="Bold" 
                                Foreground="{DynamicResource TextPrimaryBrush}" 
-                               FontSize="13" 
-                               Margin="0,0,14,0" 
+                               FontSize="12.5" 
+                               Margin="0,0,10,0" 
                                VerticalAlignment="Center" />
 
                     <!-- Filtros Rápidos por Nivel de Log -->
-                    <StackPanel Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
-                        <RadioButton Content="Todos" 
-                                     Command="{Binding SetFilterCommand}" CommandParameter="all"
-                                     IsChecked="True" Style="{StaticResource FilterRadioButton}" 
-                                     Padding="8,2" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand" />
-                        
-                        <RadioButton Command="{Binding SetFilterCommand}" CommandParameter="errors"
-                                     Style="{StaticResource FilterRadioButton}" 
-                                     Padding="8,2" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🔴 Errores (" FontWeight="Bold" />
-                                <TextBlock Text="{Binding ErrorCount}" FontWeight="Bold" />
-                                <TextBlock Text=")" FontWeight="Bold" />
-                            </StackPanel>
-                        </RadioButton>
+                    <Border Background="{DynamicResource BgCardBrush}" 
+                            BorderBrush="{DynamicResource BorderDarkBrush}" 
+                            BorderThickness="1" 
+                            CornerRadius="4" 
+                            Padding="2" 
+                            Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Content="Todos" 
+                                         GroupName="LogFilterGroup"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=All, Mode=TwoWay}"
+                                         Style="{StaticResource FilterRadioButton}" 
+                                         Padding="6,2" FontSize="10.5" Cursor="Hand" />
+                            
+                            <RadioButton GroupName="LogFilterGroup"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=ErrorsOnly, Mode=TwoWay}"
+                                         Style="{StaticResource FilterRadioButton}" 
+                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🔴 Errores (" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding ErrorCount}" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" />
+                                    <TextBlock Text=")" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </RadioButton>
 
-                        <RadioButton Command="{Binding SetFilterCommand}" CommandParameter="warnings"
-                                     Style="{StaticResource FilterRadioButton}" 
-                                     Padding="8,2" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🟠 Advertencias (" FontWeight="Bold" />
-                                <TextBlock Text="{Binding WarningCount}" FontWeight="Bold" />
-                                <TextBlock Text=")" FontWeight="Bold" />
-                            </StackPanel>
-                        </RadioButton>
-                    </StackPanel>
+                            <RadioButton GroupName="LogFilterGroup"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=WarningsOnly, Mode=TwoWay}"
+                                         Style="{StaticResource FilterRadioButton}" 
+                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🟠 Warn (" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding WarningCount}" FontWeight="Bold" Foreground="{DynamicResource AccentWarningBrush}" />
+                                    <TextBlock Text=")" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </RadioButton>
 
-                    <TextBlock Text="{Binding StatusMessage}" 
-                               Foreground="{DynamicResource TextSecondaryBrush}" 
-                               FontSize="11.5" 
-                               VerticalAlignment="Center" />
+                            <RadioButton GroupName="LogFilterGroup"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=InfoOnly, Mode=TwoWay}"
+                                         Style="{StaticResource FilterRadioButton}" 
+                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🔵 Info (" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding InfoCount}" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
+                                    <TextBlock Text=")" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton GroupName="LogFilterGroup"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=DebugOnly, Mode=TwoWay}"
+                                         Style="{StaticResource FilterRadioButton}" 
+                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🟣 Debug (" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding DebugCount}" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" />
+                                    <TextBlock Text=")" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
-                <!-- Fluent Progress Bar -->
-                <ProgressBar Grid.Column="1" 
-                             Value="{Binding ProgressPercentage}" 
-                             Minimum="0" 
-                             Maximum="100" 
-                             Height="6" 
-                             Margin="16,0" 
-                             Foreground="{DynamicResource AccentSuccessBrush}" 
-                             Background="{DynamicResource BgHoverBrush}" 
-                             BorderThickness="0">
-                    <ProgressBar.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="3" />
-                        </Style>
-                    </ProgressBar.Resources>
-                </ProgressBar>
-
-                <!-- Action Buttons: Export & Clear -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExportLog]}" 
-                            Command="{Binding ExportLogsCommand}" 
-                            Style="{StaticResource SecondaryButton}" 
-                            Padding="10,4" 
-                            FontSize="11" 
-                            Margin="0,0,8,0" />
-
-                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ClearLog]}" 
-                            Command="{Binding ClearLogsCommand}" 
-                            Style="{StaticResource SecondaryButton}" 
-                            Padding="10,4" 
-                            FontSize="11" />
-                </StackPanel>
-            </Grid>
-
-            <!-- Search, Sort & Analytics Subheader -->
-            <Grid Grid.Row="1" Margin="0,0,0,6">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <!-- Búsqueda Instantánea por SQLite Index -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Grupo Central: Input de Búsqueda Instantánea con Botón Limpiar -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
                     <Border Background="{DynamicResource BgCardBrush}" 
                             BorderBrush="{DynamicResource BorderDarkBrush}" 
                             BorderThickness="1" 
                             CornerRadius="4" 
                             Padding="6,2" 
-                            Width="300">
+                            Width="260"
+                            Height="24"
+                            VerticalAlignment="Center">
                         <Grid>
-                            <TextBlock Text="🔍 Buscar por archivo, ID, nodo o JSON..." 
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="🔍" FontSize="10" Margin="0,0,4,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            
+                            <!-- Placeholder -->
+                            <TextBlock Grid.Column="1" 
+                                       Text="Filtrar por ID, nodo, archivo..." 
                                        Foreground="{DynamicResource TextSecondaryBrush}" 
-                                       FontSize="11" 
+                                       FontSize="10.5" 
                                        VerticalAlignment="Center"
                                        IsHitTestVisible="False">
                                 <TextBlock.Style>
@@ -140,34 +142,88 @@
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
-                            <TextBox x:Name="TxtSearch" 
+
+                            <!-- TextBox de Búsqueda -->
+                            <TextBox Grid.Column="1" 
+                                     x:Name="TxtSearch" 
                                      Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}" 
                                      Background="Transparent" 
                                      Foreground="{DynamicResource TextPrimaryBrush}" 
                                      BorderThickness="0" 
-                                     FontSize="11" 
-                                     VerticalAlignment="Center" />
+                                     FontSize="10.5" 
+                                     VerticalAlignment="Center" 
+                                     Padding="0" />
+
+                            <!-- Botón Limpiar Filtro -->
+                            <Button Grid.Column="2" 
+                                    Content="✕" 
+                                    Command="{Binding ClearSearchFilterCommand}" 
+                                    Background="Transparent" 
+                                    BorderThickness="0" 
+                                    Foreground="{DynamicResource TextSecondaryBrush}" 
+                                    FontSize="10" 
+                                    FontWeight="Bold" 
+                                    Padding="2,0" 
+                                    Cursor="Hand"
+                                    ToolTip="Limpiar búsqueda"
+                                    Visibility="{Binding SearchFilter, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                         </Grid>
                     </Border>
 
-                    <TextBlock Text="{Binding TotalLogsCount, StringFormat='• Total: {0:N0} logs en BD'}" 
+                    <TextBlock Text="{Binding TotalLogsCount, StringFormat='• {0:N0} logs'}" 
                                Foreground="{DynamicResource TextSecondaryBrush}" 
-                               FontSize="11" 
-                               Margin="10,0,0,0" 
+                               FontSize="10.5" 
+                               Margin="8,0,0,0" 
+                               VerticalAlignment="Center" />
+
+                    <TextBlock Text="{Binding StatusMessage, StringFormat='• {0}'}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" 
+                               FontSize="10.5" 
+                               Margin="8,0,0,0" 
+                               TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Live Stream Mode Toggle -->
+                <!-- Grupo Derecho: Controles de Depuración (En Vivo, Exportar, Limpiar) -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <ToggleButton Content="⚡ En Vivo" 
                                   IsChecked="{Binding IsLiveMode, Mode=TwoWay}" 
                                   Style="{StaticResource SecondaryToggleButton}" 
-                                  Padding="8,2" 
+                                  Padding="8,3" 
                                   FontSize="10.5" 
                                   FontWeight="SemiBold" 
-                                  Cursor="Hand" />
+                                  Margin="0,0,6,0"
+                                  Cursor="Hand" 
+                                  ToolTip="Alternar desplazamiento en vivo automático" />
+
+                    <Button Content="💾 Exportar" 
+                            Command="{Binding ExportLogsCommand}" 
+                            Style="{StaticResource SecondaryButton}" 
+                            Padding="8,3" 
+                            FontSize="10.5" 
+                            Margin="0,0,6,0"
+                            ToolTip="Exportar historial de ejecución a archivo .log" />
+
+                    <Button Content="🗑 Limpiar" 
+                            Command="{Binding ClearLogsCommand}" 
+                            Style="{StaticResource SecondaryButton}" 
+                            Padding="8,3" 
+                            FontSize="10.5"
+                            ToolTip="Vaciar todos los logs de la consola y memoria" />
                 </StackPanel>
             </Grid>
+
+            <!-- Slim Progress Bar -->
+            <ProgressBar Grid.Row="1" 
+                         Value="{Binding ProgressPercentage}" 
+                         Minimum="0" 
+                         Maximum="100" 
+                         Height="3" 
+                         Margin="0,0,0,4" 
+                         Foreground="{DynamicResource AccentSuccessBrush}" 
+                         Background="{DynamicResource BgCardBrush}" 
+                         BorderThickness="0"
+                         Visibility="{Binding ProgressPercentage, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
 
             <!-- Virtualized DataGrid (Ultra-Fast 120 FPS Database Grid) -->
             <DataGrid x:Name="LogDataGrid"
@@ -188,7 +244,7 @@
                       BorderThickness="1"
                       FontFamily="Cascadia Code, Consolas, monospace"
                       FontSize="11"
-                      RowHeight="22"
+                      RowHeight="24"
                       SelectionMode="Single"
                       SelectionUnit="FullRow"
                       RowDetailsVisibilityMode="VisibleWhenSelected"
@@ -207,9 +263,9 @@
                         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                         <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
                         <Setter Property="BorderThickness" Value="0,0,1,1" />
-                        <Setter Property="Padding" Value="6,4" />
+                        <Setter Property="Padding" Value="6,3" />
                         <Setter Property="FontWeight" Value="SemiBold" />
-                        <Setter Property="FontSize" Value="10.5" />
+                        <Setter Property="FontSize" Value="10" />
                         <Setter Property="Cursor" Value="Hand" />
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
@@ -217,6 +273,7 @@
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="VerticalContentAlignment" Value="Center" />
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
@@ -231,8 +288,9 @@
                 <DataGrid.CellStyle>
                     <Style TargetType="DataGridCell">
                         <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Padding" Value="4,1" />
+                        <Setter Property="Padding" Value="5,0" />
                         <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="VerticalContentAlignment" Value="Center" />
                         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
@@ -247,35 +305,45 @@
                     <!-- Hora -->
                     <DataGridTemplateColumn Width="95">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Hora ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Timestamp" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="Hora ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Timestamp" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" FontSize="10.5" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- Nivel -->
-                    <DataGridTemplateColumn Width="60">
+                    <!-- Nivel (Pill Badge con Fondo Translúcido) -->
+                    <DataGridTemplateColumn Width="65">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Nivel ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Level" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="Nivel ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Level" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding BadgeText}" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Border Background="{Binding Level, Converter={StaticResource LogLevelToBadgeBackgroundConverter}}"
+                                        CornerRadius="3"
+                                        Padding="4,1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding BadgeText}" 
+                                               Foreground="{Binding Level, Converter={StaticResource LogLevelToBadgeForegroundConverter}}" 
+                                               FontWeight="Bold" 
+                                               FontSize="9.5" 
+                                               VerticalAlignment="Center" />
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
                     <!-- Nodo -->
-                    <DataGridTemplateColumn Width="120">
+                    <DataGridTemplateColumn Width="125">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Nodo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="NodeName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="Nodo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="NodeName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding NodeName}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding NodeName}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10.5" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -283,7 +351,7 @@
                     <!-- ID Fichero (Badge clicable para trazabilidad de extremo a extremo) -->
                     <DataGridTemplateColumn Width="85">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="ID Flujo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="ItemId" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="ID Flujo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="ItemId" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -293,13 +361,14 @@
                                         BorderThickness="0"
                                         Padding="0"
                                         Cursor="Hand"
-                                        ToolTip="Filtrar toda la trazabilidad de este archivo (ciclo de vida completo)"
+                                        VerticalAlignment="Center"
+                                        ToolTip="Filtrar trazabilidad de este archivo"
                                         Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
                                     <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="3" Padding="4,1">
                                         <TextBlock Text="{Binding ShortItemId, StringFormat='#{0}'}" 
                                                    Foreground="{DynamicResource AccentCyanBrush}" 
                                                    FontWeight="SemiBold" 
-                                                   FontSize="10" />
+                                                   FontSize="9.5" />
                                     </Border>
                                 </Button>
                             </DataTemplate>
@@ -309,14 +378,15 @@
                     <!-- Fichero -->
                     <DataGridTemplateColumn Width="150">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Fichero ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="FileName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="Fichero ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="FileName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding FileName}" 
                                            Foreground="{DynamicResource TextSecondaryBrush}" 
                                            TextTrimming="CharacterEllipsis" 
-                                           VerticalAlignment="Center">
+                                           VerticalAlignment="Center"
+                                           FontSize="10.5">
                                     <TextBlock.ToolTip>
                                         <ToolTip Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}">
                                             <StackPanel>
@@ -332,13 +402,13 @@
                     </DataGridTemplateColumn>
 
                     <!-- Duración -->
-                    <DataGridTemplateColumn Width="75">
+                    <DataGridTemplateColumn Width="80">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Duración ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="DurationMs" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="Duración ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="DurationMs" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1} ms'}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1} ms'}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center" FontSize="10.5" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -346,7 +416,7 @@
                     <!-- Mensaje -->
                     <DataGridTemplateColumn Width="*">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Mensaje ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Message" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10.5" Cursor="Hand" />
+                            <Button Content="Mensaje ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Message" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -356,12 +426,14 @@
                                             Opacity="0.85" 
                                             CornerRadius="3" 
                                             Padding="4,1" 
+                                            Height="16"
                                             Margin="0,0,6,0"
+                                            VerticalAlignment="Center"
                                             Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            ToolTip="Contiene detalles estructurados (haz clic para expandir fila)">
-                                        <TextBlock Text="{}{ } JSON" Foreground="White" FontSize="9.5" FontWeight="Bold" />
+                                            ToolTip="Contiene detalles JSON (clic para desplegar)">
+                                        <TextBlock Text="{}{ } JSON" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
                                     </Border>
-                                    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10.5" />
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
