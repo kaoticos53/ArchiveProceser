@@ -198,7 +198,6 @@ public class WorkflowExecutor
     {
         lock (_tasksLock)
         {
-            _activeNodeTasks.RemoveAll(t => t.IsCompleted);
             _activeNodeTasks.Add(task);
         }
     }

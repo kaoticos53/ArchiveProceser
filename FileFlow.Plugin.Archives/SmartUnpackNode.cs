@@ -270,6 +270,8 @@ public class SmartUnpackNode : IFlowNode
                     using (archive)
                     {
                         string nestedExtractDir = Path.GetDirectoryName(nestedArchive) ?? targetDir;
+                        string fullNestedDir = Path.GetFullPath(nestedExtractDir);
+                        string fullNestedDirWithSep = Path.TrimEndingDirectorySeparator(fullNestedDir) + Path.DirectorySeparatorChar;
 
                         foreach (var entry in archive.Entries.Where(e => !e.IsDirectory))
                         {
@@ -277,7 +279,8 @@ public class SmartUnpackNode : IFlowNode
                             string entryPath = entry.Key ?? string.Empty;
                             string destPath = Path.GetFullPath(Path.Combine(nestedExtractDir, entryPath));
 
-                            if (!destPath.StartsWith(Path.GetFullPath(nestedExtractDir), StringComparison.OrdinalIgnoreCase))
+                            if (!destPath.StartsWith(fullNestedDirWithSep, StringComparison.OrdinalIgnoreCase) &&
+                                !string.Equals(destPath, fullNestedDir, StringComparison.OrdinalIgnoreCase))
                             {
                                 throw new System.Security.SecurityException($"Zip Slip attempt detected in nested archive '{entryPath}'");
                             }

@@ -9,10 +9,12 @@ using FileFlow.Sdk;
 
 namespace FileFlow.App.ViewModels;
 
-public partial class EditorViewModel : ObservableObject
+public partial class EditorViewModel : ObservableObject, IDisposable
 {
+    private bool _disposed;
     private readonly PluginLoader _pluginLoader;
     private readonly Services.IVariableDiscoveryService _variableDiscoveryService;
+    private readonly Action _preferencesChangedHandler;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
@@ -101,10 +103,11 @@ public partial class EditorViewModel : ObservableObject
         _pluginLoader = pluginLoader;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
         _globalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
-        UserPreferencesService.Instance.PreferencesChanged += () =>
+        _preferencesChangedHandler = () =>
         {
             GlobalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
         };
+        UserPreferencesService.Instance.PreferencesChanged += _preferencesChangedHandler;
         Connections.CollectionChanged += (s, e) =>
         {
             RebuildConnectionLookup();
@@ -503,6 +506,14 @@ public partial class EditorViewModel : ObservableObject
                 conn.UpdateCount(count);
             }
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        UserPreferencesService.Instance.PreferencesChanged -= _preferencesChangedHandler;
+        GC.SuppressFinalize(this);
     }
 }
 

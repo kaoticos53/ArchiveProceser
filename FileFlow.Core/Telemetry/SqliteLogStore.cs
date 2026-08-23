@@ -449,6 +449,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
 
         _keepAliveConnection.Dispose();
         _cts.Dispose();
+        _flushLock.Dispose();
     }
 
     public void Dispose()
@@ -457,11 +458,15 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
         _cts.Cancel();
         try
         {
-            _workerTask.GetAwaiter().GetResult();
+            if (!_workerTask.IsCompleted)
+            {
+                _workerTask.Wait(TimeSpan.FromSeconds(3));
+            }
         }
         catch { }
 
         _keepAliveConnection.Dispose();
         _cts.Dispose();
+        _flushLock.Dispose();
     }
 }
