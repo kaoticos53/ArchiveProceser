@@ -736,3 +736,16 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - `docs/nodes/CREATING_NODES.md`: Guía de desarrollo de nodos personalizados.
    - `docs/nodes/examples/SampleMultiPortNode.cs`: Ejemplo de nodo de código completo para desarrolladores.
    - `docs/ARCHITECTURE_DEEP_DIVE.md`: Guía arquitectónica detallada en 4 niveles de complejidad.
+
+---
+
+## [2026-08-24] - Guía Maestra Universal para Agentes de IA (`AGENTS.md`)
+
+### 🛠 Cambios Implementados
+1. **Creación de `AGENTS.md`:**
+   - Estandarización de directrices para agentes de IA (Antigravity, Cursor, Claude Code, Copilot, Roo Code, Windsurf).
+   - Definición del **Protocolo de Arranque Obligatorio** (lectura secuencial de `.antigravity/knowledge/session_summary.md`, `docs/PROJECT_WALKTHROUGH.md`, `.antigravity/knowledge/repo_architecture.md`, `.agents/rules/rules.md`).
+   - Mapa exhaustivo de ficheros auxiliares existentes (`.agents/`, `.antigravity/`, `docs/`, `GEMINI.md`).
+   - Resumen de principios técnicos (.NET 9, C# 13, `System.Threading.Lock`, aislamiento en `FileFlow.Sdk`).
+   - Protocolo de validación y mantenimiento continuo post-sesión.
+

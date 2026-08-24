@@ -53,7 +53,8 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ---
 
-## 3. Suite Completa de Documentación Técnica (`docs/`)
+## 3. Suite Completa de Documentación y Directrices (`docs/` & `AGENTS.md`)
+- `AGENTS.md`: Guía maestra universal para cualquier agente de IA (Antigravity, Cursor, Claude Code, Copilot, etc.) con protocolo de arranque, mapa de archivos auxiliares y estándares .NET 9.
 - `docs/architecture.md`, `docs/setup_and_deployment.md`, `docs/api_reference.md`, `docs/user_guide.md`, `docs/contributing.md`, `docs/README.md`.
 
 ---
