@@ -6,6 +6,9 @@
     <LangVersion>13</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
+    <!-- Reduce carpetas de idioma satelite (cs/de/fr/it/ja/ko/pl/pt-BR/ru/tr/zh-Hans/zh-Hant) generadas por WPF/.NET -->
+    <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,8 +28,12 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
   </ItemGroup>
 
-  <Target Name="CopyPlugins" AfterTargets="Build">
-    <MakeDir Directories="$(OutDir)Plugins" />
+  <Target Name="CopyPlugins" AfterTargets="Build;Publish">
+    <PropertyGroup>
+      <PluginsDestDir Condition="'$(PluginsDestDir)' == '' AND '$(PublishDir)' != ''">$(PublishDir)</PluginsDestDir>
+      <PluginsDestDir Condition="'$(PluginsDestDir)' == ''">$(OutDir)</PluginsDestDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginsDestDir)Plugins" />
     <ItemGroup>
       <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0\*.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0\*.*" />
@@ -35,7 +42,7 @@
       <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\net9.0\*.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0\*.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(OutDir)Plugins\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsDestDir)Plugins\" SkipUnchangedFiles="true" />
   </Target>
 </Project>
 

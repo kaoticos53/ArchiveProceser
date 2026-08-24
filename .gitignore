@@ -36,3 +36,7 @@ FileFlow.Plugin.Images/obj/
 # Test data directories
 [Dd]irectorio [Tt]est/
 [Dd]irectorio[Tt]est/
+
+# Artefactos generados del instalador (binarios, publish intermedio y setup final)
+installer/publish/
+installer/output/

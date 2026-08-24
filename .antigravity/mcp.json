@@ -18,6 +18,14 @@
         "@modelcontextprotocol/server-filesystem",
         "."
       ]
+    },
+    "ripgrep": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-ripgrep",
+        "D:\\Users\\Ricardo\\Documents\\GitHub\\ArchiveProceser"
+      ]
     }
   }
 }

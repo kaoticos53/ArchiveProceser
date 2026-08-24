@@ -28,6 +28,13 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 | [`.antigravity/knowledge/repo_architecture.md`](file:///.antigravity/knowledge/repo_architecture.md) | Documento vivo de la arquitectura de la solución, puertos y modelos. | **Lectura:** Antes de modificar contratos o estructuras de módulos.<br>**Escritura:** Al alterar contratos o añadir componentes estructurales. |
 | [`.agents/rules/rules.md`](file:///.agents/rules/rules.md) | Reglas técnicas de .NET 9, C# 13, threading, asincronía y desacoplamiento. | **Lectura:** Antes de escribir código en cualquier módulo. |
 | [`.agents/architecture.md`](file:///.agents/architecture.md) | Síntesis arquitectónica rápida (Microkernel, DAG Engine, FileItemContext). | **Lectura:** Consulta rápida de patrones del motor. |
+| [`.antigravity/mcp.json`](file:///.antigravity/mcp.json) | Configuración de servidores MCP (memoria, filesystem, ripgrep) para búsqueda rápida sin lectura completa de archivos. | **Lectura:** Antes de explorar el repositorio o localizar símbolos. |
+
+---
+
+## ⚡ Optimización de Tokens (Regla Estricta)
+
+> No leas archivos de código fuente completos de forma preventiva. Utiliza primero las herramientas del servidor MCP (memoria/búsqueda rápida, `ripgrep`) para ubicar funciones, clases o líneas exactas antes de abrir un archivo.
 | [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) | Catálogo de todos los nodos disponibles, puertos de entrada/salida y categorías. | **Lectura:** Al crear o modificar nodos o plugins. |
 | [`.agents/prompts/agent_prompts.md`](file:///.agents/prompts/agent_prompts.md) | Guías y secuencias de prompts especializadas para auditoría, refactorización y extensión. | **Lectura:** Para guiar auditorías por fases o tareas complejas. |
 | [`docs/architecture.md`](file:///docs/architecture.md) y [`docs/ARCHITECTURE_DEEP_DIVE.md`](file:///docs/ARCHITECTURE_DEEP_DIVE.md) | Documentación técnica profunda del diseño del sistema y flujo de datos. | **Lectura:** En tareas que involucren rediseño o extensiones mayores. |
