@@ -35,6 +35,7 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 7. **Automatización de Release e Instalador con GitHub Actions**:
    - Desarrollado [`.github/workflows/release.yml`](file:///.github/workflows/release.yml) con soporte de ejecución manual (`workflow_dispatch`) y publicación por etiquetas (`v*`), generando el instalador Inno Setup (`.exe`), el paquete portable (`.zip`) y las sumas de verificación SHA-256 adjuntas en GitHub Releases.
    - Desarrollado [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml) para validación continua de compilación y pruebas en ramas principales y PRs.
+   - Añadida la directiva de entorno `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"` para evitar avisos de deprecación de Node 20 en los runners de GitHub Actions.
    - Refactorizados los scripts `installer/publish.ps1` y `installer/build-installer.ps1` para soporte robusto de parámetros tipados en PowerShell CLI.
 8. **Mantenimiento y Control de Versiones (.gitignore)**:
    - Añadidas las carpetas temporales de análisis `coverage-report/`, `TestResults/` y `.dotnet_tmp/` al archivo [`.gitignore`](file:///.gitignore).
