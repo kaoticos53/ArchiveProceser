@@ -31,11 +31,14 @@
 param(
 	[string]$Configuration = "Release",
 	[string]$Runtime = "win-x64",
-	[bool]$SelfContained = $true,
-	[bool]$SingleFile = $true
+	$SelfContained = $true,
+	$SingleFile = $true
 )
 
 $ErrorActionPreference = "Stop"
+
+$isSelfContained = if ($SelfContained -is [bool]) { $SelfContained } else { [System.Convert]::ToBoolean($SelfContained) }
+$isSingleFile = if ($SingleFile -is [bool]) { $SingleFile } else { [System.Convert]::ToBoolean($SingleFile) }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repoRoot "FileFlow.App\FileFlow.App.csproj"
@@ -46,18 +49,18 @@ if (Test-Path $publishRoot) {
 	Remove-Item $publishRoot -Recurse -Force
 }
 
-Write-Host "==> Publicando FileFlow.App ($Configuration, $Runtime, SelfContained=$SelfContained, SingleFile=$SingleFile)..." -ForegroundColor Cyan
+Write-Host "==> Publicando FileFlow.App ($Configuration, $Runtime, SelfContained=$isSelfContained, SingleFile=$isSingleFile)..." -ForegroundColor Cyan
 
-if ($SingleFile -and -not $SelfContained) {
+if ($isSingleFile -and -not $isSelfContained) {
 	Write-Warning "SingleFile requiere SelfContained=true. Forzando SelfContained=true."
-	$SelfContained = $true
+	$isSelfContained = $true
 }
 
 $publishArgs = @(
 	"publish", $projectPath,
 	"-c", $Configuration,
 	"-r", $Runtime,
-	"--self-contained", $SelfContained.ToString().ToLower(),
+	"--self-contained", $isSelfContained.ToString().ToLower(),
 	"-o", $publishRoot,
 	"-p:PublishSingleFile=$($SingleFile.ToString().ToLower())",
 	"-p:IncludeNativeLibrariesForSelfExtract=true",

@@ -1,0 +1,164 @@
+name: Build, Package & Release Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión del lanzamiento (ej. 2.0.0 o v2.0.0)'
+        required: true
+        default: '2.0.0'
+        type: string
+      prerelease:
+        description: 'Marcar como pre-lanzamiento (Pre-release)'
+        required: false
+        default: false
+        type: boolean
+      draft:
+        description: 'Crear como borrador (Draft)'
+        required: false
+        default: false
+        type: boolean
+      run_tests:
+        description: 'Ejecutar suite completa de pruebas antes de empaquetar'
+        required: false
+        default: true
+        type: boolean
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: 🚀 Compilar, Empaquetar y Publicar Release
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Configurar .NET 9.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: 🏷️ Determinar Versión de la Release
+        id: get_version
+        shell: pwsh
+        run: |
+          $rawVersion = "${{ github.event.inputs.version }}"
+          if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+            $rawVersion = "${{ github.ref_name }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($rawVersion) -or $rawVersion -eq "main" -or $rawVersion -eq "master") {
+            $rawVersion = "2.0.0"
+          }
+          
+          # Quitar prefijo 'v' si existe para números de versión de Windows / Inno Setup
+          $cleanVersion = $rawVersion.TrimStart('v')
+          $tagVersion = "v$cleanVersion"
+
+          Write-Host "Versión limpia para instalador: $cleanVersion"
+          Write-Host "Etiqueta Git para Release: $tagVersion"
+
+          "clean_version=$cleanVersion" >> $env:GITHUB_OUTPUT
+          "tag_version=$tagVersion" >> $env:GITHUB_OUTPUT
+
+      - name: 📦 Restaurar dependencias
+        run: dotnet restore FileFlow.slnx
+
+      - name: 🧪 Ejecutar suite de pruebas unitarias y de integración
+        if: ${{ github.event.inputs.run_tests != 'false' }}
+        run: dotnet test FileFlow.slnx -c Release --no-restore --verbosity normal
+
+      - name: 🛠️ Instalar Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress --yes
+          $innoPath = "C:\Program Files (x86)\Inno Setup 6"
+          if (Test-Path $innoPath) {
+            Write-Host "Añadiendo Inno Setup al PATH: $innoPath"
+            "$innoPath" >> $env:GITHUB_PATH
+          }
+
+      - name: 🏗️ Compilar aplicación y generar instalador .exe
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.get_version.outputs.clean_version }}"
+          Write-Host "Generando instalador para versión $ver..."
+          .\installer\build-installer.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
+
+      - name: 🗜️ Generar paquete portable .zip
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.get_version.outputs.clean_version }}"
+          $publishFolder = "installer/publish/win-x64"
+          $zipOutput = "installer/output/FileFlowStudio-Portable-v$ver-win-x64.zip"
+          
+          Write-Host "Comprimiendo versión portable en: $zipOutput"
+          Compress-Archive -Path "$publishFolder/*" -DestinationPath $zipOutput -CompressionLevel Optimal
+
+      - name: 🔐 Generar sumas de verificación SHA-256
+        shell: pwsh
+        run: |
+          $outputDir = "installer/output"
+          $checksumFile = "$outputDir/checksums.txt"
+          $files = Get-ChildItem -Path $outputDir -File | Where-Object { $_.Extension -in @(".exe", ".zip") }
+
+          $checksums = foreach ($file in $files) {
+            $hash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($file.Name)"
+          }
+
+          $checksums | Out-File -FilePath $checksumFile -Encoding utf8
+          Write-Host "Checksums generados:"
+          Get-Content $checksumFile
+
+      - name: 📤 Subir artefactos de la compilación
+        uses: actions/upload-artifact@v4
+        with:
+          name: FileFlowStudio-Packages-${{ steps.get_version.outputs.clean_version }}
+          path: installer/output/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 🚀 Publicar GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag_version }}
+          name: FileFlow Studio ${{ steps.get_version.outputs.tag_version }}
+          draft: ${{ github.event.inputs.draft == 'true' || false }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' || false }}
+          generate_release_notes: true
+          body: |
+            ## ⚡ FileFlow Studio ${{ steps.get_version.outputs.tag_version }}
+
+            Bienvenido a la versión **${{ steps.get_version.outputs.tag_version }}** de **FileFlow Studio**, el motor visual interactivo de automatización y procesamiento masivo de archivos basado en Grafos Dirigidos Acíclicos (DAG) para Windows.
+
+            ---
+
+            ### 📦 Descargas Disponibles
+            - 💻 **Instalador para Windows (Recomendado):** `FileFlowStudio-Setup-${{ steps.get_version.outputs.clean_version }}.exe`
+              - *Incluye asistente de instalación en español/inglés, accesos directos e integración completa.*
+            - 🗜️ **Versión Portable (.ZIP):** `FileFlowStudio-Portable-v${{ steps.get_version.outputs.clean_version }}-win-x64.zip`
+              - *Ejecución directa sin requerir permisos de administrador ni instalación previa.*
+            - 🔐 **Sumas de Verificación:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de los binarios.
+
+            ---
+
+            ### 🌟 Características Destacadas de esta Versión
+            - 🎨 **Lienzo DAG Interactivo:** Diseño de flujos mediante nodos visuales con validación topológica y prevención de ciclos en tiempo real.
+            - 📋 **Reportes Visuales de Operaciones (`OperationReportNode`):** Generación de informes en **HTML Interactivo** con acordeón por directorios, **Markdown**, **Árbol ASCII**, **JSON** y **CSV**.
+            - ⚡ **Motor Asíncrono de Alto Rendimiento:** Procesamiento concurrente mediante `Channel<T>` con telemetría SQLite In-Memory (>82.000 logs/s).
+            - 🛡️ **Modo Simulación (*Dry Run*):** Previsualización determinista de operaciones sin modificar archivos reales.
+            - 🧩 **27 Nodos Nativos:** Cobertura de sistemas de archivos, compresión/descompresión (ZIP, RAR, 7Z), optimización gráfica (WebP), hashing criptográfico y control de flujo lógico.
+          files: |
+            installer/output/*.exe
+            installer/output/*.zip
+            installer/output/checksums.txt

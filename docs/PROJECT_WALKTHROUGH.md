@@ -32,6 +32,10 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - `dotnet test FileFlow.slnx`: **190 / 190 pruebas superadas con 100% de éxito (0 errores, 0 fallos)**.
 6. **Publicación del `README.md` Principal para GitHub**:
    - Creado [`README.md`](file:///README.md) en la raíz con badges de estado, descripción del motor DAG, diagrama arquitectónico, catálogo de los 27 nodos, guía de inicio rápido y enlaces a toda la documentación técnica.
+7. **Automatización de Release e Instalador con GitHub Actions**:
+   - Desarrollado [`.github/workflows/release.yml`](file:///.github/workflows/release.yml) con soporte de ejecución manual (`workflow_dispatch`) y publicación por etiquetas (`v*`), generando el instalador Inno Setup (`.exe`), el paquete portable (`.zip`) y las sumas de verificación SHA-256 adjuntas en GitHub Releases.
+   - Desarrollado [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml) para validación continua de compilación y pruebas en ramas principales y PRs.
+   - Refactorizados los scripts `installer/publish.ps1` y `installer/build-installer.ps1` para soporte robusto de parámetros tipados en PowerShell CLI.
 
 ---
 

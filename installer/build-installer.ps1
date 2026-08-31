@@ -23,10 +23,11 @@
 param(
 	[string]$Version = "1.0.0",
 	[string]$Runtime = "win-x64",
-	[bool]$SelfContained = $true
+	$SelfContained = $true
 )
 
 $ErrorActionPreference = "Stop"
+$isSelfContained = if ($SelfContained -is [bool]) { $SelfContained } else { [System.Convert]::ToBoolean($SelfContained) }
 
 function Find-InnoSetupCompiler {
 	# 1. Buscar en el PATH
@@ -81,7 +82,7 @@ if (-not $iscc) {
 Write-Host "==> Inno Setup encontrado en: $iscc" -ForegroundColor Green
 
 # 1. Publicar la aplicación
-& (Join-Path $PSScriptRoot "publish.ps1") -Runtime $Runtime -SelfContained $SelfContained
+& (Join-Path $PSScriptRoot "publish.ps1") -Runtime $Runtime -SelfContained $isSelfContained
 
 # 2. Compilar el instalador
 $sourceDir = Join-Path $PSScriptRoot "publish\$Runtime"

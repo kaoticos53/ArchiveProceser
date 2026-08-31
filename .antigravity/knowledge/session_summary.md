@@ -11,7 +11,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **190 / 190 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
 - **Nuevo Nodo**: `OperationReportNode` en `FileFlow.Plugin.FileSystem` con soporte de 5 formatos (HTML interactivo, Markdown, Texto plano, JSON, CSV), ámbito configurable (`Consolidated` en archivo único, `PerFile`, `Both`), agrupación dinámica (`GroupBy`: `Directory` con acordeón colapsable, `Flat`, `Extension`, `Status`) y auto-apertura.
-- **Documento SRS, Pruebas y README**: Publicado en [`README.md`](file:///README.md), [`docs/ESPECIFICACIONES.md`](file:///docs/ESPECIFICACIONES.md), manual en [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), guía de pruebas en [`docs/guia_de_pruebas.md`](file:///docs/guia_de_pruebas.md) y catálogo de 27 nodos actualizado en [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md).
+- **Documento SRS, Pruebas, README y CI/CD**: Publicado en [`README.md`](file:///README.md), [`docs/ESPECIFICACIONES.md`](file:///docs/ESPECIFICACIONES.md), manual en [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), guía de pruebas en [`docs/guia_de_pruebas.md`](file:///docs/guia_de_pruebas.md), catálogo de 27 nodos en [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) y pipelines GitHub Actions en [`.github/workflows/`](file:///.github/workflows/).
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
 ---

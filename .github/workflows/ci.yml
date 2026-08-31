@@ -1,0 +1,42 @@
+name: Continuous Integration (Build & Test)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-test:
+    name: 🧪 Compilar y Ejecutar Pruebas
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar .NET 9.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: 📦 Restaurar dependencias
+        run: dotnet restore FileFlow.slnx
+
+      - name: 🏗️ Compilar solución
+        run: dotnet build FileFlow.slnx -c Release --no-restore
+
+      - name: 🧪 Ejecutar suite de pruebas (190 tests)
+        run: dotnet test FileFlow.slnx -c Release --no-build --verbosity normal --logger "trx;LogFileName=test_results.trx"
+
+      - name: 📊 Publicar resultados de pruebas
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-trx
+          path: '**/TestResults/*.trx'
+          retention-days: 7
