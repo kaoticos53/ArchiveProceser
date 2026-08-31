@@ -8,8 +8,10 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **181 / 181 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **190 / 190 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
+- **Nuevo Nodo**: `OperationReportNode` en `FileFlow.Plugin.FileSystem` con soporte de 5 formatos (HTML interactivo, Markdown, Texto plano, JSON, CSV), ámbito configurable (`Consolidated` en archivo único, `PerFile`, `Both`), agrupación dinámica (`GroupBy`: `Directory` con acordeón colapsable, `Flat`, `Extension`, `Status`) y auto-apertura.
+- **Documento SRS y Pruebas**: Publicado en [`docs/ESPECIFICACIONES.md`](file:///docs/ESPECIFICACIONES.md), manual en [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), guía de pruebas en [`docs/guia_de_pruebas.md`](file:///docs/guia_de_pruebas.md) y catálogo de 27 nodos actualizado en [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md).
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
 ---

@@ -42,43 +42,46 @@ Cada tarjeta de nodo en el lienzo cuenta con dos botones circulares rápidos:
 
 ---
 
-## 3. Catálogo Completo de los 24 Nodos de Producción
+## 3. Catálogo Completo de los 27 Nodos de Producción
 
 ### 📁 Sistema de Archivos (`FileSystem`)
 1. **Origen Carpeta (`FolderSourceNode`)**: Escanea directorios locales/red con soporte recursivo y filtros de extensión.
 2. **Destino de Archivos (`DestinationSinkNode`)**: Guarda o copia archivos al directorio final con gestión inteligente de colisiones (Sobrescribir, Renombrar, Omitir).
-3. **Reubicador Seguro (`FileRelocatorNode`)**: Mueve o copia archivos validando integridad criptográfica post-transferencia.
-4. **Renombrador Avanzado (`AdvancedRenamerNode`)**: Aplica plantillas dinámicas con fecha, tamaño, prefijos y reemplazo por expresiones regulares.
-5. **Inyector de Variables (`VariableInjectorNode`)**: Añade variables dinámicas al archivo para ser utilizadas por nodos posteriores.
-6. **Inspector de Carpetas (`DirectoryInspectorNode`)**: Analiza la estructura de directorios y emite métricas de conteo y tamaño.
-7. **Limpiador de Carpetas Vacías (`EmptyDirectoryCleanerNode`)**: Elimina carpetas residuales huérfanas de forma segura.
-8. **Papelera de Reciclaje Segura (`SafeRecycleDeleteNode`)**: Envía archivos obsoletos a la papelera del sistema en lugar de eliminarlos permanentemente.
-9. **Acción sobre Archivo Original (`OriginalFileActionNode`)**: Permite archivar, poner en cuarentena o purgar el archivo de origen una vez procesado.
-10. **Procesador de Documentos (`DocumentProcessorNode`)**: Clasifica y analiza metadatos de documentos PDF, Word, Excel y texto plano.
+3. **Reporte de Operaciones (`OperationReportNode`)**: Genera reportes visuales interactivos (HTML, Markdown, Texto plano, JSON, CSV) de todas las operaciones realizadas.
+4. **Reubicador Seguro (`FileRelocatorNode`)**: Mueve o copia archivos validando integridad criptográfica post-transferencia.
+5. **Renombrador Avanzado (`AdvancedRenamerNode`)**: Aplica plantillas dinámicas con fecha, tamaño, prefijos y reemplazo por expresiones regulares.
+6. **Inyector de Variables (`VariableInjectorNode`)**: Añade variables dinámicas al archivo para ser utilizadas por nodos posteriores.
+7. **Inspector de Carpetas (`DirectoryInspectorNode`)**: Analiza la estructura de directorios y emite métricas de conteo y tamaño.
+8. **Limpiador de Carpetas Vacías (`EmptyDirectoryCleanerNode`)**: Elimina carpetas residuales huérfanas de forma segura.
+9. **Papelera de Reciclaje Segura (`SafeRecycleDeleteNode`)**: Envía archivos obsoletos a la papelera del sistema en lugar de eliminarlos permanentemente.
+10. **Acción sobre Archivo Original (`OriginalFileActionNode`)**: Permite archivar, poner en cuarentena o purgar el archivo de origen una vez procesado.
+11. **Procesador de Documentos (`DocumentProcessorNode`)**: Clasifica y analiza metadatos de documentos PDF, Word, Excel y texto plano.
+12. **Registrador de Log (`LogOutputNode`)**: Emite mensajes de log enriquecidos y personalizados a la consola durante el flujo.
 
 ### 🗜️ Archivos Comprimidos (`Archives`)
-11. **Descompresor Inteligente (`SmartUnpackNode`)**: Extrae archivos Zip, 7z, Rar, Tar, Gz y auto-aplana carpetas contenedor únicas redundantes.
-12. **Compresor de Archivos (`ArchiveCompressorNode`)**: Comprime elementos individuales o lotes en Zip, Tar, Gz o 7z con nivel de compresión configurable.
-13. **Filtro de Partes de Archivo (`ArchiveFilterNode`)**: Detecta y procesa únicamente la primera parte de archivos multivolumen (`.part1.rar`, `.z01`).
+13. **Descompresor Inteligente (`SmartUnpackNode`)**: Extrae archivos Zip, 7z, Rar, Tar, Gz y auto-aplana carpetas contenedor únicas redundantes.
+14. **Compresor de Archivos (`ArchiveCompressorNode`)**: Comprime elementos individuales o lotes en Zip, Tar, Gz o 7z con nivel de compresión configurable.
+15. **Filtro de Partes de Archivo (`ArchiveFilterNode`)**: Detecta y procesa únicamente la primera parte de archivos multivolumen (`.part1.rar`, `.z01`).
 
 ### 🖼️ Procesamiento de Imágenes (`Images`)
-14. **Optimizador de Imágenes (`ImageOptimizerNode`)**: Comprime y redimensiona imágenes a WebP, JPEG o PNG con cálculo automático del % de ahorro de espacio.
-15. **Extractor EXIF (`ExifMetadataNode`)**: Lee metadatos de cámara, modelo, fecha de captura y resolución, inyectándolos como variables del archivo.
+16. **Optimizador de Imágenes (`ImageOptimizerNode`)**: Comprime y redimensiona imágenes a WebP, JPEG o PNG con cálculo automático del % de ahorro de espacio.
+17. **Extractor EXIF (`ExifMetadataNode`)**: Lee metadatos de cámara, modelo, fecha de captura y resolución, inyectándolos como variables del archivo.
 
 ### 🔐 Integridad y Criptografía (`Hashing`)
-16. **Calculador de Hash (`HashCalculatorNode`)**: Genera firmas SHA-256, MD5, SHA-1, SHA-512 o xxHash para verificación de integridad.
-17. **Filtro de Duplicados (`DeduplicationFilterNode`)**: Compara firmas criptográficas en tiempo real y desvía archivos duplicados a una rama secundaria.
+18. **Calculador de Hash (`HashCalculatorNode`)**: Genera firmas SHA-256, MD5, SHA-1, SHA-512 o xxHash para verificación de integridad.
+19. **Filtro de Duplicados (`DeduplicationFilterNode`)**: Compara firmas criptográficas en tiempo real y desvía archivos duplicados a una rama secundaria.
 
 ### ⚙️ Lógica y Control de Flujo (`Logic`)
-18. **Bifurcador Switch-Case (`SwitchCaseNode`)**: Enruta archivos a diferentes ramas según patrones de extensión, tamaño o variables.
-19. **Filtro de Expresiones (`ExpressionFilterNode`)**: Evalúa condiciones booleanas (`Size > 10MB`, `Ext == 'pdf'`).
-20. **Retardo y Control de Caudal (`ThrottleDelayNode`)**: Limita la tasa de procesamiento para no saturar APIs o discos.
-21. **Acumulador por Lotes (`BatchBufferNode`)**: Agrupa archivos en lotes por cantidad o tamaño total en MB antes de continuar.
-22. **Barrera de Sincronización (`ForkJoinBarrierNode`)**: Espera a que todas las ramas paralelas de un archivo se completen antes de proseguir.
+20. **Bifurcador Switch-Case (`SwitchCaseNode`)**: Enruta archivos a diferentes ramas según patrones de extensión, tamaño o variables.
+21. **Filtro de Expresiones (`ExpressionFilterNode`)**: Evalúa condiciones booleanas (`Size > 10MB`, `Ext == 'pdf'`).
+22. **Retardo y Control de Caudal (`ThrottleDelayNode`)**: Limita la tasa de procesamiento para no saturar APIs o discos.
+23. **Acumulador por Lotes (`BatchBufferNode`)**: Agrupa archivos en lotes por cantidad o tamaño total en MB antes de continuar.
+24. **Barrera de Sincronización (`ForkJoinBarrierNode`)**: Espera a que todas las ramas paralelas de un archivo se completen antes de proseguir.
 
 ### 🌐 Integraciones y Multimedia (`Integrations`)
-23. **Ejecutor de Comandos CLI (`CliExecutionNode`)**: Lanza scripts de PowerShell, Python o ejecutables externos pasando rutas como argumentos.
-24. **Transcodificador Multimedia (`MediaTranscoderNode`)**: Convierte videos y audios mediante FFmpeg con presets de alta compatibilidad (MP4 H.264, MP3, WebM).
+25. **Ejecutor de Comandos CLI (`CliExecutionNode`)**: Lanza scripts de PowerShell, Python o ejecutables externos pasando rutas como argumentos.
+26. **Notificador Webhook (`WebhookNotificationNode`)**: Realiza peticiones HTTP POST/PUT con payloads JSON dinámicos hacia APIs externas.
+27. **Transcodificador Multimedia (`MediaTranscoderNode`)**: Convierte videos y audios mediante FFmpeg con presets de alta compatibilidad (MP4 H.264, MP3, WebM).
 
 ---
 

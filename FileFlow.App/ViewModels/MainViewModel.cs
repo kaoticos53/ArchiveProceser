@@ -22,7 +22,15 @@ public partial class MainViewModel : ObservableObject
     {
         PluginLoader = new PluginLoader();
 
-        // Dynamically load all plugin assemblies in /Plugins directory
+        // Register all built-in referenced plugin assemblies
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.FileSystem.FolderSourceNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Archives.SmartUnpackNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Images.ImageOptimizerNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.CliExecutionNode).Assembly);
+
+        // Dynamically load any additional external plugin assemblies in /Plugins directory
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         string pluginsDirectory = Path.Combine(baseDir, "Plugins");
 

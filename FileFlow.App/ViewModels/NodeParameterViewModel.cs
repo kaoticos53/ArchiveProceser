@@ -296,6 +296,10 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             "archiveformat" => ["ZIP", "TAR", "GZ", "7Z"],
             "compressiontype" => ["Deflate", "Store", "LZMA", "BZip2"],
             "preset" => Services.MediaPresetManagerService.Instance.GetPresetNames(),
+            "reportformat" => ["HTML", "Markdown", "Text", "JSON", "CSV"],
+            "reportscope" => ["Consolidated", "PerFile", "Both"],
+            "groupby" => ["Directory", "Flat", "Extension", "Status"],
+            "theme" => ["ModernDark", "CleanLight"],
             _ => []
         };
     }

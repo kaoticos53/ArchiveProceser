@@ -10,8 +10,16 @@ using Xunit;
 
 namespace FileFlow.Tests.Integration;
 
+/// <summary>
+/// Pruebas de integración de extremo a extremo (E2E) para la ejecución de flujos DAG completos en el motor <see cref="WorkflowExecutor"/>.
+/// </summary>
 public class WorkflowIntegrationTests
 {
+    /// <summary>
+    /// OBJETO: Pipeline DAG lineal completo (FolderSourceNode -> VariableInjectorNode -> DestinationSinkNode).
+    /// QUÉ:    Valida que un archivo sea descubierto en la carpeta origen, enriquecido con metadatos personalizados y transferido con éxito al destino final.
+    /// CÓMO:  Crea directorios temporales de origen y destino, construye un grafo de 3 nodos y 2 aristas, ejecuta el flujo con WorkflowExecutor y comprueba la existencia física del archivo procesado en destino.
+    /// </summary>
     [Fact]
     public async Task EndToEnd_FolderSourceToInjectorToDestinationSink_ShouldProcessPipeline()
     {

@@ -8,8 +8,16 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+/// <summary>
+/// Pruebas unitarias para <see cref="EditorViewModel"/> y la gestión del lienzo de diseño visual DAG en WPF.
+/// </summary>
 public class EditorViewModelTests
 {
+    /// <summary>
+    /// OBJETO: Descubrimiento de variables globales en el editor.
+    /// QUÉ:    Verifica que las variables del sistema (ej. FileName, RelativePath, DateNow) siempre estén disponibles para cualquier nodo.
+    /// CÓMO:  Instancia el editor y solicita las variables disponibles río arriba para un nodo inicial, comprobando la presencia del grupo 'System'.
+    /// </summary>
     [Fact]
     public void GetUpstreamAvailableVariables_ShouldIncludeSystemVariables_Always()
     {
@@ -30,6 +38,11 @@ public class EditorViewModelTests
         systemGroup.Variables.Should().Contain(v => v.Name == "DateNow");
     }
 
+    /// <summary>
+    /// OBJETO: Recorrido topológico inverso para inspección de metadatos upstream.
+    /// QUÉ:    Garantiza que un nodo destino pueda descubrir y autocompletar variables emitidas por nodos predecesores conectados (ej. EXIF de imágenes).
+    /// CÓMO:  Crea dos nodos conectados (ExifMetadataNode -> DestinationSinkNode), solicita las variables del nodo destino y valida la presencia de metadatos EXIF.
+    /// </summary>
     [Fact]
     public void GetUpstreamAvailableVariables_ShouldTraverseUpstreamConnections_ToIncludeExifVariables()
     {
@@ -58,6 +71,11 @@ public class EditorViewModelTests
         exifGroup.Variables.Should().Contain(v => v.Name == "Orientation");
     }
 
+    /// <summary>
+    /// OBJETO: Enrutador dinámico <see cref="FileFlow.Plugin.Logic.SwitchCaseNode"/> en el ViewModel.
+    /// QUÉ:    Valida la reactividad de la UI al añadir, renombrar y eliminar casos dinámicos, sincronizando los puertos de salida en tiempo real.
+    /// CÓMO:  Instancia el NodeViewModel del SwitchCaseNode, ejecuta comandos de adición, renombra casos y elimina uno, verificando la lista de OutputPorts en cada paso.
+    /// </summary>
     [Fact]
     public void SwitchCaseNodeViewModel_ShouldInitializeWithCase1AndDefault_AndSupportDynamicAdditionAndRenaming()
     {

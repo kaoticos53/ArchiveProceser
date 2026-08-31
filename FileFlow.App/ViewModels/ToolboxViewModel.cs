@@ -23,9 +23,13 @@ public partial class ToolboxCategoryGroup : ObservableObject
     }
 }
 
-public partial class ToolboxViewModel : ObservableObject
+public partial class ToolboxViewModel : ObservableObject, IDisposable
 {
     private readonly PluginLoader _pluginLoader;
+    private readonly Lock _lock = new();
+    private readonly Action _preferencesChangedHandler;
+    private readonly EventHandler<System.Globalization.CultureInfo> _languageChangedHandler;
+    private bool _disposed;
 
     public ObservableCollection<ToolboxCategoryGroup> CategoryGroups { get; } = [];
 
@@ -47,18 +51,23 @@ public partial class ToolboxViewModel : ObservableObject
     public ToolboxViewModel(PluginLoader pluginLoader)
     {
         _pluginLoader = pluginLoader;
-        LocalizationManager.Instance.LanguageChanged += (_, _) => RefreshToolbox();
-        UserPreferencesService.Instance.PreferencesChanged += () => RefreshToolbox();
+        _languageChangedHandler = (_, _) => RefreshToolbox();
+        _preferencesChangedHandler = () => RefreshToolbox();
+
+        LocalizationManager.Instance.LanguageChanged += _languageChangedHandler;
+        UserPreferencesService.Instance.PreferencesChanged += _preferencesChangedHandler;
         RefreshToolbox();
     }
 
     public void RefreshToolbox()
     {
-        CategoryGroups.Clear();
-        IsCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
+        lock (_lock)
+        {
+            CategoryGroups.Clear();
+            IsCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
 
-        var prefs = UserPreferencesService.Instance;
-        var allItems = new List<NodeToolboxItem>();
+            var prefs = UserPreferencesService.Instance;
+            var allItems = new List<NodeToolboxItem>();
 
         foreach (var (typeName, type) in _pluginLoader.DiscoveredNodeTypes)
         {
@@ -172,6 +181,15 @@ public partial class ToolboxViewModel : ObservableObject
 
             group.Items.Add(item);
         }
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        LocalizationManager.Instance.LanguageChanged -= _languageChangedHandler;
+        UserPreferencesService.Instance.PreferencesChanged -= _preferencesChangedHandler;
     }
 
     [RelayCommand]
@@ -215,6 +233,7 @@ public partial class ToolboxViewModel : ObservableObject
         if (typeName.Contains("SwitchCase", StringComparison.OrdinalIgnoreCase)) return "🔀";
         if (typeName.Contains("BatchBuffer", StringComparison.OrdinalIgnoreCase)) return "📊";
         if (typeName.Contains("DestinationSink", StringComparison.OrdinalIgnoreCase)) return "💾";
+        if (typeName.Contains("OperationReport", StringComparison.OrdinalIgnoreCase)) return "📋";
         if (typeName.Contains("OriginalFileAction", StringComparison.OrdinalIgnoreCase)) return "🗑️";
         return "🧩";
     }

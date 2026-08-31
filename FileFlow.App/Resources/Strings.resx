@@ -190,6 +190,9 @@
   <data name="DestinationSinkNode_Name" xml:space="preserve"><value>Destination Sink</value></data>
   <data name="DestinationSinkNode_Desc" xml:space="preserve"><value>Writes or moves final processed file to target path.</value></data>
 
+  <data name="OperationReportNode_Name" xml:space="preserve"><value>Operation Report</value></data>
+  <data name="OperationReportNode_Desc" xml:space="preserve"><value>Generates an attractive visual execution and operations report for all processed files.</value></data>
+
   <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Scan Folder</value></data>
   <data name="DirectoryInspectorNode_Desc" xml:space="preserve"><value>Evaluates folder contents to classify archive and file composition.</value></data>
 

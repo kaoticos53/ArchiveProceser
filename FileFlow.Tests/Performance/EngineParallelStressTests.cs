@@ -6,8 +6,16 @@ using Xunit;
 
 namespace FileFlow.Tests.Performance;
 
+/// <summary>
+/// Pruebas de estrés y benchmarking de paralelismo concurrente para <see cref="WorkflowExecutor"/>.
+/// </summary>
 public class EngineParallelStressTests
 {
+    /// <summary>
+    /// OBJETO: Despacho concurrente masivo en <see cref="WorkflowExecutor"/>.
+    /// QUÉ:    Verifica la capacidad de procesamiento de 5.000 elementos en paralelo sin contención de bloqueos ni degradación de latencia.
+    /// CÓMO:  Genera 5.000 contextos FileItemContext, ejecuta tareas concurrentes con Task.WhenAll y mide con Stopwatch que el tiempo total no exceda el umbral de 5 segundos.
+    /// </summary>
     [Fact]
     public async Task WorkflowExecutor_ParallelDispatch_ShouldProcess5000ItemsFastWithoutLocks()
     {

@@ -190,6 +190,9 @@
   <data name="DestinationSinkNode_Name" xml:space="preserve"><value>Carpeta Destino</value></data>
   <data name="DestinationSinkNode_Desc" xml:space="preserve"><value>Guarda o mueve el archivo procesado al directorio destino final.</value></data>
 
+  <data name="OperationReportNode_Name" xml:space="preserve"><value>Reporte de Operaciones</value></data>
+  <data name="OperationReportNode_Desc" xml:space="preserve"><value>Genera un reporte visual atractivo de las operaciones y transformaciones aplicadas a cada archivo.</value></data>
+
   <data name="DirectoryInspectorNode_Name" xml:space="preserve"><value>Escanear Carpeta</value></data>
   <data name="DirectoryInspectorNode_Desc" xml:space="preserve"><value>Evalúa el contenido de una carpeta para clasificar su composición de archivos.</value></data>
 

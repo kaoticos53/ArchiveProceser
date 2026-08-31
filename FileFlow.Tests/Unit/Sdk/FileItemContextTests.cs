@@ -6,8 +6,16 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Sdk;
 
+/// <summary>
+/// Pruebas unitarias para el modelo fundamental de datos <see cref="FileItemContext"/> del SDK.
+/// </summary>
 public class FileItemContextTests
 {
+    /// <summary>
+    /// OBJETO: Constructor de <see cref="FileItemContext"/> con archivo existente en disco.
+    /// QUÉ:    Verifica la inicialización correcta de rutas, cálculo automático de tamaño en bytes, generación de GUID y colecciones vacías.
+    /// CÓMO:  Crea un archivo temporal con contenido de 25 bytes, instancia el contexto y comprueba que FileSizeBytes sea 25 y los tags/metadatos no sean nulos.
+    /// </summary>
     [Fact]
     public void Constructor_ShouldInitializeProperties_WhenValidFilePathGiven()
     {
@@ -36,6 +44,11 @@ public class FileItemContextTests
         }
     }
 
+    /// <summary>
+    /// OBJETO: Constructor de <see cref="FileItemContext"/> para directorios.
+    /// QUÉ:    Comprueba que cuando se crea un contexto de tipo carpeta, IsDirectory sea true y el tamaño inicial en bytes sea 0.
+    /// CÓMO:  Crea un directorio temporal, instancia el contexto con isDirectory = true y verifica las propiedades.
+    /// </summary>
     [Fact]
     public void Constructor_ShouldSetSizeToZero_WhenPathIsDirectory()
     {
@@ -59,6 +72,11 @@ public class FileItemContextTests
         }
     }
 
+    /// <summary>
+    /// OBJETO: Clonado profundo e inmutabilidad mediante <see cref="FileItemContext.DeepClone"/>.
+    /// QUÉ:    Garantiza que al duplicar un contexto para ramificaciones paralelas del grafo DAG, las colecciones de metadatos, tags y trazas se copien por valor y no por referencia.
+    /// CÓMO:  Prepara un contexto con tags, trazas y metadatos, genera un clon, muta el clon y verifica que el objeto original permanezca completamente inalterado.
+    /// </summary>
     [Fact]
     public void DeepClone_ShouldCreateIndependentCopy_WhenMetadataTagsAndLogsArePresent()
     {
@@ -98,6 +116,11 @@ public class FileItemContextTests
         clone.ExecutionLog.Should().HaveCount(2);
     }
 
+    /// <summary>
+    /// OBJETO: Registro de trazas cronológicas con <see cref="FileItemContext.AddLog"/>.
+    /// QUÉ:    Valida que cada mensaje añadido al log de ejecución contenga una marca de tiempo formateada entre corchetes.
+    /// CÓMO:  Instancia un contexto, invoca AddLog con un mensaje y comprueba que la primera entrada empiece con '[' y contenga el texto.
+    /// </summary>
     [Fact]
     public void AddLog_ShouldAppendTimestampedLogEntry()
     {
@@ -113,6 +136,11 @@ public class FileItemContextTests
         context.ExecutionLog[0].Should().StartWith("[");
     }
 
+    /// <summary>
+    /// OBJETO: Resiliencia ante rutas inexistentes en el constructor de <see cref="FileItemContext"/>.
+    /// QUÉ:    Asegura que si se pasa una ruta de archivo que no existe físicamente en disco, no se lancen excepciones no controladas y el tamaño se asigne a 0.
+    /// CÓMO:  Genera una ruta sintética inexistente, instancia el contexto y verifica que CurrentPath coincida y FileSizeBytes sea 0.
+    /// </summary>
     [Fact]
     public void Constructor_ShouldHandleNonExistentFileGracefully_WithoutThrowingException()
     {

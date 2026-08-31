@@ -176,6 +176,25 @@ Cualquier campo de texto, carpeta o plantilla de nombre admite variables dinámi
   - `Recursive`: `true` para analizar subcarpetas en profundidad.
   - `IgnoreHiddenSystemFiles`: `true` para considerar vacía una carpeta que solo contenga `Thumbs.db` o `.DS_Store`.
 
+#### 6. `OperationReportNode` (Reporte Visual de Operaciones)
+- **Propósito:** Genera un informe visual interactivo y estético con la trazabilidad completa del ciclo de vida y transformaciones de cada archivo (desde origen hasta destino con pasos y metadatos), agrupado jerárquicamente por la estructura de carpetas de origen.
+- **Puertos:**
+  - *Inputs:* `In`
+  - *Outputs:* `Out` (Reenvía el archivo sin modificar), `Report` (Emite el archivo de reporte generado), `Error`
+- **Parámetros:**
+  - `ReportFormat`: Desplegable con `HTML`, `Markdown`, `Text`, `JSON`, `CSV` (default: `HTML`).
+  - `ReportScope`: `Consolidated` (informe único para todo el lote), `PerFile` (reporte individual adjunto) o `Both` (ambos).
+  - `GroupBy`: Criterio de agrupación dinámica en el reporte:
+    - `Directory` *(Por Defecto)*: Acordeón interactivo con carpetas colapsables, conteo de archivos, volumen y estados por subdirectorio.
+    - `Flat`: Listado plano secuencial sin agrupadores.
+    - `Extension`: Agrupación por tipo/formato de archivo (`.jpg`, `.pdf`, etc.).
+    - `Status`: Agrupación por archivos exitosos vs con errores/alertas.
+  - `DestinationFolder`: Ruta o plantilla destino (default: `{RelativeDir}\Output`).
+  - `ReportFileName`: Plantilla de nombre (default: `Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}`).
+  - `Theme`: `ModernDark` (modo oscuro moderno con tarjetas y timeline) o `CleanLight`.
+  - `AutoOpenReport`: `true` para abrir automáticamente el reporte en el navegador/visor predeterminado al culminar.
+  - `IncludeMetadata`: `true` para incluir tablas desplegables con todos los atributos EXIF/Hash/Tags.
+
 ---
 
 ### Categoría 2: Logic (Control de Flujo)

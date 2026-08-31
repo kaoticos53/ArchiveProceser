@@ -2,6 +2,37 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-08-31] - Implementación de `OperationReportNode` y Publicación del Documento de Especificaciones Técnicas (SRS v2.0)
+
+### 📋 Acciones Realizadas
+1. **Nuevo Nodo de Reporte Visual de Operaciones (`OperationReportNode`)**:
+   - Desarrollado el nodo `OperationReportNode` en `FileFlow.Plugin.FileSystem` con arquitectura de renderizado extensible (`IReportRenderer`).
+   - Soporte de 5 formatos seleccionables por desplegable en el inspector: `HTML` (interactivo, responsive, KPIs, timeline con badges, búsqueda vanilla JS), `Markdown` (.md), `Text` (.txt con árbol ASCII), `JSON` (.json) y `CSV` (.csv).
+   - Ámbitos de reporte configurables (`ReportScope`): `Consolidated` (resumen general del lote en **un único archivo consolidado**), `PerFile` (reporte individual adjunto a cada archivo) y `Both`.
+   - **Agrupación Jerárquica por Directorios (`GroupBy`)**: Parámetro con opciones `Directory` (por defecto), `Flat`, `Extension` y `Status`.
+     - En **HTML**: Acordeón interactivo con carpetas colapsables, métricas de conteo/tamaño por carpeta, badges de salud (`✅ OK` / `⚠️ Errores`), botones *Expandir Todo / Colapsar Todo* y búsqueda reactiva inteligente que auto-despliega las carpetas coincidentes.
+     - En **Markdown**: Secciones estructuradas con bloques `<details open><summary>`.
+     - En **Texto Plano**: Árbol jerárquico ASCII (`├── 📁 /Fotos/ ... └── 📄 foto.jpg`).
+     - En **CSV / JSON**: Campos dedicados de directorio (`Directory`).
+   - Soporte de auto-apertura en navegador/visor del sistema (`AutoOpenReport`), personalización de tema (`Theme`: `ModernDark` / `CleanLight`), inclusión de metadatos (`IncludeMetadata`) y rutas parametrizables con plantillas de tokens.
+   - **Corrección de Generación Única**: Fijada la ruta de archivo consolidado (`_consolidatedFilePath`) al inicio de cada ejecución/sesión para evitar la dispersión en múltiples archivos al evaluar marcas de tiempo segundo a segundo o subcarpetas relativas.
+   - Modo `Dry Run` integrado registrando `PlannedAction` sin modificar el disco real.
+2. **Integración en UI / MVVM y Localización**:
+   - `NodeParameterViewModel.cs`: Agregadas opciones desplegables para `reportformat`, `reportscope`, `groupby` y `theme`.
+   - `ToolboxViewModel.cs`: Sincronización con `Lock`, desuscripción limpia `IDisposable` e icono `📋`.
+   - `Strings.resx` y `Strings.es.resx`: Cadenas en inglés y español para el nuevo nodo.
+3. **Auditoría Integral del Código y Generación del SRS**:
+   - Creado [`docs/ESPECIFICACIONES.md`](file:///docs/ESPECIFICACIONES.md) con la especificación formal del sistema.
+   - Actualizados [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md) y [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) reflejando los 27 nodos del sistema.
+4. **Documentación Exhaustiva de Pruebas (Objeto, Qué y Cómo)**:
+   - Creado [`docs/guia_de_pruebas.md`](file:///docs/guia_de_pruebas.md) conteniendo el catálogo estructurado de las 190 pruebas con su objetivo, regla de negocio y estrategia AAA (*Arrange, Act, Assert*).
+   - Documentación en el código fuente mediante comentarios XML doc en español (`/// <summary>`) detallando `OBJETO`, `QUÉ` y `CÓMO` en cada método de prueba.
+5. **Verificación Automatizada de Calidad**:
+   - Nuevos tests unitarios en `OperationReportNodeTests.cs` (HTML, Markdown, Text, JSON, CSV, PerFile/Both, Dry Run, Validación de Archivo Único Consolidado, Agrupación Jerárquica por Directorios) y `ToolboxViewModelTests.cs`.
+   - `dotnet test FileFlow.slnx`: **190 / 190 pruebas superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
 ## [2026-08-23] - Auditoría Integral 360° del Sistema y Refactorización Completa (Fase 1 y Fase 2 Ejecutadas)
 
 ### 📋 Estado, Hallazgos y Correcciones Aplicadas (100% Completado)
