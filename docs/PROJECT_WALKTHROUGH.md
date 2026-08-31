@@ -30,6 +30,8 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 5. **Verificación Automatizada de Calidad**:
    - Nuevos tests unitarios en `OperationReportNodeTests.cs` (HTML, Markdown, Text, JSON, CSV, PerFile/Both, Dry Run, Validación de Archivo Único Consolidado, Agrupación Jerárquica por Directorios) y `ToolboxViewModelTests.cs`.
    - `dotnet test FileFlow.slnx`: **190 / 190 pruebas superadas con 100% de éxito (0 errores, 0 fallos)**.
+6. **Publicación del `README.md` Principal para GitHub**:
+   - Creado [`README.md`](file:///README.md) en la raíz con badges de estado, descripción del motor DAG, diagrama arquitectónico, catálogo de los 27 nodos, guía de inicio rápido y enlaces a toda la documentación técnica.
 
 ---
 
