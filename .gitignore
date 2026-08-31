@@ -40,3 +40,9 @@ FileFlow.Plugin.Images/obj/
 # Artefactos generados del instalador (binarios, publish intermedio y setup final)
 installer/publish/
 installer/output/
+
+# Reportes de cobertura y resultados de pruebas
+coverage-report/
+TestResults/
+.dotnet_tmp/
+
