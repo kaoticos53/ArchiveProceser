@@ -34,6 +34,7 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - Creado [`README.md`](file:///README.md) en la raíz con badges de estado, descripción del motor DAG, diagrama arquitectónico, catálogo de los 27 nodos, guía de inicio rápido y enlaces a toda la documentación técnica.
 7. **Automatización de Release e Instalador con GitHub Actions**:
    - Desarrollado [`.github/workflows/release.yml`](file:///.github/workflows/release.yml) con soporte de ejecución manual (`workflow_dispatch`) y publicación por etiquetas (`v*`), generando el instalador Inno Setup (`.exe`), el paquete portable (`.zip`) y las sumas de verificación SHA-256 adjuntas en GitHub Releases.
+   - Implementada la sanitización automática de nombres de etiqueta Git (reemplazo de espacios por guiones como `1.0.0 beta` $\rightarrow$ `1.0.0-beta`) y asignación de `target_commitish: ${{ github.sha }}` para permitir la creación de releases desde cualquier commit.
    - Desarrollado [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml) para validación continua de compilación y pruebas en ramas principales y PRs.
    - Añadida la directiva de entorno `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"` para evitar avisos de deprecación de Node 20 en los runners de GitHub Actions.
    - Refactorizados los scripts `installer/publish.ps1` y `installer/build-installer.ps1` para soporte robusto de parámetros tipados en PowerShell CLI.

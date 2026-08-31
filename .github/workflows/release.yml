@@ -49,7 +49,7 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: 🏷️ Determinar Versión de la Release
+      - name: 🏷️ Determinar y Sanitizar Versión de la Release
         id: get_version
         shell: pwsh
         run: |
@@ -61,12 +61,14 @@ jobs:
             $rawVersion = "2.0.0"
           }
           
-          # Quitar prefijo 'v' si existe para números de versión de Windows / Inno Setup
-          $cleanVersion = $rawVersion.TrimStart('v')
+          # Sanitizar: Eliminar espacios y caracteres ilegales en Git tags (reemplazar por guiones '-')
+          $sanitized = $rawVersion.Trim() -replace '\s+', '-' -replace '[^a-zA-Z0-9\.\-_]', '-'
+          $cleanVersion = $sanitized.TrimStart('v')
           $tagVersion = "v$cleanVersion"
 
-          Write-Host "Versión limpia para instalador: $cleanVersion"
-          Write-Host "Etiqueta Git para Release: $tagVersion"
+          Write-Host "Versión original introducida: $rawVersion"
+          Write-Host "Versión sanitizada para instalador: $cleanVersion"
+          Write-Host "Etiqueta Git válida para Release: $tagVersion"
 
           "clean_version=$cleanVersion" >> $env:GITHUB_OUTPUT
           "tag_version=$tagVersion" >> $env:GITHUB_OUTPUT
@@ -135,6 +137,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.get_version.outputs.tag_version }}
+          target_commitish: ${{ github.sha }}
           name: FileFlow Studio ${{ steps.get_version.outputs.tag_version }}
           draft: ${{ github.event.inputs.draft == 'true' || false }}
           prerelease: ${{ github.event.inputs.prerelease == 'true' || false }}
