@@ -16,9 +16,7 @@
       "x": 320,
       "y": 200,
       "hasBreakpoint": false,
-      "parameters": {
-        "WaitForAll": true
-      }
+      "parameters": {}
     },
     {
       "id": "node-hash",
@@ -56,14 +54,14 @@
     {
       "id": "e2",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Branch1",
+      "sourcePortName": "Fork1",
       "targetNodeId": "node-hash",
       "targetPortName": "In"
     },
     {
       "id": "e3",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Branch2",
+      "sourcePortName": "Fork2",
       "targetNodeId": "node-opt",
       "targetPortName": "In"
     },
@@ -84,7 +82,7 @@
     {
       "id": "e6",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Joined",
+      "sourcePortName": "AllCompleted",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

@@ -18,7 +18,7 @@
       "hasBreakpoint": false,
       "parameters": {
         "Algorithm": "SHA256",
-        "HashMetadataKey": "Hash:SHA256"
+        "StoreInMetadataKey": "Hash:SHA256"
       }
     },
     {

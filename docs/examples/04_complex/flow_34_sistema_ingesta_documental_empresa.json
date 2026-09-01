@@ -94,12 +94,12 @@
       "sourceNodeId": "node-ren",
       "sourcePortName": "Out",
       "targetNodeId": "node-buf",
-      "targetPortName": "In"
+      "targetPortName": "ItemIn"
     },
     {
       "id": "e5",
       "sourceNodeId": "node-buf",
-      "sourcePortName": "BatchFlushed",
+      "sourcePortName": "BatchCompleted",
       "targetNodeId": "node-zip",
       "targetPortName": "In"
     },

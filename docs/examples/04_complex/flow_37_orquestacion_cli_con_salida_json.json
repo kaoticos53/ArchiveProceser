@@ -27,9 +27,9 @@
       "y": 200,
       "hasBreakpoint": false,
       "parameters": {
-        "PropertyPath": "CliOutput",
         "Operator": "Contains",
-        "TargetValue": "OK"
+        "ComparisonValue": "OK",
+        "Property": "CliOutput"
       }
     },
     {
@@ -67,14 +67,14 @@
     {
       "id": "e3",
       "sourceNodeId": "node-flt",
-      "sourcePortName": "Match",
+      "sourcePortName": "True",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     },
     {
       "id": "e4",
       "sourceNodeId": "node-flt",
-      "sourcePortName": "NoMatch",
+      "sourcePortName": "False",
       "targetNodeId": "node-web",
       "targetPortName": "In"
     }

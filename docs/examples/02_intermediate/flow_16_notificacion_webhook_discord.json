@@ -17,8 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "WebhookUrl": "https://discord.com/api/webhooks/demo",
-        "HttpMethod": "POST"
+        "Url": "https://discord.com/api/webhooks/demo"
       }
     },
     {
@@ -41,7 +40,7 @@
     {
       "id": "e2",
       "sourceNodeId": "node-web",
-      "sourcePortName": "Success",
+      "sourcePortName": "Out",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

@@ -54,21 +54,21 @@
     {
       "id": "e2",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Branch1",
+      "sourcePortName": "Fork1",
       "targetNodeId": "node-web",
       "targetPortName": "In"
     },
     {
       "id": "e3",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Branch2",
+      "sourcePortName": "Fork2",
       "targetNodeId": "node-log",
       "targetPortName": "In"
     },
     {
       "id": "e4",
       "sourceNodeId": "node-web",
-      "sourcePortName": "Success",
+      "sourcePortName": "Out",
       "targetNodeId": "node-fork",
       "targetPortName": "In"
     },
@@ -82,7 +82,7 @@
     {
       "id": "e6",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Joined",
+      "sourcePortName": "AllCompleted",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

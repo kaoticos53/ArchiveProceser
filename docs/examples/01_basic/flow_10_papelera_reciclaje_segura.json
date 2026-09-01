@@ -17,8 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "UseRecycleBin": true,
-        "DryRun": false
+        "DeleteOriginalPath": false
       }
     },
     {
@@ -41,7 +40,7 @@
     {
       "id": "e2",
       "sourceNodeId": "node-del",
-      "sourcePortName": "Done",
+      "sourcePortName": "Deleted",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

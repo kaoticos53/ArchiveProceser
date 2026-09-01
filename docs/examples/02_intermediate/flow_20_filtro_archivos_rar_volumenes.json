@@ -54,7 +54,7 @@
     {
       "id": "e2",
       "sourceNodeId": "node-flt",
-      "sourcePortName": "PrimaryArchive",
+      "sourcePortName": "Archive",
       "targetNodeId": "node-unp",
       "targetPortName": "In"
     },

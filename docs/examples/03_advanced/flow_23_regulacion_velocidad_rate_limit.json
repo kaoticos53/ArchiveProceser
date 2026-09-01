@@ -17,8 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "DelayMs": 1000,
-        "MaxRatePerSecond": 2
+        "DelayMilliseconds": 1000
       }
     },
     {
@@ -56,7 +55,7 @@
     {
       "id": "e3",
       "sourceNodeId": "node-web",
-      "sourcePortName": "Success",
+      "sourcePortName": "Out",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

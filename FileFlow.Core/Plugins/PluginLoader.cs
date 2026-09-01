@@ -71,8 +71,9 @@ public class PluginLoader
 
                 if (isFlowNode)
                 {
-                    string key = type.FullName ?? type.Name;
-                    _discoveredNodeTypes[key] = type;
+                    string fullName = type.FullName ?? type.Name;
+                    _discoveredNodeTypes[fullName] = type;
+                    _discoveredNodeTypes[type.Name] = type;
                 }
             }
         }
@@ -85,8 +86,9 @@ public class PluginLoader
     public void RegisterNodeType<T>() where T : IFlowNode, new()
     {
         Type type = typeof(T);
-        string key = type.FullName ?? type.Name;
-        _discoveredNodeTypes[key] = type;
+        string fullName = type.FullName ?? type.Name;
+        _discoveredNodeTypes[fullName] = type;
+        _discoveredNodeTypes[type.Name] = type;
     }
 
     public IFlowNode? CreateNodeInstance(string typeName)

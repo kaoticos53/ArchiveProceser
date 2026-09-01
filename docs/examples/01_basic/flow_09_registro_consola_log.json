@@ -17,8 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "LogLevel": "Information",
-        "LogMessageTemplate": "Procesando archivo: {FileName} ({FileSizeBytes} bytes)"
+        "LogLevel": "Information"
       }
     },
     {

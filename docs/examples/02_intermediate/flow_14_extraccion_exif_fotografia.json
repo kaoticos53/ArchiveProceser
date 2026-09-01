@@ -16,10 +16,7 @@
       "x": 320,
       "y": 150,
       "hasBreakpoint": false,
-      "parameters": {
-        "InjectCameraVars": true,
-        "InjectDateVars": true
-      }
+      "parameters": {}
     },
     {
       "id": "node-ren",

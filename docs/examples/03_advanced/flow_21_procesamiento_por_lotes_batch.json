@@ -17,8 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "BatchSize": 10,
-        "FlushTimeoutMs": 5000
+        "BatchSize": 10
       }
     },
     {
@@ -44,12 +43,12 @@
       "sourceNodeId": "node-src",
       "sourcePortName": "Out",
       "targetNodeId": "node-buf",
-      "targetPortName": "In"
+      "targetPortName": "ItemIn"
     },
     {
       "id": "e2",
       "sourceNodeId": "node-buf",
-      "sourcePortName": "BatchFlushed",
+      "sourcePortName": "BatchCompleted",
       "targetNodeId": "node-zip",
       "targetPortName": "In"
     },

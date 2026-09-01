@@ -19,7 +19,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "CleanSubdirectories": true
+        "Recursive": true
       }
     },
     {
@@ -37,12 +37,12 @@
       "sourceNodeId": "node-src",
       "sourcePortName": "Out",
       "targetNodeId": "node-clean",
-      "targetPortName": "In"
+      "targetPortName": "TriggerIn"
     },
     {
       "id": "e2",
       "sourceNodeId": "node-clean",
-      "sourcePortName": "Done",
+      "sourcePortName": "Out",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

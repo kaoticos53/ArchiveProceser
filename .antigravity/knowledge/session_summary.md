@@ -8,10 +8,12 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **288 / 288 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **289 / 289 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit, incluyendo validación continua de todos los 40 workflows de ejemplo).
+- **Actualización Total de Flujos de Ejemplo (Sin Código de Retrocompatibilidad)**:
+  - Todos los 40 JSONs de ejemplo en `docs/examples/` (`01_basic`, `02_intermediate`, `03_advanced`, `04_complex`) y `docs/flujo_test.json` fueron actualizados a los nuevos contratos de nodos, tipos canónicos y nombres de puertos actuales (`True`/`False`, `Deleted`, `TriggerIn`, `ItemIn`/`ItemOut`, `Fork1`/`Fork2`/`AllCompleted`).
 - **Encapsulación Total de UI en Plugins (Arquitectura Zero-Touch en FileFlow.App)**:
   - Cada plugin (`FileFlow.Plugin.*`) es un módulo 100% autónomo y auto-contenido con soporte WPF en .NET 9 (`net9.0-windows`).
-  - Todas las ventanas modales, vistas XAML y servicios de soporte (`AdvancedRenamerEditorWindow`, `MediaPresetManagerWindow`, `PasswordManagerWindow`) residen dentro del directorio `UI/` de su respectivo plugin.
+  - Todas las ventanas modales, vistas XAML y servicios de soporte (`AdvancedRenamerEditorWindow`, `MediaPresetManagerWindow`, `PasswordManagerWindow`, `RegexHelperWindow`) residen dentro del directorio `UI/` de su respectivo plugin.
   - El SDK despacha las acciones modales de forma universal mediante `INodeCustomActionProvider` (`ExecuteCustomAction`), desacoplando por completo la aplicación anfitriona (`FileFlow.App`).
   - Para crear o modificar un plugin nuevo (con o sin interfaz gráfica), **solo se escribe código dentro del directorio del propio plugin, sin tocar `FileFlow.App`**.
 - **Desacoplamiento Total de Vistas XAML y Sistema de CustomActions**:

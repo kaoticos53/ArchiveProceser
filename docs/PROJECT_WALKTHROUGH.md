@@ -20,13 +20,24 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 5. **Visibilidad Directa de Acciones en Tarjetas y Despliegue Automatizado de Plugins**:
    - `NodeCardView.xaml`: Integrada barra de acciones (`CustomActions`) directamente visible en la tarjeta del nodo (`🏷️ Pipeline de Métodos...`, `➕ Variable`, `➕ Caso`), accesible al instante sin necesidad de desplegar el panel de ajustes ⚙.
    - `FileFlow.App.csproj`: Corregido el target `CopyPlugins` para apuntar a `$(TargetDir)Plugins\` y compilar/desplegar con precisión los plugins `net9.0-windows` y `net9.0` a la carpeta de ejecución de la app.
-6. **Integración Completa del Asistente y Probador de Expresiones Regulares (RegexHelper)**:
-   - `FileFlow.Plugin.FileSystem/UI/`: Añadidos `RegexLibraryService`, `RegexHelperViewModel` y `RegexHelperWindow.xaml` encapsulados dentro del plugin.
-   - Botón **`🪄 Asistente Regex...`** añadido en el panel `SearchReplace` (Búsqueda y Reemplazo) y en `NormalizeNumbers` (Normalización de Números).
-   - Permite seleccionar entre decenas de patrones predefinidos (series `1x02`, `S01E05`, fechas ISO, limpieza de corchetes, sanitización de caracteres), probar en tiempo real con muestras de texto y ver grupos de captura `$1`, `$2` antes de aplicar los cambios al paso del pipeline.
-7. **Pruebas Unitarias y Validación**:
-   - Actualizadas pruebas en `AdvancedRenamerEditorViewModelTests.cs` y `MediaPresetsAndToolsServicesTests.cs`.
-   - Batería de pruebas: **288 / 288 pruebas superadas al 100% con 0 fallos**.
+7. **Actualización Completa de los 40 Flujos de Ejemplo (`docs/examples/`)**:
+   - Se revisaron, limpiaron y actualizaron todos los 40 archivos de ejemplo de workflows (`01_basic`, `02_intermediate`, `03_advanced`, `04_complex`) y `docs/flujo_test.json`.
+   - Eliminación total de parámetros y puertos obsoletos:
+     - `SafeRecycleDeleteNode`: Puertos `Deleted`, `Error`.
+     - `ExpressionFilterNode`: Puertos `True`, `False`; parámetros canónicos `Property`, `Operator`, `ComparisonValue`.
+     - `ExifMetadataNode`: Parámetro `FallbackToCreationDate`.
+     - `DocumentProcessorNode`: Parámetros `Operation`, `ExtractPageCount`.
+     - `WebhookNotificationNode`: Parámetros `Url`, `PayloadTemplate`; puertos `Out`, `Failed`.
+     - `ArchiveFilterNode`: Puertos `Archive`, `RegularFile`, `SecondaryVolume`.
+     - `BatchBufferNode`: Puertos `ItemIn`, `ForceFlush`, `ItemOut`, `BatchCompleted`; parámetros `BatchSize`, `MaxBatchSizeBytes`.
+     - `ForkJoinBarrierNode`: Puertos `In`, `Fork1`, `Fork2`, `AllCompleted`.
+     - `ThrottleDelayNode`: Parámetro `DelayMilliseconds`.
+     - `EmptyDirectoryCleanerNode`: Puerto `TriggerIn`, `Out`, `Error`.
+     - `HashCalculatorNode`: Parámetro `StoreInMetadataKey`.
+     - `ImageOptimizerNode`: Parámetros canónicos `Width`, `Height` (con defaults `Height: "100%"`, `Width: ""`).
+   - Creado test de integración automatizado `WorkflowExamplesValidationTests.cs` que comprueba de forma continua la validez sintáctica y estructural de todos los flujos de ejemplo frente a los contratos de los nodos reales.
+8. **Pruebas Unitarias y Validación**:
+   - Batería de pruebas: **289 / 289 pruebas superadas al 100% con 0 fallos**.
 
 ---
 

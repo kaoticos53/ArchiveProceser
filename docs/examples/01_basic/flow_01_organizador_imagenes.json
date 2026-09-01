@@ -22,8 +22,8 @@
       "parameters": {
         "TargetFormat": "WebP",
         "Quality": 80,
-        "MaxWidth": 1920,
-        "MaxHeight": 1080
+        "Width": "1920",
+        "Height": "1080"
       }
     },
     {

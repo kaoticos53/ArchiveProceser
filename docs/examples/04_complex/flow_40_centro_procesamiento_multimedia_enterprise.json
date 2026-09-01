@@ -17,8 +17,7 @@
       "y": 250,
       "hasBreakpoint": false,
       "parameters": {
-        "DelayMs": 200,
-        "MaxRatePerSecond": 5
+        "DelayMilliseconds": 200
       }
     },
     {
@@ -131,14 +130,14 @@
     {
       "id": "e8",
       "sourceNodeId": "node-fork",
-      "sourcePortName": "Joined",
+      "sourcePortName": "AllCompleted",
       "targetNodeId": "node-web",
       "targetPortName": "In"
     },
     {
       "id": "e9",
       "sourceNodeId": "node-web",
-      "sourcePortName": "Success",
+      "sourcePortName": "Out",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

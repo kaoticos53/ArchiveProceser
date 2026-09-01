@@ -17,7 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "HashMetadataKey": "Hash:PreHash"
+        "StoreInMetadataKey": "Hash:PreHash"
       }
     },
     {
@@ -43,7 +43,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "HashMetadataKey": "Hash:PostHash"
+        "StoreInMetadataKey": "Hash:PostHash"
       }
     },
     {
@@ -102,7 +102,7 @@
     {
       "id": "e6",
       "sourceNodeId": "node-web",
-      "sourcePortName": "Success",
+      "sourcePortName": "Out",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

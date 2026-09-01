@@ -17,9 +17,9 @@
       "y": 200,
       "hasBreakpoint": false,
       "parameters": {
-        "PropertyPath": "FileSizeBytes",
         "Operator": ">",
-        "TargetValue": "52428800"
+        "ComparisonValue": "52428800",
+        "Property": "FileSizeBytes"
       }
     },
     {
@@ -52,7 +52,9 @@
       "x": 1000,
       "y": 200,
       "hasBreakpoint": false,
-      "parameters": {}
+      "parameters": {
+        "DeleteOriginalPath": false
+      }
     }
   ],
   "edges": [
@@ -66,14 +68,14 @@
     {
       "id": "e2",
       "sourceNodeId": "node-flt",
-      "sourcePortName": "Match",
+      "sourcePortName": "True",
       "targetNodeId": "node-tr",
       "targetPortName": "In"
     },
     {
       "id": "e3",
       "sourceNodeId": "node-flt",
-      "sourcePortName": "NoMatch",
+      "sourcePortName": "False",
       "targetNodeId": "node-opt",
       "targetPortName": "In"
     },

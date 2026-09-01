@@ -51,12 +51,12 @@
       "sourceNodeId": "node-unp",
       "sourcePortName": "Out",
       "targetNodeId": "node-clean",
-      "targetPortName": "In"
+      "targetPortName": "TriggerIn"
     },
     {
       "id": "e3",
       "sourceNodeId": "node-clean",
-      "sourcePortName": "Done",
+      "sourcePortName": "Out",
       "targetNodeId": "node-snk",
       "targetPortName": "In"
     }

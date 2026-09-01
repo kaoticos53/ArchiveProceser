@@ -34,7 +34,9 @@
       "x": 790,
       "y": 150,
       "hasBreakpoint": false,
-      "parameters": {}
+      "parameters": {
+        "DeleteOriginalPath": false
+      }
     },
     {
       "id": "node-web",
@@ -58,19 +60,19 @@
       "sourceNodeId": "node-insp",
       "sourcePortName": "DirectoriesOnly",
       "targetNodeId": "node-clean",
-      "targetPortName": "In"
+      "targetPortName": "TriggerIn"
     },
     {
       "id": "e3",
       "sourceNodeId": "node-clean",
-      "sourcePortName": "Done",
+      "sourcePortName": "Out",
       "targetNodeId": "node-del",
       "targetPortName": "In"
     },
     {
       "id": "e4",
       "sourceNodeId": "node-del",
-      "sourcePortName": "Done",
+      "sourcePortName": "Deleted",
       "targetNodeId": "node-web",
       "targetPortName": "In"
     }
