@@ -1253,6 +1253,26 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - Ampliado `AppPathsTests.cs` con pruebas de redirección de datos, conmutación de modo portable y resolución de rutas relativas y absolutas.
    - **303 / 303 pruebas unitarias e integración superadas al 100%**.
 
+---
+
+## [2026-09-01] - Creación del Manual Didáctico de Usuario para Principiantes y Compilación PDF
+
+### 🛠 Cambios Implementados
+1. **Manual Didáctico Paso a Paso ([`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md))**:
+   - Redactado en lenguaje coloquial, ameno y accesible para usuarios no técnicos.
+   - Metáforas visuales claras (cintas transportadoras, estaciones de trabajo).
+   - Explicación de las 4 zonas de la pantalla y el sistema de conexión de cables.
+   - 4 recetas prácticas completas:
+     1. Renombrar fotos con fecha y modelo de cámara.
+     2. Organizar la carpeta de Descargas (separando vídeos, fotos y documentos).
+     3. Descomprimir múltiples archivos ZIP/RAR con gestor de contraseñas.
+     4. Convertir vídeos pesados a formato ultra-ligero para móvil/WhatsApp.
+   - Guía de seguridad (Simulación Virtual *Dry Run*, Deshacer *Rollback* y Papelera de reciclaje), FAQ y Glosario.
+2. **Compilación a Documento PDF ([`docs/manual_usuario_principiantes.pdf`](file:///docs/manual_usuario_principiantes.pdf))**:
+   - Compilado automáticamente mediante Edge/Chromium Headless con diseño tipográfico A4 a color (1053.1 KB).
+   - Actualizado `installer/build-pdf-manual.ps1` y `installer/build-portable.ps1` para incluir los 3 manuales PDF en la distribución de la aplicación.
+
+
 
 
 

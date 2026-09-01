@@ -75,12 +75,14 @@ foreach ($sub in $subDirs) {
 	New-Item -ItemType Directory -Path (Join-Path $dataDir $sub) -Force | Out-Null
 }
 
-# Incluir manual PDF si existe
-$manualPdfSource = Join-Path $repoRoot "docs\manual_nodo_scripting.pdf"
-if (Test-Path $manualPdfSource) {
+# Incluir manuales en PDF si existen
+$pdfManuals = Get-ChildItem -Path (Join-Path $repoRoot "docs") -Filter "*.pdf" -ErrorAction SilentlyContinue
+if ($pdfManuals -and $pdfManuals.Count -gt 0) {
 	$docsDest = Join-Path $portableTempDir "docs"
 	New-Item -ItemType Directory -Path $docsDest -Force | Out-Null
-	Copy-Item -Path $manualPdfSource -Destination (Join-Path $docsDest "manual_nodo_scripting.pdf") -Force
+	foreach ($pdf in $pdfManuals) {
+		Copy-Item -Path $pdf.FullName -Destination (Join-Path $docsDest $pdf.Name) -Force
+	}
 }
 
 # 3. Crear ZIP final

@@ -163,6 +163,9 @@ function Convert-MarkdownToHtmlBody([string]$md) {
 }
 
 function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$docTitle, [string]$docSubtitle) {
+    $inputMd = [System.IO.Path]::GetFullPath($inputMd)
+    $outPdf = [System.IO.Path]::GetFullPath($outPdf)
+
     if (-not (Test-Path $inputMd)) {
         Write-Warning "Archivo no encontrado: $inputMd"
         return
@@ -367,6 +370,8 @@ function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$doc
             New-Item -ItemType Directory -Path $outDir -Force | Out-Null
         }
 
+        $fileUrl = "file:///" + $tempHtmlPath.Replace("\", "/")
+
         $edgeArgs = @(
             "--headless=new",
             "--disable-gpu",
@@ -374,7 +379,7 @@ function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$doc
             "--disable-dev-shm-usage",
             "--no-pdf-header-footer",
             "--print-to-pdf=`"$outPdf`"",
-            "`"$tempHtmlPath`""
+            "`"$fileUrl`""
         )
 
         Write-Host "==> Renderizando con Chromium ($browserPath)..." -ForegroundColor Cyan
@@ -402,12 +407,17 @@ function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$doc
 if (-not [string]::IsNullOrWhiteSpace($MarkdownPath)) {
     Convert-SingleFileToPdf $MarkdownPath $OutputPdfPath "FileFlow Studio" "Manual de Usuario"
 } else {
-    # 1. Manual de Usuario General
+    # 1. Manual de Usuario General y Referencia Técnica
     $userManualMd = Join-Path $repoRoot "docs\manual_de_usuario.md"
     $userManualPdf = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
     Convert-SingleFileToPdf $userManualMd $userManualPdf "FileFlow Studio" "Manual de Usuario y Guía de Referencia Completa"
 
-    # 2. Manual del Nodo de Scripting
+    # 2. Manual Didáctico para Principiantes
+    $beginnerManualMd = Join-Path $repoRoot "docs\manual_usuario_principiantes.md"
+    $beginnerManualPdf = Join-Path $repoRoot "docs\manual_usuario_principiantes.pdf"
+    Convert-SingleFileToPdf $beginnerManualMd $beginnerManualPdf "Guía Rápida para Principiantes" "Manual Paso a Paso sin Tecnicismos"
+
+    # 3. Manual del Nodo de Scripting
     $scriptManualMd = Join-Path $repoRoot "docs\manual_nodo_scripting.md"
     $scriptManualPdf = Join-Path $repoRoot "docs\manual_nodo_scripting.pdf"
     Convert-SingleFileToPdf $scriptManualMd $scriptManualPdf "Manual de Scripting Personalizado" "Guía Completa para C# (Roslyn) y JavaScript (Jint)"

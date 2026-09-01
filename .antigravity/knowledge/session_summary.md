@@ -22,6 +22,9 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
   - Soporte de funciones de resolución de plantillas y variables implícitas (`Resolve(template)`, `resolve(template)` y `getVar(varName)`).
   - Nodo `CustomScriptNode` con puertos dinámicos configurables (`Inputs` y `Outputs` editables), timeouts y acción `OpenScriptStudio`.
   - Ventana de edición `ScriptStudioWindow` completamente integrada con el **sistema dinámico de temas** (`{DynamicResource ...}`) y **localización dinámica bilingüe i18n** (`LocalizationManager.Instance`), editor `AvalonEdit` temático, botón **`📖 Manual PDF...`**, probador en tiempo real con consola de salida y telemetría de emisiones, y biblioteca de scripts con presets incorporados (`.ffscript` en `%AppData%/FileFlow/Scripts/`).
+- **Manual Didáctico de Usuario para Principiantes y Compilación a PDF**:
+  - Creado [`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md) redactado con lenguaje cercano, analogías cotidianas y 4 recetas prácticas paso a paso.
+  - Compilado a [`docs/manual_usuario_principiantes.pdf`](file:///docs/manual_usuario_principiantes.pdf) (1053.1 KB) para su distribución en el instalador y la versión portable.
 - **Manual Didáctico de Scripting, Compilación a PDF e Instalador**:
   - Creado `docs/manual_nodo_scripting.md` orientado a niveles básico y medio.
   - Compilado automáticamente a `docs/manual_nodo_scripting.pdf` (1003.8 KB) mediante Microsoft Edge Chromium Headless.
