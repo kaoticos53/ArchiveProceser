@@ -101,5 +101,12 @@ if ($LASTEXITCODE -ne 0) {
 	throw "ISCC.exe falló con código de salida $LASTEXITCODE"
 }
 
+# Copiar copia directa del manual PDF a la carpeta de salida
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$pdfManual = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
+if (Test-Path $pdfManual) {
+	Copy-Item -Path $pdfManual -Destination (Join-Path $outputDir "FileFlowStudio-Manual-de-Usuario.pdf") -Force
+}
+
 Write-Host "==> Instalador generado correctamente en: $outputDir" -ForegroundColor Green
-Get-ChildItem $outputDir -Filter "*.exe" | ForEach-Object { Write-Host "    - $($_.FullName)" -ForegroundColor Green }
+Get-ChildItem $outputDir | ForEach-Object { Write-Host "    - $($_.FullName)" -ForegroundColor Green }

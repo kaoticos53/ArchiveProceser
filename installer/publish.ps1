@@ -92,23 +92,27 @@ if (Test-Path $examplesSource) {
 	Write-Warning "No se encontró la carpeta de ejemplos en '$examplesSource'."
 }
 
-# Copiar manual de usuario y documentación
+# Generar y copiar manual de usuario en PDF
+$pdfBuilderScript = Join-Path $PSScriptRoot "build-pdf-manual.ps1"
+if (Test-Path $pdfBuilderScript) {
+	try {
+		& $pdfBuilderScript
+	} catch {
+		Write-Warning "No se pudo compilar el manual PDF: $($_.Exception.Message)"
+	}
+}
+
 $docsDest = Join-Path $publishRoot "Docs"
-Write-Host "==> Copiando manual de usuario y documentación a: $docsDest" -ForegroundColor Cyan
+Write-Host "==> Copiando manual de usuario en PDF a: $docsDest" -ForegroundColor Cyan
 if (-not (Test-Path $docsDest)) {
 	New-Item -ItemType Directory -Path $docsDest -Force | Out-Null
 }
 
-$manualFiles = @(
-	(Join-Path $repoRoot "docs\manual_de_usuario.md"),
-	(Join-Path $repoRoot "docs\user_guide.md"),
-	(Join-Path $repoRoot "README.md")
-)
-
-foreach ($docFile in $manualFiles) {
-	if (Test-Path $docFile) {
-		Copy-Item -Path $docFile -Destination $docsDest -Force
-	}
+$pdfManual = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
+if (Test-Path $pdfManual) {
+	Copy-Item -Path $pdfManual -Destination (Join-Path $docsDest "manual_de_usuario.pdf") -Force
+} else {
+	Write-Warning "No se encontró el manual PDF en '$pdfManual'."
 }
 
 Write-Host "==> Publicación completada en: $publishRoot" -ForegroundColor Green

@@ -561,7 +561,12 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IsMenuOpen = false;
         try
         {
-            string? manualPath = FindFileInAppOrRepo("Docs", "manual_de_usuario.md", "docs/manual_de_usuario.md");
+            string? manualPath = FindFileInAppOrRepo("Docs", "manual_de_usuario.pdf", "docs/manual_de_usuario.pdf");
+            if (manualPath == null || !File.Exists(manualPath))
+            {
+                manualPath = FindFileInAppOrRepo("Docs", "manual_de_usuario.md", "docs/manual_de_usuario.md");
+            }
+
             if (manualPath != null && File.Exists(manualPath))
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo

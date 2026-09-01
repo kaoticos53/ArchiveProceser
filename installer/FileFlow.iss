@@ -53,7 +53,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{group}\{cm:UserManual}"; Filename: "{app}\Docs\manual_de_usuario.md"
+Name: "{group}\{cm:UserManual}"; Filename: "{app}\Docs\manual_de_usuario.pdf"
 Name: "{group}\{cm:ExampleFlows}"; Filename: "{app}\Examples"
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon

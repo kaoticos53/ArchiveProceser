@@ -112,7 +112,7 @@ jobs:
         run: |
           $outputDir = "installer/output"
           $checksumFile = "$outputDir/checksums.txt"
-          $files = Get-ChildItem -Path $outputDir -File | Where-Object { $_.Extension -in @(".exe", ".zip") }
+          $files = Get-ChildItem -Path $outputDir -File | Where-Object { $_.Extension -in @(".exe", ".zip", ".pdf") }
 
           $checksums = foreach ($file in $files) {
             $hash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash.ToLower()
@@ -151,10 +151,12 @@ jobs:
 
             ### 📦 Descargas Disponibles
             - 💻 **Instalador para Windows (Recomendado):** `FileFlowStudio-Setup-${{ steps.get_version.outputs.clean_version }}.exe`
-              - *Incluye asistente de instalación en español/inglés, accesos directos e integración completa.*
+              - *Incluye asistente de instalación en español/inglés, manual de usuario en PDF, accesos directos e integración completa.*
             - 🗜️ **Versión Portable (.ZIP):** `FileFlowStudio-Portable-v${{ steps.get_version.outputs.clean_version }}-win-x64.zip`
-              - *Ejecución directa sin requerir permisos de administrador ni instalación previa.*
-            - 🔐 **Sumas de Verificación:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de los binarios.
+              - *Ejecución directa sin requerir permisos de administrador ni instalación previa (incluye carpeta Docs con el manual en PDF).*
+            - 📖 **Manual de Usuario (PDF):** `FileFlowStudio-Manual-de-Usuario.pdf`
+              - *Documento PDF oficial de referencia completa y catálogo exhaustivo de nodos.*
+            - 🔐 **Sumas de Verificación:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de los binarios y documentos.
 
             ---
 
@@ -167,4 +169,5 @@ jobs:
           files: |
             installer/output/*.exe
             installer/output/*.zip
+            installer/output/*.pdf
             installer/output/checksums.txt
