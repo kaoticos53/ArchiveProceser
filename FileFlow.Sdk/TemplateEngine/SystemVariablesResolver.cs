@@ -1,7 +1,11 @@
 using System.Globalization;
+using FileFlow.Sdk.TemplateEngine.Resolvers;
 
 namespace FileFlow.Sdk.TemplateEngine;
 
+/// <summary>
+/// Resolutor transversal de variables y tokens de sistema, fecha, rutas y metadatos.
+/// </summary>
 public static class SystemVariablesResolver
 {
     public static string GetVariableValue(string varName, FileItemContext item, string? sourceRootPath)
@@ -41,159 +45,9 @@ public static class SystemVariablesResolver
             string key = parts.Length > 1 ? parts[1].Trim() : string.Empty;
             string? modifier = parts.Length > 2 ? parts[2].Trim() : null;
 
-            switch (domain.ToLowerInvariant())
+            if (DomainVariableResolver.TryResolve(domain, key, modifier, item, currentPath, out string domainResult))
             {
-                case "exif":
-                    if (item.Metadata.TryGetValue($"Exif:{key}", out var exifVal) ||
-                        item.Metadata.TryGetValue(key, out exifVal))
-                    {
-                        return exifVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "regex":
-                    if (item.Metadata.TryGetValue($"Regex:{key}", out var regVal) ||
-                        item.Metadata.TryGetValue(key, out regVal))
-                    {
-                        return regVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "hash":
-                    string hashKey = $"Hash:{key}";
-                    string hashValStr = string.Empty;
-                    if (item.Metadata.TryGetValue(hashKey, out var hVal) && hVal != null)
-                    {
-                        hashValStr = hVal.ToString() ?? string.Empty;
-                    }
-                    else if (item.Metadata.TryGetValue("Hash", out var directHash) && directHash != null)
-                    {
-                        hashValStr = directHash.ToString() ?? string.Empty;
-                    }
-
-                    if (!string.IsNullOrEmpty(hashValStr) && !string.IsNullOrEmpty(modifier) && int.TryParse(modifier, out int hashLen) && hashLen > 0)
-                    {
-                        return hashValStr.Length <= hashLen ? hashValStr : hashValStr[..hashLen];
-                    }
-                    return hashValStr;
-
-                case "env":
-                    return Environment.GetEnvironmentVariable(key) ?? string.Empty;
-
-                case "inc nr":
-                case "incnr":
-                case "increment":
-                    string incVal = item.Metadata.TryGetValue("Counter", out var inObj) && inObj != null ? inObj.ToString()! : "1";
-                    if (int.TryParse(incVal, out int incNum) && !string.IsNullOrEmpty(key))
-                    {
-                        return incNum.ToString(key, CultureInfo.InvariantCulture);
-                    }
-                    return incVal;
-
-                case "audio":
-                case "id3":
-                    if (item.Metadata.TryGetValue($"Audio:{key}", out var aVal) ||
-                        item.Metadata.TryGetValue($"ID3:{key}", out aVal) ||
-                        item.Metadata.TryGetValue(key, out aVal))
-                    {
-                        return aVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "video":
-                    if (item.Metadata.TryGetValue($"Video:{key}", out var vVal) ||
-                        item.Metadata.TryGetValue(key, out vVal))
-                    {
-                        return vVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "img":
-                case "image":
-                    if (item.Metadata.TryGetValue($"Img:{key}", out var iVal) ||
-                        item.Metadata.TryGetValue($"Image:{key}", out iVal) ||
-                        item.Metadata.TryGetValue(key, out iVal))
-                    {
-                        return iVal?.ToString() ?? string.Empty;
-                    }
-                    return string.Empty;
-
-                case "date created":
-                case "datecreated":
-                case "date":
-                case "creationdate":
-                    string format = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
-                    if (item.Metadata.TryGetValue("CreationTimeUtc", out var ctVal) && ctVal is DateTime cdt)
-                    {
-                        return cdt.ToLocalTime().ToString(format, CultureInfo.InvariantCulture);
-                    }
-                    if (File.Exists(currentPath))
-                    {
-                        return File.GetCreationTime(currentPath).ToString(format, CultureInfo.InvariantCulture);
-                    }
-                    return DateTime.Now.ToString(format, CultureInfo.InvariantCulture);
-
-                case "date modified":
-                case "datemodified":
-                case "modifieddate":
-                    string mFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
-                    if (item.Metadata.TryGetValue("LastWriteTimeUtc", out var mtVal) && mtVal is DateTime mdt)
-                    {
-                        return mdt.ToLocalTime().ToString(mFormat, CultureInfo.InvariantCulture);
-                    }
-                    if (File.Exists(currentPath))
-                    {
-                        return File.GetLastWriteTime(currentPath).ToString(mFormat, CultureInfo.InvariantCulture);
-                    }
-                    return DateTime.Now.ToString(mFormat, CultureInfo.InvariantCulture);
-
-                case "date taken":
-                case "datetaken":
-                    string tFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
-                    if (item.Metadata.TryGetValue("Exif:DateTimeOriginal", out var dtObj) ||
-                        item.Metadata.TryGetValue("DateTaken", out dtObj))
-                    {
-                        if (dtObj is DateTime dtVal)
-                        {
-                            return dtVal.ToString(tFormat, CultureInfo.InvariantCulture);
-                        }
-                        if (DateTime.TryParse(dtObj?.ToString(), out var parsedDt))
-                        {
-                            return parsedDt.ToString(tFormat, CultureInfo.InvariantCulture);
-                        }
-                    }
-                    return DateTime.Now.ToString(tFormat, CultureInfo.InvariantCulture);
-
-                case "now":
-                    string nFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd_HH-mm-ss" : key;
-                    return DateTime.Now.ToString(nFormat, CultureInfo.InvariantCulture);
-
-                case "index":
-                case "counter":
-                    string idxVal = item.Metadata.TryGetValue("Counter", out var cObj) && cObj != null ? cObj.ToString()! : "1";
-                    if (int.TryParse(idxVal, out int num) && !string.IsNullOrEmpty(key))
-                    {
-                        return num.ToString(key, CultureInfo.InvariantCulture);
-                    }
-                    return idxVal;
-
-                case "filesize":
-                case "size":
-                    if (key.Equals("mb", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string spec = modifier ?? "F2";
-                        return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString(spec, CultureInfo.InvariantCulture);
-                    }
-                    if (key.Equals("kb", StringComparison.OrdinalIgnoreCase))
-                    {
-                        string spec = modifier ?? "F1";
-                        return (item.FileSizeBytes / 1024.0).ToString(spec, CultureInfo.InvariantCulture);
-                    }
-                    if (key.Equals("bytes", StringComparison.OrdinalIgnoreCase) || key.Equals("b", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return item.FileSizeBytes.ToString(CultureInfo.InvariantCulture);
-                    }
-                    return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
+                return domainResult;
             }
         }
 
@@ -268,10 +122,10 @@ public static class SystemVariablesResolver
             case "relativepath":
             case "relativedir":
             case "relativedirectory":
-                return CalculateRelativeDirectory(currentPath, effectiveRootPath);
+                return PathRelativeCalculator.CalculateRelativeDirectory(currentPath, effectiveRootPath);
 
             case "relativefilepath":
-                return CalculateRelativeFilePath(currentPath, effectiveRootPath);
+                return PathRelativeCalculator.CalculateRelativeFilePath(currentPath, effectiveRootPath);
 
             case "datenow":
                 return DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -320,48 +174,11 @@ public static class SystemVariablesResolver
 
     public static string CalculateRelativeDirectory(string fullPath, string? rootPath)
     {
-        if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
-        {
-            return string.Empty;
-        }
-
-        try
-        {
-            string normFull = Path.GetFullPath(fullPath);
-            string normRoot = Path.GetFullPath(rootPath);
-
-            string relPath = Path.GetRelativePath(normRoot, normFull);
-            if (relPath.Equals(".", StringComparison.Ordinal))
-            {
-                return string.Empty;
-            }
-
-            string? relDir = Path.GetDirectoryName(relPath);
-            return string.IsNullOrEmpty(relDir) || relDir.Equals(".", StringComparison.Ordinal) ? string.Empty : relDir;
-        }
-        catch
-        {
-            return string.Empty;
-        }
+        return PathRelativeCalculator.CalculateRelativeDirectory(fullPath, rootPath);
     }
 
     public static string CalculateRelativeFilePath(string fullPath, string? rootPath)
     {
-        if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
-        {
-            return Path.GetFileName(fullPath);
-        }
-
-        try
-        {
-            string normFull = Path.GetFullPath(fullPath);
-            string normRoot = Path.GetFullPath(rootPath);
-            string rel = Path.GetRelativePath(normRoot, normFull);
-            return rel.Equals(".", StringComparison.Ordinal) ? Path.GetFileName(fullPath) : rel;
-        }
-        catch
-        {
-            return Path.GetFileName(fullPath);
-        }
+        return PathRelativeCalculator.CalculateRelativeFilePath(fullPath, rootPath);
     }
 }

@@ -1,13 +1,14 @@
 using System.Resources;
 using System.Windows;
 using FileFlow.App.Services;
+using FileFlow.App.Views;
 using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
         {
@@ -39,18 +40,53 @@ public partial class App : Application
 
         base.OnStartup(e);
 
-        var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
-        LocalizationManager.Instance.RegisterResourceManager(resourceManager);
-        LocalizationManager.Instance.SetCulture("es-ES");
+        // Mostrar pantalla de carga atractiva
+        var splash = new SplashScreenWindow();
+        splash.Show();
 
-        // Cargar configuración persistente e inicializar Tema y Herramientas
-        UserPreferencesService.Instance.Load();
-        _ = ExternalToolsService.Instance.Config;
-
-        string savedTheme = UserPreferencesService.Instance.Preferences.ActiveTheme;
-        if (Enum.TryParse<AppTheme>(savedTheme, out var themeEnum))
+        try
         {
-            ThemeManager.Instance.SetTheme(themeEnum);
+            splash.UpdateStatus("Iniciando servicios de localización y recursos...", 15);
+            await Task.Delay(40);
+
+            var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
+            LocalizationManager.Instance.RegisterResourceManager(resourceManager);
+            LocalizationManager.Instance.SetCulture("es-ES");
+
+            splash.UpdateStatus("Cargando preferencias de usuario y temas...", 35);
+            await Task.Delay(40);
+
+            UserPreferencesService.Instance.Load();
+            _ = ExternalToolsService.Instance.Config;
+
+            string savedTheme = UserPreferencesService.Instance.Preferences.ActiveTheme;
+            if (Enum.TryParse<AppTheme>(savedTheme, out var themeEnum))
+            {
+                ThemeManager.Instance.SetTheme(themeEnum);
+            }
+
+            splash.UpdateStatus("Cargando plugins y motor de nodos...", 60);
+            await Task.Delay(40);
+
+            splash.UpdateStatus("Construyendo espacio de trabajo y lienzo Nodify...", 85);
+            await Task.Delay(40);
+
+            var mainWindow = new MainWindow();
+
+            splash.UpdateStatus("¡Listo! Iniciando FileFlow Studio...", 100);
+            await Task.Delay(180);
+
+            mainWindow.Show();
+            MainWindow = mainWindow;
+
+            await splash.CloseWithFadeAsync();
+        }
+        catch (Exception ex)
+        {
+            LogCrashToFile(ex);
+            splash.Close();
+            MessageBox.Show($"Error al iniciar la aplicación:\n{ex.Message}", "Error de Inicialización", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
         }
     }
 

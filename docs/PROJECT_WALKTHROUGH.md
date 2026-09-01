@@ -2,6 +2,57 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-01] - Refactorización Modular Fase 2 (Core, Archives, Sdk y App ViewModels)
+
+### 📋 Acciones Realizadas
+1. **Módulo 1 (`FileFlow.Core` / Telemetría)**:
+   - Desacoplado `SqliteLogStore.cs` (de 472L a 389L).
+   - Extraído `SqliteLogSchema.cs` (DDL inmutable, índices SQLite y configuración de pragmas de memoria).
+   - Extraído `SqliteLogMetricsReader.cs` (consultas analíticas y cálculo de KPIs de ejecución por nodo).
+2. **Módulo 2 (`FileFlow.Plugin.Archives` / Descompresión Segura)**:
+   - Desacoplado `SmartUnpackNode.cs` (de 320L a 157L).
+   - Extraído `SafeArchiveExtractor.cs` en `FileFlow.Plugin.Archives/Services/` (apertura con candidatos de contraseña, mitigación de Zip Slip y descompresión recursiva).
+3. **Módulo 3 (`FileFlow.Sdk` / Motor de Plantillas)**:
+   - Desacoplado `SystemVariablesResolver.cs` (de 367L a 198L).
+   - Extraído `DomainVariableResolver.cs` en `FileFlow.Sdk/TemplateEngine/Resolvers/` (resolución por dominios `{Domain:Key:Modifier}`).
+   - Extraído `PathRelativeCalculator.cs` en `FileFlow.Sdk/TemplateEngine/Resolvers/` (cálculo robusto de rutas y directorios relativos).
+4. **Módulo 4 (`FileFlow.App` / Editor y Viewport)**:
+   - Desacoplado `EditorViewModel.cs` (de 525L a 417L).
+   - Extraído `EditorViewportCalculator.cs` en `FileFlow.App/Services/` (cálculo geométrico de encuadre y zoom de pantalla).
+   - Extraído `WorkflowGraphSerializer.cs` en `FileFlow.App/Services/` (serializador e importador desacoplado de `WorkflowGraph`).
+5. **Módulo 5 (`FileFlow.App` / Tarjeta de Nodo y SwitchCase)**:
+   - Desacoplado `NodeViewModel.cs` (de 496L a 371L).
+   - Extraído `NodeCategoryStyling.cs` en `FileFlow.App/Services/` (generación de paleta de colores y estilos por categoría).
+   - Extraído `NodeSwitchCaseCoordinator.cs` en `FileFlow.App/Services/` (coordinación dinámica de puertos y reglas de `SwitchCaseNode`).
+6. **Pantalla de Carga Fluida y Estilizada (`SplashScreenWindow.xaml`)**:
+   - Diseñada e implementada una nueva ventana de carga (`SplashScreenWindow.xaml`) con bordes redondeados (`CornerRadius="16"`), resplandor exterior (*drop shadow glow* `#6366F1`), gradientes sutiles y badge de versión.
+   - Barra de progreso animada con gradiente cian a púrpura y reporte de inicialización en tiempo real (*"Iniciando servicios y localización..."*, *"Cargando preferencias..."*, *"Cargando plugins..."*, *"Construyendo espacio de trabajo..."*, *"¡Listo!"*).
+   - Transiciones suaves de apertura (`FadeInStoryboard`) y cierre (`FadeOutStoryboard`) orquestadas en `App.xaml.cs`.
+7. **Verificación y Calidad de Código**:
+   - Creada la nueva suite `ModularArchitecturePhaseTwoTests.cs` en `FileFlow.Tests/Unit/Refactoring/`.
+   - `dotnet test FileFlow.slnx`: **270 / 270 pruebas superadas con 100% de éxito (0 errores, 0 fallos, 0 advertencias)**.
+
+---
+
+## [2026-09-01] - Refactorización Modular y Desacoplamiento Clean Code (Fases 1, 2 y 3)
+
+### 📋 Acciones Realizadas
+1. **Fase 1 — Auditoría Arquitectónica y Mapa de Riesgos**:
+   - Auditoría integral de complejidad ciclomática, conteo de líneas y responsabilidades en todos los módulos de la solución.
+   - Detección de archivos monolíticos (`AdvancedRenamerEditorViewModel.cs` 678L, `ControlBarViewModel.cs` 658L, `CustomThemeService.cs` 614L, `WorkflowExecutor.cs` 545L, `RenameTransformEngine.cs` 495L).
+   - Elaboración y aprobación del Plan Maestro de Modularización bajo el Principio de Responsabilidad Única (SRP) y Principio Abierto/Cerrado (OCP).
+2. **Fase 2 — Ejecución por Sprints Atómicos**:
+   - **Sprint 1 (`FileFlow.Sdk`)**: Desacoplado `RenameTransformEngine.cs` (de 495L a 124L) implementando el patrón Strategy con `IRenameStepHandler` y 9 handlers especializados en `FileFlow.Sdk/Renaming/Handlers/` (`NewNameStepHandler`, `SearchReplaceStepHandler`, `InsertStepHandler`, `RemoveStepHandler`, `CaseStepHandler`, `NumberingStepHandler`, `ReplaceListStepHandler`, `CleanupStepHandler`, `NormalizeNumbersStepHandler`, `RenameIndexCalculator`).
+   - **Sprint 2 (`FileFlow.App`)**: Desacoplado `CustomThemeService.cs` (de 614L a 140L) extrayendo el catálogo inmutable `BuiltInThemesCatalog.cs` (8 temas de fábrica) y el generador de estilos WPF `ThemeResourceApplier.cs`.
+   - **Sprint 3 (`FileFlow.App`)**: Desacoplado `ControlBarViewModel.cs` (de 658L a 463L) extrayendo el coordinador de ejecución en UI `WorkflowExecutionCoordinator.cs` y el localizador de documentación `AppResourceLocator.cs`.
+   - **Sprint 4 (`FileFlow.App`)**: Desacoplado `AdvancedRenamerEditorViewModel.cs` (de 678L a 390L) extrayendo el servicio de tokens `RenamerTagCatalogService.cs`, el recolector de muestras `RenamerSampleDataProvider.cs` y el generador reactivo `RenamerLivePreviewService.cs`.
+   - **Sprint 5 (`FileFlow.Core`)**: Desacoplado `WorkflowExecutor.cs` (de 545L a 468L) extrayendo la acumulación de métricas en tiempo real `WorkflowTelemetryTracker.cs`.
+3. **Fase 3 — Verificación y Batería de Pruebas**:
+   - Creación de nueva suite de tests unitarios `ModularRefactoringComponentsTests.cs` validando `BuiltInThemesCatalog`, `ThemeResourceApplier`, `RenameIndexCalculator`, `WorkflowTelemetryTracker` y `AppResourceLocator`.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **264 / 264 pruebas pasadas con 100% de éxito (0 errores, 0 fallos, 0 omitidos)**.
+
+---
+
 ## [2026-09-01] - Integración de Parámetros UI y Normalización en ImageOptimizerNode
 
 ### 📋 Acciones Realizadas

@@ -1,5 +1,4 @@
 using System.Data;
-using System.Text;
 using System.Threading.Channels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Telemetry;
@@ -53,7 +52,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
         _keepAliveConnection = new SqliteConnection(_connectionString);
         _keepAliveConnection.Open();
 
-        InitializeDatabaseSchema();
+        SqliteLogSchema.Initialize(_keepAliveConnection, _dbLock);
 
         _ingestionChannel = Channel.CreateBounded<StructuredLogRecord>(new BoundedChannelOptions(100_000)
         {
@@ -63,43 +62,6 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
         });
 
         _workerTask = Task.Run(ProcessIngestionQueueAsync);
-    }
-
-    private void InitializeDatabaseSchema()
-    {
-        lock (_dbLock)
-        {
-            using var cmd = _keepAliveConnection.CreateCommand();
-            cmd.CommandText = """
-                PRAGMA journal_mode = WAL;
-                PRAGMA synchronous = NORMAL;
-                PRAGMA temp_store = MEMORY;
-
-                CREATE TABLE IF NOT EXISTS ExecutionLogs (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ExecutionId TEXT NOT NULL,
-                    Timestamp INTEGER NOT NULL,
-                    Level INTEGER NOT NULL,
-                    NodeId TEXT,
-                    NodeName TEXT,
-                    ItemId TEXT,
-                    FilePath TEXT,
-                    FileName TEXT,
-                    FileSizeBytes INTEGER DEFAULT 0,
-                    DurationMs REAL DEFAULT 0.0,
-                    Message TEXT NOT NULL,
-                    DetailsJson TEXT
-                );
-
-                CREATE INDEX IF NOT EXISTS IX_Logs_Timestamp ON ExecutionLogs (Timestamp);
-                CREATE INDEX IF NOT EXISTS IX_Logs_ItemId ON ExecutionLogs (ItemId);
-                CREATE INDEX IF NOT EXISTS IX_Logs_FileName ON ExecutionLogs (FileName);
-                CREATE INDEX IF NOT EXISTS IX_Logs_FilePath ON ExecutionLogs (FilePath);
-                CREATE INDEX IF NOT EXISTS IX_Logs_NodeId ON ExecutionLogs (NodeId);
-                CREATE INDEX IF NOT EXISTS IX_Logs_Level ON ExecutionLogs (Level);
-            """;
-            cmd.ExecuteNonQuery();
-        }
     }
 
     public void EnqueueLog(StructuredLogRecord record)
@@ -334,54 +296,9 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
         return await GetLogsWindowAsync(0, 1000, filter, newestFirst: false).ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyList<NodeExecutionMetrics>> GetNodeExecutionMetricsAsync(string? executionId = null)
+    public Task<IReadOnlyList<NodeExecutionMetrics>> GetNodeExecutionMetricsAsync(string? executionId = null)
     {
-        await using var conn = new SqliteConnection(_connectionString);
-        await conn.OpenAsync().ConfigureAwait(false);
-
-        string sql = """
-            SELECT 
-                NodeId,
-                COALESCE(NodeName, NodeId, 'General') AS NodeName,
-                COUNT(*) AS TotalCount,
-                AVG(DurationMs) AS AvgDuration,
-                MAX(DurationMs) AS MaxDuration,
-                MIN(DurationMs) AS MinDuration,
-                SUM(CASE WHEN Level >= 3 THEN 1 ELSE 0 END) AS ErrorCount
-            FROM ExecutionLogs
-            WHERE NodeId IS NOT NULL
-        """;
-
-        if (!string.IsNullOrWhiteSpace(executionId))
-        {
-            sql += " AND ExecutionId = @executionId";
-        }
-
-        sql += " GROUP BY NodeId ORDER BY AvgDuration DESC;";
-
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
-        if (!string.IsNullOrWhiteSpace(executionId))
-        {
-            cmd.Parameters.AddWithValue("@executionId", executionId);
-        }
-
-        var results = new List<NodeExecutionMetrics>();
-        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-        while (await reader.ReadAsync().ConfigureAwait(false))
-        {
-            string nodeId = reader.GetString(0);
-            string nodeName = reader.GetString(1);
-            int total = reader.GetInt32(2);
-            double avg = reader.GetDouble(3);
-            double max = reader.GetDouble(4);
-            double min = reader.GetDouble(5);
-            int errCount = reader.GetInt32(6);
-
-            results.Add(new NodeExecutionMetrics(nodeId, nodeName, total, avg, max, min, errCount));
-        }
-
-        return results;
+        return SqliteLogMetricsReader.GetNodeExecutionMetricsAsync(_connectionString, executionId);
     }
 
     public async Task ExportLogsAsync(TextWriter writer, LogFilterCriteria? filter = null)

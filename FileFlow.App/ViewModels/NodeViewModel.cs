@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using FileFlow.App.Messages;
+using FileFlow.App.Services;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -130,6 +131,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     public ObservableCollection<NodeParameterViewModel> Parameters => _parameterManager.Parameters;
     public ObservableCollection<NodeDataSnapshot> InputSnapshots { get; } = [];
     public ObservableCollection<NodeDataSnapshot> OutputSnapshots { get; } = [];
+    public ObservableCollection<SwitchCaseItemViewModel> SwitchCases { get; } = [];
 
     public NodeViewModel(IFlowNode node, Point location)
     {
@@ -152,45 +154,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
         if (isSwitch)
         {
-            List<(string Name, string Pattern)> initialCases = [];
-            if (node is FileFlow.Plugin.Logic.SwitchCaseNode switchNode)
-            {
-                initialCases = switchNode.GetCases().Select(c => (c.Name, c.Pattern)).ToList();
-            }
-            else if (node.Parameters.TryGetValue("CasesJson", out var jsonVal) && jsonVal != null)
-            {
-                string jsonStr = jsonVal.ToString() ?? string.Empty;
-                if (!string.IsNullOrWhiteSpace(jsonStr))
-                {
-                    try
-                    {
-                        using var doc = System.Text.Json.JsonDocument.Parse(jsonStr);
-                        foreach (var elem in doc.RootElement.EnumerateArray())
-                        {
-                            string cName = elem.TryGetProperty("Name", out var np) ? np.GetString() ?? "" : "";
-                            string cPattern = elem.TryGetProperty("Pattern", out var pp) ? pp.GetString() ?? "" : "";
-                            if (!string.IsNullOrWhiteSpace(cName))
-                            {
-                                initialCases.Add((cName, cPattern));
-                            }
-                        }
-                    }
-                    catch { }
-                }
-            }
-
-            if (initialCases.Count == 0)
-            {
-                initialCases.Add(("Case 1", "jpg;jpeg;png;webp;gif"));
-            }
-
-            foreach (var c in initialCases)
-            {
-                var port = new PortViewModel(this, c.Name, c.Name, PortDirection.Output, typeof(FileItemContext));
-                OutputPorts.Add(port);
-                SwitchCases.Add(new SwitchCaseItemViewModel(this, c.Name, c.Pattern) { Port = port });
-            }
-            OutputPorts.Add(new PortViewModel(this, "Default", "Default", PortDirection.Output, typeof(FileItemContext)));
+            NodeSwitchCaseCoordinator.InitializeSwitchCases(node, this, OutputPorts, SwitchCases);
         }
         else
         {
@@ -226,88 +190,26 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         win.ShowDialog();
     }
 
-    public ObservableCollection<SwitchCaseItemViewModel> SwitchCases { get; } = [];
-
     [RelayCommand]
     public void AddSwitchCase()
     {
-        int count = SwitchCases.Count + 1;
-        string caseName = $"Case {count}";
-        while (SwitchCases.Any(c => c.Name.Equals(caseName, StringComparison.OrdinalIgnoreCase)) ||
-               OutputPorts.Any(p => p.Name.Equals(caseName, StringComparison.OrdinalIgnoreCase)))
-        {
-            count++;
-            caseName = $"Case {count}";
-        }
-
-        var newPort = new PortViewModel(this, caseName, caseName, PortDirection.Output, typeof(FileItemContext));
-        var caseItem = new SwitchCaseItemViewModel(this, caseName, "") { Port = newPort };
-        SwitchCases.Add(caseItem);
-
-        var defaultPort = OutputPorts.FirstOrDefault(p => p.Name.Equals("Default", StringComparison.OrdinalIgnoreCase));
-        int insertIndex = defaultPort != null ? OutputPorts.IndexOf(defaultPort) : OutputPorts.Count;
-        OutputPorts.Insert(insertIndex, newPort);
-
-        SyncSwitchCasesToNodeInstance();
+        NodeSwitchCaseCoordinator.AddCase(this, OutputPorts, SwitchCases, SyncSwitchCasesToNodeInstance);
     }
 
     [RelayCommand]
     public void RemoveSwitchCase(SwitchCaseItemViewModel caseItem)
     {
-        if (caseItem == null) return;
-        SwitchCases.Remove(caseItem);
-
-        if (caseItem.Port != null)
-        {
-            OutputPorts.Remove(caseItem.Port);
-        }
-        else
-        {
-            var port = OutputPorts.FirstOrDefault(p => p.Name.Equals(caseItem.Name, StringComparison.OrdinalIgnoreCase));
-            if (port != null)
-            {
-                OutputPorts.Remove(port);
-            }
-        }
-
-        SyncSwitchCasesToNodeInstance();
+        NodeSwitchCaseCoordinator.RemoveCase(caseItem, OutputPorts, SwitchCases, SyncSwitchCasesToNodeInstance);
     }
 
     public void OnSwitchCaseRenamed(string oldName, string newName, SwitchCaseItemViewModel item)
     {
-        if (item.Port != null)
-        {
-            item.Port.Name = newName;
-            item.Port.DisplayName = newName;
-        }
-        else
-        {
-            var port = OutputPorts.FirstOrDefault(p => p.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
-            if (port != null)
-            {
-                port.Name = newName;
-                port.DisplayName = newName;
-                item.Port = port;
-            }
-        }
-        SyncSwitchCasesToNodeInstance();
+        NodeSwitchCaseCoordinator.RenameCase(oldName, newName, item, OutputPorts, SyncSwitchCasesToNodeInstance);
     }
 
     public void SyncSwitchCasesToNodeInstance()
     {
-        if (_nodeInstance is FileFlow.Plugin.Logic.SwitchCaseNode switchNode)
-        {
-            var rules = SwitchCases.Select(c => new FileFlow.Plugin.Logic.SwitchCaseRule(c.Name, c.Pattern)).ToList();
-            switchNode.SetCases(rules);
-        }
-        else
-        {
-            var rules = SwitchCases.Select(c => new { Name = c.Name, Pattern = c.Pattern }).ToList();
-            lock (_nodeInstance.Parameters)
-            {
-                _nodeInstance.Parameters["CasesJson"] = System.Text.Json.JsonSerializer.Serialize(rules);
-            }
-        }
+        NodeSwitchCaseCoordinator.SyncCasesToNode(_nodeInstance, SwitchCases);
     }
 
     [RelayCommand]
@@ -357,7 +259,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void ChangeColor(string colorHex)
     {
-        HeaderColor = GetHeaderColorFromAccent(colorHex);
+        HeaderColor = NodeCategoryStyling.GetHeaderColorFromAccent(colorHex);
         AccentColor = colorHex;
     }
 
@@ -373,41 +275,14 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public void SetDefaultColorsForCategory(string category)
     {
-        switch (category.ToLowerInvariant())
-        {
-            case "filesystem":
-                HeaderColor = "#143328";
-                AccentColor = "#10B981";
-                break;
-            case "archives":
-                HeaderColor = "#362713";
-                AccentColor = "#F59E0B";
-                break;
-            case "images":
-                HeaderColor = "#301438";
-                AccentColor = "#A855F7";
-                break;
-            default:
-                HeaderColor = "#1F2433";
-                AccentColor = "#818CF8";
-                break;
-        }
+        var (header, accent) = NodeCategoryStyling.GetColorsForCategory(category);
+        HeaderColor = header;
+        AccentColor = accent;
     }
 
     public static string GetHeaderColorFromAccent(string accentHex)
     {
-        try
-        {
-            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(accentHex);
-            byte r = (byte)(color.R * 0.25);
-            byte g = (byte)(color.G * 0.25);
-            byte b = (byte)(color.B * 0.25);
-            return $"#{r:X2}{g:X2}{b:X2}";
-        }
-        catch
-        {
-            return "#202430";
-        }
+        return NodeCategoryStyling.GetHeaderColorFromAccent(accentHex);
     }
 
     partial void OnIsExpandedChanged(bool oldValue, bool newValue)

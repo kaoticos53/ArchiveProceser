@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Threading.Channels;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
@@ -8,26 +7,22 @@ using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.Core.Engine;
 
+/// <summary>
+/// Orquestador principal del grafo DAG para ejecución concurrente, depuración y simulación virtual.
+/// </summary>
 public class WorkflowExecutor
 {
     private readonly Lock _lock = new();
     private readonly ConcurrentDictionary<string, IFlowNode> _nodeInstances = new();
     private readonly ConcurrentDictionary<string, List<WorkflowEdge>> _outgoingEdges = new();
     private readonly SemaphoreSlim _pauseSemaphore = new(1, 1);
-    private readonly Stopwatch _stopwatch = new();
+    private readonly WorkflowTelemetryTracker _telemetryTracker = new();
 
     private int _maxDegreeOfParallelism = Environment.ProcessorCount;
     private SemaphoreSlim _concurrencyThrottle = new(Environment.ProcessorCount);
     private bool _isDryRun;
     private bool _isPaused;
     private bool _isRunning;
-    private long _processedItemsCount;
-    private long _totalItemsCount;
-    private long _expectedTotalItems;
-    private long _sourceItemsEmitted;
-    private long _completedFilesCount;
-    private long _processedBytesCount;
-    private string _lastCustomStatusMessage = string.Empty;
     private readonly HashSet<string> _startNodeIds = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkflowDebugSession? DebugSession { get; set; }
@@ -45,81 +40,17 @@ public class WorkflowExecutor
 
     public TelemetrySnapshot GetTelemetrySnapshot()
     {
-        long doneElements = Volatile.Read(ref _completedFilesCount);
-        long emittedElements = Volatile.Read(ref _sourceItemsEmitted);
-        long expectedElements = Volatile.Read(ref _expectedTotalItems);
-        long processedOps = Volatile.Read(ref _processedItemsCount);
-        long totalOps = Volatile.Read(ref _totalItemsCount);
-
-        long effectiveTotal = Math.Max(expectedElements, Math.Max(doneElements, emittedElements));
-        long effectiveProcessed = doneElements > 0 ? doneElements : emittedElements;
-
-        if (effectiveTotal == 0)
-        {
-            effectiveTotal = totalOps;
-            effectiveProcessed = processedOps;
-        }
-
-        long bytes = Volatile.Read(ref _processedBytesCount);
-        TimeSpan elapsed = _stopwatch.Elapsed;
-        double elapsedSec = elapsed.TotalSeconds;
-
-        double itemsPerSec = elapsedSec > 0.05 ? effectiveProcessed / elapsedSec : 0.0;
-        double mbPerSec = elapsedSec > 0.05 ? (bytes / (1024.0 * 1024.0)) / elapsedSec : 0.0;
-
-        double pct = 0.0;
-        if (effectiveTotal > 0)
-        {
-            pct = (double)effectiveProcessed / effectiveTotal * 100.0;
-            if (_isRunning && pct >= 100.0)
-            {
-                pct = 99.0;
-            }
-            else if (pct > 100.0)
-            {
-                pct = 100.0;
-            }
-        }
-
-        string status;
-        if (!_isRunning && effectiveProcessed > 0)
-        {
-            status = $"🟢 Completado: {effectiveProcessed:N0}/{effectiveProcessed:N0} elementos (100%)";
-        }
-        else if (effectiveTotal > 0)
-        {
-            status = $"⚡ Procesando: {effectiveProcessed:N0}/{effectiveTotal:N0} elementos ({pct:F0}%) • {itemsPerSec:F0} ops/s";
-        }
-        else if (effectiveProcessed > 0)
-        {
-            status = $"⚡ Procesando: {effectiveProcessed:N0} elementos • {itemsPerSec:F0} ops/s";
-        }
-        else
-        {
-            string customStatus = Volatile.Read(ref _lastCustomStatusMessage);
-            status = !string.IsNullOrWhiteSpace(customStatus) ? customStatus : "Ejecutando...";
-        }
-
-        return new TelemetrySnapshot(
-            ProcessedItems: effectiveProcessed,
-            TotalItems: effectiveTotal,
-            ProcessedBytes: bytes,
-            ItemsPerSecond: itemsPerSec,
-            MegabytesPerSecond: mbPerSec,
-            Percentage: pct,
-            Elapsed: elapsed,
-            StatusMessage: status
-        );
+        return _telemetryTracker.GetSnapshot(_isRunning);
     }
 
     public void SetTotalExpectedItems(long totalExpectedItems)
     {
-        Interlocked.Exchange(ref _expectedTotalItems, totalExpectedItems);
+        _telemetryTracker.SetTotalExpectedItems(totalExpectedItems);
     }
 
     public void SetCustomStatusMessage(string message)
     {
-        Volatile.Write(ref _lastCustomStatusMessage, message);
+        _telemetryTracker.SetCustomStatusMessage(message);
     }
 
     public void RegisterPlannedAction(PlannedAction action)
@@ -130,7 +61,6 @@ public class WorkflowExecutor
         }
         NotifyLog($"[DryRun] Planned: {action.OperationType} -> {action.SourcePath} ({action.Description})", LogLevel.Information);
     }
-
 
     public int MaxDegreeOfParallelism
     {
@@ -228,13 +158,8 @@ public class WorkflowExecutor
             _disabledLoggingNodeIds.Add(nodeDto.Id);
         }
 
-        _processedItemsCount = 0;
-        _totalItemsCount = 0;
-        _expectedTotalItems = 0;
-        _processedBytesCount = 0;
-        _lastCustomStatusMessage = string.Empty;
+        _telemetryTracker.Reset();
         _isRunning = true;
-        _stopwatch.Restart();
         lock (_tasksLock)
         {
             _activeNodeTasks.Clear();
@@ -283,8 +208,6 @@ public class WorkflowExecutor
             {
                 _startNodeIds.Add(sn.Id);
             }
-            _sourceItemsEmitted = 0;
-            _completedFilesCount = 0;
 
             List<Task> startTasks = [];
             foreach (var startNode in startNodes)
@@ -347,10 +270,10 @@ public class WorkflowExecutor
                 await Task.WhenAll(pending).ConfigureAwait(false);
             }
 
-            _stopwatch.Stop();
-            long finalFiles = Volatile.Read(ref _completedFilesCount);
-            if (finalFiles == 0) finalFiles = Volatile.Read(ref _sourceItemsEmitted);
-            if (finalFiles == 0) finalFiles = Volatile.Read(ref _processedItemsCount);
+            _telemetryTracker.Stop();
+            long finalFiles = _telemetryTracker.CompletedFilesCount;
+            if (finalFiles == 0) finalFiles = _telemetryTracker.SourceItemsEmitted;
+            if (finalFiles == 0) finalFiles = _telemetryTracker.ProcessedItemsCount;
             NotifyProgress(100.0, $"🟢 Completado: {finalFiles:N0}/{finalFiles:N0} elementos (100%)");
             NotifyLog("Workflow execution completed successfully.", LogLevel.Information);
         }
@@ -380,26 +303,26 @@ public class WorkflowExecutor
 
         if (_startNodeIds.Contains(sourceNodeId))
         {
-            Interlocked.Increment(ref _sourceItemsEmitted);
+            _telemetryTracker.IncrementSourceItemsEmitted();
         }
 
         if (!_outgoingEdges.TryGetValue(sourceNodeId, out var edges))
         {
-            Interlocked.Increment(ref _completedFilesCount);
+            _telemetryTracker.IncrementCompletedFiles();
             return Task.CompletedTask;
         }
 
         var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
         if (matchingEdges.Count == 0)
         {
-            Interlocked.Increment(ref _completedFilesCount);
+            _telemetryTracker.IncrementCompletedFiles();
             return Task.CompletedTask;
         }
 
-        Interlocked.Add(ref _totalItemsCount, matchingEdges.Count);
+        _telemetryTracker.AddTotalItems(matchingEdges.Count);
         if (item.FileSizeBytes > 0)
         {
-            Interlocked.Add(ref _processedBytesCount, item.FileSizeBytes);
+            _telemetryTracker.AddProcessedBytes(item.FileSizeBytes);
         }
 
         bool isMultipleTargets = matchingEdges.Count > 1;
@@ -448,12 +371,12 @@ public class WorkflowExecutor
                     finally
                     {
                         _concurrencyThrottle.Release();
-                        Interlocked.Increment(ref _processedItemsCount);
+                        _telemetryTracker.IncrementProcessedItems();
 
                         if (!targetContext.HasEmittedAnyDownstream)
                         {
-                            long doneFiles = Interlocked.Increment(ref _completedFilesCount);
-                            long totalFiles = Volatile.Read(ref _expectedTotalItems);
+                            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
+                            long totalFiles = _telemetryTracker.ExpectedTotalItems;
                             long effective = Math.Max(totalFiles, doneFiles);
                             double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 0.0;
                             if (_isRunning && pct >= 100.0) pct = 99.0;

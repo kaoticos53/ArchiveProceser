@@ -8,7 +8,20 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **258 / 258 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **270 / 270 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Refactorización Modular Clean Code (SRP & OCP) - 10 Módulos Desacoplados**:
+  - `RenameTransformEngine.cs` (Sdk): Reducido a 124L con 9 Strategy Handlers en `FileFlow.Sdk/Renaming/Handlers/`.
+  - `CustomThemeService.cs` (App): Reducido a 140L delegando en `BuiltInThemesCatalog.cs` y `ThemeResourceApplier.cs`.
+  - `ControlBarViewModel.cs` (App): Reducido a 463L delegando en `WorkflowExecutionCoordinator.cs` y `AppResourceLocator.cs`.
+  - `AdvancedRenamerEditorViewModel.cs` (App): Reducido a 390L delegando en `RenamerTagCatalogService.cs`, `RenamerSampleDataProvider.cs` y `RenamerLivePreviewService.cs`.
+  - `WorkflowExecutor.cs` (Core): Reducido a 468L delegando en `WorkflowTelemetryTracker.cs`.
+  - `SqliteLogStore.cs` (Core): Reducido a 389L delegando en `SqliteLogSchema.cs` y `SqliteLogMetricsReader.cs`.
+  - `SmartUnpackNode.cs` (Archives): Reducido a 157L delegando en `SafeArchiveExtractor.cs`.
+  - `SystemVariablesResolver.cs` (Sdk): Reducido a 198L delegando en `DomainVariableResolver.cs` y `PathRelativeCalculator.cs`.
+  - `EditorViewModel.cs` (App): Reducido a 417L delegando en `EditorViewportCalculator.cs` y `WorkflowGraphSerializer.cs`.
+  - `NodeViewModel.cs` (App): Reducido a 371L delegando en `NodeCategoryStyling.cs` y `NodeSwitchCaseCoordinator.cs`.
+- **Pantalla de Carga Fluida (SplashScreen)**:
+  - `SplashScreenWindow.xaml` con estética Dark Glow, bordes redondeados (`CornerRadius="16"`), resplandor violeta/índigo, barra de progreso multicolor y reporte reactivo de etapas de arranque con animaciones de Fade-In y Fade-Out.
 - **Instalador y Empaquetado**: Incluye la suite completa de 40 ejemplos de flujos (`Examples/` organizados en 4 niveles) y el **Manual de Usuario en Formato PDF** (`Docs/manual_de_usuario.pdf`), generado automáticamente durante la publicación para el instalador Inno Setup, el paquete portable ZIP y las GitHub Releases, con accesos directos en el menú de inicio y botón en el menú drawer de la app.
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
 

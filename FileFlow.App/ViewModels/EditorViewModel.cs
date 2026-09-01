@@ -9,6 +9,8 @@ using FileFlow.Sdk;
 
 namespace FileFlow.App.ViewModels;
 
+public sealed record BreadcrumbItem(string Name, string? NodeId, WorkflowGraph Graph);
+
 public partial class EditorViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
@@ -28,7 +30,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private PendingConnectionViewModel? _pendingConnection;
-
 
     [ObservableProperty]
     private Point _viewportLocation;
@@ -57,43 +58,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void FitToScreen()
     {
-        if (Nodes.Count == 0)
-        {
-            ViewportZoom = 1.0;
-            ViewportLocation = new Point(0, 0);
-            return;
-        }
-
-        double minX = Nodes.Min(n => n.Location.X);
-        double minY = Nodes.Min(n => n.Location.Y);
-        double maxX = Nodes.Max(n => n.Location.X + (n.Width > 0 ? n.Width : 280));
-        double maxY = Nodes.Max(n => n.Location.Y + 220);
-
-        double graphWidth = Math.Max(maxX - minX, 100);
-        double graphHeight = Math.Max(maxY - minY, 100);
-
-        double viewWidth = 900;
-        double viewHeight = 500;
-
-        double paddingX = 120;
-        double paddingY = 120;
-
-        double scaleX = (viewWidth - paddingX) / graphWidth;
-        double scaleY = (viewHeight - paddingY) / graphHeight;
-
-        double targetZoom = Math.Clamp(Math.Min(scaleX, scaleY), 0.3, 1.8);
-        ViewportZoom = Math.Round(targetZoom, 2);
-
-        double visibleCanvasWidth = viewWidth / ViewportZoom;
-        double visibleCanvasHeight = viewHeight / ViewportZoom;
-
-        double extraCanvasX = Math.Max(50, (visibleCanvasWidth - graphWidth) / 2.0);
-        double extraCanvasY = Math.Max(50, (visibleCanvasHeight - graphHeight) / 2.0);
-
-        double locX = minX - extraCanvasX;
-        double locY = minY - extraCanvasY;
-
-        ViewportLocation = new Point(Math.Round(locX, 1), Math.Round(locY, 1));
+        var (zoom, location) = EditorViewportCalculator.CalculateFitToScreen(Nodes);
+        ViewportZoom = zoom;
+        ViewportLocation = location;
     }
 
     private readonly Dictionary<string, List<ConnectionViewModel>> _connectionLookup = new(StringComparer.OrdinalIgnoreCase);
@@ -344,53 +311,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public WorkflowGraph ExportToGraphModel(string name = "FileFlow Workflow")
     {
-        var graph = new WorkflowGraph
-        {
-            Name = name,
-            GlobalOutputDir = GlobalOutputDir
-        };
-
-        foreach (var n in Nodes)
-        {
-            var nodeDto = new WorkflowNode
-            {
-                Id = n.Id,
-                NodeTypeName = n.NodeTypeName,
-                X = n.Location.X,
-                Y = n.Location.Y,
-                HasBreakpoint = n.HasBreakpoint,
-                IsLoggingEnabled = n.IsLoggingEnabled,
-                Parameters = n.Parameters
-                    .Where(p => !string.IsNullOrWhiteSpace(p.Key))
-                    .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase)
-            };
-            graph.Nodes.Add(nodeDto);
-
-            if (n.HasBreakpoint)
-            {
-                graph.BreakpointNodeIds.Add(n.Id);
-            }
-
-            if (!n.IsLoggingEnabled)
-            {
-                graph.DisabledLoggingNodeIds.Add(n.Id);
-            }
-        }
-
-        foreach (var c in Connections)
-        {
-            var edgeDto = new WorkflowEdge
-            {
-                SourceNodeId = c.Source.NodeOwner.Id,
-                SourcePortName = c.Source.Name,
-                TargetNodeId = c.Target.NodeOwner.Id,
-                TargetPortName = c.Target.Name
-            };
-            graph.Edges.Add(edgeDto);
-        }
-
-        return graph;
+        return WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, name);
     }
 
     public void LoadFromGraphModel(WorkflowGraph graph)
@@ -402,46 +323,20 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             GlobalOutputDir = graph.GlobalOutputDir;
         }
 
-        Dictionary<string, NodeViewModel> nodeLookup = [];
-
-        foreach (var nodeDto in graph.Nodes)
-        {
-            IFlowNode? instance = _pluginLoader.CreateNodeInstance(nodeDto.NodeTypeName);
-            if (instance == null) continue;
-
-            instance.Id = nodeDto.Id;
-            foreach (var (k, v) in nodeDto.Parameters)
+        WorkflowGraphSerializer.Import(
+            graph,
+            _pluginLoader,
+            this,
+            registerNodeCallback: nodeVm =>
             {
-                instance.Parameters[k] = v;
+                nodeVm.PropertyChanged += OnNodePropertyChanged;
+                Nodes.Add(nodeVm);
+            },
+            registerConnectionCallback: conn =>
+            {
+                Connections.Add(conn);
             }
-
-            var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y))
-            {
-                ParentEditor = this,
-                HasBreakpoint = nodeDto.HasBreakpoint || graph.BreakpointNodeIds.Contains(nodeDto.Id),
-                IsLoggingEnabled = nodeDto.IsLoggingEnabled && !graph.DisabledLoggingNodeIds.Contains(nodeDto.Id)
-            };
-
-            nodeVm.PropertyChanged += OnNodePropertyChanged;
-
-            Nodes.Add(nodeVm);
-            nodeLookup[nodeDto.Id] = nodeVm;
-        }
-
-        foreach (var edgeDto in graph.Edges)
-        {
-            if (nodeLookup.TryGetValue(edgeDto.SourceNodeId, out var srcNode) &&
-                nodeLookup.TryGetValue(edgeDto.TargetNodeId, out var targetNode))
-            {
-                var srcPort = srcNode.OutputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.SourcePortName, StringComparison.OrdinalIgnoreCase));
-                var targetPort = targetNode.InputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.TargetPortName, StringComparison.OrdinalIgnoreCase));
-
-                if (srcPort != null && targetPort != null)
-                {
-                    Connections.Add(new ConnectionViewModel(srcPort, targetPort));
-                }
-            }
-        }
+        );
     }
 
     public List<FileFlow.App.Models.VariableGroupItem> GetUpstreamAvailableVariables(NodeViewModel targetNode)
@@ -520,6 +415,3 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 }
-
-public sealed record BreadcrumbItem(string Name, string? NodeId, WorkflowGraph Graph);
-
