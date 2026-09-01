@@ -41,8 +41,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
 spanish.UserManual=Manual de Usuario
+spanish.ScriptManual=Manual de Scripting Personalizado
 spanish.ExampleFlows=Ejemplos de Flujos
 english.UserManual=User Manual
+english.ScriptManual=Custom Scripting Manual
 english.ExampleFlows=Example Flows
 
 [Tasks]
@@ -54,6 +56,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{group}\{cm:UserManual}"; Filename: "{app}\Docs\manual_de_usuario.pdf"
+Name: "{group}\{cm:ScriptManual}"; Filename: "{app}\Docs\manual_nodo_scripting.pdf"
 Name: "{group}\{cm:ExampleFlows}"; Filename: "{app}\Examples"
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon

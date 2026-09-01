@@ -8,7 +8,19 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **289 / 289 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit, incluyendo validación continua de todos los 40 workflows de ejemplo).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **296 / 296 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit, incluyendo validación de motores de scripting, catálogo sin duplicados, variables implícitas y los 40 workflows de ejemplo).
+- **Scripts de Limpieza Integral (`clean.ps1` y `clean.bat`)**:
+  - Limpieza automatizada y determinista de todas las carpetas `bin` y `obj` en todos los proyectos, artefactos de publicación (`installer/publish`), empaquetado (`installer/output`), resultados de tests (`TestResults`, `coverage-report`) y temporales (`.vs`, `.dotnet_tmp`, `*.user`, `*.suo`, `crash.log`).
+  - Soporte de simulación no destructiva (`-DryRun`), opción de incluir PDFs (`-IncludePdfs`) y cálculo de espacio liberado en disco.
+- **Nuevo Plugin de Scripting Dinámico Dual (`FileFlow.Plugin.Scripting`)**:
+  - Motor de ejecución dual que permite al usuario programar en **C# (Roslyn JIT en memoria con cacheo SHA256)** o **JavaScript (Sandbox administrado Jint en .NET 9)**.
+  - Soporte de funciones de resolución de plantillas y variables implícitas (`Resolve(template)`, `resolve(template)` y `getVar(varName)`).
+  - Nodo `CustomScriptNode` con puertos dinámicos configurables (`Inputs` y `Outputs` editables), timeouts y acción `OpenScriptStudio`.
+  - Ventana de edición `ScriptStudioWindow` encapsulada con `AvalonEdit` (resaltado sintáctico automático C#/JS), botón **`📖 Manual PDF...`**, probador en tiempo real con consola de salida y telemetría de emisiones, y biblioteca de scripts con presets incorporados (`.ffscript` en `%AppData%/FileFlow/Scripts/`).
+- **Manual Didáctico de Scripting, Compilación a PDF e Instalador**:
+  - Creado `docs/manual_nodo_scripting.md` orientado a niveles básico y medio.
+  - Compilado automáticamente a `docs/manual_nodo_scripting.pdf` (1003.8 KB) mediante Microsoft Edge Chromium Headless.
+  - Integrado en `installer/FileFlow.iss` y `installer/publish.ps1` con acceso directo en el Menú de Inicio de Windows.
 - **Actualización Total de Flujos de Ejemplo (Sin Código de Retrocompatibilidad)**:
   - Todos los 40 JSONs de ejemplo en `docs/examples/` (`01_basic`, `02_intermediate`, `03_advanced`, `04_complex`) y `docs/flujo_test.json` fueron actualizados a los nuevos contratos de nodos, tipos canónicos y nombres de puertos actuales (`True`/`False`, `Deleted`, `TriggerIn`, `ItemIn`/`ItemOut`, `Fork1`/`Fork2`/`AllCompleted`).
 - **Encapsulación Total de UI en Plugins (Arquitectura Zero-Touch en FileFlow.App)**:

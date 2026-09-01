@@ -30,6 +30,7 @@ public partial class MainViewModel : ObservableObject
         PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
         PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
         PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.CliExecutionNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Scripting.CustomScriptNode).Assembly);
 
         // Dynamically load any additional external plugin assemblies in /Plugins directory
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -52,6 +53,6 @@ public partial class MainViewModel : ObservableObject
         ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector, FileDialogService, WorkflowStorageService);
         StatusBar = new StatusBarViewModel(Editor, ControlBar, PerformanceMonitor, LogConsole);
 
-        LogConsole.AddLog(Sdk.LogLevel.Information, $"FileFlow Studio initialized with {PluginLoader.DiscoveredNodeTypes.Count} active plugin nodes.");
+        LogConsole.AddLog(Sdk.LogLevel.Information, $"FileFlow Studio initialized with {PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()} active plugin nodes.");
     }
 }

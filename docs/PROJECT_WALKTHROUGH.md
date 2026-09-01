@@ -36,8 +36,21 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
      - `HashCalculatorNode`: Parámetro `StoreInMetadataKey`.
      - `ImageOptimizerNode`: Parámetros canónicos `Width`, `Height` (con defaults `Height: "100%"`, `Width: ""`).
    - Creado test de integración automatizado `WorkflowExamplesValidationTests.cs` que comprueba de forma continua la validez sintáctica y estructural de todos los flujos de ejemplo frente a los contratos de los nodos reales.
-8. **Pruebas Unitarias y Validación**:
-   - Batería de pruebas: **289 / 289 pruebas superadas al 100% con 0 fallos**.
+8. **Implementación de FileFlow.Plugin.Scripting (Motor Dual C# Roslyn + JavaScript Jint)**:
+   - Creado el nuevo proyecto `FileFlow.Plugin.Scripting` con arquitectura *Zero-Touch* totalmente encapsulada.
+   - **`RoslynCSharpEngine`**: Compilación JIT en memoria con cacheo SHA256 (`ScriptRunner<object>`), acceso tipado y directo a `Item` (`FileItemContext`), `Context` (`IFlowExecutionContext`), `EmitAsync(port)`, `Log(msg)` y función universal `Resolve(template)`.
+   - **`JintJavaScriptEngine`**: Sandbox administrado en .NET 9 con límites de memoria, tiempo e instrucciones, con funciones globales `emit(port, item)`, `log(msg)`, `console.log(msg)`, `resolve(template)` y `getVar(name)`.
+   - **`CustomScriptNode`**: Nodo programable con soporte de puertos dinámicos configurables (`InputPorts`, `OutputPorts`), timeouts y acción personalizada `OpenScriptStudio`.
+   - **`ScriptStudioWindow`**: Editor visual con `AvalonEdit` (resaltado sintáctico automático C#/JavaScript, números de línea), botón **`📖 Manual PDF...`**, probador en vivo (`RunTestCommand`) con telemetría de emisiones y consola de logs, y gestor de biblioteca/plantillas predefinidas.
+   - **`ScriptLibraryService`**: Almacenamiento y carga de scripts `.ffscript` en `%AppData%/FileFlow/Scripts/` y catálogo de presets incorporados (Enrutador por extensión, Filtro de tamaño, Inyector de variables, Sanitizador de nombres).
+9. **Manual de Usuario Didáctico de Scripting, Compilación PDF e Integración en Instalador**:
+   - Creado [`docs/manual_nodo_scripting.md`](file:///docs/manual_nodo_scripting.md) redactado para usuarios de nivel básico y medio con guía paso a paso, tablas de propiedades de archivo, variables implícitas (`{FileName}`, `{SizeMB}`, `{Date:*}`), acceso a metadatos previos (`Item.Metadata["Hash:SHA256"]`, etc.) y 7 ejemplos prácticos comentados.
+   - Actualizado `installer/build-pdf-manual.ps1` para compilar automáticamente `manual_nodo_scripting.pdf` (1003.8 KB) y `manual_de_usuario.pdf` (1001.4 KB) utilizando el motor Chromium Headless de Microsoft Edge.
+   - Actualizado `installer/publish.ps1` para sincronizar todos los PDFs a la carpeta `Docs/` de distribución.
+   - Actualizado `installer/FileFlow.iss` con mensajes localizados en español e inglés y creación de acceso directo en el Menú de Inicio para el Manual de Scripting.
+10. **Pruebas Unitarias y Validación**:
+   - Creadas pruebas exhaustivas en `ScriptingPluginTests.cs` (C# Roslyn, JavaScript Jint, Resolución de Variables Implícitas, Puertos Dinámicos y Biblioteca de Presets).
+   - Batería de pruebas: **295 / 295 pruebas superadas al 100% con 0 fallos**.
 
 ---
 
@@ -1082,5 +1095,44 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 4. **Validación de Compilación y Suite de Pruebas:**
    - Generación exitosa del ejecutable instalador `FileFlowStudio-Setup-1.0.0.exe` con Inno Setup.
    - **190 / 190 pruebas superadas con éxito** (0 errores, 0 fallos).
+
+---
+
+## [2026-09-01] - Corrección de Nodos Duplicados en el Catálogo y Barra Lateral (Toolbox)
+
+### 🛠 Cambios Implementados
+1. **Deduplicación en `ToolboxViewModel.cs`**:
+   - `PluginLoader.DiscoveredNodeTypes` almacena dos claves por cada tipo de nodo (`FullName` y `Name`) para permitir resolución por ambos nombres al crear instancias.
+   - Al iterar el catálogo, `ToolboxViewModel` recorría todas las claves del diccionario, provocando que cada nodo se agregara dos veces (duplicación en la lista).
+   - Se ajustó `RefreshToolbox()` para iterar sobre los tipos únicos (`DiscoveredNodeTypes.Values.Distinct()`).
+   - Se completó el mapeo de iconos en `GetIconForNodeType` para todos los 25+ tipos de nodos del ecosistema.
+2. **Registro de Plugins en `MainViewModel.cs`**:
+   - Se añadió el registro explícito del ensamblado `FileFlow.Plugin.Scripting` junto con los demás plugins base.
+   - Se actualizó el conteo del log de arranque para reportar el número real de tipos de nodos únicos activos.
+3. **Pruebas Unitarias (`ToolboxViewModelTests.cs`)**:
+   - Se agregó la prueba `ToolboxViewModel_ShouldNotContainDuplicateItems_WhenAssembliesRegistered` para garantizar que ningún nodo aparezca duplicado en sus grupos de categorías.
+   - **296 / 296 pruebas superadas con 100% de éxito**.
+
+---
+
+## [2026-09-01] - Creación de Scripts de Limpieza Integral (`clean.ps1` y `clean.bat`)
+
+### 🛠 Cambios Implementados
+1. **Script PowerShell de Limpieza (`clean.ps1`)**:
+   - Cierre preventivo de procesos `FileFlow.App` para liberar bloqueos sobre ficheros `.dll` y `.exe`.
+   - Invocación de `dotnet clean` en configuraciones Debug y Release.
+   - Eliminación recursiva y forzada de carpetas `bin` y `obj` en todos los proyectos de la solución.
+   - Eliminación de carpetas de publicación e instalador (`installer/publish`, `installer/output`).
+   - Eliminación de directorios de resultados de pruebas y cobertura (`TestResults`, `coverage-report`).
+   - Eliminación de cachés de IDE y archivos temporales (`.vs`, `.dotnet_tmp`, `*.user`, `*.suo`, `crash.log`).
+   - Parámetros `-DryRun` (simulación con cálculo de espacio recuperable) e `-IncludePdfs` (limpieza opcional de PDFs generados).
+2. **Wrapper Batch para Consola CMD (`clean.bat`)**:
+   - Facilita la ejecución inmediata desde la consola de Windows o mediante doble clic.
+3. **Validación**:
+   - Ejecución de `.\clean.ps1 -DryRun` comprobando la detección correcta de artefactos sin efectos destructivos.
+   - Ejecución de `.\clean.ps1` liberando espacio y limpiando el árbol de directorios.
+   - Recompilación limpia y ejecución de la suite de pruebas: **296 / 296 pruebas superadas con 100% de éxito**.
+
+
 
 

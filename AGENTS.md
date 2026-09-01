@@ -89,6 +89,9 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 
 # Compilar y ejecutar la aplicación WPF
 .\run.ps1
+
+# Limpiar todos los artefactos de compilación, binarios y temporales
+.\clean.ps1
 ```
 
 ---

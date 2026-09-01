@@ -38,4 +38,30 @@ public class ToolboxViewModelTests
         reportItem!.Category.Should().Be("FileSystem");
         reportItem.Icon.Should().Be("📋");
     }
+
+    /// <summary>
+    /// OBJETO: No duplicidad en el catálogo de nodos de <see cref="ToolboxViewModel"/>.
+    /// QUÉ:    Verifica que ningún nodo aparezca repetido dentro de sus grupos de categorías.
+    /// CÓMO:  Registra ensamblados de plugins, instancia el ToolboxViewModel y comprueba que en cada grupo de categoría todos los TypeName sean únicos.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_ShouldNotContainDuplicateItems_WhenAssembliesRegistered()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Archives.SmartUnpackNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Images.ImageOptimizerNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
+
+        // Act
+        using var toolbox = new ToolboxViewModel(loader);
+
+        // Assert - In each category group, item TypeNames must be distinct
+        foreach (var group in toolbox.CategoryGroups)
+        {
+            var typeNames = group.Items.Select(i => i.TypeName).ToList();
+            typeNames.Should().OnlyHaveUniqueItems($"Category group '{group.CategoryName}' should not contain duplicated items.");
+        }
+    }
 }

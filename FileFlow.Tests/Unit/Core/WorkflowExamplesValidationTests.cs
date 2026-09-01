@@ -18,6 +18,7 @@ public class WorkflowExamplesValidationTests
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.MediaTranscoderNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Scripting.CustomScriptNode).Assembly);
 
         string examplesDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../..", "docs", "examples"));
         if (!Directory.Exists(examplesDir))

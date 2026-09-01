@@ -1,17 +1,11 @@
 <#
 .SYNOPSIS
-    Convierte el manual de usuario en Markdown (docs/manual_de_usuario.md) a un documento PDF profesional.
+    Convierte manuales en Markdown (docs/manual_de_usuario.md y docs/manual_nodo_scripting.md) a documentos PDF profesionales.
 
 .DESCRIPTION
-    Transforma el archivo Markdown a un documento HTML con diseño tipográfico y estilos de impresión A4,
-    y utiliza el motor headless de Microsoft Edge (o Chrome) para compilar un archivo PDF de alta calidad
-    listo para su distribución en el instalador y la versión portable.
-
-.PARAMETER MarkdownPath
-    Ruta del archivo Markdown de entrada. Por defecto: docs/manual_de_usuario.md.
-
-.PARAMETER OutputPdfPath
-    Ruta del archivo PDF de salida. Por defecto: docs/manual_de_usuario.pdf.
+    Transforma archivos Markdown a documentos HTML con diseño tipográfico y estilos de impresión A4,
+    y utiliza el motor headless de Microsoft Edge (o Chrome) para compilar archivos PDF de alta calidad
+    listos para su distribución en el instalador y la versión portable.
 #>
 param(
     [string]$MarkdownPath = "",
@@ -21,20 +15,6 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if ([string]::IsNullOrWhiteSpace($MarkdownPath)) {
-    $MarkdownPath = Join-Path $repoRoot "docs\manual_de_usuario.md"
-}
-if ([string]::IsNullOrWhiteSpace($OutputPdfPath)) {
-    $OutputPdfPath = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
-}
-
-if (-not (Test-Path $MarkdownPath)) {
-    throw "No se encontró el archivo de manual en: $MarkdownPath"
-}
-
-Write-Host "==> Convirtiendo manual de usuario a PDF..." -ForegroundColor Cyan
-Write-Host "    Entrada: $MarkdownPath" -ForegroundColor DarkGray
-Write-Host "    Salida:  $OutputPdfPath" -ForegroundColor DarkGray
 
 # 1. Localizar ejecutable de Microsoft Edge o Google Chrome
 $browserCandidates = @(
@@ -53,7 +33,6 @@ foreach ($cand in $browserCandidates) {
 }
 
 if ($null -eq $browserPath) {
-    # Intentar buscar en PATH
     $edgeInPath = Get-Command msedge.exe -ErrorAction SilentlyContinue
     if ($edgeInPath) { $browserPath = $edgeInPath.Source }
     else {
@@ -63,14 +42,19 @@ if ($null -eq $browserPath) {
 }
 
 if ($null -eq $browserPath) {
-    Write-Warning "No se encontró Microsoft Edge ni Chrome para convertir HTML a PDF. Se mantendrá el archivo .md."
+    Write-Warning "No se encontró Microsoft Edge ni Chrome para convertir HTML a PDF. Se mantendrán los archivos .md."
     exit 0
 }
 
-# 2. Leer contenido Markdown
-$mdContent = Get-Content -Path $MarkdownPath -Raw -Encoding utf8
+function Format-InlineMd([string]$text) {
+    if ([string]::IsNullOrEmpty($text)) { return "" }
+    $text = [regex]::Replace($text, '\[(.*?)\]\((.*?)\)', '<a href="$2">$1</a>')
+    $text = [regex]::Replace($text, '`([^`]+)`', '<code class="inline-code">$1</code>')
+    $text = [regex]::Replace($text, '\*\*([^*]+)\*\*', '<strong>$1</strong>')
+    $text = [regex]::Replace($text, '\*([^*]+)\*', '<em>$1</em>')
+    return $text
+}
 
-# 3. Convertidor robusto de Markdown a HTML estilizado
 function Convert-MarkdownToHtmlBody([string]$md) {
     $lines = $md -split "`r?`n"
     $html = [System.Text.StringBuilder]::new()
@@ -81,7 +65,6 @@ function Convert-MarkdownToHtmlBody([string]$md) {
     $codeLang = ""
 
     foreach ($line in $lines) {
-        # Bloques de Código ```
         if ($line -match '^```([a-zA-Z0-9_-]*)') {
             if (-not $inCodeBlock) {
                 if ($inList) { [void]$html.AppendLine("</ul>"); $inList = $false }
@@ -102,12 +85,10 @@ function Convert-MarkdownToHtmlBody([string]$md) {
             continue
         }
 
-        # Tablas Markdown | col | col |
         if ($line -match '^\|(.+)\|$') {
             if ($inList) { [void]$html.AppendLine("</ul>"); $inList = $false }
             $cells = $line.Trim('|').Split('|') | ForEach-Object { $_.Trim() }
             
-            # Separador de tabla |---|---|
             if ($line -match '^\|[\s\-:]+\|\s*$') {
                 continue
             }
@@ -134,7 +115,6 @@ function Convert-MarkdownToHtmlBody([string]$md) {
             }
         }
 
-        # Listas desordenadas (- o *)
         if ($line -match '^\s*[-*]\s+(.+)$') {
             if (-not $inList) {
                 $inList = $true
@@ -150,7 +130,6 @@ function Convert-MarkdownToHtmlBody([string]$md) {
             }
         }
 
-        # Encabezados (#, ##, ###, ####)
         if ($line -match '^(#{1,6})\s+(.+)$') {
             $level = $matches[1].Length
             $headerText = Format-InlineMd $matches[2]
@@ -159,20 +138,17 @@ function Convert-MarkdownToHtmlBody([string]$md) {
             continue
         }
 
-        # Líneas horizontales ---
         if ($line -match '^---+$') {
             [void]$html.AppendLine("<hr />")
             continue
         }
 
-        # Blockquotes >
         if ($line -match '^>\s*(.+)$') {
             $quoteText = Format-InlineMd $matches[1]
             [void]$html.AppendLine("<blockquote class='callout'><p>$quoteText</p></blockquote>")
             continue
         }
 
-        # Párrafos normales
         if (-not [string]::IsNullOrWhiteSpace($line)) {
             $formatted = Format-InlineMd $line
             [void]$html.AppendLine("<p>$formatted</p>")
@@ -186,33 +162,24 @@ function Convert-MarkdownToHtmlBody([string]$md) {
     return $html.ToString()
 }
 
-function Format-InlineMd([string]$text) {
-    if ([string]::IsNullOrEmpty($text)) { return "" }
-    
-    # 1. Enlaces Markdown [texto](url)
-    $text = [regex]::Replace($text, '\[(.*?)\]\((.*?)\)', '<a href="$2">$1</a>')
-    
-    # 2. Código inline `code`
-    $text = [regex]::Replace($text, '`([^`]+)`', '<code class="inline-code">$1</code>')
-    
-    # 3. Negrita **texto**
-    $text = [regex]::Replace($text, '\*\*([^*]+)\*\*', '<strong>$1</strong>')
-    
-    # 4. Cursiva *texto*
-    $text = [regex]::Replace($text, '\*([^*]+)\*', '<em>$1</em>')
-    
-    return $text
-}
+function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$docTitle, [string]$docSubtitle) {
+    if (-not (Test-Path $inputMd)) {
+        Write-Warning "Archivo no encontrado: $inputMd"
+        return
+    }
 
-$bodyHtml = Convert-MarkdownToHtmlBody $mdContent
+    Write-Host "==> Convirtiendo documento a PDF: $inputMd" -ForegroundColor Cyan
+    Write-Host "    Salida: $outPdf" -ForegroundColor DarkGray
 
-# 4. Plantilla HTML completa con CSS para impresión profesional
-$fullHtml = @"
+    $mdContent = Get-Content -Path $inputMd -Raw -Encoding utf8
+    $bodyHtml = Convert-MarkdownToHtmlBody $mdContent
+
+    $fullHtml = @"
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>FileFlow Studio - Manual de Usuario</title>
+    <title>$docTitle</title>
     <style>
         @page {
             size: A4;
@@ -222,9 +189,7 @@ $fullHtml = @"
             }
         }
         
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -293,9 +258,7 @@ $fullHtml = @"
             padding-left: 20pt;
         }
 
-        li {
-            margin-bottom: 3pt;
-        }
+        li { margin-bottom: 3pt; }
 
         blockquote.callout {
             margin: 10pt 0;
@@ -357,9 +320,7 @@ $fullHtml = @"
             vertical-align: top;
         }
 
-        tr:nth-child(even) td {
-            background-color: #F9FAFB;
-        }
+        tr:nth-child(even) td { background-color: #F9FAFB; }
 
         .header-cover {
             text-align: center;
@@ -387,9 +348,9 @@ $fullHtml = @"
 </head>
 <body>
     <div class="header-cover">
-        <h1>⚡ FileFlow Studio</h1>
-        <p><strong>Manual de Usuario y Guía de Referencia Completa</strong></p>
-        <p style="font-size: 9.5pt; color: #6366F1; margin-top: 4pt;">Motor Visual de Automatización DAG en .NET 9 y C# 13</p>
+        <h1>⚡ $docTitle</h1>
+        <p><strong>$docSubtitle</strong></p>
+        <p style="font-size: 9.5pt; color: #6366F1; margin-top: 4pt;">FileFlow Studio — Motor Visual de Automatización DAG en .NET 9</p>
     </div>
 
     $bodyHtml
@@ -397,44 +358,57 @@ $fullHtml = @"
 </html>
 "@
 
-# 5. Guardar archivo HTML temporal
-$tempHtmlPath = [System.IO.Path]::ChangeExtension($OutputPdfPath, ".temp.html")
-[System.IO.File]::WriteAllText($tempHtmlPath, $fullHtml, [System.Text.Encoding]::UTF8)
+    $tempHtmlPath = [System.IO.Path]::ChangeExtension($outPdf, ".temp.html")
+    [System.IO.File]::WriteAllText($tempHtmlPath, $fullHtml, [System.Text.Encoding]::UTF8)
 
-# 6. Ejecutar Microsoft Edge en modo headless para generar PDF
-try {
-    $outDir = Split-Path -Parent $OutputPdfPath
-    if (-not (Test-Path $outDir)) {
-        New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    try {
+        $outDir = Split-Path -Parent $outPdf
+        if (-not (Test-Path $outDir)) {
+            New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+        }
+
+        $edgeArgs = @(
+            "--headless=new",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--no-pdf-header-footer",
+            "--print-to-pdf=`"$outPdf`"",
+            "`"$tempHtmlPath`""
+        )
+
+        Write-Host "==> Renderizando con Chromium ($browserPath)..." -ForegroundColor Cyan
+        $process = Start-Process -FilePath $browserPath -ArgumentList $edgeArgs -NoNewWindow -Wait -PassThru
+
+        Start-Sleep -Milliseconds 500
+
+        if (Test-Path $outPdf) {
+            $fileSize = (Get-Item $outPdf).Length / 1KB
+            Write-Host "==> PDF generado con éxito: $outPdf ($([math]::Round($fileSize, 1)) KB)" -ForegroundColor Green
+        } else {
+            throw "No se generó el archivo PDF en $outPdf. (Código de salida: $($process.ExitCode))"
+        }
     }
-
-    $edgeArgs = @(
-        "--headless=new",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        "--no-pdf-header-footer",
-        "--print-to-pdf=`"$OutputPdfPath`"",
-        "`"$tempHtmlPath`""
-    )
-
-    Write-Host "==> Renderizando PDF con motor Chromium ($browserPath)..." -ForegroundColor Cyan
-    $process = Start-Process -FilePath $browserPath -ArgumentList $edgeArgs -NoNewWindow -Wait -PassThru
-
-    Start-Sleep -Milliseconds 500
-
-    if (Test-Path $OutputPdfPath) {
-        $fileSize = (Get-Item $OutputPdfPath).Length / 1KB
-        Write-Host "==> PDF generado con éxito: $OutputPdfPath ($([math]::Round($fileSize, 1)) KB)" -ForegroundColor Green
-    } else {
-        throw "No se generó el archivo PDF en $OutputPdfPath. (Código de salida: $($process.ExitCode))"
+    finally {
+        Start-Sleep -Milliseconds 300
+        try {
+            if (Test-Path $tempHtmlPath) {
+                [System.IO.File]::Delete($tempHtmlPath)
+            }
+        } catch {}
     }
 }
-finally {
-    Start-Sleep -Milliseconds 300
-    try {
-        if (Test-Path $tempHtmlPath) {
-            [System.IO.File]::Delete($tempHtmlPath)
-        }
-    } catch {}
+
+if (-not [string]::IsNullOrWhiteSpace($MarkdownPath)) {
+    Convert-SingleFileToPdf $MarkdownPath $OutputPdfPath "FileFlow Studio" "Manual de Usuario"
+} else {
+    # 1. Manual de Usuario General
+    $userManualMd = Join-Path $repoRoot "docs\manual_de_usuario.md"
+    $userManualPdf = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
+    Convert-SingleFileToPdf $userManualMd $userManualPdf "FileFlow Studio" "Manual de Usuario y Guía de Referencia Completa"
+
+    # 2. Manual del Nodo de Scripting
+    $scriptManualMd = Join-Path $repoRoot "docs\manual_nodo_scripting.md"
+    $scriptManualPdf = Join-Path $repoRoot "docs\manual_nodo_scripting.pdf"
+    Convert-SingleFileToPdf $scriptManualMd $scriptManualPdf "Manual de Scripting Personalizado" "Guía Completa para C# (Roslyn) y JavaScript (Jint)"
 }

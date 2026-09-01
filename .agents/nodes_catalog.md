@@ -204,3 +204,14 @@
    - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
    - Parámetros: `Preset` (H264, H265, WebM, MP3), `QualityPreset` (string), `FfmpegPath` (string)
    - Función: Transcodifica pistas de audio y vídeo mediante perfiles y aceleración por hardware.
+
+---
+
+## 7. Módulo: FileFlow.Plugin.Scripting (1 Nodo)
+1. **CustomScriptNode**
+   - Tipo: Programmable / Logic / Transformer
+   - Entradas: Dinámicas (`In`, configurables por el usuario)
+   - Salidas: Dinámicas (`Out`, `True`, `False`, configurables por el usuario con `EmitAsync` / `emit`)
+   - Parámetros: `Language` (CSharp, JavaScript), `ScriptCode` (string), `InputPorts` (string), `OutputPorts` (string), `TimeoutSeconds` (int)
+   - Acción Personalizada: `OpenScriptStudio` (💻 Editor de Scripts con AvalonEdit, probador en vivo y biblioteca de plantillas).
+   - Función: Ejecuta lógica de programación personalizada del usuario en C# (Roslyn JIT en memoria) o JavaScript (sandbox Jint), permitiendo bifurcación multicanal, modificación de metadatos, tags y operaciones avanzadas sin compilar código externo.

@@ -34,6 +34,7 @@
     <ProjectReference Include="..\FileFlow.Plugin.Logic\FileFlow.Plugin.Logic.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Scripting\FileFlow.Plugin.Scripting.csproj" />
     <ProjectReference Include="..\FileFlow.App\FileFlow.App.csproj" />
   </ItemGroup>
 

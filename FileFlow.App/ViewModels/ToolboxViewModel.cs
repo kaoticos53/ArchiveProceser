@@ -69,8 +69,11 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             var prefs = UserPreferencesService.Instance;
             var allItems = new List<NodeToolboxItem>();
 
-        foreach (var (typeName, type) in _pluginLoader.DiscoveredNodeTypes)
+        var uniqueTypes = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
+
+        foreach (var type in uniqueTypes)
         {
+            string typeName = type.FullName ?? type.Name;
             IFlowNode? sampleInstance = null;
             try
             {
@@ -93,8 +96,8 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                 description = sampleInstance.Description;
             }
 
-            bool isFavorite = prefs.IsFavorite(typeName);
-            int usageCount = prefs.GetUsageCount(typeName);
+            bool isFavorite = prefs.IsFavorite(typeName) || prefs.IsFavorite(type.Name);
+            int usageCount = Math.Max(prefs.GetUsageCount(typeName), prefs.GetUsageCount(type.Name));
             string icon = GetIconForNodeType(typeName);
 
             var item = new NodeToolboxItem(name, category, description, typeName, icon, isFavorite, usageCount);
@@ -231,16 +234,28 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         if (typeName.Contains("ArchiveCompressor", StringComparison.OrdinalIgnoreCase)) return "🗜️";
         if (typeName.Contains("ArchiveFilter", StringComparison.OrdinalIgnoreCase)) return "🗄️";
         if (typeName.Contains("ImageOptimizer", StringComparison.OrdinalIgnoreCase)) return "🖼️";
+        if (typeName.Contains("ExifMetadata", StringComparison.OrdinalIgnoreCase)) return "🏷️";
         if (typeName.Contains("MediaTranscoder", StringComparison.OrdinalIgnoreCase)) return "🎬";
         if (typeName.Contains("DocumentProcessor", StringComparison.OrdinalIgnoreCase)) return "📄";
         if (typeName.Contains("VariableInjector", StringComparison.OrdinalIgnoreCase)) return "🏷️";
         if (typeName.Contains("DeduplicationFilter", StringComparison.OrdinalIgnoreCase)) return "👯";
+        if (typeName.Contains("HashCalculator", StringComparison.OrdinalIgnoreCase)) return "🔑";
         if (typeName.Contains("ExpressionFilter", StringComparison.OrdinalIgnoreCase)) return "⚡";
         if (typeName.Contains("SwitchCase", StringComparison.OrdinalIgnoreCase)) return "🔀";
+        if (typeName.Contains("ForkJoinBarrier", StringComparison.OrdinalIgnoreCase)) return "🔀";
+        if (typeName.Contains("ThrottleDelay", StringComparison.OrdinalIgnoreCase)) return "⏳";
         if (typeName.Contains("BatchBuffer", StringComparison.OrdinalIgnoreCase)) return "📊";
         if (typeName.Contains("DestinationSink", StringComparison.OrdinalIgnoreCase)) return "💾";
+        if (typeName.Contains("FileRelocator", StringComparison.OrdinalIgnoreCase)) return "🚚";
+        if (typeName.Contains("EmptyDirectoryCleaner", StringComparison.OrdinalIgnoreCase)) return "🧹";
+        if (typeName.Contains("SafeRecycleDelete", StringComparison.OrdinalIgnoreCase)) return "♻️";
+        if (typeName.Contains("OriginalFileAction", StringComparison.OrdinalIgnoreCase)) return "🛡️";
+        if (typeName.Contains("AdvancedRenamer", StringComparison.OrdinalIgnoreCase)) return "✏️";
         if (typeName.Contains("OperationReport", StringComparison.OrdinalIgnoreCase)) return "📋";
-        if (typeName.Contains("OriginalFileAction", StringComparison.OrdinalIgnoreCase)) return "🗑️";
+        if (typeName.Contains("LogOutput", StringComparison.OrdinalIgnoreCase)) return "📝";
+        if (typeName.Contains("WebhookNotification", StringComparison.OrdinalIgnoreCase)) return "🌐";
+        if (typeName.Contains("CliExecution", StringComparison.OrdinalIgnoreCase)) return "💻";
+        if (typeName.Contains("CustomScript", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Script", StringComparison.OrdinalIgnoreCase)) return "📜";
         return "🧩";
     }
 }

@@ -103,16 +103,15 @@ if (Test-Path $pdfBuilderScript) {
 }
 
 $docsDest = Join-Path $publishRoot "Docs"
-Write-Host "==> Copiando manual de usuario en PDF a: $docsDest" -ForegroundColor Cyan
+Write-Host "==> Copiando manuales en PDF a: $docsDest" -ForegroundColor Cyan
 if (-not (Test-Path $docsDest)) {
 	New-Item -ItemType Directory -Path $docsDest -Force | Out-Null
 }
 
-$pdfManual = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
-if (Test-Path $pdfManual) {
-	Copy-Item -Path $pdfManual -Destination (Join-Path $docsDest "manual_de_usuario.pdf") -Force
-} else {
-	Write-Warning "No se encontró el manual PDF en '$pdfManual'."
+$pdfFiles = Get-ChildItem -Path (Join-Path $repoRoot "docs") -Filter "*.pdf"
+foreach ($pdf in $pdfFiles) {
+	Copy-Item -Path $pdf.FullName -Destination (Join-Path $docsDest $pdf.Name) -Force
+	Write-Host "    • Copiado $($pdf.Name)" -ForegroundColor DarkGray
 }
 
 Write-Host "==> Publicación completada en: $publishRoot" -ForegroundColor Green
