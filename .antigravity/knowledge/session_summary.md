@@ -8,10 +8,15 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **248 / 248 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **258 / 258 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
 - **Instalador y Empaquetado**: Incluye la suite completa de 40 ejemplos de flujos (`Examples/` organizados en 4 niveles) y el **Manual de Usuario en Formato PDF** (`Docs/manual_de_usuario.pdf`), generado automáticamente durante la publicación para el instalador Inno Setup, el paquete portable ZIP y las GitHub Releases, con accesos directos en el menú de inicio y botón en el menú drawer de la app.
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
 
+- **Capacidades Avanzadas en ImageOptimizerNode**:
+  - Redimensionamiento proporcional especificando solo ancho o solo alto (`MaintainAspectRatio = true`).
+  - Redimensionamiento por porcentaje (`SizeMode = "Percentage"` con `ScalePercentage` y `ScalePercentageY`).
+  - Control de escalado hacia arriba (`OnlyDownscale = true`) para no agrandar ni pixelar imágenes más pequeñas que el tamaño objetivo.
+  - Normalización en `NodeParameterManager` (migración transparente de `MaxWidth`/`MaxHeight`) y soporte completo en la UI de la app (`SizeMode` dropdown, `CheckBox` para booleanos).
 - **Manual de Usuario en PDF**:
   - Script [`installer/build-pdf-manual.ps1`](file:///installer/build-pdf-manual.ps1) para compilar `docs/manual_de_usuario.md` a `docs/manual_de_usuario.pdf` con diseño tipográfico y estilos A4 mediante Chromium/Edge headless.
   - Integración en [`publish.ps1`](file:///installer/publish.ps1), [`build-installer.ps1`](file:///installer/build-installer.ps1), [`FileFlow.iss`](file:///installer/FileFlow.iss), [`ControlBarViewModel.cs`](file:///FileFlow.App/ViewModels/ControlBarViewModel.cs) y [`.github/workflows/release.yml`](file:///.github/workflows/release.yml).

@@ -97,6 +97,43 @@ public sealed class NodeParameterManager
             }
         }
 
+        bool isImageOptimizer = _nodeOwner.NodeTypeName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase) ||
+                                _nodeInstance.GetType().Name.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase);
+
+        if (isImageOptimizer)
+        {
+            // Migrar MaxWidth / MaxHeight legados
+            if (_nodeInstance.Parameters.TryGetValue("MaxWidth", out var mwVal) && mwVal != null)
+            {
+                if (!_nodeInstance.Parameters.ContainsKey("Width"))
+                {
+                    _nodeInstance.Parameters["Width"] = mwVal;
+                }
+                _nodeInstance.Parameters.Remove("MaxWidth");
+            }
+
+            if (_nodeInstance.Parameters.TryGetValue("MaxHeight", out var mhVal) && mhVal != null)
+            {
+                if (!_nodeInstance.Parameters.ContainsKey("Height"))
+                {
+                    _nodeInstance.Parameters["Height"] = mhVal;
+                }
+                _nodeInstance.Parameters.Remove("MaxHeight");
+            }
+
+            // Asegurar que todos los nuevos parámetros existen con valores por defecto
+            if (!_nodeInstance.Parameters.ContainsKey("SizeMode")) _nodeInstance.Parameters["SizeMode"] = "Pixels";
+            if (!_nodeInstance.Parameters.ContainsKey("Width")) _nodeInstance.Parameters["Width"] = 1920;
+            if (!_nodeInstance.Parameters.ContainsKey("Height")) _nodeInstance.Parameters["Height"] = 1080;
+            if (!_nodeInstance.Parameters.ContainsKey("ScalePercentage")) _nodeInstance.Parameters["ScalePercentage"] = 100.0;
+            if (!_nodeInstance.Parameters.ContainsKey("ScalePercentageY")) _nodeInstance.Parameters["ScalePercentageY"] = 100.0;
+            if (!_nodeInstance.Parameters.ContainsKey("MaintainAspectRatio")) _nodeInstance.Parameters["MaintainAspectRatio"] = true;
+            if (!_nodeInstance.Parameters.ContainsKey("OnlyDownscale")) _nodeInstance.Parameters["OnlyDownscale"] = true;
+            if (!_nodeInstance.Parameters.ContainsKey("TargetFormat")) _nodeInstance.Parameters["TargetFormat"] = "WebP";
+            if (!_nodeInstance.Parameters.ContainsKey("Quality")) _nodeInstance.Parameters["Quality"] = 80;
+            if (!_nodeInstance.Parameters.ContainsKey("OutputDirectory")) _nodeInstance.Parameters["OutputDirectory"] = @"{RelativeDir}\OptimizedImages";
+        }
+
         foreach (var (k, v) in _nodeInstance.Parameters)
         {
             if (isSwitch && k.Equals("CasesJson", StringComparison.OrdinalIgnoreCase))

@@ -2,13 +2,14 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-01] - Detección Automática de Versión y Build en GitHub Actions Release
+## [2026-09-01] - Integración de Parámetros UI y Normalización en ImageOptimizerNode
 
 ### 📋 Acciones Realizadas
-1. **Resolución Automática de SemVer en `.github/workflows/release.yml`**:
-   - Se actualizó el workflow de publicación para hacer opcional el campo `version` en `workflow_dispatch`.
-   - Si no se especifica manualmente una versión, el pipeline lee directamente los valores declarativos de [`version.props`](file:///version.props) (`VersionMajor`, `VersionMinor`, `VersionPatch`, `VersionPreRelease`) y el contador de compilación de [`.build_number`](file:///.build_number) para componer automáticamente la versión del release y la etiqueta Git (ej. `v1.0.0-beta+build.132`).
-   - Se mantiene compatibilidad con lanzamientos manuales y tags de Git automáticos.
+1. **Normalización y Migración Automática en `NodeParameterManager`**:
+   - Se añadió en [`NodeParameterManager.cs`](file:///FileFlow.App/ViewModels/NodeParameterManager.cs) la detección de `ImageOptimizerNode` para migrar de forma transparente los parámetros legados `MaxWidth` y `MaxHeight` hacia `Width` y `Height`, y asegurar la existencia de todos los nuevos parámetros (`SizeMode`, `ScalePercentage`, `ScalePercentageY`, `MaintainAspectRatio`, `OnlyDownscale`).
+2. **Soporte de Dropdowns y Enlace Booleano en `NodeParameterViewModel`**:
+   - Se registró `"sizemode" => ["Pixels", "Percentage"]` en `DetectOptionsForKey`.
+   - Se corrigió la coerción de tipos para valores booleanos (`MaintainAspectRatio`, `OnlyDownscale`) garantizando que los controles `CheckBox` de la interfaz WPF enlacen directamente con tipos `bool`.
 
 ---
 

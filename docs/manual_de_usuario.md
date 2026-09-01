@@ -310,8 +310,25 @@ Cualquier campo de texto, carpeta o plantilla de nombre admite variables dinámi
 
 ### Categoría 5: Images & Media (Multimedia y EXIF)
 
-#### 1. `DirectoryInspectorNode` / `ImageOptimizer`
-- **Propósito:** Inspecciona y optimiza imágenes (reducción de tamaño, conversión de formato).
+#### 1. `ImageOptimizerNode` (Optimizador y Escalador de Imágenes)
+- **Propósito:** Comprime, convierte y redimensiona imágenes a formatos modernos (**WebP**, **JPEG**, **PNG**) con cálculo automático de porcentaje de ahorro de espacio (%) y control avanzado de aspecto y escala.
+- **Puertos:**
+  - *Inputs:* `In`
+  - *Outputs:* `Out`, `Error`
+- **Parámetros:**
+  - `SizeMode`: Modo de cálculo (`"Pixels"` para dimensiones exactas en píxeles o `"Percentage"` para escala relativa en %).
+  - `Width`: Ancho objetivo en píxeles. Si se configura solo el ancho y `Height = 0`, el alto se calcula automáticamente para mantener la relación de aspecto.
+  - `Height`: Alto objetivo en píxeles. Si se configura solo el alto y `Width = 0`, el ancho se calcula automáticamente para mantener la relación de aspecto.
+  - `ScalePercentage`: Porcentaje de escala (ej. `50.0` para reducir al 50%, `150.0` para agrandar al 150%).
+  - `ScalePercentageY`: Porcentaje vertical en caso de desear relación de aspecto asimétrica cuando `MaintainAspectRatio` está desactivado.
+  - `MaintainAspectRatio`: Si es `true`, conserva la relación de aspecto original de la imagen; si es `false`, fuerza las dimensiones especificadas.
+  - `OnlyDownscale`: Si es `true`, **solo reduce imágenes mayores al tamaño objetivo y no agranda imágenes más pequeñas**, evitando pixelado y aumento innecesario de peso. Si es `false`, escala incondicionalmente todas las imágenes.
+  - `TargetFormat`: Formato de compresión (`"WebP"`, `"JPEG"`, `"PNG"`).
+  - `Quality`: Calidad de compresión visual (1-100, default: `80`).
+  - `OutputDirectory`: Carpeta de destino con soporte de variables (ej. `{RelativeDir}\OptimizedImages`).
+
+#### 2. `ExifMetadataNode` (Extracción Estructurada de Metadatos EXIF)
+- **Propósito:** Extrae datos EXIF de cámara (fecha de captura, marca, modelo, ISO, apertura, coordenadas GPS) e inyecta metadatos `{Exif:*}` y `{Date:Taken}` en el archivo.
 - **Puertos:**
   - *Inputs:* `In`
   - *Outputs:* `Out`, `Error`

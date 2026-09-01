@@ -131,6 +131,16 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         _value = value;
         NodeOwner = nodeOwner;
 
+        // Si el valor es de tipo booleano o string booleano, asegurar tipo bool para CheckBox
+        if (value is bool)
+        {
+            _value = value;
+        }
+        else if (value != null && bool.TryParse(value.ToString(), out var bVal))
+        {
+            _value = bVal;
+        }
+
         if (options != null)
         {
             foreach (var opt in options)
@@ -296,6 +306,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             "archiveformat" => ["ZIP", "TAR", "GZ", "7Z"],
             "compressiontype" => ["Deflate", "Store", "LZMA", "BZip2"],
             "preset" => Services.MediaPresetManagerService.Instance.GetPresetNames(),
+            "sizemode" => ["Pixels", "Percentage"],
             "reportformat" => ["HTML", "Markdown", "Text", "JSON", "CSV"],
             "reportscope" => ["Consolidated", "PerFile", "Both"],
             "groupby" => ["Directory", "Flat", "Extension", "Status"],

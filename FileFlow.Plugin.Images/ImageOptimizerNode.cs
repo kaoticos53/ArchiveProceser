@@ -29,12 +29,93 @@ public class ImageOptimizerNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["MaxWidth"] = 1920,
-        ["MaxHeight"] = 1080,
+        ["SizeMode"] = "Pixels",
+        ["Width"] = 1920,
+        ["Height"] = 1080,
+        ["ScalePercentage"] = 100.0,
+        ["ScalePercentageY"] = 100.0,
+        ["MaintainAspectRatio"] = true,
+        ["OnlyDownscale"] = true,
         ["TargetFormat"] = "WebP",
         ["Quality"] = 80,
         ["OutputDirectory"] = @"{RelativeDir}\OptimizedImages"
     };
+
+    public static (int TargetWidth, int TargetHeight, bool ResizeNeeded) CalculateTargetDimensions(
+        int origWidth,
+        int origHeight,
+        string sizeMode,
+        int width,
+        int height,
+        double scalePercentage,
+        double scalePercentageY,
+        bool maintainAspectRatio,
+        bool onlyDownscale)
+    {
+        if (origWidth <= 0 || origHeight <= 0)
+        {
+            return (Math.Max(1, origWidth), Math.Max(1, origHeight), false);
+        }
+
+        int targetW = origWidth;
+        int targetH = origHeight;
+
+        if (string.Equals(sizeMode, "Percentage", StringComparison.OrdinalIgnoreCase))
+        {
+            double scaleX = Math.Max(0.01, scalePercentage) / 100.0;
+            double scaleY = maintainAspectRatio ? scaleX : Math.Max(0.01, scalePercentageY) / 100.0;
+
+            targetW = Math.Max(1, (int)Math.Round(origWidth * scaleX));
+            targetH = Math.Max(1, (int)Math.Round(origHeight * scaleY));
+        }
+        else // "Pixels" (default)
+        {
+            if (width > 0 && height <= 0)
+            {
+                targetW = width;
+                targetH = maintainAspectRatio
+                    ? Math.Max(1, (int)Math.Round((double)origHeight * width / origWidth))
+                    : origHeight;
+            }
+            else if (height > 0 && width <= 0)
+            {
+                targetH = height;
+                targetW = maintainAspectRatio
+                    ? Math.Max(1, (int)Math.Round((double)origWidth * height / origHeight))
+                    : origWidth;
+            }
+            else if (width > 0 && height > 0)
+            {
+                if (maintainAspectRatio)
+                {
+                    double ratio = Math.Min((double)width / origWidth, (double)height / origHeight);
+                    targetW = Math.Max(1, (int)Math.Round(origWidth * ratio));
+                    targetH = Math.Max(1, (int)Math.Round(origHeight * ratio));
+                }
+                else
+                {
+                    targetW = width;
+                    targetH = height;
+                }
+            }
+            else
+            {
+                // Width <= 0 && Height <= 0 -> keep original dimensions
+                targetW = origWidth;
+                targetH = origHeight;
+            }
+        }
+
+        // Apply OnlyDownscale restriction (No agrandar imágenes más pequeñas)
+        if (onlyDownscale && targetW >= origWidth && targetH >= origHeight)
+        {
+            targetW = origWidth;
+            targetH = origHeight;
+        }
+
+        bool resizeNeeded = (targetW != origWidth || targetH != origHeight);
+        return (targetW, targetH, resizeNeeded);
+    }
 
     public async Task ExecuteAsync(
         string inputPortName,
@@ -43,8 +124,42 @@ public class ImageOptimizerNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string filePath = item.CurrentPath;
-        int maxWidth = Parameters.TryGetValue("MaxWidth", out var wVal) ? ParameterHelper.GetInt32(wVal, 1920) : 1920;
-        int maxHeight = Parameters.TryGetValue("MaxHeight", out var hVal) ? ParameterHelper.GetInt32(hVal, 1080) : 1080;
+
+        string sizeMode = Parameters.TryGetValue("SizeMode", out var smVal) ? ParameterHelper.GetString(smVal, "Pixels") : "Pixels";
+        
+        int width = 0;
+        if (Parameters.TryGetValue("Width", out var wVal))
+            width = ParameterHelper.GetInt32(wVal, 0);
+        else if (Parameters.TryGetValue("MaxWidth", out var mwVal))
+            width = ParameterHelper.GetInt32(mwVal, 0);
+
+        int height = 0;
+        if (Parameters.TryGetValue("Height", out var hVal))
+            height = ParameterHelper.GetInt32(hVal, 0);
+        else if (Parameters.TryGetValue("MaxHeight", out var mhVal))
+            height = ParameterHelper.GetInt32(mhVal, 0);
+
+        double scalePercentage = 100.0;
+        if (Parameters.TryGetValue("ScalePercentage", out var spVal) && spVal != null)
+        {
+            if (spVal is double d) scalePercentage = d;
+            else if (spVal is float f) scalePercentage = f;
+            else if (spVal is int i) scalePercentage = i;
+            else double.TryParse(spVal.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out scalePercentage);
+        }
+
+        double scalePercentageY = scalePercentage;
+        if (Parameters.TryGetValue("ScalePercentageY", out var spyVal) && spyVal != null)
+        {
+            if (spyVal is double d) scalePercentageY = d;
+            else if (spyVal is float f) scalePercentageY = f;
+            else if (spyVal is int i) scalePercentageY = i;
+            else double.TryParse(spyVal.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out scalePercentageY);
+        }
+
+        bool maintainAspectRatio = !Parameters.TryGetValue("MaintainAspectRatio", out var arVal) || ParameterHelper.GetBoolean(arVal, true);
+        bool onlyDownscale = !Parameters.TryGetValue("OnlyDownscale", out var odVal) || ParameterHelper.GetBoolean(odVal, true);
+
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
         string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, @"{RelativeDir}\OptimizedImages") : @"{RelativeDir}\OptimizedImages";
@@ -86,11 +201,25 @@ public class ImageOptimizerNode : IFlowNode
                 origWidth = image.Width;
                 origHeight = image.Height;
 
-                image.Mutate(x => x.Resize(new ResizeOptions
+                var (targetWidth, targetHeight, resizeNeeded) = CalculateTargetDimensions(
+                    origWidth,
+                    origHeight,
+                    sizeMode,
+                    width,
+                    height,
+                    scalePercentage,
+                    scalePercentageY,
+                    maintainAspectRatio,
+                    onlyDownscale);
+
+                if (resizeNeeded)
                 {
-                    Mode = ResizeMode.Max,
-                    Size = new Size(maxWidth, maxHeight)
-                }));
+                    image.Mutate(x => x.Resize(new ResizeOptions
+                    {
+                        Mode = ResizeMode.Stretch,
+                        Size = new Size(targetWidth, targetHeight)
+                    }));
+                }
 
                 newWidth = image.Width;
                 newHeight = image.Height;
@@ -122,10 +251,12 @@ public class ImageOptimizerNode : IFlowNode
             }
             outputItem.FileSizeBytes = newSizeBytes;
             outputItem.Metadata["OptimizedFormat"] = formatStr;
+            outputItem.Metadata["OptimizedWidth"] = newWidth;
+            outputItem.Metadata["OptimizedHeight"] = newHeight;
             outputItem.AddLog($"ImageOptimizerNode output saved to {outputPath}");
 
-            string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
-            context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"sizeMode\": \"{sizeMode}\", \"maintainAspectRatio\": {maintainAspectRatio.ToString().ToLowerInvariant()}, \"onlyDownscale\": {onlyDownscale.ToString().ToLowerInvariant()}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
+            context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality} {newWidth}x{newHeight}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", outputItem);
         }
