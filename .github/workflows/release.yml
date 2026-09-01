@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versión del lanzamiento (ej. 2.0.0 o v2.0.0)'
-        required: true
-        default: '2.0.0'
+        description: 'Versión del lanzamiento (dejar vacío para auto-detectar de version.props + .build_number)'
+        required: false
+        default: ''
         type: string
       prerelease:
         description: 'Marcar como pre-lanzamiento (Pre-release)'
@@ -54,21 +54,45 @@ jobs:
         shell: pwsh
         run: |
           $rawVersion = "${{ github.event.inputs.version }}"
-          if ([string]::IsNullOrWhiteSpace($rawVersion)) {
-            $rawVersion = "${{ github.ref_name }}"
-          }
           if ([string]::IsNullOrWhiteSpace($rawVersion) -or $rawVersion -eq "main" -or $rawVersion -eq "master") {
-            $rawVersion = "2.0.0"
+            if ("${{ github.ref_type }}" -eq "tag" -and -not [string]::IsNullOrWhiteSpace("${{ github.ref_name }}")) {
+              $rawVersion = "${{ github.ref_name }}"
+            }
+          }
+
+          # Si no hay versión manual ni tag git específico, auto-detectar desde version.props y .build_number
+          if ([string]::IsNullOrWhiteSpace($rawVersion) -or $rawVersion -eq "main" -or $rawVersion -eq "master") {
+            Write-Host "==> Auto-detectando versión desde version.props y .build_number..." -ForegroundColor Cyan
+            
+            $maj = "1"
+            $min = "0"
+            $pat = "0"
+            $pre = ""
+            if (Test-Path "version.props") {
+              [xml]$vProps = Get-Content "version.props"
+              $maj = $vProps.Project.PropertyGroup.VersionMajor.Trim()
+              $min = $vProps.Project.PropertyGroup.VersionMinor.Trim()
+              $pat = $vProps.Project.PropertyGroup.VersionPatch.Trim()
+              $preNode = $vProps.Project.PropertyGroup.VersionPreRelease
+              if ($null -ne $preNode) { $pre = $preNode.Trim() } else { $pre = "" }
+            }
+
+            $buildNum = "100"
+            if (Test-Path ".build_number") {
+              $buildNum = (Get-Content ".build_number").Trim()
+            }
+
+            $preSuffix = if (-not [string]::IsNullOrWhiteSpace($pre)) { "-$pre" } else { "" }
+            $rawVersion = "$maj.$min.$pat$preSuffix+build.$buildNum"
           }
           
-          # Sanitizar: Eliminar espacios y caracteres ilegales en Git tags (reemplazar por guiones '-')
-          $sanitized = $rawVersion.Trim() -replace '\s+', '-' -replace '[^a-zA-Z0-9\.\-_]', '-'
+          # Sanitizar: Eliminar espacios y caracteres ilegales en Git tags
+          $sanitized = $rawVersion.Trim() -replace '\s+', '-' -replace '[^a-zA-Z0-9\.\+\-_]', '-'
           $cleanVersion = $sanitized.TrimStart('v')
           $tagVersion = "v$cleanVersion"
 
-          Write-Host "Versión original introducida: $rawVersion"
-          Write-Host "Versión sanitizada para instalador: $cleanVersion"
-          Write-Host "Etiqueta Git válida para Release: $tagVersion"
+          Write-Host "Versión resuelta para instalador: $cleanVersion"
+          Write-Host "Etiqueta Git para Release: $tagVersion"
 
           "clean_version=$cleanVersion" >> $env:GITHUB_OUTPUT
           "tag_version=$tagVersion" >> $env:GITHUB_OUTPUT

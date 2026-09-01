@@ -19,6 +19,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
   - Archivo de configuración central [`version.props`](file:///version.props) con versión base establecida en **`1.0.0-beta`** (`VersionMajor=1`, `VersionMinor=0`, `VersionPatch=0`, `VersionPreRelease=beta`).
   - Tarea MSBuild en [`Directory.Build.props`](file:///Directory.Build.props) para auto-incrementar de forma segura el contador en [`.build_number`](file:///.build_number) en cada compilación (`1.0.0-beta+build.N`).
   - [`AppVersionInfo`](file:///FileFlow.Sdk/AppVersionInfo.cs) y visualización en el pie del menú Drawer lateral de [`MainWindow.xaml`](file:///FileFlow.App/MainWindow.xaml).
+  - Auto-detección en [`.github/workflows/release.yml`](file:///.github/workflows/release.yml) para crear etiquetas y lanzamientos GitHub Release automáticamente con la versión SemVer + Build actual.
 - **Estudio de Personalización Visual de Temas (Theme Studio)**:
   - `ThemeDefinition` en `FileFlow.Sdk/Themes/` y `CustomThemeService` en `FileFlow.App/Services/` con 8 presets de fábrica (*Oscuro Fluent*, *Claro Minimalista*, *Cyber Neón*, *Primavera Pastel*, *Midnight OLED*, *Nord Slate*, *Dracula Purple*, *Emerald Forest*) y persistencia de temas de usuario en `%APPDATA%\FileFlow\custom_themes.json`.
   - `ThemeCustomizerWindow`, `ThemeCustomizerViewModel` y `ColorPickerButton` con edición interactiva de colores, tipografías, tamaños, radios de esquina, sombras y gradiente del cable conector, con vista previa reactiva en tiempo real sobre componentes de nodo, botones y tablas.

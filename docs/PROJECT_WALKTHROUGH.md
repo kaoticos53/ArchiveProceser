@@ -2,19 +2,13 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-01] - Conversión y Distribución del Manual de Usuario en Formato PDF
+## [2026-09-01] - Detección Automática de Versión y Build en GitHub Actions Release
 
 ### 📋 Acciones Realizadas
-1. **Script Automatizado de Compilación PDF (`installer/build-pdf-manual.ps1`)**:
-   - Creado [`installer/build-pdf-manual.ps1`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/installer/build-pdf-manual.ps1) que transforma [`docs/manual_de_usuario.md`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/docs/manual_de_usuario.md) en un documento HTML con diseño tipográfico profesional para impresión A4 y compila el archivo final [`docs/manual_de_usuario.pdf`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/docs/manual_de_usuario.pdf) utilizando el motor Chromium/Edge en modo headless.
-2. **Integración en el Pipeline de Publicación e Instalador**:
-   - En [`installer/publish.ps1`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/installer/publish.ps1), se compila automáticamente el PDF y se copia en `publish/<RID>/Docs/manual_de_usuario.pdf`, eliminando los archivos `.md` de la distribución final.
-   - En [`installer/FileFlow.iss`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/installer/FileFlow.iss), se actualizó el acceso directo del menú de inicio para apuntar a `{app}\Docs\manual_de_usuario.pdf`.
-   - En [`installer/build-installer.ps1`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/installer/build-installer.ps1), se genera una copia directa del manual PDF en `installer/output/FileFlowStudio-Manual-de-Usuario.pdf`.
-3. **Apertura Nativa en la Aplicación**:
-   - Actualizado `OpenUserManual` en [`ControlBarViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/ControlBarViewModel.cs) para buscar y abrir directamente `manual_de_usuario.pdf` con el visor de PDF predeterminado del sistema.
-4. **Publicación y GitHub Actions**:
-   - Actualizado [`.github/workflows/release.yml`](file:///d:/Users/ricardo/.github/workflows/release.yml) para incluir `FileFlowStudio-Manual-de-Usuario.pdf` como descarga directa individual, dentro del instalador `.exe` y en el paquete portable `.zip`.
+1. **Resolución Automática de SemVer en `.github/workflows/release.yml`**:
+   - Se actualizó el workflow de publicación para hacer opcional el campo `version` en `workflow_dispatch`.
+   - Si no se especifica manualmente una versión, el pipeline lee directamente los valores declarativos de [`version.props`](file:///version.props) (`VersionMajor`, `VersionMinor`, `VersionPatch`, `VersionPreRelease`) y el contador de compilación de [`.build_number`](file:///.build_number) para componer automáticamente la versión del release y la etiqueta Git (ej. `v1.0.0-beta+build.132`).
+   - Se mantiene compatibilidad con lanzamientos manuales y tags de Git automáticos.
 
 ---
 
