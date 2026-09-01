@@ -1,0 +1,70 @@
+<UserControl x:Class="FileFlow.App.Views.Components.ColorPickerButton"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignWidth="360" d:DesignHeight="40">
+    <Grid Margin="0,3">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="110" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Color Label and Caption -->
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+            <TextBlock x:Name="TxtLabel" Text="Color" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock x:Name="TxtDesc" Text="Descripción del color" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
+        </StackPanel>
+
+        <!-- Color Swatch Button with Palette Popup -->
+        <Button x:Name="BtnSwatch" Grid.Column="1" Click="BtnSwatch_Click" Style="{DynamicResource SecondaryButton}" Padding="2" Margin="0,0,6,0" ToolTip="Seleccionar color de la paleta rápida">
+            <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="4" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Background="#6366F1" />
+        </Button>
+
+        <!-- Quick Palette Popup -->
+        <Popup x:Name="PalettePopup" StaysOpen="False" PlacementTarget="{Binding ElementName=BtnSwatch}" Placement="Bottom" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="4">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.4" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="Paleta Rápida" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    
+                    <!-- Predefined Swatches Grid -->
+                    <UniformGrid Columns="6" Width="180">
+                        <Button Click="ColorSwatch_Click" Tag="#0D1117" ToolTip="#0D1117 (Dark Fluent)" Background="#0D1117" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#161B22" ToolTip="#161B22 (Card Dark)" Background="#161B22" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#000000" ToolTip="#000000 (OLED Black)" Background="#000000" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#2E3440" ToolTip="#2E3440 (Nord Dark)" Background="#2E3440" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#282A36" ToolTip="#282A36 (Dracula Dark)" Background="#282A36" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#061A14" ToolTip="#061A14 (Forest Dark)" Background="#061A14" Height="24" Margin="2" />
+
+                        <Button Click="ColorSwatch_Click" Tag="#6366F1" ToolTip="#6366F1 (Indigo)" Background="#6366F1" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#8B5CF6" ToolTip="#8B5CF6 (Purple)" Background="#8B5CF6" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#D946EF" ToolTip="#D946EF (Magenta)" Background="#D946EF" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#EC4899" ToolTip="#EC4899 (Pink)" Background="#EC4899" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#3B82F6" ToolTip="#3B82F6 (Blue)" Background="#3B82F6" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#06B6D4" ToolTip="#06B6D4 (Cyan)" Background="#06B6D4" Height="24" Margin="2" />
+
+                        <Button Click="ColorSwatch_Click" Tag="#10B981" ToolTip="#10B981 (Emerald Green)" Background="#10B981" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#84CC16" ToolTip="#84CC16 (Lime)" Background="#84CC16" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#F59E0B" ToolTip="#F59E0B (Amber)" Background="#F59E0B" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#EF4444" ToolTip="#EF4444 (Red)" Background="#EF4444" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#F8FAFC" ToolTip="#F8FAFC (White/Light)" Background="#F8FAFC" Height="24" Margin="2" />
+                        <Button Click="ColorSwatch_Click" Tag="#FFFFFF" ToolTip="#FFFFFF (Pure White)" Background="#FFFFFF" Height="24" Margin="2" />
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- HEX Input Box -->
+        <TextBox x:Name="TxtHex" Grid.Column="2" 
+                 TextChanged="TxtHex_TextChanged" 
+                 FontFamily="Cascadia Code, Consolas, monospace" 
+                 FontSize="11.5" 
+                 Padding="6,4" 
+                 VerticalContentAlignment="Center" />
+    </Grid>
+</UserControl>

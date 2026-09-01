@@ -2,23 +2,18 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-01] - Muestra de Archivos Reales desde FolderSourceNode en la Vista Previa del Editor de Pipeline
+## [2026-09-01] - Carga Dinámica de Temas Creados en Selectores de Menú y Ajustes
 
 ### 📋 Acciones Realizadas
-1. **Detección Automática de Carpeta Origen y Carga de Muestras Reales**:
-   - En [`AdvancedRenamerEditorViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/AdvancedRenamerEditorViewModel.cs), implementado el método `GetSampleItemsForPreview` que localiza el nodo `FolderSourceNode` (priorizando los conectados aguas arriba en el grafo y con fallback a los presentes en el lienzo).
-   - Resuelve dinámicamente la ruta configurada en `SourcePath` e inspecciona el directorio con `EnumerationOptions` (seguro ante directorios inaccesibles, respetando recursividad y modo de emisión de archivos/carpetas).
-   - Extrae una muestra representativa de hasta un máximo de **100 archivos reales** y evalúa sobre ellos el pipeline de transformaciones en tiempo real.
-   - Si no existe un nodo de carpeta origen o el directorio no contiene archivos, recurre automáticamente a las muestras sintéticas predefinidas.
-   - Se añadió la propiedad observable `PreviewSourceDescription` para indicar claramente en el encabezado de la tabla la fuente y número de archivos muestreados (ej. `(Muestra de 45 archivo(s) real(es) de 'Fotos')`).
+1. **Sincronización Dinámica de Temas en la Interfaz**:
+   - En [`ControlBarViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/ControlBarViewModel.cs), implementada la colección observable `AvailableThemes` poblada dinámicamente mediante `LoadAvailableThemes()`, leyendo todos los temas de fábrica y temas personalizados creados por el usuario en tiempo real con `CustomThemeService.GetAllThemes()`.
+   - Enlazado el selector de temas del menú lateral Drawer de [`MainWindow.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/MainWindow.xaml) directamente a `ControlBar.AvailableThemes` con `SelectedValuePath="Id"` y `DisplayMemberPath="Name"`.
+   - Al cerrar el Estudio Gráfico de Personalización de Temas (`ThemeCustomizerWindow`), se refresca automáticamente la colección `AvailableThemes` para reflejar instantáneamente temas nuevos, duplicados o renombrados.
+   - En [`WorkflowSettingsWindow.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/WorkflowSettingsWindow.xaml) y [`WorkflowSettingsWindow.xaml.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/WorkflowSettingsWindow.xaml.cs), el combo `CmbActiveTheme` ahora carga dinámicamente todos los temas disponibles con sincronización bidireccional tras abrir el personalizador visual.
 
-2. **Propiedades y Enlaces en la Vista**:
-   - Actualizado [`NodeViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/NodeViewModel.cs) con la propiedad `IsFolderSourceNode`.
-   - Enlazado el texto de estado en el panel de Vista Previa de [`AdvancedRenamerEditorWindow.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/AdvancedRenamerEditorWindow.xaml).
-
-3. **Verificación Automatizada**:
-   - Creado [`AdvancedRenamerEditorViewModelTests.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/App/AdvancedRenamerEditorViewModelTests.cs) con pruebas de carga con y sin nodo origen, y límite superior de 100 archivos.
-   - Resultado: **234 / 234 pruebas aprobadas al 100% (0 errores, 0 fallos)** en 18.6 segundos.
+2. **Verificación Automatizada**:
+   - Añadida prueba en [`ThemeCustomizerViewModelTests.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/App/ThemeCustomizerViewModelTests.cs) para verificar la coexistencia y recuperación de temas de fábrica y temas de usuario.
+   - Resultado: **246 / 246 pruebas aprobadas al 100% (0 errores, 0 fallos, 0 advertencias)** en 21.5 segundos.
 
 ---
 

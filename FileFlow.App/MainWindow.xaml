@@ -230,16 +230,13 @@
                         <!-- Theme Selector in Drawer -->
                         <Grid Margin="4,6,4,8">
                             <TextBlock Text="Tema Visual:" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                            <ComboBox SelectedValue="{Binding ControlBar.SelectedTheme, Mode=TwoWay}"
-                                      SelectedValuePath="Tag"
+                            <ComboBox ItemsSource="{Binding ControlBar.AvailableThemes}"
+                                      SelectedValue="{Binding ControlBar.SelectedTheme, Mode=TwoWay}"
+                                      SelectedValuePath="Id"
+                                      DisplayMemberPath="Name"
                                       HorizontalAlignment="Right"
-                                      Width="140">
-                                <ComboBoxItem Tag="Dark">🌙 Oscuro</ComboBoxItem>
-                                <ComboBoxItem Tag="Light">☀️ Claro</ComboBoxItem>
-                                <ComboBoxItem Tag="Pastel">🌸 Primavera</ComboBoxItem>
-                                <ComboBoxItem Tag="Cyber">🔮 Cyber Neón</ComboBoxItem>
-                                <ComboBoxItem Tag="System">💻 Sistema</ComboBoxItem>
-                            </ComboBox>
+                                      Width="175"
+                                      Padding="6,4" />
                         </Grid>
 
                         <!-- Language Selector in Drawer -->
@@ -253,6 +250,14 @@
                                 <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
                             </ComboBox>
                         </Grid>
+
+                        <!-- Theme Studio Button in Drawer -->
+                        <Button Command="{Binding ControlBar.OpenThemeCustomizerCommand}" Style="{StaticResource DrawerMenuItemButton}" Margin="0,2,0,4" ToolTip="Abrir el Estudio Gráfico de Personalización Visual de Temas">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🎨" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Personalizar Tema Visual..." FontSize="13.5" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
 
                         <!-- Section: Panels & Tools -->
                         <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />

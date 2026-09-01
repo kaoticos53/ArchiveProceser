@@ -77,13 +77,21 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <!-- Tema Predeterminado -->
-                            <TextBlock Text="🎨 Tema Visual por Defecto" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
-                            <ComboBox x:Name="CmbActiveTheme" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" Margin="0,0,0,14">
-                                <ComboBoxItem Content="Dark (Modo Oscuro Profesional)" Tag="Dark" IsSelected="True" />
-                                <ComboBoxItem Content="Light (Modo Claro)" Tag="Light" />
-                                <ComboBoxItem Content="Cyber (Modo Cyberpunk Neón)" Tag="Cyber" />
-                                <ComboBoxItem Content="Pastel (Modo Pastel)" Tag="Pastel" />
-                            </ComboBox>
+                            <Grid Margin="0,0,0,4">
+                                <TextBlock Text="🎨 Tema Visual por Defecto" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <Button Click="OpenThemeCustomizer_Click" Style="{DynamicResource SecondaryButton}" HorizontalAlignment="Right" Padding="8,2">
+                                    <TextBlock Text="🎨 Personalizar Temas..." FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                </Button>
+                            </Grid>
+                            <ComboBox x:Name="CmbActiveTheme" 
+                                      Background="{DynamicResource BgSurfaceBrush}" 
+                                      Foreground="{DynamicResource TextPrimaryBrush}" 
+                                      BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                      SelectedValuePath="Id"
+                                      DisplayMemberPath="Name"
+                                      Padding="6,4" 
+                                      FontSize="11" 
+                                      Margin="0,0,0,14" />
 
                             <!-- Modo de Vista del Catálogo de Nodos -->
                             <CheckBox x:Name="ChkIsCompactToolbox" Content="Iniciar Catálogo de Nodos en Modo Lista Compacta (28px)" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,14" />

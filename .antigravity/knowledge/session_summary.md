@@ -8,18 +8,21 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **234 / 234 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **246 / 246 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
 - **Instalador y Empaquetado**: Incluye la suite completa de 40 ejemplos de flujos (`Examples/` organizados en 4 niveles) y el manual de usuario (`Docs/manual_de_usuario.md`, `Docs/user_guide.md`, `README.md`) con accesos directos en el menú de inicio y opciones interactivas en el menú lateral de la app.
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
 
+- **Estudio de Personalización Visual de Temas (Theme Studio)**:
+  - `ThemeDefinition` en `FileFlow.Sdk/Themes/` y `CustomThemeService` en `FileFlow.App/Services/` con 8 presets de fábrica (*Oscuro Fluent*, *Claro Minimalista*, *Cyber Neón*, *Primavera Pastel*, *Midnight OLED*, *Nord Slate*, *Dracula Purple*, *Emerald Forest*) y persistencia de temas de usuario en `%APPDATA%\FileFlow\custom_themes.json`.
+  - `ThemeCustomizerWindow`, `ThemeCustomizerViewModel` y `ColorPickerButton` con edición interactiva de colores, tipografías, tamaños, radios de esquina, sombras y gradiente del cable conector, con vista previa reactiva en tiempo real sobre componentes de nodo, botones y tablas.
+  - **Selectores Dinámicos en la App**: Los menús desplegables del Drawer lateral (`MainWindow.xaml`) y del diálogo de Ajustes (`WorkflowSettingsWindow.xaml`) se pueblan automáticamente en tiempo real con todos los temas de fábrica y todos los temas personalizados creados o importados por el usuario.
 - **Asistente y Probador Visual de Expresiones Regulares (Regex Studio)**:
-  - `RegexPatternItem` en `FileFlow.Sdk/Renaming/` y `RegexLibraryService` en `FileFlow.App/Services/` con biblioteca predefinida de presets (Series/Episodios, Fechas ISO/Europeas, Limpieza de corchetes/paréntesis, Códecs de vídeo) y persistencia de patrones de usuario en JSON (`%APPDATA%\FileFlow\regex_library.json`).
-  - `RegexHelperWindow` y `RegexHelperViewModel` con probador en tiempo real, validación sintáctica segura, inspección de grupos de captura (`$1`, `$2`), flags (`IgnoreCase`, `Multiline`, `Singleline`, `IgnoreWhitespace`) y simulación de reemplazo en vivo con soporte de funciones de plantilla y variables.
-  - Botones `⚡ Regex...` integrados en todos los paneles correspondientes de `AdvancedRenamerEditorWindow.xaml`.
+  - `RegexPatternItem` en `FileFlow.Sdk/Renaming/` y `RegexLibraryService` en `FileFlow.App/Services/` con biblioteca predefinida de presets y persistencia de patrones de usuario en JSON (`%APPDATA%\FileFlow\regex_library.json`).
+  - `RegexHelperWindow` y `RegexHelperViewModel` con probador en tiempo real, validación sintáctica segura, inspección de grupos de captura (`$1`, `$2`), flags y simulación de reemplazo en vivo con soporte de funciones de plantilla y variables.
 - **Motor de Renombrado Avanzado (9 Métodos Acumulativos)**:
   - Métodos: *1. Nuevos Nombres*, *2. Búsqueda y Reemplazo*, *3. Inserción*, *4. Eliminación*, *5. Mayúsculas*, *6. Numeración*, *7. Tabla de Sustituciones*, *8. Limpieza/Normalización*, *9. Normalizar Números (01, 02...)*.
-  - Soporte integral de variables inyectadas aguas arriba, variables de sistema (`{Year}`, `{FileNameNoExt}`, etc.), funciones de plantilla (`{Upper($1)}`, `{PadLeft($2, 3, 0)}`) y grupos de captura regex (`$1`, `$2`, `${name}`, `<1>`, `<2>`) en el método de Búsqueda y Reemplazo y Tabla de Sustituciones.
-  - **Muestras Reales en Vista Previa**: Carga automática de hasta 100 archivos reales del directorio origen configurado en `FolderSourceNode` para previsualizar los resultados en tiempo real sobre el dataset real del usuario.
+  - Soporte integral de variables inyectadas aguas arriba, variables de sistema, funciones de plantilla y grupos de captura regex.
+  - Carga automática de hasta 100 archivos reales desde `FolderSourceNode` para previsualización en vivo sobre el dataset del usuario.
 - **Documentación y CI/CD**: Documentación actualizada en [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md) y pipelines GitHub Actions.
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 

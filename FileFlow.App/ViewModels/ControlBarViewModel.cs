@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -8,6 +9,7 @@ using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Themes;
 
 namespace FileFlow.App.ViewModels;
 
@@ -54,14 +56,53 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    private string _selectedTheme = "Dark";
+    private string _selectedTheme = "dark_fluent";
+
+    public ObservableCollection<ThemeDefinition> AvailableThemes { get; } = [];
+
+    public void LoadAvailableThemes()
+    {
+        AvailableThemes.Clear();
+        var all = CustomThemeService.Instance.GetAllThemes();
+        foreach (var theme in all)
+        {
+            AvailableThemes.Add(theme);
+        }
+
+        AvailableThemes.Add(new ThemeDefinition
+        {
+            Id = "system",
+            Name = "💻 Tema del Sistema (Windows)",
+            Description = "Adapta automáticamente el tema según Windows.",
+            IsBuiltIn = true
+        });
+    }
 
     partial void OnSelectedThemeChanged(string value)
     {
-        if (Enum.TryParse<Services.AppTheme>(value, true, out var theme))
+        if (string.IsNullOrWhiteSpace(value)) return;
+        Services.ThemeManager.Instance.SetThemeById(value);
+
+        var prefs = UserPreferencesService.Instance.Preferences;
+        if (!string.Equals(prefs.ActiveTheme, value, StringComparison.OrdinalIgnoreCase))
         {
-            Services.ThemeManager.Instance.SetTheme(theme);
+            prefs.ActiveTheme = value;
+            UserPreferencesService.Instance.Save();
         }
+    }
+
+    [RelayCommand]
+    public void OpenThemeCustomizer()
+    {
+        var win = new Views.Components.ThemeCustomizerWindow();
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            win.Owner = Application.Current.MainWindow;
+        }
+        win.ShowDialog();
+
+        LoadAvailableThemes();
+        SelectedTheme = Services.ThemeManager.Instance.CurrentThemeId;
     }
 
     public ControlBarViewModel(
@@ -85,6 +126,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
     private void SyncFromPreferences()
     {
+        LoadAvailableThemes();
         var prefs = UserPreferencesService.Instance.Preferences;
         SelectedTheme = prefs.ActiveTheme;
         IsDryRun = prefs.DefaultDryRunState;

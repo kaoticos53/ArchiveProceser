@@ -16,15 +16,7 @@ public static class WindowThemeHelper
     {
         if (window == null) return;
 
-        bool isDarkTheme = ThemeManager.Instance.CurrentTheme switch
-        {
-            AppTheme.Light => false,
-            AppTheme.Pastel => false,
-            AppTheme.Cyber => true,
-            AppTheme.Dark => true,
-            AppTheme.System => !IsWindowsInLightMode(),
-            _ => true
-        };
+        bool isDarkTheme = ThemeManager.Instance.IsCurrentThemeDark;
 
         if (window.IsLoaded)
         {
