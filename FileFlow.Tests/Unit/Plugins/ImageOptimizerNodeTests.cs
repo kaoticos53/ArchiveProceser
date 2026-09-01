@@ -39,16 +39,12 @@ public class ImageOptimizerNodeTests
     [Fact]
     public void CalculateTargetDimensions_WidthOnly_PreservesAspectRatio()
     {
-        // 4000x2000 (aspect 2:1) -> width 1000, height 0, maintainAspectRatio true
+        // 4000x2000 (aspect 2:1) -> width 1000, height vacío
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 4000,
             origHeight: 2000,
-            sizeMode: "Pixels",
-            width: 1000,
-            height: 0,
-            scalePercentage: 100.0,
-            scalePercentageY: 100.0,
-            maintainAspectRatio: true,
+            widthSpec: "1000",
+            heightSpec: "",
             onlyDownscale: true);
 
         result.TargetWidth.Should().Be(1000);
@@ -59,16 +55,12 @@ public class ImageOptimizerNodeTests
     [Fact]
     public void CalculateTargetDimensions_HeightOnly_PreservesAspectRatio()
     {
-        // 3000x1500 (aspect 2:1) -> width 0, height 600, maintainAspectRatio true
+        // 3000x1500 (aspect 2:1) -> width 0, height 600
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 3000,
             origHeight: 1500,
-            sizeMode: "Pixels",
-            width: 0,
-            height: 600,
-            scalePercentage: 100.0,
-            scalePercentageY: 100.0,
-            maintainAspectRatio: true,
+            widthSpec: 0,
+            heightSpec: "600px",
             onlyDownscale: true);
 
         result.TargetWidth.Should().Be(1200);
@@ -83,36 +75,12 @@ public class ImageOptimizerNodeTests
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 3840,
             origHeight: 2160,
-            sizeMode: "Pixels",
-            width: 1920,
-            height: 1080,
-            scalePercentage: 100.0,
-            scalePercentageY: 100.0,
-            maintainAspectRatio: true,
+            widthSpec: "1920",
+            heightSpec: "1080",
             onlyDownscale: true);
 
         result.TargetWidth.Should().Be(1920);
         result.TargetHeight.Should().Be(1080);
-        result.ResizeNeeded.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CalculateTargetDimensions_BothDimensions_WithoutAspectRatio_StretchesExact()
-    {
-        // 1000x1000 -> 800x400 without aspect ratio
-        var result = ImageOptimizerNode.CalculateTargetDimensions(
-            origWidth: 1000,
-            origHeight: 1000,
-            sizeMode: "Pixels",
-            width: 800,
-            height: 400,
-            scalePercentage: 100.0,
-            scalePercentageY: 100.0,
-            maintainAspectRatio: false,
-            onlyDownscale: true);
-
-        result.TargetWidth.Should().Be(800);
-        result.TargetHeight.Should().Be(400);
         result.ResizeNeeded.Should().BeTrue();
     }
 
@@ -123,12 +91,8 @@ public class ImageOptimizerNodeTests
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 2000,
             origHeight: 1000,
-            sizeMode: "Percentage",
-            width: 0,
-            height: 0,
-            scalePercentage: 50.0,
-            scalePercentageY: 50.0,
-            maintainAspectRatio: true,
+            widthSpec: "50%",
+            heightSpec: "50%",
             onlyDownscale: true);
 
         result.TargetWidth.Should().Be(1000);
@@ -137,18 +101,30 @@ public class ImageOptimizerNodeTests
     }
 
     [Fact]
-    public void CalculateTargetDimensions_Percentage_Asymmetric_WhenAspectRatioDisabled()
+    public void CalculateTargetDimensions_SinglePercentage_AutoHeight()
     {
-        // 1000x1000 with ScaleX 50% and ScaleY 25%
+        // 2000x1000 with only width 50%
+        var result = ImageOptimizerNode.CalculateTargetDimensions(
+            origWidth: 2000,
+            origHeight: 1000,
+            widthSpec: "50%",
+            heightSpec: "auto",
+            onlyDownscale: true);
+
+        result.TargetWidth.Should().Be(1000);
+        result.TargetHeight.Should().Be(500);
+        result.ResizeNeeded.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CalculateTargetDimensions_Percentage_Asymmetric()
+    {
+        // 1000x1000 with Width 50% and Height 25%
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 1000,
             origHeight: 1000,
-            sizeMode: "Percentage",
-            width: 0,
-            height: 0,
-            scalePercentage: 50.0,
-            scalePercentageY: 25.0,
-            maintainAspectRatio: false,
+            widthSpec: "50%",
+            heightSpec: "25%",
             onlyDownscale: true);
 
         result.TargetWidth.Should().Be(500);
@@ -163,12 +139,8 @@ public class ImageOptimizerNodeTests
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 800,
             origHeight: 600,
-            sizeMode: "Pixels",
-            width: 1920,
-            height: 0,
-            scalePercentage: 100.0,
-            scalePercentageY: 100.0,
-            maintainAspectRatio: true,
+            widthSpec: "1920",
+            heightSpec: "",
             onlyDownscale: true);
 
         result.TargetWidth.Should().Be(800);
@@ -183,12 +155,8 @@ public class ImageOptimizerNodeTests
         var result = ImageOptimizerNode.CalculateTargetDimensions(
             origWidth: 800,
             origHeight: 400,
-            sizeMode: "Pixels",
-            width: 1600,
-            height: 0,
-            scalePercentage: 100.0,
-            scalePercentageY: 100.0,
-            maintainAspectRatio: true,
+            widthSpec: 1600,
+            heightSpec: 0,
             onlyDownscale: false);
 
         result.TargetWidth.Should().Be(1600);
@@ -214,10 +182,8 @@ public class ImageOptimizerNodeTests
             }
 
             var node = new ImageOptimizerNode();
-            node.Parameters["SizeMode"] = "Pixels";
-            node.Parameters["Width"] = 400;
-            node.Parameters["Height"] = 0;
-            node.Parameters["MaintainAspectRatio"] = true;
+            node.Parameters["Width"] = "400";
+            node.Parameters["Height"] = "";
             node.Parameters["OnlyDownscale"] = true;
             node.Parameters["TargetFormat"] = "WebP";
             node.Parameters["OutputDirectory"] = outDir;
@@ -274,9 +240,8 @@ public class ImageOptimizerNodeTests
             }
 
             var node = new ImageOptimizerNode();
-            node.Parameters["SizeMode"] = "Percentage";
-            node.Parameters["ScalePercentage"] = 50.0;
-            node.Parameters["MaintainAspectRatio"] = true;
+            node.Parameters["Width"] = "50%";
+            node.Parameters["Height"] = "50%";
             node.Parameters["TargetFormat"] = "PNG";
             node.Parameters["OutputDirectory"] = outDir;
 
@@ -310,5 +275,26 @@ public class ImageOptimizerNodeTests
                 try { Directory.Delete(tempDir, true); } catch { }
             }
         }
+    }
+
+    [Fact]
+    public void CalculateTargetDimensions_DefaultParameters_PreservesFullResolutionAndAspectRatio()
+    {
+        // Arrange: default node parameters -> Width: "", Height: "100%"
+        var node = new ImageOptimizerNode();
+        node.Parameters["Width"].Should().Be("");
+        node.Parameters["Height"].Should().Be("100%");
+
+        // Act: 3840x2160 (16:9 4K image)
+        var result = ImageOptimizerNode.CalculateTargetDimensions(
+            origWidth: 3840,
+            origHeight: 2160,
+            widthSpec: node.Parameters["Width"],
+            heightSpec: node.Parameters["Height"],
+            onlyDownscale: true);
+
+        // Assert: 100% scale keeps 3840x2160 without deformation
+        result.TargetWidth.Should().Be(3840);
+        result.TargetHeight.Should().Be(2160);
     }
 }

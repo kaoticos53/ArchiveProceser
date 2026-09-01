@@ -118,6 +118,41 @@ public class OriginalFileActionNodeTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ShouldRecycleFile_WhenActionTypeIsMoveToRecycleBin()
+    {
+        // Arrange
+        string tempFile = Path.Combine(Path.GetTempPath(), "OrigRecycle_" + Guid.NewGuid() + ".tmp");
+        File.WriteAllText(tempFile, "Recycle Me");
+
+        try
+        {
+            var node = new OriginalFileActionNode();
+            node.Parameters["ActionType"] = "MoveToRecycleBin";
+
+            var item = new FileItemContext(tempFile, isDirectory: false);
+            var emittedOut = new List<FileItemContext>();
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+                       .Callback<string, FileItemContext>((port, emItem) => emittedOut.Add(emItem))
+                       .Returns(Task.CompletedTask);
+
+            // Act
+            await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+            // Assert
+            emittedOut.Should().HaveCount(1);
+            if (OperatingSystem.IsWindows())
+            {
+                File.Exists(tempFile).Should().BeFalse();
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ShouldNotModifyFileOnDisk_WhenDryRunIsActive()
     {
         // Arrange

@@ -42,6 +42,14 @@ public class SwitchCaseNode : IFlowNode
         ["CasesJson"] = "[{\"Name\":\"Case 1\",\"Pattern\":\"jpg;jpeg;png;webp;gif\"}]"
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("Expression", ParameterEditorType.Text, DefaultValue: "{Ext}", DisplayOrder: 1)
+    ];
+
+    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+        new("AddSwitchCase", "➕ Caso", "➕", "Añadir nuevo caso / puerto de salida")
+    ];
+
     public List<SwitchCaseRule> GetCases()
     {
         if (Parameters.TryGetValue("CasesJson", out var jsonVal) && jsonVal != null)

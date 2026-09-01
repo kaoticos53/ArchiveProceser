@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Windows;
+using FileFlow.Plugin.FileSystem.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Renaming;
@@ -8,7 +10,7 @@ using FileFlow.Sdk.TemplateEngine;
 namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("AdvancedRenamerNode_Name", "FileSystem", "AdvancedRenamerNode_Desc")]
-public class AdvancedRenamerNode : IFlowNode
+public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,9 +43,37 @@ public class AdvancedRenamerNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["PipelineName"] = "Pipeline Predeterminado",
+        ["RenameMode"] = "Virtual",             // "Virtual" (no modifica el archivo original) o "DirectInPlace" (renombra en disco)
         ["CollisionStrategy"] = "AutoIncrement", // Overwrite, Skip, AutoIncrement, Fail
         ["MethodSteps"] = string.Empty          // JSON serializado de List<RenameMethodStep>
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("PipelineName", ParameterEditorType.Text, DefaultValue: "Pipeline Predeterminado", DisplayOrder: 1),
+        new("RenameMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", DisplayOrder: 2, Options: ["Virtual", "DirectInPlace"]),
+        new("CollisionStrategy", ParameterEditorType.Dropdown, DefaultValue: "AutoIncrement", DisplayOrder: 3, Options: ["AutoIncrement", "Overwrite", "Skip", "Fail"])
+    ];
+
+    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+        new("OpenRenamerPipeline", "🏷️ Pipeline de Métodos...", "🏷️", "Abrir el Estudio de Renombrado Avanzado (7 métodos, presets y vista previa)")
+    ];
+
+    public void ExecuteCustomAction(string actionId, object? context = null)
+    {
+        if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
+        {
+            var window = new AdvancedRenamerEditorWindow(this);
+            if (context is Window ownerWindow)
+            {
+                window.Owner = ownerWindow;
+            }
+            else if (Application.Current?.MainWindow != null)
+            {
+                window.Owner = Application.Current.MainWindow;
+            }
+            window.ShowDialog();
+        }
+    }
 
     public async Task ExecuteAsync(
         string inputPortName,
@@ -52,16 +82,19 @@ public class AdvancedRenamerNode : IFlowNode
         CancellationToken cancellationToken)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        string existingSource = item.GetExistingPhysicalPath();
 
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        if (string.IsNullOrWhiteSpace(existingSource) || (!File.Exists(existingSource) && !Directory.Exists(existingSource)))
         {
-            context.Log($"[Renombrador] Archivo de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
+            context.Log($"[Renombrador] Archivo o carpeta de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
 
         try
         {
+            string renameMode = Parameters.TryGetValue("RenameMode", out var rmVal) ? ParameterHelper.GetString(rmVal, "Virtual") : "Virtual";
+            bool isVirtual = string.Equals(renameMode, "Virtual", StringComparison.OrdinalIgnoreCase);
             string collisionStrategy = Parameters.TryGetValue("CollisionStrategy", out var cVal) ? ParameterHelper.GetString(cVal, "AutoIncrement") : "AutoIncrement";
             var steps = ResolveSteps();
 
@@ -142,26 +175,40 @@ public class AdvancedRenamerNode : IFlowNode
                 return;
             }
 
-            if (context.IsDryRun)
+            if (context.IsDryRun || isVirtual)
             {
-                context.RegisterPlannedAction(new PlannedAction(
-                    Guid.NewGuid(),
-                    Id,
-                    Name,
-                    PlannedOperationType.Rename,
-                    item.CurrentPath,
-                    targetPath,
-                    $"Rename to {Path.GetFileName(targetPath)}",
-                    item.FileSizeBytes
-                ));
-                item.AddLog($"[DryRun] Planned Rename: {item.CurrentPath} -> {targetPath}");
+                if (context.IsDryRun)
+                {
+                    context.RegisterPlannedAction(new PlannedAction(
+                        Guid.NewGuid(),
+                        Id,
+                        Name,
+                        PlannedOperationType.Rename,
+                        item.CurrentPath,
+                        targetPath,
+                        $"Rename to {Path.GetFileName(targetPath)}",
+                        item.FileSizeBytes
+                    ));
+                    item.AddLog($"[DryRun] Planned Rename: {item.CurrentPath} -> {targetPath}");
+                }
+                else
+                {
+                    item.AddLog($"Renamed (Virtual): {resolvedName}");
+                }
+
+                sw.Stop();
+                string prevName = Path.GetFileName(item.CurrentPath);
                 item.CurrentPath = targetPath;
+
+                string detailsJson = $"{{\"originalName\": \"{prevName.Replace("\"", "\\\"")}\", \"newName\": \"{Path.GetFileName(targetPath).Replace("\"", "\\\"")}\", \"renameMode\": \"{(isVirtual ? "Virtual" : "DryRun")}\", \"collisionStrategy\": \"{collisionStrategy}\", \"stepsCount\": {steps.Count}}}";
+                context.Log($"[Renombrador] Nombre transformado (Modo Virtual): '{prevName}' -> '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+
                 await context.EmitAsync("Out", item);
                 return;
             }
 
-            string originalCurrent = item.CurrentPath;
-            File.Move(item.CurrentPath, targetPath, overwrite: true);
+            string originalCurrent = item.GetExistingPhysicalPath();
+            File.Move(originalCurrent, targetPath, overwrite: true);
 
             context.RecordJournalEntry(new JournalEntry(
                 Guid.NewGuid(),
@@ -181,11 +228,12 @@ public class AdvancedRenamerNode : IFlowNode
             ));
 
             sw.Stop();
+            item.PhysicalPath = targetPath;
             item.CurrentPath = targetPath;
-            item.AddLog($"Renamed to: {targetPath}");
+            item.AddLog($"Renamed (DirectInPlace): {targetPath}");
 
-            string detailsJson = $"{{\"originalName\": \"{Path.GetFileName(originalCurrent).Replace("\"", "\\\"")}\", \"newName\": \"{Path.GetFileName(targetPath).Replace("\"", "\\\"")}\", \"collisionStrategy\": \"{collisionStrategy}\", \"stepsCount\": {steps.Count}}}";
-            context.Log($"[Renombrador] Renombrado con éxito: '{Path.GetFileName(originalCurrent)}' -> '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            string detailsJsonInPlace = $"{{\"originalName\": \"{Path.GetFileName(originalCurrent).Replace("\"", "\\\"")}\", \"newName\": \"{Path.GetFileName(targetPath).Replace("\"", "\\\"")}\", \"renameMode\": \"DirectInPlace\", \"collisionStrategy\": \"{collisionStrategy}\", \"stepsCount\": {steps.Count}}}";
+            context.Log($"[Renombrador] Renombrado físico con éxito (In-Place): '{Path.GetFileName(originalCurrent)}' -> '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJsonInPlace);
 
             await context.EmitAsync("Out", item);
         }

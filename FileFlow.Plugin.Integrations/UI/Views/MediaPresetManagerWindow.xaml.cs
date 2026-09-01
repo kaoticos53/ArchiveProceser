@@ -1,8 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
-using FileFlow.App.Services;
+using FileFlow.Plugin.Integrations.UI.Services;
 
-namespace FileFlow.App.Views.Components;
+namespace FileFlow.Plugin.Integrations.UI.Views;
 
 public partial class MediaPresetManagerWindow : Window
 {

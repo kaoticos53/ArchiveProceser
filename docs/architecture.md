@@ -163,3 +163,13 @@ Colección modular de 24 nodos de procesamiento organizados por dominio:
 - **Contexto**: Los desarrolladores de plugins necesitan una base estable sin arrastrar dependencias pesadas de UI (WPF) o librerías externas innecesarias.
 - **Decisión**: Mantener `FileFlow.Sdk` exclusivamente con dependencias del BCL estándar de .NET.
 - **Consecuencias**: Facilidad para crear nuevos plugins, pruebas unitarias ultrarrápidas y arquitectura desacoplada y mantenible.
+
+### ADR-004: Principio de Inmutabilidad del Archivo de Origen (*Source Immutability by Default*)
+- **Contexto**: En flujos de procesamiento automatizado, modificar o sobreescribir los archivos de entrada originales por sorpresa supone un riesgo crítico de pérdida de datos del usuario.
+- **Decisión**: Todos los pipelines y nodos de transformación operan de forma no destructiva por defecto. Los nodos de transformación (`ImageOptimizer`, `MediaTranscoder`, `ArchiveCompressor`, `SmartUnpack`, `AdvancedRenamer` en modo `Virtual`, `DestinationSink` con `Copy`) generan nuevos archivos en directorios independientes o proyectan nombres en memoria sin alterar el origen. Cualquier acción de modificación, traslado a cuarentena, envío a papelera o borrado del archivo original debe ser explícita y gobernada por el nodo de ciclo de vida `OriginalFileActionNode`.
+- **Consecuencias**: Máxima seguridad operativa contra pérdida accidental de datos y trazabilidad transparente entre el archivo de entrada original y el artefacto generado.
+
+### ADR-005: Localización Dinámica e Internacionalización de la Interfaz (i18n)
+- **Contexto**: La aplicación debe ser accesible globalmente permitiendo cambiar entre múltiples idiomas (actualmente Español e Inglés) sin reiniciar el software ni comprometer la claridad del código técnico.
+- **Decisión**: Mantener los nombres de variables, identificadores de claves (`Key`), contratos de plugins y serialización en inglés puro, mientras que la interfaz de usuario (`FileFlow.App`) proyecta exclusivamente textos localizados consumiendo `LocalizationManager.Instance` (con soporte reactivo de indexers `"Item[]"` en WPF) y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
+- **Consecuencias**: Experiencia de usuario enriquecida y natural en el idioma de preferencia, con total reactividad en caliente en pantallas, diálogos, menús y tarjetas de nodos del lienzo.

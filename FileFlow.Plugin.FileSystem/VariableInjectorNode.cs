@@ -27,6 +27,10 @@ public class VariableInjectorNode : IFlowNode
         ["CustomCategory"] = "{FileNameNoExt}_processed"
     };
 
+    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+        new("AddVariable", "➕ Variable", "➕", "Añadir nueva variable personalizada")
+    ];
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,

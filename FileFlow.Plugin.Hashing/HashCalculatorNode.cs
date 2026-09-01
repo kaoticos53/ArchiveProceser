@@ -30,6 +30,11 @@ public class HashCalculatorNode : IFlowNode
         ["StoreInMetadataKey"] = "Hash:SHA256"
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("Algorithm", ParameterEditorType.Dropdown, DefaultValue: "SHA256", DisplayOrder: 1, Options: ["SHA256", "MD5", "SHA512", "SHA1"]),
+        new("StoreInMetadataKey", ParameterEditorType.Text, DefaultValue: "Hash:SHA256", DisplayOrder: 2)
+    ];
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,

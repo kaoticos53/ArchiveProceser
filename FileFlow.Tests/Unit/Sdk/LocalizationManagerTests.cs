@@ -4,6 +4,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Sdk;
 
+[Collection("Localization")]
 public class LocalizationManagerTests
 {
     [Fact]
@@ -31,5 +32,30 @@ public class LocalizationManagerTests
 
         // Assert
         eventFired.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SetCulture_ShouldRaisePropertyChangedForIndexer_WhenCultureChanges()
+    {
+        // Arrange
+        var manager = LocalizationManager.Instance;
+        manager.SetCulture("fr-FR"); // Asegurar valor previo distinto
+
+        var changedProperties = new List<string?>();
+        manager.PropertyChanged += (sender, args) => changedProperties.Add(args.PropertyName);
+
+        try
+        {
+            // Act
+            manager.SetCulture("es-ES");
+
+            // Assert
+            changedProperties.Should().Contain(p => p == "Item[]");
+            changedProperties.Should().Contain(p => p == string.Empty);
+        }
+        finally
+        {
+            manager.SetCulture("es-ES");
+        }
     }
 }

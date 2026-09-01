@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading.Channels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
@@ -27,6 +28,14 @@ public class FolderSourceNode : IFlowNode
         ["MaxRecursionDepth"] = -1,
         ["WatchRealtime"] = false
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("SourcePath", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Input", DisplayOrder: 1),
+        new("Recursive", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 2),
+        new("EmitMode", ParameterEditorType.Dropdown, DefaultValue: "FilesOnly", DisplayOrder: 3, Options: ["FilesOnly", "DirectoriesOnly", "FilesAndDirectories"]),
+        new("MaxRecursionDepth", ParameterEditorType.Number, DefaultValue: -1, DisplayOrder: 4, Min: -1, Max: 100),
+        new("WatchRealtime", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 5)
+    ];
 
     public async Task ExecuteAsync(
         string inputPortName,

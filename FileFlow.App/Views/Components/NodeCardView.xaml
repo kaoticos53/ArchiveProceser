@@ -545,6 +545,33 @@
                         </ItemsControl>
                     </Grid>
 
+                    <!-- Barra de Acciones Directas del Nodo (CustomActions siempre visibles) -->
+                    <ItemsControl ItemsSource="{Binding CustomActions}" Margin="8,4,8,2" HorizontalAlignment="Stretch">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding ExecuteCommand}"
+                                        Background="{DynamicResource AccentPrimaryBrush}" Foreground="White"
+                                        BorderThickness="0" Padding="10,4" FontSize="10" FontWeight="Bold" Cursor="Hand"
+                                        ToolTip="{Binding Tooltip}"
+                                        Margin="2">
+                                    <Button.Resources>
+                                        <Style TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="4" />
+                                        </Style>
+                                    </Button.Resources>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Title}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <!-- Panel de Parámetros Colapsable -->
                     <Border Visibility="{Binding IsExpanded, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Background="{DynamicResource BgSurfaceBrush}"
@@ -552,53 +579,10 @@
                             BorderThickness="1"
                             CornerRadius="6"
                             Padding="8,6"
-                            Margin="8,8,8,0">
+                            Margin="8,4,8,0">
                         <StackPanel>
                             <Grid Margin="0,0,0,6">
                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SettingsTitle]}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
-                                
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Visibility="{Binding IsAdvancedRenamerNode, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            Command="{Binding OpenAdvancedRenamerEditorCommand}"
-                                            Content="🏷️ Pipeline de Métodos..."
-                                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="White"
-                                            BorderThickness="0" Padding="8,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
-                                            ToolTip="Abrir el Estudio de Renombrado Avanzado (7 métodos, presets y vista previa)"
-                                            Margin="0,0,4,0">
-                                        <Button.Resources>
-                                            <Style TargetType="Border">
-                                                <Setter Property="CornerRadius" Value="4" />
-                                            </Style>
-                                        </Button.Resources>
-                                    </Button>
-
-                                    <Button Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            Command="{Binding AddVariableCommand}"
-                                            Content="➕ Variable"
-                                            Background="{DynamicResource AccentSuccessBrush}" Foreground="White"
-                                            BorderThickness="0" Padding="6,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
-                                            ToolTip="Añadir nueva variable personalizada"
-                                            Margin="0,0,4,0">
-                                        <Button.Resources>
-                                            <Style TargetType="Border">
-                                                <Setter Property="CornerRadius" Value="4" />
-                                            </Style>
-                                        </Button.Resources>
-                                    </Button>
-
-                                    <Button Visibility="{Binding IsSwitchCaseNode, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            Command="{Binding AddSwitchCaseCommand}"
-                                            Content="➕ Caso"
-                                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="White"
-                                            BorderThickness="0" Padding="6,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
-                                            ToolTip="Añadir nuevo caso / puerto de salida">
-                                        <Button.Resources>
-                                            <Style TargetType="Border">
-                                                <Setter Property="CornerRadius" Value="4" />
-                                            </Style>
-                                        </Button.Resources>
-                                    </Button>
-                                </StackPanel>
                             </Grid>
 
                             <!-- Lista de Parámetros Modularizada -->

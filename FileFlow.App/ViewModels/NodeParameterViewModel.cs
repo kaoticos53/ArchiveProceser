@@ -1,20 +1,27 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
+using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
 public partial class NodeParameterViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
-    private EventHandler? _presetsChangedHandler;
+    private readonly EventHandler<CultureInfo> _languageChangedHandler;
 
     public NodeViewModel? NodeOwner { get; set; }
+    public NodeParameterDescriptor? Descriptor { get; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
     private string _key = string.Empty;
+
+    public string DisplayName => LocalizationManager.Instance.GetString($"Param_{Key}", GetDefaultDisplayName(Key));
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBooleanAndNoOptions))]
@@ -22,6 +29,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsFilePath))]
     [NotifyPropertyChangedFor(nameof(HasBrowseButton))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
+    [NotifyPropertyChangedFor(nameof(IsSlider))]
+    [NotifyPropertyChangedFor(nameof(IsToggle))]
+    [NotifyPropertyChangedFor(nameof(IsDropdown))]
     private object? _value;
 
     [ObservableProperty]
@@ -31,42 +41,59 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsFilePath))]
     [NotifyPropertyChangedFor(nameof(HasBrowseButton))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
+    [NotifyPropertyChangedFor(nameof(IsDropdown))]
     private ObservableCollection<string> _options = [];
 
     [ObservableProperty]
     private List<VariableGroupItem> _availableVariables = [];
 
+    public ParameterEditorType EditorType => Descriptor?.EditorType ?? DetectEditorType();
+
+    public double SliderMin => Descriptor?.Min ?? 0;
+    public double SliderMax => Descriptor?.Max ?? 100;
+    public double SliderStep => Descriptor?.Step ?? 1;
+
     public bool HasOptions => Options.Count > 0;
 
-    public bool IsBooleanAndNoOptions => !HasOptions && (Value is bool || (Value != null && bool.TryParse(Value.ToString(), out _)));
+    public bool IsSlider => EditorType == ParameterEditorType.Slider;
 
-    public bool IsFolderPath => !HasOptions && !IsBooleanAndNoOptions && DetectIsFolderPath(Key);
+    public bool IsToggle => EditorType == ParameterEditorType.Toggle;
 
-    public bool IsFilePath => !HasOptions && !IsBooleanAndNoOptions && DetectIsFilePath(Key);
+    public bool IsDropdown => EditorType == ParameterEditorType.Dropdown || HasOptions;
 
-    public bool IsPasswordList => Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase);
+    public bool IsBooleanAndNoOptions => !IsSlider && !IsDropdown && (IsToggle || (!HasOptions && (Value is bool || (Value != null && bool.TryParse(Value.ToString(), out _)))));
 
-    public bool IsMediaPreset => Key.Equals("Preset", StringComparison.OrdinalIgnoreCase);
+    public bool IsFolderPath => EditorType == ParameterEditorType.FolderPath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFolderPath(Key));
+
+    public bool IsFilePath => EditorType == ParameterEditorType.FilePath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFilePath(Key));
+
+    public bool IsPasswordList => EditorType == ParameterEditorType.PasswordList || Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsMediaPreset => EditorType == ParameterEditorType.MediaPreset || Key.Equals("Preset", StringComparison.OrdinalIgnoreCase);
 
     public bool HasBrowseButton => IsFolderPath || IsFilePath;
 
     public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
 
-    public bool IsStandardInput => !HasOptions && !IsBooleanAndNoOptions && !HasBrowseButton && !IsVariableInjectorNode;
+    public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode;
+
+    private ParameterEditorType DetectEditorType()
+    {
+        if (DetectIsFolderPath(Key)) return ParameterEditorType.FolderPath;
+        if (DetectIsFilePath(Key)) return ParameterEditorType.FilePath;
+        if (Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase)) return ParameterEditorType.PasswordList;
+        if (Key.Equals("Preset", StringComparison.OrdinalIgnoreCase)) return ParameterEditorType.MediaPreset;
+        return ParameterEditorType.Text;
+    }
 
     [RelayCommand]
     public void OpenMediaPresetManager()
     {
         try
         {
-            var win = new Views.Components.MediaPresetManagerWindow();
-            if (Application.Current?.MainWindow != null)
+            if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                win.Owner = Application.Current.MainWindow;
-            }
-            if (win.ShowDialog() == true)
-            {
-                RefreshMediaPresetOptions();
+                provider.ExecuteCustomAction("ManageMediaPresets", Application.Current?.MainWindow);
             }
         }
         catch (Exception ex)
@@ -77,18 +104,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public void RefreshMediaPresetOptions()
     {
-        if (IsMediaPreset)
-        {
-            var names = Services.MediaPresetManagerService.Instance.GetPresetNames();
-            Options.Clear();
-            foreach (var n in names) Options.Add(n);
-
-            string? valStr = Value?.ToString();
-            if (valStr == null || !Options.Contains(valStr))
-            {
-                Value = Options.FirstOrDefault();
-            }
-        }
+        // Opciones gestionadas por el descriptor del nodo
     }
 
     [RelayCommand]
@@ -96,14 +112,13 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var win = new Views.Components.PasswordManagerWindow(Value?.ToString() ?? string.Empty);
-            if (Application.Current?.MainWindow != null)
+            if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                win.Owner = Application.Current.MainWindow;
-            }
-            if (win.ShowDialog() == true)
-            {
-                Value = win.PasswordsText;
+                provider.ExecuteCustomAction("ManagePasswords", Application.Current?.MainWindow);
+                if (NodeOwner.NodeInstance.Parameters.TryGetValue(Key, out var updatedVal))
+                {
+                    Value = updatedVal;
+                }
             }
         }
         catch (Exception ex)
@@ -123,6 +138,12 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     partial void OnValueChanged(object? oldValue, object? newValue)
     {
         NodeOwner?.OnParameterValueChanged(Key, newValue);
+    }
+
+    public NodeParameterViewModel(NodeParameterDescriptor descriptor, object? value, NodeViewModel? nodeOwner = null)
+        : this(descriptor.Key, value, descriptor.Options, nodeOwner)
+    {
+        Descriptor = descriptor;
     }
 
     public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null)
@@ -171,11 +192,11 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             }
         }
 
-        if (IsMediaPreset)
+        _languageChangedHandler = (_, _) =>
         {
-            _presetsChangedHandler = (_, _) => RefreshMediaPresetOptions();
-            Services.MediaPresetManagerService.Instance.PresetsChanged += _presetsChangedHandler;
-        }
+            OnPropertyChanged(nameof(DisplayName));
+        };
+        LocalizationManager.Instance.LanguageChanged += _languageChangedHandler;
     }
 
     [RelayCommand]
@@ -268,11 +289,24 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        if (IsMediaPreset && _presetsChangedHandler != null)
+        LocalizationManager.Instance.LanguageChanged -= _languageChangedHandler;
+    }
+
+    private static string GetDefaultDisplayName(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return key;
+
+        // Si la clave ya tiene formato PascalCase o camelCase, se puede formatear con espacios
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < key.Length; i++)
         {
-            Services.MediaPresetManagerService.Instance.PresetsChanged -= _presetsChangedHandler;
-            _presetsChangedHandler = null;
+            if (i > 0 && char.IsUpper(key[i]) && (!char.IsUpper(key[i - 1]) || (i + 1 < key.Length && !char.IsUpper(key[i + 1]))))
+            {
+                sb.Append(' ');
+            }
+            sb.Append(key[i]);
         }
+        return sb.ToString();
     }
 
     private static bool DetectIsFolderPath(string key)
@@ -292,9 +326,10 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     {
         return key.ToLowerInvariant() switch
         {
-            "actiontype" => ["Keep", "MoveToQuarantine", "PermanentDelete"],
+            "actiontype" => ["Keep", "MoveToRecycleBin", "MoveToQuarantine", "PermanentDelete"],
             "conflictstrategy" => ["Overwrite", "Skip", "RenameIncremental"],
             "collisionstrategy" => ["AutoIncrement", "Overwrite", "Skip", "Fail"],
+            "renamemode" => ["Virtual", "DirectInPlace"],
             "targetformat" => ["WebP", "Jpeg", "Png"],
             "loglevel" => ["Information", "Warning", "Error", "Debug", "Critical"],
             "emitmode" => ["FilesOnly", "DirectoriesOnly", "FilesAndDirectories"],
@@ -305,8 +340,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             "hashmetadatakey" => ["Hash:SHA256", "Hash:MD5", "Hash:SHA512", "Hash:SHA1", "Hash"],
             "archiveformat" => ["ZIP", "TAR", "GZ", "7Z"],
             "compressiontype" => ["Deflate", "Store", "LZMA", "BZip2"],
-            "preset" => Services.MediaPresetManagerService.Instance.GetPresetNames(),
-            "sizemode" => ["Pixels", "Percentage"],
+            "preset" => ["Convertir 1080p H.264 (Universal MP4)", "Convertir 720p H.264 (MP4 Rápido)", "Convertir 4K H.265 / HEVC", "Extraer Audio MP3", "Extraer Audio AAC (M4A)", "Extraer Audio FLAC Lossless", "Convertir a GIF Animado", "WebM VP9 Open Video", "Móvil Ultra-Comprimido H.264", "Personalizado / Argumentos Libres"],
             "reportformat" => ["HTML", "Markdown", "Text", "JSON", "CSV"],
             "reportscope" => ["Consolidated", "PerFile", "Both"],
             "groupby" => ["Directory", "Flat", "Extension", "Status"],

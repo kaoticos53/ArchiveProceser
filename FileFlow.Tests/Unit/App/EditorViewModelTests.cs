@@ -112,5 +112,23 @@ public class EditorViewModelTests
         nodeVm.SwitchCases.Should().HaveCount(1);
         nodeVm.OutputPorts.Select(p => p.Name).Should().Equal(["Imagenes", "Default"]);
     }
+
+    [Fact]
+    public void ImageOptimizerNodeViewModel_ShouldInitializeWithDefaultWidthEmptyAndHeight100Pct()
+    {
+        // Arrange
+        var imageNode = new ImageOptimizerNode();
+        using var nodeVm = new NodeViewModel(imageNode, new Point(0, 0));
+
+        // Assert
+        var widthParam = nodeVm.Parameters.FirstOrDefault(p => p.Key.Equals("Width", StringComparison.OrdinalIgnoreCase));
+        var heightParam = nodeVm.Parameters.FirstOrDefault(p => p.Key.Equals("Height", StringComparison.OrdinalIgnoreCase));
+
+        widthParam.Should().NotBeNull();
+        widthParam!.Value.Should().Be("");
+
+        heightParam.Should().NotBeNull();
+        heightParam!.Value.Should().Be("100%");
+    }
 }
 

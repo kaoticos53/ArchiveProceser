@@ -1,11 +1,14 @@
+using System.IO;
+using System.Windows;
 using FileFlow.Plugin.Archives.Services;
+using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("SmartUnpackNode_Name", "Archives", "SmartUnpackNode_Desc")]
-public class SmartUnpackNode : IFlowNode
+public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmartUnpackNode_Name", "Smart Unpack");
@@ -32,6 +35,45 @@ public class SmartUnpackNode : IFlowNode
         ["PasswordList"] = "",
         ["PasswordFile"] = ""
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("DestinationFolder", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Unpacked", DisplayOrder: 1),
+        new("CleanWrapper", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 2),
+        new("AutoDeleteAfterExtraction", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3),
+        new("RecursiveUnpack", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4),
+        new("PasswordList", ParameterEditorType.PasswordList, DefaultValue: "", DisplayOrder: 5),
+        new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 6)
+    ];
+
+    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+        new("ManagePasswords", "🔑 Claves...", "🔑", "Gestionar lista de contraseñas para descompresión de archivos cifrados")
+    ];
+
+    public void ExecuteCustomAction(string actionId, object? context = null)
+    {
+        if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
+            actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
+        {
+            string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+            var window = new PasswordManagerWindow(currentPasswords);
+            if (context is Window ownerWindow)
+            {
+                window.Owner = ownerWindow;
+            }
+            else if (Application.Current?.MainWindow != null)
+            {
+                window.Owner = Application.Current.MainWindow;
+            }
+
+            if (window.ShowDialog() == true)
+            {
+                lock (Parameters)
+                {
+                    Parameters["PasswordList"] = window.PasswordsText;
+                }
+            }
+        }
+    }
 
     public async Task ExecuteAsync(
         string inputPortName,

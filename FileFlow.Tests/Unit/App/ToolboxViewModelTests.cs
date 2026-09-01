@@ -7,6 +7,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+[Collection("Localization")]
 /// <summary>
 /// Pruebas unitarias para <see cref="ToolboxViewModel"/> y la sincronización del catálogo de nodos en la barra de herramientas.
 /// </summary>
@@ -25,7 +26,7 @@ public class ToolboxViewModelTests
         loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
 
         // Act
-        var toolbox = new ToolboxViewModel(loader);
+        using var toolbox = new ToolboxViewModel(loader);
 
         // Assert
         loader.DiscoveredNodeTypes.Should().ContainKey(typeof(OperationReportNode).FullName!);

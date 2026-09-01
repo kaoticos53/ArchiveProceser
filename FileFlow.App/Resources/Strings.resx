@@ -293,4 +293,107 @@
   <data name="StatusPausedError" xml:space="preserve"><value>Paused on Error</value></data>
   <data name="CloseInspector" xml:space="preserve"><value>Close Inspector</value></data>
   <data name="InspectorBtn" xml:space="preserve"><value>🔍 Inspector</value></data>
+
+  <!-- UI Navigation & Buttons -->
+  <data name="MenuBtn" xml:space="preserve"><value>Menu</value></data>
+  <data name="WorkflowSettingsBtn" xml:space="preserve"><value>Workflow Settings</value></data>
+  <data name="RollbackBtn" xml:space="preserve"><value>↩ Undo</value></data>
+  <data name="LogLive" xml:space="preserve"><value>⚡ Live</value></data>
+  <data name="LogExport" xml:space="preserve"><value>💾 Export</value></data>
+  <data name="LogClear" xml:space="preserve"><value>🗑 Clear</value></data>
+  <data name="LogFilterAll" xml:space="preserve"><value>All</value></data>
+  <data name="LogFilterErrors" xml:space="preserve"><value>Errors</value></data>
+  <data name="LogFilterWarnings" xml:space="preserve"><value>Warnings</value></data>
+  <data name="LogFilterInfo" xml:space="preserve"><value>Info</value></data>
+  <data name="LogFilterDebug" xml:space="preserve"><value>Debug</value></data>
+  <data name="LogColTime" xml:space="preserve"><value>Time</value></data>
+  <data name="LogColLevel" xml:space="preserve"><value>Level</value></data>
+  <data name="LogColDuration" xml:space="preserve"><value>Duration</value></data>
+  <data name="LogColNode" xml:space="preserve"><value>Node</value></data>
+  <data name="LogColFile" xml:space="preserve"><value>File</value></data>
+  <data name="LogColMessage" xml:space="preserve"><value>Message</value></data>
+  <data name="LogSearchPlaceholder" xml:space="preserve"><value>Search logs...</value></data>
+  <data name="Filter_All" xml:space="preserve"><value>All</value></data>
+  <data name="Filter_Favorites" xml:space="preserve"><value>⭐ Favorites</value></data>
+  <data name="Filter_Frequent" xml:space="preserve"><value>🔥 Most Used</value></data>
+
+  <!-- Categories -->
+  <data name="Category_FileSystem" xml:space="preserve"><value>File System</value></data>
+  <data name="Category_Archives" xml:space="preserve"><value>Archives</value></data>
+  <data name="Category_MediaDocs" xml:space="preserve"><value>Media &amp; Docs</value></data>
+  <data name="Category_Hashing" xml:space="preserve"><value>Hashing &amp; Security</value></data>
+  <data name="Category_Logic" xml:space="preserve"><value>Flow Logic</value></data>
+  <data name="Category_Integrations" xml:space="preserve"><value>Integrations</value></data>
+  <data name="Category_General" xml:space="preserve"><value>General</value></data>
+
+  <!-- Node Parameters Localized Keys (English) -->
+  <data name="Param_Width" xml:space="preserve"><value>Width</value></data>
+  <data name="Param_Height" xml:space="preserve"><value>Height</value></data>
+  <data name="Param_TargetFormat" xml:space="preserve"><value>Target Format</value></data>
+  <data name="Param_Quality" xml:space="preserve"><value>Quality</value></data>
+  <data name="Param_OnlyDownscale" xml:space="preserve"><value>Only Downscale</value></data>
+  <data name="Param_OutputDirectory" xml:space="preserve"><value>Output Directory</value></data>
+  <data name="Param_DestinationRoot" xml:space="preserve"><value>Destination Folder</value></data>
+  <data name="Param_ConflictStrategy" xml:space="preserve"><value>Conflict Strategy</value></data>
+  <data name="Param_RenameMode" xml:space="preserve"><value>Rename Mode</value></data>
+  <data name="Param_CollisionStrategy" xml:space="preserve"><value>Collision Strategy</value></data>
+  <data name="Param_ActionType" xml:space="preserve"><value>Original File Action</value></data>
+  <data name="Param_QuarantinePath" xml:space="preserve"><value>Quarantine Folder</value></data>
+  <data name="Param_SourcePath" xml:space="preserve"><value>Source Folder</value></data>
+  <data name="Param_Recursive" xml:space="preserve"><value>Include Subfolders</value></data>
+  <data name="Param_SearchPattern" xml:space="preserve"><value>Search Pattern</value></data>
+  <data name="Param_WatchRealtime" xml:space="preserve"><value>Watch Realtime</value></data>
+  <data name="Param_Operation" xml:space="preserve"><value>Operation</value></data>
+  <data name="Param_VerifyIntegrity" xml:space="preserve"><value>Verify Hash</value></data>
+  <data name="Param_CreateDirectories" xml:space="preserve"><value>Create Folders</value></data>
+  <data name="Param_DestinationDirectory" xml:space="preserve"><value>Target Directory</value></data>
+  <data name="Param_Algorithm" xml:space="preserve"><value>Algorithm</value></data>
+  <data name="Param_MetadataKey" xml:space="preserve"><value>Metadata Key</value></data>
+  <data name="Param_HashAlgorithm" xml:space="preserve"><value>Hash Algorithm</value></data>
+  <data name="Param_Scope" xml:space="preserve"><value>Scope</value></data>
+  <data name="Param_BatchSize" xml:space="preserve"><value>Batch Size</value></data>
+  <data name="Param_TimeoutMs" xml:space="preserve"><value>Timeout (ms)</value></data>
+  <data name="Param_DelayMilliseconds" xml:space="preserve"><value>Delay (ms)</value></data>
+  <data name="Param_RequiredBranchesCount" xml:space="preserve"><value>Required Branches</value></data>
+  <data name="Param_TimeoutSeconds" xml:space="preserve"><value>Timeout (sec)</value></data>
+  <data name="Param_CleanWrapper" xml:space="preserve"><value>Flatten Wrapper</value></data>
+  <data name="Param_AutoDeleteAfterExtraction" xml:space="preserve"><value>Delete Archive After</value></data>
+  <data name="Param_DestinationFolder" xml:space="preserve"><value>Destination Folder</value></data>
+  <data name="Param_ArchiveFormat" xml:space="preserve"><value>Archive Format</value></data>
+  <data name="Param_CompressionLevel" xml:space="preserve"><value>Compression Level</value></data>
+  <data name="Param_TargetPath" xml:space="preserve"><value>Target Path</value></data>
+  <data name="Param_FallbackToCreationDate" xml:space="preserve"><value>Fallback Creation Date</value></data>
+  <data name="Param_ExtractGps" xml:space="preserve"><value>Extract GPS</value></data>
+  <data name="Param_ExecutablePath" xml:space="preserve"><value>Executable Path</value></data>
+  <data name="Param_ArgumentsTemplate" xml:space="preserve"><value>Arguments</value></data>
+  <data name="Param_CaptureStdOut" xml:space="preserve"><value>Capture StdOut</value></data>
+  <data name="Param_Url" xml:space="preserve"><value>Target URL</value></data>
+  <data name="Param_HttpMethod" xml:space="preserve"><value>HTTP Method</value></data>
+  <data name="Param_PayloadTemplate" xml:space="preserve"><value>JSON Payload</value></data>
+  <data name="Param_CustomHeaders" xml:space="preserve"><value>Custom Headers</value></data>
+  <data name="Param_Preset" xml:space="preserve"><value>Preset Profile</value></data>
+  <data name="Param_QualityPreset" xml:space="preserve"><value>Quality Preset</value></data>
+  <data name="Param_CustomArguments" xml:space="preserve"><value>Custom Arguments</value></data>
+  <data name="Param_ReportFormat" xml:space="preserve"><value>Report Format</value></data>
+  <data name="Param_ReportScope" xml:space="preserve"><value>Report Scope</value></data>
+  <data name="Param_ReportFileName" xml:space="preserve"><value>Report File Name</value></data>
+  <data name="Param_Theme" xml:space="preserve"><value>Visual Theme</value></data>
+  <data name="Param_AutoOpenReport" xml:space="preserve"><value>Auto-Open Report</value></data>
+  <data name="Param_IncludeMetadata" xml:space="preserve"><value>Include Metadata</value></data>
+  <data name="Param_LogLevel" xml:space="preserve"><value>Log Level</value></data>
+  <data name="Param_MessageTemplate" xml:space="preserve"><value>Message Template</value></data>
+  <data name="Param_ExtractLineCount" xml:space="preserve"><value>Count Lines</value></data>
+  <data name="Param_DetectDocType" xml:space="preserve"><value>Detect Doc Type</value></data>
+  <data name="Param_EvaluationProperty" xml:space="preserve"><value>Evaluation Property</value></data>
+  <data name="Param_Cases" xml:space="preserve"><value>Cases</value></data>
+  <data name="Param_Property" xml:space="preserve"><value>Property</value></data>
+  <data name="Param_Operator" xml:space="preserve"><value>Operator</value></data>
+  <data name="Param_TargetValue" xml:space="preserve"><value>Target Value</value></data>
+  <data name="Param_PipelineName" xml:space="preserve"><value>Pipeline Name</value></data>
+  <data name="Param_MethodSteps" xml:space="preserve"><value>Method Steps</value></data>
+  <data name="Param_Variables" xml:space="preserve"><value>Variables</value></data>
+  <data name="Param_DeleteOriginalPath" xml:space="preserve"><value>Delete Original</value></data>
+  <data name="Param_ConfirmRecycle" xml:space="preserve"><value>Confirm Recycle</value></data>
+  <data name="Param_TargetDirectory" xml:space="preserve"><value>Target Directory</value></data>
+  <data name="Param_DeleteRootIfEmpty" xml:space="preserve"><value>Delete Root If Empty</value></data>
 </root>

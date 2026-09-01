@@ -1,3 +1,4 @@
+using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SharpCompress.Common;
@@ -31,6 +32,13 @@ public class ArchiveCompressorNode : IFlowNode
         ["ArchiveFormat"] = "ZIP", // ZIP, TAR, GZ, 7Z
         ["CompressionType"] = "Deflate" // Deflate, Store, LZMA, BZip2
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Compressed", DisplayOrder: 1),
+        new("ArchiveName", ParameterEditorType.Text, DefaultValue: @"{FileNameNoExt}_archive.zip", DisplayOrder: 2),
+        new("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "ZIP", DisplayOrder: 3, Options: ["ZIP", "TAR", "GZ", "7Z"]),
+        new("CompressionType", ParameterEditorType.Dropdown, DefaultValue: "Deflate", DisplayOrder: 4, Options: ["Deflate", "Store", "LZMA", "BZip2"])
+    ];
 
     public async Task ExecuteAsync(
         string inputPortName,

@@ -171,23 +171,47 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             SyncSwitchCasesToNodeInstance();
         }
 
+        foreach (var action in node.CustomActions)
+        {
+            CustomActions.Add(new NodeActionViewModel(action, this));
+        }
+
         LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
     }
+
+    public ObservableCollection<NodeActionViewModel> CustomActions { get; } = [];
 
     public bool IsVariableInjectorNode => NodeTypeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase);
     public bool IsSwitchCaseNode => NodeTypeName.Contains("SwitchCaseNode", StringComparison.OrdinalIgnoreCase);
     public bool IsAdvancedRenamerNode => NodeTypeName.Contains("AdvancedRenamerNode", StringComparison.OrdinalIgnoreCase);
     public bool IsFolderSourceNode => NodeTypeName.Contains("FolderSourceNode", StringComparison.OrdinalIgnoreCase);
 
-    [RelayCommand]
-    public void OpenAdvancedRenamerEditor()
+    public void ExecuteCustomAction(string actionId)
     {
-        var win = new Views.Components.AdvancedRenamerEditorWindow(this);
-        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        if (_nodeInstance is INodeCustomActionProvider provider)
         {
-            win.Owner = Application.Current.MainWindow;
+            provider.ExecuteCustomAction(actionId, Application.Current?.MainWindow);
+
+            // Sincronizar cualquier parámetro modificado por el diálogo
+            foreach (var param in Parameters)
+            {
+                if (_nodeInstance.Parameters.TryGetValue(param.Key, out var updatedVal))
+                {
+                    param.Value = updatedVal;
+                }
+            }
+            return;
         }
-        win.ShowDialog();
+
+        switch (actionId.ToLowerInvariant())
+        {
+            case "addvariable":
+                AddVariable();
+                break;
+            case "addswitchcase":
+                AddSwitchCase();
+                break;
+        }
     }
 
     [RelayCommand]

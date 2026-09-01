@@ -35,11 +35,23 @@ public record FileItemContext
     public string FileName => _fileName ??= (!string.IsNullOrWhiteSpace(_currentPath) ? Path.GetFileName(_currentPath) : string.Empty);
 
     public string OriginalPath { get; set; } = string.Empty;
+    public string PhysicalPath { get; set; } = string.Empty;
     public bool IsDirectory { get; set; }
     public long FileSizeBytes { get; set; }
     public Dictionary<string, object?> Metadata { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> Tags { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> ExecutionLog { get; init; } = [];
+
+    public string GetExistingPhysicalPath()
+    {
+        if (!string.IsNullOrWhiteSpace(PhysicalPath) && (File.Exists(PhysicalPath) || Directory.Exists(PhysicalPath)))
+            return PhysicalPath;
+        if (!string.IsNullOrWhiteSpace(OriginalPath) && (File.Exists(OriginalPath) || Directory.Exists(OriginalPath)))
+            return OriginalPath;
+        if (!string.IsNullOrWhiteSpace(CurrentPath) && (File.Exists(CurrentPath) || Directory.Exists(CurrentPath)))
+            return CurrentPath;
+        return !string.IsNullOrWhiteSpace(PhysicalPath) ? PhysicalPath : (!string.IsNullOrWhiteSpace(OriginalPath) ? OriginalPath : CurrentPath);
+    }
 
     public FileItemContext() { }
 
@@ -47,6 +59,7 @@ public record FileItemContext
     {
         CurrentPath = path;
         OriginalPath = path;
+        PhysicalPath = path;
         IsDirectory = isDirectory;
         if (!isDirectory && File.Exists(path))
         {
@@ -62,6 +75,7 @@ public record FileItemContext
     {
         CurrentPath = fileInfo.FullName;
         OriginalPath = fileInfo.FullName;
+        PhysicalPath = fileInfo.FullName;
         IsDirectory = false;
         FileSizeBytes = fileInfo.Length;
     }
@@ -70,6 +84,7 @@ public record FileItemContext
     {
         CurrentPath = dirInfo.FullName;
         OriginalPath = dirInfo.FullName;
+        PhysicalPath = dirInfo.FullName;
         IsDirectory = true;
         FileSizeBytes = 0;
     }
@@ -87,6 +102,7 @@ public record FileItemContext
             Id = Id,
             CurrentPath = CurrentPath,
             OriginalPath = OriginalPath,
+            PhysicalPath = PhysicalPath,
             IsDirectory = IsDirectory,
             FileSizeBytes = FileSizeBytes,
             Metadata = new Dictionary<string, object?>(Metadata.Count, StringComparer.OrdinalIgnoreCase),

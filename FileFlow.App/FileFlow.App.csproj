@@ -30,19 +30,18 @@
 
   <Target Name="CopyPlugins" AfterTargets="Build;Publish">
     <PropertyGroup>
-      <PluginsDestDir Condition="'$(PluginsDestDir)' == '' AND '$(PublishDir)' != ''">$(PublishDir)</PluginsDestDir>
-      <PluginsDestDir Condition="'$(PluginsDestDir)' == ''">$(OutDir)</PluginsDestDir>
+      <PluginsTargetFolder>$(TargetDir)Plugins\</PluginsTargetFolder>
     </PropertyGroup>
-    <MakeDir Directories="$(PluginsDestDir)Plugins" />
+    <MakeDir Directories="$(PluginsTargetFolder)" />
     <ItemGroup>
-      <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0\*.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0\*.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\net9.0\*.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\net9.0\*.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\net9.0\*.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0\*.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.FileSystem.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Archives.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Integrations.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\net9.0\FileFlow.Plugin.Images.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\net9.0\FileFlow.Plugin.Logic.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\net9.0\FileFlow.Plugin.Hashing.*" />
     </ItemGroup>
-    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsDestDir)Plugins\" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsTargetFolder)" SkipUnchangedFiles="false" />
   </Target>
 </Project>
 

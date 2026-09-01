@@ -1,3 +1,4 @@
+using System.IO;
 using FileFlow.Sdk;
 using SharpCompress.Archives;
 using SharpCompress.Common;

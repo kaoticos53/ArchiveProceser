@@ -14,7 +14,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
 
                 <!-- Dropdown ComboBox for parameters with options -->
                 <Grid Grid.Column="1" Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -43,6 +43,33 @@
                             FontSize="9.5"
                             Cursor="Hand"
                             ToolTip="Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)" />
+                </Grid>
+
+                <!-- Slider for Numeric Range Parameters (e.g. Quality) -->
+                <Grid Grid.Column="1" 
+                      Visibility="{Binding IsSlider, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      HorizontalAlignment="Stretch">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="38" />
+                    </Grid.ColumnDefinitions>
+
+                    <Slider Grid.Column="0"
+                            Value="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Minimum="{Binding SliderMin}"
+                            Maximum="{Binding SliderMax}"
+                            SmallChange="{Binding SliderStep}"
+                            LargeChange="10"
+                            IsSnapToTickEnabled="True"
+                            TickFrequency="{Binding SliderStep}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,6,0" />
+
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="2,1"
+                             TextAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
 
                 <!-- CheckBox for Boolean parameters -->

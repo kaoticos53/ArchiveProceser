@@ -26,7 +26,7 @@
                         ToolTip="Abrir Menú Principal de Navegación">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="☰" FontSize="15" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Menú" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MenuBtn]}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
 
@@ -40,7 +40,7 @@
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
 
                 <!-- Compact Dry Run Toggle Button -->
-                <ToggleButton Content="🧪 Modo Prueba" 
+                <ToggleButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DryRun]}" 
                               IsChecked="{Binding IsDryRun}" 
                               Style="{DynamicResource SecondaryToggleButton}" 
                               Padding="8,5" 
@@ -55,7 +55,7 @@
                         ToolTip="Configurar la Ruta de Salida Global y opciones del proyecto">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚙️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Ajustes del Flujo" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[WorkflowSettingsBtn]}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
 
@@ -108,7 +108,7 @@
                         ToolTip="Detener ejecución (Shift+F5)" />
 
                 <!-- Rollback / Undo Button -->
-                <Button Content="↩ Deshacer" 
+                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RollbackBtn]}" 
                         Command="{Binding RollbackLastExecutionCommand}" 
                         Style="{StaticResource SecondaryButton}" 
                         Margin="8,0,0,0" 

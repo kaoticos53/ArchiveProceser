@@ -8,7 +8,40 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **277 / 277 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **288 / 288 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit).
+- **Encapsulación Total de UI en Plugins (Arquitectura Zero-Touch en FileFlow.App)**:
+  - Cada plugin (`FileFlow.Plugin.*`) es un módulo 100% autónomo y auto-contenido con soporte WPF en .NET 9 (`net9.0-windows`).
+  - Todas las ventanas modales, vistas XAML y servicios de soporte (`AdvancedRenamerEditorWindow`, `MediaPresetManagerWindow`, `PasswordManagerWindow`) residen dentro del directorio `UI/` de su respectivo plugin.
+  - El SDK despacha las acciones modales de forma universal mediante `INodeCustomActionProvider` (`ExecuteCustomAction`), desacoplando por completo la aplicación anfitriona (`FileFlow.App`).
+  - Para crear o modificar un plugin nuevo (con o sin interfaz gráfica), **solo se escribe código dentro del directorio del propio plugin, sin tocar `FileFlow.App`**.
+- **Desacoplamiento Total de Vistas XAML y Sistema de CustomActions**:
+  - `NodeActionDescriptor` en `FileFlow.Sdk` para que cada nodo declare sus herramientas modales y botones de acción avanzada (`IFlowNode.CustomActions`).
+  - Erradicados todos los condicionales hardcodeados (`IsAdvancedRenamerNode`, `IsVariableInjectorNode`, `IsSwitchCaseNode`) de `NodeCardView.xaml` y `NodeInspectorPanelView.xaml`, reemplazándolos por un despachador genérico `ItemsControl ItemsSource="{Binding CustomActions}"`.
+- **Arquitectura Híbrida de Plugins con Esquema Declarativo de Parámetros (Opción C)**:
+  - `NodeParameterDescriptor` y `ParameterEditorType` en `FileFlow.Sdk` con soporte nativo `ParameterDescriptors` en `IFlowNode`.
+  - Co-ubicación total: cada plugin (`FileFlow.Plugin.*`) declara el orden, tipos de editor (Slider, Dropdown, Toggle, FolderPath, FilePath), valores por defecto y opciones de sus nodos en su propio directorio.
+  - `NodeParameterManager.cs` en `FileFlow.App` transformado en un motor de renderizado universal guiado por esquemas (*Schema-Driven UI*), eliminando el código acoplado y filtrando rigurosamente cualquier clave residual legada (`Pattern`, `NameTemplate`, `CaseTransformation`, `MethodSteps`).
+- **Dimensiones por Defecto de ImageOptimizerNode**:
+  - `Height` configurado en `"100%"` y `Width` en `""` (*Automático*) por defecto, garantizando la preservación completa del tamaño original y la relación de aspecto sin deformación.
+- **Localización Dinámica y Reactiva al 100% en la Interfaz Gráfica**:
+  - `NodeParameterViewModel.DisplayName`: Mapeo y traducción reactiva de los parámetros de los 27 nodos del sistema (`Width` $\rightarrow$ `Ancho` / `Width`, `Quality` $\rightarrow$ `Calidad` / `Quality`, `DestinationRoot` $\rightarrow$ `Carpeta Destino` / `Destination Folder`, etc.) manteniendo las claves técnicas de código en inglés.
+  - `LocalizationManager.cs`: Notificación `OnPropertyChanged("Item[]")` y `OnPropertyChanged("Item")` para refrescar instantáneamente todos los bindings XAML en caliente sin reiniciar la aplicación.
+  - Vistas XAML actualizadas (`ControlBarView`, `LogView`, `NodeInspectorPanelView`, `NodeToolboxView`) eliminando cadenas fijas.
+  - Diccionarios completos de recursos en español e inglés (`Strings.resx` y `Strings.es.resx`).
+  - Incorporada como **Regla de Diseño e Ingeniería Obligatoria** en `.agents/rules/rules.md`, `AGENTS.md`, `GEMINI.md` y `docs/architecture.md` (ADR-005).
+- **Principio de Inmutabilidad del Archivo de Origen (*Source Immutability by Default*)**:
+  - Incorporadas las reglas maestras de seguridad en `.agents/rules/rules.md`, `AGENTS.md`, `GEMINI.md` y `docs/architecture.md` (ADR-004).
+  - Los flujos son no destructivos por defecto. Los archivos originales permanecen inmutables.
+  - La alteración del archivo de origen queda centralizada en `OriginalFileActionNode` con soporte completo para `Keep`, `MoveToRecycleBin` (API Shell nativa), `MoveToQuarantine` y `PermanentDelete`.
+  - `FileRelocatorNode` configurado con `Operation = "Copy"` por defecto.
+- **Desacoplamiento de Renombrado Virtual en AdvancedRenamerNode y Destino Final**:
+  - Incorporado el parámetro `RenameMode` (`Virtual` por defecto, o `DirectInPlace`).
+  - En modo `Virtual`, `AdvancedRenamerNode` proyecta el nuevo nombre en `FileItemContext` sin alterar el archivo original en disco.
+  - `DestinationSinkNode` y `FileRelocatorNode` leen de forma transparente desde `GetExistingPhysicalPath()` y copian/mueven el archivo con el nuevo nombre a la carpeta destino, preservando el archivo original intacto.
+- **Rediseño Inteligente de ImageOptimizerNode**:
+  - `Width` y `Height` situados en las dos primeras posiciones.
+  - Parseo unificado de dimensiones: soporte automático de píxeles (`1920`, `800px`), porcentajes (`50%`) y auto-cálculo para preservar la relación de aspecto.
+  - Eliminados los campos redundantes `SizeMode`, `ScalePercentage`, `ScalePercentageY` y `MaintainAspectRatio`.
 - **Optimizaciones de Seguridad, Recursos y Concurrencia (.NET 10 / C# 13)**:
   - Disposición determinista de `archive?.Dispose()` en `SafeArchiveExtractor.cs`.
   - Configuración de `SocketsHttpHandler` con `PooledConnectionLifetime` en `WebhookNotificationNode.cs`.

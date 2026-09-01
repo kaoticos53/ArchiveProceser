@@ -1,7 +1,8 @@
 using System.IO;
 using System.Windows;
+using Microsoft.Win32;
 
-namespace FileFlow.App.Views.Components;
+namespace FileFlow.Plugin.Archives.UI.Views;
 
 public partial class PasswordManagerWindow : Window
 {
@@ -10,7 +11,6 @@ public partial class PasswordManagerWindow : Window
     public PasswordManagerWindow(string currentPasswords)
     {
         InitializeComponent();
-        Services.WindowThemeHelper.ApplyThemeToWindow(this);
         if (!string.IsNullOrWhiteSpace(currentPasswords))
         {
             var lines = currentPasswords.Split([';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -26,13 +26,13 @@ public partial class PasswordManagerWindow : Window
 
     private void UpdateCount()
     {
-        var lines = TxtPasswordEditor.Text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        var lines = TxtPasswordEditor.Text.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries);
         TxtPasswordCount.Text = $"{lines.Length} clave(s) cargada(s)";
     }
 
     private void ImportFromTxt_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        var dialog = new OpenFileDialog
         {
             Title = "Importar lista de contraseñas",
             Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*"
@@ -61,7 +61,7 @@ public partial class PasswordManagerWindow : Window
 
     private void ExportToTxt_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.SaveFileDialog
+        var dialog = new SaveFileDialog
         {
             Title = "Exportar lista de contraseñas",
             Filter = "Archivos de texto (*.txt)|*.txt",
@@ -85,7 +85,7 @@ public partial class PasswordManagerWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        var lines = TxtPasswordEditor.Text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lines = TxtPasswordEditor.Text.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         PasswordsText = string.Join("; ", lines);
         DialogResult = true;
         Close();

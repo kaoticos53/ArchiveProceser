@@ -3,21 +3,18 @@ using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using FileFlow.App.Models;
-using FileFlow.App.Services;
+using FileFlow.Plugin.FileSystem.UI.Models;
+using FileFlow.Plugin.FileSystem.UI.Services;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
 using Microsoft.Win32;
 
-namespace FileFlow.App.ViewModels;
-
-public sealed record PreviewRowItem(string OriginalName, string ResultName, bool IsModified, string StatusMessage);
-
-public sealed record TagPickerItem(string Category, string Tag, string Description);
+namespace FileFlow.Plugin.FileSystem.UI.ViewModels;
 
 public partial class AdvancedRenamerEditorViewModel : ObservableObject
 {
     private readonly RenamerLivePreviewService _previewService = new();
-    private readonly NodeViewModel _nodeViewModel;
+    private readonly IFlowNode _node;
 
     [ObservableProperty]
     private string _pipelineName = "Pipeline Predeterminado";
@@ -49,9 +46,9 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     public IReadOnlyList<UnicodeNormalizationMode> NormalizationModes { get; } = Enum.GetValues<UnicodeNormalizationMode>();
     public IReadOnlyList<NumberPaddingTarget> NumberPaddingTargets { get; } = Enum.GetValues<NumberPaddingTarget>();
 
-    public AdvancedRenamerEditorViewModel(NodeViewModel nodeViewModel)
+    public AdvancedRenamerEditorViewModel(IFlowNode node)
     {
-        _nodeViewModel = nodeViewModel;
+        _node = node;
         LoadFromNode();
         LoadPresets();
         LoadAvailableTags();
@@ -60,18 +57,18 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
 
     private void LoadFromNode()
     {
-        if (_nodeViewModel.NodeInstance.Parameters.TryGetValue("PipelineName", out var pnVal) && pnVal != null)
+        if (_node.Parameters.TryGetValue("PipelineName", out var pnVal) && pnVal != null)
         {
             PipelineName = pnVal.ToString()!;
         }
 
-        if (_nodeViewModel.NodeInstance.Parameters.TryGetValue("CollisionStrategy", out var colVal) && colVal != null)
+        if (_node.Parameters.TryGetValue("CollisionStrategy", out var colVal) && colVal != null)
         {
             CollisionStrategy = colVal.ToString()!;
         }
 
         string stepsJson = string.Empty;
-        if (_nodeViewModel.NodeInstance.Parameters.TryGetValue("MethodSteps", out var msVal) && msVal != null)
+        if (_node.Parameters.TryGetValue("MethodSteps", out var msVal) && msVal != null)
         {
             stepsJson = msVal.ToString()!;
         }
@@ -80,9 +77,8 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
 
         if (loadedSteps.Count == 0)
         {
-            // Migrar parámetros clásicos si existen
-            string pattern = _nodeViewModel.NodeInstance.Parameters.TryGetValue("Pattern", out var pVal) && pVal != null ? pVal.ToString()! : "{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}";
-            string caseTr = _nodeViewModel.NodeInstance.Parameters.TryGetValue("CaseTransformation", out var ctVal) && ctVal != null ? ctVal.ToString()! : "None";
+            string pattern = _node.Parameters.TryGetValue("Pattern", out var pVal) && pVal != null ? pVal.ToString()! : "{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}";
+            string caseTr = _node.Parameters.TryGetValue("CaseTransformation", out var ctVal) && ctVal != null ? ctVal.ToString()! : "None";
 
             loadedSteps.Add(new RenameMethodStep
             {
@@ -125,7 +121,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     private void LoadAvailableTags()
     {
         AvailableTags.Clear();
-        var tags = RenamerTagCatalogService.GetAvailableTags(_nodeViewModel);
+        var tags = RenamerTagCatalogService.GetAvailableTags();
         foreach (var t in tags)
         {
             AvailableTags.Add(t);
@@ -150,25 +146,18 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
                 RenameMethodType.SearchReplace => "Buscar y Reemplazar",
                 RenameMethodType.Insert => "Insertar Texto",
                 RenameMethodType.Remove => "Eliminar Caracteres",
-                RenameMethodType.CaseConversion => "Modificar Mayúsculas",
+                RenameMethodType.CaseConversion => "Convertir Mayúsculas",
                 RenameMethodType.Numbering => "Numeración Incremental",
                 RenameMethodType.ReplaceList => "Tabla de Sustituciones",
-                RenameMethodType.TrimClean => "Limpieza y Normalización",
-                RenameMethodType.NormalizeNumbers => "Normalizar Números (01, 02...)",
-                _ => "Paso de Renombrado"
-            },
-            Pattern = methodType == RenameMethodType.NewName ? "<FileNameNoExt>_<Inc Nr:001>" : string.Empty
+                RenameMethodType.TrimClean => "Limpieza y Recorte",
+                RenameMethodType.NormalizeNumbers => "Rellenar Números (01, 02...)",
+                _ => "Nuevo Método"
+            }
         };
-
-        if (methodType == RenameMethodType.NormalizeNumbers)
-        {
-            newStep.NumberPaddingDigits = 2;
-            newStep.NumberTarget = NumberPaddingTarget.AllNumbers;
-        }
 
         if (methodType == RenameMethodType.ReplaceList)
         {
-            newStep.ReplaceList.Add(new ReplaceListEntry { Find = "borrador", ReplaceWith = "FINAL" });
+            newStep.ReplaceList.Add(new ReplaceListEntry { Find = "buscar", ReplaceWith = "reemplazar" });
         }
 
         Steps.Add(newStep);
@@ -179,34 +168,28 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [RelayCommand]
     public void RemoveStep(RenameMethodStep? step)
     {
-        if (step == null) step = SelectedStep;
         if (step == null) return;
-
-        int index = Steps.IndexOf(step);
+        int idx = Steps.IndexOf(step);
         Steps.Remove(step);
-
         if (Steps.Count > 0)
         {
-            SelectedStep = Steps[Math.Min(index, Steps.Count - 1)];
+            SelectedStep = Steps[Math.Clamp(idx, 0, Steps.Count - 1)];
         }
         else
         {
             SelectedStep = null;
         }
-
         GenerateLivePreview();
     }
 
     [RelayCommand]
     public void MoveStepUp(RenameMethodStep? step)
     {
-        if (step == null) step = SelectedStep;
         if (step == null) return;
-
-        int index = Steps.IndexOf(step);
-        if (index > 0)
+        int idx = Steps.IndexOf(step);
+        if (idx > 0)
         {
-            Steps.Move(index, index - 1);
+            Steps.Move(idx, idx - 1);
             SelectedStep = step;
             GenerateLivePreview();
         }
@@ -215,38 +198,38 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [RelayCommand]
     public void MoveStepDown(RenameMethodStep? step)
     {
-        if (step == null) step = SelectedStep;
         if (step == null) return;
-
-        int index = Steps.IndexOf(step);
-        if (index < Steps.Count - 1 && index >= 0)
+        int idx = Steps.IndexOf(step);
+        if (idx >= 0 && idx < Steps.Count - 1)
         {
-            Steps.Move(index, index + 1);
+            Steps.Move(idx, idx + 1);
             SelectedStep = step;
             GenerateLivePreview();
         }
     }
 
     [RelayCommand]
-    public void ApplyPreset(RenamerPreset? preset)
+    public void DuplicateStep(RenameMethodStep? step)
     {
-        if (preset == null) return;
+        if (step == null) return;
+        var clone = step.Clone();
+        clone.Name = $"{step.Name} (Copia)";
 
-        var result = MessageBox.Show(
-            $"¿Deseas reemplazar los pasos actuales con el preset '{preset.Name}'?",
-            "Cargar Preset",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+        int idx = Steps.IndexOf(step);
+        Steps.Insert(idx + 1, clone);
+        SelectedStep = clone;
+        GenerateLivePreview();
+    }
 
-        if (result != MessageBoxResult.Yes) return;
-
-        PipelineName = preset.Name;
+    partial void OnSelectedPresetChanged(RenamerPreset? value)
+    {
+        if (value == null) return;
+        PipelineName = value.Name;
         Steps.Clear();
-        foreach (var s in preset.Steps)
+        foreach (var s in value.Steps)
         {
             Steps.Add(s);
         }
-
         SelectedStep = Steps.FirstOrDefault();
         GenerateLivePreview();
     }
@@ -340,7 +323,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     public void GenerateLivePreview()
     {
         PreviewItems.Clear();
-        var previewList = _previewService.GeneratePreview(_nodeViewModel, Steps.ToList(), out string srcDesc);
+        var previewList = _previewService.GeneratePreview(Steps.ToList(), out string srcDesc);
         PreviewSourceDescription = srcDesc;
 
         foreach (var p in previewList)
@@ -359,29 +342,11 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
 
         string serializedSteps = RenamerPresetService.SerializeSteps(Steps.ToList());
 
-        _nodeViewModel.NodeInstance.Parameters["PipelineName"] = PipelineName;
-        _nodeViewModel.NodeInstance.Parameters["CollisionStrategy"] = CollisionStrategy;
-        _nodeViewModel.NodeInstance.Parameters["MethodSteps"] = serializedSteps;
-
-        // Actualizar parámetros para reflejarse en el Canvas e Inspector
-        var pnParam = _nodeViewModel.Parameters.FirstOrDefault(p => p.Key.Equals("PipelineName", StringComparison.OrdinalIgnoreCase));
-        if (pnParam != null)
+        lock (_node.Parameters)
         {
-            pnParam.Value = PipelineName;
-        }
-        else
-        {
-            _nodeViewModel.Parameters.Insert(0, new NodeParameterViewModel("PipelineName", PipelineName, nodeOwner: _nodeViewModel));
-        }
-
-        var csParam = _nodeViewModel.Parameters.FirstOrDefault(p => p.Key.Equals("CollisionStrategy", StringComparison.OrdinalIgnoreCase));
-        if (csParam != null)
-        {
-            csParam.Value = CollisionStrategy;
-        }
-        else
-        {
-            _nodeViewModel.Parameters.Add(new NodeParameterViewModel("CollisionStrategy", CollisionStrategy, nodeOwner: _nodeViewModel));
+            _node.Parameters["PipelineName"] = PipelineName;
+            _node.Parameters["CollisionStrategy"] = CollisionStrategy;
+            _node.Parameters["MethodSteps"] = serializedSteps;
         }
 
         window.DialogResult = true;

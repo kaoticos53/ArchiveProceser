@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace FileFlow.App.Services;
+namespace FileFlow.Plugin.Integrations.UI.Services;
 
 public class MediaPreset
 {
@@ -138,7 +138,6 @@ public class MediaPresetManagerService
         {
             var options = new JsonSerializerOptions { WriteIndented = true };
             string json = JsonSerializer.Serialize(_presets, options);
-            File.ReadAllText(_presetsFilePath); // Test read permission
             File.WriteAllText(_presetsFilePath, json);
         }
         catch
@@ -149,8 +148,8 @@ public class MediaPresetManagerService
 
     public static List<MediaPreset> GetDefaultPresets()
     {
-        return new List<MediaPreset>
-        {
+        return
+        [
             new MediaPreset
             {
                 Id = "preset-mp3",
@@ -251,6 +250,6 @@ public class MediaPresetManagerService
                 Category = "Custom",
                 IsSystemDefault = true
             }
-        };
+        ];
     }
 }

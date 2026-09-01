@@ -37,7 +37,7 @@
 
                 <!-- Grupo Izquierdo: Título y Filtros Rápidos por Severidad -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="🖥️ Consola" 
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ExecutionConsoleTitle]}" 
                                FontWeight="Bold" 
                                Foreground="{DynamicResource TextPrimaryBrush}" 
                                FontSize="12.5" 
@@ -52,7 +52,7 @@
                             Padding="2" 
                             Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton Content="Todos" 
+                            <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogFilterAll]}" 
                                          GroupName="LogFilterGroup"
                                          IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=All, Mode=TwoWay}"
                                          Style="{StaticResource FilterRadioButton}" 
@@ -63,7 +63,9 @@
                                          Style="{StaticResource FilterRadioButton}" 
                                          Padding="6,2" FontSize="10.5" Cursor="Hand">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🔴 Errores (" FontWeight="SemiBold" />
+                                    <TextBlock Text="🔴 " />
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogFilterErrors]}" FontWeight="SemiBold" />
+                                    <TextBlock Text=" (" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding ErrorCount}" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" />
                                     <TextBlock Text=")" FontWeight="SemiBold" />
                                 </StackPanel>
@@ -74,7 +76,9 @@
                                          Style="{StaticResource FilterRadioButton}" 
                                          Padding="6,2" FontSize="10.5" Cursor="Hand">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🟠 Warn (" FontWeight="SemiBold" />
+                                    <TextBlock Text="🟠 " />
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogFilterWarnings]}" FontWeight="SemiBold" />
+                                    <TextBlock Text=" (" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding WarningCount}" FontWeight="Bold" Foreground="{DynamicResource AccentWarningBrush}" />
                                     <TextBlock Text=")" FontWeight="SemiBold" />
                                 </StackPanel>
@@ -85,7 +89,9 @@
                                          Style="{StaticResource FilterRadioButton}" 
                                          Padding="6,2" FontSize="10.5" Cursor="Hand">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🔵 Info (" FontWeight="SemiBold" />
+                                    <TextBlock Text="🔵 " />
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogFilterInfo]}" FontWeight="SemiBold" />
+                                    <TextBlock Text=" (" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding InfoCount}" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
                                     <TextBlock Text=")" FontWeight="SemiBold" />
                                 </StackPanel>
@@ -96,7 +102,9 @@
                                          Style="{StaticResource FilterRadioButton}" 
                                          Padding="6,2" FontSize="10.5" Cursor="Hand">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🟣 Debug (" FontWeight="SemiBold" />
+                                    <TextBlock Text="🟣 " />
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogFilterDebug]}" FontWeight="SemiBold" />
+                                    <TextBlock Text=" (" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding DebugCount}" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" />
                                     <TextBlock Text=")" FontWeight="SemiBold" />
                                 </StackPanel>
@@ -126,7 +134,7 @@
                             
                             <!-- Placeholder -->
                             <TextBlock Grid.Column="1" 
-                                       Text="Filtrar por ID, nodo, archivo..." 
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogSearchPlaceholder]}" 
                                        Foreground="{DynamicResource TextSecondaryBrush}" 
                                        FontSize="10.5" 
                                        VerticalAlignment="Center"
@@ -186,7 +194,7 @@
 
                 <!-- Grupo Derecho: Controles de Depuración (En Vivo, Exportar, Limpiar) -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ToggleButton Content="⚡ En Vivo" 
+                    <ToggleButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogLive]}" 
                                   IsChecked="{Binding IsLiveMode, Mode=TwoWay}" 
                                   Style="{StaticResource SecondaryToggleButton}" 
                                   Padding="8,3" 
@@ -196,7 +204,7 @@
                                   Cursor="Hand" 
                                   ToolTip="Alternar desplazamiento en vivo automático" />
 
-                    <Button Content="💾 Exportar" 
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogExport]}" 
                             Command="{Binding ExportLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
                             Padding="8,3" 
@@ -204,7 +212,7 @@
                             Margin="0,0,6,0"
                             ToolTip="Exportar historial de ejecución a archivo .log" />
 
-                    <Button Content="🗑 Limpiar" 
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogClear]}" 
                             Command="{Binding ClearLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
                             Padding="8,3" 
@@ -305,7 +313,7 @@
                     <!-- Hora -->
                     <DataGridTemplateColumn Width="95">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Hora ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Timestamp" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColTime], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Timestamp" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -317,7 +325,7 @@
                     <!-- Nivel (Pill Badge con Fondo Translúcido) -->
                     <DataGridTemplateColumn Width="65">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Nivel ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Level" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColLevel], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Level" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -339,7 +347,7 @@
                     <!-- Nodo -->
                     <DataGridTemplateColumn Width="125">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Nodo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="NodeName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColNode], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="NodeName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -351,7 +359,7 @@
                     <!-- ID Fichero (Badge clicable para trazabilidad de extremo a extremo) -->
                     <DataGridTemplateColumn Width="85">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="ID Flujo ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="ItemId" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
+                            <Button Content="ID ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="ItemId" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -378,7 +386,7 @@
                     <!-- Fichero -->
                     <DataGridTemplateColumn Width="150">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Fichero ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="FileName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColFile], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="FileName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -404,7 +412,7 @@
                     <!-- Duración -->
                     <DataGridTemplateColumn Width="80">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Duración ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="DurationMs" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Cursor="Hand" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColDuration], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="DurationMs" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -416,7 +424,7 @@
                     <!-- Mensaje -->
                     <DataGridTemplateColumn Width="*">
                         <DataGridTemplateColumn.Header>
-                            <Button Content="Mensaje ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Message" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColMessage], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Message" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

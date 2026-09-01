@@ -1,4 +1,5 @@
 using FileFlow.App.Services;
+using FileFlow.Plugin.Integrations.UI.Services;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.App;

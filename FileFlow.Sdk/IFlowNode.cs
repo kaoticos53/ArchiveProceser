@@ -10,6 +10,17 @@ public interface IFlowNode
     IReadOnlyList<NodePort> Outputs { get; }
     Dictionary<string, object?> Parameters { get; }
 
+    /// <summary>
+    /// Descriptores de esquema de parámetros para renderizado y ordenamiento automático en la UI.
+    /// Si un nodo no los implementa, la UI renderizará los parámetros a partir del diccionario <see cref="Parameters"/>.
+    /// </summary>
+    IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => Array.Empty<NodeParameterDescriptor>();
+
+    /// <summary>
+    /// Descriptores de acciones de herramientas o botones modales avanzados expuestos por el nodo.
+    /// </summary>
+    IReadOnlyList<NodeActionDescriptor> CustomActions => Array.Empty<NodeActionDescriptor>();
+
     Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,

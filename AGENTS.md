@@ -61,7 +61,17 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
    - Liberación determinista de recursos con `await using` y `using var`.
    - Inyección de dependencias nativa (`Microsoft.Extensions.DependencyInjection`).
 
-4. **Optimización de Tokens para Agentes:**
+4. **Inmutabilidad del Archivo de Origen por Defecto (Seguridad en Pipeline):**
+   - Los pipelines son **no destructivos por defecto**: los archivos de entrada (`OriginalPath`) no se modifican ni se destruyen.
+   - Los nodos de transformación crean archivos nuevos en carpetas destino (`OutputDirectory`, `DestinationFolder`) o transforman metadatos en memoria (`Virtual`).
+   - La manipulación del archivo de origen (conservar, mover a cuarentena, enviar a papelera o borrar) está centralizada exclusivamente en `OriginalFileActionNode`.
+
+5. **Localización e Internacionalización Obligatoria de la UI (i18n):**
+   - Todos los textos visibles en la interfaz de usuario (`FileFlow.App`), incluyendo menús, botones, telemetría, tooltips, nombres de categorías, nombres de nodos y etiquetas de parámetros de configuración (`DisplayName`), **deben soportar localización dinámica** (actualmente **Español (`es-ES`)** e **Inglés (`en-US`)**).
+   - Las claves y variables en el código se mantienen en inglés, mientras que la UI consume `LocalizationManager.Instance` y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
+   - El cambio de idioma debe reflejarse en caliente e instantáneamente en todas las vistas sin reiniciar la aplicación.
+
+6. **Optimización de Tokens para Agentes:**
    - **No leer archivos completos preventivamente.** Utilizar herramientas de búsqueda (`grep_search`, `find_symbol`) para inspeccionar líneas o funciones específicas.
 
 ---

@@ -1,12 +1,14 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Windows;
+using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("MediaTranscoderNode_Name", "MediaDocs", "MediaTranscoderNode_Desc")]
-public class MediaTranscoderNode : IFlowNode
+public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
@@ -30,6 +32,33 @@ public class MediaTranscoderNode : IFlowNode
         ["DestinationDirectory"] = @"{RelativeDir}\Transcoded",
         ["CustomArguments"] = "-c:v libx264 -crf 22 -preset medium -c:a aac -b:a 192k"
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("Preset", ParameterEditorType.MediaPreset, DefaultValue: "Convertir 1080p H.264 (Universal MP4)", DisplayOrder: 1),
+        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Transcoded", DisplayOrder: 2),
+        new("CustomArguments", ParameterEditorType.Text, DefaultValue: "-c:v libx264 -crf 22 -preset medium -c:a aac -b:a 192k", DisplayOrder: 3)
+    ];
+
+    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+        new("ManageMediaPresets", "🎬 Presets...", "🎬", "Gestionar y personalizar presets de transcodificación FFmpeg")
+    ];
+
+    public void ExecuteCustomAction(string actionId, object? context = null)
+    {
+        if (actionId.Equals("ManageMediaPresets", StringComparison.OrdinalIgnoreCase))
+        {
+            var window = new MediaPresetManagerWindow();
+            if (context is Window ownerWindow)
+            {
+                window.Owner = ownerWindow;
+            }
+            else if (Application.Current?.MainWindow != null)
+            {
+                window.Owner = Application.Current.MainWindow;
+            }
+            window.ShowDialog();
+        }
+    }
 
     public async Task ExecuteAsync(
         string inputPortName,

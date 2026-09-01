@@ -1,18 +1,19 @@
 using System.Windows;
 using System.Windows.Controls;
-using FileFlow.App.ViewModels;
+using FileFlow.Plugin.FileSystem.UI.ViewModels;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
 
-namespace FileFlow.App.Views.Components;
+namespace FileFlow.Plugin.FileSystem.UI.Views;
 
 public partial class AdvancedRenamerEditorWindow : Window
 {
     private readonly AdvancedRenamerEditorViewModel _viewModel;
 
-    public AdvancedRenamerEditorWindow(NodeViewModel nodeViewModel)
+    public AdvancedRenamerEditorWindow(IFlowNode node)
     {
         InitializeComponent();
-        _viewModel = new AdvancedRenamerEditorViewModel(nodeViewModel);
+        _viewModel = new AdvancedRenamerEditorViewModel(node);
         DataContext = _viewModel;
         UpdateVisibleFormPanels();
     }
@@ -91,7 +92,6 @@ public partial class AdvancedRenamerEditorWindow : Window
     {
         if (_viewModel.SelectedPreset != null)
         {
-            _viewModel.ApplyPresetCommand.Execute(_viewModel.SelectedPreset);
             UpdateVisibleFormPanels();
         }
     }
@@ -196,53 +196,45 @@ public partial class AdvancedRenamerEditorWindow : Window
         }
     }
 
-    private void OpenRegexHelper_Click(object sender, RoutedEventArgs e)
+    private void OpenRegexHelper_SearchReplace_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement button)
+        if (_viewModel.SelectedStep == null) return;
+        string initialPattern = _viewModel.SelectedStep.SearchText ?? string.Empty;
+        string initialReplacement = _viewModel.SelectedStep.ReplaceText ?? string.Empty;
+        string sampleText = "video_temporada_01_capitulo_05_1080p.mkv\nDocumento_Final (v2) [2026].pdf\n[Fansub] Anime 01.mp4";
+
+        var regexWindow = new RegexHelperWindow(initialPattern, initialReplacement, sampleText)
         {
-            TextBox? targetTextBox = button.Tag as TextBox;
-            bool isReplaceList = button.Tag is string str && str == "ReplaceList";
+            Owner = this
+        };
 
-            string currentPattern = targetTextBox?.Text ?? string.Empty;
-            string currentReplacement = (_viewModel.SelectedStep?.MethodType == RenameMethodType.SearchReplace) 
-                ? (_viewModel.SelectedStep.ReplaceText ?? string.Empty) 
-                : string.Empty;
+        if (regexWindow.ShowDialog() == true)
+        {
+            _viewModel.SelectedStep.SearchText = regexWindow.ResultPattern;
+            _viewModel.SelectedStep.ReplaceText = regexWindow.ResultReplacement;
+            _viewModel.SelectedStep.UseRegex = true;
+            if (TxtSearchPattern != null) TxtSearchPattern.Text = regexWindow.ResultPattern;
+            if (TxtReplacePattern != null) TxtReplacePattern.Text = regexWindow.ResultReplacement;
+            _viewModel.GenerateLivePreview();
+        }
+    }
 
-            var dialog = new RegexHelperWindow(currentPattern, currentReplacement)
-            {
-                Owner = this
-            };
+    private void OpenRegexHelper_NormalizeNumbers_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedStep == null) return;
+        string initialPattern = _viewModel.SelectedStep.NumberRegexPattern ?? string.Empty;
+        string sampleText = "serie_1x2_720p.mkv\ncapitulo_5.mp4\ntrack 3 - cancion.mp3";
 
-            if (dialog.ShowDialog() == true)
-            {
-                if (targetTextBox != null)
-                {
-                    targetTextBox.Text = dialog.ResultPattern;
-                    targetTextBox.Focus();
-                    targetTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        var regexWindow = new RegexHelperWindow(initialPattern, string.Empty, sampleText)
+        {
+            Owner = this
+        };
 
-                    if (_viewModel.SelectedStep?.MethodType == RenameMethodType.SearchReplace && targetTextBox == TxtSearchPattern)
-                    {
-                        _viewModel.SelectedStep.UseRegex = true;
-                        if (!string.IsNullOrEmpty(dialog.ResultReplacement))
-                        {
-                            TxtReplacePattern.Text = dialog.ResultReplacement;
-                            TxtReplacePattern.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
-                        }
-                    }
-                }
-                else if (isReplaceList && _viewModel.SelectedStep != null)
-                {
-                    _viewModel.SelectedStep.ReplaceList.Add(new ReplaceListEntry
-                    {
-                        Find = dialog.ResultPattern,
-                        ReplaceWith = dialog.ResultReplacement,
-                        UseRegex = true
-                    });
-                }
-
-                _viewModel.GenerateLivePreview();
-            }
+        if (regexWindow.ShowDialog() == true)
+        {
+            _viewModel.SelectedStep.NumberRegexPattern = regexWindow.ResultPattern;
+            if (TxtNumberRegexPattern != null) TxtNumberRegexPattern.Text = regexWindow.ResultPattern;
+            _viewModel.GenerateLivePreview();
         }
     }
 

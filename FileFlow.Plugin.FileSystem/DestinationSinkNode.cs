@@ -28,6 +28,11 @@ public class DestinationSinkNode : IFlowNode
         ["ConflictStrategy"] = "RenameIncremental"
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("DestinationRoot", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Output", DisplayOrder: 1),
+        new("ConflictStrategy", ParameterEditorType.Dropdown, DefaultValue: "RenameIncremental", DisplayOrder: 2, Options: ["RenameIncremental", "Overwrite", "Skip", "ThrowError"])
+    ];
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
@@ -40,8 +45,9 @@ public class DestinationSinkNode : IFlowNode
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        string sourcePath = item.GetExistingPhysicalPath();
 
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        if (string.IsNullOrWhiteSpace(sourcePath) || (!File.Exists(sourcePath) && !Directory.Exists(sourcePath)))
         {
             context.Log($"[Destino Final] Archivo de entrada no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -83,7 +89,8 @@ public class DestinationSinkNode : IFlowNode
 
             if (!isDryRun)
             {
-                File.Copy(item.CurrentPath, targetPath, overwrite: true);
+                File.Copy(sourcePath, targetPath, overwrite: true);
+                item.PhysicalPath = targetPath;
                 item.CurrentPath = targetPath;
             }
 

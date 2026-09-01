@@ -29,84 +29,135 @@ public class ImageOptimizerNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["SizeMode"] = "Pixels",
-        ["Width"] = 1920,
-        ["Height"] = 1080,
-        ["ScalePercentage"] = 100.0,
-        ["ScalePercentageY"] = 100.0,
-        ["MaintainAspectRatio"] = true,
-        ["OnlyDownscale"] = true,
+        ["Width"] = "",
+        ["Height"] = "100%",
         ["TargetFormat"] = "WebP",
         ["Quality"] = 80,
+        ["OnlyDownscale"] = true,
         ["OutputDirectory"] = @"{RelativeDir}\OptimizedImages"
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("Width", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 1, HelpText: "Pixels (e.g. 1920) or Empty for automatic proportional calculation."),
+        new("Height", ParameterEditorType.Text, DefaultValue: "100%", DisplayOrder: 2, HelpText: "Pixels (e.g. 1080) or Percentage (e.g. 100%, 50%)."),
+        new("TargetFormat", ParameterEditorType.Dropdown, DefaultValue: "WebP", DisplayOrder: 3, Options: ["WebP", "JPEG", "PNG", "GIF"]),
+        new("Quality", ParameterEditorType.Slider, DefaultValue: 80, DisplayOrder: 4, Min: 1, Max: 100, Step: 1),
+        new("OnlyDownscale", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\OptimizedImages", DisplayOrder: 6)
+    ];
+
+    public static (int Pixels, double? Percentage) ParseDimensionSpec(object? value)
+    {
+        if (value == null) return (0, null);
+
+        if (value is int intVal) return (Math.Max(0, intVal), null);
+        if (value is double dblVal) return ((int)Math.Round(Math.Max(0, dblVal)), null);
+        if (value is float fltVal) return ((int)Math.Round(Math.Max(0, fltVal)), null);
+
+        string str = value.ToString()?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(str) || str.Equals("auto", StringComparison.OrdinalIgnoreCase) || str.Equals("null", StringComparison.OrdinalIgnoreCase))
+        {
+            return (0, null);
+        }
+
+        if (str.EndsWith('%'))
+        {
+            string numPart = str[..^1].Trim();
+            if (double.TryParse(numPart, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double pct))
+            {
+                return (0, Math.Max(0.01, pct));
+            }
+        }
+
+        if (str.EndsWith("px", StringComparison.OrdinalIgnoreCase))
+        {
+            str = str[..^2].Trim();
+        }
+
+        if (int.TryParse(str, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out int px))
+        {
+            return (Math.Max(0, px), null);
+        }
+
+        return (0, null);
+    }
 
     public static (int TargetWidth, int TargetHeight, bool ResizeNeeded) CalculateTargetDimensions(
         int origWidth,
         int origHeight,
-        string sizeMode,
-        int width,
-        int height,
-        double scalePercentage,
-        double scalePercentageY,
-        bool maintainAspectRatio,
-        bool onlyDownscale)
+        object? widthSpec,
+        object? heightSpec,
+        bool onlyDownscale = true)
     {
         if (origWidth <= 0 || origHeight <= 0)
         {
             return (Math.Max(1, origWidth), Math.Max(1, origHeight), false);
         }
 
+        var (widthPx, widthPct) = ParseDimensionSpec(widthSpec);
+        var (heightPx, heightPct) = ParseDimensionSpec(heightSpec);
+
         int targetW = origWidth;
         int targetH = origHeight;
 
-        if (string.Equals(sizeMode, "Percentage", StringComparison.OrdinalIgnoreCase))
+        // Caso 1: Ambos son porcentajes
+        if (widthPct.HasValue && heightPct.HasValue)
         {
-            double scaleX = Math.Max(0.01, scalePercentage) / 100.0;
-            double scaleY = maintainAspectRatio ? scaleX : Math.Max(0.01, scalePercentageY) / 100.0;
-
-            targetW = Math.Max(1, (int)Math.Round(origWidth * scaleX));
-            targetH = Math.Max(1, (int)Math.Round(origHeight * scaleY));
+            targetW = Math.Max(1, (int)Math.Round(origWidth * (widthPct.Value / 100.0)));
+            targetH = Math.Max(1, (int)Math.Round(origHeight * (heightPct.Value / 100.0)));
         }
-        else // "Pixels" (default)
+        // Caso 2: Solo Width es porcentaje (Height automático / proporcional)
+        else if (widthPct.HasValue && !heightPct.HasValue && heightPx <= 0)
         {
-            if (width > 0 && height <= 0)
-            {
-                targetW = width;
-                targetH = maintainAspectRatio
-                    ? Math.Max(1, (int)Math.Round((double)origHeight * width / origWidth))
-                    : origHeight;
-            }
-            else if (height > 0 && width <= 0)
-            {
-                targetH = height;
-                targetW = maintainAspectRatio
-                    ? Math.Max(1, (int)Math.Round((double)origWidth * height / origHeight))
-                    : origWidth;
-            }
-            else if (width > 0 && height > 0)
-            {
-                if (maintainAspectRatio)
-                {
-                    double ratio = Math.Min((double)width / origWidth, (double)height / origHeight);
-                    targetW = Math.Max(1, (int)Math.Round(origWidth * ratio));
-                    targetH = Math.Max(1, (int)Math.Round(origHeight * ratio));
-                }
-                else
-                {
-                    targetW = width;
-                    targetH = height;
-                }
-            }
-            else
-            {
-                // Width <= 0 && Height <= 0 -> keep original dimensions
-                targetW = origWidth;
-                targetH = origHeight;
-            }
+            double scale = widthPct.Value / 100.0;
+            targetW = Math.Max(1, (int)Math.Round(origWidth * scale));
+            targetH = Math.Max(1, (int)Math.Round(origHeight * scale));
+        }
+        // Caso 3: Solo Height es porcentaje (Width automático / proporcional)
+        else if (heightPct.HasValue && !widthPct.HasValue && widthPx <= 0)
+        {
+            double scale = heightPct.Value / 100.0;
+            targetH = Math.Max(1, (int)Math.Round(origHeight * scale));
+            targetW = Math.Max(1, (int)Math.Round(origWidth * scale));
+        }
+        // Caso 4: Porcentaje en Width y Píxeles en Height
+        else if (widthPct.HasValue && heightPx > 0)
+        {
+            targetW = Math.Max(1, (int)Math.Round(origWidth * (widthPct.Value / 100.0)));
+            targetH = heightPx;
+        }
+        // Caso 5: Píxeles en Width y Porcentaje en Height
+        else if (widthPx > 0 && heightPct.HasValue)
+        {
+            targetW = widthPx;
+            targetH = Math.Max(1, (int)Math.Round(origHeight * (heightPct.Value / 100.0)));
+        }
+        // Caso 6: Solo Width en píxeles (Height calculado automáticamente manteniendo relación de aspecto)
+        else if (widthPx > 0 && heightPx <= 0)
+        {
+            targetW = widthPx;
+            targetH = Math.Max(1, (int)Math.Round((double)origHeight * widthPx / origWidth));
+        }
+        // Caso 7: Solo Height en píxeles (Width calculado automáticamente manteniendo relación de aspecto)
+        else if (heightPx > 0 && widthPx <= 0)
+        {
+            targetH = heightPx;
+            targetW = Math.Max(1, (int)Math.Round((double)origWidth * heightPx / origHeight));
+        }
+        // Caso 8: Ambos en píxeles (Bounding Box Fit preservando aspect ratio sin deformar)
+        else if (widthPx > 0 && heightPx > 0)
+        {
+            double ratio = Math.Min((double)widthPx / origWidth, (double)heightPx / origHeight);
+            targetW = Math.Max(1, (int)Math.Round(origWidth * ratio));
+            targetH = Math.Max(1, (int)Math.Round(origHeight * ratio));
+        }
+        else
+        {
+            targetW = origWidth;
+            targetH = origHeight;
         }
 
-        // Apply OnlyDownscale restriction (No agrandar imágenes más pequeñas)
+        // Apply OnlyDownscale restriction (No agrandar imágenes si ya son más pequeñas)
         if (onlyDownscale && targetW >= origWidth && targetH >= origHeight)
         {
             targetW = origWidth;
@@ -125,39 +176,30 @@ public class ImageOptimizerNode : IFlowNode
     {
         string filePath = item.CurrentPath;
 
-        string sizeMode = Parameters.TryGetValue("SizeMode", out var smVal) ? ParameterHelper.GetString(smVal, "Pixels") : "Pixels";
-        
-        int width = 0;
-        if (Parameters.TryGetValue("Width", out var wVal))
-            width = ParameterHelper.GetInt32(wVal, 0);
-        else if (Parameters.TryGetValue("MaxWidth", out var mwVal))
-            width = ParameterHelper.GetInt32(mwVal, 0);
+        // Soporte unificado de Width y Height (con migración transparente de parámetros legados)
+        object? widthSpec = "1920";
+        if (Parameters.TryGetValue("Width", out var wVal) && wVal != null)
+            widthSpec = wVal;
+        else if (Parameters.TryGetValue("MaxWidth", out var mwVal) && mwVal != null)
+            widthSpec = mwVal;
 
-        int height = 0;
-        if (Parameters.TryGetValue("Height", out var hVal))
-            height = ParameterHelper.GetInt32(hVal, 0);
-        else if (Parameters.TryGetValue("MaxHeight", out var mhVal))
-            height = ParameterHelper.GetInt32(mhVal, 0);
+        object? heightSpec = "1080";
+        if (Parameters.TryGetValue("Height", out var hVal) && hVal != null)
+            heightSpec = hVal;
+        else if (Parameters.TryGetValue("MaxHeight", out var mhVal) && mhVal != null)
+            heightSpec = mhVal;
 
-        double scalePercentage = 100.0;
-        if (Parameters.TryGetValue("ScalePercentage", out var spVal) && spVal != null)
+        // Migración retrocompatible si venía SizeMode == "Percentage"
+        if (Parameters.TryGetValue("SizeMode", out var smVal) &&
+            string.Equals(smVal?.ToString(), "Percentage", StringComparison.OrdinalIgnoreCase))
         {
-            if (spVal is double d) scalePercentage = d;
-            else if (spVal is float f) scalePercentage = f;
-            else if (spVal is int i) scalePercentage = i;
-            else double.TryParse(spVal.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out scalePercentage);
+            if (Parameters.TryGetValue("ScalePercentage", out var spVal) && spVal != null)
+            {
+                widthSpec = $"{spVal}%";
+                heightSpec = Parameters.TryGetValue("ScalePercentageY", out var spyVal) && spyVal != null ? $"{spyVal}%" : $"{spVal}%";
+            }
         }
 
-        double scalePercentageY = scalePercentage;
-        if (Parameters.TryGetValue("ScalePercentageY", out var spyVal) && spyVal != null)
-        {
-            if (spyVal is double d) scalePercentageY = d;
-            else if (spyVal is float f) scalePercentageY = f;
-            else if (spyVal is int i) scalePercentageY = i;
-            else double.TryParse(spyVal.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out scalePercentageY);
-        }
-
-        bool maintainAspectRatio = !Parameters.TryGetValue("MaintainAspectRatio", out var arVal) || ParameterHelper.GetBoolean(arVal, true);
         bool onlyDownscale = !Parameters.TryGetValue("OnlyDownscale", out var odVal) || ParameterHelper.GetBoolean(odVal, true);
 
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
@@ -217,12 +259,8 @@ public class ImageOptimizerNode : IFlowNode
                 var (targetWidth, targetHeight, resizeNeeded) = CalculateTargetDimensions(
                     origWidth,
                     origHeight,
-                    sizeMode,
-                    width,
-                    height,
-                    scalePercentage,
-                    scalePercentageY,
-                    maintainAspectRatio,
+                    widthSpec,
+                    heightSpec,
                     onlyDownscale);
 
                 if (resizeNeeded)
@@ -268,7 +306,7 @@ public class ImageOptimizerNode : IFlowNode
             outputItem.Metadata["OptimizedHeight"] = newHeight;
             outputItem.AddLog($"ImageOptimizerNode output saved to {outputPath}");
 
-            string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"sizeMode\": \"{sizeMode}\", \"maintainAspectRatio\": {maintainAspectRatio.ToString().ToLowerInvariant()}, \"onlyDownscale\": {onlyDownscale.ToString().ToLowerInvariant()}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
+            string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"width\": \"{widthSpec}\", \"height\": \"{heightSpec}\", \"onlyDownscale\": {onlyDownscale.ToString().ToLowerInvariant()}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
             context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality} {newWidth}x{newHeight}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", outputItem);

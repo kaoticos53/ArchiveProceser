@@ -120,17 +120,25 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Banner del Estudio de Renombrado Avanzado -->
-                                <Border Visibility="{Binding InspectedNode.IsAdvancedRenamerNode, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1.5" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="🏷️ Pipeline de Renombrado Avanzado" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="0,0,0,4" />
-                                        <TextBlock Text="Configura los 7 métodos secuenciales de renombrado, carga presets y previsualiza resultados en vivo." Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
-                                        <Button Command="{Binding InspectedNode.OpenAdvancedRenamerEditorCommand}" Style="{StaticResource PrimaryButton}" Padding="12,6" HorizontalAlignment="Left">
-                                            <TextBlock Text="⚙️ Abrir Estudio de Renombrado..." FontSize="11.5" FontWeight="Bold" />
-                                        </Button>
-                                    </StackPanel>
-                                </Border>
+                                <!-- Herramientas y Acciones Avanzadas del Nodo (CustomActions) -->
+                                <ItemsControl ItemsSource="{Binding InspectedNode.CustomActions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:NodeActionViewModel}">
+                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1.5" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="0,0,0,4" />
+                                                    <TextBlock Text="{Binding Tooltip}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                                    <Button Command="{Binding ExecuteCommand}" Style="{StaticResource PrimaryButton}" Padding="12,6" HorizontalAlignment="Left">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Icon}" Margin="0,0,6,0" />
+                                                            <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="Bold" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
                                 <TextBlock Text="Configuración de Parámetros:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
                                 
@@ -139,7 +147,7 @@
                                         <DataTemplate>
                                             <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding Key}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4" />
+                                                    <TextBlock Text="{Binding DisplayName}" ToolTip="{Binding Key}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4" />
                                                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" 
                                                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="12" />
                                                 </StackPanel>

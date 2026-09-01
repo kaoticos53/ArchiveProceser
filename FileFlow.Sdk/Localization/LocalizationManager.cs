@@ -23,6 +23,8 @@ public class LocalizationManager : INotifyPropertyChanged
             CultureInfo.CurrentCulture = value;
             CultureInfo.CurrentUICulture = value;
             OnPropertyChanged(string.Empty);
+            OnPropertyChanged("Item[]");
+            OnPropertyChanged("Item");
             LanguageChanged?.Invoke(this, value);
         }
     }

@@ -2,6 +2,155 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-01] - Encapsulación Total de UI en Directorios de Plugins (Zero-Touch en FileFlow.App)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Plugins Auto-Contenidos con Soporte WPF en .NET 9**:
+   - `FileFlow.Plugin.FileSystem`, `FileFlow.Plugin.Integrations` y `FileFlow.Plugin.Archives` configurados con `net9.0-windows` y `<UseWPF>true</UseWPF>`.
+2. **Traslado Físico de Vistas y Servicios a sus Plugins**:
+   - `AdvancedRenamerEditorWindow.xaml`, `AdvancedRenamerEditorViewModel`, `RenamerTagCatalogService`, `RenamerSampleDataProvider` y `RenamerLivePreviewService` trasladados a `FileFlow.Plugin.FileSystem/UI/`.
+   - `MediaPresetManagerWindow.xaml` y `MediaPresetManagerService` trasladados a `FileFlow.Plugin.Integrations/UI/`.
+   - `PasswordManagerWindow.xaml` trasladado a `FileFlow.Plugin.Archives/UI/`.
+3. **Despacho Universal mediante `INodeCustomActionProvider`**:
+   - `AdvancedRenamerNode`, `MediaTranscoderNode` y `SmartUnpackNode` implementan `INodeCustomActionProvider` y abren sus propias ventanas directamente desde sus ensamblados.
+   - `NodeViewModel.ExecuteCustomAction` delega de forma 100% agnóstica en `INodeCustomActionProvider`.
+4. **Erradicación Total de Código de Plugins en `FileFlow.App`**:
+   - Eliminados todos los archivos de diálogo y servicios de plugins de `FileFlow.App`.
+   - `FileFlow.App` queda como un contenedor universal y limpio: para crear o extender un nodo o plugin, solo se escribe código dentro del directorio de ese plugin.
+5. **Visibilidad Directa de Acciones en Tarjetas y Despliegue Automatizado de Plugins**:
+   - `NodeCardView.xaml`: Integrada barra de acciones (`CustomActions`) directamente visible en la tarjeta del nodo (`🏷️ Pipeline de Métodos...`, `➕ Variable`, `➕ Caso`), accesible al instante sin necesidad de desplegar el panel de ajustes ⚙.
+   - `FileFlow.App.csproj`: Corregido el target `CopyPlugins` para apuntar a `$(TargetDir)Plugins\` y compilar/desplegar con precisión los plugins `net9.0-windows` y `net9.0` a la carpeta de ejecución de la app.
+6. **Integración Completa del Asistente y Probador de Expresiones Regulares (RegexHelper)**:
+   - `FileFlow.Plugin.FileSystem/UI/`: Añadidos `RegexLibraryService`, `RegexHelperViewModel` y `RegexHelperWindow.xaml` encapsulados dentro del plugin.
+   - Botón **`🪄 Asistente Regex...`** añadido en el panel `SearchReplace` (Búsqueda y Reemplazo) y en `NormalizeNumbers` (Normalización de Números).
+   - Permite seleccionar entre decenas de patrones predefinidos (series `1x02`, `S01E05`, fechas ISO, limpieza de corchetes, sanitización de caracteres), probar en tiempo real con muestras de texto y ver grupos de captura `$1`, `$2` antes de aplicar los cambios al paso del pipeline.
+7. **Pruebas Unitarias y Validación**:
+   - Actualizadas pruebas en `AdvancedRenamerEditorViewModelTests.cs` y `MediaPresetsAndToolsServicesTests.cs`.
+   - Batería de pruebas: **288 / 288 pruebas superadas al 100% con 0 fallos**.
+
+---
+
+## [2026-09-01] - Desacoplamiento de Vistas XAML y Sistema Universal de Acciones de Nodos (CustomActions)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Auditoría Integral de Vistas**:
+   - Clasificación de todos los archivos en `Views/`: Vistas estructurales de la aplicación (Shell, Layout, Log, Toolbox), Utilidades globales (Settings, Themes, Regex, ColorPicker) y Vistas de componentes.
+2. **Introducción de `NodeActionDescriptor` en el SDK (`FileFlow.Sdk`)**:
+   - Creado record inmutable `NodeActionDescriptor(ActionId, Title, Icon, Tooltip)` e integrado en la interfaz `IFlowNode` mediante `IReadOnlyList<NodeActionDescriptor> CustomActions => [];`.
+3. **Declaración en Plugins (`FileFlow.Plugin.*`)**:
+   - `AdvancedRenamerNode`, `VariableInjectorNode` y `SwitchCaseNode` declaran sus herramientas y botones de acción avanzada dentro de su propia clase.
+4. **Erradicación de Código Acoplado en XAML**:
+   - `NodeCardView.xaml` y `NodeInspectorPanelView.xaml` actualizados con `ItemsControl ItemsSource="{Binding CustomActions}"`, eliminando los condicionales fijos (`IsAdvancedRenamerNode`, `IsVariableInjectorNode`, `IsSwitchCaseNode`).
+5. **Pruebas Unitarias y Validación**:
+   - Nueva prueba unitaria `NodeViewModel_ShouldPopulateCustomActions_FromNodeDefinition`.
+   - Batería de pruebas: **289 / 289 pruebas superadas al 100% con 0 fallos**.
+
+---
+
+## [2026-09-01] - Arquitectura Híbrida de Plugins con Esquema Declarativo de Parámetros (Opción C)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Extensión Desacoplada del SDK (`FileFlow.Sdk`)**:
+   - Nuevos tipos `ParameterEditorType` (Text, Number, Slider, Dropdown, Toggle, FolderPath, FilePath, MultiLineText, PasswordList, MediaPreset) y `NodeParameterDescriptor`.
+   - Soporte nativo de `IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [];` en `IFlowNode`.
+   - Interfaz `INodeCustomActionProvider` para acciones modales personalizadas.
+2. **Co-ubicación de Esquema en los Plugins (`FileFlow.Plugin.*`)**:
+   - Cada nodo (`ImageOptimizerNode`, `FolderSourceNode`, `DestinationSinkNode`, `FileRelocatorNode`, `OriginalFileActionNode`, `AdvancedRenamerNode`, `SmartUnpackNode`, `ArchiveCompressorNode`, `HashCalculatorNode`, `MediaTranscoderNode`, etc.) declara su propio esquema de parámetros con orden, tipos, opciones y valores por defecto.
+3. **Generalización de `FileFlow.App` (Schema-Driven UI)**:
+   - `NodeParameterManager.cs` refactorizado para ser 100% genérico, eliminando todos los bloques condicionales hardcodeados (`if (isImageOptimizer)`, `if (isRenamer)`).
+   - `NodeParameterViewModel.cs` y `NodeParameterTemplates.xaml` actualizados con soporte visual para Sliders, Dropdowns, CheckBoxes y File/Folder Pickers.
+4. **Pruebas Unitarias y Validación**:
+   - Nuevos tests en `NodeParameterManagerTests.cs` validando la generación e inferencia a partir de los descriptores.
+   - Nueva prueba unitaria `InitializeParameters_ShouldNotExposeLegacyPatternOrMethodSteps_ForAdvancedRenamerNode` garantizando que claves legadas e internas (`Pattern`, `NameTemplate`, `CaseTransformation`, `MethodSteps`) queden 100% aisladas y nunca aparezcan como campos de texto en la configuración del nodo.
+   - Batería de pruebas: **288 / 288 pruebas superadas al 100% con 0 fallos**.
+
+---
+
+## [2026-09-01] - Configuración Inteligente por Defecto en ImageOptimizerNode (Alto 100% y Ancho Automático)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Dimensiones Predeterminadas en Plugin y Capa de UI**:
+   - Modificados los valores por defecto del nodo `ImageOptimizerNode`:
+     - **`Height`**: `"100%"` (mantiene el 100% de la altura o escala proporcionalmente).
+     - **`Width`**: `""` (*Automático*, calcula el ancho proporcional para preservar la relación de aspecto sin distorsión).
+   - Actualizado `NodeParameterManager.cs` en la capa WPF para erradicar valores hardcodeados legados (`1920`/`1080`), sincronizando de forma transparente los valores por defecto en el lienzo visual.
+2. **Pruebas Unitarias**:
+   - Añadida prueba `CalculateTargetDimensions_DefaultParameters_PreservesFullResolutionAndAspectRatio` en `ImageOptimizerNodeTests.cs`.
+   - Añadida prueba `ImageOptimizerNodeViewModel_ShouldInitializeWithDefaultWidthEmptyAndHeight100Pct` en `EditorViewModelTests.cs`.
+   - Batería de pruebas: **285 / 285 pruebas superadas al 100% con 0 fallos**.
+
+---
+
+## [2026-09-01] - Localización Dinámica y Reactiva al 100% en la Interfaz Gráfica
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Propiedad `DisplayName` Reactiva en `NodeParameterViewModel.cs`**:
+   - Los parámetros de los 27 nodos muestran nombres amigables traducidos (`Param_Width` $\rightarrow$ `Ancho` / `Width`, `Param_Quality` $\rightarrow$ `Calidad` / `Quality`, `Param_DestinationRoot` $\rightarrow$ `Carpeta Destino` / `Destination Folder`, etc.) manteniendo la clave técnica (`Key`) intacta en la lógica de procesamiento.
+   - Suscripción reactiva al evento `LanguageChanged` para actualizar todas las tarjetas de nodos en el lienzo visual al instante.
+2. **Refresco Reactivo de Indexers en `LocalizationManager.cs`**:
+   - Incorporada la notificación `OnPropertyChanged("Item[]")` y `OnPropertyChanged("Item")` al cambiar de cultura, garantizando que todos los bindings XAML con sintaxis `{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Clave]}` se actualicen en caliente sin reiniciar la app.
+3. **Mapeo Completo en Diccionarios de Recursos (`Strings.resx` y `Strings.es.resx`)**:
+   - Añadidas todas las traducciones en español e inglés para parámetros de nodos, tooltips, opciones de navegación, filtros de consola de logs y nombres de categorías.
+4. **Localización de Vistas XAML**:
+   - Actualizados `ControlBarView.xaml`, `LogView.xaml`, `NodeInspectorPanelView.xaml` y `NodeToolboxView.xaml` para erradicar textos estáticos fijos y vincularlos a `LocalizationManager`.
+6. **Formalización de Regla Maestra de Diseño e Internacionalización**:
+   - Añadida la directriz obligatoria de localización de UI en [`.agents/rules/rules.md`](file:///.agents/rules/rules.md), [`AGENTS.md`](file:///AGENTS.md), [`GEMINI.md`](file:///GEMINI.md) y [`docs/architecture.md`](file:///docs/architecture.md) (ADR-005).
+   - Todos los componentes de la interfaz deben soportar localización dinámica (Español e Inglés), preservando las claves técnicas en inglés puro.
+
+---
+
+## [2026-09-01] - Estandarización del Principio de Inmutabilidad del Archivo de Origen (*Source Immutability by Default*)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Formalización de Directrices de Diseño y Reglas Maestras**:
+   - Incorporado el *Principio de Inmutabilidad del Archivo de Origen* en [`.agents/rules/rules.md`](file:///.agents/rules/rules.md), [`AGENTS.md`](file:///AGENTS.md), [`GEMINI.md`](file:///GEMINI.md) y [`docs/architecture.md`](file:///docs/architecture.md) (ADR-004).
+   - Los flujos son **no destructivos por defecto**: los archivos de entrada no se sobreescriben, mueven ni borran; toda mutación queda centralizada en `OriginalFileActionNode`.
+2. **Soporte de `MoveToRecycleBin` en `OriginalFileActionNode.cs`**:
+   - Incorporada la opción segura `MoveToRecycleBin` utilizando la API nativa de Windows Shell (`SHFILEOPSTRUCT` / `SHFileOperationW`) para permitir enviar los originales a la Papelera de Reciclaje de Windows de forma recuperable.
+   - Opciones completas del selector: `Keep`, `MoveToRecycleBin`, `MoveToQuarantine`, `PermanentDelete`.
+3. **Copia Segura por Defecto en `FileRelocatorNode.cs`**:
+   - Modificado el valor predeterminado del parámetro `Operation` de `"Move"` a `"Copy"` para prevenir la eliminación o desplazamiento inadvertido del original.
+4. **Validación y Pruebas Unitarias**:
+   - Nuevos tests en `OriginalFileActionNodeTests.cs` validando el reciclaje seguro a la papelera.
+   - Batería de pruebas: **280 / 280 pruebas superadas al 100% con 0 fallos**.
+
+---
+
+## [2026-09-01] - Desacoplamiento de Renombrado Virtual en AdvancedRenamerNode y Destino Final
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Soporte de `RenameMode` en `AdvancedRenamerNode` (`Virtual` vs `DirectInPlace`)**:
+   - Incorporado el parámetro `RenameMode` (por defecto `"Virtual"`):
+     - **`Virtual`**: Solo calcula y transforma el nuevo nombre en memoria dentro de `FileItemContext` sin alterar físicamente el archivo en el disco de origen.
+     - **`DirectInPlace`**: Renombra físicamente el archivo en la carpeta original (`File.Move`) con registro en el diario de operaciones (*Journal Undo*).
+2. **Propiedad `PhysicalPath` y Resolución Dinámica en `FileItemContext.cs`**:
+   - Incorporada la propiedad `PhysicalPath` y el método `GetExistingPhysicalPath()` que resuelve de forma transparente la ubicación del archivo físico real en disco (`PhysicalPath` $\rightarrow$ `OriginalPath` $\rightarrow$ `CurrentPath`).
+3. **Lectura Segura en `DestinationSinkNode` y `FileRelocatorNode`**:
+   - `DestinationSinkNode` lee desde `item.GetExistingPhysicalPath()` y copia/guarda en la carpeta de destino (`DestinationRoot`) con el nombre ya transformado en `item.FileName`, dejando el archivo original intacto.
+   - `FileRelocatorNode` adopta la misma resolución para traslados y copias virtuales.
+4. **Validación Exhaustiva**:
+   - Incorporadas pruebas unitarias completas en `AdvancedRenamerExhaustiveTests.cs` validando el modo virtual encadenado con `DestinationSinkNode` y el modo directo in-situ.
+   - Batería de pruebas: **279 / 279 pruebas superadas al 100%**.
+
+---
+
+## [2026-09-01] - Rediseño y Simplificación Inteligente de Dimensiones en ImageOptimizerNode
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Reorganización y Orden Visual Limpio de Parámetros (`ImageOptimizerNode.cs` & `NodeParameterManager.cs`)**:
+   - `Width` y `Height` se posicionan en la cabecera del panel de configuración de la tarjeta de nodo en UI.
+   - Eliminado el desplegable `SizeMode` ("Pixels" / "Percentage") y los campos redundantes `ScalePercentage`, `ScalePercentageY` y `MaintainAspectRatio`.
+2. **Sintaxis Inteligente y Unificada de Dimensiones (`DimensionParser`)**:
+   - `Width` y `Height` aceptan directamente cifras en píxeles (`1920`, `800px`), porcentajes (`50%`, `75%`), o vacío / `auto` / `0` para cálculo automático.
+   - **Deducción Automática de Relación de Aspecto (*Aspect Ratio*)**: Si se especifica solo una dimensión (`Width` o `Height`), la otra se calcula proporcionalmente sin deformar la imagen. Si se especifican ambas en píxeles, la imagen se ajusta al recuadro delimitador (*Bounding Box Fit*).
+3. **Migración Automática y Limpieza de Parámetros Legados (`NodeParameterManager.cs`)**:
+   - Migración transparente de flujos antiguos con `SizeMode == "Percentage"` hacia valores en formato `%` y eliminación de parámetros obsoletos en la UI.
+4. **Validación Exhaustiva con Tests Unitarios (`ImageOptimizerNodeTests.cs`)**:
+   - Actualizados y superados todos los tests unitarios con sintaxis de píxeles, porcentajes simétricos/asimétricos y cálculo proporcional automático.
+   - Batería de pruebas: **277 / 277 pruebas superadas al 100%**.
+
+---
+
 ## [2026-09-01] - Optimización Arquitectónica, Concurrencia y Recursos en .NET 10 / C# 13
 
 ### 📋 Acciones y Correcciones Realizadas

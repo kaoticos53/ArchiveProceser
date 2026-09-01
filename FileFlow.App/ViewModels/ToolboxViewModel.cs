@@ -111,10 +111,13 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             allItems.Add(item);
         }
 
+        string favGroupName = LocalizationManager.Instance.GetString("Filter_Favorites", "⭐ Favoritos");
+        string freqGroupName = LocalizationManager.Instance.GetString("Filter_Frequent", "🔥 Más Usados");
+
         // Special Filter Chips: "Favoritos" and "Frecuentes"
-        if (SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase))
+        if (SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase))
         {
-            var favGroup = new ToolboxCategoryGroup("⭐ Favoritos");
+            var favGroup = new ToolboxCategoryGroup(favGroupName);
             foreach (var item in allItems.Where(i => i.IsFavorite))
             {
                 favGroup.Items.Add(item);
@@ -126,9 +129,9 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase))
+        if (SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Frequent", StringComparison.OrdinalIgnoreCase))
         {
-            var freqGroup = new ToolboxCategoryGroup("🔥 Más Usados");
+            var freqGroup = new ToolboxCategoryGroup(freqGroupName);
             foreach (var item in allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10))
             {
                 freqGroup.Items.Add(item);
@@ -144,12 +147,12 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         var groupDict = new Dictionary<string, ToolboxCategoryGroup>(StringComparer.OrdinalIgnoreCase);
 
         // 1. Add "⭐ Favoritos" group on top if "Todas" is selected and favorites exist
-        if (SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase))
+        if (SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
         {
             var favItems = allItems.Where(i => i.IsFavorite).ToList();
             if (favItems.Count > 0)
             {
-                var favGroup = new ToolboxCategoryGroup("⭐ Favoritos");
+                var favGroup = new ToolboxCategoryGroup(favGroupName);
                 foreach (var f in favItems) favGroup.Items.Add(f);
                 CategoryGroups.Add(favGroup);
             }
@@ -157,7 +160,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             var freqItems = allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10).ToList();
             if (freqItems.Count > 0)
             {
-                var freqGroup = new ToolboxCategoryGroup("🔥 Más Usados");
+                var freqGroup = new ToolboxCategoryGroup(freqGroupName);
                 foreach (var f in freqItems) freqGroup.Items.Add(f);
                 CategoryGroups.Add(freqGroup);
             }
@@ -167,14 +170,17 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         foreach (var item in allItems)
         {
             if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
+                !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase) &&
                 !item.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
+            string localizedCategoryName = LocalizationManager.Instance.GetString($"Category_{item.Category}", item.Category);
+
             if (!groupDict.TryGetValue(item.Category, out var group))
             {
-                group = new ToolboxCategoryGroup(item.Category);
+                group = new ToolboxCategoryGroup(localizedCategoryName);
                 groupDict[item.Category] = group;
                 CategoryGroups.Add(group);
             }

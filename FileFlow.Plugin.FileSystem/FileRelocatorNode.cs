@@ -27,11 +27,18 @@ public class FileRelocatorNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Operation"] = "Move", // Move, Copy
+        ["Operation"] = "Copy", // Copy, Move
         ["DestinationDirectory"] = @"{SourceDir}\{Year}\{Month}",
         ["VerifyIntegrity"] = true,
         ["CreateDirectories"] = true
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("Operation", ParameterEditorType.Dropdown, DefaultValue: "Copy", DisplayOrder: 1, Options: ["Copy", "Move"]),
+        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{SourceDir}\{Year}\{Month}", DisplayOrder: 2),
+        new("VerifyIntegrity", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
+        new("CreateDirectories", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
+    ];
 
     public async Task ExecuteAsync(
         string inputPortName,
@@ -40,8 +47,9 @@ public class FileRelocatorNode : IFlowNode
         CancellationToken cancellationToken)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        string sourcePath = item.GetExistingPhysicalPath();
 
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        if (string.IsNullOrWhiteSpace(sourcePath) || (!File.Exists(sourcePath) && !Directory.Exists(sourcePath)))
         {
             context.Log($"[Reubicador] Archivo de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -59,7 +67,7 @@ public class FileRelocatorNode : IFlowNode
             string fileName = Path.GetFileName(item.CurrentPath);
             string targetPath = Path.Combine(targetDir, fileName);
 
-            string fullSource = Path.GetFullPath(item.CurrentPath);
+            string fullSource = Path.GetFullPath(sourcePath);
             string fullTarget = Path.GetFullPath(targetPath);
             bool isSamePath = string.Equals(fullSource, fullTarget, StringComparison.OrdinalIgnoreCase);
 
@@ -71,12 +79,12 @@ public class FileRelocatorNode : IFlowNode
                     Id,
                     Name,
                     plannedType,
-                    item.CurrentPath,
+                    sourcePath,
                     targetPath,
                     $"{operation} file to {targetPath}",
                     item.FileSizeBytes
                 ));
-                item.AddLog($"[DryRun] Planned {operation}: {item.CurrentPath} -> {targetPath}");
+                item.AddLog($"[DryRun] Planned {operation}: {sourcePath} -> {targetPath}");
                 item.CurrentPath = targetPath;
                 await context.EmitAsync("Out", item);
                 return;
@@ -97,14 +105,14 @@ public class FileRelocatorNode : IFlowNode
             string sourceHash = string.Empty;
             if (verifyIntegrity)
             {
-                sourceHash = await CalculateSha256Async(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+                sourceHash = await CalculateSha256Async(sourcePath, cancellationToken).ConfigureAwait(false);
             }
 
-            string originalCurrent = item.CurrentPath;
+            string originalCurrent = sourcePath;
 
             if (operation.Equals("Copy", StringComparison.OrdinalIgnoreCase))
             {
-                File.Copy(item.CurrentPath, targetPath, overwrite: true);
+                File.Copy(sourcePath, targetPath, overwrite: true);
 
                 if (verifyIntegrity)
                 {
@@ -123,13 +131,15 @@ public class FileRelocatorNode : IFlowNode
                     originalCurrent,
                     targetPath
                 ));
+
+                item.PhysicalPath = targetPath;
             }
             else
             {
                 if (verifyIntegrity)
                 {
                     // Safe Move: Copy -> Verify -> Delete Original
-                    File.Copy(item.CurrentPath, targetPath, overwrite: true);
+                    File.Copy(sourcePath, targetPath, overwrite: true);
                     string destHash = await CalculateSha256Async(targetPath, cancellationToken).ConfigureAwait(false);
                     if (!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
                     {
@@ -140,7 +150,7 @@ public class FileRelocatorNode : IFlowNode
                 }
                 else
                 {
-                    File.Move(item.CurrentPath, targetPath, overwrite: true);
+                    File.Move(sourcePath, targetPath, overwrite: true);
                 }
 
                 context.RecordJournalEntry(new JournalEntry(
@@ -150,6 +160,8 @@ public class FileRelocatorNode : IFlowNode
                     originalCurrent,
                     targetPath
                 ));
+
+                item.PhysicalPath = targetPath;
             }
 
             sw.Stop();

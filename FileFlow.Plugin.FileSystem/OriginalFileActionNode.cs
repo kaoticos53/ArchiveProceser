@@ -28,6 +28,11 @@ public class OriginalFileActionNode : IFlowNode
         ["QuarantinePath"] = @"{RelativeDir}\Quarantine"
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("ActionType", ParameterEditorType.Dropdown, DefaultValue: "Keep", DisplayOrder: 1, Options: ["Keep", "MoveToRecycleBin", "MoveToQuarantine", "PermanentDelete"]),
+        new("QuarantinePath", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Quarantine", DisplayOrder: 2)
+    ];
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
@@ -55,6 +60,19 @@ public class OriginalFileActionNode : IFlowNode
             {
                 case "KEEP":
                     context.Log($"[Acción Archivo Origen] Conservando archivo original intacto: '{targetFilePath}'", LogLevel.Information, item);
+                    break;
+
+                case "MOVETORECYCLEBIN":
+                    string detailsRecycle = $"{{\"action\": \"MoveToRecycleBin\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
+                    context.Log($"[Acción Archivo Origen] Enviando original a la Papelera de Reciclaje: '{targetFilePath}' (DryRun={isDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsRecycle);
+                    if (!isDryRun)
+                    {
+                        bool recycled = SendToWindowsRecycleBin(targetFilePath);
+                        if (!recycled)
+                        {
+                            throw new IOException($"Windows Shell API failed to send original file '{targetFilePath}' to Recycle Bin.");
+                        }
+                    }
                     break;
 
                 case "MOVETOQUARANTINE":
@@ -112,4 +130,62 @@ public class OriginalFileActionNode : IFlowNode
             await context.EmitAsync("Error", item);
         }
     }
+
+    private static bool SendToWindowsRecycleBin(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                string fullPath = Path.GetFullPath(path);
+                IntPtr pFrom = System.Runtime.InteropServices.Marshal.StringToHGlobalUni(fullPath + "\0\0");
+                try
+                {
+                    var fileOp = new SHFILEOPSTRUCT
+                    {
+                        hwnd = IntPtr.Zero,
+                        wFunc = 0x0003, // FO_DELETE
+                        pFrom = pFrom,
+                        pTo = IntPtr.Zero,
+                        fFlags = 0x0040 | 0x0010 | 0x0004 | 0x0400, // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
+                        fAnyOperationsAborted = false,
+                        hNameMappings = IntPtr.Zero,
+                        lpszProgressTitle = IntPtr.Zero
+                    };
+
+                    int result = SHFileOperation(ref fileOp);
+                    return result == 0 && !fileOp.fAnyOperationsAborted;
+                }
+                finally
+                {
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(pFrom);
+                }
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        public IntPtr pFrom;
+        public IntPtr pTo;
+        public ushort fFlags;
+        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+        public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        public IntPtr lpszProgressTitle;
+    }
+
+    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int SHFileOperation([System.Runtime.InteropServices.In, System.Runtime.InteropServices.Out] ref SHFILEOPSTRUCT lpFileOp);
 }
