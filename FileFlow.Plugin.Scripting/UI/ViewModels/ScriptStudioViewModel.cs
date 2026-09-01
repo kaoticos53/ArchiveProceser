@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.Scripting.Engines;
 using FileFlow.Plugin.Scripting.Services;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Scripting.UI.ViewModels;
 
@@ -37,7 +38,7 @@ public sealed partial class ScriptStudioViewModel : ObservableObject
     private long _testFileSizeBytes = 15_728_640; // 15 MB
 
     [ObservableProperty]
-    private string _testStatus = "Listo para probar";
+    private string _testStatus = LocalizationManager.Instance.GetString("ScriptStudio_ReadyToTest", "Listo para probar");
 
     public ObservableCollection<string> InputPorts { get; } = [];
     public ObservableCollection<string> OutputPorts { get; } = [];
@@ -156,7 +157,7 @@ public sealed partial class ScriptStudioViewModel : ObservableObject
     {
         TestLogs.Clear();
         TestEmittedPorts.Clear();
-        TestStatus = "Ejecutando...";
+        TestStatus = LocalizationManager.Instance.GetString("ScriptStudio_Running", "Ejecutando...");
 
         var syntheticItem = new FileItemContext(Path.Combine(Path.GetTempPath(), TestFileName))
         {
@@ -200,7 +201,8 @@ public sealed partial class ScriptStudioViewModel : ObservableObject
             }
 
             sw.Stop();
-            TestStatus = $"✓ Éxito ({sw.ElapsedMilliseconds} ms)";
+            string successMsg = LocalizationManager.Instance.GetString("ScriptStudio_Success", "Éxito");
+            TestStatus = $"✓ {successMsg} ({sw.ElapsedMilliseconds} ms)";
             TestLogs.Add($"[Resultado] Ejecución completada en {sw.ElapsedMilliseconds} ms.");
             if (syntheticItem.Metadata.Count > 0)
             {
@@ -214,7 +216,8 @@ public sealed partial class ScriptStudioViewModel : ObservableObject
         catch (Exception ex)
         {
             sw.Stop();
-            TestStatus = $"✗ Error ({sw.ElapsedMilliseconds} ms)";
+            string errorMsg = LocalizationManager.Instance.GetString("ScriptStudio_Error", "Error");
+            TestStatus = $"✗ {errorMsg} ({sw.ElapsedMilliseconds} ms)";
             TestLogs.Add($"[Error de Ejecución] {ex.Message}");
         }
     }

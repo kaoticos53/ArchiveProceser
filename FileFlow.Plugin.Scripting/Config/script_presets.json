@@ -1,0 +1,57 @@
+[
+  {
+    "Id": "builtin_csharp_router",
+    "Name": "Enrutador Multicamino por Categoría (C#)",
+    "Category": "Enrutamiento",
+    "Description": "Clasifica y bifurca el archivo hacia salidas independientes (Imagenes, Videos, Documentos u Otros) evaluando su extensión.",
+    "Language": "CSharp",
+    "InputPorts": [ "In" ],
+    "OutputPorts": [ "Imagenes", "Videos", "Documentos", "Otros" ],
+    "IsBuiltIn": true,
+    "ScriptCode": "// Enrutador multicamino por extensión\r\nvar ext = Path.GetExtension(Item.FileName).ToLowerInvariant();\r\n\r\nif (new[] { \".jpg\", \".jpeg\", \".png\", \".webp\", \".bmp\", \".gif\" }.Contains(ext))\r\n{\r\n    Item.Metadata[\"CategoriaMedia\"] = \"Imagen\";\r\n    await EmitAsync(\"Imagenes\");\r\n}\r\nelse if (new[] { \".mp4\", \".mkv\", \".avi\", \".mov\", \".wmv\", \".webm\" }.Contains(ext))\r\n{\r\n    Item.Metadata[\"CategoriaMedia\"] = \"Video\";\r\n    await EmitAsync(\"Videos\");\r\n}\r\nelse if (new[] { \".pdf\", \".docx\", \".xlsx\", \".txt\", \".md\", \".epub\" }.Contains(ext))\r\n{\r\n    Item.Metadata[\"CategoriaMedia\"] = \"Documento\";\r\n    await EmitAsync(\"Documentos\");\r\n}\r\nelse\r\n{\r\n    Item.Metadata[\"CategoriaMedia\"] = \"Desconocido\";\r\n    await EmitAsync(\"Otros\");\r\n}"
+  },
+  {
+    "Id": "builtin_csharp_size_filter",
+    "Name": "Filtro de Tamaño y Normalización (C#)",
+    "Category": "Filtrado",
+    "Description": "Comprueba el tamaño en MB del archivo, añade tags al contexto y emite hacia 'Aprobados' o 'Descartados'.",
+    "Language": "CSharp",
+    "InputPorts": [ "In" ],
+    "OutputPorts": [ "Aprobados", "Descartados" ],
+    "IsBuiltIn": true,
+    "ScriptCode": "// Filtro condicional por tamaño (ejemplo: 50 MB)\r\ndouble sizeMb = Item.FileSizeBytes / (1024.0 * 1024.0);\r\nItem.Metadata[\"SizeMB_Calculado\"] = sizeMb;\r\n\r\nif (sizeMb >= 50.0)\r\n{\r\n    Item.Tags.Add(\"ArchivoGrande\");\r\n    Log($\"Archivo grande detectado: {Item.FileName} ({sizeMb:F2} MB)\");\r\n    await EmitAsync(\"Aprobados\");\r\n}\r\nelse\r\n{\r\n    Item.Tags.Add(\"ArchivoPequeno\");\r\n    Log($\"Archivo descartado por tamaño menor a 50 MB: {Item.FileName}\", LogLevel.Warning);\r\n    await EmitAsync(\"Descartados\");\r\n}"
+  },
+  {
+    "Id": "builtin_csharp_metadata_injector",
+    "Name": "Inyector de Fecha y Metadatos de Sistema (C#)",
+    "Category": "Metadatos",
+    "Description": "Inyecta fecha y hora de procesamiento, usuario del sistema y máquina en los metadatos del contexto.",
+    "Language": "CSharp",
+    "InputPorts": [ "In" ],
+    "OutputPorts": [ "Out" ],
+    "IsBuiltIn": true,
+    "ScriptCode": "// Inyección de variables de contexto\r\nItem.Metadata[\"ProcesadoPor\"] = Environment.UserName;\r\nItem.Metadata[\"Maquina\"] = Environment.MachineName;\r\nItem.Metadata[\"FechaProcesamientoUtc\"] = DateTime.UtcNow.ToString(\"yyyy-MM-dd HH:mm:ss\");\r\nItem.Metadata[\"AnoProcesamiento\"] = DateTime.UtcNow.Year;\r\n\r\nLog($\"Metadatos inyectados correctamente en {Item.FileName}\");\r\nawait EmitAsync(\"Out\");"
+  },
+  {
+    "Id": "builtin_js_ext_router",
+    "Name": "Enrutador por Extensión (JavaScript)",
+    "Category": "Enrutamiento",
+    "Description": "Script en JavaScript que desvía archivos según pertenezcan a multimedia o archivos comprimidos.",
+    "Language": "JavaScript",
+    "InputPorts": [ "In" ],
+    "OutputPorts": [ "Multimedia", "Comprimidos", "Resto" ],
+    "IsBuiltIn": true,
+    "ScriptCode": "// Enrutador rápido en JavaScript\r\nvar filename = item.FileName.toLowerCase();\r\n\r\nif (filename.endsWith('.mp4') || filename.endsWith('.mkv') || filename.endsWith('.mp3')) {\r\n    item.Metadata['Tipo'] = 'Multimedia';\r\n    emit('Multimedia', item);\r\n} else if (filename.endsWith('.zip') || filename.endsWith('.rar') || filename.endsWith('.7z')) {\r\n    item.Metadata['Tipo'] = 'Comprimido';\r\n    emit('Comprimidos', item);\r\n} else {\r\n    emit('Resto', item);\r\n}"
+  },
+  {
+    "Id": "builtin_js_name_sanitizer",
+    "Name": "Validador y Sanitizador de Nombres (JavaScript)",
+    "Category": "Transformación",
+    "Description": "Evalúa si el nombre de archivo contiene caracteres prohibidos o espacios múltiples y emite a 'Validos' o 'RequiereLimpieza'.",
+    "Language": "JavaScript",
+    "InputPorts": [ "In" ],
+    "OutputPorts": [ "Validos", "RequiereLimpieza" ],
+    "IsBuiltIn": true,
+    "ScriptCode": "// Validador de nombres en JavaScript\r\nvar name = item.FileName;\r\nvar tieneEspaciosDobles = name.indexOf('  ') !== -1;\r\nvar tieneCaracteresRaros = /[\\¿\\?\\¡\\!\\#\\$\\%\\&]/.test(name);\r\n\r\nif (tieneEspaciosDobles || tieneCaracteresRaros) {\r\n    console.warn('El archivo requiere normalización: ' + name);\r\n    item.Metadata['SugerenciaLimpieza'] = name.replace(/\\s+/g, '_');\r\n    emit('RequiereLimpieza', item);\r\n} else {\r\n    emit('Validos', item);\r\n}"
+  }
+]

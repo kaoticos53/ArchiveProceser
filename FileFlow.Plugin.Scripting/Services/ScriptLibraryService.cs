@@ -1,21 +1,28 @@
 using System.IO;
 using System.Text.Json;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Scripting.Services;
 
+/// <summary>
+/// Modelo de datos para la definición de un script en la biblioteca.
+/// </summary>
 public sealed class ScriptDefinition
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = "General";
     public string Description { get; set; } = string.Empty;
-    public string Language { get; set; } = "CSharp"; // "CSharp" o "JavaScript"
-    public string ScriptCode { get; set; } = string.Empty;
+    public string Language { get; set; } = "CSharp"; // CSharp | JavaScript
     public List<string> InputPorts { get; set; } = ["In"];
     public List<string> OutputPorts { get; set; } = ["Out"];
-    public bool IsBuiltIn { get; set; }
+    public string ScriptCode { get; set; } = string.Empty;
+    public bool IsBuiltIn { get; set; } = false;
 }
 
+/// <summary>
+/// Servicio de almacenamiento, serialización y gestión de la biblioteca de scripts de usuario y presets.
+/// </summary>
 public sealed class ScriptLibraryService
 {
     private static readonly Lazy<ScriptLibraryService> _instance = new(() => new ScriptLibraryService());
@@ -33,9 +40,8 @@ public sealed class ScriptLibraryService
 
     public ScriptLibraryService()
     {
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        _storageDirectory = Path.Combine(appData, "FileFlow", "Scripts");
-        Directory.CreateDirectory(_storageDirectory);
+        AppPaths.EnsureDirectories();
+        _storageDirectory = AppPaths.ScriptsDirectory;
 
         LoadUserScripts();
     }
@@ -48,6 +54,39 @@ public sealed class ScriptLibraryService
     }
 
     public IReadOnlyList<ScriptDefinition> GetBuiltInScripts()
+    {
+        string[] candidatePaths =
+        [
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "script_presets.json"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", "Config", "script_presets.json"),
+            Path.Combine(Directory.GetCurrentDirectory(), "Config", "script_presets.json"),
+            Path.Combine(AppContext.BaseDirectory, "Config", "script_presets.json")
+        ];
+
+        foreach (var path in candidatePaths.Distinct())
+        {
+            if (File.Exists(path))
+            {
+                try
+                {
+                    string json = File.ReadAllText(path);
+                    var items = JsonSerializer.Deserialize<List<ScriptDefinition>>(json, JsonOptions);
+                    if (items != null && items.Count > 0)
+                    {
+                        return items;
+                    }
+                }
+                catch
+                {
+                    // Fallback to in-memory definitions
+                }
+            }
+        }
+
+        return GetFallbackBuiltInScripts();
+    }
+
+    private static List<ScriptDefinition> GetFallbackBuiltInScripts()
     {
         return
         [

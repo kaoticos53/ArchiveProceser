@@ -396,4 +396,29 @@
   <data name="Param_ConfirmRecycle" xml:space="preserve"><value>Confirm Recycle</value></data>
   <data name="Param_TargetDirectory" xml:space="preserve"><value>Target Directory</value></data>
   <data name="Param_DeleteRootIfEmpty" xml:space="preserve"><value>Delete Root If Empty</value></data>
+
+  <!-- Script Studio -->
+  <data name="ScriptStudio_Title" xml:space="preserve"><value>Custom Script Studio (C# / JavaScript)</value></data>
+  <data name="ScriptStudio_Engine" xml:space="preserve"><value>💻 Scripting Engine:</value></data>
+  <data name="ScriptStudio_Templates" xml:space="preserve"><value>📚 Templates:</value></data>
+  <data name="ScriptStudio_LoadTemplate" xml:space="preserve"><value>📂 Load Template</value></data>
+  <data name="ScriptStudio_ManualPdf" xml:space="preserve"><value>📖 PDF Manual...</value></data>
+  <data name="ScriptStudio_TabPorts" xml:space="preserve"><value>🔌 Ports</value></data>
+  <data name="ScriptStudio_TabTest" xml:space="preserve"><value>🧪 Live Test</value></data>
+  <data name="ScriptStudio_TabSave" xml:space="preserve"><value>💾 Save</value></data>
+  <data name="ScriptStudio_InputPorts" xml:space="preserve"><value>Input Ports:</value></data>
+  <data name="ScriptStudio_OutputPorts" xml:space="preserve"><value>Output Ports:</value></data>
+  <data name="ScriptStudio_AddPort" xml:space="preserve"><value>➕ Add</value></data>
+  <data name="ScriptStudio_TestFileName" xml:space="preserve"><value>Test file name:</value></data>
+  <data name="ScriptStudio_RunTest" xml:space="preserve"><value>▶ Run Script Test</value></data>
+  <data name="ScriptStudio_ScriptName" xml:space="preserve"><value>Script Name:</value></data>
+  <data name="ScriptStudio_ScriptDesc" xml:space="preserve"><value>Description:</value></data>
+  <data name="ScriptStudio_SaveToMyScripts" xml:space="preserve"><value>💾 Save to My Scripts</value></data>
+  <data name="ScriptStudio_Tip" xml:space="preserve"><value>💡 Tip: In C# use 'await EmitAsync("Port");', in JS use 'emit("Port", item);'</value></data>
+  <data name="ScriptStudio_Apply" xml:space="preserve"><value>✓ Apply &amp; Close</value></data>
+  <data name="ScriptStudio_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ScriptStudio_ReadyToTest" xml:space="preserve"><value>Ready to test</value></data>
+  <data name="ScriptStudio_Running" xml:space="preserve"><value>Running...</value></data>
+  <data name="ScriptStudio_Success" xml:space="preserve"><value>Success</value></data>
+  <data name="ScriptStudio_Error" xml:space="preserve"><value>Error</value></data>
 </root>

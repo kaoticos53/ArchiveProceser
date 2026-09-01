@@ -8,7 +8,12 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **296 / 296 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit, incluyendo validación de motores de scripting, catálogo sin duplicados, variables implícitas y los 40 workflows de ejemplo).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **303 / 303 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Configuration Loaders, AppPaths Storage & Portable Mode Provider & Performance Benchmarks en xUnit).
+- **Proveedor Centralizado de Rutas (`AppPaths`) y Soporte Nativo para Modo Portable**:
+  - Unificación de carpetas de usuario bajo `%AppData%/FileFlow/` y soporte autónomo para modo portable (`portable.dat` o carpeta `data/` local al ejecutable) sin tocar el sistema anfitrión ni el registro.
+  - Resolución de rutas relativas y auto-detección de herramientas portables (FFmpeg, 7-Zip, Python) ubicadas en `tools/`.
+  - Script automatizado de distribución portable [`installer/build-portable.ps1`](file:///installer/build-portable.ps1) para generar paquetes `.zip` listos para usar en memorias USB o carpetas portables.
+  - Externalización completa de muestras sintéticas, presets de renombrado, presets multimedia, catálogo de regex y plantillas de scripting a ficheros JSON independientes con fallback determinista.
 - **Scripts de Limpieza Integral (`clean.ps1` y `clean.bat`)**:
   - Limpieza automatizada y determinista de todas las carpetas `bin` y `obj` en todos los proyectos, artefactos de publicación (`installer/publish`), empaquetado (`installer/output`), resultados de tests (`TestResults`, `coverage-report`) y temporales (`.vs`, `.dotnet_tmp`, `*.user`, `*.suo`, `crash.log`).
   - Soporte de simulación no destructiva (`-DryRun`), opción de incluir PDFs (`-IncludePdfs`) y cálculo de espacio liberado en disco.
@@ -16,7 +21,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
   - Motor de ejecución dual que permite al usuario programar en **C# (Roslyn JIT en memoria con cacheo SHA256)** o **JavaScript (Sandbox administrado Jint en .NET 9)**.
   - Soporte de funciones de resolución de plantillas y variables implícitas (`Resolve(template)`, `resolve(template)` y `getVar(varName)`).
   - Nodo `CustomScriptNode` con puertos dinámicos configurables (`Inputs` y `Outputs` editables), timeouts y acción `OpenScriptStudio`.
-  - Ventana de edición `ScriptStudioWindow` encapsulada con `AvalonEdit` (resaltado sintáctico automático C#/JS), botón **`📖 Manual PDF...`**, probador en tiempo real con consola de salida y telemetría de emisiones, y biblioteca de scripts con presets incorporados (`.ffscript` en `%AppData%/FileFlow/Scripts/`).
+  - Ventana de edición `ScriptStudioWindow` completamente integrada con el **sistema dinámico de temas** (`{DynamicResource ...}`) y **localización dinámica bilingüe i18n** (`LocalizationManager.Instance`), editor `AvalonEdit` temático, botón **`📖 Manual PDF...`**, probador en tiempo real con consola de salida y telemetría de emisiones, y biblioteca de scripts con presets incorporados (`.ffscript` en `%AppData%/FileFlow/Scripts/`).
 - **Manual Didáctico de Scripting, Compilación a PDF e Instalador**:
   - Creado `docs/manual_nodo_scripting.md` orientado a niveles básico y medio.
   - Compilado automáticamente a `docs/manual_nodo_scripting.pdf` (1003.8 KB) mediante Microsoft Edge Chromium Headless.
@@ -25,7 +30,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
   - Todos los 40 JSONs de ejemplo en `docs/examples/` (`01_basic`, `02_intermediate`, `03_advanced`, `04_complex`) y `docs/flujo_test.json` fueron actualizados a los nuevos contratos de nodos, tipos canónicos y nombres de puertos actuales (`True`/`False`, `Deleted`, `TriggerIn`, `ItemIn`/`ItemOut`, `Fork1`/`Fork2`/`AllCompleted`).
 - **Encapsulación Total de UI en Plugins (Arquitectura Zero-Touch en FileFlow.App)**:
   - Cada plugin (`FileFlow.Plugin.*`) es un módulo 100% autónomo y auto-contenido con soporte WPF en .NET 9 (`net9.0-windows`).
-  - Todas las ventanas modales, vistas XAML y servicios de soporte (`AdvancedRenamerEditorWindow`, `MediaPresetManagerWindow`, `PasswordManagerWindow`, `RegexHelperWindow`) residen dentro del directorio `UI/` de su respectivo plugin.
+  - Todas las ventanas modales, vistas XAML y servicios de soporte (`AdvancedRenamerEditorWindow` con paneles y vista previa redimensionables, 12 presets profesionales y 18 muestras sintéticas enriquecidas, `MediaPresetManagerWindow`, `PasswordManagerWindow`, `RegexHelperWindow`) residen dentro del directorio `UI/` de su respectivo plugin.
   - El SDK despacha las acciones modales de forma universal mediante `INodeCustomActionProvider` (`ExecuteCustomAction`), desacoplando por completo la aplicación anfitriona (`FileFlow.App`).
   - Para crear o modificar un plugin nuevo (con o sin interfaz gráfica), **solo se escribe código dentro del directorio del propio plugin, sin tocar `FileFlow.App`**.
 - **Desacoplamiento Total de Vistas XAML y Sistema de CustomActions**:

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using FileFlow.Sdk.Renaming;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.FileSystem.UI.Services;
 
@@ -24,10 +25,8 @@ public sealed class RegexLibraryService
 
     public RegexLibraryService()
     {
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string fileFlowDir = Path.Combine(appData, "FileFlow");
-        Directory.CreateDirectory(fileFlowDir);
-        _storageFilePath = Path.Combine(fileFlowDir, "regex_library.json");
+        AppPaths.EnsureDirectories();
+        _storageFilePath = AppPaths.RegexLibraryFile;
 
         LoadUserPatterns();
     }
@@ -44,6 +43,39 @@ public sealed class RegexLibraryService
     }
 
     public IReadOnlyList<RegexPatternItem> GetBuiltInPatterns()
+    {
+        string[] candidatePaths =
+        [
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "regex_patterns.json"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", "Config", "regex_patterns.json"),
+            Path.Combine(Directory.GetCurrentDirectory(), "Config", "regex_patterns.json"),
+            Path.Combine(AppContext.BaseDirectory, "Config", "regex_patterns.json")
+        ];
+
+        foreach (var path in candidatePaths.Distinct())
+        {
+            if (File.Exists(path))
+            {
+                try
+                {
+                    string json = File.ReadAllText(path);
+                    var items = JsonSerializer.Deserialize<List<RegexPatternItem>>(json, JsonOptions);
+                    if (items != null && items.Count > 0)
+                    {
+                        return items;
+                    }
+                }
+                catch
+                {
+                    // Fallback to in-memory definitions
+                }
+            }
+        }
+
+        return GetFallbackBuiltInPatterns();
+    }
+
+    private static List<RegexPatternItem> GetFallbackBuiltInPatterns()
     {
         return
         [

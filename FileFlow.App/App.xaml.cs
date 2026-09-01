@@ -108,9 +108,8 @@ public partial class App : Application
     {
         try
         {
-            string appData = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlowStudio");
-            System.IO.Directory.CreateDirectory(appData);
-            string crashFile = System.IO.Path.Combine(appData, "crash.log");
+            FileFlow.Sdk.Storage.AppPaths.EnsureDirectories();
+            string crashFile = FileFlow.Sdk.Storage.AppPaths.CrashLogFile;
             string logText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Unhandled Exception:\n{exception}\n\n";
             System.IO.File.AppendAllText(crashFile, logText);
         }

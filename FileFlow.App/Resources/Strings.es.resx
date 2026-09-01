@@ -396,4 +396,29 @@
   <data name="Param_ConfirmRecycle" xml:space="preserve"><value>Confirmar Papelera</value></data>
   <data name="Param_TargetDirectory" xml:space="preserve"><value>Carpeta Destino</value></data>
   <data name="Param_DeleteRootIfEmpty" xml:space="preserve"><value>Borrar Raíz Si Vacía</value></data>
+
+  <!-- Script Studio -->
+  <data name="ScriptStudio_Title" xml:space="preserve"><value>Estudio de Scripting Personalizado (C# / JavaScript)</value></data>
+  <data name="ScriptStudio_Engine" xml:space="preserve"><value>💻 Motor de Scripting:</value></data>
+  <data name="ScriptStudio_Templates" xml:space="preserve"><value>📚 Plantillas:</value></data>
+  <data name="ScriptStudio_LoadTemplate" xml:space="preserve"><value>📂 Cargar Plantilla</value></data>
+  <data name="ScriptStudio_ManualPdf" xml:space="preserve"><value>📖 Manual PDF...</value></data>
+  <data name="ScriptStudio_TabPorts" xml:space="preserve"><value>🔌 Puertos</value></data>
+  <data name="ScriptStudio_TabTest" xml:space="preserve"><value>🧪 Probar en Vivo</value></data>
+  <data name="ScriptStudio_TabSave" xml:space="preserve"><value>💾 Guardar</value></data>
+  <data name="ScriptStudio_InputPorts" xml:space="preserve"><value>Puertos de Entrada (Inputs):</value></data>
+  <data name="ScriptStudio_OutputPorts" xml:space="preserve"><value>Puertos de Salida (Outputs):</value></data>
+  <data name="ScriptStudio_AddPort" xml:space="preserve"><value>➕ Añadir</value></data>
+  <data name="ScriptStudio_TestFileName" xml:space="preserve"><value>Nombre de archivo de prueba:</value></data>
+  <data name="ScriptStudio_RunTest" xml:space="preserve"><value>▶️ Ejecutar Prueba del Script</value></data>
+  <data name="ScriptStudio_ScriptName" xml:space="preserve"><value>Nombre del Script:</value></data>
+  <data name="ScriptStudio_ScriptDesc" xml:space="preserve"><value>Descripción:</value></data>
+  <data name="ScriptStudio_SaveToMyScripts" xml:space="preserve"><value>💾 Guardar en Mis Scripts</value></data>
+  <data name="ScriptStudio_Tip" xml:space="preserve"><value>💡 Tip: En C# usa 'await EmitAsync("Puerto");', en JS usa 'emit("Puerto", item);'</value></data>
+  <data name="ScriptStudio_Apply" xml:space="preserve"><value>✓ Aplicar y Cerrar</value></data>
+  <data name="ScriptStudio_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="ScriptStudio_ReadyToTest" xml:space="preserve"><value>Listo para probar</value></data>
+  <data name="ScriptStudio_Running" xml:space="preserve"><value>Ejecutando...</value></data>
+  <data name="ScriptStudio_Success" xml:space="preserve"><value>Éxito</value></data>
+  <data name="ScriptStudio_Error" xml:space="preserve"><value>Error</value></data>
 </root>

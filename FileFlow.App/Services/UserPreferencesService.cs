@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.App.Services;
 
@@ -35,9 +36,8 @@ public class UserPreferencesService
 
     private UserPreferencesService()
     {
-        string appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlowStudio");
-        Directory.CreateDirectory(appDataFolder);
-        _filePath = Path.Combine(appDataFolder, "user_preferences.json");
+        AppPaths.EnsureDirectories();
+        _filePath = AppPaths.UserPreferencesFile;
         Load();
     }
 

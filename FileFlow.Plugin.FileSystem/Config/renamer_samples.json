@@ -1,0 +1,213 @@
+[
+  {
+    "Directory": "C:\\Muestras\\Fotografia",
+    "FileName": "DSC_0042.JPG",
+    "FileSizeBytes": 4194304,
+    "IsDirectory": false,
+    "Metadata": {
+      "Exif:CameraModel": "Nikon D850",
+      "Exif:CameraMake": "Nikon",
+      "Exif:DateTaken": "2026:08:15 14:32:05",
+      "Img:Width": 8256,
+      "Img:Height": 5504,
+      "Orientation": "Landscape",
+      "AspectRatio": "3:2",
+      "Megapixels": "45.4",
+      "Hash:SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Fotografia",
+    "FileName": "IMG_20260901_120000.png",
+    "FileSizeBytes": 1048576,
+    "IsDirectory": false,
+    "Metadata": {
+      "Exif:CameraModel": "iPhone 15 Pro",
+      "Exif:CameraMake": "Apple",
+      "Exif:DateTaken": "2026:09:01 12:00:00",
+      "Img:Width": 4032,
+      "Img:Height": 3024,
+      "Orientation": "Landscape",
+      "AspectRatio": "4:3",
+      "Megapixels": "12.2"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Fotografia",
+    "FileName": "_MG_9843.CR3",
+    "FileSizeBytes": 35651584,
+    "IsDirectory": false,
+    "Metadata": {
+      "Exif:CameraModel": "Canon EOS R5",
+      "Exif:CameraMake": "Canon",
+      "Exif:DateTaken": "2026:07:20 18:45:10",
+      "Img:Width": 8192,
+      "Img:Height": 5464,
+      "Orientation": "Landscape",
+      "Megapixels": "44.8"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Video",
+    "FileName": "GOPR0125.MP4",
+    "FileSizeBytes": 450887680,
+    "IsDirectory": false,
+    "Metadata": {
+      "Exif:CameraModel": "GoPro HERO12",
+      "Exif:DateTaken": "2026:08:10 10:15:00",
+      "Video:Width": 5312,
+      "Video:Height": 2988,
+      "Video:Duration": "00:04:15",
+      "AspectRatio": "16:9"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Series",
+    "FileName": "Breaking.Bad.S01E03.1080p.BluRay.x264-FLIX.mkv",
+    "FileSizeBytes": 1572864000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Video:Width": 1920,
+      "Video:Height": 1080,
+      "Video:Duration": "00:48:12",
+      "AspectRatio": "16:9"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Series",
+    "FileName": "Stranger.Things.2x04.720p.HDTV.mp4",
+    "FileSizeBytes": 629145600,
+    "IsDirectory": false,
+    "Metadata": {
+      "Video:Width": 1280,
+      "Video:Height": 720,
+      "Video:Duration": "00:52:40",
+      "AspectRatio": "16:9"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Video",
+    "FileName": "video_tutorial_parte_1_4k.mp4",
+    "FileSizeBytes": 104857600,
+    "IsDirectory": false,
+    "Metadata": {
+      "Video:Width": 3840,
+      "Video:Height": 2160,
+      "Video:Duration": "00:15:30",
+      "AspectRatio": "16:9"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Musica",
+    "FileName": "01 - Bohemian Rhapsody.mp3",
+    "FileSizeBytes": 8388608,
+    "IsDirectory": false,
+    "Metadata": {
+      "Audio:Artist": "Queen",
+      "Audio:Title": "Bohemian Rhapsody",
+      "Audio:Album": "A Night at the Opera",
+      "Audio:Year": 1975,
+      "Audio:Track": 1,
+      "Audio:Genre": "Rock"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Musica",
+    "FileName": "pink_floyd_-_06_-_money_(remastered).flac",
+    "FileSizeBytes": 41943040,
+    "IsDirectory": false,
+    "Metadata": {
+      "Audio:Artist": "Pink Floyd",
+      "Audio:Title": "Money",
+      "Audio:Album": "The Dark Side of the Moon",
+      "Audio:Year": 1973,
+      "Audio:Track": 6,
+      "Audio:Genre": "Progressive Rock"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Podcasts",
+    "FileName": "Podcast_Ep12_Inteligencia_Artificial.m4a",
+    "FileSizeBytes": 52428800,
+    "IsDirectory": false,
+    "Metadata": {
+      "Audio:Artist": "TechTalk Podcast",
+      "Audio:Title": "El Futuro de la IA Generativa",
+      "Audio:Album": "Temporada 2026",
+      "Audio:Year": 2026,
+      "Audio:Track": 12
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Facturas",
+    "FileName": "FAC-2026-08-00124_ClienteACME_v1.2.pdf",
+    "FileSizeBytes": 524288,
+    "IsDirectory": false,
+    "Metadata": {
+      "CustomCategory": "Facturas",
+      "Hash:SHA256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+      "Hash:MD5": "c4ca4238a0b923820dcc509a6f75849b"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Finanzas",
+    "FileName": "informe trimestral Q2 2026 borrador.docx",
+    "FileSizeBytes": 786432,
+    "IsDirectory": false,
+    "Metadata": {
+      "CustomCategory": "Finanzas"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Contabilidad",
+    "FileName": "reporte_mensual_2026_08.xlsx",
+    "FileSizeBytes": 262144,
+    "IsDirectory": false,
+    "Metadata": {
+      "CustomCategory": "Reportes"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Corporativo",
+    "FileName": "Presentacion_Estrategia_Corporativa_2026.pptx",
+    "FileSizeBytes": 5242880,
+    "IsDirectory": false,
+    "Metadata": {
+      "CustomCategory": "Presentaciones"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "  mi.archivo.de.prueba...v1.0--FINAL(copia)  .pdf",
+    "FileSizeBytes": 314572,
+    "IsDirectory": false,
+    "Metadata": {
+      "CustomCategory": "Documentos"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "DOCUMENTO CON ESPACIOS   MULTIPLES Y CARACTERES #%&.txt",
+    "FileSizeBytes": 12288,
+    "IsDirectory": false,
+    "Metadata": {}
+  },
+  {
+    "Directory": "C:\\Muestras\\Capitulos",
+    "FileName": "capitulo_1_introduccion.mp4",
+    "FileSizeBytes": 83886080,
+    "IsDirectory": false,
+    "Metadata": {
+      "Video:Duration": "00:10:00"
+    }
+  },
+  {
+    "Directory": "C:\\Muestras\\Backups",
+    "FileName": "backup_database_production_20260830_full.tar.gz",
+    "FileSizeBytes": 209715200,
+    "IsDirectory": false,
+    "Metadata": {
+      "Hash:SHA256": "9f83c68a0a8635fc950c441b439534f59e924a35cf9119159d33cb41b8a536c4"
+    }
+  }
+]

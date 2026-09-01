@@ -1,0 +1,331 @@
+[
+  {
+    "Name": "📷 Fotografía Digital (Fecha EXIF + Modelo + Contador)",
+    "Category": "Fotografía",
+    "Description": "Organiza fotos con año-mes-día de captura, modelo de cámara y contador incremental de 3 dígitos con extensión en minúsculas.",
+    "Steps": [
+      {
+        "MethodType": 0,
+        "ApplyTo": 0,
+        "Pattern": "<Date Taken:yyyyMMdd>_<Exif:CameraModel>_<Inc Nr:001>",
+        "Name": "Plantilla EXIF",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 4,
+        "ApplyTo": 1,
+        "CaseType": 0,
+        "Name": "Extensión en Minúsculas",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Limpieza de Caracteres",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🖼️ Fotografía (Fecha + Resolución [Ancho x Alto])",
+    "Category": "Fotografía",
+    "Description": "Agrega fecha de captura y dimensiones en píxeles al nombre original de la imagen.",
+    "Steps": [
+      {
+        "MethodType": 0,
+        "ApplyTo": 0,
+        "Pattern": "<Date Taken:yyyyMMdd>_[<Img Width>x<Img Height>]_<FileNameNoExt>",
+        "Name": "Plantilla Fecha y Resolución",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 4,
+        "ApplyTo": 1,
+        "CaseType": 0,
+        "Name": "Extensión en Minúsculas",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Sanitizar Nombre",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🎬 Series de TV y Vídeo (Estandarizar S01E02 / NxN)",
+    "Category": "Vídeo",
+    "Description": "Normaliza temporadas y episodios rellenando ceros a 2 dígitos (ej. 1x2 -> S01E02 o 01x02) y limpia nombres de release.",
+    "Steps": [
+      {
+        "MethodType": 8,
+        "ApplyTo": 0,
+        "NumberTarget": 3,
+        "NumberPaddingDigits": 2,
+        "PadSeasonAndEpisode": true,
+        "Name": "Normalizar Temporada y Episodio",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": false,
+        "SearchText": ".",
+        "ReplaceText": " ",
+        "ReplaceAll": true,
+        "Name": "Puntos a Espacios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 4,
+        "ApplyTo": 0,
+        "CaseType": 2,
+        "Name": "Mayúsculas de Título",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Limpieza Final",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🎵 Música y Audio (Pista - Artista - Título)",
+    "Category": "Audio",
+    "Description": "Estandariza canciones con número de pista a 2 dígitos, artista y título de canción mediante etiquetas ID3.",
+    "Steps": [
+      {
+        "MethodType": 0,
+        "ApplyTo": 0,
+        "Pattern": "<Audio:Track> - <Audio:Artist> - <Audio:Title>",
+        "Name": "Plantilla ID3 Estándar",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Sanitizar Nombre",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "💿 Música (Artista - [Año] Álbum - Pista. Título)",
+    "Category": "Audio",
+    "Description": "Organización discográfica completa incluyendo artista, año del álbum, nombre del álbum y número de pista.",
+    "Steps": [
+      {
+        "MethodType": 0,
+        "ApplyTo": 0,
+        "Pattern": "<Audio:Artist> - [<Audio:Year>] <Audio:Album> - <Audio:Track>. <Audio:Title>",
+        "Name": "Plantilla Discográfica",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 4,
+        "ApplyTo": 1,
+        "CaseType": 0,
+        "Name": "Extensión en Minúsculas",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Limpieza de Caracteres",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🌐 Web & SEO Cleaner (Slug Limpio en Minúsculas / Kebab-case)",
+    "Category": "Web / SEO",
+    "Description": "Convierte espacios y caracteres especiales en guiones, pasa todo a minúsculas y normaliza caracteres Unicode.",
+    "Steps": [
+      {
+        "MethodType": 4,
+        "ApplyTo": 2,
+        "CaseType": 0,
+        "Name": "Minúsculas Completas",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "[^\\w\\-]+",
+        "ReplaceText": "-",
+        "ReplaceAll": true,
+        "Name": "Espacios y Símbolos a Guiones",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "TrimWhitespace": true,
+        "SanitizeInvalidChars": true,
+        "NormalizationMode": 1,
+        "Name": "Normalización Unicode",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🔠 Normalización de Título (TitleCase con Espacios Limpios)",
+    "Category": "General",
+    "Description": "Convierte guiones bajos y puntos en espacios, y aplica mayúscula a la letra inicial de cada palabra.",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "[_\\.]+",
+        "ReplaceText": " ",
+        "ReplaceAll": true,
+        "Name": "Guiones Bajos y Puntos a Espacios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 4,
+        "ApplyTo": 0,
+        "CaseType": 2,
+        "Name": "Capitalizar Cada Palabra",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "Name": "Colapsar Espacios y Recortar",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "💼 Documentos y Facturas (Fecha ISO_Carpeta_Nombre_Hash)",
+    "Category": "Empresarial",
+    "Description": "Formato documental con fecha de creación ISO, departamento/carpeta contenedora y verificación SHA256 corta.",
+    "Steps": [
+      {
+        "MethodType": 0,
+        "ApplyTo": 0,
+        "Pattern": "<Date Created:yyyyMMdd>_<DirName>_<FileNameNoExt>_[<Hash:SHA256:8>]",
+        "Name": "Prefijo Empresarial con Hash",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "SanitizeInvalidChars": true,
+        "CollapseSpaces": true,
+        "Name": "Limpieza y Sanitización",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🧹 Limpieza Extrema (Sanitizar SO + Colapsar Espacios + Trim)",
+    "Category": "General",
+    "Description": "Elimina caracteres ilegales del sistema operativo, recorta espacios al inicio y final y colapsa espacios dobles o triples.",
+    "Steps": [
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "TrimWhitespace": true,
+        "CollapseSpaces": true,
+        "SanitizeInvalidChars": true,
+        "NormalizationMode": 1,
+        "Name": "Limpieza Profunda",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🔢 Numeración Incremental (001, 002...) por Carpeta",
+    "Category": "Secuencias",
+    "Description": "Añade un contador con relleno de ceros (001_...) que se reinicia automáticamente al cambiar de directorio.",
+    "Steps": [
+      {
+        "MethodType": 5,
+        "ApplyTo": 0,
+        "StartNumber": 1,
+        "Increment": 1,
+        "PaddingZeroes": 3,
+        "ResetOn": 1,
+        "Name": "Contador con 3 Dígitos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 2,
+        "ApplyTo": 0,
+        "Pattern": " - ",
+        "Position": 0,
+        "PositionIndex": 3,
+        "Name": "Separador Guion",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)",
+    "Category": "Secuencias",
+    "Description": "Rellena los números individuales existentes en el nombre con ceros a la izquierda para garantizar ordenación alfanumérica perfecta en el explorador.",
+    "Steps": [
+      {
+        "MethodType": 8,
+        "ApplyTo": 0,
+        "NumberTarget": 0,
+        "NumberPaddingDigits": 2,
+        "Name": "Rellenar Números a 2 Dígitos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "Name": "Colapsar Espacios",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "✂️ Limpiador de Tags / Publicidad (Regex Cleaner)",
+    "Category": "Limpieza",
+    "Description": "Elimina automáticamente tags publicitarios de descargas (ej. [www.sitio.com], (v1.0), 1080p, Bluray, copia).",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)(\\[[^\\]]*www\\.[^\\]]+\\]|\\((copia|final|v\\d+(\\.\\d+)?)\\)|\\b(1080p|720p|hdtv|x264|bluray)\\b)",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar Tags Publicitarios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "TrimWhitespace": true,
+        "CollapseSpaces": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Limpieza de Espacios Restantes",
+        "IsEnabled": true
+      }
+    ]
+  }
+]

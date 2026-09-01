@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using FileFlow.Sdk.Storage;
 using Microsoft.Win32;
 
 namespace FileFlow.App.Services;
@@ -26,9 +27,8 @@ public class ExternalToolsService
 
     private ExternalToolsService()
     {
-        string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlowStudio");
-        Directory.CreateDirectory(appDataDir);
-        _configFilePath = Path.Combine(appDataDir, "external_tools.json");
+        AppPaths.EnsureDirectories();
+        _configFilePath = AppPaths.ExternalToolsFile;
 
         LoadConfig();
     }
@@ -175,13 +175,27 @@ public class ExternalToolsService
 
     private string ResolveToolPath(string exeName, string configuredPath)
     {
-        if (!string.IsNullOrWhiteSpace(configuredPath) && File.Exists(configuredPath))
+        if (!string.IsNullOrWhiteSpace(configuredPath))
         {
-            return configuredPath;
+            string resolved = AppPaths.ResolveApplicationPath(configuredPath);
+            if (File.Exists(resolved))
+            {
+                return resolved;
+            }
         }
 
         return _resolvedToolCache.GetOrAdd(exeName, name =>
         {
+            // Búsqueda en carpeta local portable 'tools/'
+            string localTool = AppPaths.ResolveApplicationPath(Path.Combine("tools", name));
+            if (File.Exists(localTool)) return localTool;
+
+            string localToolSub = AppPaths.ResolveApplicationPath(Path.Combine("tools", Path.GetFileNameWithoutExtension(name), name));
+            if (File.Exists(localToolSub)) return localToolSub;
+
+            string localToolBin = AppPaths.ResolveApplicationPath(Path.Combine("tools", Path.GetFileNameWithoutExtension(name), "bin", name));
+            if (File.Exists(localToolBin)) return localToolBin;
+
             string autoFound = FindExecutable(name, Path.GetFileNameWithoutExtension(name));
             return !string.IsNullOrWhiteSpace(autoFound) ? autoFound : name;
         });

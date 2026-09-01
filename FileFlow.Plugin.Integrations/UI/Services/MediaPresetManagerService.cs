@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Integrations.UI.Services;
 
@@ -27,9 +28,8 @@ public class MediaPresetManagerService
 
     private MediaPresetManagerService()
     {
-        string appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlowStudio");
-        Directory.CreateDirectory(appDataDir);
-        _presetsFilePath = Path.Combine(appDataDir, "media_presets.json");
+        AppPaths.EnsureDirectories();
+        _presetsFilePath = AppPaths.MediaPresetsFile;
 
         LoadPresets();
     }
@@ -147,6 +147,39 @@ public class MediaPresetManagerService
     }
 
     public static List<MediaPreset> GetDefaultPresets()
+    {
+        string[] candidatePaths =
+        [
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "media_presets.json"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", "Config", "media_presets.json"),
+            Path.Combine(Directory.GetCurrentDirectory(), "Config", "media_presets.json"),
+            Path.Combine(AppContext.BaseDirectory, "Config", "media_presets.json")
+        ];
+
+        foreach (var path in candidatePaths.Distinct())
+        {
+            if (File.Exists(path))
+            {
+                try
+                {
+                    string json = File.ReadAllText(path);
+                    var items = JsonSerializer.Deserialize<List<MediaPreset>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (items != null && items.Count > 0)
+                    {
+                        return items;
+                    }
+                }
+                catch
+                {
+                    // Fallback to in-memory defaults
+                }
+            }
+        }
+
+        return GetFallbackDefaultPresets();
+    }
+
+    private static List<MediaPreset> GetFallbackDefaultPresets()
     {
         return
         [

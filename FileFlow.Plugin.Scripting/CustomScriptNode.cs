@@ -131,6 +131,11 @@ await EmitAsync(""Out"");",
             string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
 
             var window = new ScriptStudioWindow(language, code, inputsStr, outputsStr);
+            if (System.Windows.Application.Current?.MainWindow != null)
+            {
+                window.Owner = System.Windows.Application.Current.MainWindow;
+            }
+
             if (window.ShowDialog() == true)
             {
                 Parameters["Language"] = window.SelectedLanguage;

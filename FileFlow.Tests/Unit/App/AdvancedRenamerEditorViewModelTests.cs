@@ -44,7 +44,7 @@ public class AdvancedRenamerEditorViewModelTests : IDisposable
 
         // Assert
         vm.PreviewItems.Should().NotBeEmpty();
-        vm.PreviewItems.Count.Should().Be(6);
+        vm.PreviewItems.Count.Should().Be(18);
         vm.PreviewSourceDescription.Should().Contain("sintéticas");
     }
 
@@ -59,7 +59,73 @@ public class AdvancedRenamerEditorViewModelTests : IDisposable
 
         // Assert
         vm.PipelineName.Should().Be("Pipeline Predeterminado");
-        vm.AvailablePresets.Should().NotBeEmpty();
+        vm.AvailablePresets.Should().HaveCount(12);
         vm.AvailableTags.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void RenamerSampleDataProvider_ShouldLoadFromJsonSuccessfully()
+    {
+        // Arrange
+        string sampleJson = """
+        [
+          {
+            "Directory": "C:\\Muestras\\Test",
+            "FileName": "sample1.pdf",
+            "FileSizeBytes": 2048,
+            "IsDirectory": false,
+            "Metadata": { "CustomTag": "Demo" }
+          }
+        ]
+        """;
+        string tempJsonFile = Path.Combine(_testDir, "test_samples.json");
+        File.WriteAllText(tempJsonFile, sampleJson);
+
+        // Act
+        var loaded = FileFlow.Plugin.FileSystem.UI.Services.RenamerSampleDataProvider.TryLoadFromFile(tempJsonFile);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded.Should().HaveCount(1);
+        loaded![0].FileName.Should().Be("sample1.pdf");
+        loaded[0].Metadata["CustomTag"].Should().Be("Demo");
+    }
+
+    [Fact]
+    public void RenamerPresetService_ShouldLoadFromJsonSuccessfully()
+    {
+        // Arrange
+        string presetJson = """
+        [
+          {
+            "Name": "Preset de Prueba",
+            "Category": "Pruebas",
+            "Description": "Preset para verificar carga JSON",
+            "Steps": []
+          }
+        ]
+        """;
+        string tempJsonFile = Path.Combine(_testDir, "test_presets.json");
+        File.WriteAllText(tempJsonFile, presetJson);
+
+        // Act
+        var loaded = FileFlow.Sdk.Renaming.RenamerPresetService.TryLoadPresetsFromFile(tempJsonFile);
+
+        // Assert
+        loaded.Should().NotBeNull();
+        loaded.Should().HaveCount(1);
+        loaded![0].Name.Should().Be("Preset de Prueba");
+    }
+
+    [Fact]
+    public void RegexLibrary_And_ScriptLibrary_ShouldLoadBuiltinsWithoutExceptions()
+    {
+        // Act
+        var regexes = FileFlow.Plugin.FileSystem.UI.Services.RegexLibraryService.Instance.GetBuiltInPatterns();
+        var scripts = FileFlow.Plugin.Scripting.Services.ScriptLibraryService.Instance.GetBuiltInScripts();
+
+        // Assert
+        regexes.Should().NotBeNullOrEmpty();
+        scripts.Should().NotBeNullOrEmpty();
     }
 }

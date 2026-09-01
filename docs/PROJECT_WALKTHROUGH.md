@@ -1133,6 +1133,132 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - Ejecución de `.\clean.ps1` liberando espacio y limpiando el árbol de directorios.
    - Recompilación limpia y ejecución de la suite de pruebas: **296 / 296 pruebas superadas con 100% de éxito**.
 
+---
+
+## [2026-09-01] - Integración de Temas Visuales e Internacionalización Dinámica en el Editor de Scripting
+
+### 🛠 Cambios Implementados
+1. **Adopción Completa del Sistema de Temas (`ScriptStudioWindow.xaml`)**:
+   - Reemplazados todos los estilos y colores hexadecimales hardcodeados por recursos dinámicos (`{DynamicResource BgDarkBrush}`, `{DynamicResource BgCardBrush}`, `{DynamicResource BgSurfaceBrush}`, `{DynamicResource BorderDarkBrush}`, `{DynamicResource TextPrimaryBrush}`, `{DynamicResource TextSecondaryBrush}`, `{DynamicResource AccentPrimaryBrush}`, etc.).
+   - Adaptado el editor de código AvalonEdit (`CodeEditor`) para consumir los pinceles del tema activo en fondo, primer plano y números de línea.
+   - Establecido `window.Owner = Application.Current.MainWindow` en `CustomScriptNode.cs` para herencia de recursos y centrado óptimo.
+2. **Internacionalización Dinámica y Reactiva (i18n)**:
+   - Migrados todos los títulos de ventana, pestañas, etiquetas, botones, descripciones y tips de ayuda a enlaces dinámicos con `LocalizationManager.Instance`.
+   - Incorporadas 23 nuevas claves de localización en `Strings.resx` (Inglés) y `Strings.es.resx` (Español) para el motor de scripting.
+   - Actualizado `ScriptStudioViewModel.cs` para obtener mensajes de estado en caliente (`Ready to test` / `Listo para probar`, `Running...` / `Ejecutando...`, `Success` / `Éxito`, `Error`).
+3. **Validación y Suite de Pruebas**:
+   - Compilación y ejecución de la suite xUnit: **296 / 296 pruebas superadas con 100% de éxito**.
+
+---
+
+## [2026-09-01] - Paneles Redimensionables Dinámicos en el Estudio de Renombrado Avanzado
+
+### 🛠 Cambios Implementados
+1. **Separación Horizontal y Vertical Flexible (`AdvancedRenamerEditorWindow.xaml`)**:
+   - **Splitter Horizontal (Redimensionamiento Vertical)**: Se sustituyó la altura fija del panel de vista previa (`Height="185"`) por una fila proporcional dinámica con límites mínimos (`RowDefinition Height="3*" MinHeight="180"` para el editor de pasos y `RowDefinition Height="2*" MinHeight="120"` para la tabla de Live Preview) interconectada por un `GridSplitter` (`Cursor="SizeNS"`).
+   - **Splitter Vertical (Redimensionamiento Horizontal)**: Se insertó un `GridSplitter` interactivo (`Cursor="SizeWE"`) entre la lista de pasos del pipeline (panel izquierdo) y el configurador de métodos de renombrado (panel derecho), con anchos mínimos configurados (`MinWidth="220"` y `MinWidth="320"`).
+   - **Columnas de DataGrid**: Habilitado `CanUserResizeColumns="True"` en la tabla de vista previa en vivo para permitir ajuste personalizado de anchuras de columnas.
+2. **Validación**:
+   - Compilación en limpio y ejecución de la suite de pruebas: **296 / 296 pruebas superadas con 100% de éxito**.
+
+---
+
+## [2026-09-01] - Expansión de Muestras Sintéticas y Catálogo de Presets en Renombrado Avanzado
+
+### 🛠 Cambios Implementados
+1. **Catálogo de Presets Predefinidos (`RenamerPresetService.cs`)**:
+   - Ampliado de 4 a **12 presets predefinidos de nivel profesional** organizados por categorías:
+     - 📷 *Fotografía Digital (Fecha EXIF + Modelo + Contador)*
+     - 🖼️ *Fotografía (Fecha + Resolución [Ancho x Alto])*
+     - 🎬 *Series de TV y Vídeo (Estandarizar S01E02 / NxN)*
+     - 🎵 *Música y Audio (Pista - Artista - Título)*
+     - 💿 *Música (Artista - [Año] Álbum - Pista. Título)*
+     - 🌐 *Web & SEO Cleaner (Slug Limpio en Minúsculas / Kebab-case)*
+     - 🔠 *Normalización de Título (TitleCase con Espacios Limpios)*
+     - 💼 *Documentos y Facturas (Fecha ISO_Carpeta_Nombre_Hash)*
+     - 🧹 *Limpieza Extrema (Sanitizar SO + Colapsar Espacios + Trim)*
+     - 🔢 *Numeración Incremental (001, 002...) por Carpeta*
+     - 0️⃣1️⃣ *Rellenar Números (1, 2... 10 -> 01, 02... 10)*
+     - ✂️ *Limpiador de Tags / Publicidad (Regex Cleaner)*
+2. **Muestras Sintéticas Enriquecidas (`RenamerSampleDataProvider.cs`)**:
+   - Ampliado de 6 a **18 muestras sintéticas hiperrealistas y diversificadas** con metadatos completos:
+     - Réflex DSLR Nikon D850 (45.4 MP, EXIF), Smartphone iPhone 15 Pro, RAW Canon EOS R5, GoPro HERO12 5.3K.
+     - Series de TV (`Breaking.Bad.S01E03...`, `Stranger.Things.2x04...`), Tutorial 4K.
+     - Audio MP3 Queen con ID3, FLAC 24-bit Pink Floyd, Podcast IA.
+     - Facturas fiscales con SHA256/MD5, informes trimestrales, balances Excel, presentaciones PowerPoint.
+     - Casos de prueba de limpieza: nombres con espacios y puntos múltiples, nombres con caracteres extraños (`#%&`), listas numeradas sin ceros y backups `.tar.gz`.
+3. **Validación y Suite de Pruebas**:
+   - Actualizadas las aserciones de prueba en `AdvancedRenamerEditorViewModelTests.cs`.
+   - Compilación limpia y paso del 100% de la suite de pruebas: **296 / 296 pruebas superadas con éxito**.
+
+---
+
+## [2026-09-01] - Externalización de Muestras Sintéticas, Presets y Bibliotecas a Ficheros de Configuración JSON
+
+### 🛠 Cambios Implementados
+1. **Ficheros de Configuración JSON Desacoplados**:
+   - Creado `Config/renamer_samples.json` en `FileFlow.Plugin.FileSystem` con las 18 muestras sintéticas enriquecidas.
+   - Creado `Config/renamer_presets.json` en `FileFlow.Sdk` con los 12 presets de renombrado profesional.
+   - Creado `Config/regex_patterns.json` en `FileFlow.Plugin.FileSystem` con el catálogo completo de expresiones regulares.
+   - Creado `Config/script_presets.json` en `FileFlow.Plugin.Scripting` con las plantillas de script de C# y JavaScript.
+2. **Carga en Cascada y Fallback Determinista**:
+   - `RenamerSampleDataProvider.cs`: Intenta cargar desde `%AppData%/FileFlow/renamer_samples.json` (personalizaciones del usuario), luego desde `Config/renamer_samples.json` de fábrica, y en su defecto aplica fallback seguro en memoria.
+   - `RenamerPresetService.cs`: Carga presets desde `%AppData%/FileFlow/renamer_presets.json` $\rightarrow$ `Config/renamer_presets.json` $\rightarrow$ Fallback en memoria.
+   - `RegexLibraryService.cs`: Carga catálogo desde `Config/regex_patterns.json` con fallback en memoria + patrones de usuario en `%AppData%/FileFlow/regex_library.json`.
+   - `ScriptLibraryService.cs`: Carga plantillas desde `Config/script_presets.json` con fallback en memoria + scripts de usuario en `%AppData%/FileFlow/Scripts/`.
+3. **Automatización de Despliegue en Compilación (`.csproj`)**:
+   - Configuradas reglas `<None Update="Config\**"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>` en `FileFlow.Plugin.FileSystem.csproj`, `FileFlow.Sdk.csproj` y `FileFlow.Plugin.Scripting.csproj`.
+4. **Nuevas Pruebas Unitarias y Validación**:
+   - Añadidas pruebas de carga y deserialización JSON en `AdvancedRenamerEditorViewModelTests.cs`.
+   - Ejecución de la suite completa: **299 / 299 pruebas superadas con 100% de éxito**.
+
+---
+
+## [2026-09-01] - Estandarización de Almacenamiento Centralizado (`AppPaths`) y Externalización de Presets Multimedia
+
+### 🛠 Cambios Implementados
+1. **Proveedor Centralizado de Rutas de Almacenamiento (`FileFlow.Sdk/Storage/AppPaths.cs`)**:
+   - Unificación de todas las carpetas de usuario bajo `%AppData%/FileFlow/` con jerarquía estructurada:
+     - `config/` $\rightarrow$ `user_preferences.json`, `external_tools.json`
+     - `themes/` $\rightarrow$ `custom_themes.json`
+     - `presets/` $\rightarrow$ `renamer_presets.json`, `media_presets.json`, `regex_library.json`
+     - `samples/` $\rightarrow$ `renamer_samples.json`
+     - `scripts/` $\rightarrow$ `*.ffscript`
+     - `logs/` $\rightarrow$ `crash.log`
+   - **Migración Transparente y No Destructiva**: `AppPaths.EnsureDirectories()` detecta ficheros de `%AppData%/FileFlowStudio/` o de la raíz de `%AppData%/FileFlow/` y los migra de forma segura a la nueva estructura sin sobreescribir ficheros más recientes.
+2. **Externalización de Presets Multimedia (`FileFlow.Plugin.Integrations`)**:
+   - Creado `FileFlow.Plugin.Integrations/Config/media_presets.json` con los 10 presets de FFmpeg predefinidos (MP3, AAC, FLAC, 1080p, 720p, 4K HEVC, WebM VP9, GIF animado, Móvil y Personalizado).
+   - Configurado `FileFlow.Plugin.Integrations.csproj` con copia automática de la carpeta `Config/`.
+   - Actualizado `MediaPresetManagerService.cs` para consumir `AppPaths.MediaPresetsFile`, cargar desde `Config/media_presets.json` con fallback seguro en memoria.
+3. **Refactorización Completa de Servicios**:
+   - `UserPreferencesService.cs`, `ExternalToolsService.cs`, `CustomThemeService.cs`, `RenamerPresetService.cs`, `RenamerSampleDataProvider.cs`, `RegexLibraryService.cs`, `ScriptLibraryService.cs` y `App.xaml.cs` actualizados para consumir `AppPaths`.
+4. **Nuevas Pruebas Unitarias y Validación**:
+   - Creado `FileFlow.Tests/Unit/Sdk/AppPathsTests.cs` para validar coherencia de rutas, existencia de subdirectorios y migración.
+   - Ejecución de la suite completa: **301 / 301 pruebas superadas con 100% de éxito**.
+
+---
+
+## [2026-09-01] - Arquitectura de Modo Portable Autónomo y Generador de Distribución ZIP
+
+### 🛠 Cambios Implementados
+1. **Detección Dinámica de Modo Portable en `AppPaths.cs`**:
+   - `AppPaths.IsPortableMode`: Detección instantánea por presencia de archivo marcador (`portable.dat`, `.portable`), existencia de carpeta `data/` junto al ejecutable, variable de entorno `FILEFLOW_PORTABLE=1`, o sobreescritura dinámica por código / CLI (`SetCustomDataDirectory`).
+   - Redirección automática de `RootDirectory` hacia `<AppBaseDir>/data/` preservando subcarpetas (`config/`, `themes/`, `presets/`, `samples/`, `scripts/`, `logs/`).
+   - Método `AppPaths.ResolveApplicationPath(path)` para resolver rutas relativas de herramientas portables (ej. `tools\ffmpeg\ffmpeg.exe`).
+2. **Auto-Detección de Herramientas Portables en `ExternalToolsService.cs`**:
+   - Soporte para ejecutar FFmpeg, FFprobe, 7-Zip y Python colocados dentro de la carpeta local `tools/` de la aplicación portable sin requerir instalación en el sistema operativo.
+3. **Script Automatizado de Empaquetado Portable (`installer/build-portable.ps1`)**:
+   - Publica los binarios optimizados (SingleFile o SelfContained), estructura la carpeta autónoma con `portable.dat`, crea la jerarquía `data/`, copia las configuraciones de fábrica `Config/` y el manual PDF, y genera el archivo comprimido `installer/output/FileFlowStudio-v<Version>-Portable-<Runtime>.zip`.
+4. **Nuevas Pruebas Unitarias**:
+   - Ampliado `AppPathsTests.cs` con pruebas de redirección de datos, conmutación de modo portable y resolución de rutas relativas y absolutas.
+   - **303 / 303 pruebas unitarias e integración superadas al 100%**.
+
+
+
+
+
+
+
 
 
 

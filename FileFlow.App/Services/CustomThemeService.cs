@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.Themes;
 
 namespace FileFlow.App.Services;
@@ -24,7 +25,7 @@ public class CustomThemeService
         PropertyNameCaseInsensitive = true
     };
 
-    public CustomThemeService() : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlow", "custom_themes.json"))
+    public CustomThemeService() : this(AppPaths.CustomThemesFile)
     {
     }
 

@@ -22,18 +22,20 @@
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
-            <!-- Header & Presets -->
+            <!-- 0. Header & Presets -->
             <RowDefinition Height="Auto" />
-            <!-- Main Content: Step List (Left) + Step Config (Right) -->
-            <RowDefinition Height="*" />
-            <!-- Live Preview Table -->
-            <RowDefinition Height="185" />
-            <!-- Footer Actions -->
+            <!-- 1. Main Content: Step List (Left) + Step Config (Right) -->
+            <RowDefinition Height="3*" MinHeight="180" />
+            <!-- 2. Horizontal Splitter for Live Preview Resizing -->
+            <RowDefinition Height="8" />
+            <!-- 3. Live Preview Table -->
+            <RowDefinition Height="2*" MinHeight="120" />
+            <!-- 4. Footer Actions -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- 1. Header & Presets Bar -->
-        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -84,11 +86,11 @@
         </Border>
 
         <!-- 2. Main Body: Steps List (Left) + Step Config Form (Right) -->
-        <Grid Grid.Row="1" Margin="0,0,0,12">
+        <Grid Grid.Row="1" Margin="0,0,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="340" MinWidth="220" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" MinWidth="320" />
             </Grid.ColumnDefinitions>
 
             <!-- Left: Pipeline Steps List -->
@@ -173,6 +175,9 @@
                     </Grid>
                 </Grid>
             </Border>
+
+            <!-- Vertical Splitter between Steps List and Configurator -->
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" Cursor="SizeWE" />
 
             <!-- Right: Dynamic Step Configurator -->
             <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
@@ -464,8 +469,11 @@
             </Border>
         </Grid>
 
+        <!-- Horizontal Splitter for Live Preview Resizing -->
+        <GridSplitter Grid.Row="2" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="Transparent" Cursor="SizeNS" Margin="0,2" />
+
         <!-- 3. Bottom Panel: Live Preview Table -->
-        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+        <Border Grid.Row="3" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -477,7 +485,7 @@
                     <TextBlock Text="{Binding PreviewSourceDescription}" FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
 
-                <DataGrid Grid.Row="1" ItemsSource="{Binding PreviewItems}" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid Grid.Row="1" ItemsSource="{Binding PreviewItems}" AutoGenerateColumns="False" IsReadOnly="True" CanUserResizeColumns="True">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Nombre Original" Binding="{Binding OriginalName}" Width="280" />
                         <DataGridTextColumn Header="Nombre Resultante" Binding="{Binding ResultName}" Width="*" />
@@ -488,7 +496,7 @@
         </Border>
 
         <!-- 4. Footer Actions Bar -->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
