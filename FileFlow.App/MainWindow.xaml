@@ -291,8 +291,11 @@
                 </ScrollViewer>
 
                 <!-- Drawer Footer -->
-                <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,12">
-                    <TextBlock Text="Engine .NET 9 | C# 13" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding AppVersionDisplay}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" ToolTip="Versión SemVer 2.0 de FileFlow Studio" />
+                        <TextBlock Text="Engine .NET 9 | C# 13" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                    </StackPanel>
                 </Border>
             </Grid>
         </Border>

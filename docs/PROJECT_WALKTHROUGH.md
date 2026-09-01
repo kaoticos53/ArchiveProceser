@@ -2,18 +2,15 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-01] - Carga Dinámica de Temas Creados en Selectores de Menú y Ajustes
+## [2026-09-01] - Configuración de Versión Base 1.0.0-beta
 
 ### 📋 Acciones Realizadas
-1. **Sincronización Dinámica de Temas en la Interfaz**:
-   - En [`ControlBarViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/ControlBarViewModel.cs), implementada la colección observable `AvailableThemes` poblada dinámicamente mediante `LoadAvailableThemes()`, leyendo todos los temas de fábrica y temas personalizados creados por el usuario en tiempo real con `CustomThemeService.GetAllThemes()`.
-   - Enlazado el selector de temas del menú lateral Drawer de [`MainWindow.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/MainWindow.xaml) directamente a `ControlBar.AvailableThemes` con `SelectedValuePath="Id"` y `DisplayMemberPath="Name"`.
-   - Al cerrar el Estudio Gráfico de Personalización de Temas (`ThemeCustomizerWindow`), se refresca automáticamente la colección `AvailableThemes` para reflejar instantáneamente temas nuevos, duplicados o renombrados.
-   - En [`WorkflowSettingsWindow.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/WorkflowSettingsWindow.xaml) y [`WorkflowSettingsWindow.xaml.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/WorkflowSettingsWindow.xaml.cs), el combo `CmbActiveTheme` ahora carga dinámicamente todos los temas disponibles con sincronización bidireccional tras abrir el personalizador visual.
-
-2. **Verificación Automatizada**:
-   - Añadida prueba en [`ThemeCustomizerViewModelTests.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/App/ThemeCustomizerViewModelTests.cs) para verificar la coexistencia y recuperación de temas de fábrica y temas de usuario.
-   - Resultado: **246 / 246 pruebas aprobadas al 100% (0 errores, 0 fallos, 0 advertencias)** en 21.5 segundos.
+1. **Ajuste de Versión Base en `version.props`**:
+   - Configurado `VersionMajor = 1`, `VersionMinor = 0`, `VersionPatch = 0` y `VersionPreRelease = beta`.
+   - La versión activa en la aplicación se genera como `v1.0.0-beta+build.N` incrementando automáticamente `N` en cada compilación.
+2. **Actualización de Tests**:
+   - Ajustadas las aserciones de [`AppVersionInfoTests.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/Sdk/AppVersionInfoTests.cs).
+   - **248 / 248 pruebas aprobadas al 100% (0 errores, 0 fallos, 0 advertencias)**.
 
 ---
 

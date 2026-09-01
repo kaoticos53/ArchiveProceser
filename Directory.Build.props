@@ -1,5 +1,85 @@
 <Project>
+  <Import Project="$(MSBuildThisFileDirectory)version.props" Condition="Exists('$(MSBuildThisFileDirectory)version.props')" />
+
   <PropertyGroup>
     <NoWarn>$(NoWarn);NU1603</NoWarn>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
+
+  <!-- =================================================================== -->
+  <!-- Tarea MSBuild para lectura e incremento automático del Build Number -->
+  <!-- =================================================================== -->
+  <UsingTask TaskName="AutoIncrementBuildNumber" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <BuildFilePath ParameterType="System.String" Required="true" />
+      <BuildNumber ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          int num = 100;
+          try
+          {
+              lock (typeof(AutoIncrementBuildNumber))
+              {
+                  if (System.IO.File.Exists(BuildFilePath))
+                  {
+                      var info = new System.IO.FileInfo(BuildFilePath);
+                      string content = System.IO.File.ReadAllText(BuildFilePath).Trim();
+                      if (int.TryParse(content, out int parsed))
+                      {
+                          num = parsed;
+                      }
+
+                      // Si el archivo se modificó hace más de 3 segundos, es una nueva compilación -> incrementar
+                      if ((System.DateTime.UtcNow - info.LastWriteTimeUtc).TotalSeconds > 3.0)
+                      {
+                          num++;
+                          System.IO.File.WriteAllText(BuildFilePath, num.ToString());
+                      }
+                  }
+                  else
+                  {
+                      System.IO.File.WriteAllText(BuildFilePath, num.ToString());
+                  }
+              }
+          }
+          catch
+          {
+              // En caso de concurrencia temporal de archivos, mantener número
+          }
+          BuildNumber = num.ToString();
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="ResolveBuildVersion" BeforeTargets="BeforeBuild;BeforeCompile;GetAssemblyVersion;GenerateAssemblyInfo" Condition="'$(BuildNumberResolved)' != 'true'">
+    <AutoIncrementBuildNumber BuildFilePath="$(MSBuildThisFileDirectory).build_number">
+      <Output TaskParameter="BuildNumber" PropertyName="ResolvedBuildNumber" />
+    </AutoIncrementBuildNumber>
+
+    <PropertyGroup>
+      <BuildNumber Condition="'$(BuildNumber)' == ''">$(ResolvedBuildNumber)</BuildNumber>
+      <BuildNumber Condition="'$(BuildNumber)' == ''">100</BuildNumber>
+      <BuildNumberResolved>true</BuildNumberResolved>
+
+      <!-- Ensamblado de cadenas SemVer 2.0 -->
+      <VersionMajor Condition="'$(VersionMajor)' == ''">1</VersionMajor>
+      <VersionMinor Condition="'$(VersionMinor)' == ''">0</VersionMinor>
+      <VersionPatch Condition="'$(VersionPatch)' == ''">0</VersionPatch>
+
+      <VersionPrefix>$(VersionMajor).$(VersionMinor).$(VersionPatch)</VersionPrefix>
+      <VersionSuffix Condition="'$(VersionPreRelease)' != ''">$(VersionPreRelease)</VersionSuffix>
+      
+      <_PreReleaseSuffix Condition="'$(VersionPreRelease)' != ''">-$(VersionPreRelease)</_PreReleaseSuffix>
+      <_PreReleaseSuffix Condition="'$(VersionPreRelease)' == ''"></_PreReleaseSuffix>
+
+      <InformationalVersion>$(VersionPrefix)$(_PreReleaseSuffix)+build.$(BuildNumber)</InformationalVersion>
+      <AssemblyVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(BuildNumber)</AssemblyVersion>
+      <FileVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(BuildNumber)</FileVersion>
+      <Version>$(InformationalVersion)</Version>
+    </PropertyGroup>
+  </Target>
+
 </Project>

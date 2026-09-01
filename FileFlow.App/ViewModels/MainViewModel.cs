@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject
     public SystemPerformanceMonitor PerformanceMonitor { get; }
     public IFileDialogService FileDialogService { get; }
     public IWorkflowStorageService WorkflowStorageService { get; }
+    public string AppVersionDisplay => FileFlow.Sdk.AppVersionInfo.DisplayVersion;
 
     public MainViewModel()
     {
