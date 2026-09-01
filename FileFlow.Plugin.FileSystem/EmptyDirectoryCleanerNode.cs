@@ -117,7 +117,7 @@ public class EmptyDirectoryCleanerNode : IFlowNode
                 context.RecordJournalEntry(new JournalEntry(
                     Guid.NewGuid(),
                     nodeId,
-                    JournalOperationType.CreatedDirectory,
+                    JournalOperationType.DeletedPermanently,
                     rootDir,
                     null
                 ));

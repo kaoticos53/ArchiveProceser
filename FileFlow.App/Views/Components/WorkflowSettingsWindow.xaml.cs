@@ -100,6 +100,9 @@ public partial class WorkflowSettingsWindow : Window
 
     private async void AutoDetect_Click(object sender, RoutedEventArgs e)
     {
+        var btn = sender as Button;
+        if (btn != null) btn.IsEnabled = false;
+
         try
         {
             var detected = await ExternalToolsService.Instance.AutoDetectToolsAsync();
@@ -113,6 +116,10 @@ public partial class WorkflowSettingsWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Error durante la autobúsqueda: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (btn != null) btn.IsEnabled = true;
         }
     }
 

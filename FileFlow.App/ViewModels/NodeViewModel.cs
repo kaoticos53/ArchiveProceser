@@ -330,42 +330,90 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public void AddSnapshot(NodeDataSnapshot snapshot)
     {
-        Application.Current?.Dispatcher?.Invoke(() =>
-        {
-            var targetCollection = snapshot.IsInput ? InputSnapshots : OutputSnapshots;
-            if (targetCollection.Count >= MaxRecordedSnapshots)
-            {
-                targetCollection.RemoveAt(0);
-            }
-            targetCollection.Add(snapshot);
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted) return;
 
-            var ports = snapshot.IsInput ? InputPorts : OutputPorts;
-            var port = ports.FirstOrDefault(p => p.Name.Equals(snapshot.PortName, StringComparison.OrdinalIgnoreCase))
-                      ?? ports.FirstOrDefault();
-            if (port != null && snapshot.ItemSnapshot != null)
-            {
-                port.UpdatePortContext(snapshot.ItemSnapshot);
-            }
-        });
+        if (dispatcher.CheckAccess())
+        {
+            ApplySnapshotInternal(snapshot);
+        }
+        else
+        {
+            dispatcher.InvokeAsync(() => ApplySnapshotInternal(snapshot));
+        }
+    }
+
+    private void ApplySnapshotInternal(NodeDataSnapshot snapshot)
+    {
+        var targetCollection = snapshot.IsInput ? InputSnapshots : OutputSnapshots;
+        if (targetCollection.Count >= MaxRecordedSnapshots)
+        {
+            targetCollection.RemoveAt(0);
+        }
+        targetCollection.Add(snapshot);
+
+        var ports = snapshot.IsInput ? InputPorts : OutputPorts;
+        var port = ports.FirstOrDefault(p => p.Name.Equals(snapshot.PortName, StringComparison.OrdinalIgnoreCase))
+                  ?? ports.FirstOrDefault();
+        if (port != null && snapshot.ItemSnapshot != null)
+        {
+            port.UpdatePortContext(snapshot.ItemSnapshot);
+        }
     }
 
     public void SetExecutionStatus(NodeExecutionStatus status, string? errorDetails = null)
     {
-        Application.Current?.Dispatcher?.Invoke(() =>
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted)
         {
             ExecutionStatus = status;
             LastErrorDetails = errorDetails;
-        });
+            return;
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            ExecutionStatus = status;
+            LastErrorDetails = errorDetails;
+        }
+        else
+        {
+            dispatcher.InvokeAsync(() =>
+            {
+                ExecutionStatus = status;
+                LastErrorDetails = errorDetails;
+            });
+        }
     }
 
     public void ClearDebugData()
     {
-        Application.Current?.Dispatcher?.Invoke(() =>
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted)
         {
             ExecutionStatus = NodeExecutionStatus.Idle;
             LastErrorDetails = null;
             InputSnapshots.Clear();
             OutputSnapshots.Clear();
-        });
+            return;
+        }
+
+        if (dispatcher.CheckAccess())
+        {
+            ExecutionStatus = NodeExecutionStatus.Idle;
+            LastErrorDetails = null;
+            InputSnapshots.Clear();
+            OutputSnapshots.Clear();
+        }
+        else
+        {
+            dispatcher.InvokeAsync(() =>
+            {
+                ExecutionStatus = NodeExecutionStatus.Idle;
+                LastErrorDetails = null;
+                InputSnapshots.Clear();
+                OutputSnapshots.Clear();
+            });
+        }
     }
 }

@@ -5,10 +5,26 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 1. Estado Actual del Repositorio y Calidad
-- **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
+- **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
-- **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **270 / 270 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **277 / 277 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency & Performance Benchmarks en xUnit).
+- **Optimizaciones de Seguridad, Recursos y Concurrencia (.NET 10 / C# 13)**:
+  - Disposición determinista de `archive?.Dispose()` en `SafeArchiveExtractor.cs`.
+  - Configuración de `SocketsHttpHandler` con `PooledConnectionLifetime` en `WebhookNotificationNode.cs`.
+  - Despacho asíncrono no bloqueante con `Dispatcher.InvokeAsync` en `NodeViewModel.cs`.
+  - Gestión segura de memoria no administrada para doble null en `SafeRecycleDeleteNode.cs`.
+  - Eliminación de antipatrones `.Result` en `CliExecutionNode.cs`.
+  - Captura defensiva de `IOException` en `FolderSourceNode.cs`.
+  - Simplificación de tareas y delegados en `AdvancedRenamerNode.cs`.
+  - Guarda `HasShutdownStarted` en `FastObservableRingBuffer.cs`.
+  - Drenaje determinista y agregación de excepciones en `WorkflowExecutor.cs`.
+  - Protección de rutas idénticas y *Safe Move* con validación SHA-256 en `FileRelocatorNode.cs`.
+  - Tipo de operación `DeletedPermanently` en `EmptyDirectoryCleanerNode.cs` y enum `JournalOperationType`.
+  - Resiliencia ante Regex inválidas en `SearchReplaceStepHandler.cs` y `NormalizeNumbersStepHandler.cs`.
+  - Caché concurrente en memoria `ConcurrentDictionary` para ejecutables externos en `ExternalToolsService.cs`.
+  - Soporte completo de simulación `DryRun` y `PlannedOperationType.TransformMedia` en `ImageOptimizerNode.cs`.
+  - Suite especializada de tests `SecurityAndRobustnessAuditTests.cs` (7 tests).
 - **Refactorización Modular Clean Code (SRP & OCP) - 10 Módulos Desacoplados**:
   - `RenameTransformEngine.cs` (Sdk): Reducido a 124L con 9 Strategy Handlers en `FileFlow.Sdk/Renaming/Handlers/`.
   - `CustomThemeService.cs` (App): Reducido a 140L delegando en `BuiltInThemesCatalog.cs` y `ThemeResourceApplier.cs`.

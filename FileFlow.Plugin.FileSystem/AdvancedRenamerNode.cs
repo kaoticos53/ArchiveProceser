@@ -169,14 +169,14 @@ public class AdvancedRenamerNode : IFlowNode
                 JournalOperationType.Renamed,
                 originalCurrent,
                 targetPath,
-                UndoAction: async (ct) =>
+                UndoAction: (ct) =>
                 {
                     if (File.Exists(targetPath))
                     {
                         File.Move(targetPath, originalCurrent, true);
-                        return await Task.FromResult(true);
+                        return Task.FromResult(true);
                     }
-                    return false;
+                    return Task.FromResult(false);
                 }
             ));
 

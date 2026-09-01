@@ -2,6 +2,60 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-01] - Optimización Arquitectónica, Concurrencia y Recursos en .NET 10 / C# 13
+
+### 📋 Acciones y Correcciones Realizadas
+1. **Gestión Determinista de Descriptores en Descompresión (`SafeArchiveExtractor.cs`)**:
+   - Se garantizó la disposición inmediata de `archive?.Dispose()` dentro del bloque `catch` al evaluar contraseñas candidatas, evitando bloqueos de archivos en disco.
+2. **Reutilización y DNS Pooling en Notificaciones Webhook (`WebhookNotificationNode.cs`)**:
+   - `HttpClient` estático configurado con `SocketsHttpHandler`, `PooledConnectionLifetime = TimeSpan.FromMinutes(15)` y `EnableMultipleHttp2Connections = true`, resolviendo el problema de conexiones obsoletas y refresco de DNS dinámico.
+3. **Despacho No Bloqueante en UI Dispatcher (`NodeViewModel.cs`)**:
+   - Reemplazado `Dispatcher.Invoke` síncrono por `Dispatcher.InvokeAsync` / `BeginInvoke` en `AddSnapshot`, `SetExecutionStatus` y `ClearDebugData`, eliminando contención de hilos del motor DAG contra la interfaz de usuario.
+4. **P/Invoke de Shell32 con Memoria No Administrada (`SafeRecycleDeleteNode.cs`)**:
+   - Asignación explícita con `Marshal.StringToHGlobalUni` y liberación garantizada en `finally` con `Marshal.FreeHGlobal`, asegurando el doble terminador nulo `\0\0` requerido por la API nativa de Windows Shell.
+5. **Eliminación de `.Result` en Hot-Paths Asíncronos (`CliExecutionNode.cs`)**:
+   - Sustituido el acceso a `.Result` por `await readOutTask.ConfigureAwait(false)` y `await readErrTask.ConfigureAwait(false)`, evitando el desenvolvimiento implícito de `AggregateException`.
+6. **Captura Defensiva de `IOException` en Streaming de Archivos (`FolderSourceNode.cs`)**:
+   - Añadida `IOException` al filtro `when` de captura en `StreamAndEmitDirAsync` para tolerar archivos con bloqueos exclusivos temporales o enlaces simbólicos rotos sin detener el lote.
+7. **Simplificación Idiomática de `UndoAction` (`AdvancedRenamerNode.cs`)**:
+   - Eliminado `async` y `return await Task.FromResult(true)` redundantes en el delegado de rollback del diario de operaciones.
+8. **Protección ante Cierre en UI Ring Buffer (`FastObservableRingBuffer.cs`)**:
+   - Comprobación de `Dispatcher.HasShutdownStarted` antes de invocar `BeginInvoke` para prevenir excepciones al cerrar la aplicación.
+9. **Suite de Pruebas Unitarias de Auditoría y Rendimiento (`SecurityAndRobustnessAuditTests.cs`)**:
+   - Suite total actualizada: **277 / 277 pruebas unitarias e integración pasadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-01] - Auditoría Integral de Seguridad, Concurrencia y Resiliencia (QA Lead)
+
+### 📋 Acciones y Correcciones Realizadas
+1. **Drenaje Determinista de Tareas DAG (`WorkflowExecutor.cs`) [CRIT-01]**:
+   - Implementado ciclo de captura y agregación de excepciones en la espera final de `_activeNodeTasks` para evitar tareas huérfanas en segundo plano si un nodo downstream falla inesperadamente.
+2. **Protección contra Pérdida de Datos y Rutas Idénticas (`FileRelocatorNode.cs`) [CRIT-02]**:
+   - Detección previa de rutas idénticas (`fullSource == fullTarget`) para omitir la operación sin lanzar `IOException`.
+   - Implementado *Safe Move* con verificación de integridad: `File.Copy` $\rightarrow$ Validación de hash SHA-256 de destino $\rightarrow$ Eliminación segura del archivo de origen solo tras confirmar la integridad del nuevo archivo.
+3. **Corrección de Registro de Journal en Limpiador de Carpetas (`EmptyDirectoryCleanerNode.cs`) [HIGH-01]**:
+   - Incorporado `JournalOperationType.DeletedPermanently` al enum `JournalOperationType` en `FileFlow.Sdk`.
+   - Corregido el registro erróneo de `CreatedDirectory` a `DeletedPermanently` al eliminar subdirectorios vacíos.
+4. **Resiliencia ante Sintaxis Regex Inválida del Usuario (`SearchReplaceStepHandler.cs`, `NormalizeNumbersStepHandler.cs`) [HIGH-02]**:
+   - Encapsulada la construcción de `Regex` en bloques `try/catch (ArgumentException)` defensivos, registrando un log contextual y evitando que excepciones de sintaxis del usuario interrumpan el lote de renombrado.
+5. **Caché en Memoria Concurrente para Herramientas Externas (`ExternalToolsService.cs`) [HIGH-03]**:
+   - Incorporado `ConcurrentDictionary<string, string> _resolvedToolCache` para evitar escaneos de disco redundantes (I/O intensivo) al resolver ejecutables como FFmpeg o 7-Zip en pipelines masivos.
+6. **Soporte Completo de `DryRun` en Optimizador de Imágenes (`ImageOptimizerNode.cs`) [MED-01]**:
+   - Registro explícito de `PlannedAction` con `PlannedOperationType.TransformMedia` y cálculo de metadatos estimados en modo simulación virtual.
+7. **Propagación de Fallos en Tuberías Asíncronas (`FolderSourceNode.cs`) [MED-02]**:
+   - El productor pasa la excepción no controlada a `channel.Writer.Complete(producerError)` para que el consumidor downstream reaccione de inmediato ante errores de I/O.
+8. **Limpieza Defensiva de Archivos Temporales (`WorkflowStorageService.cs`) [MED-03]**:
+   - Protegido `File.Delete(tempPath)` en el bloque `finally` para no enmascarar excepciones de serialización.
+9. **Diferenciación de Cancelación y Timeout (`CliExecutionNode.cs`) [LOW-01]**:
+   - Detección precisa de `cancellationToken.IsCancellationRequested` para emitir `OperationCanceledException` en lugar de un falso `TimeoutException`.
+10. **Protección de Eventos Asíncronos en UI (`WorkflowSettingsWindow.xaml.cs`) [LOW-02]**:
+    - Deshabilitación reactiva del botón durante la búsqueda automática de herramientas para evitar clics concurrentes.
+11. **Nueva Suite de Pruebas Unitarias (`SecurityAndRobustnessAuditTests.cs`)**:
+    - Añadidos 6 tests de verificación de auditoría. Suite total: **276 / 276 pruebas superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
 ## [2026-09-01] - Refactorización Modular Fase 2 (Core, Archives, Sdk y App ViewModels)
 
 ### 📋 Acciones Realizadas

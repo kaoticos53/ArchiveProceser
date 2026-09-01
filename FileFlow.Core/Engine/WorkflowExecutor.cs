@@ -257,7 +257,8 @@ public class WorkflowExecutor
 
             await Task.WhenAll(startTasks).ConfigureAwait(false);
 
-            // Wait for all asynchronously dispatched downstream node tasks to finish
+            // Wait for all asynchronously dispatched downstream node tasks to finish deterministically
+            List<Exception> executionErrors = [];
             while (true)
             {
                 Task[] pending;
@@ -267,7 +268,23 @@ public class WorkflowExecutor
                     if (_activeNodeTasks.Count == 0) break;
                     pending = [.. _activeNodeTasks];
                 }
-                await Task.WhenAll(pending).ConfigureAwait(false);
+
+                try
+                {
+                    await Task.WhenAll(pending).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    if (ex is not OperationCanceledException)
+                    {
+                        executionErrors.Add(ex);
+                    }
+                }
+            }
+
+            if (executionErrors.Count > 0)
+            {
+                throw new AggregateException("Se produjeron errores durante la ejecución de los nodos del flujo.", executionErrors);
             }
 
             _telemetryTracker.Stop();

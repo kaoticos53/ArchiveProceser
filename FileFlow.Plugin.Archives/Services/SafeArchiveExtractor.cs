@@ -51,10 +51,11 @@ public static class SafeArchiveExtractor
     {
         foreach (var pwd in candidates)
         {
+            IArchive? archive = null;
             try
             {
                 var readerOpts = new ReaderOptions { Password = pwd };
-                var archive = ArchiveFactory.OpenArchive(new FileInfo(archivePath), readerOpts);
+                archive = ArchiveFactory.OpenArchive(new FileInfo(archivePath), readerOpts);
 
                 var firstEntry = archive.Entries.FirstOrDefault(e => !e.IsDirectory);
                 if (firstEntry != null)
@@ -76,6 +77,7 @@ public static class SafeArchiveExtractor
                                       ex is ArchiveException ||
                                       ex is InvalidDataException)
             {
+                archive?.Dispose();
                 continue;
             }
         }

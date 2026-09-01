@@ -93,8 +93,8 @@ public class CliExecutionNode : IFlowNode
                 await Task.WhenAll(readOutTask, readErrTask).ConfigureAwait(false);
                 await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
 
-                stdOut = readOutTask.Result;
-                stdErr = readErrTask.Result;
+                stdOut = await readOutTask.ConfigureAwait(false);
+                stdErr = await readErrTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -107,7 +107,12 @@ public class CliExecutionNode : IFlowNode
                 }
                 catch { }
 
-                throw new TimeoutException($"CLI Execution timed out after {timeoutSec} seconds or was cancelled: {resolvedExe}");
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("La ejecución del comando CLI fue cancelada por el usuario.", cancellationToken);
+                }
+
+                throw new TimeoutException($"CLI Execution timed out after {timeoutSec} seconds: {resolvedExe}");
             }
             finally
             {

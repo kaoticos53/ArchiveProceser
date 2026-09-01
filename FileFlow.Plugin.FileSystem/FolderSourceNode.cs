@@ -155,6 +155,7 @@ public class FolderSourceNode : IFlowNode
         }, cancellationToken);
 
         // Producer: Scan directory tree with 1-pass DirectoryInfo/FileInfo I/O and write to channel
+        Exception? producerError = null;
         try
         {
             await StreamAndEmitDirAsync(
@@ -167,9 +168,14 @@ public class FolderSourceNode : IFlowNode
                 context,
                 cancellationToken).ConfigureAwait(false);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            producerError = ex;
+            throw;
+        }
         finally
         {
-            channel.Writer.Complete();
+            channel.Writer.Complete(producerError);
         }
 
         await consumerTask.ConfigureAwait(false);
@@ -210,7 +216,7 @@ public class FolderSourceNode : IFlowNode
                     }
                 }
             }
-            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
+            catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException || ex is IOException)
             {
                 context.Log($"Skipping files in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
             }
@@ -234,7 +240,7 @@ public class FolderSourceNode : IFlowNode
                 }
             }
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException || ex is IOException)
         {
             context.Log($"Skipping directories in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
         }

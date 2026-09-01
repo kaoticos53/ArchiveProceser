@@ -6,6 +6,7 @@ public enum JournalOperationType
     Copied,
     Renamed,
     DeletedToRecycleBin,
+    DeletedPermanently,
     CreatedDirectory,
     ModifiedFile
 }

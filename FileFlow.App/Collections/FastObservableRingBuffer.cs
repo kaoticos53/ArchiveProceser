@@ -244,9 +244,10 @@ public class FastObservableRingBuffer<T> : IList<T>, IReadOnlyList<T>, INotifyCo
 
     private void NotifyReset()
     {
-        if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher is { HasShutdownStarted: false } dispatcher && !dispatcher.CheckAccess())
         {
-            System.Windows.Application.Current.Dispatcher.BeginInvoke(NotifyResetInternal);
+            dispatcher.BeginInvoke(NotifyResetInternal);
             return;
         }
 

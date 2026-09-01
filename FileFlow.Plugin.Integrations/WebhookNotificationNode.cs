@@ -9,7 +9,11 @@ namespace FileFlow.Plugin.Integrations;
 [NodeDefinition("WebhookNotificationNode_Name", "Integrations", "WebhookNotificationNode_Desc")]
 public class WebhookNotificationNode : IFlowNode
 {
-    private static readonly HttpClient HttpClient = new();
+    private static readonly HttpClient HttpClient = new(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+        EnableMultipleHttp2Connections = true
+    });
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("WebhookNotificationNode_Name", "Notificador Webhook (HTTP POST)");

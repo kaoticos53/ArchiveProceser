@@ -59,6 +59,10 @@ public class FileRelocatorNode : IFlowNode
             string fileName = Path.GetFileName(item.CurrentPath);
             string targetPath = Path.Combine(targetDir, fileName);
 
+            string fullSource = Path.GetFullPath(item.CurrentPath);
+            string fullTarget = Path.GetFullPath(targetPath);
+            bool isSamePath = string.Equals(fullSource, fullTarget, StringComparison.OrdinalIgnoreCase);
+
             if (context.IsDryRun)
             {
                 var plannedType = operation.Equals("Copy", StringComparison.OrdinalIgnoreCase) ? PlannedOperationType.Copy : PlannedOperationType.Move;
@@ -74,6 +78,13 @@ public class FileRelocatorNode : IFlowNode
                 ));
                 item.AddLog($"[DryRun] Planned {operation}: {item.CurrentPath} -> {targetPath}");
                 item.CurrentPath = targetPath;
+                await context.EmitAsync("Out", item);
+                return;
+            }
+
+            if (isSamePath)
+            {
+                context.Log($"[Reubicador] Origen y destino son idénticos. Omitiendo operación física: '{targetPath}'", LogLevel.Debug, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
@@ -94,6 +105,17 @@ public class FileRelocatorNode : IFlowNode
             if (operation.Equals("Copy", StringComparison.OrdinalIgnoreCase))
             {
                 File.Copy(item.CurrentPath, targetPath, overwrite: true);
+
+                if (verifyIntegrity)
+                {
+                    string destHash = await CalculateSha256Async(targetPath, cancellationToken).ConfigureAwait(false);
+                    if (!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { File.Delete(targetPath); } catch { }
+                        throw new IOException($"Integrity check failed: Source hash '{sourceHash}' does not match destination hash '{destHash}'.");
+                    }
+                }
+
                 context.RecordJournalEntry(new JournalEntry(
                     Guid.NewGuid(),
                     Id,
@@ -104,7 +126,23 @@ public class FileRelocatorNode : IFlowNode
             }
             else
             {
-                File.Move(item.CurrentPath, targetPath, overwrite: true);
+                if (verifyIntegrity)
+                {
+                    // Safe Move: Copy -> Verify -> Delete Original
+                    File.Copy(item.CurrentPath, targetPath, overwrite: true);
+                    string destHash = await CalculateSha256Async(targetPath, cancellationToken).ConfigureAwait(false);
+                    if (!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { File.Delete(targetPath); } catch { }
+                        throw new IOException($"Integrity check failed during Move: Source hash '{sourceHash}' does not match destination hash '{destHash}'.");
+                    }
+                    File.Delete(originalCurrent);
+                }
+                else
+                {
+                    File.Move(item.CurrentPath, targetPath, overwrite: true);
+                }
+
                 context.RecordJournalEntry(new JournalEntry(
                     Guid.NewGuid(),
                     Id,
@@ -112,15 +150,6 @@ public class FileRelocatorNode : IFlowNode
                     originalCurrent,
                     targetPath
                 ));
-            }
-
-            if (verifyIntegrity)
-            {
-                string destHash = await CalculateSha256Async(targetPath, cancellationToken).ConfigureAwait(false);
-                if (!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new IOException($"Integrity check failed: Source hash '{sourceHash}' does not match destination hash '{destHash}'.");
-                }
             }
 
             sw.Stop();

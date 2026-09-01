@@ -111,21 +111,30 @@ public class SafeRecycleDeleteNode : IFlowNode
         {
             if (OperatingSystem.IsWindows())
             {
-                string nullTerminatedPath = Path.GetFullPath(path) + "\0\0";
-                var fileOp = new SHFILEOPSTRUCT
+                string fullPath = Path.GetFullPath(path);
+                // Windows SHFileOperation requiere doble null-terminator (\0\0)
+                IntPtr pFrom = Marshal.StringToHGlobalUni(fullPath + "\0\0");
+                try
                 {
-                    hwnd = IntPtr.Zero,
-                    wFunc = 0x0003, // FO_DELETE
-                    pFrom = nullTerminatedPath,
-                    pTo = null,
-                    fFlags = 0x0040 | 0x0010 | 0x0004 | 0x0400, // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
-                    fAnyOperationsAborted = false,
-                    hNameMappings = IntPtr.Zero,
-                    lpszProgressTitle = null
-                };
+                    var fileOp = new SHFILEOPSTRUCT
+                    {
+                        hwnd = IntPtr.Zero,
+                        wFunc = 0x0003, // FO_DELETE
+                        pFrom = pFrom,
+                        pTo = IntPtr.Zero,
+                        fFlags = 0x0040 | 0x0010 | 0x0004 | 0x0400, // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
+                        fAnyOperationsAborted = false,
+                        hNameMappings = IntPtr.Zero,
+                        lpszProgressTitle = IntPtr.Zero
+                    };
 
-                int result = SHFileOperation(ref fileOp);
-                return result == 0 && !fileOp.fAnyOperationsAborted;
+                    int result = SHFileOperation(ref fileOp);
+                    return result == 0 && !fileOp.fAnyOperationsAborted;
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(pFrom);
+                }
             }
 
             return false;
@@ -141,16 +150,13 @@ public class SafeRecycleDeleteNode : IFlowNode
     {
         public IntPtr hwnd;
         public uint wFunc;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string pFrom;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string? pTo;
+        public IntPtr pFrom;
+        public IntPtr pTo;
         public ushort fFlags;
         [MarshalAs(UnmanagedType.Bool)]
         public bool fAnyOperationsAborted;
         public IntPtr hNameMappings;
-        [MarshalAs(UnmanagedType.LPWStr)]
-        public string? lpszProgressTitle;
+        public IntPtr lpszProgressTitle;
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]

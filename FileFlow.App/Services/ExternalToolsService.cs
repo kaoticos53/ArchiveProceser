@@ -20,6 +20,7 @@ public class ExternalToolsService
     private readonly string _configFilePath;
     private ExternalToolsConfig _config = new();
     private readonly Lock _lock = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _resolvedToolCache = new(StringComparer.OrdinalIgnoreCase);
 
     public event EventHandler? ToolsConfigChanged;
 
@@ -59,6 +60,7 @@ public class ExternalToolsService
         lock (_lock)
         {
             _config = newConfig;
+            _resolvedToolCache.Clear();
             PersistToDisk();
         }
         ToolsConfigChanged?.Invoke(this, EventArgs.Empty);
@@ -83,6 +85,7 @@ public class ExternalToolsService
                 if (!string.IsNullOrWhiteSpace(detected.SevenZipPath)) _config.SevenZipPath = detected.SevenZipPath;
                 if (!string.IsNullOrWhiteSpace(detected.PythonPath)) _config.PythonPath = detected.PythonPath;
 
+                _resolvedToolCache.Clear();
                 PersistToDisk();
             }
 
@@ -177,9 +180,11 @@ public class ExternalToolsService
             return configuredPath;
         }
 
-        // Try direct find if not set
-        string autoFound = FindExecutable(exeName, Path.GetFileNameWithoutExtension(exeName));
-        return !string.IsNullOrWhiteSpace(autoFound) ? autoFound : exeName;
+        return _resolvedToolCache.GetOrAdd(exeName, name =>
+        {
+            string autoFound = FindExecutable(name, Path.GetFileNameWithoutExtension(name));
+            return !string.IsNullOrWhiteSpace(autoFound) ? autoFound : name;
+        });
     }
 
     private void LoadConfig()

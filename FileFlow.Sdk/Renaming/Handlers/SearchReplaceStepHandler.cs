@@ -27,9 +27,17 @@ internal sealed class SearchReplaceStepHandler : IRenameStepHandler
 
         if (step.UseRegex)
         {
-            var options = step.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-            var regex = new Regex(searchPattern, options, RegexTimeout);
-            return VariableTemplateResolver.ApplyRegexReplacement(regex, targetText, step.ReplaceText ?? string.Empty, item, step.ReplaceAll);
+            try
+            {
+                var options = step.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
+                var regex = new Regex(searchPattern, options, RegexTimeout);
+                return VariableTemplateResolver.ApplyRegexReplacement(regex, targetText, step.ReplaceText ?? string.Empty, item, step.ReplaceAll);
+            }
+            catch (ArgumentException ex)
+            {
+                item.AddLog($"[SearchReplace] Sintaxis Regex inválida '{searchPattern}': {ex.Message}");
+                return targetText;
+            }
         }
 
         string replacePattern = VariableTemplateResolver.Resolve(step.ReplaceText ?? string.Empty, item);

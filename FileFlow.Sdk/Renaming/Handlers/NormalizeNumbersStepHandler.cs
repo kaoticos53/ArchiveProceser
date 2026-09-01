@@ -116,13 +116,21 @@ internal sealed class NormalizeNumbersStepHandler : IRenameStepHandler
                 }
 
                 string pattern = VariableTemplateResolver.Resolve(step.NumberRegexPattern, item);
-                var options = step.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
-                var customRegex = new Regex(pattern, options, RegexTimeout);
-
-                return customRegex.Replace(targetText, match =>
+                try
                 {
-                    return Regex.Replace(match.Value, @"\d+", m => m.Value.PadLeft(padding, '0'), RegexOptions.None, RegexTimeout);
-                });
+                    var options = step.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase;
+                    var customRegex = new Regex(pattern, options, RegexTimeout);
+
+                    return customRegex.Replace(targetText, match =>
+                    {
+                        return Regex.Replace(match.Value, @"\d+", m => m.Value.PadLeft(padding, '0'), RegexOptions.None, RegexTimeout);
+                    });
+                }
+                catch (ArgumentException ex)
+                {
+                    item.AddLog($"[NormalizeNumbers] Sintaxis Regex inválida '{pattern}': {ex.Message}");
+                    return targetText;
+                }
             }
 
             default:

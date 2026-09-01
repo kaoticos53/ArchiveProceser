@@ -38,9 +38,16 @@ public class WorkflowStorageService : IWorkflowStorageService
         }
         finally
         {
-            if (File.Exists(tempPath))
+            try
             {
-                File.Delete(tempPath);
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+                // Silencioso para no enmascarar excepciones previas
             }
         }
     }

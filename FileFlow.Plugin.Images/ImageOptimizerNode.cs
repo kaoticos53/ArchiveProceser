@@ -164,7 +164,7 @@ public class ImageOptimizerNode : IFlowNode
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
         string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, @"{RelativeDir}\OptimizedImages") : @"{RelativeDir}\OptimizedImages";
         string outputDir = ParameterHelper.ResolveOutputPath(outputPattern, item);
-        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
+        bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -190,7 +190,20 @@ public class ImageOptimizerNode : IFlowNode
             int origWidth = 0, origHeight = 0;
             int newWidth = 0, newHeight = 0;
 
-            if (!isDryRun)
+            if (isDryRun)
+            {
+                context.RegisterPlannedAction(new PlannedAction(
+                    Guid.NewGuid(),
+                    Id,
+                    Name,
+                    PlannedOperationType.TransformMedia,
+                    filePath,
+                    outputPath,
+                    $"Optimize image to {formatStr} (Quality={quality})",
+                    item.FileSizeBytes
+                ));
+            }
+            else
             {
                 if (!Directory.Exists(outputDir))
                 {
@@ -241,7 +254,7 @@ public class ImageOptimizerNode : IFlowNode
             }
 
             sw.Stop();
-            long newSizeBytes = File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0;
+            long newSizeBytes = (!isDryRun && File.Exists(outputPath)) ? new FileInfo(outputPath).Length : item.FileSizeBytes;
             double savedPct = item.FileSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / item.FileSizeBytes)) * 100.0 : 0.0;
 
             var outputItem = new FileItemContext(outputPath, isDirectory: false);
