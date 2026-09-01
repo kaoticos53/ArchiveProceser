@@ -17,7 +17,9 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "NameTemplate": "{Year}-{Month}-{Day}_{FileName}"
+        "PipelineName": "Renombrado con Fechas",
+        "CollisionStrategy": "AutoIncrement",
+        "MethodSteps": "[{\"id\":\"step_1\",\"name\":\"Plantilla de Fecha\",\"methodType\":\"NewName\",\"applyTo\":\"FullName\",\"pattern\":\"{Year}-{Month}-{Day}_{FileName}\",\"isEnabled\":true}]"
       }
     },
     {

@@ -56,8 +56,18 @@ public static class PresetWorkflowsService
             Y = 100,
             Parameters = new Dictionary<string, object?>
             {
-                ["Pattern"] = "{CreationDate:yyyyMMdd}_{Hash:SHA256:8}_{FileNameNoExt}.{Ext}",
-                ["CollisionStrategy"] = "AutoIncrement"
+                ["PipelineName"] = "Normalización de Fotos",
+                ["CollisionStrategy"] = "AutoIncrement",
+                ["MethodSteps"] = FileFlow.Sdk.Renaming.RenamerPresetService.SerializeSteps([
+                    new FileFlow.Sdk.Renaming.RenameMethodStep
+                    {
+                        MethodType = FileFlow.Sdk.Renaming.RenameMethodType.NewName,
+                        ApplyTo = FileFlow.Sdk.Renaming.ApplyToTarget.FullName,
+                        Pattern = "{CreationDate:yyyyMMdd}_{Hash:SHA256:8}_{FileNameNoExt}.{Ext}",
+                        IsEnabled = true,
+                        Name = "Plantilla de Fecha y Hash"
+                    }
+                ])
             }
         };
 

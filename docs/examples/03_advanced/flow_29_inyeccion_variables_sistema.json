@@ -27,7 +27,9 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "NameTemplate": "{Year}_{AppID}_{Guid}_{FileNameNoExt}{FileExt}"
+        "PipelineName": "Renombrado con Inyección",
+        "CollisionStrategy": "AutoIncrement",
+        "MethodSteps": "[{\"id\":\"step_1\",\"name\":\"Plantilla con Variables\",\"methodType\":\"NewName\",\"applyTo\":\"FullName\",\"pattern\":\"{Year}_{AppID}_{Guid}_{FileNameNoExt}{FileExt}\",\"isEnabled\":true}]"
       }
     },
     {

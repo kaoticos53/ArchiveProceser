@@ -513,6 +513,94 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    public void OpenUserManual()
+    {
+        IsMenuOpen = false;
+        try
+        {
+            string? manualPath = FindFileInAppOrRepo("Docs", "manual_de_usuario.md", "docs/manual_de_usuario.md");
+            if (manualPath != null && File.Exists(manualPath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = manualPath,
+                    UseShellExecute = true
+                });
+                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Abriendo manual de usuario: {manualPath}");
+            }
+            else
+            {
+                MessageBox.Show("No se encontró el archivo del manual de usuario.", "Manual de Usuario", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir el manual de usuario: {ex.Message}", "Manual de Usuario", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    public void OpenExamplesFolder()
+    {
+        IsMenuOpen = false;
+        try
+        {
+            string? examplesPath = FindDirectoryInAppOrRepo("Examples", "docs/examples");
+            if (examplesPath != null && Directory.Exists(examplesPath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = examplesPath,
+                    UseShellExecute = true
+                });
+                _logViewModel.AddLog(FileFlow.Sdk.LogLevel.Information, $"Abriendo carpeta de ejemplos: {examplesPath}");
+            }
+            else
+            {
+                MessageBox.Show("No se encontró la carpeta de ejemplos.", "Ejemplos de Flujos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir la carpeta de ejemplos: {ex.Message}", "Ejemplos de Flujos", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static string? FindFileInAppOrRepo(string installedSubdir, string installedFileName, string repoRelativePath)
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string installedPath = Path.Combine(baseDir, installedSubdir, installedFileName);
+        if (File.Exists(installedPath)) return installedPath;
+
+        var dir = new DirectoryInfo(baseDir);
+        while (dir != null)
+        {
+            string candidate = Path.Combine(dir.FullName, repoRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+
+    private static string? FindDirectoryInAppOrRepo(string installedSubdir, string repoRelativePath)
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string installedPath = Path.Combine(baseDir, installedSubdir);
+        if (Directory.Exists(installedPath)) return installedPath;
+
+        var dir = new DirectoryInfo(baseDir);
+        while (dir != null)
+        {
+            string candidate = Path.Combine(dir.FullName, repoRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (Directory.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

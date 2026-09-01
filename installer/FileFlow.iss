@@ -39,6 +39,12 @@ SetupIconFile=..\assets\FileFlow.ico
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[CustomMessages]
+spanish.UserManual=Manual de Usuario
+spanish.ExampleFlows=Ejemplos de Flujos
+english.UserManual=User Manual
+english.ExampleFlows=Example Flows
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
@@ -47,6 +53,8 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{group}\{cm:UserManual}"; Filename: "{app}\Docs\manual_de_usuario.md"
+Name: "{group}\{cm:ExampleFlows}"; Filename: "{app}\Examples"
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
@@ -55,3 +63,4 @@ Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+

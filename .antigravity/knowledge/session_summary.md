@@ -8,10 +8,19 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI).
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **190 / 190 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **234 / 234 Pruebas Pasadas con Éxito** (Unit, Integration, Security & Performance Benchmarks en xUnit).
+- **Instalador y Empaquetado**: Incluye la suite completa de 40 ejemplos de flujos (`Examples/` organizados en 4 niveles) y el manual de usuario (`Docs/manual_de_usuario.md`, `Docs/user_guide.md`, `README.md`) con accesos directos en el menú de inicio y opciones interactivas en el menú lateral de la app.
 - **Throughput de Telemetría**: **>82.000 logs/segundo** en 28 núcleos en paralelo con SQLite In-Memory.
-- **Nuevo Nodo**: `OperationReportNode` en `FileFlow.Plugin.FileSystem` con soporte de 5 formatos (HTML interactivo, Markdown, Texto plano, JSON, CSV), ámbito configurable (`Consolidated` en archivo único, `PerFile`, `Both`), agrupación dinámica (`GroupBy`: `Directory` con acordeón colapsable, `Flat`, `Extension`, `Status`) y auto-apertura.
-- **Documento SRS, Pruebas, README y CI/CD**: Publicado en [`README.md`](file:///README.md), [`docs/ESPECIFICACIONES.md`](file:///docs/ESPECIFICACIONES.md), manual en [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), guía de pruebas en [`docs/guia_de_pruebas.md`](file:///docs/guia_de_pruebas.md), catálogo de 27 nodos en [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) y pipelines GitHub Actions en [`.github/workflows/`](file:///.github/workflows/).
+
+- **Asistente y Probador Visual de Expresiones Regulares (Regex Studio)**:
+  - `RegexPatternItem` en `FileFlow.Sdk/Renaming/` y `RegexLibraryService` en `FileFlow.App/Services/` con biblioteca predefinida de presets (Series/Episodios, Fechas ISO/Europeas, Limpieza de corchetes/paréntesis, Códecs de vídeo) y persistencia de patrones de usuario en JSON (`%APPDATA%\FileFlow\regex_library.json`).
+  - `RegexHelperWindow` y `RegexHelperViewModel` con probador en tiempo real, validación sintáctica segura, inspección de grupos de captura (`$1`, `$2`), flags (`IgnoreCase`, `Multiline`, `Singleline`, `IgnoreWhitespace`) y simulación de reemplazo en vivo con soporte de funciones de plantilla y variables.
+  - Botones `⚡ Regex...` integrados en todos los paneles correspondientes de `AdvancedRenamerEditorWindow.xaml`.
+- **Motor de Renombrado Avanzado (9 Métodos Acumulativos)**:
+  - Métodos: *1. Nuevos Nombres*, *2. Búsqueda y Reemplazo*, *3. Inserción*, *4. Eliminación*, *5. Mayúsculas*, *6. Numeración*, *7. Tabla de Sustituciones*, *8. Limpieza/Normalización*, *9. Normalizar Números (01, 02...)*.
+  - Soporte integral de variables inyectadas aguas arriba, variables de sistema (`{Year}`, `{FileNameNoExt}`, etc.), funciones de plantilla (`{Upper($1)}`, `{PadLeft($2, 3, 0)}`) y grupos de captura regex (`$1`, `$2`, `${name}`, `<1>`, `<2>`) en el método de Búsqueda y Reemplazo y Tabla de Sustituciones.
+  - **Muestras Reales en Vista Previa**: Carga automática de hasta 100 archivos reales del directorio origen configurado en `FolderSourceNode` para previsualizar los resultados en tiempo real sobre el dataset real del usuario.
+- **Documentación y CI/CD**: Documentación actualizada en [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md) y pipelines GitHub Actions.
 - **Git**: Repositorio limpio y sincronizado con batería de pruebas al 100%.
 
 ---

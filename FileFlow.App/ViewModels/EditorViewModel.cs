@@ -288,7 +288,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         IFlowNode? nodeInstance = _pluginLoader.CreateNodeInstance(nodeTypeName);
         if (nodeInstance == null) return null;
 
-        var nodeVm = new NodeViewModel(nodeInstance, position);
+        var nodeVm = new NodeViewModel(nodeInstance, position)
+        {
+            ParentEditor = this
+        };
         nodeVm.PropertyChanged += OnNodePropertyChanged;
         Nodes.Add(nodeVm);
         UserPreferencesService.Instance.IncrementNodeUsage(nodeTypeName);
@@ -414,6 +417,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
             var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y))
             {
+                ParentEditor = this,
                 HasBreakpoint = nodeDto.HasBreakpoint || graph.BreakpointNodeIds.Contains(nodeDto.Id),
                 IsLoggingEnabled = nodeDto.IsLoggingEnabled && !graph.DisabledLoggingNodeIds.Contains(nodeDto.Id)
             };

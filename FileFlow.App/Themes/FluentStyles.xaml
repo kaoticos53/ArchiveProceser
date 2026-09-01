@@ -5,6 +5,7 @@
         <ResourceDictionary Source="/Themes/Controls/ScrollbarStyles.xaml" />
         <ResourceDictionary Source="/Themes/Controls/ButtonStyles.xaml" />
         <ResourceDictionary Source="/Themes/Controls/InputStyles.xaml" />
+        <ResourceDictionary Source="/Themes/Controls/MenuStyles.xaml" />
         <ResourceDictionary Source="/Themes/Controls/ContainerStyles.xaml" />
         <ResourceDictionary Source="/Themes/Controls/NodifyStyles.xaml" />
     </ResourceDictionary.MergedDictionaries>

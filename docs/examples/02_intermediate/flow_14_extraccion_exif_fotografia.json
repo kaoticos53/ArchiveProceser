@@ -28,7 +28,9 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "NameTemplate": "{Exif:CameraModel}_{Year}-{Month}_{FileName}"
+        "PipelineName": "Organizador Fotográfico",
+        "CollisionStrategy": "AutoIncrement",
+        "MethodSteps": "[{\"id\":\"step_1\",\"name\":\"Plantilla EXIF\",\"methodType\":\"NewName\",\"applyTo\":\"FullName\",\"pattern\":\"{Exif:CameraModel}_{Year}-{Month}_{FileName}\",\"isEnabled\":true}]"
       }
     },
     {

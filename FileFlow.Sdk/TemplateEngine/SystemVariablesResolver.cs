@@ -13,6 +13,10 @@ public static class SystemVariablesResolver
         {
             varName = varName[1..^1].Trim();
         }
+        if (varName.StartsWith('$'))
+        {
+            varName = varName.TrimStart('$').TrimStart('{').TrimEnd('}').Trim();
+        }
 
         string currentPath = item.CurrentPath ?? string.Empty;
         string originalPath = item.OriginalPath ?? string.Empty;
@@ -76,6 +80,46 @@ public static class SystemVariablesResolver
                 case "env":
                     return Environment.GetEnvironmentVariable(key) ?? string.Empty;
 
+                case "inc nr":
+                case "incnr":
+                case "increment":
+                    string incVal = item.Metadata.TryGetValue("Counter", out var inObj) && inObj != null ? inObj.ToString()! : "1";
+                    if (int.TryParse(incVal, out int incNum) && !string.IsNullOrEmpty(key))
+                    {
+                        return incNum.ToString(key, CultureInfo.InvariantCulture);
+                    }
+                    return incVal;
+
+                case "audio":
+                case "id3":
+                    if (item.Metadata.TryGetValue($"Audio:{key}", out var aVal) ||
+                        item.Metadata.TryGetValue($"ID3:{key}", out aVal) ||
+                        item.Metadata.TryGetValue(key, out aVal))
+                    {
+                        return aVal?.ToString() ?? string.Empty;
+                    }
+                    return string.Empty;
+
+                case "video":
+                    if (item.Metadata.TryGetValue($"Video:{key}", out var vVal) ||
+                        item.Metadata.TryGetValue(key, out vVal))
+                    {
+                        return vVal?.ToString() ?? string.Empty;
+                    }
+                    return string.Empty;
+
+                case "img":
+                case "image":
+                    if (item.Metadata.TryGetValue($"Img:{key}", out var iVal) ||
+                        item.Metadata.TryGetValue($"Image:{key}", out iVal) ||
+                        item.Metadata.TryGetValue(key, out iVal))
+                    {
+                        return iVal?.ToString() ?? string.Empty;
+                    }
+                    return string.Empty;
+
+                case "date created":
+                case "datecreated":
                 case "date":
                 case "creationdate":
                     string format = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
@@ -89,6 +133,8 @@ public static class SystemVariablesResolver
                     }
                     return DateTime.Now.ToString(format, CultureInfo.InvariantCulture);
 
+                case "date modified":
+                case "datemodified":
                 case "modifieddate":
                     string mFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
                     if (item.Metadata.TryGetValue("LastWriteTimeUtc", out var mtVal) && mtVal is DateTime mdt)
@@ -100,6 +146,23 @@ public static class SystemVariablesResolver
                         return File.GetLastWriteTime(currentPath).ToString(mFormat, CultureInfo.InvariantCulture);
                     }
                     return DateTime.Now.ToString(mFormat, CultureInfo.InvariantCulture);
+
+                case "date taken":
+                case "datetaken":
+                    string tFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd" : key;
+                    if (item.Metadata.TryGetValue("Exif:DateTimeOriginal", out var dtObj) ||
+                        item.Metadata.TryGetValue("DateTaken", out dtObj))
+                    {
+                        if (dtObj is DateTime dtVal)
+                        {
+                            return dtVal.ToString(tFormat, CultureInfo.InvariantCulture);
+                        }
+                        if (DateTime.TryParse(dtObj?.ToString(), out var parsedDt))
+                        {
+                            return parsedDt.ToString(tFormat, CultureInfo.InvariantCulture);
+                        }
+                    }
+                    return DateTime.Now.ToString(tFormat, CultureInfo.InvariantCulture);
 
                 case "now":
                     string nFormat = string.IsNullOrEmpty(key) ? "yyyy-MM-dd_HH-mm-ss" : key;
@@ -159,8 +222,20 @@ public static class SystemVariablesResolver
                 return Path.GetDirectoryName(originalPath) ?? string.Empty;
 
             case "parentdir":
+            case "dirname":
                 string? pDir = Path.GetDirectoryName(currentPath);
                 return string.IsNullOrEmpty(pDir) ? string.Empty : Path.GetFileName(pDir);
+
+            case "inc nr":
+            case "incnr":
+            case "counter":
+            case "index":
+                return item.Metadata.TryGetValue("Counter", out var cVal) && cVal != null ? cVal.ToString()! : "1";
+
+            case "file count":
+            case "filecount":
+            case "totalcount":
+                return item.Metadata.TryGetValue("TotalFileCount", out var tcVal) && tcVal != null ? tcVal.ToString()! : "1";
 
             case "year":
                 return DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
@@ -170,6 +245,25 @@ public static class SystemVariablesResolver
 
             case "day":
                 return DateTime.Now.ToString("dd", CultureInfo.InvariantCulture);
+
+            case "hour":
+                return DateTime.Now.ToString("HH", CultureInfo.InvariantCulture);
+
+            case "min":
+            case "minute":
+                return DateTime.Now.ToString("mm", CultureInfo.InvariantCulture);
+
+            case "sec":
+            case "second":
+                return DateTime.Now.ToString("ss", CultureInfo.InvariantCulture);
+
+            case "img width":
+            case "imagewidth":
+                return item.Metadata.TryGetValue("Exif:ImageWidth", out var iw) || item.Metadata.TryGetValue("Img:Width", out iw) ? iw?.ToString() ?? string.Empty : string.Empty;
+
+            case "img height":
+            case "imageheight":
+                return item.Metadata.TryGetValue("Exif:ImageHeight", out var ih) || item.Metadata.TryGetValue("Img:Height", out ih) ? ih?.ToString() ?? string.Empty : string.Empty;
 
             case "relativepath":
             case "relativedir":
@@ -187,10 +281,6 @@ public static class SystemVariablesResolver
 
             case "datetimenow":
                 return DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture);
-
-            case "counter":
-            case "index":
-                return item.Metadata.TryGetValue("Counter", out var cVal) && cVal != null ? cVal.ToString()! : "1";
 
             case "globaloutputdir":
             case "defaultoutputdir":
@@ -219,6 +309,10 @@ public static class SystemVariablesResolver
                 if (item.Metadata.TryGetValue(varName, out var metaVal) && metaVal != null)
                 {
                     return metaVal.ToString() ?? string.Empty;
+                }
+                if (item.Metadata.TryGetValue($"Regex:{varName}", out var regVal) && regVal != null)
+                {
+                    return regVal.ToString() ?? string.Empty;
                 }
                 return string.Empty;
         }

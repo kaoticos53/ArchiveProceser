@@ -19,6 +19,8 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _id = Guid.NewGuid().ToString();
 
+    public EditorViewModel? ParentEditor { get; set; }
+
     [ObservableProperty]
     private string _title = "Node";
 
@@ -210,6 +212,19 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public bool IsVariableInjectorNode => NodeTypeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase);
     public bool IsSwitchCaseNode => NodeTypeName.Contains("SwitchCaseNode", StringComparison.OrdinalIgnoreCase);
+    public bool IsAdvancedRenamerNode => NodeTypeName.Contains("AdvancedRenamerNode", StringComparison.OrdinalIgnoreCase);
+    public bool IsFolderSourceNode => NodeTypeName.Contains("FolderSourceNode", StringComparison.OrdinalIgnoreCase);
+
+    [RelayCommand]
+    public void OpenAdvancedRenamerEditor()
+    {
+        var win = new Views.Components.AdvancedRenamerEditorWindow(this);
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            win.Owner = Application.Current.MainWindow;
+        }
+        win.ShowDialog();
+    }
 
     public ObservableCollection<SwitchCaseItemViewModel> SwitchCases { get; } = [];
 

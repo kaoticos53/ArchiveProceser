@@ -47,4 +47,29 @@ public class VariableDiscoveryServiceTests
         fnGroup.Variables.Should().Contain(v => v.Name == "Sanitize");
         fnGroup.Variables.Should().Contain(v => v.Name == "FormatDate");
     }
+
+    [Fact]
+    public void GetAvailableVariables_ShouldDiscoverUpstreamVariableInjectorVariables()
+    {
+        // Arrange
+        var injectorNode = new FileFlow.Plugin.FileSystem.VariableInjectorNode();
+        injectorNode.Parameters["CustomProject"] = "Alfa";
+        injectorNode.Parameters["ClientCode"] = "CLI_99";
+
+        var injectorVm = new NodeViewModel(injectorNode, new Point(0, 0));
+        var targetVm = new NodeViewModel(new MockNode(), new Point(200, 0));
+
+        var outPort = injectorVm.OutputPorts.First();
+        var inPort = targetVm.InputPorts.First();
+        var conn = new ConnectionViewModel(outPort, inPort);
+
+        // Act
+        var variableGroups = _discoveryService.GetAvailableVariables(targetVm, [conn]);
+
+        // Assert
+        var injectorGroup = variableGroups.FirstOrDefault(g => g.GroupName.Contains(injectorVm.Title));
+        injectorGroup.Should().NotBeNull();
+        injectorGroup!.Variables.Should().Contain(v => v.Name == "CustomProject" && v.Token == "{CustomProject}");
+        injectorGroup.Variables.Should().Contain(v => v.Name == "ClientCode" && v.Token == "{ClientCode}");
+    }
 }

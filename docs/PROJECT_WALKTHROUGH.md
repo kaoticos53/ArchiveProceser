@@ -2,7 +2,25 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-08-31] - Implementación de `OperationReportNode` y Publicación del Documento de Especificaciones Técnicas (SRS v2.0)
+## [2026-09-01] - Muestra de Archivos Reales desde FolderSourceNode en la Vista Previa del Editor de Pipeline
+
+### 📋 Acciones Realizadas
+1. **Detección Automática de Carpeta Origen y Carga de Muestras Reales**:
+   - En [`AdvancedRenamerEditorViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/AdvancedRenamerEditorViewModel.cs), implementado el método `GetSampleItemsForPreview` que localiza el nodo `FolderSourceNode` (priorizando los conectados aguas arriba en el grafo y con fallback a los presentes en el lienzo).
+   - Resuelve dinámicamente la ruta configurada en `SourcePath` e inspecciona el directorio con `EnumerationOptions` (seguro ante directorios inaccesibles, respetando recursividad y modo de emisión de archivos/carpetas).
+   - Extrae una muestra representativa de hasta un máximo de **100 archivos reales** y evalúa sobre ellos el pipeline de transformaciones en tiempo real.
+   - Si no existe un nodo de carpeta origen o el directorio no contiene archivos, recurre automáticamente a las muestras sintéticas predefinidas.
+   - Se añadió la propiedad observable `PreviewSourceDescription` para indicar claramente en el encabezado de la tabla la fuente y número de archivos muestreados (ej. `(Muestra de 45 archivo(s) real(es) de 'Fotos')`).
+
+2. **Propiedades y Enlaces en la Vista**:
+   - Actualizado [`NodeViewModel.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/ViewModels/NodeViewModel.cs) con la propiedad `IsFolderSourceNode`.
+   - Enlazado el texto de estado en el panel de Vista Previa de [`AdvancedRenamerEditorWindow.xaml`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Views/Components/AdvancedRenamerEditorWindow.xaml).
+
+3. **Verificación Automatizada**:
+   - Creado [`AdvancedRenamerEditorViewModelTests.cs`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/App/AdvancedRenamerEditorViewModelTests.cs) con pruebas de carga con y sin nodo origen, y límite superior de 100 archivos.
+   - Resultado: **234 / 234 pruebas aprobadas al 100% (0 errores, 0 fallos)** en 18.6 segundos.
+
+---
 
 ### 📋 Acciones Realizadas
 1. **Nuevo Nodo de Reporte Visual de Operaciones (`OperationReportNode`)**:
@@ -789,4 +807,24 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - Mapa exhaustivo de ficheros auxiliares existentes (`.agents/`, `.antigravity/`, `docs/`, `GEMINI.md`).
    - Resumen de principios técnicos (.NET 9, C# 13, `System.Threading.Lock`, aislamiento en `FileFlow.Sdk`).
    - Protocolo de validación y mantenimiento continuo post-sesión.
+
+---
+
+## [2026-09-01] - Inclusión de Ejemplos de Flujos y Manual de Usuario en el Instalador y la App
+
+### 🛠 Cambios Implementados
+1. **Publicación y Empaquetado (`installer/publish.ps1`):**
+   - Incorporada copia recursiva de la colección completa de ejemplos de flujos (`docs/examples` -> `publish/win-x64/Examples`) estructurada en 4 niveles (01_basic, 02_intermediate, 03_advanced, 04_complex).
+   - Incorporada copia de la documentación y manuales de usuario (`docs/manual_de_usuario.md`, `docs/user_guide.md`, `README.md` -> `publish/win-x64/Docs`).
+2. **Asistente Inno Setup (`installer/FileFlow.iss`):**
+   - Configurado empaquetado automático de las carpetas `Examples\` y `Docs\`.
+   - Creados accesos directos en el menú de inicio para el *Manual de Usuario* y la carpeta de *Ejemplos de Flujos*.
+   - Mensajes personalizados bilingües (`[CustomMessages]`: español e inglés).
+3. **Acceso Directo desde la Interfaz de Usuario (`FileFlow.App`):**
+   - Comandos `OpenUserManualCommand` y `OpenExamplesFolderCommand` en `ControlBarViewModel.cs` con detección inteligente en entornos instalados y de desarrollo local.
+   - Nueva sección *"AYUDA Y RECURSOS"* en el cajón de navegación lateral (`MainWindow.xaml`) con accesos a 📖 Manual de Usuario y 💡 Ejemplos de Flujos.
+4. **Validación de Compilación y Suite de Pruebas:**
+   - Generación exitosa del ejecutable instalador `FileFlowStudio-Setup-1.0.0.exe` con Inno Setup.
+   - **190 / 190 pruebas superadas con éxito** (0 errores, 0 fallos).
+
 

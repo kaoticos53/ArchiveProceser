@@ -35,7 +35,9 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "NameTemplate": "{Year}_DOC_{Guid}"
+        "PipelineName": "Renombrado Corporativo",
+        "CollisionStrategy": "AutoIncrement",
+        "MethodSteps": "[{\"id\":\"step_1\",\"name\":\"Plantilla Documental\",\"methodType\":\"NewName\",\"applyTo\":\"FullName\",\"pattern\":\"{Year}_DOC_{Guid}\",\"isEnabled\":true}]"
       }
     },
     {

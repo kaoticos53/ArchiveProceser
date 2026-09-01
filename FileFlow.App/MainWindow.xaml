@@ -264,6 +264,24 @@
                                 <TextBlock Text="Inspector de Datos" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
+
+                        <!-- Section: Help & Resources -->
+                        <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
+                        <TextBlock Text="AYUDA Y RECURSOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <Button Command="{Binding ControlBar.OpenUserManualCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="Abrir el Manual de Usuario detallado">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📖" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Manual de Usuario" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.OpenExamplesFolderCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="Explorar la carpeta con los flujos de ejemplo incluidos">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💡" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="Ejemplos de Flujos" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
 

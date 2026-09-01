@@ -558,6 +558,20 @@
                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SettingsTitle]}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
                                 
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Visibility="{Binding IsAdvancedRenamerNode, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Command="{Binding OpenAdvancedRenamerEditorCommand}"
+                                            Content="🏷️ Pipeline de Métodos..."
+                                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="White"
+                                            BorderThickness="0" Padding="8,2" FontSize="9" FontWeight="Bold" Cursor="Hand"
+                                            ToolTip="Abrir el Estudio de Renombrado Avanzado (7 métodos, presets y vista previa)"
+                                            Margin="0,0,4,0">
+                                        <Button.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="4" />
+                                            </Style>
+                                        </Button.Resources>
+                                    </Button>
+
                                     <Button Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource BooleanToVisibilityConverter}}"
                                             Command="{Binding AddVariableCommand}"
                                             Content="➕ Variable"

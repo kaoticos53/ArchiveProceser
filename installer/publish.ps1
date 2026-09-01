@@ -79,4 +79,37 @@ if (-not (Test-Path (Join-Path $publishRoot "Plugins"))) {
 	Write-Warning "No se encontró la carpeta 'Plugins' en el publish. Verifica el target CopyPlugins en FileFlow.App.csproj."
 }
 
+# Copiar ejemplos de flujos
+$examplesSource = Join-Path $repoRoot "docs\examples"
+$examplesDest = Join-Path $publishRoot "Examples"
+if (Test-Path $examplesSource) {
+	Write-Host "==> Copiando ejemplos de flujos a: $examplesDest" -ForegroundColor Cyan
+	if (-not (Test-Path $examplesDest)) {
+		New-Item -ItemType Directory -Path $examplesDest -Force | Out-Null
+	}
+	Copy-Item -Path "$examplesSource\*" -Destination $examplesDest -Recurse -Force
+} else {
+	Write-Warning "No se encontró la carpeta de ejemplos en '$examplesSource'."
+}
+
+# Copiar manual de usuario y documentación
+$docsDest = Join-Path $publishRoot "Docs"
+Write-Host "==> Copiando manual de usuario y documentación a: $docsDest" -ForegroundColor Cyan
+if (-not (Test-Path $docsDest)) {
+	New-Item -ItemType Directory -Path $docsDest -Force | Out-Null
+}
+
+$manualFiles = @(
+	(Join-Path $repoRoot "docs\manual_de_usuario.md"),
+	(Join-Path $repoRoot "docs\user_guide.md"),
+	(Join-Path $repoRoot "README.md")
+)
+
+foreach ($docFile in $manualFiles) {
+	if (Test-Path $docFile) {
+		Copy-Item -Path $docFile -Destination $docsDest -Force
+	}
+}
+
 Write-Host "==> Publicación completada en: $publishRoot" -ForegroundColor Green
+

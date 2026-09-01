@@ -137,15 +137,34 @@ Cualquier campo de texto, carpeta o plantilla de nombre admite variables dinámi
   - `SearchPattern`: Filtro de archivos (ej. `*.*`, `*.jpg;*.png`).
   - `IncludeSubdirectories`: `true` para escaneo recursivo.
 
-#### 2. `AdvancedRenamerNode` (Renombrador Avanzado con Tokens)
-- **Propósito:** Renombra archivos masivamente evaluando plantillas con tokens y resolviendo colisiones.
+#### 2. `AdvancedRenamerNode` (Renombrador Avanzado con Pipeline de Métodos y Tokens)
+- **Propósito:** Transforma masivamente nombres de archivos y carpetas mediante un pipeline de hasta **9 métodos acumulativos secuenciales**, emulando las capacidades profesionales de *Advanced Renamer*.
 - **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out` (Renombrado exitoso), `Skipped` (Omitido), `Error`
-- **Parámetros:**
-  - `Pattern`: Plantilla de nombre (ej. `{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}`).
-  - `CollisionStrategy`: `AutoIncrement` (añade `_1`, `_2`), `Overwrite`, `Skip`, `Fail`.
-  - `CaseTransformation`: `None`, `Lowercase`, `Uppercase`, `TitleCase`.
+  - *Inputs:* `In` (`FileItemContext`)
+  - *Outputs:* `Out` (Renombrado exitoso), `Skipped` (Omitido por colisión), `Error` (Fallo en E/S o validación)
+- **Parámetros y Métodos del Pipeline:**
+  - `CollisionStrategy`: Estrategia atómica de resolución de colisiones:
+    - `AutoIncrement`: Añade automáticamente sufijos incrementales (`_1`, `_2`, `_3`) sin bloquear el lote concurrente.
+    - `Overwrite`: Sobrescribe el destino si ya existe.
+    - `Skip`: Omite el archivo y lo desvía por el puerto `Skipped`.
+    - `Fail`: Interrumpe la ejecución con error controlado.
+  - `MethodSteps`: Pipeline JSON de métodos acumulativos que se aplican en orden secuencial:
+    1. **Nuevos Nombres / Plantillas:** Sustitución total o parcial basada en plantillas con etiquetas dinámicas (`<Tag>` o `{Tag}`).
+    2. **Búsqueda y Reemplazo:** Búsqueda de subcadenas o patrones mediante **Regex** con grupos de captura (`$1`, `$2`), distinción de mayúsculas y reemplazo selectivo o global.
+    3. **Inserción de Texto:** Agrega cadenas en posiciones absolutas o relativas (desde el inicio o desde el final del nombre).
+    4. **Eliminación de Caracteres:** Suprime rangos de caracteres por conteo o posiciones relativas.
+    5. **Conversión de Mayúsculas / Minúsculas:** `Lowercase`, `Uppercase`, `TitleCase` (Tipo Título), `SentenceCase` (Tipo Oración) o `CapitalizeFirst`.
+    6. **Numeración Incremental:** Generador de secuencias numéricas con valor inicial, incremento, relleno de ceros (*padding*, ej. `001`) y condición de reinicio (*DirectoryChange*, *MetadataChange* o *Never*).
+    7. **Tabla de Sustituciones (Replace List):** Mapeo de pares clave-valor para reemplazos masivos o depuración de palabras clave.
+    8. **Limpieza, Recorte y Normalización:** Recorte de espacios en extremos (*Trim*), colapso de espacios múltiples, sanitización de caracteres ilegales de Windows (`\ / : * ? " < > |`) y normalización Unicode (`NFC`, `NFD`, `NFKC`, `NFKD`).
+    9. **Normalización y Relleno de Ceros (Padding) en Números:** Estandariza dígitos existentes en secuencias (`1 - pepe.jpg` $\rightarrow$ `01 - pepe.jpg`), temporadas y episodios de series (`serie guapa 1x1.mov` $\rightarrow$ `serie guapa 1x01.mov`, `S1E2` $\rightarrow$ `S01E02`, `Cap. 2` $\rightarrow$ `Cap. 02`), capítulos y pistas de audio.
+- **Asistente y Probador Visual de Expresiones Regulares (Regex Studio):** Botón `⚡ Regex...` disponible en todos los campos que admiten expresiones regulares (Búsqueda/Reemplazo, Eliminación, Normalización Numérica y Tabla de Sustituciones). Permite:
+  - Probar expresiones en tiempo real con nombres de archivo de muestra.
+  - Inspeccionar el desglose de grupos de captura (`$1`, `$2`, `${grupo}`).
+  - Simular el texto resultante tras el reemplazo.
+  - Cargar patrones predefinidos (Series/Episodios, Fechas ISO/Europeas, Timestamps, Limpieza de corchetes/paréntesis, Códecs).
+  - Guardar patrones favoritos personalizados con persistencia automática en el perfil de usuario.
+- **Estudio Visual Integrado (Studio):** Botón `🏷️ Pipeline de Métodos...` en la tarjeta del nodo y en el inspector para abrir el editor visual interactivo con **Live Preview en tiempo real** y catálogo de **Presets integrados** (Fotografía EXIF, Música ID3, Web/SEO, Documentos Empresariales).
 
 #### 3. `FileRelocatorNode` (Reubicador y Copiador de Archivos)
 - **Propósito:** Mueve o copia archivos a rutas calculadas dinámicamente, verificando la integridad binaria mediante hash SHA-256.
