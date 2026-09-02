@@ -23,6 +23,7 @@ public class FolderSourceNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["SourcePath"] = @"{RelativeDir}\Input",
+        ["ExtensionFilter"] = "",
         ["Recursive"] = true,
         ["EmitMode"] = "FilesOnly",
         ["MaxRecursionDepth"] = -1,
@@ -31,10 +32,11 @@ public class FolderSourceNode : IFlowNode
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("SourcePath", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Input", DisplayOrder: 1),
-        new("Recursive", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 2),
-        new("EmitMode", ParameterEditorType.Dropdown, DefaultValue: "FilesOnly", DisplayOrder: 3, Options: ["FilesOnly", "DirectoriesOnly", "FilesAndDirectories"]),
-        new("MaxRecursionDepth", ParameterEditorType.Number, DefaultValue: -1, DisplayOrder: 4, Min: -1, Max: 100),
-        new("WatchRealtime", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 5)
+        new("ExtensionFilter", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 2),
+        new("Recursive", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
+        new("EmitMode", ParameterEditorType.Dropdown, DefaultValue: "FilesOnly", DisplayOrder: 4, Options: ["FilesOnly", "DirectoriesOnly", "FilesAndDirectories"]),
+        new("MaxRecursionDepth", ParameterEditorType.Number, DefaultValue: -1, DisplayOrder: 5, Min: -1, Max: 100),
+        new("WatchRealtime", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6)
     ];
 
     public async Task ExecuteAsync(
@@ -45,6 +47,8 @@ public class FolderSourceNode : IFlowNode
     {
         string rawSourcePattern = Parameters.TryGetValue("SourcePath", out var val) ? ParameterHelper.GetString(val, @"{RelativeDir}\Input") : @"{RelativeDir}\Input";
         string sourcePath = ParameterHelper.ResolveOutputPath(rawSourcePattern, item);
+        string rawExtFilter = Parameters.TryGetValue("ExtensionFilter", out var extVal) ? ParameterHelper.GetString(extVal, string.Empty) : string.Empty;
+        var filterSet = ParseExtensionFilter(rawExtFilter);
         bool recursive = !Parameters.TryGetValue("Recursive", out var recVal) || ParameterHelper.GetBoolean(recVal, true);
         string emitMode = Parameters.TryGetValue("EmitMode", out var modeVal) ? ParameterHelper.GetString(modeVal, "FilesOnly") : "FilesOnly";
         
@@ -85,10 +89,11 @@ public class FolderSourceNode : IFlowNode
                 break;
         }
 
-        context.Log($"Scanning directory: {sourcePath} (EmitMode={emitMode}, MaxDepth={maxDepth}, Recursive={recursive})", LogLevel.Information);
+        string filterDesc = filterSet.Count > 0 ? $"ExtensionFilter=[{string.Join(", ", filterSet)}]" : "ExtensionFilter=*";
+        context.Log($"Scanning directory: {sourcePath} (EmitMode={emitMode}, {filterDesc}, MaxDepth={maxDepth}, Recursive={recursive})", LogLevel.Information);
 
         // Pre-conteo ultrarrápido nativo Win32 (0-15 ms) para que el total exacto esté disponible desde el milisegundo 0
-        long fastTotal = FastCountSourceFiles(sourcePath, recursive, maxDepth, emitFiles, emitDirectories);
+        long fastTotal = FastCountSourceFiles(sourcePath, recursive, maxDepth, emitFiles, emitDirectories, filterSet);
         if (fastTotal > 0)
         {
             context.SetTotalExpectedItems(fastTotal);
@@ -109,9 +114,34 @@ public class FolderSourceNode : IFlowNode
                         AttributesToSkip = FileAttributes.ReparsePoint
                     };
                     long totalFound = 0;
-                    if (emitFiles && emitDirectories) totalFound += Directory.EnumerateFileSystemEntries(sourcePath, "*", opt).LongCount();
-                    else if (emitFiles) totalFound += Directory.EnumerateFiles(sourcePath, "*", opt).LongCount();
-                    else if (emitDirectories) totalFound += Directory.EnumerateDirectories(sourcePath, "*", opt).LongCount();
+                    if (emitFiles && emitDirectories)
+                    {
+                        if (filterSet.Count > 0)
+                        {
+                            totalFound += Directory.EnumerateFiles(sourcePath, "*", opt).Where(f => filterSet.Contains(Path.GetExtension(f))).LongCount();
+                            totalFound += Directory.EnumerateDirectories(sourcePath, "*", opt).LongCount();
+                        }
+                        else
+                        {
+                            totalFound += Directory.EnumerateFileSystemEntries(sourcePath, "*", opt).LongCount();
+                        }
+                    }
+                    else if (emitFiles)
+                    {
+                        if (filterSet.Count > 0)
+                        {
+                            totalFound += Directory.EnumerateFiles(sourcePath, "*", opt).Where(f => filterSet.Contains(Path.GetExtension(f))).LongCount();
+                        }
+                        else
+                        {
+                            totalFound += Directory.EnumerateFiles(sourcePath, "*", opt).LongCount();
+                        }
+                    }
+                    else if (emitDirectories)
+                    {
+                        totalFound += Directory.EnumerateDirectories(sourcePath, "*", opt).LongCount();
+                    }
+
                     if (totalFound > 0)
                     {
                         context.SetTotalExpectedItems(totalFound);
@@ -173,6 +203,7 @@ public class FolderSourceNode : IFlowNode
                 maxDepth,
                 emitFiles,
                 emitDirectories,
+                filterSet,
                 channel.Writer,
                 context,
                 cancellationToken).ConfigureAwait(false);
@@ -195,12 +226,47 @@ public class FolderSourceNode : IFlowNode
         context.Log($"[Origen Carpeta] Finalizado escaneo y emisión: {emittedCount:N0} {finalUnit} ({totalMB:F1} MB)", LogLevel.Information, null, durationMs: 0.0, detailsJson: detailsJson);
     }
 
+    public static HashSet<string> ParseExtensionFilter(string? filter)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            return set;
+        }
+
+        char[] separators = [',', ';', '|', ' ', '\t', '\r', '\n'];
+        string[] parts = filter.Split(separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (string part in parts)
+        {
+            string p = part.Trim();
+            if (string.IsNullOrEmpty(p) || p == "*" || p == "*.*")
+            {
+                continue;
+            }
+
+            if (p.StartsWith("*."))
+            {
+                p = p[1..];
+            }
+            else if (!p.StartsWith('.'))
+            {
+                p = "." + p;
+            }
+
+            set.Add(p);
+        }
+
+        return set;
+    }
+
     private static async Task StreamAndEmitDirAsync(
         DirectoryInfo currentDir,
         int currentDepth,
         int maxDepth,
         bool emitFiles,
         bool emitDirectories,
+        HashSet<string> filterSet,
         ChannelWriter<FileItemContext> writer,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
@@ -215,6 +281,12 @@ public class FolderSourceNode : IFlowNode
                 foreach (FileInfo file in currentDir.EnumerateFiles())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
+                    if (filterSet.Count > 0 && !filterSet.Contains(file.Extension))
+                    {
+                        continue;
+                    }
+
                     var itemContext = new FileItemContext(file);
                     await writer.WriteAsync(itemContext, cancellationToken).ConfigureAwait(false);
 
@@ -245,7 +317,7 @@ public class FolderSourceNode : IFlowNode
 
                 if (maxDepth == -1 || currentDepth < maxDepth)
                 {
-                    await StreamAndEmitDirAsync(subDir, currentDepth + 1, maxDepth, emitFiles, emitDirectories, writer, context, cancellationToken).ConfigureAwait(false);
+                    await StreamAndEmitDirAsync(subDir, currentDepth + 1, maxDepth, emitFiles, emitDirectories, filterSet, writer, context, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -255,7 +327,7 @@ public class FolderSourceNode : IFlowNode
         }
     }
 
-    private static long FastCountSourceFiles(string path, bool recursive, int maxDepth, bool emitFiles, bool emitDirectories)
+    private static long FastCountSourceFiles(string path, bool recursive, int maxDepth, bool emitFiles, bool emitDirectories, HashSet<string> filterSet)
     {
         try
         {
@@ -268,19 +340,23 @@ public class FolderSourceNode : IFlowNode
                 AttributesToSkip = FileAttributes.ReparsePoint
             };
 
-            if (emitFiles && emitDirectories)
-            {
-                return Directory.EnumerateFileSystemEntries(path, "*", opt).LongCount();
-            }
+            long fileCount = 0;
             if (emitFiles)
             {
-                return Directory.EnumerateFiles(path, "*", opt).LongCount();
+                if (filterSet.Count > 0)
+                {
+                    fileCount = Directory.EnumerateFiles(path, "*", opt)
+                                         .Where(f => filterSet.Contains(Path.GetExtension(f)))
+                                         .LongCount();
+                }
+                else
+                {
+                    fileCount = Directory.EnumerateFiles(path, "*", opt).LongCount();
+                }
             }
-            if (emitDirectories)
-            {
-                return Directory.EnumerateDirectories(path, "*", opt).LongCount();
-            }
-            return 0;
+
+            long dirCount = emitDirectories ? Directory.EnumerateDirectories(path, "*", opt).LongCount() : 0;
+            return fileCount + dirCount;
         }
         catch
         {

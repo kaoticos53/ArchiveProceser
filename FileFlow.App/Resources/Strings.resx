@@ -377,6 +377,7 @@
   <data name="Param_QuarantinePath" xml:space="preserve"><value>Quarantine Folder</value></data>
   <data name="Param_SourcePath" xml:space="preserve"><value>Source Folder</value></data>
   <data name="Param_Recursive" xml:space="preserve"><value>Include Subfolders</value></data>
+  <data name="Param_ExtensionFilter" xml:space="preserve"><value>Extension Filter</value></data>
   <data name="Param_SearchPattern" xml:space="preserve"><value>Search Pattern</value></data>
   <data name="Param_WatchRealtime" xml:space="preserve"><value>Watch Realtime</value></data>
   <data name="Param_Operation" xml:space="preserve"><value>Operation</value></data>
@@ -575,4 +576,15 @@
   <data name="Log_ClearToolTip" xml:space="preserve"><value>Clear all console logs and memory</value></data>
   <data name="Log_TraceabilityBtn" xml:space="preserve"><value>🔍 Traceability</value></data>
   <data name="Log_CopyJsonBtn" xml:space="preserve"><value>📋 Copy JSON</value></data>
+
+  <!-- Status Bar -->
+  <data name="StatusBar_Nodes" xml:space="preserve"><value>Nodes</value></data>
+  <data name="StatusBar_NodesToolTip" xml:space="preserve"><value>Number of nodes in the current workflow graph</value></data>
+  <data name="StatusBar_Connections" xml:space="preserve"><value>Connections</value></data>
+  <data name="StatusBar_ConnectionsToolTip" xml:space="preserve"><value>Number of connections between nodes in the current workflow</value></data>
+  <data name="StatusBar_OutputLabel" xml:space="preserve"><value>Output</value></data>
+  <data name="StatusBar_OutputFolderToolTip" xml:space="preserve"><value>Click to open the global output folder in File Explorer</value></data>
+  <data name="StatusBar_RamToolTip" xml:space="preserve"><value>Current RAM memory usage of the application</value></data>
+  <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Current CPU usage of the application process</value></data>
+  <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Click to fit the workflow graph to the visible canvas area. Current zoom level.</value></data>
 </root>

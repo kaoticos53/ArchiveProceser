@@ -53,6 +53,11 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
   - `NodeParameterManager.cs` en `FileFlow.App` transformado en un motor de renderizado universal guiado por esquemas (*Schema-Driven UI*), eliminando el código acoplado y filtrando rigurosamente cualquier clave residual legada (`Pattern`, `NameTemplate`, `CaseTransformation`, `MethodSteps`).
 - **Dimensiones por Defecto de ImageOptimizerNode**:
   - `Height` configurado en `"100%"` y `Width` en `""` (*Automático*) por defecto, garantizando la preservación completa del tamaño original y la relación de aspecto sin deformación.
+- **Filtrado por Extensión en Carpeta Origen (`FolderSourceNode`)**:
+  - Incorporado el parámetro `ExtensionFilter` (descriptor de texto, orden 2) en `FileFlow.Plugin.FileSystem/FolderSourceNode.cs`.
+  - Soporte de sintaxis flexible con múltiples delimitadores (comas, puntos y comas, barras verticales, espacios) y formatos (`*.jpg, *.png`, `.zip; .rar`, `pdf docx`). Comodines `*` o `*.*` / vacío aceptan todos los archivos.
+  - Conteo asíncrono y streaming de emisión optimizados para filtrar en una sola pasada.
+  - Claves bilingües añadidas en diccionarios `Strings.resx` y `Strings.es.resx` (`Param_ExtensionFilter`).
 - **Descentralización Total de Recursos (.resx / i18n) por Plugin (Zero-Touch en FileFlow.App)**:
   - `PluginLoader.cs`: Auto-descubrimiento dinámico de manifiestos `.resources` y clases `Strings.ResourceManager` en todos los ensamblados de plugin cargados, registrándolos automáticamente en `LocalizationManager.Instance` sin necesidad de tocar `FileFlow.App`.
   - `IPluginInitializer` en `FileFlow.Sdk.Plugins`: Contrato opcional para que los plugins ejecuten rutinas de inicialización personalizada al cargarse.

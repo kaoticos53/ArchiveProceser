@@ -74,4 +74,5 @@
   <data name="AdvancedRenamer_ColStatus" xml:space="preserve"><value>Estado</value></data>
   <data name="AdvancedRenamer_FooterHint" xml:space="preserve"><value>Los cambios se aplicarán al nodo al hacer clic en 'Guardar y Aplicar al Nodo'.</value></data>
   <data name="AdvancedRenamer_SaveAndApply" xml:space="preserve"><value>✓ Guardar y Aplicar al Nodo</value></data>
+  <data name="Param_ExtensionFilter" xml:space="preserve"><value>Filtro de Extensiones</value></data>
 </root>

@@ -2,6 +2,44 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-02] - Bugfix: Claves de Localización Faltantes en la Barra de Estado (StatusBar)
+
+### 🐛 Problema Detectado
+La barra de estado inferior de la aplicación mostraba las claves de localización literales (p.ej. `StatusBar_Nodes`, `StatusBar_Connections`, `StatusBar_OutputLabel`, etc.) en lugar de los textos traducidos correspondientes. Esto ocurría porque las 9 claves `StatusBar_*` referenciadas en `StatusBarView.xaml` no estaban definidas en ninguno de los archivos `.resx`.
+
+### 🔧 Solución Aplicada
+1. **`FileFlow.App/Resources/Strings.resx` (Inglés)**:
+   - Añadidas 9 claves nuevas bajo la sección `<!-- Status Bar -->`:
+     - `StatusBar_Nodes` → `"Nodes"`
+     - `StatusBar_NodesToolTip` → `"Number of nodes in the current workflow graph"`
+     - `StatusBar_Connections` → `"Connections"`
+     - `StatusBar_ConnectionsToolTip` → `"Number of connections between nodes in the current workflow"`
+     - `StatusBar_OutputLabel` → `"Output"`
+     - `StatusBar_OutputFolderToolTip` → `"Click to open the global output folder in File Explorer"`
+     - `StatusBar_RamToolTip` → `"Current RAM memory usage of the application"`
+     - `StatusBar_CpuToolTip` → `"Current CPU usage of the application process"`
+     - `StatusBar_FitScreenToolTip` → `"Click to fit the workflow graph to the visible canvas area. Current zoom level."`
+2. **`FileFlow.App/Resources/Strings.es.resx` (Español)**:
+   - Mismas 9 claves añadidas con traducción española correcta.
+3. **Validación**: `dotnet build FileFlow.slnx --warnaserror` → **0 Errores, 0 Advertencias**.
+
+---
+
+## [2026-09-02] - Soporte de Filtrado por Extensión en Nodo Carpeta Origen (FolderSourceNode)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Nuevo Parámetro `ExtensionFilter` en `FolderSourceNode`**:
+   - Incorporado el parámetro `ExtensionFilter` con descriptor declarativo `ParameterEditorType.Text` en `ParameterDescriptors` (Orden 2).
+   - Parser flexible `ParseExtensionFilter` que acepta múltiples formatos y delimitadores: `*.jpg, *.png`, `.zip; .rar`, `pdf|docx`, `jpg png webp`, `*` o `*.*`.
+2. **Filtrado Eficiente en 1 Sola Pasada y Pre-conteo Optimizado**:
+   - `FastCountSourceFiles` y la tarea en segundo plano calculan la estimación exacta de elementos filtrando por el conjunto de extensiones activas.
+   - `StreamAndEmitDirAsync` emite únicamente los archivos coincidentes a través del canal acotado (`Channel.CreateBounded<FileItemContext>`).
+3. **Localización e i18n Completa**:
+   - Registrada la clave `Param_ExtensionFilter` en `FileFlow.Plugin.FileSystem` (`Resources/Strings.resx` y `Strings.es.resx`) y en `FileFlow.App` (`Resources/Strings.resx` y `Strings.es.resx`) traducida como *"Filtro de Extensiones"* / *"Extension Filter"*.
+4. **Validación y Suite de Pruebas**:
+   - Incorporadas pruebas unitarias completas en `FolderSourceNodeTests.cs` validando el filtrado por extensión múltiple, case-insensitivity, manejo de comodines y parseo.
+   - `dotnet test FileFlow.slnx -c Release` $\rightarrow$ **312 / 312 pruebas unitarias e integración superadas al 100% (0 errores, 0 avisos)**.
+
 ## [2026-09-02] - Descentralización Total de Recursos (.resx / i18n) por Plugin (Zero-Touch en FileFlow.App)
 
 ### 📋 Acciones y Mejoras Realizadas

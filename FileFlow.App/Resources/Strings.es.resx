@@ -376,8 +376,9 @@
   <data name="Param_ActionType" xml:space="preserve"><value>Acción en Origen</value></data>
   <data name="Param_QuarantinePath" xml:space="preserve"><value>Carpeta Cuarentena</value></data>
   <data name="Param_SourcePath" xml:space="preserve"><value>Carpeta Origen</value></data>
-  <data name="Param_Recursive" xml:space="preserve"><value>Subcarpetas</value></data>
-  <data name="Param_SearchPattern" xml:space="preserve"><value>Patrón Búsqueda</value></data>
+  <data name="Param_Recursive" xml:space="preserve"><value>Incluir Subcarpetas</value></data>
+  <data name="Param_ExtensionFilter" xml:space="preserve"><value>Filtro de Extensiones</value></data>
+  <data name="Param_SearchPattern" xml:space="preserve"><value>Patrón de Búsqueda</value></data>
   <data name="Param_WatchRealtime" xml:space="preserve"><value>Vigilar en Vivo</value></data>
   <data name="Param_Operation" xml:space="preserve"><value>Operación</value></data>
   <data name="Param_VerifyIntegrity" xml:space="preserve"><value>Verificar Hash</value></data>
@@ -575,4 +576,15 @@
   <data name="Log_ClearToolTip" xml:space="preserve"><value>Vaciar todos los logs de la consola y memoria</value></data>
   <data name="Log_TraceabilityBtn" xml:space="preserve"><value>🔍 Trazabilidad</value></data>
   <data name="Log_CopyJsonBtn" xml:space="preserve"><value>📋 Copiar JSON</value></data>
+
+  <!-- Status Bar -->
+  <data name="StatusBar_Nodes" xml:space="preserve"><value>Nodos</value></data>
+  <data name="StatusBar_NodesToolTip" xml:space="preserve"><value>Número de nodos en el grafo del flujo actual</value></data>
+  <data name="StatusBar_Connections" xml:space="preserve"><value>Conexiones</value></data>
+  <data name="StatusBar_ConnectionsToolTip" xml:space="preserve"><value>Número de conexiones entre nodos en el flujo actual</value></data>
+  <data name="StatusBar_OutputLabel" xml:space="preserve"><value>Salida</value></data>
+  <data name="StatusBar_OutputFolderToolTip" xml:space="preserve"><value>Clic para abrir la carpeta de salida global en el Explorador de archivos</value></data>
+  <data name="StatusBar_RamToolTip" xml:space="preserve"><value>Uso actual de memoria RAM de la aplicación</value></data>
+  <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Uso actual de CPU del proceso de la aplicación</value></data>
+  <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Clic para ajustar el grafo al área visible del lienzo. Nivel de zoom actual.</value></data>
 </root>

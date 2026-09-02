@@ -4,8 +4,8 @@
 1. **FolderSourceNode**
    - Tipo: Trigger / Input
    - Salidas: `Out` (FileItemContext)
-   - Parámetros: `SourcePath` (string), `Recursive` (bool), `WatchRealtime` (bool), `SearchPattern` (string)
-   - Función: Escanea el árbol de directorios y emite elementos asíncronamente. Soporta monitorización de cambios en tiempo real.
+   - Parámetros: `SourcePath` (string), `ExtensionFilter` (string), `Recursive` (bool), `EmitMode` (FilesOnly, DirectoriesOnly, FilesAndDirectories), `MaxRecursionDepth` (int), `WatchRealtime` (bool)
+   - Función: Escanea el árbol de directorios y emite elementos asíncronamente con soporte de filtrado múltiple por extensión (ej. `*.jpg, *.png, *.zip`). Soporta monitorización de cambios en tiempo real.
 
 2. **DestinationSinkNode**
    - Tipo: Sink / Output

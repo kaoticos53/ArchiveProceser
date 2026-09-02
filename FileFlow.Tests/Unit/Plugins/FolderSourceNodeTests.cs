@@ -183,4 +183,65 @@ public class FolderSourceNodeTests
             }
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldFilterFilesByExtension_WhenExtensionFilterIsSpecified()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlowTestFolder_" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+        string fileJpg = Path.Combine(tempDir, "photo.jpg");
+        string filePng = Path.Combine(tempDir, "graphic.PNG");
+        string fileTxt = Path.Combine(tempDir, "notes.txt");
+        string filePdf = Path.Combine(tempDir, "document.pdf");
+
+        File.WriteAllText(fileJpg, "jpg");
+        File.WriteAllText(filePng, "png");
+        File.WriteAllText(fileTxt, "txt");
+        File.WriteAllText(filePdf, "pdf");
+
+        try
+        {
+            var node = new FolderSourceNode();
+            node.Parameters["SourcePath"] = tempDir;
+            node.Parameters["ExtensionFilter"] = "*.jpg, png";
+            node.Parameters["Recursive"] = false;
+
+            var emittedItems = new List<FileItemContext>();
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+                       .Callback<string, FileItemContext>((port, item) => emittedItems.Add(item))
+                       .Returns(Task.CompletedTask);
+
+            // Act
+            await node.ExecuteAsync("", new FileItemContext("", false), mockContext.Object, CancellationToken.None);
+
+            // Assert
+            emittedItems.Should().HaveCount(2);
+            emittedItems.Select(i => i.CurrentPath).Should().BeEquivalentTo(new[] { fileJpg, filePng });
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(".jpg, .png; *.webp|gif bmp", new[] { ".jpg", ".png", ".webp", ".gif", ".bmp" })]
+    [InlineData("*.zip, *.rar", new[] { ".zip", ".rar" })]
+    [InlineData("", new string[0])]
+    [InlineData("*", new string[0])]
+    [InlineData("*.*", new string[0])]
+    [InlineData("   ", new string[0])]
+    public void ParseExtensionFilter_ShouldParseCorrectly(string input, string[] expected)
+    {
+        // Act
+        var result = FolderSourceNode.ParseExtensionFilter(input);
+
+        // Assert
+        result.Should().BeEquivalentTo(expected);
+    }
 }
