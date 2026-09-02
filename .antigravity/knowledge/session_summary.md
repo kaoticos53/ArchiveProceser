@@ -25,13 +25,18 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
   - Soporte de funciones de resolución de plantillas y variables implícitas (`Resolve(template)`, `resolve(template)` y `getVar(varName)`).
   - Nodo `CustomScriptNode` con puertos dinámicos configurables (`Inputs` y `Outputs` editables), timeouts y acción `OpenScriptStudio`.
   - Ventana de edición `ScriptStudioWindow` completamente integrada con el **sistema dinámico de temas** (`{DynamicResource ...}`) y **localización dinámica bilingüe i18n** (`LocalizationManager.Instance`), editor `AvalonEdit` temático, botón **`📖 Manual PDF...`**, probador en tiempo real con consola de salida y telemetría de emisiones, y biblioteca de scripts con presets incorporados (`.ffscript` en `%AppData%/FileFlow/Scripts/`).
-- **Manual Didáctico de Usuario para Principiantes y Compilación a PDF**:
-  - Creado [`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md) redactado con lenguaje cercano, analogías cotidianas y 4 recetas prácticas paso a paso.
-  - Compilado a [`docs/manual_usuario_principiantes.pdf`](file:///docs/manual_usuario_principiantes.pdf) (1053.1 KB) para su distribución en el instalador y la versión portable.
-- **Manual Didáctico de Scripting, Compilación a PDF e Instalador**:
-  - Creado `docs/manual_nodo_scripting.md` orientado a niveles básico y medio.
-  - Compilado automáticamente a `docs/manual_nodo_scripting.pdf` (1003.8 KB) mediante Microsoft Edge Chromium Headless.
-  - Integrado en `installer/FileFlow.iss` y `installer/publish.ps1` con acceso directo en el Menú de Inicio de Windows.
+- **Suite Completa de Manuales Oficiales Bilingües (Español e Inglés) y Compilación a PDF**:
+  - 📖 **Manual de Usuario y Referencia Técnica**:
+    - 🇪🇸 [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md) $\rightarrow$ [`docs/manual_de_usuario.pdf`](file:///docs/manual_de_usuario.pdf) (1001.7 KB)
+    - 🇬🇧 [`docs/user_manual.md`](file:///docs/user_manual.md) $\rightarrow$ [`docs/user_manual.pdf`](file:///docs/user_manual.pdf) (1163.5 KB)
+  - 📘 **Guía Didáctica para Principiantes**:
+    - 🇪🇸 [`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md) $\rightarrow$ [`docs/manual_usuario_principiantes.pdf`](file:///docs/manual_usuario_principiantes.pdf) (1110.9 KB)
+    - 🇬🇧 [`docs/beginner_user_guide.md`](file:///docs/beginner_user_guide.md) $\rightarrow$ [`docs/beginner_user_guide.pdf`](file:///docs/beginner_user_guide.pdf) (1154.4 KB)
+  - 💻 **Manual del Nodo de Scripting (C# & JavaScript)**:
+    - 🇪🇸 [`docs/manual_nodo_scripting.md`](file:///docs/manual_nodo_scripting.md) $\rightarrow$ [`docs/manual_nodo_scripting.pdf`](file:///docs/manual_nodo_scripting.pdf) (1007.9 KB)
+    - 🇬🇧 [`docs/scripting_node_manual.md`](file:///docs/scripting_node_manual.md) $\rightarrow$ [`docs/scripting_node_manual.pdf`](file:///docs/scripting_node_manual.pdf) (1003.4 KB)
+  - **Despacho Reactivo según Idioma**: La UI (`ControlBarViewModel` y `ScriptStudioWindow`) abre automáticamente el documento PDF correspondiente al idioma activo (`LocalizationManager.Instance.CurrentLanguage`).
+  - **Instalador y Releases**: Accesos directos condicionales en Inno Setup (`FileFlow.iss`) y publicación de los 6 PDFs en GitHub Releases.
 - **Actualización Total de Flujos de Ejemplo (Sin Código de Retrocompatibilidad)**:
   - Todos los 40 JSONs de ejemplo en `docs/examples/` (`01_basic`, `02_intermediate`, `03_advanced`, `04_complex`) y `docs/flujo_test.json` fueron actualizados a los nuevos contratos de nodos, tipos canónicos y nombres de puertos actuales (`True`/`False`, `Deleted`, `TriggerIn`, `ItemIn`/`ItemOut`, `Fork1`/`Fork2`/`AllCompleted`).
 - **Encapsulación Total de UI en Plugins (Arquitectura Zero-Touch en FileFlow.App)**:

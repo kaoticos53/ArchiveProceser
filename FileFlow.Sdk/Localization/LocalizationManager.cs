@@ -25,9 +25,12 @@ public class LocalizationManager : INotifyPropertyChanged
             OnPropertyChanged(string.Empty);
             OnPropertyChanged("Item[]");
             OnPropertyChanged("Item");
+            OnPropertyChanged(nameof(CurrentLanguage));
             LanguageChanged?.Invoke(this, value);
         }
     }
+
+    public string CurrentLanguage => CurrentCulture.TwoLetterISOLanguageName;
 
     public event EventHandler<CultureInfo>? LanguageChanged;
     public event PropertyChangedEventHandler? PropertyChanged;

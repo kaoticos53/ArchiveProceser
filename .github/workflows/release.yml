@@ -170,18 +170,20 @@ jobs:
 
             ---
 
-            ### 📦 Descargas Disponibles
-            - 💻 **Instalador para Windows (Recomendado):** `FileFlowStudio-Setup-${{ steps.get_version.outputs.clean_version }}.exe`
-              - *Incluye asistente de instalación bilingüe (Español/Inglés), los 3 manuales en PDF, accesos directos en el menú de inicio e integración completa.*
+            ### 📦 Descargas Disponibles / Available Downloads
+            - 💻 **Instalador para Windows / Windows Setup:** `FileFlowStudio-Setup-${{ steps.get_version.outputs.clean_version }}.exe`
+              - *Asistente de instalación bilingüe (ES/EN) con manuales en PDF y accesos directos / Bilingual installer with PDF guides.*
             - 🗜️ **Versión Portable (.ZIP Autónomo):** `FileFlowStudio-Portable-v${{ steps.get_version.outputs.clean_version }}-win-x64.zip`
-              - *Ejecución directa sin instalación ni permisos de administrador. Incluye marcador `portable.dat`, estructura preconfigurada `data/` (config, presets, themes, scripts, logs, tools) y subcarpeta `docs/` con manuales en PDF.*
-            - 📖 **Manual de Usuario y Referencia (PDF):** `FileFlowStudio-Manual-de-Usuario.pdf`
-              - *Documento PDF oficial con referencia técnica completa y catálogo exhaustivo de nodos.*
-            - 📘 **Guía Rápida para Principiantes (PDF):** `FileFlowStudio-Guia-Principiantes.pdf`
-              - *Manual didáctico paso a paso con analogías sencillas y recetas prácticas.*
-            - 💻 **Manual de Scripting Personalizado (PDF):** `FileFlowStudio-Manual-Scripting.pdf`
-              - *Guía técnica para el desarrollo de scripts en C# (Roslyn) y JavaScript (Jint).*
-            - 🔐 **Sumas de Verificación:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de todos los binarios y documentos.
+              - *Zero-installation standalone package with `portable.dat`, isolated `data/` folders, and `docs/` PDF manuals.*
+            - 📖 **Manuales Oficiales en Español (PDF):**
+              - `FileFlowStudio-Manual-de-Usuario.pdf` (Referencia técnica completa y catálogo de nodos)
+              - `FileFlowStudio-Guia-Principiantes.pdf` (Guía didáctica paso a paso sin tecnicismos)
+              - `FileFlowStudio-Manual-Scripting.pdf` (Manual de desarrollo de scripts en C# y JavaScript)
+            - 📘 **Official Guides in English (PDF):**
+              - `FileFlowStudio-User-Manual.pdf` (Comprehensive technical reference & node catalog)
+              - `FileFlowStudio-Beginners-Guide.pdf` (Step-by-step jargon-free automation guide)
+              - `FileFlowStudio-Scripting-Manual.pdf` (C# & JavaScript custom scripting manual)
+            - 🔐 **Sumas de Verificación / Checksums:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de todos los binarios y documentos.
 
             ---
 

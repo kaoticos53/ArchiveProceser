@@ -101,12 +101,15 @@ if ($LASTEXITCODE -ne 0) {
 	throw "ISCC.exe falló con código de salida $LASTEXITCODE"
 }
 
-# Copiar manuales PDF a la carpeta de salida
+# Copiar manuales PDF (Español e Inglés) a la carpeta de salida
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $pdfManuals = @(
 	@{ Src = "docs\manual_de_usuario.pdf"; Dest = "FileFlowStudio-Manual-de-Usuario.pdf" },
 	@{ Src = "docs\manual_usuario_principiantes.pdf"; Dest = "FileFlowStudio-Guia-Principiantes.pdf" },
-	@{ Src = "docs\manual_nodo_scripting.pdf"; Dest = "FileFlowStudio-Manual-Scripting.pdf" }
+	@{ Src = "docs\manual_nodo_scripting.pdf"; Dest = "FileFlowStudio-Manual-Scripting.pdf" },
+	@{ Src = "docs\user_manual.pdf"; Dest = "FileFlowStudio-User-Manual.pdf" },
+	@{ Src = "docs\beginner_user_guide.pdf"; Dest = "FileFlowStudio-Beginners-Guide.pdf" },
+	@{ Src = "docs\scripting_node_manual.pdf"; Dest = "FileFlowStudio-Scripting-Manual.pdf" }
 )
 foreach ($item in $pdfManuals) {
 	$srcPath = Join-Path $repoRoot $item.Src

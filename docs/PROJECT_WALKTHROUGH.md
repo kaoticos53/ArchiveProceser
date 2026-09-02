@@ -2,27 +2,26 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-02] - Sincronización de GitHub Actions (CI/CD) con Modo Portable y Manuales PDF
+## [2026-09-02] - Versión Oficial en Inglés de los Manuales y Documentación Completa en PDF
 
 ### 📋 Acciones y Mejoras Realizadas
-1. **Actualización de GitHub Actions Release Workflow (`.github/workflows/release.yml`)**:
-   - Integrado `installer/build-portable.ps1` en lugar de compresión cruda, asegurando que los paquetes ZIP de las releases oficiales incluyan:
-     - Archivo marcador `portable.dat`.
-     - Estructura completa de carpetas aisladas en `data/` (`config`, `themes`, `presets`, `samples`, `scripts`, `logs`, `tools`).
-     - Subcarpeta `docs/` con todos los manuales de usuario compilados en PDF.
-   - Actualizado el paso de generación y plantilla de notas de release en GitHub para publicar los tres documentos PDF oficiales:
-     - `FileFlowStudio-Manual-de-Usuario.pdf` (Referencia técnica y catálogo de nodos).
-     - `FileFlowStudio-Guia-Principiantes.pdf` (Guía didáctica paso a paso sin tecnicismos).
-     - `FileFlowStudio-Manual-Scripting.pdf` (Manual de scripting dual C#/JavaScript).
-   - Generación de hashes criptográficos SHA-256 en `checksums.txt` para todos los artefactos empaquetados.
-2. **Actualización del Workflow de Integración Continua (`.github/workflows/ci.yml`)**:
-   - Actualizado el paso de pruebas a la suite completa de 303 tests.
-3. **Estandarización de Scripts de Empaquetado (`installer/`)**:
-   - `build-portable.ps1`: Estandarizado el nombre de salida a `FileFlowStudio-Portable-v$Version-$Runtime.zip`.
-   - `build-installer.ps1`: Copia de los tres manuales PDF a la carpeta de salida `installer/output/` para distribución individual.
-   - `FileFlow.iss`: Añadido acceso directo en el Menú de Inicio para la Guía de Principiantes (`Docs/manual_usuario_principiantes.pdf`) con soporte bilingüe (ES/EN).
-4. **Validación de Tests**:
-   - Suite total: **303 / 303 pruebas pasadas al 100% de éxito**.
+1. **Creación de la Suite de Manuales en Inglés (`docs/`)**:
+   - [`docs/user_manual.md`](file:///docs/user_manual.md): Manual de usuario general y catálogo exhaustivo de los 27 nodos del motor DAG en inglés.
+   - [`docs/beginner_user_guide.md`](file:///docs/beginner_user_guide.md): Guía didáctica para principiantes paso a paso con 4 recetas prácticas, analogías y glosario en inglés.
+   - [`docs/scripting_node_manual.md`](file:///docs/scripting_node_manual.md): Manual completo de scripting personalizado en C# (Roslyn) y JavaScript (Jint) en inglés.
+2. **Compilación Automatizada a PDF con Microsoft Edge Chromium Headless (`installer/build-pdf-manual.ps1`)**:
+   - Compilación simultánea de los 6 documentos PDF de distribución:
+     - 🇪🇸 `docs/manual_de_usuario.pdf`, `docs/manual_usuario_principiantes.pdf`, `docs/manual_nodo_scripting.pdf`.
+     - 🇬🇧 `docs/user_manual.pdf`, `docs/beginner_user_guide.pdf`, `docs/scripting_node_manual.pdf`.
+3. **Despacho Dinámico Bilingüe en la Aplicación (`FileFlow.App` & `FileFlow.Plugin.Scripting`)**:
+   - `LocalizationManager`: Añadida propiedad `CurrentLanguage` (`en` / `es`).
+   - `ControlBarViewModel.cs`: Detección automática del idioma activo para abrir `user_manual.pdf` en inglés o `manual_de_usuario.pdf` en español.
+   - `ScriptStudioWindow.xaml.cs`: Detección automática para abrir `scripting_node_manual.pdf` en inglés o `manual_nodo_scripting.pdf` en español.
+4. **Instalador Inno Setup y Publicación en GitHub Releases**:
+   - `installer/FileFlow.iss`: Accesos directos condicionales en el Menú de Inicio que apuntan automáticamente a los manuales en inglés si la instalación se realiza en inglés, o en español si se instala en español.
+   - `installer/build-installer.ps1` y `.github/workflows/release.yml`: Publicación de los 6 manuales PDF oficiales como assets individuales en cada release.
+5. **Validación de Tests**:
+   - Suite total: **303 / 303 pruebas pasadas con 100% de éxito**.
 
 ### 📋 Acciones y Mejoras Realizadas
 1. **Plugins Auto-Contenidos con Soporte WPF en .NET 9**:

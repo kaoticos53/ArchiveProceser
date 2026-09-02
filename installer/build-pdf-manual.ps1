@@ -405,20 +405,50 @@ function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$doc
 }
 
 if (-not [string]::IsNullOrWhiteSpace($MarkdownPath)) {
-    Convert-SingleFileToPdf $MarkdownPath $OutputPdfPath "FileFlow Studio" "Manual de Usuario"
+    Convert-SingleFileToPdf $MarkdownPath $OutputPdfPath "FileFlow Studio" "User Manual"
 } else {
-    # 1. Manual de Usuario General y Referencia Técnica
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host " Compilación de Manuales en Español (ES)" -ForegroundColor Cyan
+    Write-Host "=========================================" -ForegroundColor Cyan
+
+    # 1. Manual de Usuario General y Referencia Técnica (ES)
     $userManualMd = Join-Path $repoRoot "docs\manual_de_usuario.md"
     $userManualPdf = Join-Path $repoRoot "docs\manual_de_usuario.pdf"
     Convert-SingleFileToPdf $userManualMd $userManualPdf "FileFlow Studio" "Manual de Usuario y Guía de Referencia Completa"
 
-    # 2. Manual Didáctico para Principiantes
+    # 2. Manual Didáctico para Principiantes (ES)
     $beginnerManualMd = Join-Path $repoRoot "docs\manual_usuario_principiantes.md"
     $beginnerManualPdf = Join-Path $repoRoot "docs\manual_usuario_principiantes.pdf"
     Convert-SingleFileToPdf $beginnerManualMd $beginnerManualPdf "Guía Rápida para Principiantes" "Manual Paso a Paso sin Tecnicismos"
 
-    # 3. Manual del Nodo de Scripting
+    # 3. Manual del Nodo de Scripting (ES)
     $scriptManualMd = Join-Path $repoRoot "docs\manual_nodo_scripting.md"
     $scriptManualPdf = Join-Path $repoRoot "docs\manual_nodo_scripting.pdf"
     Convert-SingleFileToPdf $scriptManualMd $scriptManualPdf "Manual de Scripting Personalizado" "Guía Completa para C# (Roslyn) y JavaScript (Jint)"
+
+    Write-Host ""
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host " Compilación de Manuales en Inglés (EN)" -ForegroundColor Cyan
+    Write-Host "=========================================" -ForegroundColor Cyan
+
+    # 4. User Manual & Technical Reference (EN)
+    $userManualEnMd = Join-Path $repoRoot "docs\user_manual.md"
+    $userManualEnPdf = Join-Path $repoRoot "docs\user_manual.pdf"
+    if (Test-Path $userManualEnMd) {
+        Convert-SingleFileToPdf $userManualEnMd $userManualEnPdf "FileFlow Studio" "User Manual and Reference Guide"
+    }
+
+    # 5. Beginner's Step-by-Step Guide (EN)
+    $beginnerManualEnMd = Join-Path $repoRoot "docs\beginner_user_guide.md"
+    $beginnerManualEnPdf = Join-Path $repoRoot "docs\beginner_user_guide.pdf"
+    if (Test-Path $beginnerManualEnMd) {
+        Convert-SingleFileToPdf $beginnerManualEnMd $beginnerManualEnPdf "Beginner's Guide" "Step-by-Step Automation Guide"
+    }
+
+    # 6. Custom Scripting Manual (EN)
+    $scriptManualEnMd = Join-Path $repoRoot "docs\scripting_node_manual.md"
+    $scriptManualEnPdf = Join-Path $repoRoot "docs\scripting_node_manual.pdf"
+    if (Test-Path $scriptManualEnMd) {
+        Convert-SingleFileToPdf $scriptManualEnMd $scriptManualEnPdf "Custom Scripting Manual" "Complete Guide for C# (Roslyn) & JavaScript (Jint)"
+    }
 }

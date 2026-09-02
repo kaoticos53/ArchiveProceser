@@ -44,10 +44,17 @@ spanish.UserManual=Manual de Usuario
 spanish.BeginnerManual=Guía para Principiantes
 spanish.ScriptManual=Manual de Scripting Personalizado
 spanish.ExampleFlows=Ejemplos de Flujos
+spanish.UserManualFile=Docs\manual_de_usuario.pdf
+spanish.BeginnerManualFile=Docs\manual_usuario_principiantes.pdf
+spanish.ScriptManualFile=Docs\manual_nodo_scripting.pdf
+
 english.UserManual=User Manual
 english.BeginnerManual=Beginner's Guide
 english.ScriptManual=Custom Scripting Manual
 english.ExampleFlows=Example Flows
+english.UserManualFile=Docs\user_manual.pdf
+english.BeginnerManualFile=Docs\beginner_user_guide.pdf
+english.ScriptManualFile=Docs\scripting_node_manual.pdf
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -57,9 +64,9 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{group}\{cm:UserManual}"; Filename: "{app}\Docs\manual_de_usuario.pdf"
-Name: "{group}\{cm:BeginnerManual}"; Filename: "{app}\Docs\manual_usuario_principiantes.pdf"
-Name: "{group}\{cm:ScriptManual}"; Filename: "{app}\Docs\manual_nodo_scripting.pdf"
+Name: "{group}\{cm:UserManual}"; Filename: "{app}\{cm:UserManualFile}"
+Name: "{group}\{cm:BeginnerManual}"; Filename: "{app}\{cm:BeginnerManualFile}"
+Name: "{group}\{cm:ScriptManual}"; Filename: "{app}\{cm:ScriptManualFile}"
 Name: "{group}\{cm:ExampleFlows}"; Filename: "{app}\Examples"
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon

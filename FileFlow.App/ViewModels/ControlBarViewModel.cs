@@ -7,6 +7,7 @@ using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Themes;
 
 namespace FileFlow.App.ViewModels;
@@ -413,8 +414,18 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IsMenuOpen = false;
         try
         {
-            string? manualPath = AppResourceLocator.FindFileInAppOrRepo("Docs", "manual_de_usuario.pdf", "docs/manual_de_usuario.pdf")
-                              ?? AppResourceLocator.FindFileInAppOrRepo("Docs", "manual_de_usuario.md", "docs/manual_de_usuario.md");
+            bool isEnglish = LocalizationManager.Instance.CurrentLanguage.Equals("en", StringComparison.OrdinalIgnoreCase);
+
+            string? manualPath = null;
+            if (isEnglish)
+            {
+                manualPath = AppResourceLocator.FindFileInAppOrRepo("Docs", "user_manual.pdf", "docs/user_manual.pdf")
+                          ?? AppResourceLocator.FindFileInAppOrRepo("Docs", "user_manual.md", "docs/user_manual.md");
+            }
+
+            manualPath ??= AppResourceLocator.FindFileInAppOrRepo("Docs", "manual_de_usuario.pdf", "docs/manual_de_usuario.pdf")
+                       ?? AppResourceLocator.FindFileInAppOrRepo("Docs", "manual_de_usuario.md", "docs/manual_de_usuario.md")
+                       ?? AppResourceLocator.FindFileInAppOrRepo("Docs", "user_manual.pdf", "docs/user_manual.pdf");
 
             if (manualPath != null && File.Exists(manualPath) && AppResourceLocator.TryOpenPath(manualPath))
             {
@@ -422,12 +433,15 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
             else
             {
-                MessageBox.Show("No se encontró el archivo del manual de usuario.", "Manual de Usuario", MessageBoxButton.OK, MessageBoxImage.Warning);
+                string title = LocalizationManager.Instance.GetString("ControlBar_UserManual", "Manual de Usuario");
+                string notFoundMsg = LocalizationManager.Instance.GetString("ControlBar_ManualNotFound", "No se encontró el archivo del manual de usuario.");
+                MessageBox.Show(notFoundMsg, title, MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir el manual de usuario: {ex.Message}", "Manual de Usuario", MessageBoxButton.OK, MessageBoxImage.Error);
+            string title = LocalizationManager.Instance.GetString("ControlBar_UserManual", "Manual de Usuario");
+            MessageBox.Show($"Error: {ex.Message}", title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

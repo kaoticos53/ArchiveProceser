@@ -79,12 +79,25 @@ public partial class ScriptStudioWindow : Window
         try
         {
             string baseDir = AppContext.BaseDirectory;
-            string[] candidates = [
-                Path.Combine(baseDir, "Docs", "manual_nodo_scripting.pdf"),
-                Path.Combine(baseDir, "..", "..", "..", "..", "docs", "manual_nodo_scripting.pdf"),
-                Path.Combine(baseDir, "manual_nodo_scripting.pdf"),
-                Path.Combine(baseDir, "..", "..", "..", "..", "docs", "manual_nodo_scripting.md")
-            ];
+            bool isEnglish = FileFlow.Sdk.Localization.LocalizationManager.Instance.CurrentLanguage.Equals("en", StringComparison.OrdinalIgnoreCase);
+
+            string[] candidates = isEnglish
+                ? [
+                    Path.Combine(baseDir, "Docs", "scripting_node_manual.pdf"),
+                    Path.Combine(baseDir, "..", "..", "..", "..", "docs", "scripting_node_manual.pdf"),
+                    Path.Combine(baseDir, "Docs", "manual_nodo_scripting.pdf"),
+                    Path.Combine(baseDir, "..", "..", "..", "..", "docs", "manual_nodo_scripting.pdf"),
+                    Path.Combine(baseDir, "docs", "scripting_node_manual.md"),
+                    Path.Combine(baseDir, "..", "..", "..", "..", "docs", "scripting_node_manual.md")
+                ]
+                : [
+                    Path.Combine(baseDir, "Docs", "manual_nodo_scripting.pdf"),
+                    Path.Combine(baseDir, "..", "..", "..", "..", "docs", "manual_nodo_scripting.pdf"),
+                    Path.Combine(baseDir, "Docs", "scripting_node_manual.pdf"),
+                    Path.Combine(baseDir, "..", "..", "..", "..", "docs", "scripting_node_manual.pdf"),
+                    Path.Combine(baseDir, "manual_nodo_scripting.pdf"),
+                    Path.Combine(baseDir, "..", "..", "..", "..", "docs", "manual_nodo_scripting.md")
+                ];
 
             string? found = candidates.FirstOrDefault(File.Exists);
             if (found != null)
@@ -93,11 +106,11 @@ public partial class ScriptStudioWindow : Window
             }
             else
             {
-                MessageBox.Show(
-                    "El archivo del manual no se encuentra en la ruta esperada. Puedes consultarlo en la carpeta 'docs/manual_nodo_scripting.md' del proyecto.",
-                    "Manual de Scripting",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("ScriptStudio_ManualTitle", "Manual de Scripting");
+                string notFoundMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString(
+                    "ScriptStudio_ManualNotFound",
+                    "El archivo del manual no se encuentra en la ruta esperada. Puedes consultarlo en la carpeta 'docs/' del proyecto.");
+                MessageBox.Show(notFoundMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
