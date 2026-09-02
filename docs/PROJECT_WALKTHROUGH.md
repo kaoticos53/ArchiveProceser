@@ -2,6 +2,71 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-02] - Reportes de Operaciones en Memoria, Eliminación de `DestinationFolder` y Ciclo de Vida `OnWorkflowCompletedAsync`
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Hook de Ciclo de Vida en el SDK (`IFlowNode.cs`)**:
+   - Añadido `Task OnWorkflowCompletedAsync(IFlowExecutionContext context, CancellationToken cancellationToken) => Task.CompletedTask;` para permitir a nodos acumuladores/agregadores emitir resultados al finalizar el flujo.
+2. **Coordinación DAG en `WorkflowExecutor.cs`**:
+   - Invocación determinista de `OnWorkflowCompletedAsync` para todos los nodos tras completar el lote inicial, y drenaje asíncrono de tareas subsiguientes con `DrainActiveTasksAsync`.
+3. **Generación Pura en Memoria en `OperationReportNode.cs`**:
+   - Eliminado el parámetro `DestinationFolder`.
+   - Generación de reportes individuales y consolidados 100% en memoria (`Metadata["ReportContent"]` y `Metadata["VirtualContent"]`), emitiéndolos por el puerto `Report` sin tocar el disco de forma forzada.
+   - Reenvío continuo de los archivos de entrada por `Out`.
+4. **Soporte de Archivos Virtuales en `DestinationSinkNode.cs`**:
+   - `DestinationSinkNode` puede persistir archivos recibidos en memoria (`VirtualContent` / `ReportContent` en texto o bytes) en cualquier carpeta destino configurada.
+5. **Validación y Suite de Pruebas**:
+   - `OperationReportNodeTests.cs` actualizado para validar generación en memoria, ciclo de vida de finalización e integración directa con `DestinationSinkNode`.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **318 / 318 pruebas superadas al 100% de éxito**.
+
+---
+
+## [2026-09-02] - Bugfix: Concurrencia en Reporte de Operaciones y Resolución de Rutas Relativas `{RelativeDir}`
+
+### 🐛 Problemas Detectados
+1. **Bloqueo Concurrente de Archivos (`IOException`) en `OperationReportNode`**:
+   - Al procesar múltiples archivos en paralelo, varios hilos intentaban escribir simultáneamente en el mismo archivo de reporte consolidado (`Reporte_Ejecucion_*.html`) con `File.WriteAllTextAsync`, lanzando `The process cannot access the file ... because it is being used by another process`.
+2. **Desvío de Rutas Relativas al Directorio de Trabajo de la Aplicación**:
+   - Al usar `{RelativeDir}\Output` para un archivo en la raíz (ej. `d:\pepe\file.txt`), `{RelativeDir}` resolvía a cadena vacía `""`, generando la ruta `\Output`.
+   - `ParameterHelper.ResolveOutputPath` consideraba `\Output` como ruta absoluta (por empezar con `\`), pero al no tener letra de unidad (`!Path.IsPathFullyQualified`), Windows la resolvía contra el directorio de trabajo del proceso en lugar de la carpeta de origen `d:\pepe\Output`.
+
+### 🔧 Solución Aplicada
+1. **Sincronización Concurrente y FileShare en `OperationReportNode.cs`**:
+   - Incorporado `SemaphoreSlim _writeLock = new(1, 1)` para serializar de forma asíncrona la escritura del reporte consolidado sin bloquear los canales del pipeline.
+   - Apertura de streams con `FileShare.ReadWrite` en `FileStream` tanto para reportes individuales como consolidados.
+   - Implementado `IDisposable` para liberar deterministamente los semáforos.
+2. **Anclaje Inteligente de Rutas Relativas en `ParameterHelper.cs`**:
+   - `ResolveOutputPath` normaliza separadores iniciales huérfanos (`\Output` $\rightarrow$ `Output`).
+   - Si la ruta no está completamente calificada (`!Path.IsPathFullyQualified`) y no hay `GlobalOutputDir`, ancla automáticamente la ruta relativa bajo el directorio de origen del archivo (`SourceRootPath` o `Path.GetDirectoryName(OriginalPath)` o `CurrentPath`).
+   - Resultado: `{RelativeDir}\Output` para `d:\pepe\archivo.txt` resuelve exactamente a `d:\pepe\Output`.
+3. **Validación y Suite de Pruebas**:
+   - Nuevos tests en `GlobalOutputDirTests.cs` (`ResolveOutputPath_WithoutGlobalOutputDir_AnchorsUnderSourceDirectory`, `ResolveOutputPath_WithSubdirectoryAndSourceRootPath_AnchorsCorrectly`).
+   - Nuevo test de estrés concurrente en `OperationReportNodeTests.cs` (`ExecuteAsync_ShouldHandleConcurrentExecutionWithoutFileLockingErrors` con 20 tareas en paralelo).
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **319 / 319 pruebas pasadas con 100% de éxito**.
+
+---
+
+## [2026-09-02] - Evaluación y Previsualización de Parámetros en Tiempo Real en el Inspector (Enfoque Híbrido)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Evaluación Reactiva en `NodeParameterViewModel`**:
+   - Nuevas propiedades `EvaluatedValue` (`string`), `HasExpression` (`bool`) e `IsCopied` (`bool`).
+   - Método `UpdateEvaluationContext(FileItemContext? context, string? sourceRootPath = null)` para sincronizar la evaluación con el contexto del archivo en depuración mediante `VariableTemplateResolver.Resolve(...)`.
+   - Comando `CopyEvaluatedValueCommand` con copia al portapapeles y retroalimentación reactiva.
+2. **Sincronización Contextual en `NodeInspectorViewModel`**:
+   - Detección automática y propagación del `ItemSnapshot` de `SelectedSnapshot`, o del último snapshot de entrada/salida disponible, hacia todos los parámetros del nodo inspeccionado.
+   - Propiedades de estado `HasActiveEvaluationSnapshot` y `ActiveEvaluationContextFileName` para la cabecera del panel.
+3. **Interfaz Gráfica e i18n (`NodeInspectorPanelView.xaml`)**:
+   - Indicador visual en la cabecera de la pestaña de parámetros con el archivo de depuración activo.
+   - Badge `{x}` en la etiqueta del parámetro si contiene tokens o expresiones dinámicas.
+   - Bloque visual inline `⚡ Evaluado: [valor]` en tipografía monospace con botón de copia rápida `📋 Copiar`.
+   - Claves de internacionalización (`Strings.resx` y `Strings.es.resx`): `Inspector_EvaluatedLabel`, `Inspector_CopyEvaluatedToolTip`, `Inspector_ExpressionBadgeToolTip`, `Inspector_ActiveContextLabel`, `Inspector_NoSnapshotForEvaluation`.
+4. **Validación y Suite de Pruebas**:
+   - Pruebas unitarias en `NodeParameterViewModelTests.cs` y `NodeInspectorViewModelTests.cs`.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **316 / 316 pruebas superadas al 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
 ## [2026-09-02] - Bugfix: Claves de Localización Faltantes en la Barra de Estado (StatusBar)
 
 ### 🐛 Problema Detectado

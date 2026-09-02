@@ -26,4 +26,12 @@ public interface IFlowNode
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Hook invocado por el motor de orquestación cuando todos los elementos aguas arriba han completado su procesamiento.
+    /// Permite a nodos acumuladores o agregadores (ej. reportes consolidados, archivadores batch) emitir resultados finales.
+    /// </summary>
+    Task OnWorkflowCompletedAsync(
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken) => Task.CompletedTask;
 }

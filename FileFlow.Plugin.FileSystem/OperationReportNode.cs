@@ -11,8 +11,6 @@ public class OperationReportNode : IFlowNode
     private readonly Lock _lock = new();
     private readonly List<ReportItemData> _accumulatedItems = [];
     private string? _lastExecutionId;
-    private string? _consolidatedFilePath;
-    private bool _reportAutoOpened;
     private bool _reportEmitted;
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
@@ -37,12 +35,21 @@ public class OperationReportNode : IFlowNode
         ["ReportFormat"] = "HTML",
         ["ReportScope"] = "Consolidated",
         ["GroupBy"] = "Directory",
-        ["DestinationFolder"] = @"{RelativeDir}\Output",
         ["ReportFileName"] = "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}",
         ["Theme"] = "ModernDark",
         ["AutoOpenReport"] = false,
         ["IncludeMetadata"] = true
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("ReportFormat", ParameterEditorType.Dropdown, DefaultValue: "HTML", DisplayOrder: 1, Options: ["HTML", "Markdown", "Text", "JSON", "CSV"]),
+        new("ReportScope", ParameterEditorType.Dropdown, DefaultValue: "Consolidated", DisplayOrder: 2, Options: ["Consolidated", "PerFile", "Both"]),
+        new("GroupBy", ParameterEditorType.Dropdown, DefaultValue: "Directory", DisplayOrder: 3, Options: ["Directory", "Flat", "Extension", "Status"]),
+        new("ReportFileName", ParameterEditorType.Text, DefaultValue: "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}", DisplayOrder: 4),
+        new("Theme", ParameterEditorType.Dropdown, DefaultValue: "ModernDark", DisplayOrder: 5, Options: ["ModernDark", "CleanLight", "Cyberpunk", "Nordic", "Executive", "HighContrast"]),
+        new("AutoOpenReport", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6),
+        new("IncludeMetadata", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 7)
+    ];
 
     public async Task ExecuteAsync(
         string inputPortName,
@@ -54,9 +61,6 @@ public class OperationReportNode : IFlowNode
 
         string format = Parameters.TryGetValue("ReportFormat", out var fVal) ? ParameterHelper.GetString(fVal, "HTML") : "HTML";
         string scope = Parameters.TryGetValue("ReportScope", out var sVal) ? ParameterHelper.GetString(sVal, "Consolidated") : "Consolidated";
-        string groupBy = Parameters.TryGetValue("GroupBy", out var gbVal) ? ParameterHelper.GetString(gbVal, "Directory") : "Directory";
-        string destFolderPattern = Parameters.TryGetValue("DestinationFolder", out var dfVal) ? ParameterHelper.GetString(dfVal, @"{RelativeDir}\Output") : @"{RelativeDir}\Output";
-        string fileNamePattern = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
         string theme = Parameters.TryGetValue("Theme", out var tVal) ? ParameterHelper.GetString(tVal, "ModernDark") : "ModernDark";
         bool autoOpen = Parameters.TryGetValue("AutoOpenReport", out var aoVal) && ParameterHelper.GetBoolean(aoVal, false);
         bool includeMetadata = !Parameters.TryGetValue("IncludeMetadata", out var imVal) || ParameterHelper.GetBoolean(imVal, true);
@@ -83,12 +87,23 @@ public class OperationReportNode : IFlowNode
 
         try
         {
+            lock (_lock)
+            {
+                // Detect reset across different workflow executions
+                if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)
+                {
+                    _lastExecutionId = execId;
+                    _accumulatedItems.Clear();
+                    _reportEmitted = false;
+                }
+
+                _accumulatedItems.Add(reportItem);
+            }
+
             // 1. Per-file report handling (only if scope is PerFile or Both)
             if (scope.Equals("PerFile", StringComparison.OrdinalIgnoreCase) || scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
             {
-                string perFileFolder = ParameterHelper.ResolveOutputPath(destFolderPattern, item);
                 string perFileName = $"{Path.GetFileNameWithoutExtension(item.FileName)}_Report.{renderer.FileExtension}";
-                string perFilePath = Path.Combine(perFileFolder, perFileName);
 
                 var singleSummary = new ReportSummaryData
                 {
@@ -106,93 +121,18 @@ public class OperationReportNode : IFlowNode
 
                 string perFileContent = renderer.Render(singleSummary, theme, includeMetadata);
 
-                if (isDryRun)
+                var reportContext = new FileItemContext(perFileName)
                 {
-                    context.RegisterPlannedAction(new PlannedAction(
-                        Guid.NewGuid(),
-                        Id,
-                        Name,
-                        PlannedOperationType.Custom,
-                        item.CurrentPath,
-                        perFilePath,
-                        $"Simulación: Se generaría reporte individual '{perFileName}' en '{perFileFolder}'"
-                    ));
-                }
-                else
-                {
-                    if (!Directory.Exists(perFileFolder))
-                    {
-                        Directory.CreateDirectory(perFileFolder);
-                    }
-                    await File.WriteAllTextAsync(perFilePath, perFileContent, cancellationToken);
-
-                    var reportContext = new FileItemContext(perFilePath);
-                    reportContext.AddLog($"Individual report generated: {perFilePath}");
-                    await context.EmitAsync("Report", reportContext);
-
-                    if (autoOpen)
-                    {
-                        TryOpenReport(perFilePath);
-                    }
-                }
-            }
-
-            // 2. Consolidated report handling (Consolidated or Both)
-            if (scope.Equals("Consolidated", StringComparison.OrdinalIgnoreCase) || scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
-            {
-                ReportSummaryData consolidatedSummary;
-                string consolidatedPath;
-
-                lock (_lock)
-                {
-                    // Detect reset across different workflow executions
-                    if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)
-                    {
-                        _lastExecutionId = execId;
-                        _accumulatedItems.Clear();
-                        _consolidatedFilePath = null;
-                        _reportAutoOpened = false;
-                        _reportEmitted = false;
-                    }
-
-                    _accumulatedItems.Add(reportItem);
-
-                    // Resolve the single consolidated path on first item and reuse it for all items in this execution
-                    if (_consolidatedFilePath == null)
-                    {
-                        string targetFolder = ParameterHelper.ResolveOutputPath(destFolderPattern, item);
-                        string resolvedFileName = ParameterHelper.ResolveOutputPath(fileNamePattern, item);
-                        if (!resolvedFileName.EndsWith($".{renderer.FileExtension}", StringComparison.OrdinalIgnoreCase))
-                        {
-                            resolvedFileName += $".{renderer.FileExtension}";
-                        }
-                        _consolidatedFilePath = Path.Combine(targetFolder, Path.GetFileName(resolvedFileName));
-                    }
-
-                    consolidatedPath = _consolidatedFilePath;
-
-                    long totalBytes = _accumulatedItems.Sum(i => i.FileSizeBytes);
-                    int success = _accumulatedItems.Count(i => i.IsSuccess);
-                    int errors = _accumulatedItems.Count - success;
-                    var itemsSnapshot = _accumulatedItems.ToList();
-                    var groups = ReportSummaryData.CreateGroups(itemsSnapshot, groupBy, b => FormatBytes(b));
-
-                    consolidatedSummary = new ReportSummaryData
-                    {
-                        Title = "Reporte Consolidado de Operaciones",
-                        GeneratedAt = DateTime.UtcNow,
-                        TotalFiles = _accumulatedItems.Count,
-                        SuccessCount = success,
-                        ErrorCount = errors,
-                        TotalBytes = totalBytes,
-                        FormattedTotalBytes = FormatBytes(totalBytes),
-                        Items = itemsSnapshot,
-                        GroupBy = groupBy,
-                        Groups = groups
-                    };
-                }
-
-                string consolidatedContent = renderer.Render(consolidatedSummary, theme, includeMetadata);
+                    OriginalPath = perFileName,
+                    PhysicalPath = string.Empty,
+                    FileSizeBytes = System.Text.Encoding.UTF8.GetByteCount(perFileContent)
+                };
+                reportContext.Metadata["VirtualContent"] = perFileContent;
+                reportContext.Metadata["ReportContent"] = perFileContent;
+                reportContext.Metadata["ReportFormat"] = format;
+                reportContext.Metadata["ReportScope"] = "PerFile";
+                reportContext.Metadata["SourceItemFileName"] = item.FileName;
+                reportContext.AddLog($"Individual in-memory report generated: {perFileName}");
 
                 if (isDryRun)
                 {
@@ -202,55 +142,23 @@ public class OperationReportNode : IFlowNode
                         Name,
                         PlannedOperationType.Custom,
                         item.CurrentPath,
-                        consolidatedPath,
-                        $"Simulación: Se generaría/actualizaría reporte consolidado '{Path.GetFileName(consolidatedPath)}' ({consolidatedSummary.TotalFiles} archivos)"
+                        perFileName,
+                        $"Simulación: Se generaría reporte individual en memoria '{perFileName}'"
                     ));
                 }
-                else
+                else if (autoOpen)
                 {
-                    string? targetDir = Path.GetDirectoryName(consolidatedPath);
-                    if (!string.IsNullOrWhiteSpace(targetDir) && !Directory.Exists(targetDir))
-                    {
-                        Directory.CreateDirectory(targetDir);
-                    }
-                    await File.WriteAllTextAsync(consolidatedPath, consolidatedContent, cancellationToken);
-
-                    // Emit to Report output port only once for the consolidated report
-                    bool shouldEmit = false;
-                    bool shouldOpen = false;
-                    lock (_lock)
-                    {
-                        if (!_reportEmitted)
-                        {
-                            _reportEmitted = true;
-                            shouldEmit = true;
-                        }
-                        if (autoOpen && !_reportAutoOpened)
-                        {
-                            _reportAutoOpened = true;
-                            shouldOpen = true;
-                        }
-                    }
-
-                    if (shouldEmit)
-                    {
-                        var reportContext = new FileItemContext(consolidatedPath);
-                        reportContext.AddLog($"Consolidated report generated ({consolidatedSummary.TotalFiles} files): {consolidatedPath}");
-                        await context.EmitAsync("Report", reportContext);
-                    }
-
-                    if (shouldOpen)
-                    {
-                        TryOpenReport(consolidatedPath);
-                    }
+                    TryOpenTemporaryReport(perFileName, perFileContent);
                 }
+
+                await context.EmitAsync("Report", reportContext);
             }
 
             sw.Stop();
-            item.AddLog($"OperationReportNode processed file. Format: {format}, Scope: {scope}");
+            item.AddLog($"OperationReportNode processed file in memory. Format: {format}, Scope: {scope}");
 
             string detailsJson = $"{{\"format\": \"{format}\", \"scope\": \"{scope}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
-            context.Log($"[Reporte] Reporte actualizado exitosamente (Formato: {format}, Ámbito: {scope})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            context.Log($"[Reporte] Reporte actualizado en memoria (Formato: {format}, Ámbito: {scope})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             // Forward original item to Out
             await context.EmitAsync("Out", item);
@@ -262,6 +170,105 @@ public class OperationReportNode : IFlowNode
             item.AddLog($"OperationReportNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }
+    }
+
+    public async Task OnWorkflowCompletedAsync(
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        string format = Parameters.TryGetValue("ReportFormat", out var fVal) ? ParameterHelper.GetString(fVal, "HTML") : "HTML";
+        string scope = Parameters.TryGetValue("ReportScope", out var sVal) ? ParameterHelper.GetString(sVal, "Consolidated") : "Consolidated";
+        string groupBy = Parameters.TryGetValue("GroupBy", out var gbVal) ? ParameterHelper.GetString(gbVal, "Directory") : "Directory";
+        string fileNamePattern = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
+        string theme = Parameters.TryGetValue("Theme", out var tVal) ? ParameterHelper.GetString(tVal, "ModernDark") : "ModernDark";
+        bool autoOpen = Parameters.TryGetValue("AutoOpenReport", out var aoVal) && ParameterHelper.GetBoolean(aoVal, false);
+        bool includeMetadata = !Parameters.TryGetValue("IncludeMetadata", out var imVal) || ParameterHelper.GetBoolean(imVal, true);
+        bool isDryRun = context.IsDryRun;
+
+        if (!scope.Equals("Consolidated", StringComparison.OrdinalIgnoreCase) && !scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        ReportSummaryData consolidatedSummary;
+        lock (_lock)
+        {
+            if (_reportEmitted || _accumulatedItems.Count == 0)
+            {
+                return;
+            }
+            _reportEmitted = true;
+
+            long totalBytes = _accumulatedItems.Sum(i => i.FileSizeBytes);
+            int success = _accumulatedItems.Count(i => i.IsSuccess);
+            int errors = _accumulatedItems.Count - success;
+            var itemsSnapshot = _accumulatedItems.ToList();
+            var groups = ReportSummaryData.CreateGroups(itemsSnapshot, groupBy, b => FormatBytes(b));
+
+            consolidatedSummary = new ReportSummaryData
+            {
+                Title = "Reporte Consolidado de Operaciones",
+                GeneratedAt = DateTime.UtcNow,
+                TotalFiles = _accumulatedItems.Count,
+                SuccessCount = success,
+                ErrorCount = errors,
+                TotalBytes = totalBytes,
+                FormattedTotalBytes = FormatBytes(totalBytes),
+                Items = itemsSnapshot,
+                GroupBy = groupBy,
+                Groups = groups
+            };
+        }
+
+        IReportRenderer renderer = GetRenderer(format);
+        string consolidatedContent = renderer.Render(consolidatedSummary, theme, includeMetadata);
+
+        var dummy = new FileItemContext(string.Empty);
+        string resolvedFileName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(fileNamePattern, dummy);
+        if (string.IsNullOrWhiteSpace(resolvedFileName))
+        {
+            resolvedFileName = $"Reporte_Ejecucion_{DateTime.Now:yyyyMMdd_HHmmss}";
+        }
+        if (!resolvedFileName.EndsWith($".{renderer.FileExtension}", StringComparison.OrdinalIgnoreCase))
+        {
+            resolvedFileName += $".{renderer.FileExtension}";
+        }
+        string virtualFileName = Path.GetFileName(resolvedFileName);
+
+        var reportContext = new FileItemContext(virtualFileName)
+        {
+            OriginalPath = virtualFileName,
+            PhysicalPath = string.Empty,
+            FileSizeBytes = System.Text.Encoding.UTF8.GetByteCount(consolidatedContent)
+        };
+        reportContext.Metadata["VirtualContent"] = consolidatedContent;
+        reportContext.Metadata["ReportContent"] = consolidatedContent;
+        reportContext.Metadata["ReportFormat"] = format;
+        reportContext.Metadata["ReportScope"] = "Consolidated";
+        reportContext.Metadata["TotalFiles"] = consolidatedSummary.TotalFiles;
+        reportContext.Metadata["SuccessCount"] = consolidatedSummary.SuccessCount;
+        reportContext.Metadata["ErrorCount"] = consolidatedSummary.ErrorCount;
+        reportContext.AddLog($"Consolidated in-memory report generated ({consolidatedSummary.TotalFiles} files): {virtualFileName}");
+
+        if (isDryRun)
+        {
+            context.RegisterPlannedAction(new PlannedAction(
+                Guid.NewGuid(),
+                Id,
+                Name,
+                PlannedOperationType.Custom,
+                string.Empty,
+                virtualFileName,
+                $"Simulación: Se generaría reporte consolidado en memoria '{virtualFileName}' ({consolidatedSummary.TotalFiles} archivos)"
+            ));
+        }
+        else if (autoOpen)
+        {
+            TryOpenTemporaryReport(virtualFileName, consolidatedContent);
+        }
+
+        context.Log($"[Reporte] Reporte consolidado generado en memoria ({consolidatedSummary.TotalFiles} archivos)", LogLevel.Information, reportContext);
+        await context.EmitAsync("Report", reportContext);
     }
 
     private static IReportRenderer GetRenderer(string format)
@@ -290,18 +297,22 @@ public class OperationReportNode : IFlowNode
         return $"{number:n1} {suffixes[counter]}";
     }
 
-    private static void TryOpenReport(string filePath)
+    private static void TryOpenTemporaryReport(string fileName, string content)
     {
         try
         {
-            if (File.Exists(filePath))
+            string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_Reports");
+            if (!Directory.Exists(tempDir))
             {
-                Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+                Directory.CreateDirectory(tempDir);
             }
+            string tempFile = Path.Combine(tempDir, fileName);
+            File.WriteAllText(tempFile, content, System.Text.Encoding.UTF8);
+            Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
         }
         catch
         {
-            // Silently ignore if shell opener fails or is not available
+            // Silently ignore if preview launcher fails
         }
     }
 }

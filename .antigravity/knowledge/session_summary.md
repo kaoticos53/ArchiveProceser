@@ -8,7 +8,15 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **303 / 303 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Configuration Loaders, AppPaths Storage & Portable Mode Provider & Performance Benchmarks en xUnit).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **318 / 318 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Configuration Loaders, AppPaths Storage, Portable Mode Provider & Performance Benchmarks en xUnit).
+- **Reportes de Operaciones en Memoria (`OperationReportNode`) y Ciclo de Vida `OnWorkflowCompletedAsync`**:
+  - `OperationReportNode` genera los reportes 100% en memoria (`Metadata["ReportContent"]` y `Metadata["VirtualContent"]`) eliminando la escritura directa a disco y el parámetro `DestinationFolder`.
+  - Nuevo hook `OnWorkflowCompletedAsync` en `IFlowNode` y coordinado por `WorkflowExecutor` para emitir el reporte consolidado por el puerto `Report` al concluir el procesamiento de todos los archivos del flujo.
+  - `DestinationSinkNode` actualizado con soporte para persistir archivos virtuales/en memoria en disco si el usuario conecta la salida `Report` a un nodo de destino final.
+- **Evaluación y Previsualización de Parámetros en Tiempo Real en el Inspector (Enfoque Híbrido)**:
+  - En el panel del Inspector (`NodeInspectorPanelView`), los parámetros con expresiones dinámicas (`{RelativeDir}\Output`, `{Year}`, `{FileName}`) muestran un bloque interactivo `⚡ Evaluado:` con el valor real resuelto contra el `FileItemContext` del snapshot en depuración o variables de sistema.
+  - Botón de copia al portapapeles (`📋`) y badge `{x}` en la etiqueta del parámetro.
+  - Banner en la cabecera de la pestaña de parámetros indicando el contexto de depuración activo (`SelectedSnapshot`).
 - **Proveedor Centralizado de Rutas (`AppPaths`) y Soporte Nativo para Modo Portable**:
   - Unificación de carpetas de usuario bajo `%AppData%/FileFlow/` y soporte autónomo para modo portable (`portable.dat` o carpeta `data/` local al ejecutable) sin tocar el sistema anfitrión ni el registro.
   - Resolución de rutas relativas y auto-detección de herramientas portables (FFmpeg, 7-Zip, Python) ubicadas en `tools/`.

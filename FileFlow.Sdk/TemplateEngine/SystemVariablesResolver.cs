@@ -70,6 +70,7 @@ public static class SystemVariablesResolver
                 return originalPath;
 
             case "currentdir":
+            case "sourcedir":
                 return Path.GetDirectoryName(currentPath) ?? string.Empty;
 
             case "originaldir":

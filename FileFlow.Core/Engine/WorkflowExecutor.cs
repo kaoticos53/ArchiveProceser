@@ -259,28 +259,29 @@ public class WorkflowExecutor
 
             // Wait for all asynchronously dispatched downstream node tasks to finish deterministically
             List<Exception> executionErrors = [];
-            while (true)
-            {
-                Task[] pending;
-                lock (_tasksLock)
-                {
-                    _activeNodeTasks.RemoveAll(t => t.IsCompleted);
-                    if (_activeNodeTasks.Count == 0) break;
-                    pending = [.. _activeNodeTasks];
-                }
+            await DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
 
+            // Notify all nodes about workflow completion (e.g. for aggregators, batch emitters, consolidated reports)
+            var completionDummy = new FileItemContext(string.Empty);
+            completionDummy.Metadata["WorkflowExecutionId"] = _currentExecutionId;
+            if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) completionDummy.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+            if (IsDryRun) completionDummy.Metadata["DryRun"] = true;
+
+            foreach (var node in _nodeInstances.Values)
+            {
+                var completionContext = new WorkflowExecutionContext(node.Id, this, cancellationToken, completionDummy);
                 try
                 {
-                    await Task.WhenAll(pending).ConfigureAwait(false);
+                    await node.OnWorkflowCompletedAsync(completionContext, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    if (ex is not OperationCanceledException)
-                    {
-                        executionErrors.Add(ex);
-                    }
+                    executionErrors.Add(ex);
                 }
             }
+
+            // Drain any subsequent downstream tasks dispatched by completion hooks
+            await DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
 
             if (executionErrors.Count > 0)
             {
@@ -418,6 +419,32 @@ public class WorkflowExecutor
             if (_pauseSemaphore.CurrentCount == 0)
             {
                 _pauseSemaphore.Release();
+            }
+        }
+    }
+
+    private async Task DrainActiveTasksAsync(List<Exception> executionErrors)
+    {
+        while (true)
+        {
+            Task[] pending;
+            lock (_tasksLock)
+            {
+                _activeNodeTasks.RemoveAll(t => t.IsCompleted);
+                if (_activeNodeTasks.Count == 0) break;
+                pending = [.. _activeNodeTasks];
+            }
+
+            try
+            {
+                await Task.WhenAll(pending).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                if (ex is not OperationCanceledException)
+                {
+                    executionErrors.Add(ex);
+                }
             }
         }
     }

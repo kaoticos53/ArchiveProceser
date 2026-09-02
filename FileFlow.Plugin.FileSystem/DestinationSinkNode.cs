@@ -46,8 +46,15 @@ public class DestinationSinkNode : IFlowNode
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         string sourcePath = item.GetExistingPhysicalPath();
+        bool hasPhysicalFile = !string.IsNullOrWhiteSpace(sourcePath) && (File.Exists(sourcePath) || Directory.Exists(sourcePath));
+        bool hasVirtualContent = item.Metadata.TryGetValue("VirtualContent", out var vc) && vc != null;
+        if (!hasVirtualContent && item.Metadata.TryGetValue("ReportContent", out var rc) && rc != null)
+        {
+            vc = rc;
+            hasVirtualContent = true;
+        }
 
-        if (string.IsNullOrWhiteSpace(sourcePath) || (!File.Exists(sourcePath) && !Directory.Exists(sourcePath)))
+        if (!hasPhysicalFile && !hasVirtualContent)
         {
             context.Log($"[Destino Final] Archivo de entrada no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -89,7 +96,22 @@ public class DestinationSinkNode : IFlowNode
 
             if (!isDryRun)
             {
-                File.Copy(sourcePath, targetPath, overwrite: true);
+                if (hasPhysicalFile)
+                {
+                    File.Copy(sourcePath, targetPath, overwrite: true);
+                }
+                else if (hasVirtualContent)
+                {
+                    if (vc is byte[] bytes)
+                    {
+                        await File.WriteAllBytesAsync(targetPath, bytes, cancellationToken);
+                    }
+                    else
+                    {
+                        await File.WriteAllTextAsync(targetPath, vc?.ToString() ?? string.Empty, cancellationToken);
+                    }
+                }
+
                 item.PhysicalPath = targetPath;
                 item.CurrentPath = targetPath;
             }

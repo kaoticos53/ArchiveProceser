@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte Consolidado de Operaciones</title>
+  <style>
+    :root {
+      --bg-body: #0F172A; --bg-card: #1E293B; --bg-card-alt: #334155;
+      --text-primary: #F8FAFC; --text-secondary: #94A3B8;
+      --border-color: #334155; --accent-cyan: #06B6D4;
+      --accent-success: #10B981; --accent-warning: #F59E0B;
+      --accent-error: #EF4444; --accent-indigo: #6366F1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-body); color: var(--text-primary); line-height: 1.5; padding: 24px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 16px; }
+    .header-title { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .header-meta { font-size: 13px; color: var(--text-secondary); text-align: right; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .kpi-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 600; margin-bottom: 6px; }
+    .kpi-value { font-size: 24px; font-weight: 800; color: var(--text-primary); }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 260px; position: relative; }
+    .search-input { width: 100%; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 13px; outline: none; transition: border-color 0.2s; }
+    .search-input:focus { border-color: var(--accent-cyan); }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { padding: 9px 14px; background: var(--bg-card-alt); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+    .btn:hover { background: var(--border-color); }
+    .folder-group { margin-bottom: 18px; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; background: var(--bg-card); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .folder-header { padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; background: var(--bg-card-alt); border-bottom: 1px solid transparent; transition: background 0.15s; flex-wrap: wrap; gap: 10px; }
+    .folder-header:hover { filter: brightness(1.04); }
+    .folder-group.open .folder-header { border-bottom-color: var(--border-color); }
+    .folder-title { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14.5px; word-break: break-all; }
+    .folder-pill { font-size: 11.5px; font-weight: 600; background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); padding: 2px 8px; border-radius: 12px; white-space: nowrap; }
+    .folder-actions { display: flex; align-items: center; gap: 12px; }
+    .folder-chevron { font-size: 12px; transition: transform 0.2s ease; display: inline-block; color: var(--text-secondary); }
+    .folder-group.open .folder-chevron { transform: rotate(180deg); }
+    .folder-body { padding: 16px; display: none; }
+    .folder-group.open .folder-body { display: block; }
+    .file-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 14px; overflow: hidden; transition: border-color 0.15s; }
+    .file-card:last-child { margin-bottom: 0; }
+    .file-card:hover { border-color: var(--accent-cyan); }
+    .file-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02); flex-wrap: wrap; gap: 10px; }
+    .file-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--accent-success); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-error { background: rgba(239, 68, 68, 0.15); color: var(--accent-error); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .file-body { padding: 14px 16px; }
+    .path-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; margin-bottom: 8px; word-break: break-all; }
+    .path-label { font-weight: 600; color: var(--text-secondary); min-width: 65px; }
+    .path-value { font-family: 'Cascadia Code', Consolas, monospace; background: var(--bg-card-alt); padding: 3px 8px; border-radius: 4px; }
+    .timeline-container { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
+    .timeline-title { font-size: 11.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; }
+    .timeline { display: flex; flex-direction: column; gap: 6px; }
+    .timeline-step { display: flex; align-items: baseline; gap: 10px; font-size: 12px; }
+    .timeline-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-cyan); flex-shrink: 0; }
+    .metadata-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin-top: 10px; padding: 10px; background: var(--bg-card-alt); border-radius: 8px; font-size: 11px; font-family: monospace; }
+    .meta-item { display: flex; justify-content: space-between; overflow: hidden; text-overflow: ellipsis; }
+    .meta-key { font-weight: 600; color: var(--accent-indigo); }
+    .meta-val { color: var(--text-primary); }
+    @media print { body { background: #fff; color: #000; padding: 0; } .toolbar { display: none; } .folder-body { display: block !important; } .file-card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="header-title">⚡ Reporte Consolidado de Operaciones</div>
+        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Generado automáticamente por FileFlow Studio v2.0</div>
+      </div>
+      <div class="header-meta">
+        <div><strong>Fecha:</strong> 2026-09-02 10:47:24 UTC</div>
+        <div><strong>Total Archivos:</strong> 11</div>
+      </div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">📁 Total Archivos</div>
+        <div class="kpi-value">11</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">✅ Exitosos</div>
+        <div class="kpi-value" style="color: var(--accent-success);">11</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">⚠️ Errores / Alertas</div>
+        <div class="kpi-value" style="color: var(--text-primary);">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">💾 Volumen Total</div>
+        <div class="kpi-value" style="color: var(--accent-cyan);">336,7 MB</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Filtrar por nombre de archivo, directorio o metadato..." onkeyup="filterFiles()">
+      </div>
+      <div class="btn-group">
+        <button class="btn" onclick="toggleAllFolders(true)">📂 Expandir Todo</button>
+        <button class="btn" onclick="toggleAllFolders(false)">📁 Colapsar Todo</button>
+        <button class="btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+      </div>
+    </div>
+    <div id="filesList">
+      <div class="folder-group open" data-folder-name="d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet">
+        <div class="folder-header" onclick="toggleFolder(this)">
+          <div class="folder-title">
+            <span>📁</span>
+            <span>D:\Users\ricardo\Downloads\---- Test2\AI_Video_Upscaler_Pro_1.2.7_SaNet</span>
+            <span class="folder-pill">2 archivos • 0,6 MB</span>
+          </div>
+          <div class="folder-actions">
+            <span class="badge badge-success">✅ OK</span>
+            <span class="folder-chevron">▼</span>
+          </div>
+        </div>
+        <div class="folder-body">
+          <div class="file-card" data-search="ai video upscaler pro.7z d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet\ai video upscaler pro.7z d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet\ai video upscaler pro.7z d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #1 AI Video Upscaler Pro.7z <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(0,6 MB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\AI_Video_Upscaler_Pro_1.2.7_SaNet\AI Video Upscaler Pro.7z</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\AI_Video_Upscaler_Pro_1.2.7_SaNet\AI Video Upscaler Pro.7z</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (AI Video Upscaler Pro.7z)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">1</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">600346</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="instructions.txt d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet\instructions.txt d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet\instructions.txt d:\users\ricardo\downloads\---- test2\ai_video_upscaler_pro_1.2.7_sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #2 Instructions.txt <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(120,0 B)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\AI_Video_Upscaler_Pro_1.2.7_SaNet\Instructions.txt</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\AI_Video_Upscaler_Pro_1.2.7_SaNet\Instructions.txt</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (Instructions.txt)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">600466</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="folder-group open" data-folder-name="d:\users\ricardo\downloads\---- test2\mingus_1.0.0_win.sanet">
+        <div class="folder-header" onclick="toggleFolder(this)">
+          <div class="folder-title">
+            <span>📁</span>
+            <span>D:\Users\ricardo\Downloads\---- Test2\Mingus_1.0.0_Win.sanet</span>
+            <span class="folder-pill">1 archivos • 137,5 MB</span>
+          </div>
+          <div class="folder-actions">
+            <span class="badge badge-success">✅ OK</span>
+            <span class="folder-chevron">▼</span>
+          </div>
+        </div>
+        <div class="folder-body">
+          <div class="file-card" data-search="mingus_1.0.0_win.sanet.st.rar d:\users\ricardo\downloads\---- test2\mingus_1.0.0_win.sanet\mingus_1.0.0_win.sanet.st.rar d:\users\ricardo\downloads\---- test2\mingus_1.0.0_win.sanet\mingus_1.0.0_win.sanet.st.rar d:\users\ricardo\downloads\---- test2\mingus_1.0.0_win.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #3 Mingus_1.0.0_Win.sanet.st.rar <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(137,5 MB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\Mingus_1.0.0_Win.sanet\Mingus_1.0.0_Win.sanet.st.rar</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\Mingus_1.0.0_Win.sanet\Mingus_1.0.0_Win.sanet.st.rar</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (Mingus_1.0.0_Win.sanet.st.rar)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">3</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">144772183</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="folder-group open" data-folder-name="d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+        <div class="folder-header" onclick="toggleFolder(this)">
+          <div class="folder-title">
+            <span>📁</span>
+            <span>D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet</span>
+            <span class="folder-pill">7 archivos • 198,6 MB</span>
+          </div>
+          <div class="folder-actions">
+            <span class="badge badge-success">✅ OK</span>
+            <span class="folder-chevron">▼</span>
+          </div>
+        </div>
+        <div class="folder-body">
+          <div class="file-card" data-search="crude.jpg d:\users\ricardo\downloads\---- test2\onecommander3.sanet\crude.jpg d:\users\ricardo\downloads\---- test2\onecommander3.sanet\crude.jpg d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #4 crude.jpg <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(119,4 KB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\crude.jpg</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\crude.jpg</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (crude.jpg)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">5</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">145033369</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="onecommandersetup3.108.0.0.msi d:\users\ricardo\downloads\---- test2\onecommander3.sanet\onecommandersetup3.108.0.0.msi d:\users\ricardo\downloads\---- test2\onecommander3.sanet\onecommandersetup3.108.0.0.msi d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #5 OneCommanderSetup3.108.0.0.msi <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(65,9 MB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\OneCommanderSetup3.108.0.0.msi</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\OneCommanderSetup3.108.0.0.msi</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (OneCommanderSetup3.108.0.0.msi)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">10</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">353063654</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="crd_losa.jpg d:\users\ricardo\downloads\---- test2\onecommander3.sanet\crd_losa.jpg d:\users\ricardo\downloads\---- test2\onecommander3.sanet\crd_losa.jpg d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #6 crd_losa.jpg <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(135,7 KB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\crd_losa.jpg</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\crd_losa.jpg</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (crd_losa.jpg)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">4</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">144911153</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="crude.nfo d:\users\ricardo\downloads\---- test2\onecommander3.sanet\crude.nfo d:\users\ricardo\downloads\---- test2\onecommander3.sanet\crude.nfo d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #7 crude.nfo <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(15,1 KB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\crude.nfo</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\crude.nfo</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (crude.nfo)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">6</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">145048848</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="onecommander3.sanet.st.rar d:\users\ricardo\downloads\---- test2\onecommander3.sanet\onecommander3.sanet.st.rar d:\users\ricardo\downloads\---- test2\onecommander3.sanet\onecommander3.sanet.st.rar d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #8 OneCommander3.sanet.st.rar <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(66,2 MB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\OneCommander3.sanet.st.rar</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\OneCommander3.sanet.st.rar</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (OneCommander3.sanet.st.rar)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">8</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">214493647</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="file_id.diz d:\users\ricardo\downloads\---- test2\onecommander3.sanet\file_id.diz d:\users\ricardo\downloads\---- test2\onecommander3.sanet\file_id.diz d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #9 file_id.diz <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(0,9 KB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\file_id.diz</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\file_id.diz</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (file_id.diz)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">7</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">145049784</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="file-card" data-search="onecommander3.sanet.st_2.rar d:\users\ricardo\downloads\---- test2\onecommander3.sanet\onecommander3.sanet.st_2.rar d:\users\ricardo\downloads\---- test2\onecommander3.sanet\onecommander3.sanet.st_2.rar d:\users\ricardo\downloads\---- test2\onecommander3.sanet">
+            <div class="file-header">
+              <div class="file-name">📄 #10 OneCommander3.sanet.st_2.rar <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(66,2 MB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\OneCommander3.sanet.st_2.rar</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\OneCommander3.sanet.st_2.rar</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (OneCommander3.sanet.st_2.rar)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">9</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">283933926</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="folder-group open" data-folder-name="d:\users\ricardo\downloads\---- test2\onecommander3.sanet\keygen">
+        <div class="folder-header" onclick="toggleFolder(this)">
+          <div class="folder-title">
+            <span>📁</span>
+            <span>D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\keygen</span>
+            <span class="folder-pill">1 archivos • 35,0 KB</span>
+          </div>
+          <div class="folder-actions">
+            <span class="badge badge-success">✅ OK</span>
+            <span class="folder-chevron">▼</span>
+          </div>
+        </div>
+        <div class="folder-body">
+          <div class="file-card" data-search="kg.exe d:\users\ricardo\downloads\---- test2\onecommander3.sanet\keygen\kg.exe d:\users\ricardo\downloads\---- test2\onecommander3.sanet\keygen\kg.exe d:\users\ricardo\downloads\---- test2\onecommander3.sanet\keygen">
+            <div class="file-header">
+              <div class="file-name">📄 #11 kg.exe <span style="font-size:12px; font-weight:normal; color:var(--text-secondary);">(35,0 KB)</span></div>
+              <div><span class="badge badge-success">Completado</span></div>
+            </div>
+            <div class="file-body">
+              <div class="path-row">
+                <span class="path-label">Origen:</span>
+                <span class="path-value">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\keygen\kg.exe</span>
+              </div>
+              <div class="path-row">
+                <span class="path-label">Destino:</span>
+                <span class="path-value" style="color: var(--accent-success);">D:\Users\ricardo\Downloads\---- Test2\OneCommander3.sanet\keygen\kg.exe</span>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Historial de Transformaciones (2 pasos)</div>
+                <div class="timeline">
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] Emitted by FolderSourceNode from D:\Users\ricardo\Downloads\---- Test2</div>
+                  </div>
+                  <div class="timeline-step">
+                    <div class="timeline-dot"></div>
+                    <div>[2026-09-02 12:47:24] LogOutputNode inspeccion&#243; estado (kg.exe)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="timeline-container">
+                <div class="timeline-title">Metadatos Asociados (4 atributos)</div>
+                <div class="metadata-grid">
+                  <div class="meta-item">
+                    <span class="meta-key">SourceRootPath:</span>
+                    <span class="meta-val">D:\Users\ricardo\Downloads\---- Test2</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">Counter:</span>
+                    <span class="meta-val">11</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">TotalEmittedBytes:</span>
+                    <span class="meta-val">353099494</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="meta-key">WorkflowExecutionId:</span>
+                    <span class="meta-val">4f7ed3d0d6474ce19336c34ffe06a831</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function toggleFolder(headerElement) {
+      var group = headerElement.parentElement;
+      group.classList.toggle('open');
+    }
+
+    function toggleAllFolders(open) {
+      var groups = document.getElementsByClassName('folder-group');
+      for (var i = 0; i < groups.length; i++) {
+        if (open) { groups[i].classList.add('open'); }
+        else { groups[i].classList.remove('open'); }
+      }
+    }
+
+    function filterFiles() {
+      var input = document.getElementById('searchInput');
+      var filter = input.value.toLowerCase().trim();
+      var groups = document.getElementsByClassName('folder-group');
+
+      for (var g = 0; g < groups.length; g++) {
+        var group = groups[g];
+        var cards = group.getElementsByClassName('file-card');
+        var folderName = group.getAttribute('data-folder-name') || '';
+        var groupMatches = filter.length > 0 && folderName.indexOf(filter) > -1;
+        var hasVisibleCards = false;
+
+        for (var c = 0; c < cards.length; c++) {
+          var searchData = cards[c].getAttribute('data-search') || '';
+          if (filter.length === 0 || groupMatches || searchData.indexOf(filter) > -1) {
+            cards[c].style.display = '';
+            hasVisibleCards = true;
+          } else {
+            cards[c].style.display = 'none';
+          }
+        }
+
+        if (filter.length === 0 || hasVisibleCards || groupMatches) {
+          group.style.display = '';
+          if (filter.length > 0) { group.classList.add('open'); }
+        } else {
+          group.style.display = 'none';
+        }
+      }
+    }
+  </script>
+</body>
+</html>

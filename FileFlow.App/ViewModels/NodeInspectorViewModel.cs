@@ -25,7 +25,17 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
     private bool _isOpen;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveEvaluationContextFileName))]
+    [NotifyPropertyChangedFor(nameof(HasActiveEvaluationSnapshot))]
     private NodeDataSnapshot? _selectedSnapshot;
+
+    public bool HasActiveEvaluationSnapshot => SelectedSnapshot != null && !string.IsNullOrWhiteSpace(SelectedSnapshot.ItemSnapshot.FileName);
+
+    public string ActiveEvaluationContextFileName => SelectedSnapshot != null && !string.IsNullOrWhiteSpace(SelectedSnapshot.ItemSnapshot.FileName)
+        ? SelectedSnapshot.ItemSnapshot.FileName
+        : (SelectedSnapshot != null && !string.IsNullOrWhiteSpace(SelectedSnapshot.ItemSnapshot.CurrentPath)
+            ? Path.GetFileName(SelectedSnapshot.ItemSnapshot.CurrentPath)
+            : string.Empty);
 
     [ObservableProperty]
     private string _filterText = string.Empty;
@@ -70,11 +80,28 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
         // Seleccionar el último snapshot si existe
         SelectedSnapshot = node.OutputSnapshots.LastOrDefault() ?? node.InputSnapshots.LastOrDefault();
         UpdateMetadataDiff();
+        UpdateParametersEvaluationContext();
+    }
+
+    partial void OnInspectedNodeChanged(NodeViewModel? value)
+    {
+        UpdateParametersEvaluationContext();
     }
 
     partial void OnSelectedSnapshotChanged(NodeDataSnapshot? value)
     {
         UpdateMetadataDiff();
+        UpdateParametersEvaluationContext();
+    }
+
+    private void UpdateParametersEvaluationContext()
+    {
+        if (InspectedNode == null) return;
+        var context = SelectedSnapshot?.ItemSnapshot ?? InspectedNode.OutputSnapshots.LastOrDefault()?.ItemSnapshot ?? InspectedNode.InputSnapshots.LastOrDefault()?.ItemSnapshot;
+        foreach (var p in InspectedNode.Parameters)
+        {
+            p.UpdateEvaluationContext(context);
+        }
     }
 
     private void UpdateMetadataDiff()

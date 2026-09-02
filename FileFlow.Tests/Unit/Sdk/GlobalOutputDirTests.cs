@@ -38,4 +38,31 @@ public class GlobalOutputDirTests
 
         Assert.Equal(@"D:\FileFlowOutput/Exports/SampleFile.pdf", resolved);
     }
+
+    [Fact]
+    public void ResolveOutputPath_WithoutGlobalOutputDir_AnchorsUnderSourceDirectory()
+    {
+        // Arrange - File directly in d:\pepe\
+        var item = new FileItemContext(@"d:\pepe\archivo.txt");
+
+        // Act - Pattern with {RelativeDir}\Output
+        string resolved = ParameterHelper.ResolveOutputPath(@"{RelativeDir}\Output", item);
+
+        // Assert - RelativeDir is empty, so Output is anchored directly to d:\pepe\Output
+        Assert.Equal(@"d:\pepe\Output", resolved);
+    }
+
+    [Fact]
+    public void ResolveOutputPath_WithSubdirectoryAndSourceRootPath_AnchorsCorrectly()
+    {
+        // Arrange - File in subfolder d:\pepe\sub1\sub2\archivo.txt with SourceRootPath = d:\pepe
+        var item = new FileItemContext(@"d:\pepe\sub1\sub2\archivo.txt");
+        item.Metadata["SourceRootPath"] = @"d:\pepe";
+
+        // Act
+        string resolved = ParameterHelper.ResolveOutputPath(@"{RelativeDir}\Output", item);
+
+        // Assert - RelativeDir is sub1\sub2, anchored under d:\pepe -> d:\pepe\sub1\sub2\Output
+        Assert.Equal(@"d:\pepe\sub1\sub2\Output", resolved);
+    }
 }

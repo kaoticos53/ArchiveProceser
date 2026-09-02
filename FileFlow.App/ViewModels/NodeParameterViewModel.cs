@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.App.ViewModels;
 
@@ -13,6 +14,8 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
     private readonly EventHandler<CultureInfo> _languageChangedHandler;
+    private FileItemContext? _activeEvaluationContext;
+    private string? _sourceRootPath;
 
     public NodeViewModel? NodeOwner { get; set; }
     public NodeParameterDescriptor? Descriptor { get; }
@@ -33,6 +36,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsToggle))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
     private object? _value;
+
+    [ObservableProperty]
+    private string _evaluatedValue = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasExpression;
+
+    [ObservableProperty]
+    private bool _isCopied;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasOptions))]
@@ -138,6 +150,61 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     partial void OnValueChanged(object? oldValue, object? newValue)
     {
         NodeOwner?.OnParameterValueChanged(Key, newValue);
+        RecalculateEvaluatedValue();
+    }
+
+    public void UpdateEvaluationContext(FileItemContext? context, string? sourceRootPath = null)
+    {
+        _activeEvaluationContext = context;
+        _sourceRootPath = sourceRootPath;
+        RecalculateEvaluatedValue();
+    }
+
+    public void RecalculateEvaluatedValue()
+    {
+        string? valStr = Value?.ToString();
+        if (string.IsNullOrEmpty(valStr))
+        {
+            EvaluatedValue = string.Empty;
+            HasExpression = false;
+            return;
+        }
+
+        bool containsTags = (valStr.Contains('{') && valStr.Contains('}')) || (valStr.Contains('<') && valStr.Contains('>'));
+        HasExpression = containsTags;
+
+        if (!containsTags)
+        {
+            EvaluatedValue = valStr;
+            return;
+        }
+
+        try
+        {
+            var ctx = _activeEvaluationContext ?? new FileItemContext();
+            EvaluatedValue = VariableTemplateResolver.Resolve(valStr, ctx, _sourceRootPath);
+        }
+        catch
+        {
+            EvaluatedValue = valStr;
+        }
+    }
+
+    [RelayCommand]
+    public async Task CopyEvaluatedValueAsync()
+    {
+        if (string.IsNullOrEmpty(EvaluatedValue)) return;
+        try
+        {
+            Clipboard.SetText(EvaluatedValue);
+            IsCopied = true;
+            await Task.Delay(1500);
+            IsCopied = false;
+        }
+        catch
+        {
+            // Ignorar excepciones de concurrencia del portapapeles
+        }
     }
 
     public NodeParameterViewModel(NodeParameterDescriptor descriptor, object? value, NodeViewModel? nodeOwner = null)
@@ -191,6 +258,8 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
                 _options.Insert(0, valStr);
             }
         }
+
+        RecalculateEvaluatedValue();
 
         _languageChangedHandler = (_, _) =>
         {

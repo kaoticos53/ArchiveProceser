@@ -187,7 +187,8 @@ public static class ParameterHelper
 
     /// <summary>
     /// Resuelve una plantilla de ruta de salida. Si la ruta resuelta es relativa,
-    /// se ancla automáticamente bajo la Ruta Global de Salida (GlobalOutputDir) configurada.
+    /// se ancla automáticamente bajo la Ruta Global de Salida (GlobalOutputDir) si está configurada,
+    /// o bajo el directorio origen del archivo (SourceRootPath / OriginalPath / CurrentPath).
     /// </summary>
     public static string ResolveOutputPath(string targetPathPattern, FileItemContext context, string? globalOutputDir = null, string? sourceRootPath = null)
     {
@@ -210,14 +211,50 @@ public static class ParameterHelper
             resolved = Path.GetFileName(context.CurrentPath);
         }
 
-        if (Path.IsPathRooted(resolved))
+        // Si la ruta resultante comienza con separador sin ser UNC (ej. \Output tras {RelativeDir}\Output cuando RelativeDir es vacio),
+        // se normaliza quitando el separador inicial para poder combinarlo correctamente con el directorio base.
+        if ((resolved.StartsWith('\\') || resolved.StartsWith('/')) && !resolved.StartsWith(@"\\") && !resolved.StartsWith("//"))
+        {
+            resolved = resolved.TrimStart('\\', '/');
+            if (string.IsNullOrWhiteSpace(resolved))
+            {
+                resolved = Path.GetFileName(context.CurrentPath);
+            }
+        }
+
+        if (Path.IsPathFullyQualified(resolved))
         {
             return resolved;
         }
 
+        // 1. Si hay GlobalOutputDir configurado, anclar bajo GlobalOutputDir
         if (!string.IsNullOrWhiteSpace(effectiveGlobalOutputDir))
         {
             return Path.GetFullPath(Path.Combine(effectiveGlobalOutputDir, resolved));
+        }
+
+        // 2. Si no hay GlobalOutputDir, anclar bajo el directorio del archivo origen
+        string? baseDir = null;
+        if (context.Metadata.TryGetValue("SourceRootPath", out var srpVal) && srpVal != null && !string.IsNullOrWhiteSpace(srpVal.ToString()))
+        {
+            baseDir = srpVal.ToString();
+        }
+        else if (!string.IsNullOrWhiteSpace(sourceRootPath))
+        {
+            baseDir = sourceRootPath;
+        }
+        else
+        {
+            string? itemPath = !string.IsNullOrWhiteSpace(context.OriginalPath) ? context.OriginalPath : context.CurrentPath;
+            if (!string.IsNullOrWhiteSpace(itemPath))
+            {
+                baseDir = Path.GetDirectoryName(itemPath);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(baseDir))
+        {
+            return Path.GetFullPath(Path.Combine(baseDir, resolved));
         }
 
         return resolved;

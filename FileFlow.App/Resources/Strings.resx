@@ -587,4 +587,10 @@
   <data name="StatusBar_RamToolTip" xml:space="preserve"><value>Current RAM memory usage of the application</value></data>
   <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Current CPU usage of the application process</value></data>
   <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Click to fit the workflow graph to the visible canvas area. Current zoom level.</value></data>
+  <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Evaluated Value:</value></data>
+  <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copy evaluated value to clipboard</value></data>
+  <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contains dynamic expression / variables</value></data>
+  <data name="Inspector_ActiveContextLabel" xml:space="preserve"><value>DEBUG CONTEXT (EXPRESSION EVALUATION)</value></data>
+  <data name="Inspector_NoSnapshotForEvaluation" xml:space="preserve"><value>No active snapshot (evaluating with system variables)</value></data>
+  <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
 </root>

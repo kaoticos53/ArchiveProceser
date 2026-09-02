@@ -587,4 +587,10 @@
   <data name="StatusBar_RamToolTip" xml:space="preserve"><value>Uso actual de memoria RAM de la aplicación</value></data>
   <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Uso actual de CPU del proceso de la aplicación</value></data>
   <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Clic para ajustar el grafo al área visible del lienzo. Nivel de zoom actual.</value></data>
+  <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Valor Evaluado:</value></data>
+  <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copiar valor evaluado al portapapeles</value></data>
+  <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contiene expresión dinámica / variables</value></data>
+  <data name="Inspector_ActiveContextLabel" xml:space="preserve"><value>CONTEXTO DE DEPURACIÓN (EVALUACIÓN DE EXPRESIONES)</value></data>
+  <data name="Inspector_NoSnapshotForEvaluation" xml:space="preserve"><value>Sin snapshot activo (evaluando con variables de sistema)</value></data>
+  <data name="Common_Copy" xml:space="preserve"><value>Copiar</value></data>
 </root>

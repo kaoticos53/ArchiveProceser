@@ -79,4 +79,33 @@ public class NodeInspectorViewModelTests
         inspectorVm.InspectedNode.Should().Be(nodeVm);
         inspectorVm.MetadataDiffs.Should().BeEmpty();
     }
+
+    [Fact]
+    public void InspectNode_ShouldUpdateParameterEvaluatedValues_WithSelectedSnapshotContext()
+    {
+        // Arrange
+        var mockFileDialog = new Mock<IFileDialogService>();
+        var editorVm = new EditorViewModel(new PluginLoader());
+        var inspectorVm = new NodeInspectorViewModel(editorVm, mockFileDialog.Object);
+
+        var node = new FolderSourceNode();
+        var nodeVm = new NodeViewModel(node, new Point(0, 0));
+
+        // Add a parameter with expression
+        var customParam = new NodeParameterViewModel("CustomDest", @"{SourceDir}\Backup_{FileName}", nodeOwner: nodeVm);
+        nodeVm.Parameters.Add(customParam);
+
+        var inItem = new FileItemContext(@"D:\Projects\FileFlow\test_data.zip");
+        var inSnap = NodeDataSnapshot.CreateInput(nodeVm.Id, "In", inItem);
+        nodeVm.InputSnapshots.Add(inSnap);
+
+        // Act
+        inspectorVm.InspectNode(nodeVm, autoOpen: true);
+
+        // Assert
+        inspectorVm.HasActiveEvaluationSnapshot.Should().BeTrue();
+        inspectorVm.ActiveEvaluationContextFileName.Should().Be("test_data.zip");
+        customParam.HasExpression.Should().BeTrue();
+        customParam.EvaluatedValue.Should().Be(@"D:\Projects\FileFlow\Backup_test_data.zip");
+    }
 }
