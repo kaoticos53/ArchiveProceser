@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Preset Manager Window -->
+  <data name="PresetManager_WindowTitle" xml:space="preserve"><value>Media Preset Manager (FFmpeg)</value></data>
+  <data name="PresetManager_HeaderTitle" xml:space="preserve"><value>🎬 Media Transcoding Preset Manager</value></data>
+  <data name="PresetManager_HeaderSubtitle" xml:space="preserve"><value>Create, edit, customize, and manage audio and video conversion presets for the transcoding node.</value></data>
+  <data name="PresetManager_ResetToolTip" xml:space="preserve"><value>Reset preset library to default system values</value></data>
+  <data name="PresetManager_ResetBtn" xml:space="preserve"><value>🔄 Reset Defaults</value></data>
+  <data name="PresetManager_NewBtn" xml:space="preserve"><value>➕ New</value></data>
+  <data name="PresetManager_DeleteBtn" xml:space="preserve"><value>🗑 Delete</value></data>
+  <data name="PresetManager_FormTitle" xml:space="preserve"><value>✏️ Preset Details &amp; Configuration</value></data>
+  <data name="PresetManager_PresetName" xml:space="preserve"><value>Preset Name</value></data>
+  <data name="PresetManager_Category" xml:space="preserve"><value>Category</value></data>
+  <data name="PresetManager_OutputExt" xml:space="preserve"><value>Output Extension</value></data>
+  <data name="PresetManager_Description" xml:space="preserve"><value>Short Description</value></data>
+  <data name="PresetManager_FfmpegArgs" xml:space="preserve"><value>FFmpeg CLI Arguments</value></data>
+  <data name="PresetManager_SavePreset" xml:space="preserve"><value>💾 Save Preset Changes</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+</root>

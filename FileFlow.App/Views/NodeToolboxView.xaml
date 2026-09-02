@@ -45,11 +45,11 @@
                               Style="{StaticResource SecondaryToggleButton}"
                               Padding="6,2" FontSize="10.5"
                               Cursor="Hand"
-                              ToolTip="Alternar entre Vista Lista Compacta y Vista Detallada">
+                              ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Toolbox_ToggleCompactToolTip]}">
                     <ToggleButton.Content>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="☰ " FontSize="10" VerticalAlignment="Center" />
-                            <TextBlock Text="Compacto" FontSize="10.5" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Toolbox_CompactBtn]}" FontSize="10.5" VerticalAlignment="Center" />
                         </StackPanel>
                     </ToggleButton.Content>
                 </ToggleButton>
@@ -74,39 +74,39 @@
 
             <!-- Category Chips Bar in Multi-Row WrapPanel -->
             <WrapPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-                <RadioButton Content="Todas" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_All]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Todas"
                              IsChecked="True" Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="⭐ Favoritos" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_Favorites]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Favoritos"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="🔥 Frecuentes" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_Frequent]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Frecuentes"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="📁 Archivos" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_FileSystem]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="FileSystem"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="📦 Compresión" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_Archives]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Archives"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="🎬 Media &amp; Docs" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_MediaDocs]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="MediaDocs"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="🏷️ Metadatos" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_Metadata]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Metadata"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="🔀 Lógica" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_Logic]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Logic"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
-                <RadioButton Content="⚡ Integraciones" 
+                <RadioButton Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Category_Integrations]}" 
                              Command="{Binding SetCategoryFilterCommand}" CommandParameter="Integrations"
                              Style="{StaticResource FilterRadioButton}" 
                              Padding="6,2" FontSize="9.5" Margin="0,0,3,4" Cursor="Hand" />
@@ -194,7 +194,7 @@
                                                                 Padding="4,0"
                                                                 Margin="4,0,0,0"
                                                                 Cursor="Hand"
-                                                                ToolTip="Marcar / Desmarcar como Favorito">
+                                                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Toolbox_FavoriteToolTip]}">
                                                             <Button.Style>
                                                                 <Style TargetType="Button">
                                                                     <Setter Property="Template">

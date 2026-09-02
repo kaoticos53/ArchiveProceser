@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Password Manager Window -->
+  <data name="PasswordManager_WindowTitle" xml:space="preserve"><value>Gestor de Contraseñas - SmartUnpack</value></data>
+  <data name="PasswordManager_HeaderTitle" xml:space="preserve"><value>🔑 Gestor de Contraseñas para Descompresión</value></data>
+  <data name="PasswordManager_HeaderSubtitle" xml:space="preserve"><value>Introduce una contraseña por línea. El nodo las probará en orden al encontrar un archivo cifrado.</value></data>
+  <data name="PasswordManager_ImportTxt" xml:space="preserve"><value>📥 Importar (.txt)</value></data>
+  <data name="PasswordManager_ExportTxt" xml:space="preserve"><value>📤 Exportar (.txt)</value></data>
+  <data name="PasswordManager_SaveKeys" xml:space="preserve"><value>✅ Guardar Claves</value></data>
+</root>

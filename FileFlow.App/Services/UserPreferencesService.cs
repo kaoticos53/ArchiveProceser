@@ -12,6 +12,7 @@ public class UserPreferencesData
     // Persistent Application Settings
     public string DefaultGlobalOutputDir { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileFlowStudio", "Output");
     public string ActiveTheme { get; set; } = "Dark";
+    public string Language { get; set; } = "es-ES";
     public bool IsCompactToolbox { get; set; } = false;
     public int MaxParallelThreads { get; set; } = Environment.ProcessorCount;
     public bool DefaultDryRunState { get; set; } = true;

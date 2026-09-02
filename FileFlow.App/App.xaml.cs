@@ -51,12 +51,13 @@ public partial class App : Application
 
             var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
             LocalizationManager.Instance.RegisterResourceManager(resourceManager);
-            LocalizationManager.Instance.SetCulture("es-ES");
 
             splash.UpdateStatus("Cargando preferencias de usuario y temas...", 35);
             await Task.Delay(40);
 
             UserPreferencesService.Instance.Load();
+            string savedLang = UserPreferencesService.Instance.Preferences.Language;
+            LocalizationManager.Instance.SetCulture(!string.IsNullOrWhiteSpace(savedLang) ? savedLang : "es-ES");
             _ = ExternalToolsService.Instance.Config;
 
             string savedTheme = UserPreferencesService.Instance.Preferences.ActiveTheme;

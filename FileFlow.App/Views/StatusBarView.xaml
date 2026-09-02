@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DesignHeight="28" d:DesignWidth="1200"
              Background="{DynamicResource BgCardBrush}">
@@ -28,20 +29,22 @@
             </Grid.ColumnDefinitions>
 
             <!-- Nodos del Grafo -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="Nodos presentes en el lienzo actual">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_NodesToolTip]}">
                 <TextBlock Text="🧩" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding NodeCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                <TextBlock Text=" nodos" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text=" " FontSize="11" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_Nodes]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
             </StackPanel>
 
             <!-- Separador -->
             <Border Grid.Column="1" Width="1" Height="12" Background="{DynamicResource BorderDarkBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
 
             <!-- Conexiones -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="Conexiones activas entre nodos">
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_ConnectionsToolTip]}">
                 <TextBlock Text="🔗" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding ConnectionCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                <TextBlock Text=" conexiones" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text=" " FontSize="11" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_Connections]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
             </StackPanel>
 
             <!-- Separador -->
@@ -61,9 +64,11 @@
                         Style="{DynamicResource SecondaryButton}" 
                         Padding="8,2" 
                         Cursor="Hand"
-                        ToolTip="Carpeta de Salida Global. Clic para abrir en el Explorador de Windows.">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_OutputFolderToolTip]}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="📁 Salida: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="📁 " FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_OutputLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text=": " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding GlobalOutputDir}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" MaxWidth="520" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
@@ -73,13 +78,13 @@
             <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
 
                 <!-- Consumo RAM -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="Uso actual de Memoria RAM por FileFlow Studio">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_RamToolTip]}">
                     <TextBlock Text="🧠 RAM: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding RamText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Consumo CPU -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="Uso actual de CPU por el proceso de ejecucion">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_CpuToolTip]}">
                     <TextBlock Text="💻 CPU: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding CpuText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
@@ -92,7 +97,7 @@
                         Style="{DynamicResource SecondaryButton}" 
                         Padding="6,2" 
                         Cursor="Hand"
-                        ToolTip="Nivel de zoom actual. Clic para ajustar todo el flujo a la pantalla.">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_FitScreenToolTip]}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🔍 " FontSize="10.5" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding ZoomPercentage}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />

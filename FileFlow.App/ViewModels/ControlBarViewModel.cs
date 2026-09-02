@@ -52,7 +52,14 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
     partial void OnSelectedLanguageChanged(string value)
     {
+        if (string.IsNullOrWhiteSpace(value)) return;
         FileFlow.Sdk.Localization.LocalizationManager.Instance.SetCulture(value);
+        var prefs = UserPreferencesService.Instance.Preferences;
+        if (!string.Equals(prefs.Language, value, StringComparison.OrdinalIgnoreCase))
+        {
+            prefs.Language = value;
+            UserPreferencesService.Instance.Save();
+        }
     }
 
     [ObservableProperty]
@@ -137,6 +144,10 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         var prefs = UserPreferencesService.Instance.Preferences;
         SelectedTheme = prefs.ActiveTheme;
         IsDryRun = prefs.DefaultDryRunState;
+        if (!string.IsNullOrWhiteSpace(prefs.Language) && !string.Equals(SelectedLanguage, prefs.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            SelectedLanguage = prefs.Language;
+        }
     }
 
     public EditorViewModel Editor => _editorViewModel;

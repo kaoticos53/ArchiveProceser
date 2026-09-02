@@ -2,6 +2,69 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-02] - Descentralización Total de Recursos (.resx / i18n) por Plugin (Zero-Touch en FileFlow.App)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Auto-Descubrimiento Inteligente de Recursos en `PluginLoader.cs`**:
+   - `PluginLoader.RegisterPluginResources(Assembly asm)`: Inspecciona de forma automatizada los ensamblados `.dll` cargados en busca de clases de recursos (`Strings.ResourceManager`, `*Resources`) y nombres de manifiestos incrustados (`.resources`).
+   - Auto-registro determinista de cada `ResourceManager` en `LocalizationManager.Instance.RegisterResourceManager(...)` sin requerir ninguna línea de código en la aplicación principal ni configuración manual.
+2. **Soporte para Inicialización Avanzada Opcional (`IPluginInitializer`)**:
+   - Definida la interfaz `IPluginInitializer` en `FileFlow.Sdk.Plugins` (`void Initialize()`).
+   - `PluginLoader` detecta, instancia y ejecuta deterministamente cualquier inicializador presente en el ensamblado del plugin durante la carga.
+3. **Thread-Safety y Optimización en `LocalizationManager.cs`**:
+   - Protegida la lista interna `_resourceManagers` mediante el nuevo primitivo de sincronización `System.Threading.Lock` de .NET 9.
+   - Manejo resiliente de excepciones individuales al buscar claves por cadena de recursos.
+4. **Descentralización Física de Archivos `.resx` a sus Respectivos Plugins**:
+   - `FileFlow.Plugin.FileSystem/Resources/`: Creados `Strings.resx` y `Strings.es.resx` con todas las claves de `AdvancedRenamer` y `RegexHelper`.
+   - `FileFlow.Plugin.Archives/Resources/`: Creados `Strings.resx` y `Strings.es.resx` con todas las claves de `PasswordManager`.
+   - `FileFlow.Plugin.Integrations/Resources/`: Creados `Strings.resx` y `Strings.es.resx` con todas las claves de `PresetManager` (FFmpeg).
+   - `FileFlow.App/Resources/`: Purgadas todas las claves exclusivas de plugins, manteniendo únicamente los recursos globales de la aplicación (menú, ajustes, barra de control, consola y catálogo de nodos).
+   - **Resultado:** Cualquier plugin contiene de forma 100% autónoma su lógica de negocio, vistas XAML, servicios y diccionarios de traducción. Crear o modificar un plugin no requiere tocar en absoluto `FileFlow.App`.
+5. **Nuevas Pruebas Automatizadas y Suite de Tests**:
+   - Añadidos tests unitarios en `LocalizationManagerTests.cs` para validar el auto-descubrimiento y resolución bilingüe (`es-ES` / `en-US`) de recursos incrustados de plugins y la concurrencia multihilo.
+   - `dotnet test FileFlow.slnx -c Release` $\rightarrow$ **305 / 305 pruebas unitarias e integración superadas al 100% (0 errores, 0 avisos)**.
+
+## [2026-09-02] - Auditoría y Localización Dinámica Completa de Toda la UI (i18n Exhaustiva)
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Auditoría e Internacionalización Exhaustiva de Vistas XAML**:
+   - Reemplazadas todas las cadenas de texto estáticas/hardcoded por enlaces dinámicos a `LocalizationManager.Instance`:
+     - **Catálogo de Nodos (`NodeToolboxView.xaml`)**: Filtros de categorías (`Category_All`, `Category_Favorites`, `Category_Frequent`, `Category_FileSystem`, `Category_Archives`, `Category_MediaDocs`, `Category_Metadata`, `Category_Logic`, `Category_Integrations`), botón de modo compacto (`Toolbox_CompactBtn`), tooltips de vista compacta (`Toolbox_ToggleCompactToolTip`) y tooltips de favoritos (`Toolbox_FavoriteToolTip`).
+     - **Inspector de Nodos (`NodeInspectorPanelView.xaml`)**: Pestañas de Parámetros, Salidas, Entradas, Diff y Trazabilidad (`Inspector_Tab*`), encabezados y subencabezados de sección, etiquetas de puertos (`Inspector_InputsPortLabel`, `Inspector_OutputsPortLabel`), columnas de la tabla de diferencias de metadatos (`Inspector_ColKey`, `Inspector_ColStatus`, `Inspector_ColNewValue`, `Inspector_ColOldValue`), metadatos del archivo inspeccionado y botones de acción rápida (`Inspector_CloseBtn`, `Inspector_TestBtn`).
+     - **Ajustes Globales (`WorkflowSettingsWindow.xaml`)**: Todas las pestañas (`Settings_TabStorage`, `Settings_TabAppearance`, `Settings_TabPerformance`, `Settings_TabExternalTools`), título de ventana, descripciones de opciones (rutas de salida, colisiones, temas, rendimiento multihilo, niveles de log y rutas de ejecutables de sistema) y botones (`Settings_SaveBtn`, `Settings_BrowseBtn`, `Settings_AutoDetectBtn`, `Settings_CustomizeThemesBtn`).
+     - **Personalizador de Temas (`ThemeCustomizerWindow.xaml`)**: Título, subtítulo, encabezados de grupos de configuración (Información General, Fondos y Superficies, Colores de Acento y Estados, Textos y Bordes, Gradiente de Cables, Tipografía), controles de fuentes/radios, vista previa interactiva y botones de acción (`ThemeCustomizer_NewBtn`, `ThemeCustomizer_DuplicateBtn`, `ThemeCustomizer_DeleteBtn`, `ThemeCustomizer_TestInApp`, `ThemeCustomizer_SaveAndApply`).
+     - **Consola de Registro (`LogView.xaml`)**: Tooltips de control de consola (`Log_ClearSearchToolTip`, `Log_ToggleLiveToolTip`, `Log_ExportToolTip`, `Log_ClearToolTip`) y botones de detalles (`Log_TraceabilityBtn`, `Log_CopyJsonBtn`).
+     - **Diálogos de Plugins Desacoplados**:
+       - `PasswordManagerWindow.xaml` (`FileFlow.Plugin.Archives`): Título, subtítulo, botones de importar/exportar txt y guardar claves.
+       - `MediaPresetManagerWindow.xaml` (`FileFlow.Plugin.Integrations`): Título, subtítulo, formulario de edición de perfiles (Nombre, Categoría, Extensión, Descripción, CLI Args) y botones.
+       - `RegexHelperWindow.xaml` (`FileFlow.Plugin.FileSystem`): Título, subtítulo, biblioteca de patrones predefinidos/guardados, probador en vivo con banderas de regex (IgnoreCase, Multiline, Singleline, IgnoreWhitespace), grupos de captura y botones de acción.
+       - `AdvancedRenamerEditorWindow.xaml` (`FileFlow.Plugin.FileSystem`): Título, subtítulo, selector de presets, menú de métodos, tabla de vista previa en vivo y pie de acción.
+2. **Sincronización Total de Diccionarios de Recursos (`Strings.resx` y `Strings.es.resx`)**:
+   - Incorporadas más de 80 nuevas claves bilingües en inglés y español.
+   - Eliminados duplicados de categorías para mantener una compilación 100% limpia sin advertencias (`MSB3568`).
+3. **Validación de Compilación y Suite de Pruebas**:
+   - `dotnet test FileFlow.slnx -c Release` $\rightarrow$ **303 / 303 pruebas unitarias e integración superadas al 100% (0 errores, 0 avisos)**.
+
+## [2026-09-02] - Localización Dinámica del Menú Principal (Drawer), Tooltips y Persistencia de Idioma
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Localización Reactiva del Menú Lateral (Side Drawer) en `MainWindow.xaml`**:
+   - Reemplazados todos los textos literales y tooltips estáticos por enlaces dinámicos a `LocalizationManager.Instance`:
+     - Títulos de sección: `GESTIÓN DE FLUJOS` (`Drawer_FlowManagement`), `APARIENCIA E IDIOMA` (`Drawer_AppearanceLanguage`), `PANELES Y HERRAMIENTAS` (`Drawer_PanelsTools`), `AYUDA Y RECURSOS` (`Drawer_HelpResources`).
+     - Acciones y botones: `Nuevo Flujo` (`Drawer_NewWorkflow`), `Cargar Flujo...` (`Drawer_LoadWorkflow`), `Guardar Flujo...` (`Drawer_SaveWorkflow`), `Tema Visual:` (`Drawer_ThemeLabel`), `Idioma:` (`Drawer_LanguageLabel`), `Personalizar Tema Visual...` (`Drawer_CustomizeTheme`), `Inspector de Datos` (`Drawer_DataInspector`), `Manual de Usuario` (`Drawer_UserManual`), `Ejemplos de Flujos` (`Drawer_ExampleFlows`).
+     - Subtítulo de marca `Gestor de Flujos v1.0` (`Drawer_AppSubtitle`) y tooltips de cierre y versión.
+2. **Localización de Tooltips de la Barra Superior en `ControlBarView.xaml`**:
+   - Tooltips localizados: `ControlBar_MenuToolTip`, `ControlBar_DryRunToolTip`, `ControlBar_SettingsToolTip`, `ControlBar_StepNextToolTip`, `ControlBar_ContinueToolTip`, `ControlBar_PauseToolTip`, `ControlBar_StopToolTip`, `ControlBar_RollbackToolTip`, `ControlBar_InspectorToolTip`.
+3. **Ampliación de Diccionarios de Recursos (`Strings.resx` y `Strings.es.resx`)**:
+   - Incorporadas todas las claves en inglés y español para soporte bilingüe integral en tiempo real.
+4. **Persistencia Automática de Idioma en `UserPreferencesService`**:
+   - Añadida la propiedad `Language` a `UserPreferencesData` con valor por defecto `"es-ES"`.
+   - `ControlBarViewModel`: Sincronización automática y persistencia inmediata al cambiar de idioma en el selector.
+   - `App.xaml.cs`: Inicialización de la cultura de la aplicación a partir de las preferencias guardadas del usuario durante el arranque.
+5. **Validación de Compilación y Suite de Tests**:
+   - Corregido aviso MVVM Toolkit (`MVVMTK0034`).
+   - `dotnet test FileFlow.slnx -c Release` $\rightarrow$ **303 / 303 pruebas pasadas con 100% de éxito (0 errores, 0 avisos)**.
+
 ## [2026-09-02] - Versión Oficial en Inglés de los Manuales y Documentación Completa en PDF
 
 ### 📋 Acciones y Mejoras Realizadas

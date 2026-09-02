@@ -38,8 +38,11 @@
                 </Grid.RowDefinitions>
 
                 <Button Grid.Row="0" Command="{Binding ClosePanelCommand}" Style="{StaticResource SecondaryButton}" 
-                        HorizontalAlignment="Right" Margin="12,12,12,0" Padding="8,4" ToolTip="Cerrar Panel">
-                    <TextBlock Text="✕ Cerrar" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        HorizontalAlignment="Right" Margin="12,12,12,0" Padding="8,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ClosePanelToolTip]}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="✕ " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_CloseBtn]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
                 </Button>
 
                 <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24">
@@ -82,12 +85,12 @@
 
                         <!-- Botón Probar Nodo -->
                         <Button Grid.Column="1" Command="{Binding TestNodeWithCustomFileCommand}" Style="{StaticResource SecondaryButton}" 
-                                Padding="10,5" Margin="0,0,8,0" ToolTip="Probar este nodo de forma aislada con un archivo">
-                            <TextBlock Text="🧪 Probar" FontSize="11" FontWeight="SemiBold" />
+                                Padding="10,5" Margin="0,0,8,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestNodeToolTip]}">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestBtn]}" FontSize="11" FontWeight="SemiBold" />
                         </Button>
 
                         <!-- Botón Cerrar -->
-                        <Button Grid.Column="2" Command="{Binding ClosePanelCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="Cerrar Inspector">
+                        <Button Grid.Column="2" Command="{Binding ClosePanelCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ClosePanelToolTip]}">
                             <TextBlock Text="✕" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Button>
                     </Grid>
@@ -110,12 +113,12 @@
                 <TabControl Grid.Row="2" Margin="12,10,12,12">
                     
                     <!-- PESTAÑA 1: Parámetros del Nodo -->
-                    <TabItem Header="⚙️ Parámetros">
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabParameters]}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
                             <StackPanel>
                                 <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                                     <StackPanel>
-                                        <TextBlock Text="Descripción del Nodo" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_NodeDescription]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,4" />
                                         <TextBlock Text="{Binding InspectedNode.Description}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11.5" TextWrapping="Wrap" LineHeight="16" />
                                     </StackPanel>
                                 </Border>
@@ -140,7 +143,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <TextBlock Text="Configuración de Parámetros:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ParametersConfig]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
                                 
                                 <ItemsControl ItemsSource="{Binding InspectedNode.Parameters}">
                                     <ItemsControl.ItemTemplate>
@@ -156,7 +159,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <TextBlock Text="Puertos de Conexión:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,8,0,8" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ConnectionPorts]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,8,0,8" />
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -165,7 +168,7 @@
 
                                     <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,4,0">
                                         <StackPanel>
-                                            <TextBlock Text="Entradas (In)" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,0,0,6" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_InputsPortLabel]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,0,0,6" />
                                             <ItemsControl ItemsSource="{Binding InspectedNode.InputPorts}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
@@ -178,7 +181,7 @@
 
                                     <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="4,0,0,0">
                                         <StackPanel>
-                                            <TextBlock Text="Salidas (Out)" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentSuccessBrush}" Margin="0,0,0,6" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_OutputsPortLabel]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentSuccessBrush}" Margin="0,0,0,6" />
                                             <ItemsControl ItemsSource="{Binding InspectedNode.OutputPorts}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
@@ -194,13 +197,13 @@
                     </TabItem>
 
                     <!-- PESTAÑA 2: Snapshots de Salida (Virtualizado) -->
-                    <TabItem Header="📤 Salidas">
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabOutputs]}">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="Salidas Generadas (Click en ▶ para ver metadata):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_OutputsSubheader]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
                             <ListBox Grid.Row="1" 
                                      ItemsSource="{Binding InspectedNode.OutputSnapshots}" 
                                      SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
@@ -237,13 +240,13 @@
                     </TabItem>
 
                     <!-- PESTAÑA 3: Snapshots de Entrada (Virtualizado) -->
-                    <TabItem Header="📥 Entradas">
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabInputs]}">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="Entradas Recibidas (Click en ▶ para ver metadata):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_InputsSubheader]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
                             <ListBox Grid.Row="1" 
                                      ItemsSource="{Binding InspectedNode.InputSnapshots}" 
                                      SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
@@ -280,13 +283,13 @@
                     </TabItem>
 
                     <!-- PESTAÑA 4: Diferencias de Metadatos (Diff) -->
-                    <TabItem Header="📊 Diff">
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabDiff]}">
                         <Grid Margin="0,4,0,0">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="Diferencias de Metadatos (Entrada vs Salida):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                            <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_DiffSubheader]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
                             <DataGrid Grid.Row="1" ItemsSource="{Binding MetadataDiffs}" AutoGenerateColumns="False" 
                                       IsReadOnly="True" 
                                       Background="{DynamicResource BgCardBrush}" 
@@ -297,8 +300,8 @@
                                       GridLinesVisibility="Horizontal" 
                                       HorizontalGridLinesBrush="{DynamicResource BorderDarkBrush}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Clave" Binding="{Binding Key}" Width="110" />
-                                    <DataGridTemplateColumn Header="Estado" Width="70">
+                                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ColKey]}" Binding="{Binding Key}" Width="110" />
+                                    <DataGridTemplateColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ColStatus]}" Width="70">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding ChangeType}" 
@@ -307,37 +310,39 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Nuevo Valor" Binding="{Binding NewValue}" Width="*" />
-                                    <DataGridTextColumn Header="Anterior" Binding="{Binding OldValue}" Width="90" />
+                                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ColNewValue]}" Binding="{Binding NewValue}" Width="*" />
+                                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ColOldValue]}" Binding="{Binding OldValue}" Width="90" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
                     </TabItem>
 
                     <!-- PESTAÑA 5: Historial y Trazabilidad -->
-                    <TabItem Header="📜 Historial">
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabHistory]}">
                         <ScrollViewer Margin="0,4,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Detalles del Archivo Seleccionado:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_SelectedFileDetails]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
                                 <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                                     <StackPanel>
-                                        <TextBlock Text="Ruta Actual:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_CurrentPath]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         <TextBox Text="{Binding SelectedSnapshot.ItemSnapshot.CurrentPath, Mode=OneWay}" 
                                                  IsReadOnly="True" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
 
-                                        <TextBlock Text="Ruta Original:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_OriginalPath]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,0" />
                                         <TextBox Text="{Binding SelectedSnapshot.ItemSnapshot.OriginalPath, Mode=OneWay}" 
                                                  IsReadOnly="True" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
 
                                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                            <TextBlock Text="Tamaño: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_SizeLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text=": " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding SelectedSnapshot.ItemSnapshot.FileSizeBytes}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                            <TextBlock Text=" bytes" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text=" " FontSize="11" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_BytesLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Text="Historial de Pasos por Nodos:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_NodeStepHistory]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
                                 <ItemsControl ItemsSource="{Binding SelectedSnapshot.ItemSnapshot.ExecutionLog}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>

@@ -6,9 +6,10 @@
         xmlns:vm="clr-namespace:FileFlow.Plugin.FileSystem.UI.ViewModels"
         xmlns:models="clr-namespace:FileFlow.Plugin.FileSystem.UI.Models"
         xmlns:sdk="clr-namespace:FileFlow.Sdk.Renaming;assembly=FileFlow.Sdk"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         xmlns:conv="clr-namespace:FileFlow.Plugin.FileSystem.UI.Converters"
         mc:Ignorable="d"
-        Title="Estudio de Renombrado Avanzado (Pipeline de Métodos)"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_WindowTitle]}"
         Height="800" Width="1100"
         MinHeight="620" MinWidth="880"
         WindowStartupLocation="CenterOwner"
@@ -52,16 +53,16 @@
                                  Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1"
                                  Padding="8,3" MinWidth="220" ToolTip="Nombre descriptivo de este pipeline de renombrado" />
                         <Border Background="{DynamicResource AccentSuccessBrush}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="9 Métodos Acumulativos" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsBadge]}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
                         </Border>
                     </StackPanel>
-                    <TextBlock Text="Aplica secuencialmente métodos de renombrado evaluando variables del flujo, metadatos, funciones y plantillas."
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_HeaderSubtitle]}"
                                FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
                 </StackPanel>
 
                 <!-- Right: Preset Selector & Import/Export -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Preset:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_PresetLabel]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
                     
                     <ComboBox Width="180" ItemsSource="{Binding AvailablePresets}" DisplayMemberPath="Name" 
                               SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
@@ -69,16 +70,16 @@
                               Padding="8,5" Margin="0,0,6,0" />
 
                     <Button Command="{Binding SaveCurrentAsPresetCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,5" Margin="0,0,4,0" ToolTip="Guardar pipeline actual como preset">
-                        <TextBlock Text="💾 Guardar" FontSize="11" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveBtn]}" FontSize="11" />
                     </Button>
 
                     <Button Command="{Binding LoadPresetFromFileCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,5" Margin="0,0,10,0" ToolTip="Cargar archivo .ffren o .json">
-                        <TextBlock Text="📂 Abrir" FontSize="11" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_OpenBtn]}" FontSize="11" />
                     </Button>
 
                     <Border Width="1" Background="{DynamicResource BorderDarkBrush}" Margin="0,2,10,2" />
 
-                    <TextBlock Text="Colisión:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_CollisionLabel]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <ComboBox Width="130" ItemsSource="{Binding CollisionStrategies}" SelectedItem="{Binding CollisionStrategy, Mode=TwoWay}"
                               Padding="8,5" />
                 </StackPanel>
@@ -108,10 +109,10 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Pipeline de Métodos:" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsPipeline]}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                         
                         <Menu Grid.Column="1" Background="Transparent">
-                            <MenuItem Header="➕ Añadir Método" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="8,4" FontWeight="SemiBold" FontSize="11">
+                            <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_AddMethod]}" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="8,4" FontWeight="SemiBold" FontSize="11">
                                 <MenuItem Header="📝 1. Nuevos Nombres / Plantilla" Click="AddMethod_NewName_Click" />
                                 <MenuItem Header="🔍 2. Búsqueda y Reemplazo (Regex)" Click="AddMethod_SearchReplace_Click" />
                                 <MenuItem Header="📥 3. Inserción de Texto" Click="AddMethod_Insert_Click" />
@@ -481,15 +482,15 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
-                    <TextBlock Text="👁️ Vista Previa en Vivo (Live Preview):" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_LivePreviewTitle]}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding PreviewSourceDescription}" FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <DataGrid Grid.Row="1" ItemsSource="{Binding PreviewItems}" AutoGenerateColumns="False" IsReadOnly="True" CanUserResizeColumns="True">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Nombre Original" Binding="{Binding OriginalName}" Width="280" />
-                        <DataGridTextColumn Header="Nombre Resultante" Binding="{Binding ResultName}" Width="*" />
-                        <DataGridTextColumn Header="Estado" Binding="{Binding StatusMessage}" Width="150" />
+                        <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_ColOriginalName]}" Binding="{Binding OriginalName}" Width="280" />
+                        <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_ColResultName]}" Binding="{Binding ResultName}" Width="*" />
+                        <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_ColStatus]}" Binding="{Binding StatusMessage}" Width="150" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
@@ -502,15 +503,15 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" Text="Los cambios se aplicarán al nodo al hacer clic en 'Guardar y Aplicar'." 
+            <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_FooterHint]}" 
                        FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Click="Cancel_Click" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0">
-                    <TextBlock Text="Cancelar" FontSize="12" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" FontSize="12" />
                 </Button>
                 <Button Click="Save_Click" Style="{DynamicResource PrimaryButton}" Padding="18,6">
-                    <TextBlock Text="✓ Guardar y Aplicar al Nodo" FontSize="12" FontWeight="Bold" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveAndApply]}" FontSize="12" FontWeight="Bold" />
                 </Button>
             </StackPanel>
         </Grid>

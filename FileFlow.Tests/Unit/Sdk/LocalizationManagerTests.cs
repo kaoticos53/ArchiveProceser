@@ -58,4 +58,42 @@ public class LocalizationManagerTests
             manager.SetCulture("es-ES");
         }
     }
+
+    [Fact]
+    public void PluginResources_ShouldBeAutoDiscoveredAndResolved_WhenPluginAssemblyLoaded()
+    {
+        // Arrange
+        var loader = new FileFlow.Core.Plugins.PluginLoader();
+        var fileSystemAssembly = typeof(FileFlow.Plugin.FileSystem.AdvancedRenamerNode).Assembly;
+
+        // Act
+        loader.RegisterNodeTypesFromAssembly(fileSystemAssembly);
+
+        // Assert - Test Spanish resolution
+        LocalizationManager.Instance.SetCulture("es-ES");
+        string titleEs = LocalizationManager.Instance["RegexHelper_WindowTitle"];
+        titleEs.Should().Contain("Asistente y Probador de Expresiones Regulares");
+
+        // Assert - Test English resolution
+        LocalizationManager.Instance.SetCulture("en-US");
+        string titleEn = LocalizationManager.Instance["RegexHelper_WindowTitle"];
+        titleEn.Should().Contain("Regular Expressions Assistant");
+
+        // Reset
+        LocalizationManager.Instance.SetCulture("es-ES");
+    }
+
+    [Fact]
+    public void ConcurrentAccess_ShouldBeThreadSafe()
+    {
+        // Arrange
+        var manager = LocalizationManager.Instance;
+
+        // Act & Assert
+        Parallel.For(0, 100, i =>
+        {
+            _ = manager.GetString("NonExistentKey_" + i, "Fallback_" + i);
+            _ = manager.CurrentLanguage;
+        });
+    }
 }

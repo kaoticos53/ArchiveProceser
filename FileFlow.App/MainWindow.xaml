@@ -180,7 +180,7 @@
                             </Border>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="FileFlow Studio" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="Gestor de Flujos v1.0" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppSubtitle]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
                         </StackPanel>
 
@@ -190,7 +190,7 @@
                                 Style="{StaticResource SecondaryButton}" 
                                 Padding="8,4"
                                 Width="30" Height="30" 
-                                ToolTip="Cerrar Menú">
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_CloseMenuToolTip]}">
                             <TextBlock Text="✕" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Button>
                     </Grid>
@@ -200,36 +200,36 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16,14">
                         <!-- Section: Flow Management -->
-                        <TextBlock Text="GESTIÓN DE FLUJOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_FlowManagement]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <Button Command="{Binding ControlBar.NewWorkflowCommand}" Style="{StaticResource DrawerMenuItemButton}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📄" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Nuevo Flujo" FontSize="14" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_NewWorkflow]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.LoadWorkflowCommand}" Style="{StaticResource DrawerMenuItemButton}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📂" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Cargar Flujo..." FontSize="14" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LoadWorkflow]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.SaveWorkflowCommand}" Style="{StaticResource DrawerMenuItemButton}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="💾" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Guardar Flujo..." FontSize="14" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_SaveWorkflow]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <!-- Section: Theme & Language Customization -->
                         <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
-                        <TextBlock Text="APARIENCIA E IDIOMA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppearanceLanguage]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <!-- Theme Selector in Drawer -->
                         <Grid Margin="4,6,4,8">
-                            <TextBlock Text="Tema Visual:" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ThemeLabel]}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             <ComboBox ItemsSource="{Binding ControlBar.AvailableThemes}"
                                       SelectedValue="{Binding ControlBar.SelectedTheme, Mode=TwoWay}"
                                       SelectedValuePath="Id"
@@ -241,7 +241,7 @@
 
                         <!-- Language Selector in Drawer -->
                         <Grid Margin="4,4,4,8">
-                            <TextBlock Text="Idioma:" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             <ComboBox SelectedValue="{Binding ControlBar.SelectedLanguage, Mode=TwoWay}"
                                       SelectedValuePath="Tag"
                                       HorizontalAlignment="Right"
@@ -252,39 +252,39 @@
                         </Grid>
 
                         <!-- Theme Studio Button in Drawer -->
-                        <Button Command="{Binding ControlBar.OpenThemeCustomizerCommand}" Style="{StaticResource DrawerMenuItemButton}" Margin="0,2,0,4" ToolTip="Abrir el Estudio Gráfico de Personalización Visual de Temas">
+                        <Button Command="{Binding ControlBar.OpenThemeCustomizerCommand}" Style="{StaticResource DrawerMenuItemButton}" Margin="0,2,0,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_CustomizeThemeToolTip]}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🎨" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Personalizar Tema Visual..." FontSize="13.5" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_CustomizeTheme]}" FontSize="13.5" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <!-- Section: Panels & Tools -->
                         <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
-                        <TextBlock Text="PANELES Y HERRAMIENTAS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_PanelsTools]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <Button Command="{Binding ControlBar.ToggleInspectorCommand}" Style="{StaticResource DrawerMenuItemButton}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🔍" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Inspector de Datos" FontSize="14" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_DataInspector]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <!-- Section: Help & Resources -->
                         <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
-                        <TextBlock Text="AYUDA Y RECURSOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_HelpResources]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
-                        <Button Command="{Binding ControlBar.OpenUserManualCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="Abrir el Manual de Usuario detallado">
+                        <Button Command="{Binding ControlBar.OpenUserManualCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_UserManualToolTip]}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📖" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Manual de Usuario" FontSize="14" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_UserManual]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
-                        <Button Command="{Binding ControlBar.OpenExamplesFolderCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="Explorar la carpeta con los flujos de ejemplo incluidos">
+                        <Button Command="{Binding ControlBar.OpenExamplesFolderCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ExampleFlowsToolTip]}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="💡" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="Ejemplos de Flujos" FontSize="14" FontWeight="Medium" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ExampleFlows]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -293,7 +293,7 @@
                 <!-- Drawer Footer -->
                 <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,10">
                     <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="{Binding AppVersionDisplay}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" ToolTip="Versión SemVer 2.0 de FileFlow Studio" />
+                        <TextBlock Text="{Binding AppVersionDisplay}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_VersionToolTip]}" />
                         <TextBlock Text="Engine .NET 9 | C# 13" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Border>

@@ -172,8 +172,8 @@
                                     FontSize="10" 
                                     FontWeight="Bold" 
                                     Padding="2,0" 
-                                    Cursor="Hand"
-                                    ToolTip="Limpiar búsqueda"
+                                    Cursor="Hand" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ClearSearchToolTip]}" 
                                     Visibility="{Binding SearchFilter, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                         </Grid>
                     </Border>
@@ -202,7 +202,7 @@
                                   FontWeight="SemiBold" 
                                   Margin="0,0,6,0"
                                   Cursor="Hand" 
-                                  ToolTip="Alternar desplazamiento en vivo automático" />
+                                  ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ToggleLiveToolTip]}" />
 
                     <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogExport]}" 
                             Command="{Binding ExportLogsCommand}" 
@@ -210,14 +210,14 @@
                             Padding="8,3" 
                             FontSize="10.5" 
                             Margin="0,0,6,0"
-                            ToolTip="Exportar historial de ejecución a archivo .log" />
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ExportToolTip]}" />
 
                     <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogClear]}" 
                             Command="{Binding ClearLogsCommand}" 
                             Style="{StaticResource SecondaryButton}" 
                             Padding="8,3" 
                             FontSize="10.5"
-                            ToolTip="Vaciar todos los logs de la consola y memoria" />
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ClearToolTip]}" />
                 </StackPanel>
             </Grid>
 
@@ -494,14 +494,14 @@
 
                                     <!-- Acciones Rápidas -->
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Content="🔍 Trazabilidad" 
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_TraceabilityBtn]}" 
                                                 Command="{Binding DataContext.FilterByItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 CommandParameter="{Binding ItemId}"
                                                 Style="{StaticResource SecondaryButton}" 
                                                 Padding="8,2" FontSize="10.5" Margin="0,0,6,0"
                                                 Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
 
-                                        <Button Content="📋 Copiar JSON" 
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_CopyJsonBtn]}" 
                                                 Command="{Binding DataContext.CopyDetailsJsonCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 CommandParameter="{Binding DetailsJson}"
                                                 Style="{StaticResource SecondaryButton}" 

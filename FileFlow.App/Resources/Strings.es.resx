@@ -298,6 +298,38 @@
   <data name="MenuBtn" xml:space="preserve"><value>Menú</value></data>
   <data name="WorkflowSettingsBtn" xml:space="preserve"><value>Ajustes del Flujo</value></data>
   <data name="RollbackBtn" xml:space="preserve"><value>↩ Deshacer</value></data>
+
+  <!-- Drawer Side Navigation Menu -->
+  <data name="Drawer_AppSubtitle" xml:space="preserve"><value>Gestor de Flujos v1.0</value></data>
+  <data name="Drawer_CloseMenuToolTip" xml:space="preserve"><value>Cerrar Menú</value></data>
+  <data name="Drawer_FlowManagement" xml:space="preserve"><value>GESTIÓN DE FLUJOS</value></data>
+  <data name="Drawer_NewWorkflow" xml:space="preserve"><value>Nuevo Flujo</value></data>
+  <data name="Drawer_LoadWorkflow" xml:space="preserve"><value>Cargar Flujo...</value></data>
+  <data name="Drawer_SaveWorkflow" xml:space="preserve"><value>Guardar Flujo...</value></data>
+  <data name="Drawer_AppearanceLanguage" xml:space="preserve"><value>APARIENCIA E IDIOMA</value></data>
+  <data name="Drawer_ThemeLabel" xml:space="preserve"><value>Tema Visual:</value></data>
+  <data name="Drawer_LanguageLabel" xml:space="preserve"><value>Idioma:</value></data>
+  <data name="Drawer_CustomizeTheme" xml:space="preserve"><value>Personalizar Tema Visual...</value></data>
+  <data name="Drawer_CustomizeThemeToolTip" xml:space="preserve"><value>Abrir el Estudio Gráfico de Personalización Visual de Temas</value></data>
+  <data name="Drawer_PanelsTools" xml:space="preserve"><value>PANELES Y HERRAMIENTAS</value></data>
+  <data name="Drawer_DataInspector" xml:space="preserve"><value>Inspector de Datos</value></data>
+  <data name="Drawer_HelpResources" xml:space="preserve"><value>AYUDA Y RECURSOS</value></data>
+  <data name="Drawer_UserManual" xml:space="preserve"><value>Manual de Usuario</value></data>
+  <data name="Drawer_UserManualToolTip" xml:space="preserve"><value>Abrir el Manual de Usuario detallado (PDF)</value></data>
+  <data name="Drawer_ExampleFlows" xml:space="preserve"><value>Ejemplos de Flujos</value></data>
+  <data name="Drawer_ExampleFlowsToolTip" xml:space="preserve"><value>Explorar la carpeta con los flujos de ejemplo incluidos</value></data>
+  <data name="Drawer_VersionToolTip" xml:space="preserve"><value>Versión SemVer 2.0 de FileFlow Studio</value></data>
+
+  <!-- Control Bar Tooltips -->
+  <data name="ControlBar_MenuToolTip" xml:space="preserve"><value>Abrir Menú Principal de Navegación</value></data>
+  <data name="ControlBar_DryRunToolTip" xml:space="preserve"><value>Modo simulación: Ejecuta el flujo sin modificar ni borrar archivos reales en disco</value></data>
+  <data name="ControlBar_SettingsToolTip" xml:space="preserve"><value>Configurar la Ruta de Salida Global y opciones del proyecto</value></data>
+  <data name="ControlBar_StepNextToolTip" xml:space="preserve"><value>Avanzar al siguiente paso (F10)</value></data>
+  <data name="ControlBar_ContinueToolTip" xml:space="preserve"><value>Continuar ejecución normal (F5)</value></data>
+  <data name="ControlBar_PauseToolTip" xml:space="preserve"><value>Pausar o Reanudar el flujo</value></data>
+  <data name="ControlBar_StopToolTip" xml:space="preserve"><value>Detener ejecución (Shift+F5)</value></data>
+  <data name="ControlBar_RollbackToolTip" xml:space="preserve"><value>Revertir y deshacer operaciones de la última ejecución (Rollback)</value></data>
+  <data name="ControlBar_InspectorToolTip" xml:space="preserve"><value>Abrir / Ocultar Inspector de Datos del Nodo</value></data>
   <data name="LogLive" xml:space="preserve"><value>⚡ En Vivo</value></data>
   <data name="LogExport" xml:space="preserve"><value>💾 Exportar</value></data>
   <data name="LogClear" xml:space="preserve"><value>🗑 Limpiar</value></data>
@@ -318,12 +350,16 @@
   <data name="Filter_Frequent" xml:space="preserve"><value>🔥 Más Usados</value></data>
 
   <!-- Categories -->
-  <data name="Category_FileSystem" xml:space="preserve"><value>Sistema de Archivos</value></data>
-  <data name="Category_Archives" xml:space="preserve"><value>Comprimidos</value></data>
-  <data name="Category_MediaDocs" xml:space="preserve"><value>Multimedia y Docs</value></data>
+  <data name="Category_All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Category_Favorites" xml:space="preserve"><value>⭐ Favoritos</value></data>
+  <data name="Category_Frequent" xml:space="preserve"><value>🔥 Frecuentes</value></data>
+  <data name="Category_FileSystem" xml:space="preserve"><value>📁 Archivos</value></data>
+  <data name="Category_Archives" xml:space="preserve"><value>📦 Compresión</value></data>
+  <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media &amp; Docs</value></data>
+  <data name="Category_Metadata" xml:space="preserve"><value>🏷️ Metadatos</value></data>
   <data name="Category_Hashing" xml:space="preserve"><value>Hashes y Seguridad</value></data>
-  <data name="Category_Logic" xml:space="preserve"><value>Lógica y Control</value></data>
-  <data name="Category_Integrations" xml:space="preserve"><value>Integraciones y CLI</value></data>
+  <data name="Category_Logic" xml:space="preserve"><value>🔀 Lógica</value></data>
+  <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integraciones</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
 
   <!-- Node Parameters Localized Keys (Spanish) -->
@@ -421,4 +457,122 @@
   <data name="ScriptStudio_Running" xml:space="preserve"><value>Ejecutando...</value></data>
   <data name="ScriptStudio_Success" xml:space="preserve"><value>Éxito</value></data>
   <data name="ScriptStudio_Error" xml:space="preserve"><value>Error</value></data>
+
+  <!-- Common Actions -->
+  <data name="Common_Close" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+
+  <!-- Node Toolbox View -->
+  <data name="Toolbox_ToggleCompactToolTip" xml:space="preserve"><value>Alternar entre Vista Lista Compacta y Vista Detallada</value></data>
+  <data name="Toolbox_CompactBtn" xml:space="preserve"><value>Compacto</value></data>
+  <data name="Toolbox_FavoriteToolTip" xml:space="preserve"><value>Marcar / Desmarcar como Favorito</value></data>
+
+  <!-- Node Inspector Panel View -->
+  <data name="Inspector_ClosePanelToolTip" xml:space="preserve"><value>Cerrar Panel</value></data>
+  <data name="Inspector_CloseBtn" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="Inspector_TestNodeToolTip" xml:space="preserve"><value>Probar este nodo de forma aislada con un archivo</value></data>
+  <data name="Inspector_TestBtn" xml:space="preserve"><value>🧪 Probar</value></data>
+  <data name="Inspector_TabParameters" xml:space="preserve"><value>⚙️ Parámetros</value></data>
+  <data name="Inspector_NodeDescription" xml:space="preserve"><value>Descripción del Nodo</value></data>
+  <data name="Inspector_ParametersConfig" xml:space="preserve"><value>Configuración de Parámetros:</value></data>
+  <data name="Inspector_ConnectionPorts" xml:space="preserve"><value>Puertos de Conexión:</value></data>
+  <data name="Inspector_InputsPortLabel" xml:space="preserve"><value>Entradas (In)</value></data>
+  <data name="Inspector_OutputsPortLabel" xml:space="preserve"><value>Salidas (Out)</value></data>
+  <data name="Inspector_TabOutputs" xml:space="preserve"><value>📤 Salidas</value></data>
+  <data name="Inspector_OutputsSubheader" xml:space="preserve"><value>Salidas Generadas (Click en ▶ para ver metadata):</value></data>
+  <data name="Inspector_TabInputs" xml:space="preserve"><value>📥 Entradas</value></data>
+  <data name="Inspector_InputsSubheader" xml:space="preserve"><value>Entradas Recibidas (Click en ▶ para ver metadata):</value></data>
+  <data name="Inspector_TabDiff" xml:space="preserve"><value>📊 Diff</value></data>
+  <data name="Inspector_DiffSubheader" xml:space="preserve"><value>Diferencias de Metadatos (Entrada vs Salida):</value></data>
+  <data name="Inspector_ColKey" xml:space="preserve"><value>Clave</value></data>
+  <data name="Inspector_ColStatus" xml:space="preserve"><value>Estado</value></data>
+  <data name="Inspector_ColNewValue" xml:space="preserve"><value>Nuevo Valor</value></data>
+  <data name="Inspector_ColOldValue" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Inspector_TabHistory" xml:space="preserve"><value>📜 Historial</value></data>
+  <data name="Inspector_SelectedFileDetails" xml:space="preserve"><value>Detalles del Archivo Seleccionado:</value></data>
+  <data name="Inspector_CurrentPath" xml:space="preserve"><value>Ruta Actual:</value></data>
+  <data name="Inspector_OriginalPath" xml:space="preserve"><value>Ruta Original:</value></data>
+  <data name="Inspector_SizeLabel" xml:space="preserve"><value>Tamaño</value></data>
+  <data name="Inspector_BytesLabel" xml:space="preserve"><value>bytes</value></data>
+  <data name="Inspector_NodeStepHistory" xml:space="preserve"><value>Historial de Pasos por Nodos:</value></data>
+
+  <!-- Workflow Settings Window -->
+  <data name="Settings_WindowTitle" xml:space="preserve"><value>Ajustes Generales de la Aplicación</value></data>
+  <data name="Settings_HeaderTitle" xml:space="preserve"><value>⚙️ Ajustes Generales de FileFlow Studio</value></data>
+  <data name="Settings_HeaderSubtitle" xml:space="preserve"><value>Configura los parámetros globales persistentes de almacenamiento, apariencia, rendimiento y ejecutables externos.</value></data>
+  <data name="Settings_TabStorage" xml:space="preserve"><value>📂 Almacenamiento &amp; Rutas</value></data>
+  <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>📁 Ruta de Salida Global por Defecto</value></data>
+  <data name="Settings_GlobalOutputDirDesc" xml:space="preserve"><value>Carpeta de destino predeterminada persistente al ejecutar flujos y guardar archivos convertidos.</value></data>
+  <data name="Settings_BrowseBtn" xml:space="preserve"><value>📁 Examinar</value></data>
+  <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>⚡ Estrategia de Colisión de Archivos por Defecto</value></data>
+  <data name="Settings_ConflictRename" xml:space="preserve"><value>RenameIncremental (Renombrar Incremental ej: foto_1.jpg)</value></data>
+  <data name="Settings_ConflictOverwrite" xml:space="preserve"><value>Overwrite (Sobrescribir archivo existente)</value></data>
+  <data name="Settings_ConflictSkip" xml:space="preserve"><value>Skip (Omitir si el archivo existe)</value></data>
+  <data name="Settings_EnableAutoSave" xml:space="preserve"><value>Activar Auto-guardado automático de proyectos</value></data>
+  <data name="Settings_AutoSaveInterval" xml:space="preserve"><value>Intervalo de auto-guardado:</value></data>
+  <data name="Settings_MinutesLabel" xml:space="preserve"><value>minutos</value></data>
+  <data name="Settings_TabAppearance" xml:space="preserve"><value>🎨 Apariencia &amp; UI</value></data>
+  <data name="Settings_DefaultThemeTitle" xml:space="preserve"><value>🎨 Tema Visual por Defecto</value></data>
+  <data name="Settings_CustomizeThemesBtn" xml:space="preserve"><value>🎨 Personalizar Temas...</value></data>
+  <data name="Settings_CompactToolbox" xml:space="preserve"><value>Iniciar Catálogo de Nodos en Modo Lista Compacta (28px)</value></data>
+  <data name="Settings_LogConsoleTitle" xml:space="preserve"><value>💻 Consola de Registros (Logs)</value></data>
+  <data name="Settings_AutoScrollConsole" xml:space="preserve"><value>Desplazamiento automático de consola al recibir registros</value></data>
+  <data name="Settings_MaxLogEntries" xml:space="preserve"><value>Máximo de líneas en consola:</value></data>
+  <data name="Settings_LinesUnlimitedLabel" xml:space="preserve"><value>líneas (0 = Ilimitado)</value></data>
+  <data name="Settings_TabPerformance" xml:space="preserve"><value>⚡ Rendimiento &amp; Ejecución</value></data>
+  <data name="Settings_ParallelCpuTitle" xml:space="preserve"><value>⚡ Procesamiento en Paralelo y Concurrencia de CPU</value></data>
+  <data name="Settings_ParallelCpuDesc" xml:space="preserve"><value>Número máximo de hilos simultáneos para procesar lotes de archivos en paralelo.</value></data>
+  <data name="Settings_MaxCpuThreads" xml:space="preserve"><value>Hilos máximos de CPU:</value></data>
+  <data name="Settings_ThreadsLabel" xml:space="preserve"><value>hilos</value></data>
+  <data name="Settings_DefaultDryRun" xml:space="preserve"><value>Iniciar la aplicación siempre con Modo Prueba (Simulación) activado</value></data>
+  <data name="Settings_LogLevelTitle" xml:space="preserve"><value>🔍 Nivel Mínimo de Registro (Log Filter Level)</value></data>
+  <data name="Settings_LogLevelInfo" xml:space="preserve"><value>Information (Registros de flujo y eventos estándar)</value></data>
+  <data name="Settings_LogLevelWarning" xml:space="preserve"><value>Warning (Solo advertencias y errores)</value></data>
+  <data name="Settings_LogLevelError" xml:space="preserve"><value>Error (Exclusivamente fallos críticos)</value></data>
+  <data name="Settings_LogLevelDebug" xml:space="preserve"><value>Debug (Detalle exhaustivo de depuración)</value></data>
+  <data name="Settings_TabExternalTools" xml:space="preserve"><value>🛠️ Herramientas Externas</value></data>
+  <data name="Settings_ExecutablesTitle" xml:space="preserve"><value>Rutas de Ejecutables del Sistema</value></data>
+  <data name="Settings_AutoDetectBtn" xml:space="preserve"><value>🔍 Auto-Detectar Herramientas</value></data>
+  <data name="Settings_FfmpegLabel" xml:space="preserve"><value>🎬 FFmpeg (Transcodificación de Vídeo/Audio)</value></data>
+  <data name="Settings_FfprobeLabel" xml:space="preserve"><value>🔍 FFprobe (Inspección de Metadatos de Media)</value></data>
+  <data name="Settings_SevenZipLabel" xml:space="preserve"><value>📦 7-Zip (Archivos Comprimidos ZIP/7z/RAR)</value></data>
+  <data name="Settings_PythonLabel" xml:space="preserve"><value>🐍 Python (Scripts y Automatización CLI)</value></data>
+  <data name="Settings_SaveBtn" xml:space="preserve"><value>✅ Guardar Ajustes Permanentes</value></data>
+
+  <!-- Theme Customizer Window -->
+  <data name="ThemeCustomizer_WindowTitle" xml:space="preserve"><value>Estudio de Personalización de Temas - FileFlow</value></data>
+  <data name="ThemeCustomizer_HeaderTitle" xml:space="preserve"><value>Estudio de Personalización Visual de Temas</value></data>
+  <data name="ThemeCustomizer_HeaderSubtitle" xml:space="preserve"><value>Personaliza paletas de colores, fuentes, radios de esquina y efectos con previsualización en vivo en tiempo real.</value></data>
+  <data name="ThemeCustomizer_ImportBtn" xml:space="preserve"><value>Importar...</value></data>
+  <data name="ThemeCustomizer_ExportBtn" xml:space="preserve"><value>Exportar...</value></data>
+  <data name="ThemeCustomizer_AvailableThemes" xml:space="preserve"><value>TEMAS DISPONIBLES</value></data>
+  <data name="ThemeCustomizer_NewBtn" xml:space="preserve"><value>+ Nuevo</value></data>
+  <data name="ThemeCustomizer_DuplicateBtn" xml:space="preserve"><value>📋 Duplicar</value></data>
+  <data name="ThemeCustomizer_DeleteBtn" xml:space="preserve"><value>🗑️ Eliminar Tema</value></data>
+  <data name="ThemeCustomizer_GeneralInfo" xml:space="preserve"><value>INFORMACIÓN GENERAL</value></data>
+  <data name="ThemeCustomizer_ThemeName" xml:space="preserve"><value>Nombre del Tema:</value></data>
+  <data name="ThemeCustomizer_DarkMode" xml:space="preserve"><value>Modo Oscuro (activa barra de título inmersiva de Windows)</value></data>
+  <data name="ThemeCustomizer_SectionBackgrounds" xml:space="preserve"><value>FONDOS Y SUPERFICIES</value></data>
+  <data name="ThemeCustomizer_SectionAccents" xml:space="preserve"><value>COLORES DE ACENTO Y ESTADOS</value></data>
+  <data name="ThemeCustomizer_SectionTextsBorders" xml:space="preserve"><value>TEXTOS Y BORDES</value></data>
+  <data name="ThemeCustomizer_SectionWireGradient" xml:space="preserve"><value>CABLE CONECTOR DE NODOS (GRADIENTE)</value></data>
+  <data name="ThemeCustomizer_SectionTypography" xml:space="preserve"><value>TIPOGRAFÍA Y ESTILOS</value></data>
+  <data name="ThemeCustomizer_UiFontFamily" xml:space="preserve"><value>Familia de Fuente de la Interfaz:</value></data>
+  <data name="ThemeCustomizer_CodeFontFamily" xml:space="preserve"><value>Fuente Monoespaciada (Código/Expresiones):</value></data>
+  <data name="ThemeCustomizer_BaseFontSize" xml:space="preserve"><value>Tamaño Base:</value></data>
+  <data name="ThemeCustomizer_CornerRadius" xml:space="preserve"><value>Radio de Esquinas:</value></data>
+  <data name="ThemeCustomizer_NodeShadowBlur" xml:space="preserve"><value>Desenfoque de Sombra de Nodos:</value></data>
+  <data name="ThemeCustomizer_LivePreviewTitle" xml:space="preserve"><value>👁️ Vista Previa Interactiva en Vivo:</value></data>
+  <data name="ThemeCustomizer_LivePreviewSubtitle" xml:space="preserve"><value>(Los cambios se reflejan inmediatamente en tiempo real)</value></data>
+  <data name="ThemeCustomizer_TestInAppToolTip" xml:space="preserve"><value>Aplica temporalmente este tema al espacio de trabajo para probarlo</value></data>
+  <data name="ThemeCustomizer_TestInApp" xml:space="preserve"><value>👁️ Probar en la Aplicación</value></data>
+  <data name="ThemeCustomizer_SaveAndApply" xml:space="preserve"><value>✓ Guardar y Aplicar</value></data>
+
+  <!-- Log View Details & Tooltips -->
+  <data name="Log_ClearSearchToolTip" xml:space="preserve"><value>Limpiar búsqueda</value></data>
+  <data name="Log_ToggleLiveToolTip" xml:space="preserve"><value>Alternar desplazamiento en vivo automático</value></data>
+  <data name="Log_ExportToolTip" xml:space="preserve"><value>Exportar historial de ejecución a archivo .log</value></data>
+  <data name="Log_ClearToolTip" xml:space="preserve"><value>Vaciar todos los logs de la consola y memoria</value></data>
+  <data name="Log_TraceabilityBtn" xml:space="preserve"><value>🔍 Trazabilidad</value></data>
+  <data name="Log_CopyJsonBtn" xml:space="preserve"><value>📋 Copiar JSON</value></data>
 </root>

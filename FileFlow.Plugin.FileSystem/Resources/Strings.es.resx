@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Regex Helper Window -->
+  <data name="RegexHelper_WindowTitle" xml:space="preserve"><value>FileFlow - Asistente y Probador de Expresiones Regulares</value></data>
+  <data name="RegexHelper_HeaderTitle" xml:space="preserve"><value>⚡ Asistente y Probador de Expresiones Regulares (Regex)</value></data>
+  <data name="RegexHelper_HeaderSubtitle" xml:space="preserve"><value>Prueba tus expresiones en vivo con nombres de muestra, inspecciona grupos de captura y carga patrones comunes listos para usar.</value></data>
+  <data name="RegexHelper_PatternLibrary" xml:space="preserve"><value>📚 Biblioteca de Patrones:</value></data>
+  <data name="RegexHelper_TabPredefined" xml:space="preserve"><value>Predefinidos</value></data>
+  <data name="RegexHelper_TabUserPatterns" xml:space="preserve"><value>Mis Patrones</value></data>
+  <data name="RegexHelper_TestBtn" xml:space="preserve"><value>▶ Probar</value></data>
+  <data name="RegexHelper_DeletePatternToolTip" xml:space="preserve"><value>Eliminar patrón</value></data>
+  <data name="RegexHelper_SavePatternTitle" xml:space="preserve"><value>💾 Guardar Patrón Actual en Favoritos:</value></data>
+  <data name="RegexHelper_PatternNameToolTip" xml:space="preserve"><value>Nombre del patrón</value></data>
+  <data name="RegexHelper_CategoryToolTip" xml:space="preserve"><value>Categoría</value></data>
+  <data name="RegexHelper_DescriptionToolTip" xml:space="preserve"><value>Descripción o notas de uso</value></data>
+  <data name="RegexHelper_SavePatternBtn" xml:space="preserve"><value>💾 Guardar en Mis Patrones</value></data>
+  <data name="RegexHelper_RegexPatternLabel" xml:space="preserve"><value>Expresión Regular (Regex):</value></data>
+  <data name="RegexHelper_OptIgnoreCase" xml:space="preserve"><value>Ignorar Mayúsculas/Minúsculas (IgnoreCase)</value></data>
+  <data name="RegexHelper_OptMultiline" xml:space="preserve"><value>Multilínea (Multiline)</value></data>
+  <data name="RegexHelper_OptSingleline" xml:space="preserve"><value>Punto coincide con todo (Singleline)</value></data>
+  <data name="RegexHelper_OptIgnoreWhitespace" xml:space="preserve"><value>Ignorar Espacios (IgnoreWhitespace)</value></data>
+  <data name="RegexHelper_ReplacementPatternLabel" xml:space="preserve"><value>Patrón de Reemplazo (Opcional):</value></data>
+  <data name="RegexHelper_CaptureGroupsHint" xml:space="preserve"><value>Grupos de captura: $1, $2, ${nombre}, $&amp; (coincidencia completa)</value></data>
+  <data name="RegexHelper_TestInputLabel" xml:space="preserve"><value>Texto / Nombres de Archivo de Prueba:</value></data>
+  <data name="RegexHelper_LoadSamplesBtn" xml:space="preserve"><value>📋 Cargar Muestras Típicas</value></data>
+  <data name="RegexHelper_MatchesAndGroupsLabel" xml:space="preserve"><value>Coincidencias y Grupos de Captura:</value></data>
+  <data name="RegexHelper_ReplacementResultLabel" xml:space="preserve"><value>Vista Previa tras Reemplazo:</value></data>
+  <data name="RegexHelper_ApplyToField" xml:space="preserve"><value>✓ Aplicar al Campo</value></data>
+
+  <!-- Advanced Renamer Editor Window -->
+  <data name="AdvancedRenamer_WindowTitle" xml:space="preserve"><value>Estudio de Renombrado Avanzado (Pipeline de Métodos)</value></data>
+  <data name="AdvancedRenamer_MethodsBadge" xml:space="preserve"><value>9 Métodos Acumulativos</value></data>
+  <data name="AdvancedRenamer_HeaderSubtitle" xml:space="preserve"><value>Aplica secuencialmente métodos de renombrado evaluando variables del flujo, metadatos, funciones y plantillas.</value></data>
+  <data name="AdvancedRenamer_PresetLabel" xml:space="preserve"><value>Preset:</value></data>
+  <data name="AdvancedRenamer_SaveBtn" xml:space="preserve"><value>💾 Guardar</value></data>
+  <data name="AdvancedRenamer_OpenBtn" xml:space="preserve"><value>📂 Abrir</value></data>
+  <data name="AdvancedRenamer_CollisionLabel" xml:space="preserve"><value>Colisión:</value></data>
+  <data name="AdvancedRenamer_MethodsPipeline" xml:space="preserve"><value>Pipeline de Métodos:</value></data>
+  <data name="AdvancedRenamer_AddMethod" xml:space="preserve"><value>➕ Añadir Método</value></data>
+  <data name="AdvancedRenamer_LivePreviewTitle" xml:space="preserve"><value>👁️ Vista Previa en Vivo (Live Preview):</value></data>
+  <data name="AdvancedRenamer_ColOriginalName" xml:space="preserve"><value>Nombre Original</value></data>
+  <data name="AdvancedRenamer_ColResultName" xml:space="preserve"><value>Nombre Resultante</value></data>
+  <data name="AdvancedRenamer_ColStatus" xml:space="preserve"><value>Estado</value></data>
+  <data name="AdvancedRenamer_FooterHint" xml:space="preserve"><value>Los cambios se aplicarán al nodo al hacer clic en 'Guardar y Aplicar al Nodo'.</value></data>
+  <data name="AdvancedRenamer_SaveAndApply" xml:space="preserve"><value>✓ Guardar y Aplicar al Nodo</value></data>
+</root>

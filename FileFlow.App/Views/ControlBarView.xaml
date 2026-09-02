@@ -23,7 +23,7 @@
                         Style="{StaticResource SecondaryButton}" 
                         Padding="10,6"
                         Margin="0,0,12,0"
-                        ToolTip="Abrir Menú Principal de Navegación">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_MenuToolTip]}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="☰" FontSize="15" FontWeight="Bold" Margin="0,0,6,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MenuBtn]}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -45,14 +45,14 @@
                               Style="{DynamicResource SecondaryToggleButton}" 
                               Padding="8,5" 
                               Margin="0,0,8,0" 
-                              ToolTip="Modo simulación: Ejecuta el flujo sin modificar ni borrar archivos reales en disco" />
+                              ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_DryRunToolTip]}" />
 
                 <!-- Workflow Settings Modal Button -->
                 <Button Command="{Binding OpenWorkflowSettingsCommand}" 
                         Style="{DynamicResource SecondaryButton}" 
                         Padding="8,5" 
                         Margin="0,0,8,0" 
-                        ToolTip="Configurar la Ruta de Salida Global y opciones del proyecto">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_SettingsToolTip]}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚙️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[WorkflowSettingsBtn]}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -82,7 +82,7 @@
                         Background="{DynamicResource AccentWarningBrush}" 
                         Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" 
                         Margin="0,0,6,0" 
-                        ToolTip="Avanzar al siguiente paso (F10)" />
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_StepNextToolTip]}" />
 
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ContinueFlow]}" 
                         Command="{Binding ContinueWorkflowCommand}" 
@@ -90,7 +90,7 @@
                         Background="{DynamicResource AccentSuccessBrush}" 
                         Visibility="{Binding IsDebugging, Converter={StaticResource BooleanToVisibilityConverter}}" 
                         Margin="0,0,6,0" 
-                        ToolTip="Continuar ejecución normal (F5)" />
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_ContinueToolTip]}" />
 
                 <!-- Pause / Resume Button -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Pause]}" 
@@ -98,28 +98,28 @@
                         Style="{StaticResource SecondaryButton}" 
                         Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" 
                         Margin="0,0,6,0" 
-                        ToolTip="Pausar o Reanudar el flujo" />
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_PauseToolTip]}" />
 
                 <!-- Stop Execution / Debugging -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Stop]}" 
                         Command="{Binding StopWorkflowCommand}" 
                         Style="{StaticResource DangerButton}" 
                         Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" 
-                        ToolTip="Detener ejecución (Shift+F5)" />
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_StopToolTip]}" />
 
                 <!-- Rollback / Undo Button -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RollbackBtn]}" 
                         Command="{Binding RollbackLastExecutionCommand}" 
                         Style="{StaticResource SecondaryButton}" 
                         Margin="8,0,0,0" 
-                        ToolTip="Revertir y deshacer operaciones de la última ejecución (Rollback)" />
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_RollbackToolTip]}" />
 
                 <!-- Toggle Inspector Panel Button -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorBtn]}" 
                         Command="{Binding ToggleInspectorCommand}" 
                         Style="{StaticResource SecondaryButton}" 
                         Margin="8,0,0,0" 
-                        ToolTip="Abrir / Ocultar Inspector de Datos del Nodo" />
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_InspectorToolTip]}" />
             </StackPanel>
         </Grid>
     </Border>

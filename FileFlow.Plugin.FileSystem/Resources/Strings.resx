@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Regex Helper Window -->
+  <data name="RegexHelper_WindowTitle" xml:space="preserve"><value>FileFlow - Regular Expressions Assistant &amp; Tester</value></data>
+  <data name="RegexHelper_HeaderTitle" xml:space="preserve"><value>⚡ Regular Expression (Regex) Assistant &amp; Tester</value></data>
+  <data name="RegexHelper_HeaderSubtitle" xml:space="preserve"><value>Test your expressions live with sample names, inspect capture groups, and load common ready-to-use patterns.</value></data>
+  <data name="RegexHelper_PatternLibrary" xml:space="preserve"><value>📚 Pattern Library:</value></data>
+  <data name="RegexHelper_TabPredefined" xml:space="preserve"><value>Predefined</value></data>
+  <data name="RegexHelper_TabUserPatterns" xml:space="preserve"><value>My Patterns</value></data>
+  <data name="RegexHelper_TestBtn" xml:space="preserve"><value>▶ Test</value></data>
+  <data name="RegexHelper_DeletePatternToolTip" xml:space="preserve"><value>Delete pattern</value></data>
+  <data name="RegexHelper_SavePatternTitle" xml:space="preserve"><value>💾 Save Current Pattern to Favorites:</value></data>
+  <data name="RegexHelper_PatternNameToolTip" xml:space="preserve"><value>Pattern name</value></data>
+  <data name="RegexHelper_CategoryToolTip" xml:space="preserve"><value>Category</value></data>
+  <data name="RegexHelper_DescriptionToolTip" xml:space="preserve"><value>Description or usage notes</value></data>
+  <data name="RegexHelper_SavePatternBtn" xml:space="preserve"><value>💾 Save to My Patterns</value></data>
+  <data name="RegexHelper_RegexPatternLabel" xml:space="preserve"><value>Regular Expression (Regex):</value></data>
+  <data name="RegexHelper_OptIgnoreCase" xml:space="preserve"><value>Ignore Case (IgnoreCase)</value></data>
+  <data name="RegexHelper_OptMultiline" xml:space="preserve"><value>Multiline (Multiline)</value></data>
+  <data name="RegexHelper_OptSingleline" xml:space="preserve"><value>Dot matches everything (Singleline)</value></data>
+  <data name="RegexHelper_OptIgnoreWhitespace" xml:space="preserve"><value>Ignore Whitespace (IgnoreWhitespace)</value></data>
+  <data name="RegexHelper_ReplacementPatternLabel" xml:space="preserve"><value>Replacement Pattern (Optional):</value></data>
+  <data name="RegexHelper_CaptureGroupsHint" xml:space="preserve"><value>Capture groups: $1, $2, ${name}, $&amp; (full match)</value></data>
+  <data name="RegexHelper_TestInputLabel" xml:space="preserve"><value>Test Text / File Names:</value></data>
+  <data name="RegexHelper_LoadSamplesBtn" xml:space="preserve"><value>📋 Load Typical Samples</value></data>
+  <data name="RegexHelper_MatchesAndGroupsLabel" xml:space="preserve"><value>Matches and Capture Groups:</value></data>
+  <data name="RegexHelper_ReplacementResultLabel" xml:space="preserve"><value>Preview after Replacement:</value></data>
+  <data name="RegexHelper_ApplyToField" xml:space="preserve"><value>✓ Apply to Field</value></data>
+
+  <!-- Advanced Renamer Editor Window -->
+  <data name="AdvancedRenamer_WindowTitle" xml:space="preserve"><value>Advanced Renaming Studio (Methods Pipeline)</value></data>
+  <data name="AdvancedRenamer_MethodsBadge" xml:space="preserve"><value>9 Cumulative Methods</value></data>
+  <data name="AdvancedRenamer_HeaderSubtitle" xml:space="preserve"><value>Sequentially applies renaming methods evaluating workflow variables, metadata, functions, and templates.</value></data>
+  <data name="AdvancedRenamer_PresetLabel" xml:space="preserve"><value>Preset:</value></data>
+  <data name="AdvancedRenamer_SaveBtn" xml:space="preserve"><value>💾 Save</value></data>
+  <data name="AdvancedRenamer_OpenBtn" xml:space="preserve"><value>📂 Open</value></data>
+  <data name="AdvancedRenamer_CollisionLabel" xml:space="preserve"><value>Collision:</value></data>
+  <data name="AdvancedRenamer_MethodsPipeline" xml:space="preserve"><value>Methods Pipeline:</value></data>
+  <data name="AdvancedRenamer_AddMethod" xml:space="preserve"><value>➕ Add Method</value></data>
+  <data name="AdvancedRenamer_LivePreviewTitle" xml:space="preserve"><value>👁️ Live Preview:</value></data>
+  <data name="AdvancedRenamer_ColOriginalName" xml:space="preserve"><value>Original Name</value></data>
+  <data name="AdvancedRenamer_ColResultName" xml:space="preserve"><value>Resulting Name</value></data>
+  <data name="AdvancedRenamer_ColStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="AdvancedRenamer_FooterHint" xml:space="preserve"><value>Changes will be applied to the node upon clicking 'Save and Apply to Node'.</value></data>
+  <data name="AdvancedRenamer_SaveAndApply" xml:space="preserve"><value>✓ Save &amp; Apply to Node</value></data>
+</root>

@@ -4,8 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:components="clr-namespace:FileFlow.App.Views.Components"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         mc:Ignorable="d"
-        Title="Estudio de Personalización de Temas - FileFlow"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_WindowTitle]}"
         Height="760" Width="1200"
         MinHeight="620" MinWidth="980"
         WindowStartupLocation="CenterOwner"
@@ -33,9 +34,9 @@
             <StackPanel Grid.Column="0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="🎨" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Estudio de Personalización Visual de Temas" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderTitle]}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
-                <TextBlock Text="Personaliza paletas de colores, fuentes, radios de esquina y efectos con previsualización en vivo en tiempo real." 
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderSubtitle]}" 
                            FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="28,2,0,0" />
             </StackPanel>
 
@@ -43,13 +44,13 @@
                 <Button Command="{Binding ImportThemeCommand}" Style="{DynamicResource SecondaryButton}" Padding="10,5" Margin="0,0,6,0">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="📥" FontSize="12" Margin="0,0,4,0" />
-                        <TextBlock Text="Importar..." FontSize="11.5" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ImportBtn]}" FontSize="11.5" />
                     </StackPanel>
                 </Button>
                 <Button Command="{Binding ExportThemeCommand}" Style="{DynamicResource SecondaryButton}" Padding="10,5">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="📤" FontSize="12" Margin="0,0,4,0" />
-                        <TextBlock Text="Exportar..." FontSize="11.5" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ExportBtn]}" FontSize="11.5" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -72,7 +73,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="TEMAS DISPONIBLES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8" />
+                    <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_AvailableThemes]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8" />
 
                     <ListBox Grid.Row="1" ItemsSource="{Binding AvailableThemes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
                              Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -118,14 +119,14 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Command="{Binding NewCustomThemeCommand}" Style="{DynamicResource SecondaryButton}" Padding="4,5" Margin="0,0,3,0">
-                                <TextBlock Text="+ Nuevo" FontSize="11" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_NewBtn]}" FontSize="11" FontWeight="SemiBold" />
                             </Button>
                             <Button Grid.Column="1" Command="{Binding DuplicateThemeCommand}" Style="{DynamicResource SecondaryButton}" Padding="4,5" Margin="3,0,0,0">
-                                <TextBlock Text="📋 Duplicar" FontSize="11" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_DuplicateBtn]}" FontSize="11" />
                             </Button>
                         </Grid>
                         <Button Command="{Binding DeleteThemeCommand}" Style="{DynamicResource DangerButton}" Padding="4,5" IsEnabled="{Binding IsCustomTheme}">
-                            <TextBlock Text="🗑️ Eliminar Tema" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_DeleteBtn]}" FontSize="11" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -136,17 +137,17 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <!-- General Info -->
-                        <TextBlock Text="INFORMACIÓN GENERAL" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_GeneralInfo]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
                         <Grid Margin="0,0,0,8">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Row="0" Margin="0,0,0,6">
-                                <TextBlock Text="Nombre del Tema:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ThemeName]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
                                 <TextBox Text="{Binding EditingTheme.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="Input_Changed" Padding="6,4" FontSize="12" />
                             </StackPanel>
-                            <CheckBox Grid.Row="1" Content="Modo Oscuro (activa barra de título inmersiva de Windows)" 
+                            <CheckBox Grid.Row="1" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_DarkMode]}" 
                                       IsChecked="{Binding EditingTheme.IsDark, Mode=TwoWay}" 
                                       Checked="Input_Changed" Unchecked="Input_Changed"
                                       FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0" />
@@ -155,7 +156,7 @@
                         <Separator Margin="0,4,0,8" />
 
                         <!-- Section 1: Backgrounds & Surfaces -->
-                        <TextBlock Text="FONDOS Y SUPERFICIES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SectionBackgrounds]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <components:ColorPickerButton Label="Fondo de Aplicación" SelectedColorHex="{Binding EditingTheme.AppBackground, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Lienzo de Nodos (Grid)" SelectedColorHex="{Binding EditingTheme.BgEditor, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Tarjetas de Nodos" SelectedColorHex="{Binding EditingTheme.BgCard, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
@@ -166,7 +167,7 @@
                         <Separator Margin="0,4,0,8" />
 
                         <!-- Section 2: Accents & Status Colors -->
-                        <TextBlock Text="COLORES DE ACENTO Y ESTADOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SectionAccents]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <components:ColorPickerButton Label="Acento Primario" SelectedColorHex="{Binding EditingTheme.AccentPrimary, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Acento Hover" SelectedColorHex="{Binding EditingTheme.AccentHover, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Acento Resplandor (Glow)" SelectedColorHex="{Binding EditingTheme.AccentGlow, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
@@ -179,7 +180,7 @@
                         <Separator Margin="0,4,0,8" />
 
                         <!-- Section 3: Text & Borders -->
-                        <TextBlock Text="TEXTOS Y BORDES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SectionTextsBorders]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <components:ColorPickerButton Label="Texto Principal" SelectedColorHex="{Binding EditingTheme.TextPrimary, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Texto Secundario" SelectedColorHex="{Binding EditingTheme.TextSecondary, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Borde Principal" SelectedColorHex="{Binding EditingTheme.BorderDark, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
@@ -188,7 +189,7 @@
                         <Separator Margin="0,4,0,8" />
 
                         <!-- Section 4: Connection Wire Gradient -->
-                        <TextBlock Text="CABLE CONECTOR DE NODOS (GRADIENTE)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SectionWireGradient]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <components:ColorPickerButton Label="Color Inicial del Cable" SelectedColorHex="{Binding EditingTheme.WireColorStart, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Color Medio del Cable" SelectedColorHex="{Binding EditingTheme.WireColorMid, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
                         <components:ColorPickerButton Label="Color Final del Cable" SelectedColorHex="{Binding EditingTheme.WireColorEnd, Mode=TwoWay}" ColorChanged="ColorPicker_ColorChanged" />
@@ -196,15 +197,15 @@
                         <Separator Margin="0,4,0,8" />
 
                         <!-- Section 5: Typography and Aesthetics -->
-                        <TextBlock Text="TIPOGRAFÍA Y ESTILOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SectionTypography]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
                         
                         <StackPanel Margin="0,0,0,6">
-                            <TextBlock Text="Familia de Fuente de la Interfaz:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_UiFontFamily]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
                             <ComboBox ItemsSource="{Binding AvailableFontFamilies}" SelectedItem="{Binding EditingTheme.FontFamily, Mode=TwoWay}" SelectionChanged="Combo_SelectionChanged" Padding="6,4" />
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,6">
-                            <TextBlock Text="Fuente Monoespaciada (Código/Expresiones):" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_CodeFontFamily]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
                             <ComboBox ItemsSource="{Binding AvailableCodeFonts}" SelectedItem="{Binding EditingTheme.CodeFontFamily, Mode=TwoWay}" SelectionChanged="Combo_SelectionChanged" Padding="6,4" />
                         </StackPanel>
 
@@ -214,18 +215,18 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                <TextBlock Text="Tamaño Base:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_BaseFontSize]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
                                 <ComboBox ItemsSource="{Binding FontSizes}" SelectedItem="{Binding EditingTheme.BaseFontSize, Mode=TwoWay}" SelectionChanged="Combo_SelectionChanged" Padding="6,4" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                <TextBlock Text="Radio de Esquinas:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_CornerRadius]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2" />
                                 <ComboBox ItemsSource="{Binding CornerRadiusOptions}" SelectedItem="{Binding EditingTheme.CornerRadius, Mode=TwoWay}" SelectionChanged="Combo_SelectionChanged" Padding="6,4" />
                             </StackPanel>
                         </Grid>
 
                         <StackPanel Margin="0,4,0,0">
                             <Grid Margin="0,0,0,2">
-                                <TextBlock Text="Desenfoque de Sombra de Nodos:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_NodeShadowBlur]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 <TextBlock Text="{Binding EditingTheme.NodeShadowBlur, StringFormat='{}{0:0} px'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
                             </Grid>
                             <Slider Minimum="0" Maximum="40" Value="{Binding EditingTheme.NodeShadowBlur, Mode=TwoWay}" ValueChanged="Slider_ValueChanged" />
@@ -243,8 +244,8 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="👁️ Vista Previa Interactiva en Vivo:" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text=" (Los cambios se reflejan inmediatamente en tiempo real)" FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_LivePreviewTitle]}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_LivePreviewSubtitle]}" FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
 
                     <!-- Mockup Container Applying Live Preview Resource Dictionary -->
@@ -264,7 +265,7 @@
                                             <Border Background="{DynamicResource AccentPrimaryBrush}" Width="20" Height="20" CornerRadius="4" Margin="0,0,6,0">
                                                 <TextBlock Text="⚡" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
                                             </Border>
-                                            <TextBlock Text="FileFlow Studio (Demo de Tema)" FontWeight="Bold" FontSize="12" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="FileFlow Studio" FontWeight="Bold" FontSize="12" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <Border Background="{DynamicResource AccentSuccessBrush}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
@@ -395,14 +396,14 @@
             <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="11.5" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Command="{Binding ApplyToApplicationCommand}" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" ToolTip="Aplica temporalmente este tema al espacio de trabajo para probarlo">
-                    <TextBlock Text="👁️ Probar en la Aplicación" FontSize="12" />
+                <Button Command="{Binding ApplyToApplicationCommand}" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_TestInAppToolTip]}">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_TestInApp]}" FontSize="12" />
                 </Button>
                 <Button Click="Cancel_Click" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0">
-                    <TextBlock Text="Cancelar" FontSize="12" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" FontSize="12" />
                 </Button>
                 <Button Command="{Binding SaveAndApplyCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource PrimaryButton}" Padding="18,6">
-                    <TextBlock Text="✓ Guardar y Aplicar" FontSize="12" FontWeight="Bold" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SaveAndApply]}" FontSize="12" FontWeight="Bold" />
                 </Button>
             </StackPanel>
         </Grid>
