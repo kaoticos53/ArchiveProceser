@@ -137,16 +137,34 @@ Done! All your photos are now named `20260815_SonyA7_001.jpg`, neatly sorted by 
 
 ---
 
-## ❓ 6. Frequently Asked Questions (FAQ)
+### 📊 Recipe 5: Automatic Watchdog Mode (Process Files as They Land)
+
+**The Problem:** You want new files added to your Downloads or Inbox folder to be sorted automatically in the background without manually launching FileFlow Studio every time.
+
+**The Solution:**
+1. Build your flow (e.g. `FolderSource` $\rightarrow$ `Filter` $\rightarrow$ `MoveFile`).
+2. Click the **"👁️ Vigilante" (Watchdog)** button in the top bar.
+3. The button illuminates in vibrant emerald green. You can now minimize the app: whenever a new file lands in the folder, it is immediately processed automatically.
+
+---
+
+## 🎨 6. Canvas Productivity & Organization Tips
+
+* **Sticky Notes:** Right-click an empty canvas area and choose **"Create Sticky Note"** to add colorful notes, guidelines, or reminders directly on the workspace.
+* **Group Frames (`Ctrl+G`):** Select multiple related boxes by dragging a selection rectangle and press `Ctrl+G`. They will be enclosed in an interactive group frame with a customizable title that moves all boxes together.
+
+---
+
+## ❓ 7. Frequently Asked Questions (FAQ)
 
 ### 1. What happens if the power goes out while processing?
-FileFlow Studio processes each file individually in an atomic, safe transaction. Nothing is corrupted. When you restart the app, you can resume exactly where you left off.
+FileFlow Studio processes each file atomically and records checkpoints automatically. Nothing is corrupted. When you restart the app, it automatically resumes and skips already completed files.
 
 ### 2. How do I know when the flow is finished?
 The top progress bar fills with green and the bottom console outputs a final summary: *"Workflow completed successfully! X files processed in Y seconds"*.
 
 ### 3. Can I save my workflows for daily use?
-Yes! Click **"File ❯ Save Workflow As..."** (or press `Ctrl+S`). You can save as many workflows as you want (e.g., *"CleanDownloads.flow"* or *"OrganizePhotos.flow"*). To reuse it, simply open the saved file and click Run.
+Yes! Click **"Save Workflow As..."** in the side drawer (or press `Ctrl+S`). You can save as many workflows as you want (e.g., *"CleanDownloads.flow"* or *"OrganizePhotos.flow"*). To reuse it, simply open the saved file and click Run or Watchdog.
 
 ### 4. What do the colored status circles on each box mean?
 * ⚪ **Gray (Idle):** The box is waiting for incoming files.
@@ -156,17 +174,21 @@ Yes! Click **"File ❯ Save Workflow As..."** (or press `Ctrl+S`). You can save 
 
 ---
 
-## 📖 7. Jargon Buster Glossary
+## 📖 8. Jargon Buster Glossary
 
 | Term | What it Means in Plain English |
 | :--- | :--- |
 | **Node / Box** | A visual block that performs a specific task (rename, copy, filter, compress, etc.). |
 | **Workflow / Pipeline** | The complete chain of connected boxes from start to finish. |
+| **Watchdog Mode (Vigilante)** | Background listening mode that monitors folders and processes new files automatically. |
 | **Dry Run / Simulation** | A safe test rehearsal: performs all calculations without modifying your real files. |
 | **Rollback / Undo** | Rewinds the changes: restores your files back to their original names and locations. |
-| **Metadata (EXIF / ID3)** | Hidden information inside a file (photo capture date, camera model, song artist, etc.). |
+| **State Checkpointing** | Automatic progress persistence that resumes long-running tasks without re-doing finished work. |
+| **Metadata (EXIF / ID3 / Columns)** | Hidden data inside a file (photo capture date, camera model, song artist, Excel columns). |
 | **Portable Version** | A standalone version of FileFlow Studio you can carry on a USB drive and run on any PC without installation. |
 
 ---
+
+Enjoy organizing and automating your files with **FileFlow Studio**! 🎉
 
 Enjoy fast, safe, and effortless file automation with **FileFlow Studio**! 🎉

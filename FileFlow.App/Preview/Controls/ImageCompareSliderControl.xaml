@@ -1,0 +1,43 @@
+<UserControl x:Class="FileFlow.App.Preview.Controls.ImageCompareSliderControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="600"
+             ClipToBounds="True" Background="#111318">
+
+    <Grid x:Name="RootGrid" ClipToBounds="True">
+        <!-- Imagen Original (Fondo / Izquierda) -->
+        <Image x:Name="OriginalImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+
+        <!-- Imagen Procesada (Recortada por el Splitter a la derecha) -->
+        <Image x:Name="ProcessedImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality">
+            <Image.Clip>
+                <RectangleGeometry x:Name="ProcessedClipGeometry" />
+            </Image.Clip>
+        </Image>
+
+        <!-- Divisor Deslizable Interactivo -->
+        <Canvas x:Name="SplitterCanvas" IsHitTestVisible="False">
+            <Line x:Name="SplitterLine" Stroke="#00D2FF" StrokeThickness="2" StrokeDashArray="4 2" />
+        </Canvas>
+
+        <!-- Thumb de arrastre interactivo en el centro de la línea -->
+        <Border x:Name="SliderHandle" Width="36" Height="36" CornerRadius="18"
+                Background="#00D2FF" BorderBrush="White" BorderThickness="2"
+                Cursor="SizeWE" MouseLeftButtonDown="SliderHandle_MouseDown"
+                HorizontalAlignment="Left" VerticalAlignment="Center">
+            <TextBlock Text="↔" Foreground="#0B0D14" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+        </Border>
+
+        <!-- Badges informativos flotantes -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Background="#CC000000" CornerRadius="6" Padding="8,4">
+            <TextBlock x:Name="OriginalBadgeText" Text="Original" Foreground="#AAAAAA" FontSize="11" FontWeight="SemiBold" />
+        </Border>
+
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16" Background="#CC005577" CornerRadius="6" Padding="8,4">
+            <TextBlock x:Name="ProcessedBadgeText" Text="Procesado" Foreground="#00E5FF" FontSize="11" FontWeight="SemiBold" />
+        </Border>
+    </Grid>
+</UserControl>

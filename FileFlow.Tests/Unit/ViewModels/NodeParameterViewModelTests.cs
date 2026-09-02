@@ -14,10 +14,10 @@ public class NodeParameterViewModelTests
     public void DisplayName_ShouldReturnFormattedFallback_WhenNoResourceManagerRegistered()
     {
         // Arrange
-        using var param = new NodeParameterViewModel("TargetFormat", "WebP");
+        using var param = new NodeParameterViewModel("CustomUnregisteredSetting", "WebP");
 
         // Act & Assert
-        param.DisplayName.Should().Be("Target Format");
+        param.DisplayName.Should().Be("Custom Unregistered Setting");
     }
 
     [Fact]

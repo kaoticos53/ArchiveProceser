@@ -25,6 +25,11 @@ public class PluginLoader
         }
 
         // Also scan loaded assemblies in current AppDomain for builtin/referenced plugins
+        ScanCurrentAppDomain();
+    }
+
+    public void ScanCurrentAppDomain()
+    {
         foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
         {
             RegisterNodeTypesFromAssembly(asm);

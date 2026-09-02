@@ -80,6 +80,22 @@ public static class AppPaths
     public static string ScriptsDirectory => Path.Combine(RootDirectory, "scripts");
     public static string LogsDirectory => Path.Combine(RootDirectory, "logs");
 
+    /// <summary>
+    /// Ruta de salida global por defecto utilizada por los flujos y variables del sistema.
+    /// (Modo Portable: AppBaseDir/data/output, Modo Instalado: %USERPROFILE%/Documents/FileFlowStudio/Output).
+    /// </summary>
+    public static string DefaultGlobalOutputDir
+    {
+        get
+        {
+            if (IsPortableMode)
+            {
+                return Path.Combine(RootDirectory, "output");
+            }
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileFlowStudio", "Output");
+        }
+    }
+
     // Ficheros estándar de configuración del usuario
     public static string UserPreferencesFile => Path.Combine(ConfigDirectory, "user_preferences.json");
     public static string ExternalToolsFile => Path.Combine(ConfigDirectory, "external_tools.json");

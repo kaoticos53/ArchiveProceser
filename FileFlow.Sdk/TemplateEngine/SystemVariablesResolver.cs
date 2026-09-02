@@ -1,4 +1,5 @@
 using System.Globalization;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine.Resolvers;
 
 namespace FileFlow.Sdk.TemplateEngine;
@@ -139,11 +140,34 @@ public static class SystemVariablesResolver
 
             case "globaloutputdir":
             case "defaultoutputdir":
+            case "defaultglobaloutputdir":
+            case "globaloutput":
+            case "defaultoutput":
+            case "globaloutputpath":
+            case "defaultoutputpath":
+            case "outputdir":
+            case "defaultdir":
                 if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && godVal != null && !string.IsNullOrWhiteSpace(godVal.ToString()))
                 {
                     return godVal.ToString()!;
                 }
-                return Path.Combine(Environment.CurrentDirectory, "Output");
+                if (item.Metadata.TryGetValue("DefaultGlobalOutputDir", out var dgodVal) && dgodVal != null && !string.IsNullOrWhiteSpace(dgodVal.ToString()))
+                {
+                    return dgodVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("DefaultOutputDir", out var dodVal) && dodVal != null && !string.IsNullOrWhiteSpace(dodVal.ToString()))
+                {
+                    return dodVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("GlobalOutputPath", out var gopVal) && gopVal != null && !string.IsNullOrWhiteSpace(gopVal.ToString()))
+                {
+                    return gopVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("DefaultOutputPath", out var dopVal) && dopVal != null && !string.IsNullOrWhiteSpace(dopVal.ToString()))
+                {
+                    return dopVal.ToString()!;
+                }
+                return AppPaths.DefaultGlobalOutputDir;
 
             case "sizemb":
                 return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);

@@ -15,13 +15,51 @@ public static class WorkflowGraphSerializer
         IEnumerable<NodeViewModel> nodes,
         IEnumerable<ConnectionViewModel> connections,
         string globalOutputDir,
-        string name = "FileFlow Workflow")
+        string name = "FileFlow Workflow",
+        IEnumerable<AnnotationViewModel>? annotations = null,
+        IEnumerable<GroupViewModel>? groups = null)
     {
         var graph = new WorkflowGraph
         {
             Name = name,
             GlobalOutputDir = globalOutputDir
         };
+
+        if (annotations != null)
+        {
+            foreach (var a in annotations)
+            {
+                graph.Annotations.Add(new WorkflowAnnotation
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Content = a.Content,
+                    X = a.Location.X,
+                    Y = a.Location.Y,
+                    Width = a.Width,
+                    Height = a.Height,
+                    Color = a.Color
+                });
+            }
+        }
+
+        if (groups != null)
+        {
+            foreach (var g in groups)
+            {
+                graph.Groups.Add(new WorkflowGroup
+                {
+                    Id = g.Id,
+                    Title = g.Title,
+                    X = g.Location.X,
+                    Y = g.Location.Y,
+                    Width = g.Width,
+                    Height = g.Height,
+                    Color = g.Color,
+                    NodeIds = [.. g.NodeIds]
+                });
+            }
+        }
 
         foreach (var n in nodes)
         {
@@ -71,9 +109,67 @@ public static class WorkflowGraphSerializer
         PluginLoader pluginLoader,
         EditorViewModel editor,
         Action<NodeViewModel> registerNodeCallback,
-        Action<ConnectionViewModel> registerConnectionCallback)
+        Action<ConnectionViewModel> registerConnectionCallback,
+        Action<AnnotationViewModel>? registerAnnotationCallback = null,
+        Action<GroupViewModel>? registerGroupCallback = null)
     {
         Dictionary<string, NodeViewModel> nodeLookup = [];
+
+        if (graph.Annotations != null)
+        {
+            foreach (var aDto in graph.Annotations)
+            {
+                var annotVm = new AnnotationViewModel(
+                    aDto.Title,
+                    aDto.Content,
+                    new Point(aDto.X, aDto.Y),
+                    aDto.Width > 0 ? aDto.Width : 250,
+                    aDto.Height > 0 ? aDto.Height : 180,
+                    !string.IsNullOrWhiteSpace(aDto.Color) ? aDto.Color : "#FEF08A"
+                )
+                {
+                    Id = aDto.Id,
+                    ParentEditor = editor
+                };
+
+                if (registerAnnotationCallback != null)
+                {
+                    registerAnnotationCallback(annotVm);
+                }
+                else
+                {
+                    editor.Annotations.Add(annotVm);
+                }
+            }
+        }
+
+        if (graph.Groups != null)
+        {
+            foreach (var gDto in graph.Groups)
+            {
+                var groupVm = new GroupViewModel(
+                    gDto.Title,
+                    new Point(gDto.X, gDto.Y),
+                    gDto.Width > 0 ? gDto.Width : 450,
+                    gDto.Height > 0 ? gDto.Height : 320,
+                    !string.IsNullOrWhiteSpace(gDto.Color) ? gDto.Color : "#3B82F6",
+                    gDto.NodeIds
+                )
+                {
+                    Id = gDto.Id,
+                    ParentEditor = editor
+                };
+
+                if (registerGroupCallback != null)
+                {
+                    registerGroupCallback(groupVm);
+                }
+                else
+                {
+                    editor.Groups.Add(groupVm);
+                }
+            }
+        }
 
         foreach (var nodeDto in graph.Nodes)
         {

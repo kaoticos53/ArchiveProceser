@@ -1,3 +1,4 @@
+using System.IO;
 using System.Resources;
 using System.Windows;
 using FileFlow.App.Services;
@@ -40,7 +41,20 @@ public partial class App : Application
 
         base.OnStartup(e);
 
-        // Mostrar pantalla de carga atractiva
+        // Si se pasan argumentos de CLI (--run, -r, --help, -h), ejecutar en modo Headless
+        if (e.Args.Length > 0 && (e.Args.Any(a => a.Equals("--run", StringComparison.OrdinalIgnoreCase) ||
+                                                 a.Equals("-r", StringComparison.OrdinalIgnoreCase) ||
+                                                 a.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+                                                 a.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+                                                 (File.Exists(a) && a.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))))
+        {
+            var cliOptions = FileFlow.Core.Engine.WorkflowCliOptions.Parse(e.Args);
+            int exitCode = await FileFlow.Core.Engine.WorkflowCliRunner.RunAsync(cliOptions);
+            Shutdown(exitCode);
+            return;
+        }
+
+        // Modo Interactivo con UI: Mostrar pantalla de carga atractiva
         var splash = new SplashScreenWindow();
         splash.Show();
 

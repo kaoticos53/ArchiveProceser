@@ -15,7 +15,9 @@ public record WorkflowExecutionOptions(
     bool IsDebug,
     bool IsDryRun,
     int MaxParallelThreads,
-    string WorkflowName
+    string WorkflowName,
+    bool IsWatchMode = false,
+    FolderWatcherService? WatcherService = null
 );
 
 /// <summary>
@@ -130,6 +132,18 @@ public sealed class WorkflowExecutionCoordinator
                 var snapshot = _activeExecutor.GetTelemetrySnapshot();
                 _logViewModel.ProgressPercentage = snapshot.Percentage;
                 _logViewModel.StatusMessage = snapshot.StatusMessage;
+
+                var nodeStats = _activeExecutor.GetNodeTelemetryStats();
+                if (nodeStats.Count > 0)
+                {
+                    foreach (var node in _editorViewModel.Nodes)
+                    {
+                        if (nodeStats.TryGetValue(node.Id, out var stats))
+                        {
+                            node.UpdateTelemetryStats(stats);
+                        }
+                    }
+                }
             }
 
             FlushPendingUiUpdates(pendingEdgeUpdates, pendingStatusUpdates, pendingNodeProgressUpdates);
@@ -160,18 +174,27 @@ public sealed class WorkflowExecutionCoordinator
             pendingEdgeUpdates[$"{src}:{port}"] = (src, port, count);
         };
 
-        string startMsg = options.IsDebug
-            ? "Iniciando depuración del flujo..."
-            : (options.IsDryRun
-                ? "[Dry Run] Iniciando simulación virtual..."
-                : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"]);
+        string startMsg = options.IsWatchMode
+            ? "👁️ Iniciando Modo Vigilante en tiempo real..."
+            : (options.IsDebug
+                ? "Iniciando depuración del flujo..."
+                : (options.IsDryRun
+                    ? "[Dry Run] Iniciando simulación virtual..."
+                    : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"]));
         _logViewModel.AddLog(LogLevel.Information, startMsg);
 
         try
         {
             await Task.Run(async () =>
             {
-                await _activeExecutor.ExecuteAsync(graph, _pluginLoader, cancellationToken);
+                if (options.IsWatchMode && options.WatcherService != null)
+                {
+                    await _activeExecutor.ExecuteWatchModeAsync(graph, _pluginLoader, options.WatcherService, cancellationToken);
+                }
+                else
+                {
+                    await _activeExecutor.ExecuteAsync(graph, _pluginLoader, cancellationToken);
+                }
             }, cancellationToken);
 
             return new WorkflowExecutionResult(

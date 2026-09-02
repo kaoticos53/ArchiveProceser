@@ -355,11 +355,14 @@
   <data name="Category_Frequent" xml:space="preserve"><value>🔥 Frequent</value></data>
   <data name="Category_FileSystem" xml:space="preserve"><value>📁 File System</value></data>
   <data name="Category_Archives" xml:space="preserve"><value>📦 Compression</value></data>
+  <data name="Category_Images" xml:space="preserve"><value>🖼️ Images</value></data>
+  <data name="Category_Documents" xml:space="preserve"><value>📄 Documents</value></data>
   <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media &amp; Docs</value></data>
   <data name="Category_Metadata" xml:space="preserve"><value>🏷️ Metadata</value></data>
-  <data name="Category_Hashing" xml:space="preserve"><value>Hashing &amp; Security</value></data>
+  <data name="Category_Hashing" xml:space="preserve"><value>🔑 Hashing &amp; Security</value></data>
   <data name="Category_Logic" xml:space="preserve"><value>🔀 Logic</value></data>
   <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integrations</value></data>
+  <data name="Category_Scripting" xml:space="preserve"><value>📜 Scripting</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
 
   <!-- Node Parameters Localized Keys (English) -->
@@ -590,7 +593,48 @@
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Evaluated Value:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copy evaluated value to clipboard</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contains dynamic expression / variables</value></data>
-  <data name="Inspector_ActiveContextLabel" xml:space="preserve"><value>DEBUG CONTEXT (EXPRESSION EVALUATION)</value></data>
-  <data name="Inspector_NoSnapshotForEvaluation" xml:space="preserve"><value>No active snapshot (evaluating with system variables)</value></data>
+  <data name="Category_Data &amp; Databases" xml:space="preserve"><value>Data &amp; Databases</value></data>
+  <data name="Category_Data" xml:space="preserve"><value>Data &amp; Databases</value></data>
+  <data name="ExcelReaderNode_Name" xml:space="preserve"><value>Excel Sheet Reader</value></data>
+  <data name="ExcelReaderNode_Desc" xml:space="preserve"><value>Reads Excel (.xlsx) files and emits each row with its columns in metadata.</value></data>
+  <data name="CsvReaderNode_Name" xml:space="preserve"><value>CSV / TSV File Reader</value></data>
+  <data name="CsvReaderNode_Desc" xml:space="preserve"><value>Reads delimited files (CSV, TSV, TXT) with auto-detection and emits each row with its columns in metadata.</value></data>
+  <data name="DataLookupNode_Name" xml:space="preserve"><value>Data Lookup (VLOOKUP)</value></data>
+  <data name="DataLookupNode_Desc" xml:space="preserve"><value>Looks up and enriches the current file against an external table (Excel, CSV or JSON) injecting columns into metadata.</value></data>
+  <data name="ExcelReportGeneratorNode_Name" xml:space="preserve"><value>Excel Report Generator (.xlsx)</value></data>
+  <data name="ExcelReportGeneratorNode_Desc" xml:space="preserve"><value>Collects metadata of processed files and generates a structured Excel (.xlsx) file on workflow completion.</value></data>
+  <data name="CsvExportNode_Name" xml:space="preserve"><value>CSV / TSV Exporter</value></data>
+  <data name="CsvExportNode_Desc" xml:space="preserve"><value>Exports and accumulates metadata of each processed file into a delimited CSV file with configurable format.</value></data>
+  <data name="SqliteDatabaseSinkNode_Name" xml:space="preserve"><value>SQLite Audit Log</value></data>
+  <data name="SqliteDatabaseSinkNode_Desc" xml:space="preserve"><value>Inserts historical audit records into a SQLite database with metadata and traceability of each processed file.</value></data>
+  <data name="DataFormatConverterNode_Name" xml:space="preserve"><value>Data Format Converter</value></data>
+  <data name="Category_AI &amp; Computer Vision" xml:space="preserve"><value>AI &amp; Computer Vision</value></data>
+  <data name="LocalOcrNode_Name" xml:space="preserve"><value>Optical Character Recognition (OCR)</value></data>
+  <data name="LocalOcrNode_Desc" xml:space="preserve"><value>Extracts text and structured content from images and scanned documents using local OCR engines.</value></data>
+  <data name="SmartImageClassifierNode_Name" xml:space="preserve"><value>Smart Photo Classifier (AI)</value></data>
+  <data name="SmartImageClassifierNode_Desc" xml:space="preserve"><value>Analyzes the visual content of photos assigning thematic categories (Landscapes, Invoices, Vehicles, etc.) in metadata.</value></data>
+  <data name="FaceDetectorNode_Name" xml:space="preserve"><value>Face Detector (AI)</value></data>
+  <data name="FaceDetectorNode_Desc" xml:space="preserve"><value>Analyzes images to detect the presence and count of human faces, branching flows into family photos or objects.</value></data>
+  <data name="ObjectDetectorNode_Name" xml:space="preserve"><value>Object Detector (YOLO)</value></data>
+  <data name="ObjectDetectorNode_Desc" xml:space="preserve"><value>Detects and identifies multiple everyday objects (people, vehicles, pets, items) present in images.</value></data>
+  <data name="LocalWhisperTranscriberNode_Name" xml:space="preserve"><value>Speech-to-Text Transcriber (Whisper)</value></data>
+  <data name="LocalWhisperTranscriberNode_Desc" xml:space="preserve"><value>Transcribes audio and video files to text and synchronized subtitles (.srt) using local Whisper AI.</value></data>
   <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
+
+  <!-- AI Models -->
+  <data name="Settings_TabAiModels" xml:space="preserve"><value>🤖 AI Models</value></data>
+  <data name="Settings_AiModels_Title" xml:space="preserve"><value>Local Artificial Intelligence Models</value></data>
+  <data name="Settings_AiModels_Desc" xml:space="preserve"><value>Manage and download AI model weights for photo classification, face/object detection, OCR and Whisper transcription before running workflows.</value></data>
+  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>⬇️ Download Missing</value></data>
+  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>🔄 Refresh</value></data>
+  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>📁 Open Folder</value></data>
+  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>🚀 Open Download Manager...</value></data>
+  <data name="AiModelManager_WindowTitle" xml:space="preserve"><value>AI Models Download Manager</value></data>
+  <data name="AiModelManager_HeaderTitle" xml:space="preserve"><value>Artificial Intelligence Models</value></data>
+  <data name="AiModelManager_HeaderSubtitle" xml:space="preserve"><value>Pre-download models for high-speed, interruption-free offline pipeline execution.</value></data>
+  <data name="AiModelManager_StatusInstalled" xml:space="preserve"><value>Downloaded</value></data>
+  <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>Not downloaded</value></data>
+  <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Downloading...</value></data>
+  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Download</value></data>
+  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Delete</value></data>
 </root>

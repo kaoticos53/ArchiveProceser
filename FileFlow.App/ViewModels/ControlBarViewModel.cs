@@ -42,6 +42,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     private bool _isDryRun;
 
     [ObservableProperty]
+    private bool _isWatching;
+
+    [ObservableProperty]
     private bool _isMenuOpen;
 
     [ObservableProperty]
@@ -183,7 +186,68 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         await RunWorkflowCoreAsync(isDebug: true);
     }
 
-    private async Task RunWorkflowCoreAsync(bool isDebug)
+    [RelayCommand]
+    public async Task ToggleWatchModeAsync()
+    {
+        if (IsWatching)
+        {
+            _cts?.Cancel();
+            return;
+        }
+
+        if (IsRunning) return;
+
+        // Extraer carpetas de origen del grafo actual
+        var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
+        var watchFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var node in graph.Nodes)
+        {
+            foreach (var param in node.Parameters)
+            {
+                if (param.Value == null) continue;
+                string valStr = param.Value.ToString() ?? string.Empty;
+
+                if ((param.Key.Contains("Folder", StringComparison.OrdinalIgnoreCase) ||
+                     param.Key.Contains("Directory", StringComparison.OrdinalIgnoreCase) ||
+                     param.Key.Contains("Path", StringComparison.OrdinalIgnoreCase)) &&
+                    !param.Key.Contains("Output", StringComparison.OrdinalIgnoreCase) &&
+                    !param.Key.Contains("Destination", StringComparison.OrdinalIgnoreCase))
+                {
+                    string expanded = Environment.ExpandEnvironmentVariables(valStr);
+                    if (Directory.Exists(expanded))
+                    {
+                        watchFolders.Add(expanded);
+                    }
+                }
+            }
+        }
+
+        if (watchFolders.Count == 0)
+        {
+            MessageBox.Show("No se encontraron carpetas de origen existentes configuradas en los nodos del flujo (ej. FolderSourceNode).\nConfigure una carpeta de entrada antes de activar el Modo Vigilante.", "Modo Vigilante", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        using var watcher = new FolderWatcherService();
+        watcher.Start(watchFolders, filter: "*.*", includeSubdirectories: true, debounceMs: 1000);
+
+        IsWatching = true;
+        _logViewModel.AddLog(LogLevel.Information, $"👁️ Modo Vigilante activado. Escuchando {watchFolders.Count} carpetas: {string.Join(", ", watchFolders)}");
+
+        try
+        {
+            await RunWorkflowCoreAsync(isDebug: false, isWatchMode: true, watcherService: watcher);
+        }
+        finally
+        {
+            watcher.Stop();
+            IsWatching = false;
+            _logViewModel.AddLog(LogLevel.Information, "👁️ Modo Vigilante detenido.");
+        }
+    }
+
+    private async Task RunWorkflowCoreAsync(bool isDebug, bool isWatchMode = false, FolderWatcherService? watcherService = null)
     {
         if (IsRunning) return;
 
@@ -202,7 +266,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
                 IsDebug: isDebug,
                 IsDryRun: IsDryRun,
                 MaxParallelThreads: maxParallelThreads,
-                WorkflowName: WorkflowName
+                WorkflowName: WorkflowName,
+                IsWatchMode: isWatchMode,
+                WatcherService: watcherService
             );
 
             var result = await _executionCoordinator.RunAsync(
@@ -223,7 +289,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             else if (!result.Succeeded && !string.IsNullOrEmpty(result.ErrorMessage))
             {
                 _logViewModel.AddLog(LogLevel.Error, $"Error de Ejecución: {result.ErrorMessage}");
-                if (!isDebug)
+                if (!isDebug && !isWatchMode)
                 {
                     MessageBox.Show($"Error al ejecutar el flujo: {result.ErrorMessage}", "Error de Ejecución", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -234,7 +300,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
                 {
                     _logViewModel.AddLog(LogLevel.Information, $"[Dry Run] Simulación finalizada. {result.PlannedActionsCount} acciones planificadas registradas.");
                 }
-                else
+                else if (!isWatchMode)
                 {
                     _logViewModel.AddLog(LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance["LogExecutionFinished"]);
                 }

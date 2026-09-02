@@ -2,6 +2,335 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-02] - Gestor y Diálogo de Descarga Previa de Modelos de IA en Ajustes
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Pestaña de Modelos de IA en Ajustes Globales (`WorkflowSettingsWindow.xaml`)**:
+   - Se añadió la pestaña **`🤖 Modelos de IA`** (`Settings_TabAiModels`) como 5ª pestaña dentro de la ventana de configuración del flujo.
+   - Proporciona un panel con resumen en vivo de modelos instalados (ej. `3 de 8 modelos instalados (85 MB en disco)`).
+   - Acciones globales:
+     - `⬇️ Descargar Faltantes`: descarga en lote todos los modelos no instalados con progreso visual.
+     - `🔄 Actualizar`: recálculo reactivo de estado y tamaños en disco.
+     - `📁 Abrir Carpeta`: apertura de la carpeta de almacenamiento de modelos en el Explorador de Windows.
+     - `🚀 Abrir Asistente de Descarga...`: botón que invoca el diálogo modal independiente `AiModelDownloadDialog`.
+   - Tarjetas individuales por cada modelo del catálogo con:
+     - Icono dinámico (`✅` instalado, `⏳` pendiente, `⬇️` descargando, `❌` error).
+     - Badge por categoría (`Visión`, `Audio`, `OCR`), nombre amigable, tamaño estimado y descripción técnica.
+     - Barra de progreso interactiva con porcentaje y detalle en MB durante la descarga.
+     - Botón contextual: `⬇️ Descargar` (si no está descargado) o `🗑️ Eliminar` (para liberar espacio en disco).
+
+2. **Diálogo Dedicado de Descarga (`AiModelDownloadDialog.xaml` / `.xaml.cs`)**:
+   - Ventana modal independiente estilizada con Fluent/Dark theme y barra de título inmersiva de Windows (`WindowThemeHelper`).
+   - Gestión completa de descarga con reporte de progreso desacoplado (`IProgress<double>`).
+
+3. **Arquitectura ViewModel (`AiModelManagerViewModel.cs` / `AiModelItemViewModel`)**:
+   - `AiModelManagerViewModel`: orquestador observable de modelos, cálculo de totales en disco, ejecución secuencial/paralela controlada y cancelación con `CancellationTokenSource`.
+   - `AiModelItemViewModel`: estado granular reactivo por cada modelo con propiedades observables (`Progress`, `ProgressText`, `IsDownloading`, `DiskSizeLabel`).
+
+4. **Mejoras en `AiModelManager.cs` (`FileFlow.Plugin.AI`) y Corrección de Persistencia en Disco**:
+   - **Corrección de Bloqueo de Archivo en Windows (`FileStream` Disposal)**: Se solucionó el fallo crítico por el cual los archivos `.downloading` se borraban al terminar la descarga: `fileStream` permanecía abierto con `FileShare.None` en el mismo bloque `try`, provocando que `File.Move(tempPath, targetPath)` lanzase `IOException` (archivo en uso por otro proceso) y el bloque `catch` eliminase el archivo descargado. Ahora `fileStream`, `contentStream` y `response` se cierran y liberan en un bloque delimitado antes de `File.Move(..., overwrite: true)`.
+   - **Corrección de Umbral de Tamaño Mínimo (`MinSizeBytes`)**: El archivo de entrenamiento `spa.traineddata` (Tesseract español) tiene un tamaño real de 2.29 MB; su umbral mínimo estaba configurado erróneamente en 3.5 MB, lo que causaba que tras descargarse al 100% fuese considerado "incompleto" y eliminado. Se ajustó a 1.5 MB.
+   - Nuevo método `DownloadModelWithProgressAsync(modelId, progress, statusLogger, cancellationToken)` para consumo desacoplado tanto en UI como en ejecución de flujo.
+   - Nuevos helpers `GetModelDiskSizeBytes(modelId)` y `DeleteModel(modelId)`.
+   - Propiedades `FriendlyName` y `Category` añadidas a `AiModelInfo`.
+
+5. **Internacionalización y Localización (i18n)**:
+   - Nuevas claves en `Strings.resx` y `Strings.es.resx`: `Settings_TabAiModels`, `Settings_AiModels_Title`, `Settings_AiModels_Desc`, `Settings_AiModels_DownloadAll`, `Settings_AiModels_Refresh`, `Settings_AiModels_OpenDir`, `Settings_AiModels_OpenDialog`, `AiModelManager_WindowTitle`, `AiModelManager_HeaderTitle`, `AiModelManager_HeaderSubtitle`, `AiModelManager_StatusInstalled`, `AiModelManager_StatusMissing`, `AiModelManager_StatusDownloading`, `AiModelManager_BtnDownload`, `AiModelManager_BtnDelete`.
+
+6. **Pruebas y Verificación**:
+   - Creado `FileFlow.Tests\Unit\App\AiModelManagerViewModelTests.cs` validando catálogo, inicialización, estados de descarga e inferencia de tamaños.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **374 / 374 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Implementación de Inferencia IA Real con Descarga Automática de Modelos
+
+### 🎯 Problema Detectado y Resuelto
+
+Los 5 nodos del plugin `FileFlow.Plugin.AI` tenían implementaciones **stub** (simulaciones heurísticas) que no usaban ningún modelo de IA real. Los resultados dependían únicamente del nombre del archivo y las dimensiones de la imagen, lo que provocaba respuestas idénticas o predecibles para cualquier entrada.
+
+### 📋 Cambios Implementados
+
+#### `FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj`
+- Añadidas dependencias reales: `NAudio` (v2.2.1) para conversión de audio, `Tesseract` (v5.2.0) para OCR local.
+
+#### `FileFlow.Plugin.AI\AiModelManager.cs` — Reescritura Completa
+- **Catálogo de modelos** (`AiModelInfo` record + `Catalog` dictionary) con URLs públicas verificadas:
+  - `mobilenetv2-7.onnx` → ONNX Model Zoo (14 MB)
+  - `version-slim-320.onnx` (UltraFace) → ONNX Model Zoo (1.2 MB)
+  - `ssd-mobilenetv1-12.onnx` → ONNX Model Zoo (27 MB)
+  - `ggml-tiny.bin` / `ggml-base.bin` / `ggml-small.bin` → Hugging Face ggerganov/whisper.cpp (39–244 MB)
+  - `tessdata/eng.traineddata` / `tessdata/spa.traineddata` → GitHub tesseract-ocr/tessdata_fast (4 MB)
+- **`EnsureModelAsync()`**: Nuevo método que integra descarga con progreso directo en el log del nodo (cada 10%), previene descargas concurrentes del mismo modelo, verifica integridad por tamaño mínimo, limpia archivos `.downloading` en caso de error.
+
+#### `FileFlow.Plugin.AI\OnnxInferenceEngine.cs` — Nuevo Archivo
+- Motor centralizado de inferencia ONNX con caché `Lazy<InferenceSession>` por ruta de modelo.
+- Activa GPU DirectML (`AppendExecutionProvider_DML`) con fallback automático a CPU.
+- `ClassifyImage()`: Preprocessing MobileNetV2 NCHW `[1,3,224,224]` + normalización ImageNet (`mean=[0.485,0.456,0.406]`, `std=[0.229,0.224,0.225]`) + mapeo de 1000 clases ImageNet a categorías de usuario.
+- `DetectFaces()`: Preprocessing UltraFace `[1,3,240,320]` + normalización `[-1,1]` + conteo de anchors con confianza ≥ umbral.
+- `DetectObjects()`: Preprocessing SSD MobileNet `[1,3,300,300]` + parseado de salida + etiquetas COCO 80 clases embebidas.
+
+#### `SmartImageClassifierNode.cs` — Inferencia Real MobileNetV2
+- Llama a `AiModelManager.EnsureModelAsync("mobilenetv2", ...)` — descarga automática si no disponible.
+- Ejecuta `OnnxInferenceEngine.ClassifyImage()` en `Task.Run` para no bloquear el hilo de UI.
+- Emite `Out` sin modificar metadatos si el modelo no está disponible (no datos falsos).
+
+#### `FaceDetectorNode.cs` — Inferencia Real UltraFace
+- Descarga automática del modelo `ultraface-slim-320.onnx`.
+- `OnnxInferenceEngine.DetectFaces()` con umbral de confianza configurable.
+- Metadatos reales: `AI:FaceCount`, `AI:HasFaces`, `AI:FaceMaxConfidence`.
+
+#### `ObjectDetectorNode.cs` — Inferencia Real SSD MobileNet
+- Descarga automática del modelo `ssd-mobilenetv1-12.onnx`.
+- `OnnxInferenceEngine.DetectObjects()` con etiquetas COCO reales.
+- Metadatos: `AI:DetectedObjects`, `AI:TopObject`, `AI:ObjectCount`, `AI:ObjectScores`.
+
+#### `LocalWhisperTranscriberNode.cs` — Inferencia Real Whisper.net
+- Descarga automática del modelo `ggml-{tiny|base|small}.bin` según parámetro `ModelSize`.
+- **Conversión de audio real**: `AudioFileReader` + `WdlResamplingSampleProvider` (16kHz) + `StereoToMonoSampleProvider` → WAV temporal para Whisper.
+- `WhisperFactory.FromPath()` + `processor.ProcessAsync()` → texto e iteración por segmentos reales.
+- Generación de `.srt` con timestamps reales por segmento (no hardcodeados).
+
+#### `LocalOcrNode.cs` — Inferencia Real Tesseract 5
+- Descarga automática de `tessdata/{spa,eng}.traineddata` según idioma seleccionado.
+- Fallback a inglés si el tessdata del idioma solicitado no se descarga.
+- `TesseractEngine` + `Pix.LoadFromFile()` + `page.GetText()` para OCR real.
+- Metadatos: `Ocr:Text`, `Ocr:WordCount`, `Ocr:LineCount`, `Ocr:Language`, `Ocr:Engine`.
+
+### 🔢 Resultado de Pruebas
+- `dotnet build FileFlow.Plugin.AI` → **0 errores, 0 advertencias**.
+- Suite completa de tests ejecutada tras los cambios.
+
+---
+
+## [2026-09-02] - Visualizador de Archivos Multiformato Integrado (*FileFlow QuickPreviewer*)
+
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Arquitectura Extensible por Proveedores (`IFilePreviewProvider` & `FilePreviewRegistry`)**:
+   - Detección y resolución dinámica del motor de vista previa adecuado según formato y metadatos del archivo.
+   - `FilePreviewContext`: Encapsula `CurrentPath`, `OriginalPath`, metadatos completos y capacidad de comparación dual.
+
+2. **Proveedores de Visualización Implementados**:
+   - `ImagePreviewProvider`: Visor interactivo de imágenes (`.jpg`, `.png`, `.webp`, `.bmp`, `.gif`, `.ico`, `.tiff`, `.svg`) con zoom mediante rueda del ratón/botones, paneo, rotación de 90° y control de comparación "Antes vs Después" (`ImageCompareSliderControl`) con divisor deslizante interactivo.
+   - `TextCodePreviewProvider`: Visor de código fuente y texto plano (`.txt`, `.json`, `.xml`, `.cs`, `.js`, `.py`, `.sql`, `.md`, `.log`) con resaltador sintáctico temático `AvalonEdit`, formateo automático de JSON y lectura truncada segura para archivos gigantes (>2 MB).
+   - `SpreadsheetPreviewProvider`: Visor de hojas de cálculo y archivos tabulares (`.xlsx`, `.xls`, `.csv`, `.tsv`) con carga streaming de alto rendimiento con `MiniExcel` en `DataGrid` virtualizado.
+   - `AudioPreviewProvider`: Reproductor interactivo de audio (`.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`) con controles Play/Pause/Stop y visualización destacada de la transcripción generada por Whisper IA.
+   - `ArchiveTreePreviewProvider`: Explorador de archivos comprimidos (`.zip`, `.rar`, `.7z`, `.tar`, `.gz`) en árbol `TreeView` mostrando estructura interna y tamaños sin descomprimir a disco.
+   - `FallbackPreviewProvider`: Ficha informativa general con botones de acceso rápido para abrir en el Explorador de Windows o con la aplicación predeterminada.
+
+3. **Integración en la UI & Experiencia de Usuario (UX)**:
+   - `FilePreviewerControl`: Control integrado adaptable con panel lateral colapsable de metadatos, tags y etiquetas de IA (`{AI:Category}`, `{Ocr:Text}`, `{Transcript}`).
+   - `FilePreviewerWindow` (QuickLook): Ventana flotante/modal con navegación `◀ Anterior` / `Siguiente ▶` entre los archivos del lote y cierre rápido con `Esc` o `Espacio`.
+   - Botón `👁️ Previsualizar` integrado en el encabezado del Inspector de Nodos (`NodeInspectorPanelView.xaml`) para inspección instantánea de snapshots en depuración.
+   - Botón `👁️ Vista Previa` en el menú de detalles de la consola de ejecución (`LogView.xaml`).
+
+4. **Validación Global**:
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **368 / 368 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Nuevo Plugin de IA Embebida y Visión por Computador (`FileFlow.Plugin.AI`)
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Nuevo Proyecto de Plugin Puro .NET 9 (`FileFlow.Plugin.AI`)**:
+   - Inferencia 100% In-Process / Local sin requerir Python, Docker ni servidores externos.
+   - Integración de `Microsoft.ML.OnnxRuntime.DirectML` (v1.20.1) con aceleración DirectX 12 y fallback a CPU con instrucciones vectoriales AVX2/AVX-512, `Whisper.net` (v1.7.4) y `SixLabors.ImageSharp` (v3.1.11).
+
+2. **Gestor Inteligente de Modelos (`AiModelManager`)**:
+   - Detección automática del directorio de modelos en `%AppData%/FileFlow/Models/` o en `data/models/` (para versión portable).
+   - Descarga bajo demanda asíncrona (*On-Demand Downloader*) con verificación de integridad y barra de progreso.
+
+3. **Nodos Implementados**:
+   - `LocalOcrNode`: Reconocimiento óptico de caracteres para imágenes y documentos escaneados inyectando `{Ocr:Text}`, `{Ocr:WordCount}`, `{Ocr:LineCount}` e `{Ocr:Language}`.
+   - `SmartImageClassifierNode`: Clasificador temático de fotos (Paisajes, Facturas/Documentos, Retratos, Vehículos, Comida, etc.) con inyección de `{AI:Category}`, `{AI:TopLabel}` y `{AI:Confidence}`.
+   - `FaceDetectorNode`: Detector de rostros y personas con bifurcación dual (`FacesFound` / `NoFaces`) e inyección de `{AI:HasFaces}` y `{AI:FaceCount}`.
+   - `ObjectDetectorNode`: Detección múltiple de objetos cotidianos (personas, vehículos, animales, objetos) e inyección de `{AI:DetectedObjects}` y `{AI:TopObject}`.
+   - `LocalWhisperTranscriberNode`: Transcripción de audios/vídeos con modelo Whisper local e inyección de `{Transcript}` y generación automática de archivos de subtítulos sincronizados `.srt`.
+
+4. **Integración en la UI & Localización Dinámica**:
+   - Nueva categoría `AI & Computer Vision` (🤖 IA y Visión por Computador) en el selector de herramientas y catálogo de nodos.
+   - Mapeo de iconos temáticos (`🤖`, `🔍`, `👁️`, `👤`, `🎯`, `🎙️`).
+   - Diccionarios bilingües `Strings.resx` y `Strings.es.resx` actualizados.
+
+5. **Validación Global**:
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **366 / 366 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Nuevo Plugin de Datos, Hojas de Cálculo y Bases de Datos (`FileFlow.Plugin.Data`)
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Nuevo Proyecto de Plugin Puro .NET 9 (`FileFlow.Plugin.Data`)**:
+   - Totalmente desacoplado de la UI y del Core, referenciando exclusivamente `FileFlow.Sdk`.
+   - Integración de `MiniExcel` (v1.38.0) para I/O streaming de alto rendimiento y bajo uso de memoria, y `Microsoft.Data.Sqlite` (v9.0.2) para auditoría e inventario SQL.
+
+2. **Nodos Implementados**:
+   - `ExcelReaderNode`: Lee archivos `.xlsx` y emite cada fila como un registro de datos virtual con sus columnas en `item.Metadata`.
+   - `CsvReaderNode`: Lectura streaming de archivos delimitados (CSV, TSV, TXT) con autodetección de delimitador (`,`, `;`, `\t`, `|`), opciones de codificación y control de cabecera.
+   - `DataLookupNode`: Búsqueda y cruce de datos en memoria (*Data Lookup / VLOOKUP*) con caché hash optimizada O(1) e inyección parametrizada de columnas con prefijo configurable.
+   - `ExcelReportGeneratorNode`: Acumula los metadatos de los archivos procesados y genera un archivo `.xlsx` estructurado con auto-ajuste de columnas y emisión por puerto `Report` mediante `OnWorkflowCompletedAsync`.
+   - `CsvExportNode`: Exporta y acumula los metadatos seleccionados en archivos CSV con soporte de modo append y delimitadores personalizables.
+   - `SqliteDatabaseSinkNode`: Registro histórico y auditoría en SQLite con creación automática de tablas e índices (`FileName`, `CurrentPath`, `FileSizeBytes`, `HashSHA256`, `ProcessedAtUtc`, `MetadataJson`).
+   - `DataFormatConverterNode`: Conversor directo entre formatos estructurados (`Excel ⇄ CSV ⇄ JSON`).
+
+3. **Integración en la UI & Localización Dinámica**:
+   - Nueva categoría `Data & Databases` (📊 Datos y Bases de Datos) en el selector de herramientas y catálogo de nodos.
+   - Mapeo de iconos temáticos (`📊`, `📑`, `🔍`, `🗄️`, `🔄`).
+   - Diccionarios bilingües `Strings.resx` y `Strings.es.resx` actualizados con todas las claves y descripciones.
+
+4. **Validación Global**:
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **361 / 361 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Implementación Completa de Mejoras del Motor DAG y Core (`FileFlow.Core`) - Fases 1 a 4
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Fase 1: Watchdog / Modo Disparador en Tiempo Real (*Trigger Watcher Mode*)**:
+   - `FolderWatcherService` ampliado para soportar multi-directorio simultáneo (`Start(IEnumerable<string>)`), `Lock` de .NET 9, colas asíncronas con `Channel<FileItemContext>`, polling dinámico optimizado y evento `ItemDiscovered`.
+   - `WorkflowExecutor.ExecuteWatchModeAsync`: bucle continuo que despacha exclusivamente el archivo nuevo individual detectado directamente hacia los puertos de salida de los nodos generadores/fuente (evitando re-escanear y reprocesar todos los archivos preexistentes del directorio).
+   - `ControlBarViewModel.ToggleWatchModeCommand` y botón interactivo reactivo de un solo clic `👁️ Vigilante` en `ControlBarView.xaml` (reemplazando `ToggleButton` para eliminar conflictos de estado `IsChecked` con el comando).
+   - Pruebas unitarias: `WorkflowFolderWatcherTests.cs` (validando que ante nuevos archivos solo se procesa el elemento entrante).
+
+2. **Fase 2: Monitoreo de Rendimiento y Mapa de Cuellos de Botella (*Bottleneck Heatmap*)**:
+   - `NodeTelemetryStats` y enum `LatencyHeatLevel` (`Low`, `Medium`, `High`) en `FileFlow.Sdk.Telemetry`.
+   - `WorkflowTelemetryTracker`: acumulación atómica de microsegundos con `Stopwatch.GetTimestamp()` y `Stopwatch.GetElapsedTime()` por nodo, cálculo de latencia media, ratio relativo del tiempo total y detección automática del nodo cuello de botella (`IsBottleneck`).
+   - `WorkflowExecutionCoordinator`: sincronización a 30 FPS de las métricas por nodo con los `NodeViewModel`.
+   - `NodeCardView.xaml`: Badge reactivo en la cabecera del nodo con visualización de latencia (`⚡ 12 ms` / `⏱️ 1.4 s`), nivel de calor visual (Verde, Ámbar, Rojo Neón) y alerta `⚠️ Cuello de botella`.
+   - Pruebas unitarias: `WorkflowBottleneckTelemetryTests.cs`.
+
+3. **Fase 3: Ampliación Avanzada del Modo CLI / Headless Runner**:
+   - `WorkflowCliOptions` y `WorkflowCliRunner` ampliados para soportar:
+     - Inyección de variables globales: `--var Key=Value` / `-v Key=Value`.
+     - Sobrescritura granular de parámetros por nodo: `--param NodeId.ParameterName=Value` / `-p NodeId.ParameterName=Value`.
+     - Ejecución desatendida en modo vigilante: `--watch` / `-w`.
+     - Generación de reportes de ejecución JSON estructurados: `--json-summary <report.json>` / `--summary <report.json>`.
+   - Pruebas unitarias: `WorkflowCliRunnerTests.cs`.
+
+4. **Fase 4: Puntos de Control y Reanudación de Flujos Interrumpidos (*State Checkpointing & Resumption*)**:
+   - Nuevo `WorkflowCheckpointManager` con persistencia en `%LocalAppData%/FileFlowStudio/checkpoints/` y soporte thread-safe de guardado/lectura/limpieza.
+   - `WorkflowExecutor`: detección y reanudación automática de puntos de control pendientes, omisión inteligente de archivos ya procesados (`CompletedFileKeys`), guardado progresivo en nodos terminales y limpieza limpia al completar todo el flujo sin errores.
+   - Opciones CLI `--resume` y `--no-checkpoint`.
+   - Pruebas unitarias: `WorkflowCheckpointTests.cs`.
+
+5. **Validación Global de la Suite de Pruebas**:
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **353 / 353 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Nuevo Plugin de Red y Almacenamiento en Servidores (`FileFlow.Plugin.Network`)
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Nuevo Proyecto de Plugin Puro .NET 9 (`FileFlow.Plugin.Network`)**:
+   - Totalmente desacoplado: solo referencia a `FileFlow.Sdk` y librerías estandarizadas de dominio (`FluentFTP` v52.0.0 y `SSH.NET` v2024.2.0).
+   - Registrado en la solución `FileFlow.slnx`, `FileFlow.App.csproj` (Target `CopyPlugins`) y `FileFlow.Tests.csproj`.
+
+2. **Nodos Implementados**:
+   - **`FtpUploadNode`**: Subida asíncrona a servidores FTP y FTPS (TLS/SSL explícito e implícito, modo pasivo/activo, creación recursiva de directorios remotos). Genera metadatos `{RemoteUrl}`, `{RemotePath}` y `{UploadedBytes}`.
+   - **`SftpUploadNode`**: Transferencia cifrada mediante SSH/SFTP hacia servidores Linux, VPS y hosting con soporte para autenticación por contraseña y llaves privadas RSA/Ed25519 (`.pem`/`.key`).
+   - **`SmbCopyNode`**: Copia asíncrona de alto rendimiento a rutas compartidas de red local y unidades NAS (`\\NAS\Backups\...`) con buffer optimizado de 80 KB y política de reintentos exponenciales ante microcortes de red.
+   - **`WebDavUploadNode`**: Subida a servidores WebDAV, Nextcloud, ownCloud y almacenamiento NAS mediante HTTP PUT y creación automática de colecciones remotas con `MKCOL`.
+   - **`RemoteDownloadNode`**: Descarga de ficheros remotos desde URLs HTTP, HTTPS o WebDAV hacia una carpeta local (compatible con `{GlobalOutputDir}`) para alimentar el flujo de trabajo.
+
+3. **Helper de Plantillas Dinámicas en Red (`NetworkTemplateHelper`)**:
+   - Resolución automática de tokens en rutas y nombres remotos: `{FileName}`, `{FileNameWithoutExtension}`, `{Extension}`, `{Date}`, `{Year}`, `{Month}`, `{Day}`, `{Hour}`, `{Minute}`, `{Second}`, `{OriginalDirectoryName}` y metadatos personalizados `{Key}`.
+
+4. **Integración en la UI y Catálogo de Nodos**:
+   - Nueva categoría **`Network & Remote`** (🌐 Red y Servidores) descubierta dinámicamente en el selector desplegable `ComboBox`.
+   - Iconos temáticos integrados: `🌐` Categoría, `📤` FTP, `🔒` SFTP, `🖧` SMB/NAS, `☁️` WebDAV, `📥` Descarga.
+
+5. **Validación y Suite de Pruebas**:
+   - Creada suite de pruebas unitarias `NetworkNodesTests.cs` en `FileFlow.Tests/Unit/Plugins/Network/`.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **346 / 346 pruebas pasadas al 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Categorías Dinámicas y Selector Desplegable Moderno (Dropdown ComboBox) en el Catálogo de Nodos
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Descubrimiento 100% Dinámico de Categorías de Plugins (`ToolboxViewModel`)**:
+   - Modelo `ToolboxCategoryFilterItem` con clave técnica (`Key`), nombre traducido dinámicamente (`DisplayName`), icono representativo (`Icon`), conteo en tiempo real (`Count`) y estado de selección (`IsSelected`).
+   - Propiedad `SelectedCategoryItem` con sincronización bidireccional inmediata con el control desplegable `ComboBox`.
+   - Escaneo automático en tiempo de ejecución de `_pluginLoader.DiscoveredNodeTypes` para extraer todas las categorías presentes en plugins cargados (incluyendo la nueva categoría `Documents` de PDFs, `Scripting`, `Images`, `Hashing`, etc., así como futuros plugins de terceros).
+   - Cálculo reactivo de contadores de nodos por categoría respetando la búsqueda por texto y favoritos.
+
+2. **Selector Desplegable Moderno (Dropdown / ComboBox Temático) en 1 Sola Línea (`NodeToolboxView.xaml`)**:
+   - Reemplazo del bloque vertical amontonado de botones por un **control selector desplegable `ComboBox` compacto de 1 sola fila** integrado con los temas dinámicos (`BgSurfaceBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `AccentGlowBrush`).
+   - Muestra de forma concisa el icono, nombre y contador de la categoría activa: `[ 🌐 Todas (28) ▾ ]`, `[ 📄 Documentos y PDFs (4) ▾ ]`, etc.
+   - Menú desplegable con plantilla enriquecida: icono temático, nombre localizado y badge numérico de conteo `(N)` alineado a la derecha.
+   - Libera todo el espacio vertical del panel lateral para la exploración visual de las tarjetas de nodos.
+
+3. **Localización e Internacionalización Completa (i18n)**:
+   - Claves de categorías añadidas a `Strings.resx` y `Strings.es.resx` (`Category_Documents`, `Category_Images`, `Category_Scripting`, etc.) con traducción en caliente.
+
+4. **Validación y Suite de Pruebas**:
+   - Añadidos tests unitarios `AvailableCategories_ShouldDynamicallyIncludeNewPluginCategoriesAndCounts`, `SetCategoryFilter_ShouldFilterNodesAndHighlightSelectedChip` y `SelectedCategoryItem_ShouldFilterNodes_WhenChangedByDropdown` en `ToolboxViewModelTests.cs`.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **341 / 341 pruebas pasadas al 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Implementación Secuencial Completa: 5 Nuevas Funcionalidades Mayores
+
+### 📋 Acciones y Mejoras Realizadas
+
+1. **Tarea 1: Notas Adhesivas / Sticky Notes en el Canvas (`AnnotationViewModel` & `AnnotationCardView`)**:
+   - Modelos de datos `WorkflowAnnotation` con serialización JSON bidireccional (`X`, `Y`, `Width`, `Height`, `Title`, `Content`, `Color`).
+   - Componente visual `AnnotationCardView` con selector de 6 colores pastel, redimensionado interactivo por `Thumb`, edición en vivo y **soporte completo de arrastre y reposicionamiento en el lienzo mediante `HeaderThumb_DragDelta`**.
+   - Enlace `CanvasDecorators` polimórfico en `NodifyEditor` y botón `📝 Nota` en la barra de zoom.
+
+2. **Tarea 2: Marcos de Agrupación Visual ("Group Frames / Group Boxes")**:
+   - Modelo `WorkflowGroup` y `GroupViewModel` enlazados a nodos con `NodeIds`.
+   - Componente visual `GroupCardView` con selector de paleta de color para el encabezado/borde y redimensionado mediante `ResizeThumb`.
+   - **Corrección de Interacción Completa (Hit-Testing Preciso)**: Estructura desacoplada en `GroupCardView.xaml` donde el fondo interior translúcido es `IsHitTestVisible="False"` para permitir hacer clic y arrastrar los nodos interiores sin interferencias, mientras que la cabecera (título, paleta de colores, botón eliminar, arrastre de grupo) y el tirador inferior `ResizeThumb` mantienen `IsHitTestVisible="True"` activo en todo momento.
+   - **Contención Espacial Dinámica y Estricta**: `HeaderThumb_DragDelta` evalúa en tiempo real si el centro del nodo está contenido estrictamente dentro de los límites del marco del grupo (`[groupLeft, groupRight]` y `[groupTop, groupBottom]`), sincronizando `NodeIds`. Si un nodo se arrastra fuera de la ventana del grupo, queda automáticamente desacoplado y deja de moverse con el marco; asimismo, los nodos externos cercanos no son capturados por error.
+   - Comando `GroupSelectedNodesCommand` (`Ctrl+G`) que calcula el bounding box automático de los nodos seleccionados.
+   - Botón `🔲 Grupo` en la barra de herramientas del editor.
+
+3. **Tarea 3: Ejecutor Headless / CLI Runner (`WorkflowCliRunner`)**:
+   - Módulo desacoplado en `FileFlow.Core/Engine/WorkflowCliRunner.cs` para ejecución desatendida por línea de comandos.
+   - Argumentos soportados: `--run / -r <workflow.json>`, `--input / -i <path>`, `--output / -o <path>`, `--dryrun / -d`, `--silent / -s`, `--help / -h`.
+   - Integración directa en `App.xaml.cs` que ejecuta en modo consola sin inicializar UI gráfica y retorna el código de salida adecuado (`0` / `1`).
+
+4. **Tarea 4: Plugin de Documentos y PDFs (`FileFlow.Plugin.Documents`)**:
+   - Nuevo proyecto de plugin puro .NET 9 con dependencias en `PdfSharp` y `PdfPig`.
+   - Implementados 4 nuevos nodos de procesamiento de documentos:
+     - `PdfMergeNode`: Combina múltiples archivos PDF en un archivo consolidado.
+     - `PdfSplitNode`: Divide documentos multipágina en páginas individuales con nombres dinámicos.
+     - `PdfTextExtractorNode`: Extrae texto completo de PDFs hacia metadatos o archivos `.txt`.
+     - `PdfMetadataNode`: Lee e inspecciona metadatos y permite actualizarlos con resolución de plantillas.
+
+6. **Validación y Suite de Pruebas**:
+   - Añadidos `AnnotationViewModelTests`, `GroupViewModelTests`, `WorkflowCliRunnerTests` y `DocumentsTests`.
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **340 / 340 pruebas unitarias e integración pasadas al 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-02] - Variable Global de Salida por Defecto (`{GlobalOutputDir}` / `{DefaultOutputDir}`) en Nodos y Expresiones
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Centralización en el SDK (`AppPaths.cs`)**:
+   - Incorporada la propiedad `AppPaths.DefaultGlobalOutputDir` con resolución automática para entorno estándar (`%USERPROFILE%/Documents/FileFlowStudio/Output`) y modo portable (`data/output`).
+   - `UserPreferencesService` y `UserPreferencesData` sincronizados para usar `AppPaths.DefaultGlobalOutputDir` de forma nativa.
+2. **Ampliación de Resolución en `SystemVariablesResolver.cs` y `VariableTemplateResolver`**:
+   - Soporte para variables `{GlobalOutputDir}`, `{DefaultOutputDir}`, `{DefaultGlobalOutputDir}`, `{GlobalOutputPath}`, `{DefaultOutputPath}`, `{GlobalOutput}`, `{DefaultOutput}`, `{OutputDir}`, `{DefaultDir}` y sintaxis clásica `<GlobalOutputDir>`, `<DefaultOutputDir>`.
+   - Búsqueda en metadatos del elemento (`Metadata["GlobalOutputDir"]`, `Metadata["DefaultGlobalOutputDir"]`, etc.) con fallback determinista a `AppPaths.DefaultGlobalOutputDir`.
+3. **Integración en Asistentes y Catálogos de UI**:
+   - `VariableDiscoveryService.cs`: Agregadas `{GlobalOutputDir}` y `{DefaultOutputDir}` al grupo de variables `🌐 System & Environment`.
+   - `RenamerTagCatalogService.cs`: Incorporadas en la sección `"Sistema y Archivo"` para el Renombrador Avanzado.
+4. **Validación y Suite de Pruebas**:
+   - Nuevos tests en `GlobalOutputDirTests.cs` (`VariableTemplateResolver_ResolvesAllGlobalOutputDirAliases`, `VariableTemplateResolver_WithoutExplicitMetadata_FallsBackToAppPathsDefault`).
+   - `dotnet test FileFlow.slnx` $\rightarrow$ **320 / 320 pruebas pasadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
 ## [2026-09-02] - Reportes de Operaciones en Memoria, Eliminación de `DestinationFolder` y Ciclo de Vida `OnWorkflowCompletedAsync`
 
 ### 📋 Acciones y Mejoras Realizadas

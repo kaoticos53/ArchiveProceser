@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_WindowTitle]}"
-        Height="520" Width="620"
+        Height="580" Width="700" MinHeight="520" MinWidth="650"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BgSurfaceBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
@@ -212,6 +212,128 @@
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>
+                </Border>
+            </TabItem>
+
+            <!-- Tab 5: Modelos de IA -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabAiModels]}" Padding="10,4" Cursor="Hand">
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,10,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Title]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Desc]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Click="OpenAiModelDownloadDialog_Click" Style="{DynamicResource SecondaryButton}" Padding="10,4" VerticalAlignment="Center" Margin="8,0,0,0" Cursor="Hand">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_OpenDialog]}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Actions bar -->
+                        <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,0,8">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <Button x:Name="BtnDownloadAllMissing" Click="DownloadAllMissing_Click" Style="{DynamicResource PrimaryButton}" Padding="10,4" Margin="0,0,6,0" Cursor="Hand">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DownloadAll]}" FontSize="10.5" />
+                                    </Button>
+                                    <Button Click="RefreshAiModels_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" Cursor="Hand">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Refresh]}" FontSize="10.5" />
+                                    </Button>
+                                    <Button Click="OpenAiModelsFolder_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Cursor="Hand">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_OpenDir]}" FontSize="10.5" />
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="TxtAiModelsSummary" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Models list -->
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="AiModelsItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="28" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="110" />
+                                                    <ColumnDefinition Width="100" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Status icon -->
+                                                <TextBlock Grid.Column="0" Text="{Binding StatusIcon}" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center" />
+
+                                                <!-- Details -->
+                                                <StackPanel Grid.Column="1" Margin="6,0,8,0" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Background="{DynamicResource AccentGlowBrush}" CornerRadius="3" Padding="4,1" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Category}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding ExpectedSizeLabel, StringFormat='({0})'}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+
+                                                    <!-- Progress Bar -->
+                                                    <ProgressBar Value="{Binding Progress}" Maximum="100" Height="4" Margin="0,4,0,0"
+                                                                 Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                 Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                                 Background="{DynamicResource BgCardBrush}" />
+                                                    <TextBlock Text="{Binding ProgressText}" FontSize="9" Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                               Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,1,0,0" />
+                                                </StackPanel>
+
+                                                <!-- Status text -->
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="10.5" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{Binding DiskSizeLabel}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" Margin="0,1,0,0" />
+                                                </StackPanel>
+
+                                                <!-- Action button -->
+                                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                    <Button Content="⬇️ Descargar"
+                                                            Tag="{Binding}"
+                                                            Click="DownloadAiModelItem_Click"
+                                                            IsEnabled="{Binding CanDownload}"
+                                                            Visibility="{Binding IsDownloaded, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                                            Style="{DynamicResource PrimaryButton}"
+                                                            Padding="8,4" FontSize="10" Cursor="Hand" />
+                                                    <Button Content="🗑️"
+                                                            Tag="{Binding}"
+                                                            Click="DeleteAiModelItem_Click"
+                                                            Visibility="{Binding IsDownloaded, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                            Style="{DynamicResource SecondaryButton}"
+                                                            Padding="6,4" FontSize="10" Cursor="Hand"
+                                                            ToolTip="Eliminar modelo del disco" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- Footer: Folder path -->
+                        <Border Grid.Row="3" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="4" Padding="6,3" Margin="0,6,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📁 " FontSize="9.5" VerticalAlignment="Center" />
+                                <TextBlock x:Name="TxtAiModelsDir" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Border>
             </TabItem>
         </TabControl>

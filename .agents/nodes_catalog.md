@@ -215,3 +215,40 @@
    - Parámetros: `Language` (CSharp, JavaScript), `ScriptCode` (string), `InputPorts` (string), `OutputPorts` (string), `TimeoutSeconds` (int)
    - Acción Personalizada: `OpenScriptStudio` (💻 Editor de Scripts con AvalonEdit, probador en vivo y biblioteca de plantillas).
    - Función: Ejecuta lógica de programación personalizada del usuario en C# (Roslyn JIT en memoria) o JavaScript (sandbox Jint), permitiendo bifurcación multicanal, modificación de metadatos, tags y operaciones avanzadas sin compilar código externo.
+
+---
+
+## 8. Módulo: FileFlow.Plugin.Documents (4 Nodos)
+1. **PdfMergeNode** (Fusión de documentos PDF)
+2. **PdfSplitNode** (División de páginas de documentos PDF)
+3. **PdfTextExtractorNode** (Extracción de texto estructurado de PDFs)
+4. **PdfMetadataNode** (Lectura y edición de metadatos de documentos PDF)
+
+---
+
+## 9. Módulo: FileFlow.Plugin.Network (5 Nodos)
+1. **FtpUploadNode** (Subida segura a servidores FTP/FTPS)
+2. **SftpUploadNode** (Transferencia cifrada SSH/SFTP hacia servidores Linux/VPS)
+3. **SmbCopyNode** (Copia a carpetas de red local y almacenamiento NAS UNC)
+4. **WebDavUploadNode** (Sincronización con nubes privadas Nextcloud y ownCloud)
+5. **RemoteDownloadNode** (Descarga remota de archivos vía HTTP, HTTPS y FTP)
+
+---
+
+## 10. Módulo: FileFlow.Plugin.Data (7 Nodos)
+1. **ExcelReaderNode** (Lectura y streaming de filas de hojas Excel .xlsx)
+2. **CsvReaderNode** (Lectura de archivos delimitados CSV, TSV y TXT con autodetección)
+3. **DataLookupNode** (Cruce y enriquecimiento de metadatos VLOOKUP en memoria)
+4. **ExcelReportGeneratorNode** (Generación de reportes tabulares consolidados en .xlsx)
+5. **CsvExportNode** (Exportación y acumulación de metadatos a archivos delimitados CSV)
+6. **SqliteDatabaseSinkNode** (Registro de trazabilidad y auditoría en bases de datos SQLite)
+7. **DataFormatConverterNode** (Conversión directa entre formatos estructurados Excel ⇄ CSV ⇄ JSON)
+
+---
+
+## 11. Módulo: FileFlow.Plugin.AI (5 Nodos)
+1. **LocalOcrNode** (Reconocimiento óptico de caracteres para imágenes y documentos)
+2. **SmartImageClassifierNode** (Clasificador temático de fotos por visión artificial)
+3. **FaceDetectorNode** (Detector y contador de rostros humanos con bifurcación dual)
+4. **ObjectDetectorNode** (Detección múltiple de objetos y personas con modelo YOLO)
+5. **LocalWhisperTranscriberNode** (Transcriptor de voz a texto y generador de subtítulos .srt)

@@ -93,6 +93,43 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isProgressActive;
 
+    [ObservableProperty]
+    private string _latencyText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isBottleneck;
+
+    [ObservableProperty]
+    private FileFlow.Sdk.Telemetry.LatencyHeatLevel _heatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
+
+    [ObservableProperty]
+    private string _bottleneckRatioText = string.Empty;
+
+    public void UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
+    {
+        if (stats.ProcessedCount > 0)
+        {
+            LatencyText = stats.AverageTimeMs < 1.0
+                ? $"⚡ {stats.AverageTimeMs * 1000:F0} µs"
+                : (stats.AverageTimeMs < 1000.0
+                    ? $"⚡ {stats.AverageTimeMs:F1} ms"
+                    : $"⏱️ {stats.AverageTimeMs / 1000.0:F2} s");
+
+            IsBottleneck = stats.IsBottleneck;
+            HeatLevel = stats.HeatLevel;
+            BottleneckRatioText = stats.RelativeBottleneckRatio > 0.05
+                ? $"{stats.RelativeBottleneckRatio * 100:F0}% del tiempo"
+                : string.Empty;
+        }
+        else
+        {
+            LatencyText = string.Empty;
+            IsBottleneck = false;
+            HeatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
+            BottleneckRatioText = string.Empty;
+        }
+    }
+
     partial void OnExecutionStatusChanged(NodeExecutionStatus value)
     {
         IsLedOn = value == NodeExecutionStatus.Running || value == NodeExecutionStatus.Completed;
@@ -101,6 +138,10 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             IsProgressActive = false;
             ProgressPercentage = 0;
             ProgressMessage = string.Empty;
+            LatencyText = string.Empty;
+            IsBottleneck = false;
+            HeatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
+            BottleneckRatioText = string.Empty;
         }
         else if (value == NodeExecutionStatus.Completed)
         {

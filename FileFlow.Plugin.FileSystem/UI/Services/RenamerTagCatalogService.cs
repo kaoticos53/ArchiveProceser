@@ -23,6 +23,8 @@ public static class RenamerTagCatalogService
             new("Sistema y Archivo", "<CurrentPath>", "Ruta absoluta actual"),
             new("Sistema y Archivo", "<OriginalPath>", "Ruta de origen original del archivo"),
             new("Sistema y Archivo", "<RelativePath>", "Ruta relativa respecto al directorio raíz"),
+            new("Sistema y Archivo", "{GlobalOutputDir}", "Ruta del directorio global de salida por defecto"),
+            new("Sistema y Archivo", "{DefaultOutputDir}", "Ruta del directorio global de salida por defecto"),
             new("Sistema y Archivo", "{UserName}", "Nombre del usuario del sistema"),
             new("Sistema y Archivo", "{MachineName}", "Nombre del equipo / host"),
 

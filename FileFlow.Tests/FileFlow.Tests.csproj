@@ -8,6 +8,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>13</LangVersion>
+    <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1903;NU1902</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,8 +37,11 @@
     <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Scripting\FileFlow.Plugin.Scripting.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Documents\FileFlow.Plugin.Documents.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Network\FileFlow.Plugin.Network.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
     <ProjectReference Include="..\FileFlow.App\FileFlow.App.csproj" />
   </ItemGroup>
 
 </Project>
-

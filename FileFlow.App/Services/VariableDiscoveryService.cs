@@ -29,6 +29,8 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         systemGroup.Variables.Add(new VariableItem("Counter", "{Counter}", "Item sequence index in batch (e.g. 1, 2, 3)"));
         systemGroup.Variables.Add(new VariableItem("SizeMB", "{SizeMB}", "File size in Megabytes (e.g. 4.25MB)"));
         systemGroup.Variables.Add(new VariableItem("SizeKB", "{SizeKB}", "File size in Kilobytes"));
+        systemGroup.Variables.Add(new VariableItem("GlobalOutputDir", "{GlobalOutputDir}", "Default global output directory path"));
+        systemGroup.Variables.Add(new VariableItem("DefaultOutputDir", "{DefaultOutputDir}", "Default global output directory path"));
         systemGroup.Variables.Add(new VariableItem("UserName", "{UserName}", "Windows user name"));
         systemGroup.Variables.Add(new VariableItem("MachineName", "{MachineName}", "Environment host computer name"));
         result.Add(systemGroup);

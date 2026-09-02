@@ -1,12 +1,16 @@
 <Solution>
   <Project Path="FileFlow.App/FileFlow.App.csproj" />
   <Project Path="FileFlow.Core/FileFlow.Core.csproj" />
+  <Project Path="FileFlow.Plugin.AI/FileFlow.Plugin.AI.csproj" />
   <Project Path="FileFlow.Plugin.Archives/FileFlow.Plugin.Archives.csproj" />
+  <Project Path="FileFlow.Plugin.Data/FileFlow.Plugin.Data.csproj" />
+  <Project Path="FileFlow.Plugin.Documents/FileFlow.Plugin.Documents.csproj" />
   <Project Path="FileFlow.Plugin.FileSystem/FileFlow.Plugin.FileSystem.csproj" />
   <Project Path="FileFlow.Plugin.Hashing/FileFlow.Plugin.Hashing.csproj" />
   <Project Path="FileFlow.Plugin.Images/FileFlow.Plugin.Images.csproj" />
   <Project Path="FileFlow.Plugin.Integrations/FileFlow.Plugin.Integrations.csproj" />
   <Project Path="FileFlow.Plugin.Logic/FileFlow.Plugin.Logic.csproj" />
+  <Project Path="FileFlow.Plugin.Network/FileFlow.Plugin.Network.csproj" />
   <Project Path="FileFlow.Plugin.Scripting/FileFlow.Plugin.Scripting.csproj" />
   <Project Path="FileFlow.Sdk/FileFlow.Sdk.csproj" />
   <Project Path="FileFlow.Tests/FileFlow.Tests.csproj" />

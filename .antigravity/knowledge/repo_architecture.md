@@ -24,6 +24,8 @@ ArchiveProceser/
 ├── FileFlow.Plugin.Hashing/          # Plugin de integridad criptográfica (SHA, MD5) y deduplicación en memoria
 ├── FileFlow.Plugin.Archives/         # Plugin de descompresión inteligente (SharpCompress)
 ├── FileFlow.Plugin.Images/           # Plugin de optimización y metadatos EXIF (ImageSharp)
+├── FileFlow.Plugin.Documents/        # Plugin de documentos y PDFs (PdfSharp, PdfPig: Merge, Split, Text Extract, Metadata)
+├── FileFlow.Plugin.Scripting/        # Plugin de scripting dinámico en C# (Roslyn) y JavaScript (Jint)
 ├── FileFlow.Plugin.Integrations/     # Plugin de integraciones externas (CLI Process Runner, Webhooks HTTP)
 └── FileFlow.Tests/                   # Suite de Pruebas Unitarias e Integración xUnit (.NET 9)
 ```

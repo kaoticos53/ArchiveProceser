@@ -360,6 +360,24 @@ public partial class LogViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void PreviewLogFile(StructuredLogRecord? log)
+    {
+        var targetLog = log ?? SelectedLog;
+        if (targetLog == null) return;
+
+        string? filePath = targetLog.FilePath;
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            MessageBox.Show("No se encontró ningún archivo físico asociado a esta línea de log para previsualizar.", "Vista Previa", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var ctx = new FileFlow.App.Preview.Core.FilePreviewContext(filePath);
+        var win = new FileFlow.App.Preview.Views.FilePreviewerWindow();
+        _ = win.ShowPreviewAsync(ctx, owner: Application.Current.MainWindow);
+    }
+
+    [RelayCommand]
     public async Task ExportLogs()
     {
         if (TotalLogsCount == 0) return;

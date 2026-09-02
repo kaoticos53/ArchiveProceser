@@ -45,7 +45,14 @@ public partial class WorkflowSettingsWindow : Window
         TxtFfprobe.Text = tools.FfprobePath;
         TxtSevenZip.Text = tools.SevenZipPath;
         TxtPython.Text = tools.PythonPath;
+
+        // Tab 5: AI Models
+        AiModelsItemsControl.ItemsSource = _aiModelManagerVm.Models;
+        TxtAiModelsDir.Text = _aiModelManagerVm.ModelsDirectory;
+        TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
     }
+
+    private readonly ViewModels.AiModelManagerViewModel _aiModelManagerVm = new();
 
     private string currentGlobalOutputDirOrDefault(UserPreferencesData prefs)
     {
@@ -212,6 +219,58 @@ public partial class WorkflowSettingsWindow : Window
         win.Owner = this;
         win.ShowDialog();
         PopulateThemesCombo(ThemeManager.Instance.CurrentThemeId);
+    }
+
+    private void OpenAiModelDownloadDialog_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new AiModelDownloadDialog();
+        dlg.Owner = this;
+        dlg.ShowDialog();
+        _aiModelManagerVm.RefreshStatus();
+        TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+    }
+
+    private async void DownloadAllMissing_Click(object sender, RoutedEventArgs e)
+    {
+        BtnDownloadAllMissing.IsEnabled = false;
+        try
+        {
+            await _aiModelManagerVm.DownloadMissingModelsAsync();
+        }
+        finally
+        {
+            BtnDownloadAllMissing.IsEnabled = true;
+            TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+        }
+    }
+
+    private void RefreshAiModels_Click(object sender, RoutedEventArgs e)
+    {
+        _aiModelManagerVm.RefreshStatus();
+        TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+    }
+
+    private void OpenAiModelsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        _aiModelManagerVm.OpenModelsFolder();
+    }
+
+    private async void DownloadAiModelItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ViewModels.AiModelItemViewModel item)
+        {
+            await _aiModelManagerVm.DownloadModelAsync(item);
+            TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+        }
+    }
+
+    private void DeleteAiModelItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ViewModels.AiModelItemViewModel item)
+        {
+            _aiModelManagerVm.DeleteModel(item);
+            TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+        }
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

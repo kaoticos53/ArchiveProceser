@@ -83,11 +83,17 @@
                             <TextBlock Text="{Binding InspectedNode.Category}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
                         </StackPanel>
 
-                        <!-- Botón Probar Nodo -->
-                        <Button Grid.Column="1" Command="{Binding TestNodeWithCustomFileCommand}" Style="{StaticResource SecondaryButton}" 
-                                Padding="10,5" Margin="0,0,8,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestNodeToolTip]}">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestBtn]}" FontSize="11" FontWeight="SemiBold" />
-                        </Button>
+                        <!-- Botones de Acción: Vista Previa y Probar Nodo -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,8,0">
+                            <Button Command="{Binding OpenQuickPreviewCommand}" Style="{StaticResource SecondaryButton}" 
+                                    Padding="10,5" Margin="0,0,6,0" ToolTip="Abrir Vista Previa (QuickLook) del archivo seleccionado">
+                                <TextBlock Text="👁️ Previsualizar" FontSize="11" FontWeight="SemiBold" Foreground="#00E5FF" />
+                            </Button>
+                            <Button Command="{Binding TestNodeWithCustomFileCommand}" Style="{StaticResource SecondaryButton}" 
+                                    Padding="10,5" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestNodeToolTip]}">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestBtn]}" FontSize="11" FontWeight="SemiBold" />
+                            </Button>
+                        </StackPanel>
 
                         <!-- Botón Cerrar -->
                         <Button Grid.Column="2" Command="{Binding ClosePanelCommand}" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ClosePanelToolTip]}">

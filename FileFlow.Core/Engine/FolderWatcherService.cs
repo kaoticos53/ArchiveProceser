@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading.Channels;
 using FileFlow.Sdk;
 
@@ -7,10 +8,11 @@ namespace FileFlow.Core.Engine;
 /// <summary>
 /// Servicio de supervisión de carpetas en tiempo real (Watch Folder) con mecanismo de debounce
 /// anti-colisión para garantizar que los archivos hayan finalizado su escritura en disco antes de procesarlos.
+/// Soporta múltiples carpetas de origen simultáneas.
 /// </summary>
 public class FolderWatcherService : IDisposable
 {
-    private FileSystemWatcher? _watcher;
+    private readonly List<FileSystemWatcher> _watchers = [];
     private readonly ConcurrentDictionary<string, DateTime> _pendingFiles = new(StringComparer.OrdinalIgnoreCase);
     private readonly Channel<FileItemContext> _itemChannel = Channel.CreateUnbounded<FileItemContext>(new UnboundedChannelOptions
     {
@@ -20,61 +22,107 @@ public class FolderWatcherService : IDisposable
 
     private CancellationTokenSource? _cts;
     private Task? _processingTask;
+    private readonly Lock _lock = new();
 
-    public bool IsWatching => _watcher != null && _watcher.EnableRaisingEvents;
+    public bool IsWatching
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _watchers.Count > 0 && _watchers.Any(w => w.EnableRaisingEvents);
+            }
+        }
+    }
+
     public ChannelReader<FileItemContext> ItemReader => _itemChannel.Reader;
+    public event Action<FileItemContext>? ItemDiscovered;
 
     public void Start(string folderPath, string filter = "*.*", bool includeSubdirectories = true, int debounceMs = 1000)
     {
-        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
-        {
-            throw new DirectoryNotFoundException($"Watch Directory '{folderPath}' does not exist.");
-        }
+        Start([folderPath], filter, includeSubdirectories, debounceMs);
+    }
 
+    public void Start(IEnumerable<string> folderPaths, string filter = "*.*", bool includeSubdirectories = true, int debounceMs = 1000)
+    {
         Stop();
 
-        _cts = new CancellationTokenSource();
-        _watcher = new FileSystemWatcher(folderPath, filter)
+        lock (_lock)
         {
-            IncludeSubdirectories = includeSubdirectories,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size
-        };
+            _cts = new CancellationTokenSource();
 
-        _watcher.Created += OnFileSystemEvent;
-        _watcher.Changed += OnFileSystemEvent;
-        _watcher.Renamed += OnRenamedEvent;
-        _watcher.EnableRaisingEvents = true;
+            foreach (var rawPath in folderPaths)
+            {
+                if (string.IsNullOrWhiteSpace(rawPath)) continue;
+                string expandedPath = Environment.ExpandEnvironmentVariables(rawPath);
 
-        _processingTask = Task.Run(() => ProcessPendingQueueAsync(debounceMs, _cts.Token));
+                if (!Directory.Exists(expandedPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(expandedPath);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+                }
+
+                var watcher = new FileSystemWatcher(expandedPath, filter)
+                {
+                    IncludeSubdirectories = includeSubdirectories,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size
+                };
+
+                watcher.Created += OnFileSystemEvent;
+                watcher.Changed += OnFileSystemEvent;
+                watcher.Renamed += OnRenamedEvent;
+                watcher.EnableRaisingEvents = true;
+
+                _watchers.Add(watcher);
+            }
+
+            if (_watchers.Count > 0)
+            {
+                _processingTask = Task.Run(() => ProcessPendingQueueAsync(debounceMs, _cts.Token));
+            }
+        }
     }
 
     public void Stop()
     {
-        if (_watcher != null)
+        lock (_lock)
         {
-            _watcher.EnableRaisingEvents = false;
-            _watcher.Created -= OnFileSystemEvent;
-            _watcher.Changed -= OnFileSystemEvent;
-            _watcher.Renamed -= OnRenamedEvent;
-            _watcher.Dispose();
-            _watcher = null;
-        }
-
-        if (_cts != null)
-        {
-            _cts.Cancel();
-            try
+            foreach (var watcher in _watchers)
             {
-                _processingTask?.Wait(1000);
+                try
+                {
+                    watcher.EnableRaisingEvents = false;
+                    watcher.Created -= OnFileSystemEvent;
+                    watcher.Changed -= OnFileSystemEvent;
+                    watcher.Renamed -= OnRenamedEvent;
+                    watcher.Dispose();
+                }
+                catch { }
             }
-            catch { }
+            _watchers.Clear();
 
-            _cts.Dispose();
-            _cts = null;
-            _processingTask = null;
+            if (_cts != null)
+            {
+                _cts.Cancel();
+                try
+                {
+                    _processingTask?.Wait(1000);
+                }
+                catch { }
+
+                _cts.Dispose();
+                _cts = null;
+                _processingTask = null;
+            }
+
+            _pendingFiles.Clear();
         }
-
-        _pendingFiles.Clear();
     }
 
     private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
@@ -96,11 +144,12 @@ public class FolderWatcherService : IDisposable
 
     private async Task ProcessPendingQueueAsync(int debounceMs, CancellationToken cancellationToken)
     {
+        int pollInterval = Math.Min(100, Math.Max(25, debounceMs / 4));
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                await Task.Delay(250, cancellationToken);
+                await Task.Delay(pollInterval, cancellationToken);
                 var now = DateTime.UtcNow;
 
                 foreach (var (filePath, lastEventTime) in _pendingFiles.ToArray())
@@ -113,11 +162,16 @@ public class FolderWatcherService : IDisposable
                         {
                             if (_pendingFiles.TryRemove(filePath, out _))
                             {
-                                var item = new FileItemContext(filePath);
+                                var item = new FileItemContext(filePath)
+                                {
+                                    OriginalPath = filePath,
+                                    FileSizeBytes = new FileInfo(filePath).Length
+                                };
                                 item.Metadata["WatchFolderEvent"] = "CreatedOrChanged";
                                 item.Metadata["DetectedAt"] = DateTime.UtcNow.ToString("o");
-                                item.AddLog($"FolderWatcherService: File ready after debounce ({filePath})");
+                                item.AddLog($"FolderWatcherService: Archivo detectado tras debounce ({filePath})");
 
+                                ItemDiscovered?.Invoke(item);
                                 await _itemChannel.Writer.WriteAsync(item, cancellationToken);
                             }
                         }
@@ -130,7 +184,7 @@ public class FolderWatcherService : IDisposable
             }
             catch
             {
-                // Ignore transient polling exceptions
+                // Ignorar excepciones transitorias de polling
             }
         }
     }
@@ -144,7 +198,7 @@ public class FolderWatcherService : IDisposable
         }
         catch (IOException)
         {
-            // File is locked by another process writing to it
+            // El archivo sigue bloqueado por otro proceso en escritura
             return false;
         }
         catch (UnauthorizedAccessException)

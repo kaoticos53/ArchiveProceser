@@ -9,6 +9,8 @@
     <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
     <!-- Reduce carpetas de idioma satelite (cs/de/fr/it/ja/ko/pl/pt-BR/ru/tr/zh-Hans/zh-Hant) generadas por WPF/.NET -->
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1903;NU1902</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +23,10 @@
     <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Scripting\FileFlow.Plugin.Scripting.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Documents\FileFlow.Plugin.Documents.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Network\FileFlow.Plugin.Network.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,6 +45,10 @@
       <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Archives.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Integrations.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Scripting\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Scripting.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.AI\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.AI.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Documents\bin\$(Configuration)\net9.0\FileFlow.Plugin.Documents.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Network\bin\$(Configuration)\net9.0\FileFlow.Plugin.Network.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Data\bin\$(Configuration)\net9.0\FileFlow.Plugin.Data.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\net9.0\FileFlow.Plugin.Images.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\net9.0\FileFlow.Plugin.Logic.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\net9.0\FileFlow.Plugin.Hashing.*" />

@@ -351,7 +351,147 @@ Any text input, output directory, or file name template supports dynamic variabl
 
 ---
 
-## 6. Example Flows and Built-In Templates
+### Category 8: Documents & PDFs (`FileFlow.Plugin.Documents`)
+
+#### 1. `PdfMergeNode` (PDF File Merging)
+- **Purpose:** Combines multiple PDF documents into a single merged file using `PdfSharp`.
+- **Ports:** `In` $\rightarrow$ `Out`, `MergedOut`.
+
+#### 2. `PdfSplitNode` (PDF Document Splitter)
+- **Purpose:** Splits multi-page PDF documents into individual pages or custom ranges.
+- **Ports:** `In` $\rightarrow$ `PageOut`, `Error`.
+
+#### 3. `PdfTextExtractorNode` (PDF Text Content Extractor)
+- **Purpose:** Extracts structured text from PDF documents using `PdfPig` for search, classification, or content-based renaming.
+- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 4. `PdfMetadataNode` (PDF Metadata Inspector & Modifier)
+- **Purpose:** Reads and updates standard document metadata (Title, Author, Subject, Keywords).
+- **Ports:** `In` $\rightarrow$ `Out`.
+
+---
+
+### Category 9: Network & Remote Storage (`FileFlow.Plugin.Network`)
+
+#### 1. `FtpUploadNode` (FTP / Secure FTPS Uploader)
+- **Purpose:** Uploads files to FTP/FTPS servers with explicit or implicit TLS/SSL encryption and auto-retry.
+- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 2. `SftpUploadNode` (SSH / SFTP Secure Transfer)
+- **Purpose:** Securely transfers files to Linux servers / VPS over SSH File Transfer Protocol with password or private key (`.pem` / `.ppk`) authentication.
+- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 3. `SmbCopyNode` (Local Network Shares & NAS UNC)
+- **Purpose:** Copies files to Windows UNC network shares (`\\Server\Share`) or NAS storage with domain or local credentials.
+- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 4. `WebDavUploadNode` (Nextcloud & ownCloud WebDAV Storage)
+- **Purpose:** Uploads and syncs files with corporate WebDAV servers or personal cloud instances.
+- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 5. `RemoteDownloadNode` (Remote HTTP / HTTPS / FTP File Downloader)
+- **Purpose:** Downloads remote assets from the web or local intranet directly into the execution pipeline.
+- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
+
+---
+
+### Category 10: Data, Spreadsheets & Databases (`FileFlow.Plugin.Data`)
+
+#### 1. `ExcelReaderNode` (Excel Sheet Row Streamer)
+- **Purpose:** Reads `.xlsx` / `.xls` spreadsheets in high-performance streaming with `MiniExcel`, emitting each row with columns injected into `item.Metadata`.
+- **Ports:** `In` (optional) $\rightarrow$ `RowOut`.
+
+#### 2. `CsvReaderNode` (Delimited File Parser)
+- **Purpose:** Reads CSV, TSV, and delimited text files with auto-detection of delimiters (`,`, `;`, `\t`, `|`) and encoding options.
+- **Ports:** `In` (optional) $\rightarrow$ `RowOut`.
+
+#### 3. `DataLookupNode` (VLOOKUP / Table Matching)
+- **Purpose:** Looks up and enriches the current file against an external reference table (Excel, CSV, JSON) with instant $O(1)$ memory hashing.
+- **Ports:** `In` $\rightarrow$ `Matched`, `Unmatched`.
+
+#### 4. `ExcelReportGeneratorNode` (Styled Excel Report Generator)
+- **Purpose:** Collects metadata from processed files and generates a formatted `.xlsx` summary file upon workflow completion (`OnWorkflowCompletedAsync`).
+- **Ports:** `In` $\rightarrow$ `Out`, `Report`.
+
+#### 5. `CsvExportNode` (CSV / TSV Exporter)
+- **Purpose:** Exports and appends selected metadata fields into a delimited CSV file with customizable delimiters and append mode.
+- **Ports:** `In` $\rightarrow$ `Out`.
+
+#### 6. `SqliteDatabaseSinkNode` (SQLite Audit Log & Storage)
+- **Purpose:** Inserts execution audit records and traceability into a local SQLite database with automatic schema and index creation.
+- **Ports:** `In` $\rightarrow$ `Out`.
+
+#### 7. `DataFormatConverterNode` (Data Format Converter)
+- **Purpose:** Directly converts structured data files between `Excel (.xlsx) ⇄ CSV ⇄ JSON`.
+- **Ports:** `In` $\rightarrow$ `Out`.
+
+---
+
+### Category 11: AI & Computer Vision (`FileFlow.Plugin.AI`)
+
+#### 1. `LocalOcrNode` (Optical Character Recognition OCR)
+- **Purpose:** Extracts text and structured data from images and scanned documents into `{Ocr:Text}`, `{Ocr:WordCount}`, and `{Ocr:Language}`.
+- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 2. `SmartImageClassifierNode` (AI Photo Classifier)
+- **Purpose:** Visually classifies photos into thematic categories (Landscapes, Invoices, Portraits, Vehicles, Food, etc.) in `{AI:Category}`, `{AI:TopLabel}`, and `{AI:Confidence}`.
+- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 3. `FaceDetectorNode` (Human Face Detector)
+- **Purpose:** Detects human faces and branches the pipeline based on presence and count (`{AI:HasFaces}` and `{AI:FaceCount}`).
+- **Ports:** `In` $\rightarrow$ `FacesFound`, `NoFaces`.
+
+#### 4. `ObjectDetectorNode` (YOLO Object Detector)
+- **Purpose:** Detects and identifies multiple everyday objects (people, vehicles, pets, items) in `{AI:DetectedObjects}` and `{AI:TopObject}`.
+- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 5. `LocalWhisperTranscriberNode` (Whisper Speech-to-Text Transcriber)
+- **Purpose:** Transcribes audio and video files to text and synchronized subtitles (`.srt`) in-process and privately into `{Transcript}`.
+- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
+
+---
+
+## 6. Advanced Execution Modes & DAG Engine
+
+### Real-Time Watchdog Trigger Mode
+- Toggle the **`👁️ Vigilante` (Watchdog)** button in the top bar to listen continuously for incoming files in the configured source directories.
+- Automatically processes new or modified files with intelligent debounce to prevent locked-file race conditions.
+
+### Performance Telemetry & Bottleneck Heatmap
+- Microsecond-precision per-node latency measurements via `Stopwatch.GetTimestamp()`.
+- Real-time visual latency badges (`⚡ 12 ms` / `⏱️ 1.4 s`) on node card headers with color-coded warning states (`⚠️ Cuello de botella` / `⚠️ Bottleneck`) for nodes consuming $>35\%$ of total execution time.
+
+### Headless CLI Runner (`fileflow.exe --run`)
+Execute workflows unattended from PowerShell, bash, or Windows Task Scheduler:
+```powershell
+# Standard run with dynamic variable injection
+.\FileFlow.App.exe --run "workflow.json" --input "C:\Data" --var Environment=Production
+
+# Override specific node parameters
+.\FileFlow.App.exe --run "workflow.json" --param Throttle.DelayMilliseconds=50
+
+# Continuous watch mode with structured JSON summary report
+.\FileFlow.App.exe --run "workflow.json" --watch --summary "report.json"
+
+# State checkpoint resumption
+.\FileFlow.App.exe --run "workflow.json" --resume
+```
+
+### State Checkpointing & Resumption
+- Automatically persists progress in `%LocalAppData%/FileFlowStudio/checkpoints/`.
+- If a long-running batch job is interrupted by a power failure or restart, re-running the workflow skips already-completed files (`CompletedFileKeys`).
+
+---
+
+## 7. Canvas Design & Productivity Tools
+
+- **Sticky Notes:** Right-click canvas $\rightarrow$ `Create Sticky Note` to add comments, diagrams, or instructions with customizable colors and live resizing.
+- **Group Frames (`Ctrl+G`):** Select multiple nodes and press `Ctrl+G` to encase them in an interactive group box. Moving the group by its title bar moves all contained nodes together.
+- **Dynamic Category Dropdown:** Compact top bar dropdown with live search, favorite filters (`⭐`), frequent usage badges (`🔥`), and dynamic plugin category discovery.
+
+---
+
+## 8. Example Flows and Built-In Templates
 
 ### Template 1: Automated Photo Sorting by Date & Camera
 ```
@@ -380,15 +520,14 @@ Any text input, output directory, or file name template supports dynamic variabl
   └── (Duplicate) ──▶ [OriginalFileActionNode (Action: MoveToRecycleBin)]
 ```
 
-### Template 3: Media Transcoding & Webhook Alert
+### Template 3: Excel Lookup & Remote SFTP Dispatch
 ```
-[FolderSourceNode (*.mkv;*.avi)]
-       │ (FileOut)
-       ▼
-[MediaTranscoderNode (Preset: "Fast 720p H.264 (MP4)")]
+[FolderSourceNode (PDFs)]
        │ (Out)
        ▼
-[WebhookNotificationNode (URL: Discord Webhook, Payload: "Video {FileName} ready!")]
+[DataLookupNode (clients.xlsx by {FileNameWithoutExtension})]
+  ├── (Matched)   ──▶ [SftpUploadNode (Client Server)] ──▶ [SqliteDatabaseSinkNode (Audit Log)]
+  └── (Unmatched) ──▶ [FileRelocatorNode (Pending Review Folder)]
 ```
 
 ---

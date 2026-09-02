@@ -137,16 +137,34 @@ Cuando abres FileFlow Studio, la pantalla se divide en 4 partes muy fáciles de 
 
 ---
 
-## ❓ 6. Preguntas Frecuentes y Dudas Típicas (FAQ)
+### 📊 Receta 5: Modo Vigilante Automático (Procesar lo que entre solo)
+
+**El Problema:** Quieres que cada vez que descargues un PDF o una foto a tu carpeta, se ordene sola sin tener que abrir el programa y darle a Ejecutar cada vez.
+
+**La Solución:**
+1. Crea tu flujo habitual (ej. `Lector de Carpetas` $\rightarrow$ `Filtro` $\rightarrow$ `Mover`).
+2. En lugar de pulsar Ejecutar, pulsa el botón **"👁️ Vigilante"** en la barra superior.
+3. El botón se iluminará en verde esmeralda. Ahora puedes minimizar el programa: cada archivo nuevo que caiga en la carpeta se procesará al instante de forma automática.
+
+---
+
+## 🎨 6. Consejos de Organización en la Pantalla
+
+* **Notas Adhesivas:** Haz clic derecho en una zona vacía de la mesa y elige **"Crear Nota Adhesiva"**. Puedes escribir explicaciones o recordatorios con colores llamativos (amarillo, azul, verde, rosa).
+* **Marcos de Grupo (Ctrl+G):** Si tienes varias cajas que hacen una tarea junta (por ejemplo, 3 cajas para procesar fotos), selecciónalas todas arrastrando un cuadro con el ratón y pulsa `Ctrl+G`. Quedarán agrupadas en una tarjeta con título que puedes mover en bloque.
+
+---
+
+## ❓ 7. Preguntas Frecuentes y Dudas Típicas (FAQ)
 
 ### 1. ¿Qué pasa si se me va la luz o el ordenador se apaga mientras trabaja?
-FileFlow Studio procesa los archivos uno por uno de forma atómica y segura. No se corrompe nada. Cuando vuelvas a abrir el programa, puedes continuar donde lo dejaste.
+FileFlow Studio procesa los archivos uno por uno de forma atómica y segura con puntos de control automáticos. No se corrompe nada. Al volver a abrir el programa, reanuda el trabajo omitiendo los archivos que ya habían terminado.
 
 ### 2. ¿Cómo sé si el programa ha terminado?
 En la barra superior verás que la barra de progreso se llena en verde y en la consola inferior aparecerá un mensaje final diciendo: *"¡Flujo completado con éxito! X archivos procesados en Y segundos"*.
 
 ### 3. ¿Puedo guardar mis flujos para usarlos todos los días?
-¡Sí! Pulsa en el menú superior **"Archivo ❯ Guardar Flujo Como..."** (o `Ctrl+S`). Puedes guardar todos los flujos que quieras (por ejemplo: *"LimpiarDescargas.flow"* o *"OrganizarFotos.flow"*). Cuando quieras volver a usarlo, solo tienes que hacer doble clic en el archivo guardado y pulsar Ejecutar.
+¡Sí! Pulsa en el menú lateral **"Guardar Flujo Como..."** (o `Ctrl+S`). Puedes guardar todos los flujos que quieras (por ejemplo: *"LimpiarDescargas.flow"* o *"OrganizarFotos.flow"*). Cuando quieras volver a usarlo, solo tienes que cargarlo y pulsar Ejecutar o Vigilante.
 
 ### 4. ¿Qué significa el circulito de colores en cada caja?
 * ⚪ **Gris (Inactivo):** La caja está esperando a que le lleguen archivos.
@@ -156,15 +174,17 @@ En la barra superior verás que la barra de progreso se llena en verde y en la c
 
 ---
 
-## 📖 7. Glosario de Términos (Para Entender Todo)
+## 📖 8. Glosario de Términos (Para Entender Todo)
 
 | Término | Qué significa en cristiano |
 | :--- | :--- |
 | **Nodo / Caja** | Un bloque visual que hace una tarea específica (renombrar, copiar, filtrar, etc.). |
 | **Flujo / Pipeline** | La cadena completa de cajas unidas por cables desde el principio hasta el final. |
+| **Modo Vigilante (Watchdog)** | Modo en segundo plano que escucha una carpeta y procesa archivos según van llegando. |
 | **Dry Run / Simulación** | Un ensayo general: hace todos los cálculos pero no toca tus archivos reales. |
 | **Rollback / Deshacer** | Rebobinar la película: deshace todos los cambios y deja tus archivos como estaban. |
-| **Metadatos (EXIF / ID3)** | Información oculta dentro de un archivo (la fecha en que se hizo la foto, el modelo de la cámara, el autor de una canción, etc.). |
+| **Punto de Control (Checkpoint)** | Memoria de guardado que permite continuar un trabajo largo donde se quedó si se corta la luz. |
+| **Metadatos (EXIF / ID3 / Columnas)** | Información oculta dentro de un archivo (fecha de la foto, modelo de cámara, autor, columnas de un Excel). |
 | **Versión Portable** | Una versión de FileFlow Studio que puedes llevar en un pendrive USB y usar en cualquier ordenador sin necesidad de instalar nada. |
 
 ---

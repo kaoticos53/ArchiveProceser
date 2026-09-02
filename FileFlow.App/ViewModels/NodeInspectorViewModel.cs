@@ -200,6 +200,27 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
         }
     }
 
+    [RelayCommand]
+    public void OpenQuickPreview()
+    {
+        string? path = SelectedSnapshot?.ItemSnapshot?.CurrentPath ??
+                       InspectedNode?.OutputSnapshots.LastOrDefault()?.ItemSnapshot?.CurrentPath ??
+                       InspectedNode?.InputSnapshots.LastOrDefault()?.ItemSnapshot?.CurrentPath;
+
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            MessageBox.Show("No hay un archivo válido generado o seleccionado para previsualizar.", "Vista Previa", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var previewCtx = SelectedSnapshot != null
+            ? FileFlow.App.Preview.Core.FilePreviewContext.FromFileItemContext(SelectedSnapshot.ItemSnapshot)
+            : new FileFlow.App.Preview.Core.FilePreviewContext(path);
+
+        var win = new FileFlow.App.Preview.Views.FilePreviewerWindow();
+        _ = win.ShowPreviewAsync(previewCtx, owner: Application.Current.MainWindow);
+    }
+
     private class MockFlowExecutionContext : IFlowExecutionContext
     {
         private readonly NodeViewModel _nodeVm;

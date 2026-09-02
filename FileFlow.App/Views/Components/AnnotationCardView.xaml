@@ -1,0 +1,153 @@
+<UserControl x:Class="FileFlow.App.Views.Components.AnnotationCardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=vm:AnnotationViewModel}"
+             Width="{Binding Width, Mode=TwoWay}"
+             Height="{Binding Height, Mode=TwoWay}"
+             MinWidth="180" MinHeight="120"
+             MaxWidth="800" MaxHeight="600">
+
+    <UserControl.Resources>
+        <!-- Converter para convertir el color Hex a SolidColorBrush con opacidad -->
+        <Style x:Key="ColorCircleButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="7" BorderBrush="#80FFFFFF" BorderThickness="1">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="MouseOver">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                        </Storyboard>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{Binding Color}"
+            BorderBrush="#40000000"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="0"
+            Effect="{DynamicResource CardDropShadow}">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Cabecera de la Nota Adhesiva con soporte de arrastre por el lienzo -->
+            <Border Grid.Row="0" Background="#18000000" CornerRadius="9,9,0,0" Padding="8,6">
+                <Grid>
+                    <!-- Thumb de arrastre interactivo -->
+                    <Thumb DragDelta="HeaderThumb_DragDelta" Cursor="SizeAll">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb">
+                                <Border Background="Transparent" />
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+
+                    <Grid IsHitTestVisible="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="📌" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.8" />
+
+                    <!-- Título Editable de la Nota -->
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             FontWeight="SemiBold"
+                             FontSize="13"
+                             Foreground="#DD111827"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             VerticalAlignment="Center" />
+
+                    <!-- Paleta de Colores Rápidos -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
+                        <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#FEF08A"
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#FEF08A" ToolTip="Amarillo" />
+                        <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#BAE6FD"
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#BAE6FD" ToolTip="Azul" />
+                        <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#BBF7D0"
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#BBF7D0" ToolTip="Verde" />
+                        <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#DDD6FE"
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#DDD6FE" ToolTip="Morado" />
+                        <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#FECDD3"
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#FECDD3" ToolTip="Rosa" />
+                        <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#E2E8F0"
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#E2E8F0" ToolTip="Gris" />
+                    </StackPanel>
+
+                    <!-- Botón de Eliminar Nota -->
+                    <Button Grid.Column="3"
+                            Command="{Binding DeleteCommand}"
+                            Content="✕"
+                            Foreground="#88111827"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            FontSize="11"
+                            FontWeight="Bold"
+                            Padding="4,0"
+                            Cursor="Hand"
+                            ToolTip="Eliminar Nota"
+                            VerticalAlignment="Center" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Cuerpo / Texto de la Nota -->
+            <TextBox Grid.Row="1"
+                     Text="{Binding Content, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Disabled"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="10,8"
+                     FontSize="12"
+                     Foreground="#EE1F2937"
+                     FontFamily="Segoe UI, Inter, Arial"
+                     VerticalAlignment="Stretch"
+                     HorizontalAlignment="Stretch" />
+
+            <!-- Thumb de Redimensionamiento en la esquina inferior derecha -->
+            <Thumb Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Width="14" Height="14" Cursor="SizeNWSE" Margin="0,0,2,2"
+                   DragDelta="ResizeThumb_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="Transparent">
+                            <Path Data="M 12,2 L 12,12 L 2,12 Z M 12,6 L 12,12 L 6,12 Z M 12,10 L 12,12 L 10,12 Z"
+                                  Fill="#50111827" Stretch="Uniform" Margin="2" />
+                        </Border>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+        </Grid>
+    </Border>
+</UserControl>

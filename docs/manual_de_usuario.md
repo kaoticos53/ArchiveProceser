@@ -360,7 +360,156 @@ Cualquier campo de texto, carpeta o plantilla de nombre admite variables dinámi
 
 ---
 
-## 6. Flujos de Ejemplo y Plantillas Predefinidas
+### Categoría 7: Documents & PDFs (`FileFlow.Plugin.Documents`)
+
+#### 1. `PdfMergeNode` (Unión de Archivos PDF)
+- **Propósito:** Combina múltiples archivos PDF en un único documento consolidado al concluir el flujo o por lotes con `PdfSharp`.
+- **Puertos:** `In` $\rightarrow$ `Out`, `MergedOut`.
+
+#### 2. `PdfSplitNode` (División de PDFs por Páginas)
+- **Propósito:** Divide un documento PDF en páginas individuales o rangos específicos.
+- **Puertos:** `In` $\rightarrow$ `PageOut`, `Error`.
+
+#### 3. `PdfTextExtractorNode` (Extracción de Texto y Contenido PDF)
+- **Propósito:** Extrae texto estructurado desde documentos PDF mediante `PdfPig` para búsquedas, clasificación o renombrado por contenido.
+- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 4. `PdfMetadataNode` (Inspección y Modificación de Metadatos PDF)
+- **Propósito:** Lee y actualiza metadatos estándar (Título, Autor, Asunto, Palabras Clave) en documentos PDF.
+- **Puertos:** `In` $\rightarrow$ `Out`.
+
+---
+
+### Categoría 8: Network & Remote Storage (`FileFlow.Plugin.Network`)
+
+#### 1. `FtpUploadNode` (Subida a Servidores FTP / FTPS Seguro)
+- **Propósito:** Sube archivos a servidores FTP/FTPS con cifrado explícito o implícito TLS/SSL y reanudación automática.
+- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 2. `SftpUploadNode` (Transferencia Segura SSH / SFTP)
+- **Propósito:** Transfiere archivos hacia servidores Linux / VPS mediante SSH File Transfer Protocol con soporte para contraseña o clave privada (`.pem` / `.ppk`).
+- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 3. `SmbCopyNode` (Copia a Recursos Compartidos de Red Local / NAS)
+- **Propósito:** Copia archivos a rutas de red UNC (`\\Servidor\Carpeta`) o almacenamiento NAS con autenticación de dominio o usuario local.
+- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 4. `WebDavUploadNode` (Nubes Privadas Nextcloud / ownCloud WebDAV)
+- **Propósito:** Publica y sincroniza archivos con servidores WebDAV corporativos o nubes personales.
+- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
+
+#### 5. `RemoteDownloadNode` (Descarga de Archivos Remotos HTTP / HTTPS / FTP)
+- **Propósito:** Descarga archivos remotos desde Internet o servidores locales incorporándolos directamente al pipeline de procesamiento.
+- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
+
+---
+
+### Categoría 9: Data, Spreadsheets & Databases (`FileFlow.Plugin.Data`)
+
+#### 1. `ExcelReaderNode` (Lector de Hojas Excel)
+- **Propósito:** Lee hojas de cálculo `.xlsx` / `.xls` en streaming de alta velocidad y emite cada fila con sus columnas en `item.Metadata`.
+- **Puertos:** `In` (opcional) $\rightarrow$ `RowOut`.
+
+#### 2. `CsvReaderNode` (Lector de Archivos CSV / TSV)
+- **Propósito:** Parser de archivos delimitados con autodetección de delimitador (`,`, `;`, `\t`, `|`) y compatibilidad con codificaciones internacionales.
+- **Puertos:** `In` (opcional) $\rightarrow$ `RowOut`.
+
+#### 3. `DataLookupNode` (Cruce de Datos / VLOOKUP)
+- **Propósito:** Cruza y enriquece cada archivo contra una tabla de referencia externa (Excel, CSV, JSON) en memoria con índice hash instantáneo $O(1)$.
+- **Puertos:** `In` $\rightarrow$ `Matched`, `Unmatched`.
+
+#### 4. `ExcelReportGeneratorNode` (Generador de Reportes Excel .xlsx)
+- **Propósito:** Acumula los metadatos de los archivos procesados y genera una hoja de cálculo formateada al completar el flujo (`OnWorkflowCompletedAsync`).
+- **Puertos:** `In` $\rightarrow$ `Out`, `Report`.
+
+#### 5. `CsvExportNode` (Exportador CSV / TSV)
+- **Propósito:** Exporta y agrega metadatos seleccionados a un archivo plano delimitado con soporte para modo append.
+- **Puertos:** `In` $\rightarrow$ `Out`.
+
+#### 6. `SqliteDatabaseSinkNode` (Auditoría e Inserción SQLite)
+- **Propósito:** Inserta registros de auditoría y trazabilidad en una base de datos SQLite local con creación automática de esquemas e índices.
+- **Puertos:** `In` $\rightarrow$ `Out`.
+
+#### 7. `DataFormatConverterNode` (Conversor de Formatos de Datos)
+- **Propósito:** Convierte directamente archivos estructurados entre formatos `Excel (.xlsx) ⇄ CSV ⇄ JSON`.
+- **Puertos:** `In` $\rightarrow$ `Out`.
+
+---
+
+### Categoría 10: Scripting & Extensibility (`FileFlow.Plugin.Scripting`)
+
+#### 1. `CustomScriptNode` (Nodo de Scripting Dual C# & JavaScript)
+- **Propósito:** Permite programar lógica de transformación a medida usando **C# (compilación JIT Roslyn en memoria)** o **JavaScript (sandbox Jint administrado)**.
+- **Puertos:** Puertos dinámicos configurables por el usuario (`Inputs` y `Outputs` editables).
+- **Herramienta Integrada:** Incluye **ScriptStudio**, un entorno de desarrollo integrado con editor AvalonEdit, resaltado sintáctico, consola de pruebas en vivo y biblioteca de plantillas `.ffscript`.
+
+---
+
+### Categoría 11: AI & Computer Vision (`FileFlow.Plugin.AI`)
+
+#### 1. `LocalOcrNode` (Reconocimiento Óptico de Caracteres OCR)
+- **Propósito:** Extrae texto e información estructurada desde imágenes y documentos escaneados inyectando `{Ocr:Text}`, `{Ocr:WordCount}` y `{Ocr:Language}`.
+- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 2. `SmartImageClassifierNode` (Clasificador Visual de Fotos)
+- **Propósito:** Analiza el contenido visual de fotografías e imágenes asignando categorías temáticas (Paisajes, Facturas, Retratos, Vehículos, Comida, etc.) en `{AI:Category}`, `{AI:TopLabel}` y `{AI:Confidence}`.
+- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 3. `FaceDetectorNode` (Detector de Rostros Humanos)
+- **Propósito:** Detecta caras humanas y bifurca el flujo según la presencia y conteo de personas (`{AI:HasFaces}` y `{AI:FaceCount}`).
+- **Puertos:** `In` $\rightarrow$ `FacesFound`, `NoFaces`.
+
+#### 4. `ObjectDetectorNode` (Detector de Objetos YOLO)
+- **Propósito:** Detecta e identifica múltiples objetos cotidianos (personas, vehículos, animales, objetos) en `{AI:DetectedObjects}` y `{AI:TopObject}`.
+- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
+
+#### 5. `LocalWhisperTranscriberNode` (Transcriptor de Voz a Texto Whisper)
+- **Propósito:** Transcribe audios y vídeos a texto y subtítulos sincronizados `.srt` de forma 100% local y privada inyectando `{Transcript}`.
+- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
+
+---
+
+## 6. Modos de Ejecución Avanzados y Motor DAG
+
+### Modo Vigilante en Tiempo Real (Watchdog Trigger Mode)
+- Al pulsar el botón **`👁️ Vigilante`** en la barra superior, FileFlow Studio permanece escuchando en segundo plano las carpetas de origen configuradas en el flujo.
+- Cada nuevo archivo copiado o descargado es detectado tras un debounce inteligente (evitando bloqueos de archivo en escritura) y procesado inmediatamente por el pipeline sin tener que reiniciar la ejecución.
+
+### Telemetría y Mapa de Cuellos de Botella (Bottleneck Heatmap)
+- Medición de microsegundos en tiempo real con `Stopwatch.GetTimestamp()`.
+- Badges dinámicos en la cabecera de las tarjetas de nodos que indican la latencia media (`⚡ 12 ms` / `⏱️ 1.2 s`) y resaltan en color de advertencia (`⚠️ Cuello de botella`) los nodos que consumen más del 35% del tiempo total del pipeline.
+
+### Modo Headless / Ejecutor CLI (`fileflow.exe --run`)
+FileFlow Studio puede ejecutarse de forma desatendida desde scripts PowerShell, bash o el Programador de Tareas de Windows:
+```powershell
+# Ejecución estándar con inyección de variables globales
+.\FileFlow.App.exe --run "flujo.json" --input "C:\Datos" --var Environment=Production
+
+# Sobrescritura de parámetros específicos por nodo
+.\FileFlow.App.exe --run "flujo.json" --param Throttle.DelayMilliseconds=50
+
+# Modo vigilante en consola con reporte estructurado JSON
+.\FileFlow.App.exe --run "flujo.json" --watch --summary "reporte.json"
+
+# Reanudación de flujos interrumpidos mediante puntos de control
+.\FileFlow.App.exe --run "flujo.json" --resume
+```
+
+### Puntos de Control y Reanudación Automática (State Checkpointing)
+- Al procesar miles de archivos, FileFlow Studio guarda automáticamente puntos de control atómicos en `%LocalAppData%/FileFlowStudio/checkpoints/`.
+- Si el proceso se interrumpe por corte eléctrico o reinicio del sistema, al volver a ejecutar el flujo detecta el progreso previo y **omite el reprocesamiento innecesario de los archivos ya completados exitosamente**.
+
+---
+
+## 7. Herramientas de Diseño y Productividad en el Lienzo
+
+- **Notas Adhesivas (Sticky Notes):** Clic secundario en el lienzo $\rightarrow$ `Crear Nota Adhesiva` para añadir instrucciones, comentarios o documentación técnica directamente sobre el grafo con colores personalizables y redimensionado.
+- **Marcos de Agrupación Visual (Group Frames):** Selecciona múltiples nodos y presiona `Ctrl+G` para encapsularlos en un marco visual delimitado. Al mover el marco por su cabecera, todos los nodos contenidos se desplazan coordinadamente de forma interactiva.
+- **Selector Desplegable de Categorías (Dropdown ComboBox):** Barra superior de herramientas compacta con búsqueda en tiempo real, filtros de favoritos (`⭐`), más usados (`🔥`) y badges numéricos reactivos por categoría.
+
+---
+
+## 8. Flujos de Ejemplo y Plantillas Predefinidas
 
 ### Plantilla 1: Organización Fotográfica Automática
 ```
@@ -386,15 +535,14 @@ Cualquier campo de texto, carpeta o plantilla de nombre admite variables dinámi
   └── (Duplicate) ──▶ [SafeRecycleDeleteNode (Papelera de Windows)]
 ```
 
-### Plantilla 3: Transcodificación y Notificación Webhook
+### Plantilla 3: Cruce de Datos Excel y Envío Remoto por SFTP
 ```
-[FolderSourceNode (*.mkv;*.avi)]
-       │ (FileOut)
+[FolderSourceNode (PDFs)]
+       │ (Out)
        ▼
-[CliExecutionNode (ffmpeg.exe -i "{CurrentPath}" "{CurrentDir}\{FileNameNoExt}.mp4")]
-       │ (Success)
-       ▼
-[WebhookNotificationNode (Notificar fin de render a Discord)]
+[DataLookupNode (clientes.xlsx por {FileNameWithoutExtension})]
+  ├── (Matched)   ──▶ [SftpUploadNode (Servidor Cliente)] ──▶ [SqliteDatabaseSinkNode (Auditoría)]
+  └── (Unmatched) ──▶ [FileRelocatorNode (Carpeta de Revisión Pendiente)]
 ```
 
 ---

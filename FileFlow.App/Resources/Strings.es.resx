@@ -355,11 +355,14 @@
   <data name="Category_Frequent" xml:space="preserve"><value>🔥 Frecuentes</value></data>
   <data name="Category_FileSystem" xml:space="preserve"><value>📁 Archivos</value></data>
   <data name="Category_Archives" xml:space="preserve"><value>📦 Compresión</value></data>
+  <data name="Category_Images" xml:space="preserve"><value>🖼️ Imágenes</value></data>
+  <data name="Category_Documents" xml:space="preserve"><value>📄 Documentos y PDFs</value></data>
   <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media &amp; Docs</value></data>
   <data name="Category_Metadata" xml:space="preserve"><value>🏷️ Metadatos</value></data>
-  <data name="Category_Hashing" xml:space="preserve"><value>Hashes y Seguridad</value></data>
+  <data name="Category_Hashing" xml:space="preserve"><value>🔑 Hashes y Seguridad</value></data>
   <data name="Category_Logic" xml:space="preserve"><value>🔀 Lógica</value></data>
   <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integraciones</value></data>
+  <data name="Category_Scripting" xml:space="preserve"><value>📜 Scripts</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
 
   <!-- Node Parameters Localized Keys (Spanish) -->
@@ -590,7 +593,48 @@
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Valor Evaluado:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copiar valor evaluado al portapapeles</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contiene expresión dinámica / variables</value></data>
-  <data name="Inspector_ActiveContextLabel" xml:space="preserve"><value>CONTEXTO DE DEPURACIÓN (EVALUACIÓN DE EXPRESIONES)</value></data>
-  <data name="Inspector_NoSnapshotForEvaluation" xml:space="preserve"><value>Sin snapshot activo (evaluando con variables de sistema)</value></data>
+  <data name="Category_Data &amp; Databases" xml:space="preserve"><value>Datos y Bases de Datos</value></data>
+  <data name="Category_Data" xml:space="preserve"><value>Datos y Bases de Datos</value></data>
+  <data name="ExcelReaderNode_Name" xml:space="preserve"><value>Lector de Hojas Excel</value></data>
+  <data name="ExcelReaderNode_Desc" xml:space="preserve"><value>Lee archivos Excel (.xlsx) y emite cada fila como un registro de datos con sus columnas en los metadatos.</value></data>
+  <data name="CsvReaderNode_Name" xml:space="preserve"><value>Lector de Archivos CSV / TSV</value></data>
+  <data name="CsvReaderNode_Desc" xml:space="preserve"><value>Lee archivos delimitados (CSV, TSV, TXT) con autodetección de formato y emite cada fila con sus columnas en los metadatos.</value></data>
+  <data name="DataLookupNode_Name" xml:space="preserve"><value>Cruce de Datos (Lookup / BUSCARV)</value></data>
+  <data name="DataLookupNode_Desc" xml:space="preserve"><value>Busca y cruza información del archivo actual contra una tabla externa (Excel, CSV o JSON) inyectando sus columnas en los metadatos.</value></data>
+  <data name="ExcelReportGeneratorNode_Name" xml:space="preserve"><value>Generador de Reportes Excel (.xlsx)</value></data>
+  <data name="ExcelReportGeneratorNode_Desc" xml:space="preserve"><value>Acumula los metadatos de los archivos procesados y genera un archivo Excel (.xlsx) estructurado al concluir el flujo.</value></data>
+  <data name="CsvExportNode_Name" xml:space="preserve"><value>Exportador CSV / TSV</value></data>
+  <data name="CsvExportNode_Desc" xml:space="preserve"><value>Exporta y acumula los metadatos de cada archivo procesado en un archivo CSV delimitado con formato configurable.</value></data>
+  <data name="SqliteDatabaseSinkNode_Name" xml:space="preserve"><value>Registro de Auditoría SQLite</value></data>
+  <data name="SqliteDatabaseSinkNode_Desc" xml:space="preserve"><value>Inserta un registro histórico y de auditoría en una base de datos SQLite con los metadatos y trazabilidad de cada archivo procesado.</value></data>
+  <data name="DataFormatConverterNode_Name" xml:space="preserve"><value>Conversor de Formatos de Datos</value></data>
+  <data name="Category_AI &amp; Computer Vision" xml:space="preserve"><value>IA y Visión por Computador</value></data>
+  <data name="LocalOcrNode_Name" xml:space="preserve"><value>Reconocimiento Óptico (OCR Local)</value></data>
+  <data name="LocalOcrNode_Desc" xml:space="preserve"><value>Extrae texto e información estructurada desde imágenes y documentos escaneados utilizando modelos locales de OCR.</value></data>
+  <data name="SmartImageClassifierNode_Name" xml:space="preserve"><value>Clasificador Visual de Fotos (IA)</value></data>
+  <data name="SmartImageClassifierNode_Desc" xml:space="preserve"><value>Analiza el contenido visual de fotografías e imágenes asignando una categoría temática (Paisajes, Facturas, Vehículos, etc.) en los metadatos.</value></data>
+  <data name="FaceDetectorNode_Name" xml:space="preserve"><value>Detector de Rostros (Facial)</value></data>
+  <data name="FaceDetectorNode_Desc" xml:space="preserve"><value>Analiza imágenes para detectar la presencia y el número de rostros humanos, bifurcando el flujo hacia fotos familiares o paisajes.</value></data>
+  <data name="ObjectDetectorNode_Name" xml:space="preserve"><value>Detector de Objetos (YOLO)</value></data>
+  <data name="ObjectDetectorNode_Desc" xml:space="preserve"><value>Detecta e identifica objetos múltiples (personas, vehículos, animales, objetos cotidianos) presentes en imágenes.</value></data>
+  <data name="LocalWhisperTranscriberNode_Name" xml:space="preserve"><value>Transcriptor de Voz a Texto (Whisper)</value></data>
+  <data name="LocalWhisperTranscriberNode_Desc" xml:space="preserve"><value>Transcribe archivos de audio y vídeo a texto y subtítulos sincronizados (.srt) utilizando el modelo Whisper de forma local y privada.</value></data>
   <data name="Common_Copy" xml:space="preserve"><value>Copiar</value></data>
+
+  <!-- Modelos de IA -->
+  <data name="Settings_TabAiModels" xml:space="preserve"><value>🤖 Modelos de IA</value></data>
+  <data name="Settings_AiModels_Title" xml:space="preserve"><value>Modelos de Inteligencia Artificial Locales</value></data>
+  <data name="Settings_AiModels_Desc" xml:space="preserve"><value>Gestiona y descarga los pesos de los modelos de IA para clasificación de fotos, detección facial y de objetos, OCR y transcripción Whisper antes de ejecutar tus flujos.</value></data>
+  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>⬇️ Descargar Faltantes</value></data>
+  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>🔄 Actualizar</value></data>
+  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>📁 Abrir Carpeta</value></data>
+  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>🚀 Abrir Asistente de Descarga...</value></data>
+  <data name="AiModelManager_WindowTitle" xml:space="preserve"><value>Gestor de Descarga de Modelos de IA</value></data>
+  <data name="AiModelManager_HeaderTitle" xml:space="preserve"><value>Modelos de Inteligencia Artificial</value></data>
+  <data name="AiModelManager_HeaderSubtitle" xml:space="preserve"><value>Descarga previa de modelos para procesamiento offline de alta velocidad sin esperas en el flujo.</value></data>
+  <data name="AiModelManager_StatusInstalled" xml:space="preserve"><value>Descargado</value></data>
+  <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>No descargado</value></data>
+  <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Descargando...</value></data>
+  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Descargar</value></data>
+  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Eliminar</value></data>
 </root>

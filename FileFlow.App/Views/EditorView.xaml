@@ -15,10 +15,12 @@
         <!-- Lienzo del Editor de Nodos Modularizado -->
         <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
+                             Decorators="{Binding CanvasDecorators}"
                              PendingConnection="{Binding PendingConnection}"
                              SelectedItems="{Binding SelectedNodes}"
                              ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
+                             ViewportSize="{Binding ViewportSize, Mode=OneWayToSource}"
                              MinViewportZoom="0.2"
                              MaxViewportZoom="2.5"
                              AllowDrop="True"
@@ -54,6 +56,32 @@
                     <components:NodeCardView />
                 </DataTemplate>
             </nodify:NodifyEditor.ItemTemplate>
+
+            <!-- Contenedor de Decoradores (Notas Adhesivas y Marcos de Grupo) -->
+            <nodify:NodifyEditor.DecoratorContainerStyle>
+                <Style TargetType="{x:Type nodify:DecoratorContainer}" BasedOn="{StaticResource {x:Type nodify:DecoratorContainer}}">
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0" />
+                </Style>
+            </nodify:NodifyEditor.DecoratorContainerStyle>
+
+            <!-- Plantilla Polimórfica de Decoradores -->
+            <nodify:NodifyEditor.DecoratorTemplate>
+                <DataTemplate>
+                    <ContentControl Content="{Binding}">
+                        <ContentControl.Resources>
+                            <DataTemplate DataType="{x:Type vm:AnnotationViewModel}">
+                                <components:AnnotationCardView />
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:GroupViewModel}">
+                                <components:GroupCardView />
+                            </DataTemplate>
+                        </ContentControl.Resources>
+                    </ContentControl>
+                </DataTemplate>
+            </nodify:NodifyEditor.DecoratorTemplate>
 
             <!-- Curva de Conexión Pendiente -->
             <nodify:NodifyEditor.PendingConnectionTemplate>

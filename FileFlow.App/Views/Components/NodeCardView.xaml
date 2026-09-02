@@ -15,6 +15,7 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
             <conv:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
             <conv:LoggingToBrushConverter x:Key="LoggingToBrushConverter" />
             <conv:LoggingToTooltipConverter x:Key="LoggingToTooltipConverter" />
@@ -167,6 +168,7 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
                                 <!-- Botón Breakpoint -->
@@ -200,32 +202,27 @@
                                             <Setter Property="ToolTip" Value="Inactivo" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Running}">
-                                                    <Setter Property="Background" Value="#A855F7" />
-                                                    <Setter Property="BorderBrush" Value="#D8B4FE" />
-                                                    <Setter Property="ToolTip" Value="Procesando..." />
-                                                    <Setter Property="Effect">
-                                                        <Setter.Value>
-                                                            <DropShadowEffect Color="#A855F7" BlurRadius="12" ShadowDepth="0" Opacity="1.0" />
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Completed}">
                                                     <Setter Property="Background" Value="#10B981" />
-                                                    <Setter Property="BorderBrush" Value="#6EE7B7" />
-                                                    <Setter Property="ToolTip" Value="Completado con éxito" />
+                                                    <Setter Property="BorderBrush" Value="#34D399" />
+                                                    <Setter Property="ToolTip" Value="Ejecutando..." />
                                                     <Setter Property="Effect">
                                                         <Setter.Value>
                                                             <DropShadowEffect Color="#10B981" BlurRadius="8" ShadowDepth="0" Opacity="0.9" />
                                                         </Setter.Value>
                                                     </Setter>
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Completed}">
+                                                    <Setter Property="Background" Value="#06B6D4" />
+                                                    <Setter Property="BorderBrush" Value="#67E8F9" />
+                                                    <Setter Property="ToolTip" Value="Completado" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.PausedAtBreakpoint}">
                                                     <Setter Property="Background" Value="#F59E0B" />
-                                                    <Setter Property="BorderBrush" Value="#FDE68A" />
-                                                    <Setter Property="ToolTip" Value="Pausado en Breakpoint" />
+                                                    <Setter Property="BorderBrush" Value="#FCD34D" />
+                                                    <Setter Property="ToolTip" Value="Pausado en Punto de Interrupción" />
                                                     <Setter Property="Effect">
                                                         <Setter.Value>
-                                                            <DropShadowEffect Color="#F59E0B" BlurRadius="8" ShadowDepth="0" Opacity="0.9" />
+                                                            <DropShadowEffect Color="#F59E0B" BlurRadius="10" ShadowDepth="0" Opacity="1.0" />
                                                         </Setter.Value>
                                                     </Setter>
                                                 </DataTrigger>
@@ -257,13 +254,50 @@
                                 <!-- Título del Nodo -->
                                 <TextBlock Grid.Column="3" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                 
+                                <!-- Badge de Latencia y Cuello de Botella (Bottleneck Heatmap) -->
+                                <Border Grid.Column="4" Margin="6,0,0,0" Padding="6,2" CornerRadius="10"
+                                        Visibility="{Binding LatencyText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"
+                                        ToolTip="{Binding BottleneckRatioText}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#1E293B" />
+                                            <Setter Property="BorderBrush" Value="#475569" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Low}">
+                                                    <Setter Property="Background" Value="#064E3B" />
+                                                    <Setter Property="BorderBrush" Value="#10B981" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Medium}">
+                                                    <Setter Property="Background" Value="#78350F" />
+                                                    <Setter Property="BorderBrush" Value="#F59E0B" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.High}">
+                                                    <Setter Property="Background" Value="#881337" />
+                                                    <Setter Property="BorderBrush" Value="#F43F5E" />
+                                                    <Setter Property="Effect">
+                                                        <Setter.Value>
+                                                            <DropShadowEffect Color="#F43F5E" BlurRadius="8" ShadowDepth="0" Opacity="0.8" />
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9.5" FontWeight="Bold" VerticalAlignment="Center" />
+                                        <TextBlock Text=" ⚠️ Cuello de botella" Foreground="#FECDD3" FontSize="9" FontWeight="Bold" Margin="4,0,0,0" VerticalAlignment="Center"
+                                                   Visibility="{Binding IsBottleneck, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- Etiqueta de Categoría -->
-                                <Border Grid.Column="4" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
+                                <Border Grid.Column="5" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
                                     <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="10" FontWeight="SemiBold" />
                                 </Border>
                                 
                                 <!-- Botón Expandir/Colapsar Parámetros -->
-                                <ToggleButton Grid.Column="5"
+                                <ToggleButton Grid.Column="6"
                                               IsChecked="{Binding IsExpanded, Mode=TwoWay}"
                                               Content="⚙"
                                               Foreground="{DynamicResource TextSecondaryBrush}"

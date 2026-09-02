@@ -65,4 +65,32 @@ public class GlobalOutputDirTests
         // Assert - RelativeDir is sub1\sub2, anchored under d:\pepe -> d:\pepe\sub1\sub2\Output
         Assert.Equal(@"d:\pepe\sub1\sub2\Output", resolved);
     }
+
+    [Fact]
+    public void VariableTemplateResolver_ResolvesAllGlobalOutputDirAliases()
+    {
+        var item = new FileItemContext(@"C:\Source\SampleFile.pdf");
+        item.Metadata["GlobalOutputDir"] = @"D:\FileFlowOutput";
+
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{GlobalOutputDir}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{DefaultOutputDir}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{DefaultGlobalOutputDir}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{GlobalOutputPath}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{DefaultOutputPath}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{GlobalOutput}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{DefaultOutput}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("{OutputDir}", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("<GlobalOutputDir>", item));
+        Assert.Equal(@"D:\FileFlowOutput", VariableTemplateResolver.Resolve("<DefaultOutputDir>", item));
+    }
+
+    [Fact]
+    public void VariableTemplateResolver_WithoutExplicitMetadata_FallsBackToAppPathsDefault()
+    {
+        var item = new FileItemContext(@"C:\Source\SampleFile.pdf");
+
+        string resolved = VariableTemplateResolver.Resolve("{GlobalOutputDir}", item);
+
+        Assert.Equal(FileFlow.Sdk.Storage.AppPaths.DefaultGlobalOutputDir, resolved);
+    }
 }

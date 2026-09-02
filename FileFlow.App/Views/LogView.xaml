@@ -494,6 +494,13 @@
 
                                     <!-- Acciones Rápidas -->
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="👁️ Vista Previa" 
+                                                Command="{Binding DataContext.PreviewLogFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource SecondaryButton}" 
+                                                Padding="8,2" FontSize="10.5" Margin="0,0,6,0"
+                                                Visibility="{Binding FilePath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+
                                         <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_TraceabilityBtn]}" 
                                                 Command="{Binding DataContext.FilterByItemCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                 CommandParameter="{Binding ItemId}"

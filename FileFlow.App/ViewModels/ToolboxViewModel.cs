@@ -10,6 +10,32 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
+public partial class ToolboxCategoryFilterItem : ObservableObject
+{
+    public string Key { get; }
+
+    [ObservableProperty]
+    private string _displayName = string.Empty;
+
+    [ObservableProperty]
+    private string _icon = "📁";
+
+    [ObservableProperty]
+    private int _count;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public ToolboxCategoryFilterItem(string key, string displayName, string icon, int count = 0, bool isSelected = false)
+    {
+        Key = key;
+        _displayName = displayName;
+        _icon = icon;
+        _count = count;
+        _isSelected = isSelected;
+    }
+}
+
 public partial class ToolboxCategoryGroup : ObservableObject
 {
     [ObservableProperty]
@@ -30,8 +56,10 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     private readonly Action _preferencesChangedHandler;
     private readonly EventHandler<System.Globalization.CultureInfo> _languageChangedHandler;
     private bool _disposed;
+    private bool _isRefreshing;
 
     public ObservableCollection<ToolboxCategoryGroup> CategoryGroups { get; } = [];
+    public ObservableCollection<ToolboxCategoryFilterItem> AvailableCategories { get; } = [];
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -45,8 +73,18 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _selectedCategoryFilter = "Todas";
 
-    public ObservableCollection<string> AvailableCategoryFilters { get; } =
-        ["Todas", "Favoritos", "Frecuentes", "FileSystem", "Archives", "MediaDocs", "Metadata", "Logic", "Integrations"];
+    [ObservableProperty]
+    private ToolboxCategoryFilterItem? _selectedCategoryItem;
+
+    partial void OnSelectedCategoryItemChanged(ToolboxCategoryFilterItem? value)
+    {
+        if (_isRefreshing) return;
+        if (value != null && !_selectedCategoryFilter.Equals(value.Key, StringComparison.OrdinalIgnoreCase))
+        {
+            _selectedCategoryFilter = value.Key;
+            RefreshToolbox();
+        }
+    }
 
     public ToolboxViewModel(PluginLoader pluginLoader)
     {
@@ -63,133 +101,211 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     {
         lock (_lock)
         {
-            CategoryGroups.Clear();
-            IsCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
-
-            var prefs = UserPreferencesService.Instance;
-            var allItems = new List<NodeToolboxItem>();
-
-        var uniqueTypes = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
-
-        foreach (var type in uniqueTypes)
-        {
-            string typeName = type.FullName ?? type.Name;
-            IFlowNode? sampleInstance = null;
+            _isRefreshing = true;
             try
             {
-                sampleInstance = _pluginLoader.CreateNodeInstance(typeName);
-            }
-            catch { }
+                CategoryGroups.Clear();
+                IsCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
 
-            var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
-            string name = LocalizationManager.Instance.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
-            if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Name))
+                var prefs = UserPreferencesService.Instance;
+                var allItems = new List<NodeToolboxItem>();
+
+                var uniqueTypes = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
+
+                foreach (var type in uniqueTypes)
+                {
+                    string typeName = type.FullName ?? type.Name;
+                    IFlowNode? sampleInstance = null;
+                    try
+                    {
+                        sampleInstance = _pluginLoader.CreateNodeInstance(typeName);
+                    }
+                    catch { }
+
+                    var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
+                    string name = LocalizationManager.Instance.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
+                    if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Name))
+                    {
+                        name = sampleInstance.Name;
+                    }
+
+                    string category = sampleInstance?.Category ?? defAttr?.Category ?? "General";
+
+                    string description = LocalizationManager.Instance.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
+                    if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Description))
+                    {
+                        description = sampleInstance.Description;
+                    }
+
+                    bool isFavorite = prefs.IsFavorite(typeName) || prefs.IsFavorite(type.Name);
+                    int usageCount = Math.Max(prefs.GetUsageCount(typeName), prefs.GetUsageCount(type.Name));
+                    string icon = GetIconForNodeType(typeName);
+
+                    var item = new NodeToolboxItem(name, category, description, typeName, icon, isFavorite, usageCount);
+
+                    // Filtro de búsqueda por texto
+                    if (!string.IsNullOrWhiteSpace(SearchText) &&
+                        !name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&
+                        !category.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&
+                        !description.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    allItems.Add(item);
+                }
+
+                // 1. Construir / Actualizar dinámicamente AvailableCategories con contadores en tiempo real
+                UpdateAvailableCategories(allItems);
+
+                string favGroupName = LocalizationManager.Instance.GetString("Category_Favorites", "⭐ Favoritos");
+                string freqGroupName = LocalizationManager.Instance.GetString("Category_Frequent", "🔥 Más Usados");
+
+                // 2. Filtro Especial: "Favoritos"
+                if (SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) ||
+                    SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase))
+                {
+                    var favGroup = new ToolboxCategoryGroup(favGroupName);
+                    foreach (var item in allItems.Where(i => i.IsFavorite))
+                    {
+                        favGroup.Items.Add(item);
+                    }
+                    if (favGroup.Items.Count > 0)
+                    {
+                        CategoryGroups.Add(favGroup);
+                    }
+                    return;
+                }
+
+                // 3. Filtro Especial: "Frecuentes"
+                if (SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase) ||
+                    SelectedCategoryFilter.Equals("Frequent", StringComparison.OrdinalIgnoreCase))
+                {
+                    var freqGroup = new ToolboxCategoryGroup(freqGroupName);
+                    foreach (var item in allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10))
+                    {
+                        freqGroup.Items.Add(item);
+                    }
+                    if (freqGroup.Items.Count > 0)
+                    {
+                        CategoryGroups.Add(freqGroup);
+                    }
+                    return;
+                }
+
+                // 4. Agrupación Estándar o "Todas"
+                var groupDict = new Dictionary<string, ToolboxCategoryGroup>(StringComparer.OrdinalIgnoreCase);
+
+                if (SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) ||
+                    SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
+                {
+                    var favItems = allItems.Where(i => i.IsFavorite).ToList();
+                    if (favItems.Count > 0)
+                    {
+                        var favGroup = new ToolboxCategoryGroup(favGroupName);
+                        foreach (var f in favItems) favGroup.Items.Add(f);
+                        CategoryGroups.Add(favGroup);
+                    }
+
+                    var freqItems = allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10).ToList();
+                    if (freqItems.Count > 0)
+                    {
+                        var freqGroup = new ToolboxCategoryGroup(freqGroupName);
+                        foreach (var f in freqItems) freqGroup.Items.Add(f);
+                        CategoryGroups.Add(freqGroup);
+                    }
+                }
+
+                foreach (var item in allItems)
+                {
+                    if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
+                        !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase) &&
+                        !item.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    string localizedCategoryName = LocalizationManager.Instance.GetString($"Category_{item.Category}", item.Category);
+
+                    if (!groupDict.TryGetValue(item.Category, out var group))
+                    {
+                        group = new ToolboxCategoryGroup(localizedCategoryName);
+                        groupDict[item.Category] = group;
+                        CategoryGroups.Add(group);
+                    }
+
+                    group.Items.Add(item);
+                }
+            }
+            finally
             {
-                name = sampleInstance.Name;
+                _isRefreshing = false;
             }
-
-            string category = sampleInstance?.Category ?? defAttr?.Category ?? "General";
-
-            string description = LocalizationManager.Instance.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
-            if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Description))
-            {
-                description = sampleInstance.Description;
-            }
-
-            bool isFavorite = prefs.IsFavorite(typeName) || prefs.IsFavorite(type.Name);
-            int usageCount = Math.Max(prefs.GetUsageCount(typeName), prefs.GetUsageCount(type.Name));
-            string icon = GetIconForNodeType(typeName);
-
-            var item = new NodeToolboxItem(name, category, description, typeName, icon, isFavorite, usageCount);
-
-            // Text Search Filter
-            if (!string.IsNullOrWhiteSpace(SearchText) &&
-                !name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&
-                !category.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&
-                !description.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            allItems.Add(item);
         }
+    }
 
-        string favGroupName = LocalizationManager.Instance.GetString("Filter_Favorites", "⭐ Favoritos");
-        string freqGroupName = LocalizationManager.Instance.GetString("Filter_Frequent", "🔥 Más Usados");
+    private void UpdateAvailableCategories(List<NodeToolboxItem> allItems)
+    {
+        var categoryCounts = allItems
+            .GroupBy(i => i.Category, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
-        // Special Filter Chips: "Favoritos" and "Frecuentes"
-        if (SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase))
+        int totalCount = allItems.Count;
+        int favCount = allItems.Count(i => i.IsFavorite);
+        int freqCount = allItems.Count(i => i.UsageCount > 0);
+
+        var list = new List<ToolboxCategoryFilterItem>
         {
-            var favGroup = new ToolboxCategoryGroup(favGroupName);
-            foreach (var item in allItems.Where(i => i.IsFavorite))
-            {
-                favGroup.Items.Add(item);
-            }
-            if (favGroup.Items.Count > 0)
-            {
-                CategoryGroups.Add(favGroup);
-            }
-            return;
-        }
+            new("Todas", LocalizationManager.Instance.GetString("Category_All", "Todas"), "🌐", totalCount,
+                SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase)),
+            new("Favoritos", LocalizationManager.Instance.GetString("Category_Favorites", "Favoritos"), "⭐", favCount,
+                SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase)),
+            new("Frecuentes", LocalizationManager.Instance.GetString("Category_Frequent", "Más Usados"), "🔥", freqCount,
+                SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Frequent", StringComparison.OrdinalIgnoreCase))
+        };
 
-        if (SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Frequent", StringComparison.OrdinalIgnoreCase))
+        // Descubrir todas las categorías dinámicas de plugins cargados
+        var dynamicCategories = _pluginLoader.DiscoveredNodeTypes.Values
+            .Distinct()
+            .Select(type =>
+            {
+                var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
+                return defAttr?.Category ?? "General";
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(cat => LocalizationManager.Instance.GetString($"Category_{cat}", cat))
+            .ToList();
+
+        foreach (var cat in dynamicCategories)
         {
-            var freqGroup = new ToolboxCategoryGroup(freqGroupName);
-            foreach (var item in allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10))
-            {
-                freqGroup.Items.Add(item);
-            }
-            if (freqGroup.Items.Count > 0)
-            {
-                CategoryGroups.Add(freqGroup);
-            }
-            return;
+            int count = categoryCounts.TryGetValue(cat, out int c) ? c : 0;
+            string displayName = LocalizationManager.Instance.GetString($"Category_{cat}", cat);
+            string icon = GetIconForCategory(cat);
+            bool isSelected = SelectedCategoryFilter.Equals(cat, StringComparison.OrdinalIgnoreCase);
+
+            list.Add(new ToolboxCategoryFilterItem(cat, displayName, icon, count, isSelected));
         }
 
-        // Standard Categorized Groups (or "Todas")
-        var groupDict = new Dictionary<string, ToolboxCategoryGroup>(StringComparer.OrdinalIgnoreCase);
-
-        // 1. Add "⭐ Favoritos" group on top if "Todas" is selected and favorites exist
-        if (SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
+        // Actualizar la colección observable de forma limpia
+        AvailableCategories.Clear();
+        ToolboxCategoryFilterItem? matchedItem = null;
+        foreach (var item in list)
         {
-            var favItems = allItems.Where(i => i.IsFavorite).ToList();
-            if (favItems.Count > 0)
+            AvailableCategories.Add(item);
+            if (item.Key.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
             {
-                var favGroup = new ToolboxCategoryGroup(favGroupName);
-                foreach (var f in favItems) favGroup.Items.Add(f);
-                CategoryGroups.Add(favGroup);
-            }
-
-            var freqItems = allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10).ToList();
-            if (freqItems.Count > 0)
-            {
-                var freqGroup = new ToolboxCategoryGroup(freqGroupName);
-                foreach (var f in freqItems) freqGroup.Items.Add(f);
-                CategoryGroups.Add(freqGroup);
+                matchedItem = item;
             }
         }
 
-        // 2. Add Category Groups
-        foreach (var item in allItems)
+        if (matchedItem != null)
         {
-            if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
-                !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase) &&
-                !item.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            string localizedCategoryName = LocalizationManager.Instance.GetString($"Category_{item.Category}", item.Category);
-
-            if (!groupDict.TryGetValue(item.Category, out var group))
-            {
-                group = new ToolboxCategoryGroup(localizedCategoryName);
-                groupDict[item.Category] = group;
-                CategoryGroups.Add(group);
-            }
-
-            group.Items.Add(item);
+            SelectedCategoryItem = matchedItem;
         }
+        else if (AvailableCategories.Count > 0)
+        {
+            SelectedCategoryFilter = AvailableCategories[0].Key;
+            SelectedCategoryItem = AvailableCategories[0];
         }
     }
 
@@ -218,12 +334,40 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     public void SetCategoryFilter(string category)
     {
         SelectedCategoryFilter = category;
+        var found = AvailableCategories.FirstOrDefault(c => c.Key.Equals(category, StringComparison.OrdinalIgnoreCase));
+        if (found != null)
+        {
+            SelectedCategoryItem = found;
+        }
         RefreshToolbox();
     }
 
     partial void OnSearchTextChanged(string value)
     {
         RefreshToolbox();
+    }
+
+    public static string GetIconForCategory(string category)
+    {
+        return category.ToLowerInvariant() switch
+        {
+            "all" or "todas" => "🌐",
+            "favorites" or "favoritos" => "⭐",
+            "frequent" or "frecuentes" or "más usados" => "🔥",
+            "filesystem" or "archivos y carpetas" or "file system" => "📁",
+            "archives" or "archivos comprimidos" or "compresión" => "📦",
+            "images" or "imágenes" or "fotos" => "🖼️",
+            "documents" or "documentos" or "documentos y pdfs" or "pdf" or "pdfs" => "📄",
+            "metadata" or "metadatos" or "tags" => "🏷️",
+            "logic" or "lógica y flujo" or "logic & flow" or "flujo" => "⚡",
+            "hashing" or "integridad y hashes" or "seguridad" => "🔑",
+            "integrations" or "integraciones" or "webhooks" or "cli" => "💻",
+            "network" or "network & remote" or "red" or "servidores" or "red y servidores" => "🌐",
+            "data & databases" or "data" or "databases" or "datos y bases de datos" or "datos" or "bases de datos" => "📊",
+            "ai & computer vision" or "ai" or "ia" or "visión" or "inteligencia artificial" => "🤖",
+            "scripting" or "scripts" or "c#" or "javascript" => "📜",
+            _ => "🧩"
+        };
     }
 
     public static string GetIconForNodeType(string typeName)
@@ -236,7 +380,22 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         if (typeName.Contains("ImageOptimizer", StringComparison.OrdinalIgnoreCase)) return "🖼️";
         if (typeName.Contains("ExifMetadata", StringComparison.OrdinalIgnoreCase)) return "🏷️";
         if (typeName.Contains("MediaTranscoder", StringComparison.OrdinalIgnoreCase)) return "🎬";
-        if (typeName.Contains("DocumentProcessor", StringComparison.OrdinalIgnoreCase)) return "📄";
+        if (typeName.Contains("LocalOcr", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Ocr", StringComparison.OrdinalIgnoreCase)) return "🔍";
+        if (typeName.Contains("SmartImageClassifier", StringComparison.OrdinalIgnoreCase) || typeName.Contains("ImageClassifier", StringComparison.OrdinalIgnoreCase)) return "👁️";
+        if (typeName.Contains("FaceDetector", StringComparison.OrdinalIgnoreCase)) return "👤";
+        if (typeName.Contains("ObjectDetector", StringComparison.OrdinalIgnoreCase)) return "🎯";
+        if (typeName.Contains("Whisper", StringComparison.OrdinalIgnoreCase)) return "🎙️";
+        if (typeName.Contains("DocumentProcessor", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Pdf", StringComparison.OrdinalIgnoreCase)) return "📄";
+        if (typeName.Contains("Ftp", StringComparison.OrdinalIgnoreCase)) return "📤";
+        if (typeName.Contains("Sftp", StringComparison.OrdinalIgnoreCase)) return "🔒";
+        if (typeName.Contains("Smb", StringComparison.OrdinalIgnoreCase)) return "🖧";
+        if (typeName.Contains("WebDav", StringComparison.OrdinalIgnoreCase)) return "☁️";
+        if (typeName.Contains("RemoteDownload", StringComparison.OrdinalIgnoreCase)) return "📥";
+        if (typeName.Contains("Excel", StringComparison.OrdinalIgnoreCase)) return "📊";
+        if (typeName.Contains("Csv", StringComparison.OrdinalIgnoreCase)) return "📑";
+        if (typeName.Contains("DataLookup", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Lookup", StringComparison.OrdinalIgnoreCase)) return "🔍";
+        if (typeName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Database", StringComparison.OrdinalIgnoreCase)) return "🗄️";
+        if (typeName.Contains("DataFormatConverter", StringComparison.OrdinalIgnoreCase) || typeName.Contains("DataConverter", StringComparison.OrdinalIgnoreCase)) return "🔄";
         if (typeName.Contains("VariableInjector", StringComparison.OrdinalIgnoreCase)) return "🏷️";
         if (typeName.Contains("DeduplicationFilter", StringComparison.OrdinalIgnoreCase)) return "👯";
         if (typeName.Contains("HashCalculator", StringComparison.OrdinalIgnoreCase)) return "🔑";

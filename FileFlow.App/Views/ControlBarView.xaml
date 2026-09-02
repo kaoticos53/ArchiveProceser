@@ -47,6 +47,33 @@
                               Margin="0,0,8,0" 
                               ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_DryRunToolTip]}" />
 
+                <!-- Watch Mode Button -->
+                <Button Command="{Binding ToggleWatchModeCommand}" 
+                        Padding="8,5" 
+                        Margin="0,0,8,0" 
+                        ToolTip="Activa o detiene el Modo Vigilante en tiempo real para procesar automáticamente los archivos según caigan en las carpetas de origen.">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsWatching}" Value="True">
+                                    <Setter Property="Background" Value="#065F46" />
+                                    <Setter Property="BorderBrush" Value="#10B981" />
+                                    <Setter Property="Foreground" Value="#34D399" />
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#10B981" BlurRadius="8" ShadowDepth="0" Opacity="0.7" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="👁️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Vigilante" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <!-- Workflow Settings Modal Button -->
                 <Button Command="{Binding OpenWorkflowSettingsCommand}" 
                         Style="{DynamicResource SecondaryButton}" 

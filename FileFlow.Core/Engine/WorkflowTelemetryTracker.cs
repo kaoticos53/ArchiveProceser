@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using FileFlow.Sdk.Telemetry;
 
@@ -5,6 +6,7 @@ namespace FileFlow.Core.Engine;
 
 /// <summary>
 /// Acumulador atómico de métricas de telemetría y cálculo de snapshots de rendimiento en tiempo real para el motor DAG.
+/// Incluye tracking granular por nodo para el cálculo del mapa de calor de latencia y detección de cuellos de botella.
 /// </summary>
 public sealed class WorkflowTelemetryTracker
 {
@@ -17,6 +19,9 @@ public sealed class WorkflowTelemetryTracker
     private long _processedBytesCount;
     private string _lastCustomStatusMessage = string.Empty;
 
+    private readonly ConcurrentDictionary<string, (long count, double totalMs)> _nodeStats = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _nodeStatsLock = new();
+
     public void Reset()
     {
         Interlocked.Exchange(ref _processedItemsCount, 0);
@@ -26,6 +31,12 @@ public sealed class WorkflowTelemetryTracker
         Interlocked.Exchange(ref _completedFilesCount, 0);
         Interlocked.Exchange(ref _processedBytesCount, 0);
         Volatile.Write(ref _lastCustomStatusMessage, string.Empty);
+
+        lock (_nodeStatsLock)
+        {
+            _nodeStats.Clear();
+        }
+
         _stopwatch.Restart();
     }
 
@@ -72,10 +83,81 @@ public sealed class WorkflowTelemetryTracker
         }
     }
 
+    public void RecordNodeExecution(string nodeId, double durationMs)
+    {
+        if (string.IsNullOrWhiteSpace(nodeId)) return;
+
+        _nodeStats.AddOrUpdate(
+            nodeId,
+            (1, Math.Max(0.0, durationMs)),
+            (_, existing) => (existing.count + 1, existing.totalMs + Math.Max(0.0, durationMs)));
+    }
+
     public long ExpectedTotalItems => Volatile.Read(ref _expectedTotalItems);
     public long CompletedFilesCount => Volatile.Read(ref _completedFilesCount);
     public long SourceItemsEmitted => Volatile.Read(ref _sourceItemsEmitted);
     public long ProcessedItemsCount => Volatile.Read(ref _processedItemsCount);
+
+    public IReadOnlyDictionary<string, NodeTelemetryStats> GetNodeStats()
+    {
+        var rawStats = _nodeStats.ToArray();
+        if (rawStats.Length == 0)
+        {
+            return new Dictionary<string, NodeTelemetryStats>();
+        }
+
+        double grandTotalMs = rawStats.Sum(s => s.Value.totalMs);
+        string? bottleneckNodeId = null;
+        double maxNodeTimeMs = 0.0;
+
+        foreach (var (nodeId, (count, totalMs)) in rawStats)
+        {
+            if (totalMs > maxNodeTimeMs)
+            {
+                maxNodeTimeMs = totalMs;
+                bottleneckNodeId = nodeId;
+            }
+        }
+
+        var result = new Dictionary<string, NodeTelemetryStats>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (nodeId, (count, totalMs)) in rawStats)
+        {
+            double avgMs = count > 0 ? totalMs / count : 0.0;
+            double ratio = grandTotalMs > 0.0 ? totalMs / grandTotalMs : 0.0;
+            bool isBottleneck = rawStats.Length > 1 && nodeId.Equals(bottleneckNodeId, StringComparison.OrdinalIgnoreCase) && ratio >= 0.35 && totalMs >= 50.0;
+
+            LatencyHeatLevel heatLevel;
+            if (isBottleneck)
+            {
+                heatLevel = LatencyHeatLevel.High;
+            }
+            else if (avgMs < 50.0)
+            {
+                heatLevel = LatencyHeatLevel.Low;
+            }
+            else if (avgMs < 500.0)
+            {
+                heatLevel = LatencyHeatLevel.Medium;
+            }
+            else
+            {
+                heatLevel = LatencyHeatLevel.High;
+            }
+
+            result[nodeId] = new NodeTelemetryStats(
+                NodeId: nodeId,
+                ProcessedCount: count,
+                TotalTimeMs: totalMs,
+                AverageTimeMs: avgMs,
+                RelativeBottleneckRatio: ratio,
+                IsBottleneck: isBottleneck,
+                HeatLevel: heatLevel
+            );
+        }
+
+        return result;
+    }
 
     public TelemetrySnapshot GetSnapshot(bool isRunning)
     {

@@ -10,7 +10,7 @@ public class UserPreferencesData
     public Dictionary<string, int> NodeUsageCounts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     // Persistent Application Settings
-    public string DefaultGlobalOutputDir { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileFlowStudio", "Output");
+    public string DefaultGlobalOutputDir { get; set; } = AppPaths.DefaultGlobalOutputDir;
     public string ActiveTheme { get; set; } = "Dark";
     public string Language { get; set; } = "es-ES";
     public bool IsCompactToolbox { get; set; } = false;
@@ -70,7 +70,7 @@ public class UserPreferencesService
                         _data.NodeUsageCounts ??= new(StringComparer.OrdinalIgnoreCase);
                         if (string.IsNullOrWhiteSpace(_data.DefaultGlobalOutputDir))
                         {
-                            _data.DefaultGlobalOutputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "FileFlowStudio", "Output");
+                            _data.DefaultGlobalOutputDir = AppPaths.DefaultGlobalOutputDir;
                         }
                     }
                 }

@@ -1,0 +1,139 @@
+<UserControl x:Class="FileFlow.App.Views.Components.GroupCardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=vm:GroupViewModel}"
+             Width="{Binding Width, Mode=TwoWay}"
+             Height="{Binding Height, Mode=TwoWay}"
+             MinWidth="220" MinHeight="140"
+             MaxWidth="2500" MaxHeight="2500">
+
+    <UserControl.Resources>
+        <Style x:Key="GroupColorCircleStyle" TargetType="Button">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="7" BorderBrush="#80FFFFFF" BorderThickness="1">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="MouseOver">
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="border" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
+                                        </Storyboard>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- Marco visual y fondo translúcido: IsHitTestVisible="False" para que los nodos interiores se puedan seleccionar y mover libremente -->
+        <Border BorderBrush="{Binding Color}"
+                BorderThickness="2"
+                CornerRadius="12"
+                Background="#08808080"
+                IsHitTestVisible="False" />
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Cabecera interactiva del Marco de Grupo -->
+            <Border Grid.Row="0" Background="{Binding Color}" Opacity="0.95" CornerRadius="10,10,0,0" Padding="10,6">
+                <Grid>
+                    <!-- Thumb de arrastre de grupo en la cabecera -->
+                    <Thumb DragDelta="HeaderThumb_DragDelta" Cursor="SizeAll">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb">
+                                <Border Background="Transparent" />
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+
+                    <Grid IsHitTestVisible="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="🔲" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+
+                        <!-- Título Editable del Grupo -->
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 FontWeight="Bold"
+                                 FontSize="12"
+                                 Foreground="#FFFFFF"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0"
+                                 VerticalAlignment="Center" />
+
+                        <!-- Paleta de Colores de Grupo -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                            <Button Style="{StaticResource GroupColorCircleStyle}" Background="#3B82F6"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#3B82F6" ToolTip="Azul" />
+                            <Button Style="{StaticResource GroupColorCircleStyle}" Background="#10B981"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#10B981" ToolTip="Esmeralda" />
+                            <Button Style="{StaticResource GroupColorCircleStyle}" Background="#8B5CF6"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#8B5CF6" ToolTip="Violeta" />
+                            <Button Style="{StaticResource GroupColorCircleStyle}" Background="#F59E0B"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#F59E0B" ToolTip="Ámbar" />
+                            <Button Style="{StaticResource GroupColorCircleStyle}" Background="#EF4444"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#EF4444" ToolTip="Rojo" />
+                            <Button Style="{StaticResource GroupColorCircleStyle}" Background="#64748B"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#64748B" ToolTip="Pizarra" />
+                        </StackPanel>
+
+                        <!-- Botón Eliminar / Desagrupar -->
+                        <Button Grid.Column="3"
+                                Command="{Binding DeleteCommand}"
+                                Content="✕"
+                                Foreground="#FFFFFF"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                FontSize="11"
+                                FontWeight="Bold"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip="Eliminar Grupo"
+                                VerticalAlignment="Center" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- El área interior de Grid.Row="1" permanece hueca/vacía para que los clics pasen limpios a los nodos -->
+
+            <!-- Thumb de Redimensionamiento en la esquina inferior derecha -->
+            <Thumb Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Width="20" Height="20" Cursor="SizeNWSE" Margin="0,0,3,3"
+                   DragDelta="ResizeThumb_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="Transparent">
+                            <Path Data="M 14,2 L 14,14 L 2,14 Z M 14,7 L 14,14 L 7,14 Z M 14,11 L 14,14 L 11,14 Z"
+                                  Fill="{Binding Color}" Stretch="Uniform" Margin="2" />
+                        </Border>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+        </Grid>
+    </Grid>
+</UserControl>

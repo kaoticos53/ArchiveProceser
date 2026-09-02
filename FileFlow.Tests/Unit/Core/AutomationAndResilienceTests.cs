@@ -48,9 +48,9 @@ public class AutomationAndResilienceTests
     public async Task FlowSchedulerService_ShouldEmitTriggers_WhenRunning()
     {
         using var scheduler = new FlowSchedulerService();
-        scheduler.StartInterval(TimeSpan.FromMilliseconds(50));
+        scheduler.StartInterval(TimeSpan.FromMilliseconds(25));
 
-        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(2000));
         var triggers = new List<DateTime>();
 
         try

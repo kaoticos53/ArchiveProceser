@@ -21,6 +21,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
     public ObservableCollection<BreadcrumbItem> Breadcrumbs { get; } = [];
+    public ObservableCollection<AnnotationViewModel> Annotations { get; } = [];
+    public ObservableCollection<GroupViewModel> Groups { get; } = [];
+    public ObservableCollection<object> CanvasDecorators { get; } = [];
 
     [ObservableProperty]
     private string _currentWorkflowTitle = "Root Workflow";
@@ -33,6 +36,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private Point _viewportLocation;
+
+    [ObservableProperty]
+    private Size _viewportSize;
 
     [ObservableProperty]
     private double _viewportZoom = 1.0;
@@ -247,7 +253,84 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             node.Dispose();
         }
         Nodes.Clear();
+        Annotations.Clear();
+        Groups.Clear();
+        CanvasDecorators.Clear();
         SelectedNode = null;
+    }
+
+    public AnnotationViewModel AddAnnotation(Point? position = null, string title = "Nota", string content = "", string color = "#FEF08A")
+    {
+        var loc = position ?? new Point(Math.Max(50, -ViewportLocation.X + 150), Math.Max(50, -ViewportLocation.Y + 150));
+        var annotation = new AnnotationViewModel(title, content, loc, color: color)
+        {
+            ParentEditor = this
+        };
+        Annotations.Add(annotation);
+        CanvasDecorators.Add(annotation);
+        return annotation;
+    }
+
+    [RelayCommand]
+    public void AddNewAnnotation()
+    {
+        AddAnnotation();
+    }
+
+    [RelayCommand]
+    public void DeleteAnnotation(AnnotationViewModel? annotation)
+    {
+        if (annotation != null)
+        {
+            Annotations.Remove(annotation);
+            CanvasDecorators.Remove(annotation);
+        }
+    }
+
+    public GroupViewModel AddGroup(Point? position = null, string title = "Grupo de Nodos", double width = 450, double height = 320, string color = "#3B82F6", IEnumerable<string>? nodeIds = null)
+    {
+        var loc = position ?? new Point(Math.Max(50, -ViewportLocation.X + 100), Math.Max(50, -ViewportLocation.Y + 100));
+        var group = new GroupViewModel(title, loc, width, height, color, nodeIds)
+        {
+            ParentEditor = this
+        };
+        Groups.Add(group);
+        CanvasDecorators.Insert(0, group);
+        return group;
+    }
+
+    [RelayCommand]
+    public void AddNewGroup()
+    {
+        AddGroup();
+    }
+
+    [RelayCommand]
+    public void GroupSelectedNodes()
+    {
+        var selected = Nodes.Where(n => n.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            AddNewGroup();
+            return;
+        }
+
+        double minX = selected.Min(n => n.Location.X) - 30;
+        double minY = selected.Min(n => n.Location.Y) - 50;
+        double maxX = selected.Max(n => n.Location.X + n.Width) + 30;
+        double maxY = selected.Max(n => n.Location.Y + 250) + 30;
+
+        AddGroup(new Point(minX, minY), "Grupo", Math.Max(300, maxX - minX), Math.Max(200, maxY - minY), "#3B82F6", selected.Select(n => n.Id));
+    }
+
+    [RelayCommand]
+    public void DeleteGroup(GroupViewModel? group)
+    {
+        if (group != null)
+        {
+            Groups.Remove(group);
+            CanvasDecorators.Remove(group);
+        }
     }
 
     public NodeViewModel? AddNode(string nodeTypeName, Point position)
@@ -311,7 +394,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public WorkflowGraph ExportToGraphModel(string name = "FileFlow Workflow")
     {
-        return WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, name);
+        return WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, name, Annotations, Groups);
     }
 
     public void LoadFromGraphModel(WorkflowGraph graph)
@@ -335,6 +418,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             registerConnectionCallback: conn =>
             {
                 Connections.Add(conn);
+            },
+            registerAnnotationCallback: annotVm =>
+            {
+                Annotations.Add(annotVm);
+                CanvasDecorators.Add(annotVm);
+            },
+            registerGroupCallback: groupVm =>
+            {
+                Groups.Add(groupVm);
+                CanvasDecorators.Insert(0, groupVm);
             }
         );
     }

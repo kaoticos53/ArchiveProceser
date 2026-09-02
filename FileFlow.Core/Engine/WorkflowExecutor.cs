@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Channels;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
@@ -28,6 +29,9 @@ public class WorkflowExecutor
     public WorkflowDebugSession? DebugSession { get; set; }
     public ExecutionJournalService JournalService { get; } = new();
     public List<PlannedAction> PlannedActions { get; } = [];
+    public WorkflowCheckpointData? Checkpoint { get; set; }
+    public bool EnableCheckpointing { get; set; } = true;
+    private readonly Lock _checkpointLock = new();
 
     public event Action<double, string>? ProgressChanged;
     public event Action<string, double, string>? NodeProgressChanged;
@@ -41,6 +45,11 @@ public class WorkflowExecutor
     public TelemetrySnapshot GetTelemetrySnapshot()
     {
         return _telemetryTracker.GetSnapshot(_isRunning);
+    }
+
+    public IReadOnlyDictionary<string, NodeTelemetryStats> GetNodeTelemetryStats()
+    {
+        return _telemetryTracker.GetNodeStats();
     }
 
     public void SetTotalExpectedItems(long totalExpectedItems)
@@ -192,6 +201,26 @@ public class WorkflowExecutor
                 _outgoingEdges[node.Id] = graph.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
             }
 
+            if (EnableCheckpointing && !IsDryRun && !string.IsNullOrWhiteSpace(graph.Name))
+            {
+                if (Checkpoint == null)
+                {
+                    if (WorkflowCheckpointManager.Instance.HasPendingCheckpoint(graph.Name, out var savedCp) && savedCp != null)
+                    {
+                        Checkpoint = savedCp;
+                        NotifyLog($"[Checkpoint] Reanudando ejecución previa para '{graph.Name}' ({Checkpoint.CompletedFileKeys.Count} archivos ya completados).", LogLevel.Information);
+                    }
+                    else
+                    {
+                        Checkpoint = new WorkflowCheckpointData
+                        {
+                            WorkflowName = graph.Name,
+                            ExecutionId = _currentExecutionId
+                        };
+                    }
+                }
+            }
+
             NotifyLog($"Starting workflow execution '{graph.Name}' with {validation.TopologicalOrder.Count} nodes (DryRun={IsDryRun}, Debug={DebugSession != null}).", LogLevel.Information);
 
             // Find entry nodes (nodes with no connected input edges)
@@ -238,13 +267,18 @@ public class WorkflowExecutor
 
                     NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
 
+                    long startTicks = Stopwatch.GetTimestamp();
                     try
                     {
                         await startNode.ExecuteAsync(string.Empty, dummyItem, ctx, cancellationToken);
+                        double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+                        _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Completed);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
+                        double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+                        _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Faulted);
                         if (DebugSession != null)
                         {
@@ -288,12 +322,144 @@ public class WorkflowExecutor
                 throw new AggregateException("Se produjeron errores durante la ejecución de los nodos del flujo.", executionErrors);
             }
 
+            if (EnableCheckpointing && !IsDryRun && !string.IsNullOrWhiteSpace(graph.Name))
+            {
+                WorkflowCheckpointManager.Instance.ClearCheckpoint(graph.Name);
+            }
+
             _telemetryTracker.Stop();
             long finalFiles = _telemetryTracker.CompletedFilesCount;
             if (finalFiles == 0) finalFiles = _telemetryTracker.SourceItemsEmitted;
             if (finalFiles == 0) finalFiles = _telemetryTracker.ProcessedItemsCount;
             NotifyProgress(100.0, $"🟢 Completado: {finalFiles:N0}/{finalFiles:N0} elementos (100%)");
             NotifyLog("Workflow execution completed successfully.", LogLevel.Information);
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Ejecuta el grafo en modo continuo de supervisión de carpetas (Watch Folder Trigger Mode).
+    /// El motor inicializa el grafo y permanece escuchando los eventos de FolderWatcherService,
+    /// inyectando cada archivo recién completado directamente en los nodos de entrada del DAG.
+    /// </summary>
+    public async Task ExecuteWatchModeAsync(
+        WorkflowGraph graph,
+        PluginLoader loader,
+        FolderWatcherService watcherService,
+        CancellationToken cancellationToken)
+    {
+        _currentExecutionId = Guid.NewGuid().ToString("N");
+        _nodeInstances.Clear();
+        _outgoingEdges.Clear();
+        _disabledLoggingNodeIds.Clear();
+        foreach (var disabledId in graph.DisabledLoggingNodeIds)
+        {
+            _disabledLoggingNodeIds.Add(disabledId);
+        }
+        foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled))
+        {
+            _disabledLoggingNodeIds.Add(nodeDto.Id);
+        }
+
+        _telemetryTracker.Reset();
+        _isRunning = true;
+
+        var validator = new GraphValidator();
+        var validation = validator.Validate(graph, loader);
+        if (!validation.IsValid)
+        {
+            foreach (var err in validation.Errors)
+            {
+                NotifyLog($"Validation Error: {err}", LogLevel.Error);
+            }
+            throw new InvalidOperationException($"Workflow validation failed with {validation.Errors.Count} errors.");
+        }
+
+        foreach (var node in validation.TopologicalOrder)
+        {
+            _nodeInstances[node.Id] = node;
+            _outgoingEdges[node.Id] = graph.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
+        }
+
+        HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
+        List<IFlowNode> startNodes = validation.TopologicalOrder.Where(n => !targetNodeIds.Contains(n.Id)).ToList();
+        if (startNodes.Count == 0 && validation.TopologicalOrder.Count > 0)
+        {
+            startNodes.Add(validation.TopologicalOrder[0]);
+        }
+
+        _startNodeIds.Clear();
+        foreach (var sn in startNodes)
+        {
+            _startNodeIds.Add(sn.Id);
+        }
+
+        NotifyLog($"Modo Vigilante Activo: Escuchando eventos en tiempo real para '{graph.Name}'...", LogLevel.Information);
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var item = await watcherService.ItemReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                if (item == null) continue;
+
+                NotifyLog($"[Watchdog] Disparando procesamiento para: {item.FileName}", LogLevel.Information);
+
+                foreach (var startNode in startNodes)
+                {
+                    var itemClone = item.DeepClone();
+                    itemClone.Metadata["WorkflowExecutionId"] = _currentExecutionId;
+                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
+                    {
+                        itemClone.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                    }
+                    if (IsDryRun)
+                    {
+                        itemClone.Metadata["DryRun"] = true;
+                    }
+
+                    var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, itemClone);
+
+                    TrackTask(Task.Run(async () =>
+                    {
+                        NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
+                        long startTicks = Stopwatch.GetTimestamp();
+                        try
+                        {
+                            if (startNode.Inputs.Count == 0 && startNode.Outputs.Count > 0)
+                            {
+                                foreach (var outPort in startNode.Outputs)
+                                {
+                                    await DispatchEmitAsync(startNode.Id, outPort.Name, itemClone, cancellationToken).ConfigureAwait(false);
+                                }
+                            }
+                            else
+                            {
+                                string inPortName = startNode.Inputs.FirstOrDefault()?.Name ?? "In";
+                                await startNode.ExecuteAsync(inPortName, itemClone, ctx, cancellationToken).ConfigureAwait(false);
+                            }
+
+                            double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+                            _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
+                            NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Completed);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+                            _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
+                            NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Faulted);
+                            NotifyLog(startNode.Id, $"Error en nodo inicial {startNode.Name} para {itemClone.FileName}: {ex.Message}", LogLevel.Error, itemClone.CurrentPath);
+                        }
+                    }, cancellationToken));
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            NotifyLog("Modo Vigilante detenido.", LogLevel.Information);
         }
         finally
         {
@@ -324,16 +490,41 @@ public class WorkflowExecutor
             _telemetryTracker.IncrementSourceItemsEmitted();
         }
 
+        if (Checkpoint != null && !string.IsNullOrWhiteSpace(item.OriginalPath) && Checkpoint.CompletedFileKeys.Contains(item.OriginalPath))
+        {
+            NotifyLog($"[Checkpoint] Omitiendo archivo completado previamente: {item.FileName}", LogLevel.Debug);
+            _telemetryTracker.IncrementCompletedFiles();
+            return Task.CompletedTask;
+        }
+
         if (!_outgoingEdges.TryGetValue(sourceNodeId, out var edges))
         {
-            _telemetryTracker.IncrementCompletedFiles();
+            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
+            if (Checkpoint != null && !string.IsNullOrWhiteSpace(item.OriginalPath))
+            {
+                lock (_checkpointLock)
+                {
+                    Checkpoint.CompletedFileKeys.Add(item.OriginalPath);
+                    Checkpoint.ProcessedItemsCount = doneFiles;
+                    WorkflowCheckpointManager.Instance.SaveCheckpoint(Checkpoint);
+                }
+            }
             return Task.CompletedTask;
         }
 
         var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
         if (matchingEdges.Count == 0)
         {
-            _telemetryTracker.IncrementCompletedFiles();
+            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
+            if (Checkpoint != null && !string.IsNullOrWhiteSpace(item.OriginalPath))
+            {
+                lock (_checkpointLock)
+                {
+                    Checkpoint.CompletedFileKeys.Add(item.OriginalPath);
+                    Checkpoint.ProcessedItemsCount = doneFiles;
+                    WorkflowCheckpointManager.Instance.SaveCheckpoint(Checkpoint);
+                }
+            }
             return Task.CompletedTask;
         }
 
@@ -371,13 +562,18 @@ public class WorkflowExecutor
 
                         NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
 
+                        long startTicks = Stopwatch.GetTimestamp();
                         try
                         {
                             await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken).ConfigureAwait(false);
+                            double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs);
                             NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
                         {
+                            double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
+                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs);
                             NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
                             if (DebugSession != null)
                             {
@@ -400,6 +596,16 @@ public class WorkflowExecutor
                             if (_isRunning && pct >= 100.0) pct = 99.0;
                             else if (pct > 100.0) pct = 100.0;
                             NotifyProgress(pct, $"⚡ Procesando: {doneFiles:N0}/{effective:N0} elementos ({pct:F0}%)");
+
+                            if (Checkpoint != null && !string.IsNullOrWhiteSpace(targetItem.OriginalPath))
+                            {
+                                lock (_checkpointLock)
+                                {
+                                    Checkpoint.CompletedFileKeys.Add(targetItem.OriginalPath);
+                                    Checkpoint.ProcessedItemsCount = doneFiles;
+                                    WorkflowCheckpointManager.Instance.SaveCheckpoint(Checkpoint);
+                                }
+                            }
                         }
                     }
                 }, cancellationToken);

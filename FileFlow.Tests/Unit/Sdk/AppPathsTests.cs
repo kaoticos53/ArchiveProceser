@@ -70,7 +70,7 @@ public class AppPathsTests
             AppPaths.SetCustomDataDirectory(null);
             if (Directory.Exists(tempCustomDir))
             {
-                Directory.Delete(tempCustomDir, true);
+                try { Directory.Delete(tempCustomDir, true); } catch { }
             }
         }
     }
