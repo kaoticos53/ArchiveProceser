@@ -12,8 +12,11 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Proveedor Centralizado de Rutas (`AppPaths`) y Soporte Nativo para Modo Portable**:
   - Unificación de carpetas de usuario bajo `%AppData%/FileFlow/` y soporte autónomo para modo portable (`portable.dat` o carpeta `data/` local al ejecutable) sin tocar el sistema anfitrión ni el registro.
   - Resolución de rutas relativas y auto-detección de herramientas portables (FFmpeg, 7-Zip, Python) ubicadas en `tools/`.
-  - Script automatizado de distribución portable [`installer/build-portable.ps1`](file:///installer/build-portable.ps1) para generar paquetes `.zip` listos para usar en memorias USB o carpetas portables.
+  - Script automatizado de distribución portable [`installer/build-portable.ps1`](file:///installer/build-portable.ps1) para generar paquetes `.zip` listos para usar en memorias USB o carpetas portables, integrado en [`.github/workflows/release.yml`](file:///.github/workflows/release.yml).
   - Externalización completa de muestras sintéticas, presets de renombrado, presets multimedia, catálogo de regex y plantillas de scripting a ficheros JSON independientes con fallback determinista.
+- **Pipelines de CI/CD en GitHub Actions Actualizados ([`.github/workflows/release.yml`](file:///.github/workflows/release.yml) y [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml))**:
+  - Integración de `build-portable.ps1` en el workflow de releases para generar los ZIPs portables oficiales con el marcador `portable.dat`, la estructura preconfigurada `data/` y la carpeta `docs/` con manuales en PDF.
+  - Publicación como assets directos en cada GitHub Release del instalador Inno Setup (`.exe`), paquete portable (`.zip`), sumas de verificación SHA-256 (`checksums.txt`) y los 3 manuales en PDF (`Manual de Usuario`, `Guía para Principiantes`, `Manual de Scripting`).
 - **Scripts de Limpieza Integral (`clean.ps1` y `clean.bat`)**:
   - Limpieza automatizada y determinista de todas las carpetas `bin` y `obj` en todos los proyectos, artefactos de publicación (`installer/publish`), empaquetado (`installer/output`), resultados de tests (`TestResults`, `coverage-report`) y temporales (`.vs`, `.dotnet_tmp`, `*.user`, `*.suo`, `crash.log`).
   - Soporte de simulación no destructiva (`-DryRun`), opción de incluir PDFs (`-IncludePdfs`) y cálculo de espacio liberado en disco.

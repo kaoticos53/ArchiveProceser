@@ -33,7 +33,7 @@ jobs:
       - name: 🏗️ Compilar solución
         run: dotnet build FileFlow.slnx -c Release --no-restore
 
-      - name: 🧪 Ejecutar suite de pruebas (190 tests)
+      - name: 🧪 Ejecutar suite de pruebas (303 tests)
         run: dotnet test FileFlow.slnx -c Release --no-build --verbosity normal --logger "trx;LogFileName=test_results.trx"
 
       - name: 📊 Publicar resultados de pruebas

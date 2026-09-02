@@ -34,7 +34,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $publishDir = Join-Path $PSScriptRoot "publish\$Runtime"
 $outputDir = Join-Path $PSScriptRoot "output"
 $portableTempDir = Join-Path $PSScriptRoot "publish\FileFlowStudio-Portable"
-$zipName = "FileFlowStudio-v$Version-Portable-$Runtime.zip"
+$zipName = "FileFlowStudio-Portable-v$Version-$Runtime.zip"
 $zipPath = Join-Path $outputDir $zipName
 
 Write-Host "=========================================" -ForegroundColor Cyan

@@ -121,15 +121,12 @@ jobs:
           Write-Host "Generando instalador para versión $ver..."
           .\installer\build-installer.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
 
-      - name: 🗜️ Generar paquete portable .zip
+      - name: 🗜️ Generar paquete portable autónomo .zip
         shell: pwsh
         run: |
           $ver = "${{ steps.get_version.outputs.clean_version }}"
-          $publishFolder = "installer/publish/win-x64"
-          $zipOutput = "installer/output/FileFlowStudio-Portable-v$ver-win-x64.zip"
-          
-          Write-Host "Comprimiendo versión portable en: $zipOutput"
-          Compress-Archive -Path "$publishFolder/*" -DestinationPath $zipOutput -CompressionLevel Optimal
+          Write-Host "Generando paquete portable autónomo para versión $ver..."
+          .\installer\build-portable.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
 
       - name: 🔐 Generar sumas de verificación SHA-256
         shell: pwsh
@@ -175,21 +172,27 @@ jobs:
 
             ### 📦 Descargas Disponibles
             - 💻 **Instalador para Windows (Recomendado):** `FileFlowStudio-Setup-${{ steps.get_version.outputs.clean_version }}.exe`
-              - *Incluye asistente de instalación en español/inglés, manual de usuario en PDF, accesos directos e integración completa.*
-            - 🗜️ **Versión Portable (.ZIP):** `FileFlowStudio-Portable-v${{ steps.get_version.outputs.clean_version }}-win-x64.zip`
-              - *Ejecución directa sin requerir permisos de administrador ni instalación previa (incluye carpeta Docs con el manual en PDF).*
-            - 📖 **Manual de Usuario (PDF):** `FileFlowStudio-Manual-de-Usuario.pdf`
-              - *Documento PDF oficial de referencia completa y catálogo exhaustivo de nodos.*
-            - 🔐 **Sumas de Verificación:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de los binarios y documentos.
+              - *Incluye asistente de instalación bilingüe (Español/Inglés), los 3 manuales en PDF, accesos directos en el menú de inicio e integración completa.*
+            - 🗜️ **Versión Portable (.ZIP Autónomo):** `FileFlowStudio-Portable-v${{ steps.get_version.outputs.clean_version }}-win-x64.zip`
+              - *Ejecución directa sin instalación ni permisos de administrador. Incluye marcador `portable.dat`, estructura preconfigurada `data/` (config, presets, themes, scripts, logs, tools) y subcarpeta `docs/` con manuales en PDF.*
+            - 📖 **Manual de Usuario y Referencia (PDF):** `FileFlowStudio-Manual-de-Usuario.pdf`
+              - *Documento PDF oficial con referencia técnica completa y catálogo exhaustivo de nodos.*
+            - 📘 **Guía Rápida para Principiantes (PDF):** `FileFlowStudio-Guia-Principiantes.pdf`
+              - *Manual didáctico paso a paso con analogías sencillas y recetas prácticas.*
+            - 💻 **Manual de Scripting Personalizado (PDF):** `FileFlowStudio-Manual-Scripting.pdf`
+              - *Guía técnica para el desarrollo de scripts en C# (Roslyn) y JavaScript (Jint).*
+            - 🔐 **Sumas de Verificación:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de todos los binarios y documentos.
 
             ---
 
             ### 🌟 Características Destacadas de esta Versión
             - 🎨 **Lienzo DAG Interactivo:** Diseño de flujos mediante nodos visuales con validación topológica y prevención de ciclos en tiempo real.
-            - 📋 **Reportes Visuales de Operaciones (`OperationReportNode`):** Generación de informes en **HTML Interactivo** con acordeón por directorios, **Markdown**, **Árbol ASCII**, **JSON** y **CSV**.
+            - ⚡ **Script Studio Integrado:** Nodo de scripting dinámico con motor dual C# (Roslyn JIT en memoria) y JavaScript (Jint Sandbox en .NET 9).
+            - 💾 **Soporte Nativo de Modo Portable (`AppPaths`):** Aislamiento de datos en la carpeta `data/` local al ejecutable sin alterar `%AppData%` ni el registro.
+            - 🌐 **Localización Dinámica 100% (i18n):** Cambio de idioma instantáneo en caliente entre Español e Inglés sin reiniciar la app.
+            - 📋 **Reportes Visuales de Operaciones (`OperationReportNode`):** Generación de informes en **HTML Interactivo**, **Markdown**, **Árbol ASCII**, **JSON** y **CSV**.
             - ⚡ **Motor Asíncrono de Alto Rendimiento:** Procesamiento concurrente mediante `Channel<T>` con telemetría SQLite In-Memory (>82.000 logs/s).
-            - 🛡️ **Modo Simulación (*Dry Run*):** Previsualización determinista de operaciones sin modificar archivos reales.
-            - 🧩 **27 Nodos Nativos:** Cobertura de sistemas de archivos, compresión/descompresión (ZIP, RAR, 7Z), optimización gráfica (WebP), hashing criptográfico y control de flujo lógico.
+            - 🛡️ **Inmutabilidad de Archivos de Origen y Simulación (*Dry Run*):** Procesamiento no destructivo por defecto y previsualización determinista.
           files: |
             installer/output/*.exe
             installer/output/*.zip

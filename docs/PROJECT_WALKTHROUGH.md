@@ -2,7 +2,27 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-01] - Encapsulación Total de UI en Directorios de Plugins (Zero-Touch en FileFlow.App)
+## [2026-09-02] - Sincronización de GitHub Actions (CI/CD) con Modo Portable y Manuales PDF
+
+### 📋 Acciones y Mejoras Realizadas
+1. **Actualización de GitHub Actions Release Workflow (`.github/workflows/release.yml`)**:
+   - Integrado `installer/build-portable.ps1` en lugar de compresión cruda, asegurando que los paquetes ZIP de las releases oficiales incluyan:
+     - Archivo marcador `portable.dat`.
+     - Estructura completa de carpetas aisladas en `data/` (`config`, `themes`, `presets`, `samples`, `scripts`, `logs`, `tools`).
+     - Subcarpeta `docs/` con todos los manuales de usuario compilados en PDF.
+   - Actualizado el paso de generación y plantilla de notas de release en GitHub para publicar los tres documentos PDF oficiales:
+     - `FileFlowStudio-Manual-de-Usuario.pdf` (Referencia técnica y catálogo de nodos).
+     - `FileFlowStudio-Guia-Principiantes.pdf` (Guía didáctica paso a paso sin tecnicismos).
+     - `FileFlowStudio-Manual-Scripting.pdf` (Manual de scripting dual C#/JavaScript).
+   - Generación de hashes criptográficos SHA-256 en `checksums.txt` para todos los artefactos empaquetados.
+2. **Actualización del Workflow de Integración Continua (`.github/workflows/ci.yml`)**:
+   - Actualizado el paso de pruebas a la suite completa de 303 tests.
+3. **Estandarización de Scripts de Empaquetado (`installer/`)**:
+   - `build-portable.ps1`: Estandarizado el nombre de salida a `FileFlowStudio-Portable-v$Version-$Runtime.zip`.
+   - `build-installer.ps1`: Copia de los tres manuales PDF a la carpeta de salida `installer/output/` para distribución individual.
+   - `FileFlow.iss`: Añadido acceso directo en el Menú de Inicio para la Guía de Principiantes (`Docs/manual_usuario_principiantes.pdf`) con soporte bilingüe (ES/EN).
+4. **Validación de Tests**:
+   - Suite total: **303 / 303 pruebas pasadas al 100% de éxito**.
 
 ### 📋 Acciones y Mejoras Realizadas
 1. **Plugins Auto-Contenidos con Soporte WPF en .NET 9**:
