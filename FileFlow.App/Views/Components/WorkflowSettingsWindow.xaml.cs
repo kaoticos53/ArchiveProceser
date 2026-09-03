@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using FileFlow.App.Services;
+using FileFlow.App.ViewModels;
 using Microsoft.Win32;
 
 namespace FileFlow.App.Views.Components;
@@ -270,6 +271,23 @@ public partial class WorkflowSettingsWindow : Window
         {
             _aiModelManagerVm.DeleteModel(item);
             TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+        }
+    }
+
+    private void ConfigureAiModelUrls_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is AiModelItemViewModel item)
+        {
+            var dialog = new AiModelUrlsConfigDialog(item.ModelId)
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                item.RefreshState();
+                TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
+            }
         }
     }
 

@@ -94,4 +94,92 @@ public class AiModelManagerViewModelTests
         long? diskSize = AiModelManager.GetModelDiskSizeBytes("ultraface");
         diskSize.Should().Be(fi.Length);
     }
+
+    [Fact]
+    public void AiModelItemViewModel_RefreshState_WithErrorMessage_RetainsErrorState()
+    {
+        // Arrange
+        var item = new AiModelItemViewModel
+        {
+            ModelId = "non-existent-model-id",
+            Name = "NonExistentModel",
+            Category = "Test",
+            ErrorMessage = "Fallo de conexión 404",
+            HasError = true
+        };
+
+        // Act
+        item.RefreshState();
+
+        // Assert
+        item.HasError.Should().BeTrue();
+        item.ErrorMessage.Should().Be("Fallo de conexión 404");
+        item.StatusIcon.Should().Be("❌");
+        item.StatusText.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task AiModelManagerViewModel_DownloadUnknownModel_SetsErrorStateAndDetails()
+    {
+        // Arrange
+        var vm = new AiModelManagerViewModel();
+        var fakeItem = new AiModelItemViewModel
+        {
+            ModelId = "invalid-unknown-model",
+            Name = "Unknown Model",
+            Category = "Test"
+        };
+
+        // Act
+        await vm.DownloadModelInternalAsync(fakeItem, suppressSingleAlert: true);
+
+        // Assert
+        fakeItem.HasError.Should().BeTrue();
+        fakeItem.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+        fakeItem.StatusIcon.Should().Be("❌");
+        vm.HasDownloadError.Should().BeTrue();
+        vm.LastDownloadErrorMessage.Should().NotBeNullOrWhiteSpace();
+
+        // Act 2: Descartar error
+        vm.DismissError();
+        vm.HasDownloadError.Should().BeFalse();
+        vm.LastDownloadErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public void AiModelItemViewModel_RefreshState_ReflectsCustomUrlsStatus()
+    {
+        string modelId = "mobilenetv2";
+        AiModelManager.ResetCustomUrls(modelId);
+
+        var item = new AiModelItemViewModel
+        {
+            ModelId = modelId,
+            Name = "MobileNetV2",
+            Category = "Visión"
+        };
+
+        try
+        {
+            // Initial
+            item.RefreshState();
+            item.HasCustomUrls.Should().BeFalse();
+            item.ConfiguredUrlsCount.Should().BeGreaterThan(0);
+
+            // Set custom
+            AiModelManager.SetCustomUrls(modelId, new[] { "https://custom-mirror.example.com/model.onnx" });
+            item.RefreshState();
+            item.HasCustomUrls.Should().BeTrue();
+            item.ConfiguredUrlsCount.Should().Be(1);
+
+            // Reset
+            AiModelManager.ResetCustomUrls(modelId);
+            item.RefreshState();
+            item.HasCustomUrls.Should().BeFalse();
+        }
+        finally
+        {
+            AiModelManager.ResetCustomUrls(modelId);
+        }
+    }
 }

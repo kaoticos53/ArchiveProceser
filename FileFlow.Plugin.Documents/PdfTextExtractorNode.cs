@@ -6,7 +6,8 @@ using UglyToad.PdfPig;
 
 namespace FileFlow.Plugin.Documents;
 
-[NodeDefinition("PdfTextExtractorNode_Name", "Documents", "PdfTextExtractorNode_Desc")]
+[NodeDefinition("PdfTextExtractorNode_Name", "Documents", "PdfTextExtractorNode_Desc", PipelineRole.Analyze,
+    "pdf", "texto", "extraer", "ocr", "txt", "leer", "text", "extract")]
 public class PdfTextExtractorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

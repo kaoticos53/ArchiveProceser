@@ -5,12 +5,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Network;
 
-[NodeDefinition("RemoteDownloadNode_Name", "Network & Remote", "RemoteDownloadNode_Desc")]
+[NodeDefinition("RemoteDownloadNode_Name", "Network", "RemoteDownloadNode_Desc", PipelineRole.Source,
+    "descargar", "download", "http", "https", "url", "web", "remoto", "ftp")]
 public class RemoteDownloadNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("RemoteDownloadNode_Name", "Descargar Archivo Remoto (Remote Download)");
-    public string Category => "Network & Remote";
+    public string Category => "Network";
     public string Description => LocalizationManager.Instance.GetString("RemoteDownloadNode_Desc", "Descarga archivos remotos desde URLs HTTP, HTTPS o WebDAV hacia una carpeta local para su procesamiento.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

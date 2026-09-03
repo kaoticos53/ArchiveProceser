@@ -4,12 +4,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("SafeRecycleDeleteNode_Name", "FileSystem", "SafeRecycleDeleteNode_Desc")]
+[NodeDefinition("SafeRecycleDeleteNode_Name", "Files", "SafeRecycleDeleteNode_Desc", PipelineRole.Sink,
+    "papelera", "borrar", "eliminar", "recycle", "delete", "trash", "recyclebin")]
 public class SafeRecycleDeleteNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Name", "Borrado Seguro a Papelera");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Desc", "Envía archivos o carpetas a la Papelera de reciclaje de Windows mediante la API nativa del Shell, garantizando que sean recuperables y permitiendo deshacer la operación (Rollback).");
 
 

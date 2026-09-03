@@ -5,7 +5,8 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.Integrations;
 
-[NodeDefinition("CliExecutionNode_Name", "Integrations", "CliExecutionNode_Desc")]
+[NodeDefinition("CliExecutionNode_Name", "Integrations", "CliExecutionNode_Desc", PipelineRole.Control,
+    "cli", "comando", "ejecutable", "cmd", "powershell", "proceso", "terminal", "bash", "execute")]
 public class CliExecutionNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

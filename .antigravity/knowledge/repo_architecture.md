@@ -82,3 +82,12 @@ ArchiveProceser/
   - Gestión de colecciones `Nodes`, `Connections`, y `Breadcrumbs` para navegación jerárquica de sub-flujos.
   - Actualización en tiempo real de conteo de items en conexiones (`UpdateEdgeDispatched`).
 - [`PresetWorkflowsService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.App/Services/PresetWorkflowsService.cs): Catálogo de plantillas de automatización listas para usar.
+
+---
+
+## 5. Principio Arquitectónico de Co-ubicación y Autonomía Total de Plugins (Self-Contained Plugins)
+
+- **Aislamiento y Desacoplamiento (Zero-Touch en FileFlow.App)**:
+  - Todo el código, lógica de nodos, servicios de dominio, herramientas modales (`UI/`), configuraciones (`Config/`) y **recursos de cadenas de texto multilingües (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** pertenecientes a cada plugin/nodo **deben residir al 100% dentro del directorio del propio plugin (`FileFlow.Plugin.*`)**.
+  - `FileFlow.App/Resources/` queda reservado de forma estricta y exclusiva para la interfaz anfitriona (menús globales, navegación, consola de logs y ajustes generales).
+  - El motor de carga `PluginLoader` y los contratos `IPluginInitializer` registran de forma automática e instantánea los recursos del plugin en `LocalizationManager.Instance`, permitiendo extender la aplicación sin modificar el proyecto principal.

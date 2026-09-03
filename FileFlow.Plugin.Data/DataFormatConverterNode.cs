@@ -7,12 +7,13 @@ using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("DataFormatConverterNode_Name", "Data & Databases", "DataFormatConverterNode_Desc")]
+[NodeDefinition("DataFormatConverterNode_Name", "Data", "DataFormatConverterNode_Desc", PipelineRole.Transform,
+    "convertir", "formato", "excel a csv", "csv a json", "json a excel", "transformar", "tabular")]
 public class DataFormatConverterNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DataFormatConverterNode_Name", "Conversor de Formatos de Datos");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("DataFormatConverterNode_Desc", "Convierte archivos tabulares y estructurados directamente entre formatos Excel (.xlsx), CSV y JSON.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

@@ -7,12 +7,13 @@ using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI;
 
-[NodeDefinition("SmartImageClassifierNode_Name", "AI & Computer Vision", "SmartImageClassifierNode_Desc")]
+[NodeDefinition("SmartImageClassifierNode_Name", "ImageVision", "SmartImageClassifierNode_Desc", PipelineRole.Analyze,
+    "clasificar", "imagen", "foto", "vision", "ia", "mobilenet", "etiquetas", "classifier")]
 public class SmartImageClassifierNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Name", "Clasificador Visual de Fotos (IA)");
-    public string Category => "AI & Computer Vision";
+    public string Category => "ImageVision";
     public string Description => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Desc", "Analiza el contenido visual de fotografías e imágenes asignando una categoría temática (Paisajes, Documentos, Vehículos, Comida, etc.) en los metadatos.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =
@@ -28,14 +29,21 @@ public class SmartImageClassifierNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["Model"] = "Auto",
+        ["CustomModelPath"] = "",
         ["MinimumConfidence"] = 0.5,
         ["FallbackCategory"] = "Fotografía General"
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.5, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 1),
-        new("FallbackCategory", ParameterEditorType.Text, DefaultValue: "Fotografía General", DisplayOrder: 2)
+        new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
+            Options: ["Auto", "mobilenetv2", "Custom"],
+            HelpText: "Modelo para clasificación visual ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
+        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
+            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
+        new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.5, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 3),
+        new("FallbackCategory", ParameterEditorType.Text, DefaultValue: "Fotografía General", DisplayOrder: 4)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -59,12 +67,20 @@ public class SmartImageClassifierNode : IFlowNode
         {
             context.Log($"[ImageClassifier] Clasificando: {item.FileName}...", LogLevel.Information, item);
 
-            // Asegurar que el modelo MobileNetV2 está descargado
-            string? modelPath = await AiModelManager.EnsureModelAsync("mobilenetv2", context, item, cancellationToken).ConfigureAwait(false);
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
+
+            string? modelPath = await AiModelManager.ResolveModelPathAsync(
+                modelChoice,
+                customPath,
+                AiTaskType.ImageClassification,
+                context,
+                item,
+                cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[ImageClassifier] ⚠️ Modelo MobileNetV2 no disponible. El nodo pasa el archivo sin clasificar.", LogLevel.Warning, item);
+                context.Log($"[ImageClassifier] ⚠️ Modelo de clasificación visual no disponible. El nodo pasa el archivo sin clasificar.", LogLevel.Warning, item);
                 await context.EmitAsync("Out", item).ConfigureAwait(false);
                 return;
             }

@@ -35,7 +35,7 @@ public class ToolboxViewModelTests
         var reportItem = allItems.FirstOrDefault(i => i.TypeName.Contains("OperationReportNode"));
 
         reportItem.Should().NotBeNull("OperationReportNode must appear in the toolbox items");
-        reportItem!.Category.Should().Be("FileSystem");
+        reportItem!.Category.Should().Be("Integrations");
         reportItem.Icon.Should().Be("📋");
     }
 
@@ -90,11 +90,11 @@ public class ToolboxViewModelTests
 
         var docCategory = toolbox.AvailableCategories.FirstOrDefault(c => c.Key.Equals("Documents", StringComparison.OrdinalIgnoreCase));
         docCategory.Should().NotBeNull("Documents category must be discovered dynamically from the Documents plugin");
-        docCategory!.Count.Should().Be(4, "Documents plugin registers 4 PDF nodes");
+        docCategory!.Count.Should().Be(5, "Documents plugin registers 4 PDF nodes and FileSystem has DocumentProcessor");
         docCategory.Icon.Should().Be("📄");
 
-        var netCategory = toolbox.AvailableCategories.FirstOrDefault(c => c.Key.Equals("Network & Remote", StringComparison.OrdinalIgnoreCase));
-        netCategory.Should().NotBeNull("Network & Remote category must be discovered dynamically from the Network plugin");
+        var netCategory = toolbox.AvailableCategories.FirstOrDefault(c => c.Key.Equals("Network", StringComparison.OrdinalIgnoreCase) || c.Key.Equals("Network & Remote", StringComparison.OrdinalIgnoreCase));
+        netCategory.Should().NotBeNull("Network category must be discovered dynamically from the Network plugin");
         netCategory!.Count.Should().Be(5, "Network plugin registers 5 network/remote nodes");
         netCategory.Icon.Should().Be("🌐");
     }

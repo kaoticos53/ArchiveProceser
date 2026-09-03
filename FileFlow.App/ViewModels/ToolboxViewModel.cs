@@ -10,6 +10,12 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
+public enum ToolboxPerspective
+{
+    ByCategory,
+    ByPipelineRole
+}
+
 public partial class ToolboxCategoryFilterItem : ObservableObject
 {
     public string Key { get; }
@@ -69,6 +75,15 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isCompactMode = true;
+
+    [ObservableProperty]
+    private ToolboxPerspective _currentPerspective = ToolboxPerspective.ByCategory;
+
+    public bool IsPipelineRolePerspective => CurrentPerspective == ToolboxPerspective.ByPipelineRole;
+
+    public string PerspectiveButtonText => CurrentPerspective == ToolboxPerspective.ByCategory
+        ? "🔄 " + LocalizationManager.Instance.GetString("Toolbox_Perspective_Pipeline", "Pipeline Stage")
+        : "📁 " + LocalizationManager.Instance.GetString("Toolbox_Perspective_Domain", "Domain");
 
     partial void OnIsCompactModeChanged(bool value)
     {
@@ -150,15 +165,27 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     int usageCount = Math.Max(prefs.GetUsageCount(typeName), prefs.GetUsageCount(type.Name));
                     string icon = GetIconForNodeType(typeName);
 
-                    var item = new NodeToolboxItem(name, category, description, typeName, icon, isFavorite, usageCount);
+                    var role = defAttr?.Role ?? PipelineRole.Transform;
+                    var tags = defAttr?.Tags ?? Array.Empty<string>();
+                    var subCategory = defAttr?.SubCategory ?? string.Empty;
+                    string localizedRole = LocalizationManager.Instance.GetString($"Role_{role}", role.ToString());
 
-                    // Filtro de búsqueda por texto
-                    if (!string.IsNullOrWhiteSpace(SearchText) &&
-                        !name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&
-                        !category.Contains(SearchText, StringComparison.OrdinalIgnoreCase) &&
-                        !description.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+                    var item = new NodeToolboxItem(name, category, description, typeName, icon, isFavorite, usageCount, role, tags, subCategory, localizedRole);
+
+                    // Multilingual Search Filter: checks Name, Category, Description, LocalizedRole, Role name, and Tags
+                    if (!string.IsNullOrWhiteSpace(SearchText))
                     {
-                        continue;
+                        bool matches = name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                       category.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                       description.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                       localizedRole.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                       role.ToString().Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                       tags.Any(t => t.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+                        if (!matches)
+                        {
+                            continue;
+                        }
                     }
 
                     allItems.Add(item);
@@ -170,7 +197,55 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                 string favGroupName = LocalizationManager.Instance.GetString("Category_Favorites", "⭐ Favoritos");
                 string freqGroupName = LocalizationManager.Instance.GetString("Category_Frequent", "🔥 Más Usados");
 
-                // 2. Filtro Especial: "Favoritos"
+                // 2. Dual Perspective: Group by Pipeline Role if selected
+                if (CurrentPerspective == ToolboxPerspective.ByPipelineRole)
+                {
+                    var roleOrder = new[]
+                    {
+                        PipelineRole.Source,
+                        PipelineRole.Filter,
+                        PipelineRole.Transform,
+                        PipelineRole.Analyze,
+                        PipelineRole.Sink,
+                        PipelineRole.Control
+                    };
+
+                    IEnumerable<NodeToolboxItem> filteredItems = allItems;
+                    if (SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) ||
+                        SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filteredItems = filteredItems.Where(i => i.IsFavorite);
+                    }
+                    else if (SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase) ||
+                             SelectedCategoryFilter.Equals("Frequent", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filteredItems = filteredItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10);
+                    }
+                    else if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
+                             !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filteredItems = filteredItems.Where(i => i.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    var roleGroups = filteredItems.GroupBy(i => i.Role).ToDictionary(g => g.Key, g => g.ToList());
+
+                    foreach (var r in roleOrder)
+                    {
+                        if (roleGroups.TryGetValue(r, out var roleItems) && roleItems.Count > 0)
+                        {
+                            string roleGroupName = LocalizationManager.Instance.GetString($"Role_{r}", r.ToString());
+                            var group = new ToolboxCategoryGroup(roleGroupName);
+                            foreach (var it in roleItems)
+                            {
+                                group.Items.Add(it);
+                            }
+                            CategoryGroups.Add(group);
+                        }
+                    }
+                    return;
+                }
+
+                // 3. Filtro Especial: "Favoritos"
                 if (SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) ||
                     SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase))
                 {
@@ -340,6 +415,17 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public void TogglePerspective()
+    {
+        CurrentPerspective = CurrentPerspective == ToolboxPerspective.ByCategory
+            ? ToolboxPerspective.ByPipelineRole
+            : ToolboxPerspective.ByCategory;
+        OnPropertyChanged(nameof(IsPipelineRolePerspective));
+        OnPropertyChanged(nameof(PerspectiveButtonText));
+        RefreshToolbox();
+    }
+
+    [RelayCommand]
     public void SetCategoryFilter(string category)
     {
         SelectedCategoryFilter = category;
@@ -363,18 +449,20 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             "all" or "todas" => "🌐",
             "favorites" or "favoritos" => "⭐",
             "frequent" or "frecuentes" or "más usados" => "🔥",
-            "filesystem" or "archivos y carpetas" or "file system" => "📁",
-            "archives" or "archivos comprimidos" or "compresión" => "📦",
-            "images" or "imágenes" or "fotos" => "🖼️",
-            "documents" or "documentos" or "documentos y pdfs" or "pdf" or "pdfs" => "📄",
-            "metadata" or "metadatos" or "tags" => "🏷️",
-            "logic" or "lógica y flujo" or "logic & flow" or "flujo" => "⚡",
-            "hashing" or "integridad y hashes" or "seguridad" => "🔑",
-            "integrations" or "integraciones" or "webhooks" or "cli" => "💻",
-            "network" or "network & remote" or "red" or "servidores" or "red y servidores" => "🌐",
-            "data & databases" or "data" or "databases" or "datos y bases de datos" or "datos" or "bases de datos" => "📊",
-            "ai & computer vision" or "ai" or "ia" or "visión" or "inteligencia artificial" => "🤖",
+            "files" or "filesystem" or "archivos y sistema" or "archivos" or "file system" => "📁",
+            "imagevision" or "images" or "imágenes" or "imagen y visión ia" or "fotos" => "🖼️",
+            "audiovoice" or "audio" or "audio y voz ia" or "voz" => "🎙️",
+            "documents" or "documentos" or "documentos y pdf" or "pdf" or "pdfs" => "📄",
+            "data" or "data & tables" or "data & databases" or "datos y tablas" or "datos" or "databases" => "📊",
+            "languageai" or "lenguaje y llm" or "language & llm" or "llm" => "🧠",
+            "security" or "seguridad y rgpd" or "security & privacy" or "hashing" => "🔒",
+            "logic" or "lógica y control" or "logic & flow" or "flujo" => "🔀",
+            "archives" or "archivos comprimidos" or "compresión" or "compressed archives" => "📦",
+            "network" or "red y nube" or "network & cloud" or "network & remote" or "red" => "🌐",
+            "integrations" or "integraciones y diagnóstico" or "integrations & diagnostics" or "webhooks" or "cli" => "⚡",
             "scripting" or "scripts" or "c#" or "javascript" => "📜",
+            "metadata" or "metadatos" => "🏷️",
+            "media & docs" or "mediadocs" => "🎬",
             _ => "🧩"
         };
     }

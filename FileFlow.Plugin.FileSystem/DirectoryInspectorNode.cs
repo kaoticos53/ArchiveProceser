@@ -3,12 +3,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("DirectoryInspectorNode_Name", "FileSystem", "DirectoryInspectorNode_Desc")]
+[NodeDefinition("DirectoryInspectorNode_Name", "Files", "DirectoryInspectorNode_Desc", PipelineRole.Filter,
+    "carpeta", "directorio", "inspeccionar", "comprimido", "mixto", "inspector", "branch")]
 public class DirectoryInspectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Name", "Directory Inspector");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Desc", "Evaluates folder contents to classify archive and file composition.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

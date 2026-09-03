@@ -4,12 +4,13 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("EmptyDirectoryCleanerNode_Name", "FileSystem", "EmptyDirectoryCleanerNode_Desc")]
+[NodeDefinition("EmptyDirectoryCleanerNode_Name", "Files", "EmptyDirectoryCleanerNode_Desc", PipelineRole.Transform,
+    "limpiar", "carpetas vacias", "directorios vacios", "purgar", "cleaner", "empty")]
 public class EmptyDirectoryCleanerNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Name", "Limpiador de Carpetas Vacías");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Desc", "Recorre recursivamente un directorio objetivo tras procesar un lote y elimina todas las subcarpetas que hayan quedado completamente vacías (ignorando opcionalmente archivos de sistema como Thumbs.db y .DS_Store).");
 
 

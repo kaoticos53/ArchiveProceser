@@ -50,6 +50,18 @@ public partial class AiModelItemViewModel : ObservableObject
     [ObservableProperty]
     private string _statusText = string.Empty;
 
+    [ObservableProperty]
+    private string? _errorMessage;
+
+    [ObservableProperty]
+    private bool _hasError;
+
+    [ObservableProperty]
+    private bool _hasCustomUrls;
+
+    [ObservableProperty]
+    private int _configuredUrlsCount;
+
     public bool CanDownload => !IsDownloading;
 
     public void RefreshState()
@@ -58,10 +70,14 @@ public partial class AiModelItemViewModel : ObservableObject
         IsDownloaded = available;
         IsDownloading = false;
         Progress = available ? 100.0 : 0.0;
-        ProgressText = string.Empty;
+        HasCustomUrls = AiModelManager.HasCustomUrls(ModelId);
+        ConfiguredUrlsCount = AiModelManager.GetConfiguredUrls(ModelId).Count;
 
         if (available)
         {
+            ErrorMessage = null;
+            HasError = false;
+            ProgressText = string.Empty;
             StatusIcon = "✅";
             StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusInstalled", "Descargado");
             long? size = AiModelManager.GetModelDiskSizeBytes(ModelId);
@@ -76,8 +92,17 @@ public partial class AiModelItemViewModel : ObservableObject
         }
         else
         {
-            StatusIcon = "⏳";
-            StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusMissing", "No descargado");
+            if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+            {
+                StatusIcon = "❌";
+                StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusError", "Error");
+            }
+            else
+            {
+                StatusIcon = "⏳";
+                StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusMissing", "No descargado");
+                ProgressText = string.Empty;
+            }
             DiskSizeLabel = string.Empty;
         }
 
@@ -101,6 +126,19 @@ public partial class AiModelManagerViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isBusy;
+
+    [ObservableProperty]
+    private string? _lastDownloadErrorMessage;
+
+    [ObservableProperty]
+    private bool _hasDownloadError;
+
+    [RelayCommand]
+    public void DismissError()
+    {
+        LastDownloadErrorMessage = null;
+        HasDownloadError = false;
+    }
 
     private CancellationTokenSource? _downloadCts;
 
@@ -173,24 +211,39 @@ public partial class AiModelManagerViewModel : ObservableObject
     [RelayCommand]
     public async Task DownloadModelAsync(AiModelItemViewModel? item)
     {
+        await DownloadModelInternalAsync(item, suppressSingleAlert: false);
+    }
+
+    public async Task DownloadModelInternalAsync(AiModelItemViewModel? item, bool suppressSingleAlert)
+    {
         if (item == null || item.IsDownloading) return;
 
         IsBusy = true;
         item.IsDownloading = true;
+        item.ErrorMessage = null;
+        item.HasError = false;
         item.StatusIcon = "⬇️";
         item.StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusDownloading", "Descargando...");
         item.Progress = 0;
+        item.ProgressText = "Conectando...";
 
         _downloadCts = new CancellationTokenSource();
 
         var progressReporter = new Progress<double>(p =>
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            void UpdateProgress()
             {
                 item.Progress = Math.Clamp(p, 0.0, 100.0);
                 item.ProgressText = $"{item.Progress:F0}%";
-            });
+            }
+
+            if (Application.Current?.Dispatcher != null)
+                Application.Current.Dispatcher.Invoke(UpdateProgress);
+            else
+                UpdateProgress();
         });
+
+        string? lastErrorCaptured = null;
 
         try
         {
@@ -199,33 +252,77 @@ public partial class AiModelManagerViewModel : ObservableObject
                 progressReporter,
                 statusLogger: msg =>
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    void UpdateText()
                     {
                         item.ProgressText = msg;
-                    });
+                        if (msg.StartsWith("❌") || msg.Contains("Error", StringComparison.OrdinalIgnoreCase))
+                        {
+                            lastErrorCaptured = msg;
+                        }
+                    }
+
+                    if (Application.Current?.Dispatcher != null)
+                        Application.Current.Dispatcher.Invoke(UpdateText);
+                    else
+                        UpdateText();
                 },
                 cancellationToken: _downloadCts.Token
             );
 
             if (result != null)
             {
+                item.ErrorMessage = null;
+                item.HasError = false;
                 item.RefreshState();
             }
             else
             {
+                string err = lastErrorCaptured ?? AiModelManager.LastError ?? "Error desconocido en la descarga del modelo.";
+                item.ErrorMessage = err;
+                item.HasError = true;
                 item.StatusIcon = "❌";
-                item.StatusText = "Error en descarga";
+                item.StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusError", "Error");
+                item.ProgressText = err;
+
+                LastDownloadErrorMessage = $"{item.Name}: {err}";
+                HasDownloadError = true;
+
+                if (!suppressSingleAlert && Application.Current != null)
+                {
+                    MessageBox.Show(
+                        $"No se pudo descargar el modelo '{item.Name}':\n\n{err}",
+                        "Error en Descarga de Modelo IA",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
             }
         }
         catch (OperationCanceledException)
         {
             item.StatusIcon = "⏳";
             item.StatusText = "Cancelado";
+            item.ProgressText = "Descarga cancelada por el usuario.";
         }
         catch (Exception ex)
         {
+            string err = $"Excepción: {ex.Message}";
+            item.ErrorMessage = err;
+            item.HasError = true;
             item.StatusIcon = "❌";
-            item.StatusText = $"Error: {ex.Message}";
+            item.StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusError", "Error");
+            item.ProgressText = err;
+
+            LastDownloadErrorMessage = $"{item.Name}: {err}";
+            HasDownloadError = true;
+
+            if (!suppressSingleAlert && Application.Current != null)
+            {
+                MessageBox.Show(
+                    $"Error inesperado al descargar '{item.Name}':\n\n{ex.Message}",
+                    "Error en Descarga de Modelo IA",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
         finally
         {
@@ -248,11 +345,33 @@ public partial class AiModelManagerViewModel : ObservableObject
         }
 
         IsBusy = true;
+        DismissError();
+
+        var failedList = new List<(string Name, string Error)>();
+
         foreach (var item in missing)
         {
-            await DownloadModelAsync(item);
+            await DownloadModelInternalAsync(item, suppressSingleAlert: true);
+            if (item.HasError && !string.IsNullOrEmpty(item.ErrorMessage))
+            {
+                failedList.Add((item.Name, item.ErrorMessage));
+            }
         }
+
         IsBusy = false;
+
+        if (failedList.Count > 0 && Application.Current != null)
+        {
+            string summary = string.Join("\n• ", failedList.Select(f => $"{f.Name}: {f.Error}"));
+            LastDownloadErrorMessage = $"Falló la descarga de {failedList.Count} modelo(s).";
+            HasDownloadError = true;
+
+            MessageBox.Show(
+                $"No se pudieron descargar {failedList.Count} de los {missing.Count} modelos solicitados:\n\n• {summary}\n\nPor favor, verifica la conexión a Internet o los detalles de red.",
+                "Error en Descarga de Modelos IA",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     [RelayCommand]
@@ -290,5 +409,24 @@ public partial class AiModelManagerViewModel : ObservableObject
             }
         }
         catch { }
+    }
+
+    [RelayCommand]
+    public void ConfigureUrls(AiModelItemViewModel? item)
+    {
+        if (item == null) return;
+
+        if (Application.Current != null)
+        {
+            var dialog = new Views.Components.AiModelUrlsConfigDialog(item.ModelId)
+            {
+                Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                item.RefreshState();
+            }
+        }
     }
 }

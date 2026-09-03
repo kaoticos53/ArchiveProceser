@@ -16,12 +16,13 @@ namespace FileFlow.Plugin.AI;
 /// Nodo de Detección de Objetos mediante Prompt en Lenguaje Natural (Open-Vocabulary / Grounding DINO)
 /// con traducción automática integrada de Español a Inglés (MarianMT de Helsinki-NLP).
 /// </summary>
-[NodeDefinition("PromptObjectDetectorNode_Name", "AI & Computer Vision", "PromptObjectDetectorNode_Desc")]
+[NodeDefinition("PromptObjectDetectorNode_Name", "ImageVision", "PromptObjectDetectorNode_Desc", PipelineRole.Analyze,
+    "dino", "grounding dino", "prompt", "objeto", "detectar", "texto a objeto", "vision")]
 public class PromptObjectDetectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Name", "Detector de Objetos por Prompt (Grounding DINO)");
-    public string Category => "AI & Computer Vision";
+    public string Category => "ImageVision";
     public string Description => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Desc", "Detecta objetos y conceptos descritos en lenguaje natural libre con traducción automática Español-Inglés usando MarianMT.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

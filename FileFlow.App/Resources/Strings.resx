@@ -353,17 +353,37 @@
   <data name="Category_All" xml:space="preserve"><value>All</value></data>
   <data name="Category_Favorites" xml:space="preserve"><value>⭐ Favorites</value></data>
   <data name="Category_Frequent" xml:space="preserve"><value>🔥 Frequent</value></data>
-  <data name="Category_FileSystem" xml:space="preserve"><value>📁 File System</value></data>
-  <data name="Category_Archives" xml:space="preserve"><value>📦 Compression</value></data>
-  <data name="Category_Images" xml:space="preserve"><value>🖼️ Images</value></data>
-  <data name="Category_Documents" xml:space="preserve"><value>📄 Documents</value></data>
+  <data name="Category_Files" xml:space="preserve"><value>📁 Files &amp; System</value></data>
+  <data name="Category_FileSystem" xml:space="preserve"><value>📁 Files &amp; System</value></data>
+  <data name="Category_ImageVision" xml:space="preserve"><value>🖼️ Images &amp; AI Vision</value></data>
+  <data name="Category_Images" xml:space="preserve"><value>🖼️ Images &amp; AI Vision</value></data>
+  <data name="Category_AudioVoice" xml:space="preserve"><value>🎙️ Audio &amp; Voice AI</value></data>
+  <data name="Category_Documents" xml:space="preserve"><value>📄 Documents &amp; PDF</value></data>
+  <data name="Category_Data" xml:space="preserve"><value>📊 Data &amp; Tables</value></data>
+  <data name="Category_LanguageAI" xml:space="preserve"><value>🧠 Language &amp; LLM</value></data>
+  <data name="Category_Security" xml:space="preserve"><value>🔒 Security &amp; Privacy</value></data>
+  <data name="Category_Logic" xml:space="preserve"><value>🔀 Logic &amp; Flow</value></data>
+  <data name="Category_Archives" xml:space="preserve"><value>📦 Compressed Archives</value></data>
+  <data name="Category_Network" xml:space="preserve"><value>🌐 Network &amp; Cloud</value></data>
+  <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integrations &amp; Diagnostics</value></data>
   <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media &amp; Docs</value></data>
   <data name="Category_Metadata" xml:space="preserve"><value>🏷️ Metadata</value></data>
   <data name="Category_Hashing" xml:space="preserve"><value>🔑 Hashing &amp; Security</value></data>
-  <data name="Category_Logic" xml:space="preserve"><value>🔀 Logic</value></data>
-  <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integrations</value></data>
   <data name="Category_Scripting" xml:space="preserve"><value>📜 Scripting</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
+
+  <!-- Pipeline Roles (ETL / DAG) -->
+  <data name="Role_Source" xml:space="preserve"><value>📥 Source / Input</value></data>
+  <data name="Role_Filter" xml:space="preserve"><value>🔍 Filter / Decision</value></data>
+  <data name="Role_Transform" xml:space="preserve"><value>⚡ Transform / Process</value></data>
+  <data name="Role_Analyze" xml:space="preserve"><value>🔬 Analyze / Metadata</value></data>
+  <data name="Role_Sink" xml:space="preserve"><value>📤 Destination / Sink</value></data>
+  <data name="Role_Control" xml:space="preserve"><value>🎛️ Control / Utility</value></data>
+
+  <!-- Toolbox Perspectives -->
+  <data name="Toolbox_Perspective_Domain" xml:space="preserve"><value>Domain</value></data>
+  <data name="Toolbox_Perspective_Pipeline" xml:space="preserve"><value>Pipeline Stage</value></data>
+  <data name="Toolbox_Perspective_Tooltip" xml:space="preserve"><value>Switch grouping: By Domain Category or By Pipeline ETL Role</value></data>
 
   <!-- Node Parameters Localized Keys (English) -->
   <data name="Param_Width" xml:space="preserve"><value>Width</value></data>
@@ -589,12 +609,12 @@
   <data name="StatusBar_OutputFolderToolTip" xml:space="preserve"><value>Click to open the global output folder in File Explorer</value></data>
   <data name="StatusBar_RamToolTip" xml:space="preserve"><value>Current RAM memory usage of the application</value></data>
   <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Current CPU usage of the application process</value></data>
+  <data name="StatusBar_GpuToolTip" xml:space="preserve"><value>Current GPU usage of the application process / DirectML</value></data>
   <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Click to fit the workflow graph to the visible canvas area. Current zoom level.</value></data>
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Evaluated Value:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copy evaluated value to clipboard</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contains dynamic expression / variables</value></data>
   <data name="Category_Data &amp; Databases" xml:space="preserve"><value>Data &amp; Databases</value></data>
-  <data name="Category_Data" xml:space="preserve"><value>Data &amp; Databases</value></data>
   <data name="ExcelReaderNode_Name" xml:space="preserve"><value>Excel Sheet Reader</value></data>
   <data name="ExcelReaderNode_Desc" xml:space="preserve"><value>Reads Excel (.xlsx) files and emits each row with its columns in metadata.</value></data>
   <data name="CsvReaderNode_Name" xml:space="preserve"><value>CSV / TSV File Reader</value></data>
@@ -609,18 +629,6 @@
   <data name="SqliteDatabaseSinkNode_Desc" xml:space="preserve"><value>Inserts historical audit records into a SQLite database with metadata and traceability of each processed file.</value></data>
   <data name="DataFormatConverterNode_Name" xml:space="preserve"><value>Data Format Converter</value></data>
   <data name="Category_AI &amp; Computer Vision" xml:space="preserve"><value>AI &amp; Computer Vision</value></data>
-  <data name="LocalOcrNode_Name" xml:space="preserve"><value>Optical Character Recognition (OCR)</value></data>
-  <data name="LocalOcrNode_Desc" xml:space="preserve"><value>Extracts text and structured content from images and scanned documents using local OCR engines.</value></data>
-  <data name="SmartImageClassifierNode_Name" xml:space="preserve"><value>Smart Photo Classifier (AI)</value></data>
-  <data name="SmartImageClassifierNode_Desc" xml:space="preserve"><value>Analyzes the visual content of photos assigning thematic categories (Landscapes, Invoices, Vehicles, etc.) in metadata.</value></data>
-  <data name="FaceDetectorNode_Name" xml:space="preserve"><value>Face Detector (AI)</value></data>
-  <data name="FaceDetectorNode_Desc" xml:space="preserve"><value>Analyzes images to detect the presence and count of human faces, branching flows into family photos or objects.</value></data>
-  <data name="ObjectDetectorNode_Name" xml:space="preserve"><value>Object Detector (YOLO)</value></data>
-  <data name="ObjectDetectorNode_Desc" xml:space="preserve"><value>Detects and identifies multiple everyday objects (people, vehicles, pets, items) present in images.</value></data>
-  <data name="PromptObjectDetectorNode_Name" xml:space="preserve"><value>Prompt-based Object Detector (Grounding DINO)</value></data>
-  <data name="PromptObjectDetectorNode_Desc" xml:space="preserve"><value>Detects objects and concepts described in open natural language text prompts with automatic Spanish-English translation (MarianMT).</value></data>
-  <data name="LocalWhisperTranscriberNode_Name" xml:space="preserve"><value>Speech-to-Text Transcriber (Whisper)</value></data>
-  <data name="LocalWhisperTranscriberNode_Desc" xml:space="preserve"><value>Transcribes audio and video files to text and synchronized subtitles (.srt) using local Whisper AI.</value></data>
   <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
 
   <!-- AI Models -->
@@ -637,8 +645,19 @@
   <data name="AiModelManager_StatusInstalled" xml:space="preserve"><value>Downloaded</value></data>
   <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>Not downloaded</value></data>
   <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Downloading...</value></data>
+  <data name="AiModelManager_StatusError" xml:space="preserve"><value>Download error</value></data>
   <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Download</value></data>
   <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Delete</value></data>
+  <data name="AiModelUrls_Title" xml:space="preserve"><value>Configure Download URLs</value></data>
+  <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure one or more download URLs for this model. If a link fails or changes, the engine will automatically try the next mirror.</value></data>
+  <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>Download URLs (one per line, in priority order):</value></data>
+  <data name="AiModelUrls_TestBtn" xml:space="preserve"><value>🔍 Test Connection</value></data>
+  <data name="AiModelUrls_ResetBtn" xml:space="preserve"><value>🔄 Reset to Defaults</value></data>
+  <data name="AiModelUrls_SaveBtn" xml:space="preserve"><value>💾 Save URLs</value></data>
+  <data name="AiModelUrls_CancelBtn" xml:space="preserve"><value>Cancel</value></data>
+  <data name="AiModelUrls_StatusCustom" xml:space="preserve"><value>🔧 Custom</value></data>
+  <data name="AiModelUrls_StatusDefault" xml:space="preserve"><value>📦 Official / Default</value></data>
+  <data name="AiModelUrls_BtnTooltip" xml:space="preserve"><value>Configure download URLs and alternative mirrors</value></data>
 
   <!-- Log View Context Menu & Copy Actions -->
   <data name="Log_ContextMenu_CopyFullLine" xml:space="preserve"><value>📄 Copy Full Log Line</value></data>

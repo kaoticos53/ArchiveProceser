@@ -7,7 +7,8 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.Integrations;
 
-[NodeDefinition("WebhookNotificationNode_Name", "Integrations", "WebhookNotificationNode_Desc")]
+[NodeDefinition("WebhookNotificationNode_Name", "Integrations", "WebhookNotificationNode_Desc", PipelineRole.Control,
+    "webhook", "http", "post", "notificacion", "api", "rest", "json", "slack", "discord")]
 public class WebhookNotificationNode : IFlowNode
 {
     private static readonly HttpClient HttpClient = new(new SocketsHttpHandler

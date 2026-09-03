@@ -8,12 +8,13 @@ using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.Images;
 
-[NodeDefinition("ImageOptimizerNode_Name", "MediaDocs", "ImageOptimizerNode_Desc")]
+[NodeDefinition("ImageOptimizerNode_Name", "ImageVision", "ImageOptimizerNode_Desc", PipelineRole.Transform,
+    "imagen", "foto", "redimensionar", "optimizar", "comprimir", "webp", "jpeg", "png", "resize", "convert")]
 public class ImageOptimizerNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ImageOptimizerNode_Name", "Image Optimizer");
-    public string Category => "MediaDocs";
+    public string Category => "ImageVision";
     public string Description => LocalizationManager.Instance.GetString("ImageOptimizerNode_Desc", "Resizes images keeping aspect ratio and converts to modern formats.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

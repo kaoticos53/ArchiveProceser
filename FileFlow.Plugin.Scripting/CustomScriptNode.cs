@@ -6,7 +6,8 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Scripting;
 
-[NodeDefinition("CustomScriptNode_Name", "Logic", "CustomScriptNode_Desc")]
+[NodeDefinition("CustomScriptNode_Name", "Logic", "CustomScriptNode_Desc", PipelineRole.Control,
+    "script", "c#", "csharp", "javascript", "js", "codigo", "programar", "roslyn", "custom", "logica")]
 public class CustomScriptNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

@@ -5,12 +5,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("CsvReaderNode_Name", "Data & Databases", "CsvReaderNode_Desc")]
+[NodeDefinition("CsvReaderNode_Name", "Data", "CsvReaderNode_Desc", PipelineRole.Source,
+    "csv", "tsv", "delimitado", "leer", "tabla", "separador", "importar")]
 public class CsvReaderNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("CsvReaderNode_Name", "Lector de Archivos CSV / TSV");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("CsvReaderNode_Desc", "Lee archivos delimitados (CSV, TSV, TXT) con autodetección de formato y emite cada fila con sus columnas en los metadatos.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

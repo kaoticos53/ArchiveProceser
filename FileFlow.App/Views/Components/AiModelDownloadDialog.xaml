@@ -46,48 +46,66 @@
             </Grid>
         </Border>
 
-        <!-- 2. Barra de Acciones Globales -->
-        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,12">
-            <Grid>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <!-- Botón Descargar Faltantes -->
-                    <Button Command="{Binding DownloadMissingModelsCommand}"
-                            Style="{DynamicResource PrimaryButton}"
-                            Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
-                            IsEnabled="{Binding HasMissingModels}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⬇️ " FontSize="11" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DownloadAll]}" FontWeight="SemiBold" FontSize="11" />
-                        </StackPanel>
-                    </Button>
+        <!-- 2. Barra de Acciones Globales y Banner de Error -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <!-- Botón Descargar Faltantes -->
+                        <Button Command="{Binding DownloadMissingModelsCommand}"
+                                Style="{DynamicResource PrimaryButton}"
+                                Padding="12,6" Margin="0,0,8,0" Cursor="Hand"
+                                IsEnabled="{Binding HasMissingModels}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⬇️ " FontSize="11" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DownloadAll]}" FontWeight="SemiBold" FontSize="11" />
+                            </StackPanel>
+                        </Button>
 
-                    <!-- Botón Actualizar -->
-                    <Button Command="{Binding RefreshStatusCommand}"
-                            Style="{DynamicResource SecondaryButton}"
-                            Padding="10,6" Margin="0,0,8,0" Cursor="Hand">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🔄 " FontSize="11" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Refresh]}" FontSize="11" />
-                        </StackPanel>
-                    </Button>
+                        <!-- Botón Actualizar -->
+                        <Button Command="{Binding RefreshStatusCommand}"
+                                Style="{DynamicResource SecondaryButton}"
+                                Padding="10,6" Margin="0,0,8,0" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔄 " FontSize="11" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Refresh]}" FontSize="11" />
+                            </StackPanel>
+                        </Button>
 
-                    <!-- Botón Abrir Carpeta -->
-                    <Button Command="{Binding OpenModelsFolderCommand}"
-                            Style="{DynamicResource SecondaryButton}"
-                            Padding="10,6" Cursor="Hand">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📁 " FontSize="11" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_OpenDir]}" FontSize="11" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                        <!-- Botón Abrir Carpeta -->
+                        <Button Command="{Binding OpenModelsFolderCommand}"
+                                Style="{DynamicResource SecondaryButton}"
+                                Padding="10,6" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📁 " FontSize="11" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_OpenDir]}" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
-                <!-- Indicador de descarga global -->
-                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" 
-                           Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           Text="⏳ Descargando modelos..." FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
-            </Grid>
-        </Border>
+                    <!-- Indicador de descarga global -->
+                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" 
+                               Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               Text="⏳ Descargando modelos..." FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
+                </Grid>
+            </Border>
+
+            <!-- Banner de error si alguna descarga falló -->
+            <Border Background="#2B1515" BorderBrush="#DC2626" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,8,0,0"
+                    Visibility="{Binding HasDownloadError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="❌ " FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Grid.Column="1" Text="{Binding LastDownloadErrorMessage}" FontSize="11" Foreground="#FCA5A5" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <Button Grid.Column="2" Command="{Binding DismissErrorCommand}" Content="✕" 
+                            Background="Transparent" BorderThickness="0" Foreground="#FCA5A5" Cursor="Hand" FontWeight="Bold" Margin="8,0,0,0" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+        </StackPanel>
 
         <!-- 3. Lista de Modelos Disponibles -->
         <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
@@ -104,7 +122,7 @@
                                         <ColumnDefinition Width="32" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="Auto" MinWidth="180" />
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Col 0: Icono de Estado -->
@@ -123,6 +141,13 @@
 
                                             <!-- Tamaño estimado -->
                                             <TextBlock Text="{Binding ExpectedSizeLabel, StringFormat='({0})'}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+
+                                            <!-- Badge URLs personalizadas -->
+                                            <Border Background="#2B2412" BorderBrush="#D97706" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                    Visibility="{Binding HasCustomUrls, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                    ToolTip="URLs de descarga personalizadas activas">
+                                                <TextBlock Text="🔧 URLs" FontSize="9" FontWeight="Bold" Foreground="#FBBF24" />
+                                            </Border>
                                         </StackPanel>
 
                                         <!-- Descripción -->
@@ -137,18 +162,36 @@
                                         <!-- Texto de Progreso -->
                                         <TextBlock Text="{Binding ProgressText}" FontSize="9.5" Foreground="{DynamicResource AccentPrimaryBrush}"
                                                    Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,2,0,0" />
+
+                                        <!-- Mensaje de Error persistente (visible si falló la descarga) -->
+                                        <Border Background="#2B1515" BorderBrush="#B91C1C" BorderThickness="1" CornerRadius="4" Padding="7,4" Margin="0,5,0,0"
+                                                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="⚠️ " FontSize="10" VerticalAlignment="Top" Margin="0,1,4,0" />
+                                                <TextBlock Text="{Binding ErrorMessage}" FontSize="10" Foreground="#FCA5A5" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- Col 2: Estado en disco -->
                                     <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0">
                                         <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11" 
-                                                   Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right"
+                                                   ToolTip="{Binding ErrorMessage}" />
                                         <TextBlock Text="{Binding DiskSizeLabel}" FontSize="10" 
                                                    Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" Margin="0,2,0,0" />
                                     </StackPanel>
 
                                     <!-- Col 3: Botones de Acción -->
                                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                        <!-- Botón Configurar URLs -->
+                                        <Button Content="⚙️ URLs"
+                                                Command="{Binding DataContext.ConfigureUrlsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{DynamicResource SecondaryButton}"
+                                                Padding="7,4" Margin="0,0,6,0" FontSize="10" Cursor="Hand"
+                                                ToolTip="Configurar URLs de descarga y espejos alternativos" />
+
                                         <!-- Botón Descargar (visible si NO descargado o durante descarga) -->
                                         <Button Content="⬇️ Descargar"
                                                 Command="{Binding DataContext.DownloadModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"

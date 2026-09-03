@@ -3,7 +3,8 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Logic;
 
-[NodeDefinition("ThrottleDelayNode_Name", "Logic", "ThrottleDelayNode_Desc")]
+[NodeDefinition("ThrottleDelayNode_Name", "Logic", "ThrottleDelayNode_Desc", PipelineRole.Control,
+    "retardo", "pausa", "esperar", "delay", "throttle", "jitter", "sleep")]
 public class ThrottleDelayNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

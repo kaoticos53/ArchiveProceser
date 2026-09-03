@@ -8,9 +8,64 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **389 / 389 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Loaders, AppPaths Storage, Portable Mode Provider, CLI Headless Runner, Document Plugins, Network Plugins, Data & Spreadsheet Plugins, AI & Computer Vision Plugins, File QuickPreviewer Providers, Watchdog Multi-Folder, Bottleneck Heatmap, Checkpointing & Resumption, Annotations & Group Boxes, AI Models Manager ViewModel, AI Model Persistence on Disk, LogConsole ViewModel Tests & Node Inspector Sync, PromptObjectDetectorNode & PromptTranslator MarianMT, Log Filtering & SQLite Sync, Toolbox Compact Mode Persistence).
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **481 / 481 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Loaders, AppPaths Storage, Portable Mode Provider, CLI Headless Runner, Document Plugins, Network Plugins, Data & Spreadsheet Plugins, AI & Computer Vision Plugins, File QuickPreviewer Providers, Watchdog Multi-Folder, Bottleneck Heatmap, Checkpointing & Resumption, Annotations & Group Boxes, AI Models Manager ViewModel, AI Model Persistence on Disk, LogConsole ViewModel Tests & Node Inspector Sync, PromptObjectDetectorNode & PromptTranslator MarianMT, Log Filtering & SQLite Sync, Toolbox Compact Mode Persistence, LocalAiTranslatorNode, LocalLlmProcessorNode, PromptTransformerNode, Download Error Reporting & Dismissal, AI Models Configurable URLs & Fallback, GPU Performance Metrics, HardwareCapabilityDetector, AiTaskModelResolutionTests, VisionSuiteNodesTests, AudioSuiteNodesTests, SecurityAndSemanticNodesTests, ToolboxOrganizationTests).
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
-  0. **Persistencia del Modo Compacto en el Catálogo de Nodos (Toolbox)**:
+  0. **Reorganización Inteligente de los 60 Nodos del Sistema (Taxonomía Unificada, Tags Multilingües y Perspectiva Dual)**:
+     - Taxonomía limpia en 11 categorías de dominio: `Files`, `ImageVision`, `AudioVoice`, `Documents`, `Data`, `LanguageAI`, `Security`, `Logic`, `Archives`, `Network`, `Integrations`.
+     - Nuevo enum `PipelineRole` (`Source`, `Filter`, `Transform`, `Analyze`, `Sink`, `Control`) en `FileFlow.Sdk`.
+     - Decoración exhaustiva de los 60 nodos oficiales en los 11 proyectos de plugins con `PipelineRole` y array de `Tags` de búsqueda multilingües (español e inglés).
+     - Buscador reactivo por sinónimos y etiquetas en `ToolboxViewModel` (búsquedas como "recortar", "fondo", "dni", "iban", "gdpr", "mp3", "excel", "duplicados", etc.).
+     - Perspectiva dual en el Toolbox de la UI (`ByCategory` vs `ByPipelineRole`) con botón conmutador en cabecera y badges visuales con píldoras de rol.
+     - Recursos de localización en `Strings.resx` y `Strings.es.resx` para categorías, roles y perspectivas con hot-reload reactivo.
+     - Suite de pruebas `ToolboxOrganizationTests` validando contratos, catálogo, tags y perspectiva dual.
+  1. **Plan C: Suite de Seguridad, RGPD y Búsqueda Semántica (PiiAnonymizerNode y ZeroShotSemanticSearchNode)**:
+     - Nuevas tareas en `AiTaskType`: `PiiAnonymization` y `SemanticEmbeddings`.
+     - Modelos en `AiModelManager.Catalog`: `pii-ner-multilingual` (35 MB), `clip-vit-b32` (65 MB), `bge-small-multilingual` (45 MB).
+     - Inferencia en `PiiDetectionEngine`: Detección algorítmica de DNI/NIE, IBAN (MOD-97), tarjetas de crédito (Luhn), correos electrónicos, teléfonos, IPs y nombres propios de personas. Modos de anonimización: `TagReplacement`, `Mask`, `Hash` (SHA-256) y `Remove`.
+     - Inferencia en `SemanticEmbeddingEngine`: Inferencia de vectores densos normalizados para texto e imágenes, similitud de coseno acelerada y ranking zero-shot de categorías candidatas.
+     - Nodos de pipeline implementados: `PiiAnonymizerNode` (`In`, `Clean`, `SensitiveFound`, `Out`, `Error`) y `ZeroShotSemanticSearchNode` (`In`, `Matched`, `Unmatched`, `Out`, `Error`).
+     - Recursos multilingües localizados (español e inglés) en `FileFlow.Plugin.AI/Resources/` cumpliendo estrictamente con ADR-006.
+  1. **Plan B: Suite de Audio y Voz (VoiceActivityDetectorNode Silero VAD y TextToSpeechNode Piper TTS)**:
+     - Nuevas tareas en `AiTaskType`: `VoiceActivityDetection` y `TextToSpeech`.
+     - Modelos en `AiModelManager.Catalog`: `silero-vad` (2 MB), `piper-es-davefx` (63 MB), `piper-en-lessac` (63 MB).
+     - Inferencia en `AudioInferenceEngine`: Resampleo NAudio a 16kHz mono, Silero VAD v4/v5 ONNX con tensores de estado recurrentes (`state`/`h`/`c`), detección de segmentos de voz con padding, recorte de silencios `TrimSilence`, síntesis Piper TTS en archivo `.wav` PCM de 16 bits (22.050 Hz) y generador armónico de contingencia.
+     - Nodos de pipeline implementados: `VoiceActivityDetectorNode` (`In`, `Speech`, `Silent`, `Out`, `Error`) y `TextToSpeechNode` (`In`, `Out`, `Error`).
+     - Recursos multilingües localizados (español e inglés) dentro de `FileFlow.Plugin.AI/Resources/` cumpliendo estrictamente con ADR-006.
+  1. **Plan A: Suite de Visión Creativa y Restauración Documental (BackgroundRemover, SuperResolution, ContentModeration)**:
+     - Nuevas tareas en `AiTaskType`: `BackgroundRemoval`, `SuperResolution`, `ContentModeration`.
+     - Modelos en `AiModelManager.Catalog`: `rmbg-1.4` (Bria AI, 176 MB), `modnet` (Mobile Matting, 25 MB), `realesrgan-compact` (Real-ESRGAN x4, 16 MB), `opennsfw2` (16 MB).
+     - Inferencia en `OnnxInferenceEngine`: `RemoveBackground` (PNG transparente, color de sustitución o máscara L8), `UpscaleImage` (super-resolución 2x / 4x con decodificación convolucional), `DetectNsfwScore` (probabilidad [0.0 - 1.0]).
+     - Nodos de pipeline implementados: `BackgroundRemoverNode` (`In`, `Out`, `Mask`, `Error`), `SuperResolutionUpscalerNode` (`In`, `Out`, `Skipped`, `Error`), `ContentModerationFilterNode` (`In`, `Safe`, `Sensitive`, `Error`).
+     - Recursos multilingües localizados (español e inglés) dentro de `FileFlow.Plugin.AI/Resources/` cumpliendo estrictamente con ADR-006.
+  1. **Generalización de Modelos de IA por Función y Selector Inteligente por Hardware (Auto + Catálogo + Custom)**:
+     - Taxonomía completa en `AiTaskType`: detección de objetos, rostros, clasificación de imágenes, voz a texto, traducción de texto, LLM y OCR.
+     - Analizador `HardwareCapabilityDetector`: Detección en Win32 de RAM física total (`GlobalMemoryStatusEx`), núcleos de CPU y aceleración DirectML (`AppendExecutionProvider_DML`). Clasificación de niveles de hardware (`Lightweight`, `Balanced`, `Performance`), compatibilidad (`Recommended`, `Playable`, `InsufficientHardware`) y selección óptima automática.
+     - Extensión de `AiModelInfo` con `TaskType`, `MinRamBytes`, `GpuRecommended` y `HardwareTier`. Métodos `GetModelsForTask` y `ResolveModelPathAsync`.
+     - Actualización integral de los 6 nodos de IA (`ObjectDetectorNode`, `FaceDetectorNode`, `SmartImageClassifierNode`, `LocalAiTranslatorNode`, `LocalLlmProcessorNode`, `LocalWhisperTranscriberNode`) con selector `Model` (incluyendo `Auto`, modelos oficiales y `Custom`) y parámetro de archivo local `CustomModelPath` (`.onnx` / `.gguf` / `.bin`).
+     - Localización multilingüe i18n (`Param_Model` y `Param_CustomModelPath`) exclusivamente dentro de `FileFlow.Plugin.AI/Resources/` cumpliendo estrictamente con la regla ADR-006.
+  1. **Monitorización de GPU en la Barra de Estado Inferior**:
+     - Integración de `GpuPercentage` y `GpuFormatted` en `PerformanceMetrics`.
+     - Muestreo asíncrono y desacoplado en segundo plano con `Task.Run` consultando la categoría de Windows `"GPU Engine"` (`Utilization Percentage`) para todas las instancias del proceso actual (`pid_{currentProcess.Id}_*`), sin degradar la fluidez del hilo de interfaz gráfica (Dispatcher).
+     - Representación visual reactiva en `StatusBarView.xaml` (`🎮 GPU: {GpuText}`) junto a CPU y RAM, con tooltips localizados.
+  1. **URLs Configurables de Modelos de IA con Soporte Multi-Espejo (Fallback)**:
+     - Capacidad para configurar una o múltiples URLs de descarga por modelo en `AiModelManager`, con persistencia en `%AppData%/FileFlow/config/ai_models_config.json` (o `data/config/` en modo portable).
+     - Descarga con conmutación automática (*fallback*): el motor prueba secuencialmente cada enlace configurado y, ante cualquier error (404, 500, timeout), salta al siguiente espejo automáticamente.
+     - Nuevo diálogo modal `AiModelUrlsConfigDialog.xaml` accesible desde Ajustes (`WorkflowSettingsWindow.xaml`) y el gestor de descargas (`AiModelDownloadDialog.xaml`) con el botón **"⚙️ URLs"**, prueba de conexión en vivo y botón para restablecer las URLs oficiales predeterminadas.
+  1. **Corrección de Descargas de Modelos MarianMT, NLLB-200, Grounding DINO y Sistema de Diagnóstico de Errores**:
+     - Subsanado HTTP 404 en `marian-es-en` y `marian-en-es` actualizando las URLs a los binarios ONNX quantizados oficiales (`onnx/decoder_model_merged_quantized.onnx`).
+     - Subsanado HTTP 404 en `grounding-dino` (`yolov8s-worldv2.onnx`) migrando de GitHub releases (donde Ultralytics solo aloja `.pt`) al repositorio oficial ONNX en Hugging Face (`Instemic/yolo-world-onnx`). Verificados los 13 modelos del catálogo con HTTP 200 OK.
+     - Subsanado rechazo/bloqueo de conexión en Hugging Face CDN para `nllb-200-600m` configurando `SocketsHttpHandler` con cabecera estándar `User-Agent` (`FileFlowStudio/1.0`), descompresión nativa y soporte robusto de redirecciones automáticas.
+     - Implementado sistema integral de diagnóstico y notificación de errores de descarga: persistencia de `ErrorMessage` y `HasError` en el ViewModel, conservación del estado de error al refrescar la lista, banners de advertencia superiores en `AiModelDownloadDialog.xaml`, cuadros de error por modelo y mensajes modales informativos (`MessageBox.Show`) ante fallos.
+  1. **Suite de IA Lingüística y Modelos Locales (Traducción NLLB-200/MarianMT, LLM Local Qwen 2.5 y Transformador de Prompts)**:
+     - Nuevos modelos en el catálogo `AiModelManager`: `nllb-200-600m` (universal 200 idiomas), `qwen2.5-1.5b-instruct` (LLM instruccional ligero) y `marian-en-es` (Helsinki-NLP EN-ES).
+     - Motor `LanguageInferenceEngine` con soporte para traducción neuronal, preservación de subtítulos `.srt`, procesamiento LLM (resúmenes, extracción JSON estructurado, traducción y explicación) y transformación de prompts.
+     - Nodo `LocalAiTranslatorNode` para traducción de archivos de texto, subtítulos `.srt` y metadatos con modos de salida `InjectMetadata`, `CreateNewFile` y `Both`.
+     - Nodo `LocalLlmProcessorNode` para resúmenes ejecutivos, extracción de datos estructurados a JSON y ejecución de prompts libres con resolución de variables.
+     - Nodo `PromptTransformerNode` para evaluar plantillas dinámicas, traducir a inglés y expandir sinónimos visuales para detectores de visión.
+     - **Descentralización y Co-ubicación Total de Recursos i18n**: Creación de `Resources/Strings.resx` y `Strings.es.resx` dentro de `FileFlow.Plugin.AI/` junto con `AiPluginInitializer.cs` (`IPluginInitializer`) para registro autónomo en `LocalizationManager.Instance`, eliminando todas las cadenas de nodos de `FileFlow.App`.
+     - **Principio Arquitectónico Establecido (ADR-006)**: Documentada la regla obligatoria en `docs/architecture.md`, `.agents/rules/rules.md`, `AGENTS.md`, `GEMINI.md` y `.antigravity/knowledge/repo_architecture.md` exigiendo que todo código, UI y recursos de cada plugin/nodo residan exclusivamente en su propio directorio.
+     - 12 nuevos tests unitarios en `FileFlow.Tests/Unit/AI/` alcanzando 401 pruebas al 100%.
+  1. **Persistencia del Modo Compacto en el Catálogo de Nodos (Toolbox)**:
      - Sincronización bidireccional inmediata de `IsCompactMode` en `ToolboxViewModel` con `UserPreferencesService.Instance.UpdatePreferences(...)`.
      - Evita que `IncrementNodeUsage(typeName)` (disparado al arrastrar o instanciar un nodo) sobreescriba y desactive el modo compacto al invocar `RefreshToolbox()`.
   1. **Corrección de Visibilidad y Sincronización en Filtro 'Todos' de la Consola de Logs**:

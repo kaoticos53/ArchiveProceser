@@ -173,3 +173,16 @@ Colección modular de 24 nodos de procesamiento organizados por dominio:
 - **Contexto**: La aplicación debe ser accesible globalmente permitiendo cambiar entre múltiples idiomas (actualmente Español e Inglés) sin reiniciar el software ni comprometer la claridad del código técnico.
 - **Decisión**: Mantener los nombres de variables, identificadores de claves (`Key`), contratos de plugins y serialización en inglés puro, mientras que la interfaz de usuario (`FileFlow.App`) proyecta exclusivamente textos localizados consumiendo `LocalizationManager.Instance` (con soporte reactivo de indexers `"Item[]"` en WPF) y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
 - **Consecuencias**: Experiencia de usuario enriquecida y natural en el idioma de preferencia, con total reactividad en caliente en pantallas, diálogos, menús y tarjetas de nodos del lienzo.
+
+### ADR-006: Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins)
+- **Contexto**: Acoplar código de nodos, ventanas modales, configuraciones o cadenas de texto localizadas (i18n) dentro del proyecto principal de la aplicación (`FileFlow.App`) viola el Principio Abierto/Cerrado (OCP), contamina la aplicación host y dificulta la creación, mantenimiento y distribución independiente de extensiones.
+- **Decisión**: **Todo el código y los recursos asociados a cada plugin o nodo DEBEN residir al 100% dentro del propio directorio del plugin (`FileFlow.Plugin.*`)**. Esto incluye:
+  1. Clases de nodo (`IFlowNode`) y lógica de negocio/inferencia.
+  2. Ventanas modales, vistas y controles XAML propios (`UI/`).
+  3. Servicios auxiliares de dominio y estrategias.
+  4. Ficheros de presets o configuraciones (`Config/`).
+  5. **Diccionarios de recursos localizados (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** conteniendo los nombres de nodos, descripciones, tooltips y etiquetas de parámetros (`DisplayName`).
+  - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer de navegación, barra de control, barra de estado, consola de logs y ajustes globales).
+  - La integración de recursos es automática mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`.
+- **Consecuencias**: Desacoplamiento total (*Zero-Touch en FileFlow.App*). Para añadir, modificar o eliminar un plugin o nodo, únicamente se escribe código en la carpeta del plugin en cuestión, asegurando máxima modularidad y portabilidad.
+

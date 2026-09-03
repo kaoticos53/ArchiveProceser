@@ -5,7 +5,8 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("OperationReportNode_Name", "FileSystem", "OperationReportNode_Desc")]
+[NodeDefinition("OperationReportNode_Name", "Integrations", "OperationReportNode_Desc", PipelineRole.Control,
+    "reporte", "informe", "html", "markdown", "auditoria", "resumen", "trazabilidad", "report")]
 public class OperationReportNode : IFlowNode
 {
     private readonly Lock _lock = new();
@@ -15,7 +16,7 @@ public class OperationReportNode : IFlowNode
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("OperationReportNode_Name", "Operation Report");
-    public string Category => "FileSystem";
+    public string Category => "Integrations";
     public string Description => LocalizationManager.Instance.GetString("OperationReportNode_Desc", "Generates an attractive visual execution and operations report for all processed files.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

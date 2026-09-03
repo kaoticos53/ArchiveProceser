@@ -6,7 +6,8 @@ using PdfSharp.Pdf.IO;
 
 namespace FileFlow.Plugin.Documents;
 
-[NodeDefinition("PdfSplitNode_Name", "Documents", "PdfSplitNode_Desc")]
+[NodeDefinition("PdfSplitNode_Name", "Documents", "PdfSplitNode_Desc", PipelineRole.Transform,
+    "pdf", "separar", "dividir", "paginas", "cortar", "split", "extract")]
 public class PdfSplitNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

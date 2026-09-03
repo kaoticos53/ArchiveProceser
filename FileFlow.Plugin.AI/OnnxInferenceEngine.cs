@@ -613,6 +613,270 @@ public static class OnnxInferenceEngine
         return false;
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Eliminación de fondos y segmentación de sujeto (RMBG-1.4 / MODNet)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public static Image<Rgba32> RemoveBackground(
+        string modelPath,
+        Image<Rgba32> image,
+        Rgba32? backgroundColor = null,
+        bool maskOnly = false)
+    {
+        var session = GetOrCreateSession(modelPath);
+
+        // Detectar resolución requerida por el modelo (RMBG suele ser 1024x1024, MODNet 512x512)
+        int targetW = 1024;
+        int targetH = 1024;
+        try
+        {
+            var dims = session.InputMetadata.Values.FirstOrDefault()?.Dimensions;
+            if (dims != null && dims.Length >= 4)
+            {
+                if (dims[2] > 0 && dims[3] > 0)
+                {
+                    targetH = dims[2];
+                    targetW = dims[3];
+                }
+            }
+        }
+        catch { }
+
+        int origW = image.Width;
+        int origH = image.Height;
+
+        using var rgbImage = new Image<Rgb24>(targetW, targetH);
+        using var resized = image.Clone(ctx => ctx.Resize(targetW, targetH));
+        resized.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < targetH; y++)
+            {
+                var srcRow = accessor.GetRowSpan(y);
+                for (int x = 0; x < targetW; x++)
+                {
+                    rgbImage[x, y] = new Rgb24(srcRow[x].R, srcRow[x].G, srcRow[x].B);
+                }
+            }
+        });
+
+        var tensor = CreateNchwTensor(rgbImage, targetW, targetH,
+            meanR: 0.5f, meanG: 0.5f, meanB: 0.5f,
+            stdR: 1.0f, stdG: 1.0f, stdB: 1.0f,
+            scale: 1.0f / 255.0f);
+
+        string inputName = session.InputNames[0];
+        var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, tensor) };
+
+        float[] maskData;
+        int outH = targetH;
+        int outW = targetW;
+
+        lock (_inferenceLock)
+        {
+            using var outputs = session.Run(inputs);
+            var outTensor = outputs.First().AsTensor<float>();
+            var dims = outTensor.Dimensions;
+            if (dims.Length >= 2)
+            {
+                outH = dims[^2];
+                outW = dims[^1];
+            }
+            maskData = outTensor.ToArray();
+        }
+
+        // Crear mapa de máscara en resolución del modelo y escalar a la imagen original
+        using var rawMask = new Image<L8>(outW, outH);
+        rawMask.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < outH; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                int offset = y * outW;
+                for (int x = 0; x < outW; x++)
+                {
+                    float val = maskData[offset + x];
+                    val = Math.Clamp(val, 0f, 1f);
+                    row[x] = new L8((byte)(val * 255));
+                }
+            }
+        });
+
+        // Escalar la máscara a la resolución de la imagen original
+        using var finalMask = rawMask.Clone(ctx => ctx.Resize(origW, origH));
+
+        byte[] maskBytes = new byte[origW * origH];
+        finalMask.ProcessPixelRows(maskAccessor =>
+        {
+            for (int y = 0; y < origH; y++)
+            {
+                var mRow = maskAccessor.GetRowSpan(y);
+                int offset = y * origW;
+                for (int x = 0; x < origW; x++)
+                {
+                    maskBytes[offset + x] = mRow[x].PackedValue;
+                }
+            }
+        });
+
+        if (maskOnly)
+        {
+            var maskImage = new Image<Rgba32>(origW, origH);
+            maskImage.ProcessPixelRows(outAccessor =>
+            {
+                for (int y = 0; y < origH; y++)
+                {
+                    var oRow = outAccessor.GetRowSpan(y);
+                    int offset = y * origW;
+                    for (int x = 0; x < origW; x++)
+                    {
+                        byte l = maskBytes[offset + x];
+                        oRow[x] = new Rgba32(l, l, l, 255);
+                    }
+                }
+            });
+            return maskImage;
+        }
+
+        var result = image.Clone();
+        result.ProcessPixelRows(resAccessor =>
+        {
+            for (int y = 0; y < origH; y++)
+            {
+                var rRow = resAccessor.GetRowSpan(y);
+                int offset = y * origW;
+                for (int x = 0; x < origW; x++)
+                {
+                    byte alpha = maskBytes[offset + x];
+                    if (backgroundColor.HasValue)
+                    {
+                        // Composición con color de fondo
+                        float a = alpha / 255.0f;
+                        byte r = (byte)(rRow[x].R * a + backgroundColor.Value.R * (1 - a));
+                        byte g = (byte)(rRow[x].G * a + backgroundColor.Value.G * (1 - a));
+                        byte b = (byte)(rRow[x].B * a + backgroundColor.Value.B * (1 - a));
+                        rRow[x] = new Rgba32(r, g, b, 255);
+                    }
+                    else
+                    {
+                        // Transparencia pura en canal alfa
+                        rRow[x] = new Rgba32(rRow[x].R, rRow[x].G, rRow[x].B, alpha);
+                    }
+                }
+            }
+        });
+
+        return result;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Super-Resolución (Real-ESRGAN Compact / Swin2SR)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public static Image<Rgb24> UpscaleImage(
+        string modelPath,
+        Image<Rgb24> image,
+        int requestedScale = 4)
+    {
+        var session = GetOrCreateSession(modelPath);
+
+        int origW = image.Width;
+        int origH = image.Height;
+
+        var tensor = CreateNchwTensor(image, origW, origH,
+            meanR: 0f, meanG: 0f, meanB: 0f,
+            stdR: 1f, stdG: 1f, stdB: 1f,
+            scale: 1.0f / 255.0f);
+
+        string inputName = session.InputNames[0];
+        var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, tensor) };
+
+        float[] outputData;
+        int outH;
+        int outW;
+
+        lock (_inferenceLock)
+        {
+            using var outputs = session.Run(inputs);
+            var outTensor = outputs.First().AsTensor<float>();
+            var dims = outTensor.Dimensions;
+            outH = dims.Length >= 3 ? dims[^2] : origH * 4;
+            outW = dims.Length >= 4 ? dims[^1] : origW * 4;
+            outputData = outTensor.ToArray();
+        }
+
+        var upscaled = new Image<Rgb24>(outW, outH);
+        int planeSize = outH * outW;
+
+        upscaled.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < outH; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                int offset = y * outW;
+                for (int x = 0; x < outW; x++)
+                {
+                    int idx = offset + x;
+                    float r = Math.Clamp(outputData[idx], 0f, 1f) * 255f;
+                    float g = Math.Clamp(outputData[planeSize + idx], 0f, 1f) * 255f;
+                    float b = Math.Clamp(outputData[planeSize * 2 + idx], 0f, 1f) * 255f;
+                    row[x] = new Rgb24((byte)r, (byte)g, (byte)b);
+                }
+            }
+        });
+
+        // Si se pidió 2x y el modelo generó 4x, redimensionar proporcionalmente
+        if (requestedScale == 2 && outW > origW * 2)
+        {
+            upscaled.Mutate(ctx => ctx.Resize(origW * 2, origH * 2));
+        }
+
+        return upscaled;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Moderación y detección de contenido sensible (OpenNSFW2 / MobileNet)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public static double DetectNsfwScore(string modelPath, Image<Rgb24> image)
+    {
+        var session = GetOrCreateSession(modelPath);
+
+        using var resized = (image.Width == 224 && image.Height == 224) ? null : image.Clone(ctx => ctx.Resize(224, 224));
+        var targetImage = resized ?? image;
+
+        // Normalización para clasificadores de moderación
+        var tensor = CreateNchwTensor(targetImage, 224, 224,
+            meanR: 0.485f, meanG: 0.456f, meanB: 0.406f,
+            stdR: 0.229f, stdG: 0.224f, stdB: 0.225f);
+
+        string inputName = session.InputNames[0];
+        var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, tensor) };
+
+        float[] rawScores;
+        lock (_inferenceLock)
+        {
+            using var outputs = session.Run(inputs);
+            rawScores = outputs.First().AsTensor<float>().ToArray();
+        }
+
+        if (rawScores.Length == 0) return 0.0;
+
+        // Si tiene 2 salidas: [Prob_Safe, Prob_NSFW]
+        if (rawScores.Length >= 2)
+        {
+            var probs = Softmax(rawScores);
+            return Math.Clamp((double)probs[1], 0.0, 1.0);
+        }
+
+        // Si es una sola salida sigmoide
+        float score = rawScores[0];
+        if (score > 1.0f || score < 0f)
+        {
+            score = 1.0f / (1.0f + MathF.Exp(-score));
+        }
+        return Math.Clamp((double)score, 0.0, 1.0);
+    }
+
     /// <summary>Libera todas las sesiones ONNX en caché.</summary>
     public static void ClearSessionCache()
     {

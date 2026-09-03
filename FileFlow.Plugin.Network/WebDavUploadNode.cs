@@ -7,12 +7,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Network;
 
-[NodeDefinition("WebDavUploadNode_Name", "Network & Remote", "WebDavUploadNode_Desc")]
+[NodeDefinition("WebDavUploadNode_Name", "Network", "WebDavUploadNode_Desc", PipelineRole.Sink,
+    "webdav", "nextcloud", "owncloud", "nube", "cloud", "subir", "servidor")]
 public class WebDavUploadNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("WebDavUploadNode_Name", "Subir a WebDAV / Nextcloud (WebDAV Upload)");
-    public string Category => "Network & Remote";
+    public string Category => "Network";
     public string Description => LocalizationManager.Instance.GetString("WebDavUploadNode_Desc", "Sube archivos a servidores WebDAV, nubes privadas Nextcloud / ownCloud y almacenamiento NAS.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

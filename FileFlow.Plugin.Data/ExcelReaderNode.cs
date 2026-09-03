@@ -5,12 +5,13 @@ using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("ExcelReaderNode_Name", "Data & Databases", "ExcelReaderNode_Desc")]
+[NodeDefinition("ExcelReaderNode_Name", "Data", "ExcelReaderNode_Desc", PipelineRole.Source,
+    "excel", "xlsx", "leer", "tabla", "hoja", "filas", "importar", "sheet")]
 public class ExcelReaderNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExcelReaderNode_Name", "Lector de Hojas Excel");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("ExcelReaderNode_Desc", "Lee archivos Excel (.xlsx/.csv) y emite cada fila como un registro de datos con sus columnas en los metadatos.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

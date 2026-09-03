@@ -6,7 +6,8 @@ using PdfSharp.Pdf.IO;
 
 namespace FileFlow.Plugin.Documents;
 
-[NodeDefinition("PdfMergeNode_Name", "Documents", "PdfMergeNode_Desc")]
+[NodeDefinition("PdfMergeNode_Name", "Documents", "PdfMergeNode_Desc", PipelineRole.Transform,
+    "pdf", "unir", "fusionar", "juntar", "combinar", "merge", "join")]
 public class PdfMergeNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

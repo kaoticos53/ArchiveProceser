@@ -5,12 +5,13 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("FileRelocatorNode_Name", "FileSystem", "FileRelocatorNode_Desc")]
+[NodeDefinition("FileRelocatorNode_Name", "Files", "FileRelocatorNode_Desc", PipelineRole.Transform,
+    "reubicar", "mover", "copiar", "hardlink", "transferir", "relocate", "move", "copy")]
 public class FileRelocatorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FileRelocatorNode_Name", "Reubicador y Copiador de Archivos");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("FileRelocatorNode_Desc", "Mueve o copia archivos hacia árboles de directorios destino construidos dinámicamente con tokens, verificando la integridad binaria de los datos mediante cálculo de hash SHA-256.");
 
 

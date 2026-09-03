@@ -7,12 +7,13 @@ using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI;
 
-[NodeDefinition("FaceDetectorNode_Name", "AI & Computer Vision", "FaceDetectorNode_Desc")]
+[NodeDefinition("FaceDetectorNode_Name", "ImageVision", "FaceDetectorNode_Desc", PipelineRole.Filter,
+    "rostros", "caras", "personas", "faces", "ultraface", "detector", "vision", "ia")]
 public class FaceDetectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FaceDetectorNode_Name", "Detector de Rostros (Facial)");
-    public string Category => "AI & Computer Vision";
+    public string Category => "ImageVision";
     public string Description => LocalizationManager.Instance.GetString("FaceDetectorNode_Desc", "Analiza imágenes para detectar la presencia y el número de rostros humanos, bifurcando el flujo hacia fotos familiares o paisajes.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =
@@ -28,14 +29,21 @@ public class FaceDetectorNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["Model"] = "Auto",
+        ["CustomModelPath"] = "",
         ["ConfidenceThreshold"] = 0.7,
         ["MinimumFaces"] = 1
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("ConfidenceThreshold", ParameterEditorType.Slider, DefaultValue: 0.7, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 1),
-        new("MinimumFaces", ParameterEditorType.Number, DefaultValue: 1, Min: 1, Max: 50, DisplayOrder: 2)
+        new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
+            Options: ["Auto", "ultraface", "Custom"],
+            HelpText: "Modelo para detección facial ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
+        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
+            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
+        new("ConfidenceThreshold", ParameterEditorType.Slider, DefaultValue: 0.7, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 3),
+        new("MinimumFaces", ParameterEditorType.Number, DefaultValue: 1, Min: 1, Max: 50, DisplayOrder: 4)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -63,12 +71,20 @@ public class FaceDetectorNode : IFlowNode
         {
             context.Log($"[FaceDetector] Detectando rostros en {item.FileName}...", LogLevel.Information, item);
 
-            // Asegurar modelo UltraFace descargado automáticamente
-            string? modelPath = await AiModelManager.EnsureModelAsync("ultraface", context, item, cancellationToken).ConfigureAwait(false);
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
+
+            string? modelPath = await AiModelManager.ResolveModelPathAsync(
+                modelChoice,
+                customPath,
+                AiTaskType.FaceDetection,
+                context,
+                item,
+                cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[FaceDetector] ⚠️ Modelo UltraFace no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
+                context.Log($"[FaceDetector] ⚠️ Modelo de detección facial no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
                 item.Metadata["AI:HasFaces"] = false;
                 item.Metadata["AI:FaceCount"] = 0;
                 await context.EmitAsync("NoFaces", item).ConfigureAwait(false);

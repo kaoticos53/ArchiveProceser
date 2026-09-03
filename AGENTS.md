@@ -71,7 +71,12 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
    - Las claves y variables en el código se mantienen en inglés, mientras que la UI consume `LocalizationManager.Instance` y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
    - El cambio de idioma debe reflejarse en caliente e instantáneamente en todas las vistas sin reiniciar la aplicación.
 
-6. **Optimización de Tokens para Agentes:**
+6. **Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins / Zero-Touch en FileFlow.App):**
+   - **Todo el código, modelos de nodo, lógica de inferencia, herramientas y vistas modales (`UI/`), configuraciones (`Config/`) y recursos de cadenas de texto multilingües (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** pertenecientes a cada plugin/nodo **DEBEN situarse exclusivamente dentro del directorio del propio plugin (`FileFlow.Plugin.*`)**.
+   - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en `FileFlow.App`.
+   - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar `FileFlow.App`**.
+
+7. **Optimización de Tokens para Agentes:**
    - **No leer archivos completos preventivamente.** Utilizar herramientas de búsqueda (`grep_search`, `find_symbol`) para inspeccionar líneas o funciones específicas.
 
 ---

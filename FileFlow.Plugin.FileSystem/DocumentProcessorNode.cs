@@ -3,12 +3,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("DocumentProcessorNode_Name", "MediaDocs", "DocumentProcessorNode_Desc")]
+[NodeDefinition("DocumentProcessorNode_Name", "Documents", "DocumentProcessorNode_Desc", PipelineRole.Analyze,
+    "documento", "lineas", "conteo", "tipo", "extension", "doc", "pdf", "txt", "stats")]
 public class DocumentProcessorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DocumentProcessorNode_Name", "Document & PDF Processor");
-    public string Category => "MediaDocs";
+    public string Category => "Documents";
     public string Description => LocalizationManager.Instance.GetString("DocumentProcessorNode_Desc", "Inspecciona documentos y archivos PDF, contando páginas y extrayendo metadatos clave.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

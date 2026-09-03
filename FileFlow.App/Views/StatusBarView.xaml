@@ -89,6 +89,12 @@
                     <TextBlock Text="{Binding CpuText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
 
+                <!-- Consumo GPU -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_GpuToolTip]}">
+                    <TextBlock Text="🎮 GPU: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding GpuText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
                 <!-- Separador -->
                 <Border Width="1" Height="12" Background="{DynamicResource BorderDarkBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
 

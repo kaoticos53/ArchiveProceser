@@ -9,7 +9,8 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("AdvancedRenamerNode_Name", "FileSystem", "AdvancedRenamerNode_Desc")]
+[NodeDefinition("AdvancedRenamerNode_Name", "Files", "AdvancedRenamerNode_Desc", PipelineRole.Transform,
+    "renombrar", "nombre", "patron", "tokens", "exif", "fecha", "rename", "pattern", "batch")]
 public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -25,7 +26,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Avanzado con Tokens");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Desc", "Renombra archivos y carpetas masivamente aplicando un pipeline acumulativo de métodos secuenciales (plantillas, regex, mayúsculas, numeración, sustitución y normalización) con resolución de colisiones.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

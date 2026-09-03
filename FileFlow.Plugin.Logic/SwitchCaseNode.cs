@@ -8,7 +8,8 @@ namespace FileFlow.Plugin.Logic;
 
 public record SwitchCaseRule(string Name, string Pattern);
 
-[NodeDefinition("SwitchCaseNode_Name", "Logic", "SwitchCaseNode_Desc")]
+[NodeDefinition("SwitchCaseNode_Name", "Logic", "SwitchCaseNode_Desc", PipelineRole.Filter,
+    "switch", "case", "bifurcacion", "enrutar", "multiples", "router", "branch", "logica")]
 public class SwitchCaseNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

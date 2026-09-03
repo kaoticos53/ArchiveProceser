@@ -6,7 +6,8 @@ using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("ExcelReportGeneratorNode_Name", "Data & Databases", "ExcelReportGeneratorNode_Desc")]
+[NodeDefinition("ExcelReportGeneratorNode_Name", "Data", "ExcelReportGeneratorNode_Desc", PipelineRole.Sink,
+    "excel", "informe", "reporte", "exportar", "tabla", "consolidar", "xlsx")]
 public class ExcelReportGeneratorNode : IFlowNode
 {
     private readonly ConcurrentBag<Dictionary<string, object?>> _collectedRows = [];
@@ -14,7 +15,7 @@ public class ExcelReportGeneratorNode : IFlowNode
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Name", "Generador de Reportes Excel (.xlsx)");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Desc", "Acumula los metadatos de los archivos procesados y genera un archivo Excel (.xlsx) estructurado al concluir el flujo.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

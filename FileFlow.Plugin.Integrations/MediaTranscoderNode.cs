@@ -7,12 +7,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Integrations;
 
-[NodeDefinition("MediaTranscoderNode_Name", "MediaDocs", "MediaTranscoderNode_Desc")]
+[NodeDefinition("MediaTranscoderNode_Name", "AudioVoice", "MediaTranscoderNode_Desc", PipelineRole.Transform,
+    "ffmpeg", "video", "audio", "mp4", "mp3", "transcodificar", "convertir", "h264", "h265", "webm", "media")]
 public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
-    public string Category => "MediaDocs";
+    public string Category => "AudioVoice";
     public string Description => LocalizationManager.Instance.GetString("MediaTranscoderNode_Desc", "Transcodifica archivos de audio y vídeo mediante presets o comandos externos FFmpeg.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

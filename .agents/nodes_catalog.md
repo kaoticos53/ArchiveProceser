@@ -1,254 +1,471 @@
 # Catálogo Completo de Nodos y Especificaciones - FileFlow Studio
 
+Este catálogo contiene la especificación técnica completa de los **60 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
+
+---
+
 ## 1. Módulo: FileFlow.Plugin.FileSystem (12 Nodos)
-1. **FolderSourceNode**
-   - Tipo: Trigger / Input
-   - Salidas: `Out` (FileItemContext)
-   - Parámetros: `SourcePath` (string), `ExtensionFilter` (string), `Recursive` (bool), `EmitMode` (FilesOnly, DirectoriesOnly, FilesAndDirectories), `MaxRecursionDepth` (int), `WatchRealtime` (bool)
-   - Función: Escanea el árbol de directorios y emite elementos asíncronamente con soporte de filtrado múltiple por extensión (ej. `*.jpg, *.png, *.zip`). Soporta monitorización de cambios en tiempo real.
 
-2. **DestinationSinkNode**
-   - Tipo: Sink / Output
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Done` (FileItemContext)
-   - Parámetros: `DestinationRoot` (string), `ConflictStrategy` (Overwrite, Skip, RenameIncremental)
-   - Función: Escribe o consolida el archivo procesado en la ruta destino final.
+### 1. FolderSourceNode
+- **Tipo:** Trigger / Input (Ingesta)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `SourcePath` (string), `ExtensionFilter` (string, ej. `*.jpg, *.png`), `Recursive` (bool), `EmitMode` (`FilesOnly`, `DirectoriesOnly`, `FilesAndDirectories`), `MaxRecursionDepth` (int), `WatchRealtime` (bool)
+- **Función:** Escanea directorios y emite archivos de forma asíncrona con soporte de monitorización reactiva de cambios en tiempo real (`FileSystemWatcher`).
 
-3. **AdvancedRenamerNode**
-   - Tipo: Transformer
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `Pattern` (string), `CollisionStrategy` (AutoIncrement, Overwrite, Skip), `PreserveExtension` (bool)
-   - Función: Renombrado masivo con motor de plantillas de tokens (`{Date:*}`, `{Exif:*}`, `{Hash:*}`) y sanitización de caracteres inválidos.
+### 2. DestinationSinkNode
+- **Tipo:** Sink / Output (Destino)
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Done` (`FileItemContext`)
+- **Parámetros:** `DestinationRoot` (string), `ConflictStrategy` (`Overwrite`, `Skip`, `RenameIncremental`)
+- **Función:** Escribe o consolida el archivo procesado en la ruta destino final gestionando colisiones de nombres.
 
-4. **FileRelocatorNode**
-   - Tipo: Action
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `TargetDirectory` (string), `OperationType` (Move, Copy, HardLink), `VerifyChecksum` (bool)
-   - Función: Reubica archivos en disco con opción de verificación de integridad SHA-256 post-transferencia.
+### 3. AdvancedRenamerNode
+- **Tipo:** Transformer (Modificación)
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Pattern` (string), `CollisionStrategy` (`AutoIncrement`, `Overwrite`, `Skip`), `PreserveExtension` (bool)
+- **Acción Custom:** Editor visual de plantillas de tokens (`{Date:*}`, `{Exif:*}`, `{Hash:*}`).
+- **Función:** Renombrado masivo avanzado con sanitización de caracteres inválidos en disco.
 
-5. **SafeRecycleDeleteNode**
-   - Tipo: Action
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `DeleteOriginal` (bool), `UseShellRecycleBin` (bool)
-   - Función: Borrado seguro no destructivo mediante envío directo a la Papelera de reciclaje de Windows (`SHFileOperationW`).
+### 4. FileRelocatorNode
+- **Tipo:** Action / Mover
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `TargetDirectory` (string), `OperationType` (`Move`, `Copy`, `HardLink`), `VerifyChecksum` (bool)
+- **Función:** Reubica o duplica archivos en disco con opción de verificación de integridad SHA-256 post-transferencia.
 
-6. **OriginalFileActionNode**
-   - Tipo: Lifecycle / Action
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `ActionType` (Keep, MoveToRecycleBin, MoveToQuarantine), `QuarantinePath` (string)
-   - Función: Aplica la política de ciclo de vida al archivo de origen tras completar con éxito el procesamiento.
+### 5. SafeRecycleDeleteNode
+- **Tipo:** Action / Ciclo de Vida
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `DeleteOriginal` (bool), `UseShellRecycleBin` (bool)
+- **Función:** Borrado no destructivo mediante envío directo a la Papelera de reciclaje de Windows (`SHFileOperationW`).
 
-7. **OperationReportNode**
-   - Tipo: Reporting / Diagnostic
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Report` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `ReportFormat` (HTML, Markdown, Text, JSON, CSV), `ReportScope` (Consolidated, PerFile, Both), `DestinationFolder` (string), `ReportFileName` (string), `Theme` (ModernDark, CleanLight), `AutoOpenReport` (bool), `IncludeMetadata` (bool)
-   - Función: Genera reportes visuales interactivos y trazabilidad completa del ciclo de vida y operaciones aplicadas a cada archivo.
+### 6. OriginalFileActionNode
+- **Tipo:** Lifecycle / Acción Centralizada
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ActionType` (`Keep`, `MoveToRecycleBin`, `MoveToQuarantine`), `QuarantinePath` (string)
+- **Función:** Aplica la política de retención o cuarentena al archivo de origen (`OriginalPath`) tras completar con éxito el procesamiento del pipeline.
 
-8. **DirectoryInspectorNode**
-   - Tipo: Router / Logic
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `SingleArchive` (FileItemContext), `MixedContent` (FileItemContext), `DirectoriesOnly` (FileItemContext)
-   - Función: Evalúa la estructura de una carpeta para discernir si contiene exclusivamente un comprimido o contenidos mixtos.
+### 7. OperationReportNode
+- **Tipo:** Reporting / Diagnóstico
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Report` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ReportFormat` (`HTML`, `Markdown`, `Text`, `JSON`, `CSV`), `ReportScope` (`Consolidated`, `PerFile`, `Both`), `DestinationFolder` (string), `ReportFileName` (string), `Theme` (`ModernDark`, `CleanLight`), `AutoOpenReport` (bool), `IncludeMetadata` (bool)
+- **Función:** Genera reportes interactivos y trazabilidad de operaciones aplicadas a cada elemento procesado.
 
-9. **EmptyDirectoryCleanerNode**
-   - Tipo: Cleanup
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext)
-   - Parámetros: `TargetDirectory` (string), `Recursive` (bool), `DeleteRootIfEmpty` (bool)
-   - Función: Limpia de forma recursiva carpetas vacías residuales tras la ejecución de flujos.
+### 8. DirectoryInspectorNode
+- **Tipo:** Router / Lógica de Carpeta
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `SingleArchive` (`FileItemContext`), `MixedContent` (`FileItemContext`), `DirectoriesOnly` (`FileItemContext`)
+- **Función:** Evalúa la estructura de un directorio para bifurcar según contenga un archivo comprimido único o contenidos mixtos.
 
-10. **DocumentProcessorNode**
-    - Tipo: Enricher
-    - Entradas: `In` (FileItemContext)
-    - Salidas: `Out` (FileItemContext)
-    - Parámetros: `ExtractLineCount` (bool), `DetectDocType` (bool)
-    - Función: Extrae conteo de líneas y tipo de documento (.pdf, .docx, .txt, .csv, .json) hacia `Metadata`.
+### 9. EmptyDirectoryCleanerNode
+- **Tipo:** Cleanup / Limpieza
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `TargetDirectory` (string), `Recursive` (bool), `DeleteRootIfEmpty` (bool)
+- **Función:** Limpieza recursiva de directorios vacíos residuales tras completar pipelines.
 
-11. **VariableInjectorNode**
-    - Tipo: Enricher
-    - Entradas: `In` (FileItemContext)
-    - Salidas: `Out` (FileItemContext)
-    - Parámetros: `Variables` (Diccionario clave-valor con soporte de tokens)
-    - Función: Inyecta pares clave-valor dinámicos en el diccionario `Variables` del contexto.
+### 10. DocumentProcessorNode
+- **Tipo:** Enricher / Extractor
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `ExtractLineCount` (bool), `DetectDocType` (bool)
+- **Función:** Extrae estadísticas básicas (conteo de líneas, tipo de documento) hacia el diccionario `Metadata`.
 
-12. **LogOutputNode**
-    - Tipo: Diagnostic
-    - Entradas: `In` (FileItemContext)
-    - Salidas: `Out` (FileItemContext)
-    - Parámetros: `LogLevel` (Debug, Information, Warning, Error), `MessageTemplate` (string)
-    - Función: Emite mensajes de log estructurados personalizados durante el recorrido del pipeline.
+### 11. VariableInjectorNode
+- **Tipo:** Enricher / Metadatos
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `Variables` (Diccionario clave-valor con resolución de tokens dinámicos)
+- **Función:** Inyecta variables dinámicas en el contexto del archivo para consumo por nodos downstream.
+
+### 12. LogOutputNode
+- **Tipo:** Diagnostic / Registro
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `LogLevel` (`Debug`, `Information`, `Warning`, `Error`), `MessageTemplate` (string)
+- **Función:** Emite mensajes de log estructurados con resolución de variables en la consola de telemetría.
 
 ---
 
 ## 2. Módulo: FileFlow.Plugin.Logic (5 Nodos)
-1. **SwitchCaseNode**
-   - Tipo: Router
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Default` (FileItemContext), `Cases...` (Puertos dinámicos)
-   - Parámetros: `EvaluationProperty` (string), `Cases` (Lista de patrones)
-   - Función: Enrutador condicional múltiple que evalúa propiedades o metadatos y bifurca hacia ramas dedicadas.
 
-2. **ExpressionFilterNode**
-   - Tipo: Filter
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Matched` (FileItemContext), `Unmatched` (FileItemContext)
-   - Parámetros: `Property` (string), `Operator` (Equal, Contains, GreaterThan, LessThan, RegexMatch), `TargetValue` (string)
-   - Función: Filtro de condición booleana para clasificar archivos.
+### 1. SwitchCaseNode
+- **Tipo:** Router / Bifurcación Múltiple
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Default` (`FileItemContext`), `Cases...` (Puertos dinámicos)
+- **Parámetros:** `EvaluationProperty` (string), `Cases` (Lista de patrones)
+- **Función:** Enrutador multicamino que evalúa una propiedad o metadato y bifurca hacia ramas específicas.
 
-3. **BatchBufferNode**
-   - Tipo: Flow Control
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext)
-   - Parámetros: `BatchSize` (int), `TimeoutMs` (int)
-   - Función: Acumula elementos hasta alcanzar el tamaño de lote o tiempo de espera antes de liberarlos.
+### 2. ExpressionFilterNode
+- **Tipo:** Filter / Decisión Booleana
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Matched` (`FileItemContext`), `Unmatched` (`FileItemContext`)
+- **Parámetros:** `Property` (string), `Operator` (`Equal`, `Contains`, `GreaterThan`, `LessThan`, `RegexMatch`), `TargetValue` (string)
+- **Función:** Filtra elementos evaluando condiciones numéricas, textuales o expresiones regulares.
 
-4. **ForkJoinBarrierNode**
-   - Tipo: Synchronization
-   - Entradas: `Branch1` (FileItemContext), `Branch2` (FileItemContext)
-   - Salidas: `Joined` (FileItemContext)
-   - Parámetros: `RequiredBranchesCount` (int), `TimeoutSeconds` (int)
-   - Función: Barrera de sincronización que aguarda a que un archivo complete múltiples ramas concurrentes antes de continuar.
+### 3. BatchBufferNode
+- **Tipo:** Control / Agrupación
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Batch` (`FileItemContext`), `Timeout` (`FileItemContext`)
+- **Parámetros:** `BatchSize` (int), `TimeoutSeconds` (int)
+- **Función:** Acumula elementos hasta alcanzar un tamaño de lote o una ventana temporal antes de liberarlos.
 
-5. **ThrottleDelayNode**
-   - Tipo: Flow Control
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext)
-   - Parámetros: `DelayMilliseconds` (int)
-   - Función: Introduce retardos controlados para evitar saturación de APIs o cuellos de botella en disco.
+### 4. ThrottleDelayNode
+- **Tipo:** Control / Flujo
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `DelayMilliseconds` (int), `RandomJitterMs` (int)
+- **Función:** Introduce retardos controlados para evitar saturación de APIs remotas o sobrecarga de I/O.
 
----
-
-## 3. Módulo: FileFlow.Plugin.Archives (3 Nodos)
-1. **SmartUnpackNode**
-   - Tipo: Transformer
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `CleanWrapper` (bool), `AutoDeleteAfterExtraction` (bool), `DestinationFolder` (string)
-   - Dependencia: `SharpCompress`
-   - Función: Descompresión inteligente. Detecta carpetas raíz internas únicas (*folder wrappers*) para evitar duplicación de subdirectorios. Incluye protección canónica contra ataques *Zip Slip*.
-
-2. **ArchiveCompressorNode**
-   - Tipo: Transformer
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `ArchiveFormat` (Zip, TarGz, SevenZip), `CompressionLevel` (Fastest, Optimal), `TargetPath` (string)
-   - Función: Comprime archivos o lotes calculando el ratio de compresión obtenido.
-
-3. **ArchiveFilterNode**
-   - Tipo: Filter
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `PrimaryArchive` (FileItemContext), `SecondaryPart` (FileItemContext), `RegularFile` (FileItemContext)
-   - Función: Clasifica archivos comprimidos detectando partes secundarias multipartes (.part02.rar, .z01) para evitar descompresiones redundantes.
+### 5. ForkJoinBarrierNode
+- **Tipo:** Synchronization / Barrera
+- **Entradas:** `BranchA` (`FileItemContext`), `BranchB` (`FileItemContext`)
+- **Salidas:** `Joined` (`FileItemContext`)
+- **Parámetros:** `JoinKey` (string), `TimeoutSeconds` (int)
+- **Función:** Sincroniza y reúne ramas paralelas que procesan el mismo archivo antes de continuar.
 
 ---
 
-## 4. Módulo: FileFlow.Plugin.Images (2 Nodos)
-1. **ExifMetadataNode**
-   - Tipo: Enricher
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext)
-   - Parámetros: `FallbackToCreationDate` (bool), `ExtractGps` (bool)
-   - Dependencia: `MetadataExtractor`
-   - Función: Extrae etiquetas EXIF (`DateTaken`, `CameraModel`, `GPS`, `Orientation`) y las almacena en `FileItemContext.Metadata`.
+## 3. Módulo: FileFlow.Plugin.Images (2 Nodos)
 
-2. **ImageOptimizerNode**
-   - Tipo: Transformer
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `MaxWidth` (int), `MaxHeight` (int), `TargetFormat` (WebP, Jpeg, Png), `Quality` (int 1-100)
-   - Dependencia: `SixLabors.ImageSharp`
-   - Función: Redimensiona manteniendo la relación de aspecto y comprime imágenes calculando el porcentaje de ahorro de espacio.
+### 1. ImageOptimizerNode
+- **Tipo:** Transformer / Imagen
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `MaxWidth` (int), `MaxHeight` (int), `TargetFormat` (`WebP`, `Jpeg`, `Png`), `Quality` (int 1-100)
+- **Dependencia:** `SixLabors.ImageSharp`
+- **Función:** Redimensionamiento y optimización de peso de imágenes con cálculo del ahorro de bytes.
 
----
-
-## 5. Módulo: FileFlow.Plugin.Hashing (2 Nodos)
-1. **HashCalculatorNode**
-   - Tipo: Enricher
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext)
-   - Parámetros: `Algorithm` (SHA256, SHA512, MD5), `MetadataKey` (string)
-   - Función: Computa el hash criptográfico del contenido del archivo y lo guarda en `Metadata`.
-
-2. **DeduplicationFilterNode**
-   - Tipo: Filter
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Unique` (FileItemContext), `Duplicate` (FileItemContext)
-   - Parámetros: `HashAlgorithm` (SHA256, MD5), `Scope` (Session, PersistentDb)
-   - Función: Identifica archivos duplicados basándose en sumas de comprobación de contenido.
+### 2. ExifMetadataNode
+- **Tipo:** Enricher / Metadatos de Imagen
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ExtractGps` (bool), `ExtractCameraInfo` (bool), `FormatDate` (string)
+- **Dependencia:** `MetadataExtractor`
+- **Función:** Extrae información EXIF (cámara, fecha de captura, geolocalización GPS) hacia `Metadata`.
 
 ---
 
-## 6. Módulo: FileFlow.Plugin.Integrations (3 Nodos)
-1. **CliExecutionNode**
-   - Tipo: Integration / Action
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `ExecutablePath` (string), `ArgumentsTemplate` (string), `TimeoutSeconds` (int), `CaptureStdOut` (bool)
-   - Función: Ejecuta procesos externos del sistema operativo sustituyendo dinámicamente tokens de archivo.
+## 4. Módulo: FileFlow.Plugin.Hashing (2 Nodos)
 
-2. **WebhookNotificationNode**
-   - Tipo: Integration / Action
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `Url` (string), `HttpMethod` (POST, PUT, GET), `PayloadTemplate` (string), `CustomHeaders` (string)
-   - Función: Envía notificaciones HTTP asíncronas con payloads JSON personalizados.
+### 1. HashCalculatorNode
+- **Tipo:** Enricher / Criptografía
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `Algorithm` (`SHA256`, `SHA512`, `MD5`), `MetadataKey` (string)
+- **Función:** Calcula sumas de comprobación criptográficas y las guarda en `Metadata` para auditoría.
 
-3. **MediaTranscoderNode**
-   - Tipo: Media / Transformer
-   - Entradas: `In` (FileItemContext)
-   - Salidas: `Out` (FileItemContext), `Error` (FileItemContext)
-   - Parámetros: `Preset` (H264, H265, WebM, MP3), `QualityPreset` (string), `FfmpegPath` (string)
-   - Función: Transcodifica pistas de audio y vídeo mediante perfiles y aceleración por hardware.
+### 2. DeduplicationFilterNode
+- **Tipo:** Filter / Integridad
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Unique` (`FileItemContext`), `Duplicate` (`FileItemContext`)
+- **Parámetros:** `HashAlgorithm` (`SHA256`, `MD5`), `Scope` (`Session`, `PersistentDb`)
+- **Función:** Detecta y separa archivos duplicados mediante hashes de contenido en memoria o persistentes.
 
 ---
 
-## 7. Módulo: FileFlow.Plugin.Scripting (1 Nodo)
-1. **CustomScriptNode**
-   - Tipo: Programmable / Logic / Transformer
-   - Entradas: Dinámicas (`In`, configurables por el usuario)
-   - Salidas: Dinámicas (`Out`, `True`, `False`, configurables por el usuario con `EmitAsync` / `emit`)
-   - Parámetros: `Language` (CSharp, JavaScript), `ScriptCode` (string), `InputPorts` (string), `OutputPorts` (string), `TimeoutSeconds` (int)
-   - Acción Personalizada: `OpenScriptStudio` (💻 Editor de Scripts con AvalonEdit, probador en vivo y biblioteca de plantillas).
-   - Función: Ejecuta lógica de programación personalizada del usuario en C# (Roslyn JIT en memoria) o JavaScript (sandbox Jint), permitiendo bifurcación multicanal, modificación de metadatos, tags y operaciones avanzadas sin compilar código externo.
+## 5. Módulo: FileFlow.Plugin.Integrations (3 Nodos)
+
+### 1. CliExecutionNode
+- **Tipo:** Integration / Proceso Externo
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ExecutablePath` (string), `ArgumentsTemplate` (string), `TimeoutSeconds` (int), `CaptureStdOut` (bool)
+- **Función:** Ejecuta comandos de línea de órdenes o ejecutables de Windows con inyección de tokens de archivo.
+
+### 2. WebhookNotificationNode
+- **Tipo:** Integration / Red
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Url` (string), `HttpMethod` (`POST`, `PUT`, `GET`), `PayloadTemplate` (string), `CustomHeaders` (string)
+- **Función:** Emite llamadas HTTP REST/Webhooks asíncronas con payloads JSON personalizados.
+
+### 3. MediaTranscoderNode
+- **Tipo:** Transformer / Multimedia
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Preset` (`H264`, `H265`, `WebM`, `MP3`), `QualityPreset` (string), `FfmpegPath` (string)
+- **Acción Custom:** Probador interactivo de presets FFmpeg y comprobación de códecs instalados.
+- **Función:** Transcodifica audio y vídeo mediante FFmpeg con soporte de aceleración por GPU.
 
 ---
 
-## 8. Módulo: FileFlow.Plugin.Documents (4 Nodos)
-1. **PdfMergeNode** (Fusión de documentos PDF)
-2. **PdfSplitNode** (División de páginas de documentos PDF)
-3. **PdfTextExtractorNode** (Extracción de texto estructurado de PDFs)
-4. **PdfMetadataNode** (Lectura y edición de metadatos de documentos PDF)
+## 6. Módulo: FileFlow.Plugin.Scripting (1 Nodo)
+
+### 1. CustomScriptNode
+- **Tipo:** Programmable / Scripting
+- **Entradas:** Dinámicas (`In`, configurables por el usuario)
+- **Salidas:** Dinámicas (`Out`, `True`, `False`, etc.)
+- **Parámetros:** `Language` (`CSharp`, `JavaScript`), `ScriptCode` (string), `InputPorts` (string), `OutputPorts` (string), `TimeoutSeconds` (int)
+- **Acción Custom:** Editor Script Studio integrado con resaltado de sintaxis AvalonEdit y probador en vivo.
+- **Función:** Ejecuta lógica C# (Roslyn JIT) o JavaScript (Jint) sin compilar DLLs externas.
 
 ---
 
-## 9. Módulo: FileFlow.Plugin.Network (5 Nodos)
-1. **FtpUploadNode** (Subida segura a servidores FTP/FTPS)
-2. **SftpUploadNode** (Transferencia cifrada SSH/SFTP hacia servidores Linux/VPS)
-3. **SmbCopyNode** (Copia a carpetas de red local y almacenamiento NAS UNC)
-4. **WebDavUploadNode** (Sincronización con nubes privadas Nextcloud y ownCloud)
-5. **RemoteDownloadNode** (Descarga remota de archivos vía HTTP, HTTPS y FTP)
+## 7. Módulo: FileFlow.Plugin.Documents (4 Nodos)
+
+### 1. PdfMergeNode
+- **Tipo:** Transformer / PDF
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `OutputFileName` (string), `OutputDirectory` (string)
+- **Función:** Fusiona múltiples documentos PDF en un único documento consolidado.
+
+### 2. PdfSplitNode
+- **Tipo:** Transformer / PDF
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `SplitMode` (`EveryPage`, `PageRanges`), `PageRanges` (string), `OutputDirectory` (string)
+- **Función:** Divide un documento PDF en archivos individuales por páginas o rangos específicos.
+
+### 3. PdfTextExtractorNode
+- **Tipo:** Enricher / Extractor
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `TargetMetadataKey` (string), `ExportToTextFile` (bool), `OutputDirectory` (string)
+- **Función:** Extrae el contenido textual nativo de documentos PDF hacia variables o archivos de texto `.txt`.
+
+### 4. PdfMetadataNode
+- **Tipo:** Enricher / Metadatos PDF
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Author` (string), `Title` (string), `Subject` (string), `Keywords` (string)
+- **Función:** Lee y edita los metadatos estándar (autor, título, asunto, palabras clave) de documentos PDF.
 
 ---
 
-## 10. Módulo: FileFlow.Plugin.Data (7 Nodos)
-1. **ExcelReaderNode** (Lectura y streaming de filas de hojas Excel .xlsx)
-2. **CsvReaderNode** (Lectura de archivos delimitados CSV, TSV y TXT con autodetección)
-3. **DataLookupNode** (Cruce y enriquecimiento de metadatos VLOOKUP en memoria)
-4. **ExcelReportGeneratorNode** (Generación de reportes tabulares consolidados en .xlsx)
-5. **CsvExportNode** (Exportación y acumulación de metadatos a archivos delimitados CSV)
-6. **SqliteDatabaseSinkNode** (Registro de trazabilidad y auditoría en bases de datos SQLite)
-7. **DataFormatConverterNode** (Conversión directa entre formatos estructurados Excel ⇄ CSV ⇄ JSON)
+## 8. Módulo: FileFlow.Plugin.Network (5 Nodos)
+
+### 1. FtpUploadNode
+- **Tipo:** Sink / Red
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Host` (string), `Port` (int), `Username` (string), `Password` (string), `RemotePath` (string), `UseSsl` (bool)
+- **Función:** Sube archivos a servidores FTP/FTPS con cifrado TLS/SSL.
+
+### 2. SftpUploadNode
+- **Tipo:** Sink / Red
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Host` (string), `Port` (int), `Username` (string), `PrivateKeyPath` (string), `Password` (string), `RemotePath` (string)
+- **Función:** Transfiere archivos cifrados mediante SSH/SFTP hacia servidores remotos.
+
+### 3. SmbCopyNode
+- **Tipo:** Sink / Almacenamiento Local
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `UncPath` (string), `Domain` (string), `Username` (string), `Password` (string)
+- **Función:** Copia elementos hacia carpetas compartidas de red local y dispositivos NAS (rutas UNC).
+
+### 4. WebDavUploadNode
+- **Tipo:** Sink / Cloud Privado
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ServerUrl` (string), `Username` (string), `Password` (string), `RemotePath` (string)
+- **Función:** Sincroniza archivos con nubes privadas Nextcloud, ownCloud y servidores WebDAV.
+
+### 5. RemoteDownloadNode
+- **Tipo:** Trigger / Ingesta Remota
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Url` (string), `DownloadDirectory` (string), `AuthenticationType` (None, Basic, Bearer), `AuthToken` (string)
+- **Función:** Descarga archivos remotos vía HTTP/HTTPS/FTP hacia el sistema de archivos local.
 
 ---
 
-## 11. Módulo: FileFlow.Plugin.AI (5 Nodos)
-1. **LocalOcrNode** (Reconocimiento óptico de caracteres para imágenes y documentos)
-2. **SmartImageClassifierNode** (Clasificador temático de fotos por visión artificial)
-3. **FaceDetectorNode** (Detector y contador de rostros humanos con bifurcación dual)
-4. **ObjectDetectorNode** (Detección múltiple de objetos y personas con modelo YOLO)
-5. **LocalWhisperTranscriberNode** (Transcriptor de voz a texto y generador de subtítulos .srt)
+## 9. Módulo: FileFlow.Plugin.Data (7 Nodos)
+
+### 1. ExcelReaderNode
+- **Tipo:** Source / Tabular
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `SheetName` (string), `HasHeaderRow` (bool), `EmitPer` (`Row`, `Document`)
+- **Función:** Lee y emite filas de hojas de cálculo Excel `.xlsx` como elementos individuales o consolidados.
+
+### 2. CsvReaderNode
+- **Tipo:** Source / Tabular
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Delimiter` (string), `HasHeader` (bool), `Encoding` (string)
+- **Función:** Ingiere archivos delimitados (CSV, TSV) con autodetección de separador.
+
+### 3. DataLookupNode
+- **Tipo:** Enricher / Búsqueda VLOOKUP
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `NotFound` (`FileItemContext`)
+- **Parámetros:** `DataSourceFile` (string), `KeyColumn` (string), `TargetColumn` (string), `OutputMetadataKey` (string)
+- **Función:** Cruza valores del archivo contra tablas externas en memoria para enriquecer metadatos.
+
+### 4. ExcelReportGeneratorNode
+- **Tipo:** Sink / Tabular
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `OutputFile` (string), `SheetName` (string), `IncludeColumns` (string), `Theme` (string)
+- **Función:** Compila metadatos de los elementos procesados en un libro de Excel formateado.
+
+### 5. CsvExportNode
+- **Tipo:** Sink / Tabular
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:** `DestinationFile` (string), `Delimiter` (string), `Append` (bool), `Fields` (string)
+- **Función:** Exporta y acumula metadatos en archivos CSV planos.
+
+### 6. SqliteDatabaseSinkNode
+- **Tipo:** Sink / Base de Datos
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `DatabasePath` (string), `TableName` (string), `AutoCreateSchema` (bool)
+- **Función:** Inserta registros estructurados de auditoría y trazabilidad en bases de datos SQLite.
+
+### 7. DataFormatConverterNode
+- **Tipo:** Transformer / Conversión de Formato
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `TargetFormat` (`Csv`, `Excel`, `Json`), `OutputDirectory` (string)
+- **Función:** Convierte bidireccionalmente archivos entre formatos tabulares (Excel ⇄ CSV ⇄ JSON).
+
+---
+
+## 10. Módulo: FileFlow.Plugin.Archives (3 Nodos)
+
+### 1. SmartUnpackNode
+- **Tipo:** Source / Extractor
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ExtractDirectory` (string), `CleanArchiveAfterExtract` (bool), `SupportedFormats` (ZIP, RAR, 7Z, TAR, GZ)
+- **Acción Custom:** Inspector de contenido comprimido sin extraer.
+- **Función:** Descomprime archivos multiformato con protección contra rutas maliciosas (Zip Slip).
+
+### 2. ArchiveCompressorNode
+- **Tipo:** Transformer / Compresión
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Format` (`Zip`, `TarGz`, `SevenZip`), `CompressionLevel` (`Fast`, `Optimal`, `Ultra`), `OutputDirectory` (string)
+- **Función:** Empaqueta y comprime archivos y carpetas en contenedores optimizados.
+
+### 3. ArchiveFilterNode
+- **Tipo:** Filter / Inspección
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Matched` (`FileItemContext`), `Unmatched` (`FileItemContext`)
+- **Parámetros:** `ContainsPattern` (string), `MinFiles` (int), `MaxFiles` (int)
+- **Función:** Inspecciona el índice de un comprimido para decidir el enrutamiento sin extraer a disco.
+
+---
+
+## 11. Módulo: FileFlow.Plugin.AI (16 Nodos)
+
+### 1. LocalOcrNode
+- **Tipo:** Enricher / Visión & OCR
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `paddle-ocr`, `Custom`), `Language` (`es`, `en`, `de`, `fr`), `ConfidenceThreshold` (double)
+- **Función:** Reconocimiento óptico de caracteres en imágenes y documentos escaneados mediante modelos ONNX locales.
+
+### 2. SmartImageClassifierNode
+- **Tipo:** Classifier / Visión
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `mobilenet-v2`, `resnet50`, `Custom`), `TopK` (int), `ConfidenceThreshold` (double)
+- **Función:** Clasificación de imágenes fotográficas asignando categorías temáticas a `Metadata`.
+
+### 3. FaceDetectorNode
+- **Tipo:** Filter / Visión & Rostros
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `FacesFound` (`FileItemContext`), `NoFaces` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `ultraface-320`, `Custom`), `MinFaces` (int), `ConfidenceThreshold` (double)
+- **Función:** Detecta rostros humanos y bifurca el flujo según la presencia y número de personas detectadas.
+
+### 4. ObjectDetectorNode
+- **Tipo:** Detector / Visión
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Detected` (`FileItemContext`), `NotDetected` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `yolov8n`, `yolov8s`, `yolov5s`, `Custom`), `TargetClasses` (string, ej. `person, car`), `ConfidenceThreshold` (double)
+- **Función:** Detección de objetos multi-clase en tiempo real mediante modelos de la familia YOLO.
+
+### 5. PromptObjectDetectorNode
+- **Tipo:** Detector Abierto / Visión con Lenguaje
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Detected` (`FileItemContext`), `NotDetected` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `grounding-dino`, `Custom`), `TextPrompt` (string en lenguaje natural), `BoxThreshold` (double)
+- **Función:** Detección de objetos de vocabulario abierto mediante prompts en lenguaje natural libre (Grounding DINO).
+
+### 6. LocalWhisperTranscriberNode
+- **Tipo:** Enricher / Audio a Texto
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `whisper-tiny`, `whisper-base`, `whisper-small`, `Custom`), `Language` (string), `GenerateSrt` (bool), `OutputDirectory` (string)
+- **Función:** Transcripción neuronal de voz a texto y generación automática de subtítulos `.srt` y transcripciones `.txt`.
+
+### 7. LocalAiTranslatorNode
+- **Tipo:** Transformer / Traducción de Texto
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `marian-es-en`, `marian-en-es`, `nllb-200`, `Custom`), `SourceLanguage` (string), `TargetLanguage` (string), `InputSource` (`FileContent`, `MetadataKey`), `OutputDirectory` (string)
+- **Función:** Traducción neuronal de documentos de texto entre idiomas sin dependencias de servicios en la nube.
+
+### 8. LocalLlmProcessorNode
+- **Tipo:** Transformer / LLM & Razonamiento
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `phi-3-mini`, `Custom`), `SystemPrompt` (string), `TaskType` (`Summarize`, `ExtractJson`, `CustomPrompt`), `MaxTokens` (int)
+- **Función:** Resumen de textos, extracción estructurada de entidades en JSON y análisis generativo local mediante modelos LLM compactos.
+
+### 9. PromptTransformerNode
+- **Tipo:** Transformer / Enriquecimiento de Prompts
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `TargetLanguage` (string), `EnhancementStyle` (`Descriptive`, `Concise`, `KeywordsOnly`), `InputMetadataKey` (string)
+- **Función:** Normalización, enriquecimiento estilístico y traducción asistida de prompts para alimentar detectores y generadores.
+
+### 10. BackgroundRemoverNode
+- **Tipo:** Transformer / Visión Creativa
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Mask` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `rmbg-1.4`, `modnet`, `Custom`), `OutputFormat` (`PngTransparent`, `SolidColorReplacement`, `AlphaMaskOnly`), `BackgroundColor` (string hex), `OutputDirectory` (string)
+- **Función:** Recorte automático de sujetos y eliminación de fondos en imágenes de forma no destructiva.
+
+### 11. SuperResolutionUpscalerNode
+- **Tipo:** Transformer / Restauración de Imagen
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Skipped` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `realesrgan-compact`, `Custom`), `ScaleFactor` (2x, 4x), `MaxInputDimension` (int), `OutputDirectory` (string)
+- **Función:** Aumento de resolución convolucional 2x/4x y restauración de alta frecuencia para fotografías y documentos escaneados.
+
+### 12. ContentModerationFilterNode
+- **Tipo:** Filter / Moderación Visual
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Safe` (`FileItemContext`), `Sensitive` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `opennsfw2`, `Custom`), `SensitivityThreshold` (double 0.0 - 1.0)
+- **Función:** Evaluación de contenido sensible o inapropiado y bifurcación automática del flujo según umbral de probabilidad.
+
+### 13. VoiceActivityDetectorNode
+- **Tipo:** Filter & Transformer / Audio
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Speech` (`FileItemContext`), `Silent` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `silero-vad`, `Custom`), `Mode` (`DetectOnly`, `TrimSilence`), `SensitivityThreshold` (double), `MinSpeechDurationMs` (int), `PaddingDurationMs` (int), `OutputDirectory` (string)
+- **Función:** Detección de presencia de voz humana y recorte de silencios muertos en pistas de audio con Silero VAD v5.
+
+### 14. TextToSpeechNode
+- **Tipo:** Source & Transformer / Voz
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `piper-es-davefx`, `piper-en-lessac`, `Custom`), `InputSource` (`FileContent`, `MetadataKey`, `CustomText`), `MetadataKeyName` (string), `CustomTextTemplate` (string), `SpeechRate` (double 0.5x - 2.0x), `OutputDirectory` (string)
+- **Función:** Síntesis neural de voz natural en español e inglés generando archivos de audio `.wav` PCM de 16 bits.
+
+### 15. PiiAnonymizerNode
+- **Tipo:** Transformer / Cumplimiento RGPD
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Clean` (`FileItemContext`), `SensitiveFound` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `pii-ner-multilingual`, `Custom`), `AnonymizationMode` (`TagReplacement`, `Mask`, `Hash`, `Remove`), toggles individuales (`FilterDniNie`, `FilterIban`, `FilterCreditCards`, `FilterEmails`, `FilterPhones`, `FilterIpAddresses`, `FilterPersonNames`), `OutputDirectory` (string)
+- **Función:** Detección algorítmica y sanitización de datos de carácter personal sensible (DNI, IBAN, tarjetas, emails, teléfonos) bajo RGPD.
+
+### 16. ZeroShotSemanticSearchNode
+- **Tipo:** Filter & Classifier / Semántica Multimodal
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Matched` (`FileItemContext`), `Unmatched` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Model` (`Auto`, `clip-vit-b32`, `bge-small-multilingual`, `Custom`), `SearchQuery` (string), `CandidateLabels` (string), `SimilarityThreshold` (double), `TopK` (int)
+- **Función:** Búsqueda semántica zero-shot y enrutamiento inteligente por similitud de coseno en lenguaje natural libre (CLIP / BGE).

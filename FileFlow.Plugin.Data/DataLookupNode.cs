@@ -4,12 +4,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("DataLookupNode_Name", "Data & Databases", "DataLookupNode_Desc")]
+[NodeDefinition("DataLookupNode_Name", "Data", "DataLookupNode_Desc", PipelineRole.Analyze,
+    "lookup", "vlookup", "buscar", "cruzar", "enriquecer", "tabla", "clave")]
 public class DataLookupNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DataLookupNode_Name", "Cruce de Datos (Lookup / BUSCARV)");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("DataLookupNode_Desc", "Busca y cruza información del archivo actual contra una tabla externa (Excel, CSV o JSON) inyectando sus columnas en los metadatos.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

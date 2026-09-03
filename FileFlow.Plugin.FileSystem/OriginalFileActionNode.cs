@@ -3,12 +3,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("OriginalFileActionNode_Name", "FileSystem", "OriginalFileActionNode_Desc")]
+[NodeDefinition("OriginalFileActionNode_Name", "Files", "OriginalFileActionNode_Desc", PipelineRole.Transform,
+    "origen", "cuarentena", "papelera", "conservar", "ciclo de vida", "quarantine", "original", "cleanup")]
 public class OriginalFileActionNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("OriginalFileActionNode_Name", "Original File Action");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("OriginalFileActionNode_Desc", "Applies lifecycle policy to the original file (keep, quarantine, or delete).");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

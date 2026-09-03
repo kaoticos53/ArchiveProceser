@@ -6,7 +6,8 @@ using PdfSharp.Pdf.IO;
 
 namespace FileFlow.Plugin.Documents;
 
-[NodeDefinition("PdfMetadataNode_Name", "Documents", "PdfMetadataNode_Desc")]
+[NodeDefinition("PdfMetadataNode_Name", "Documents", "PdfMetadataNode_Desc", PipelineRole.Analyze,
+    "pdf", "metadatos", "autor", "titulo", "asunto", "palabras clave", "metadata")]
 public class PdfMetadataNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

@@ -6,12 +6,13 @@ using SixLabors.ImageSharp;
 
 namespace FileFlow.Plugin.Images;
 
-[NodeDefinition("ExifMetadataNode_Name", "Metadata", "ExifMetadataNode_Desc")]
+[NodeDefinition("ExifMetadataNode_Name", "ImageVision", "ExifMetadataNode_Desc", PipelineRole.Analyze,
+    "exif", "gps", "camara", "fecha", "metadatos", "geolocalizacion", "metadata", "photo", "camera")]
 public class ExifMetadataNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExifMetadataNode_Name", "EXIF Metadata");
-    public string Category => "Metadata";
+    public string Category => "ImageVision";
     public string Description => LocalizationManager.Instance.GetString("ExifMetadataNode_Desc", "Extracts EXIF metadata (Date Taken, Camera Model, Dimensions, Orientation) from images.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

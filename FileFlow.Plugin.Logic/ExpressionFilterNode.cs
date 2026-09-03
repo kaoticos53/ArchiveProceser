@@ -5,7 +5,8 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.Logic;
 
-[NodeDefinition("ExpressionFilterNode_Name", "Logic", "ExpressionFilterNode_Desc")]
+[NodeDefinition("ExpressionFilterNode_Name", "Logic", "ExpressionFilterNode_Desc", PipelineRole.Filter,
+    "filtro", "condicion", "if", "regex", "comparar", "igual", "mayor", "filter", "logica")]
 public class ExpressionFilterNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

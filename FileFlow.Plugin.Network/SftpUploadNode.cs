@@ -5,12 +5,13 @@ using Renci.SshNet;
 
 namespace FileFlow.Plugin.Network;
 
-[NodeDefinition("SftpUploadNode_Name", "Network & Remote", "SftpUploadNode_Desc")]
+[NodeDefinition("SftpUploadNode_Name", "Network", "SftpUploadNode_Desc", PipelineRole.Sink,
+    "sftp", "ssh", "subir", "seguro", "linux", "servidor", "upload")]
 public class SftpUploadNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SftpUploadNode_Name", "Subir a SFTP / SSH (SFTP Upload)");
-    public string Category => "Network & Remote";
+    public string Category => "Network";
     public string Description => LocalizationManager.Instance.GetString("SftpUploadNode_Desc", "Transfiere archivos de forma cifrada mediante SFTP (SSH) a servidores Linux/VPS con soporte para contraseñas y llaves privadas.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

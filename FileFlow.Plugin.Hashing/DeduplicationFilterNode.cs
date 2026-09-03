@@ -5,7 +5,8 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Hashing;
 
-[NodeDefinition("DeduplicationFilterNode_Name", "Metadata", "DeduplicationFilterNode_Desc")]
+[NodeDefinition("DeduplicationFilterNode_Name", "Security", "DeduplicationFilterNode_Desc", PipelineRole.Filter,
+    "duplicados", "deduplicar", "unicos", "repetidos", "checksum", "duplicate", "filter", "hash")]
 public class DeduplicationFilterNode : IFlowNode
 {
     private readonly ConcurrentDictionary<string, string> _seenHashes = new(StringComparer.OrdinalIgnoreCase);
@@ -13,7 +14,7 @@ public class DeduplicationFilterNode : IFlowNode
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Name", "Filtro de Deduplicación por Hash");
-    public string Category => "Metadata";
+    public string Category => "Security";
     public string Description => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Desc", "Compara el hash del contenido para detectar archivos repetidos en el lote actual, separando los archivos originales (Unique) de las copias duplicadas redundantes (Duplicate).");
 
 

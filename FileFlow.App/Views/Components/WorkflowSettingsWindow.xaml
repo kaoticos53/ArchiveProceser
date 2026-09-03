@@ -270,7 +270,7 @@
                                                     <ColumnDefinition Width="28" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="110" />
-                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="Auto" MinWidth="150" />
                                                 </Grid.ColumnDefinitions>
 
                                                 <!-- Status icon -->
@@ -284,6 +284,13 @@
                                                         </Border>
                                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                                                         <TextBlock Text="{Binding ExpectedSizeLabel, StringFormat='({0})'}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="6,0,0,0" VerticalAlignment="Center" />
+
+                                                        <!-- Badge URLs personalizadas -->
+                                                        <Border Background="#2B2412" BorderBrush="#D97706" BorderThickness="1" CornerRadius="3" Padding="3,1" Margin="5,0,0,0" VerticalAlignment="Center"
+                                                                Visibility="{Binding HasCustomUrls, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                ToolTip="URLs de descarga personalizadas activas">
+                                                            <TextBlock Text="🔧 URLs" FontSize="8.5" FontWeight="Bold" Foreground="#FBBF24" />
+                                                        </Border>
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
 
@@ -304,6 +311,12 @@
 
                                                 <!-- Action button -->
                                                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                    <Button Content="⚙️ URLs"
+                                                            Tag="{Binding}"
+                                                            Click="ConfigureAiModelUrls_Click"
+                                                            Style="{DynamicResource SecondaryButton}"
+                                                            Padding="6,4" Margin="0,0,5,0" FontSize="10" Cursor="Hand"
+                                                            ToolTip="Configurar URLs de descarga y espejos alternativos" />
                                                     <Button Content="⬇️ Descargar"
                                                             Tag="{Binding}"
                                                             Click="DownloadAiModelItem_Click"

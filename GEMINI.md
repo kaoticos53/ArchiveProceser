@@ -7,6 +7,7 @@
 - **Sincronización de Repositorio:** Garantizar que los cambios importantes del proyecto se mantengan limpios, probados y listos en el repositorio Git.
 - **Inmutabilidad del Archivo de Origen:** Todo flujo debe ser no destructivo por defecto. Los archivos de origen (`OriginalPath`) permanecen intactos. La eliminación, traslado a cuarentena o envío a papelera del original solo debe ejecutarse mediante el nodo `OriginalFileActionNode`.
 - **Localización e Internacionalización de la UI (i18n):** Todos los textos de la interfaz gráfica (`FileFlow.App`), incluyendo títulos, botones, menús, telemetría y parámetros de nodos (`DisplayName`), deben soportar localización dinámica (Español e Inglés). El código interno preserva claves en inglés, mientras que la UI consume `LocalizationManager.Instance` y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
+- **Co-ubicación y Autonomía Total de Plugins / Nodos:** Todo el código, modelos de nodo, lógica de inferencia, herramientas/vistas modales (`UI/`), configuraciones (`Config/`) y recursos de cadenas de texto multilingües (`Resources/Strings.resx` y `Resources/Strings.es.resx`) de cada plugin deben residir exclusivamente dentro de la carpeta del propio plugin (`FileFlow.Plugin.*`). `FileFlow.App/Resources/` queda reservado exclusivamente para cadenas de la interfaz anfitriona. Nunca colocar recursos ni claves de nodos en `FileFlow.App`.
 
 
 

@@ -5,14 +5,15 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("CsvExportNode_Name", "Data & Databases", "CsvExportNode_Desc")]
+[NodeDefinition("CsvExportNode_Name", "Data", "CsvExportNode_Desc", PipelineRole.Sink,
+    "csv", "exportar", "guardar", "tabla", "delimitado", "valores")]
 public class CsvExportNode : IFlowNode
 {
     private readonly Lock _lock = new();
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("CsvExportNode_Name", "Exportador CSV / TSV");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("CsvExportNode_Desc", "Exporta y acumula los metadatos de cada archivo procesado en un archivo CSV delimitado con formato configurable.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

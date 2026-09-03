@@ -31,6 +31,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" 
@@ -40,8 +41,19 @@
                            Foreground="{DynamicResource TextPrimaryBrush}" 
                            VerticalAlignment="Center" />
 
+                <!-- Toggle Perspective (Domain vs Pipeline Stage) -->
+                <Button Grid.Column="1"
+                        Command="{Binding TogglePerspectiveCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="6,2" FontSize="10"
+                        Margin="0,0,4,0"
+                        Cursor="Hand"
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Toolbox_Perspective_Tooltip]}">
+                    <TextBlock Text="{Binding PerspectiveButtonText}" FontSize="10" VerticalAlignment="Center" />
+                </Button>
+
                 <!-- Toggle Compact / Detailed View Mode -->
-                <ToggleButton Grid.Column="1"
+                <ToggleButton Grid.Column="2"
                               IsChecked="{Binding IsCompactMode, Mode=TwoWay}"
                               Style="{StaticResource SecondaryToggleButton}"
                               Padding="6,2" FontSize="10.5"
@@ -147,10 +159,13 @@
                                                                 <DropShadowEffect BlurRadius="10" ShadowDepth="2" Color="#000000" Opacity="0.45" />
                                                             </Border.Effect>
                                                             <StackPanel>
-                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                                                                     <TextBlock Text="{Binding Icon}" FontSize="13" Margin="0,0,6,0" />
                                                                     <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
                                                                 </StackPanel>
+                                                                <Border Background="#18808080" CornerRadius="4" Padding="5,1.5" Margin="0,0,0,6" HorizontalAlignment="Left">
+                                                                    <TextBlock Text="{Binding RoleBadge}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                                </Border>
                                                                 <Separator Background="{DynamicResource BorderDarkBrush}" Margin="0,0,0,6" />
                                                                 <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" LineHeight="14" />
                                                             </StackPanel>
@@ -208,14 +223,18 @@
                                                         </Button>
                                                     </Grid>
 
-                                                    <!-- Descripción (Solo visible cuando NO se usa modo compacto) -->
-                                                    <TextBlock Text="{Binding Description}" 
-                                                               Foreground="{DynamicResource TextSecondaryBrush}" 
-                                                               FontSize="10.5" 
-                                                               TextWrapping="Wrap" 
-                                                               Margin="0,4,0,0" 
-                                                               LineHeight="13"
-                                                               Visibility="{Binding DataContext.IsCompactMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
+                                                    <!-- Role Badge + Description (solo visible en modo detallado, no compacto) -->
+                                                    <StackPanel Visibility="{Binding DataContext.IsCompactMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                        <Border Background="#14808080" CornerRadius="4" Padding="4,1" Margin="0,4,0,2" HorizontalAlignment="Left">
+                                                            <TextBlock Text="{Binding RoleBadge}" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Description}" 
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                                   FontSize="10.5" 
+                                                                   TextWrapping="Wrap" 
+                                                                   Margin="0,2,0,0" 
+                                                                   LineHeight="13" />
+                                                    </StackPanel>
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>

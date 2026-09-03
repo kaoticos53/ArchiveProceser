@@ -7,12 +7,13 @@ using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI;
 
-[NodeDefinition("ObjectDetectorNode_Name", "AI & Computer Vision", "ObjectDetectorNode_Desc")]
+[NodeDefinition("ObjectDetectorNode_Name", "ImageVision", "ObjectDetectorNode_Desc", PipelineRole.Analyze,
+    "objetos", "yolo", "detectar", "vision", "ia", "personas", "coches", "bounding box")]
 public class ObjectDetectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ObjectDetectorNode_Name", "Detector de Objetos (SSD)");
-    public string Category => "AI & Computer Vision";
+    public string Category => "ImageVision";
     public string Description => LocalizationManager.Instance.GetString("ObjectDetectorNode_Desc", "Detecta e identifica objetos (personas, vehículos, animales, objetos cotidianos) presentes en imágenes usando SSD MobileNet ONNX.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =
@@ -28,6 +29,8 @@ public class ObjectDetectorNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["Model"] = "Auto",
+        ["CustomModelPath"] = "",
         ["MinimumConfidence"] = 0.4,
         ["FilterLabel"] = "",
         ["MaxDetections"] = 10
@@ -35,9 +38,14 @@ public class ObjectDetectorNode : IFlowNode
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.4, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 1),
-        new("FilterLabel", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 2),
-        new("MaxDetections", ParameterEditorType.Number, DefaultValue: 10, Min: 1, Max: 100, DisplayOrder: 3)
+        new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
+            Options: ["Auto", "tiny-yolov3", "grounding-dino", "Custom"],
+            HelpText: "Modelo para detección de objetos ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
+        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
+            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
+        new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.4, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 3),
+        new("FilterLabel", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 4),
+        new("MaxDetections", ParameterEditorType.Number, DefaultValue: 10, Min: 1, Max: 100, DisplayOrder: 5)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -61,12 +69,20 @@ public class ObjectDetectorNode : IFlowNode
         {
             context.Log($"[ObjectDetector] Detectando objetos en {item.FileName}...", LogLevel.Information, item);
 
-            // Descargar modelo Tiny YOLOv3 automáticamente si no está disponible
-            string? modelPath = await AiModelManager.EnsureModelAsync("tiny-yolov3", context, item, cancellationToken).ConfigureAwait(false);
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
+
+            string? modelPath = await AiModelManager.ResolveModelPathAsync(
+                modelChoice,
+                customPath,
+                AiTaskType.ObjectDetection,
+                context,
+                item,
+                cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[ObjectDetector] ⚠️ Modelo Tiny YOLOv3 no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
+                context.Log($"[ObjectDetector] ⚠️ Modelo de detección de objetos no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
                 await context.EmitAsync("Out", item).ConfigureAwait(false);
                 return;
             }
@@ -96,7 +112,7 @@ public class ObjectDetectorNode : IFlowNode
             item.Metadata["AI:TopObject"] = detected.FirstOrDefault().Label ?? string.Empty;
             item.Metadata["AI:ObjectCount"] = detected.Count;
             item.Metadata["AI:ObjectScores"] = string.Join(", ", detected.Select(d => $"{d.Label}:{d.Confidence:F2}"));
-            item.Metadata["AI:Model"] = "tiny-yolov3-11";
+            item.Metadata["AI:Model"] = Path.GetFileNameWithoutExtension(modelPath);
 
             if (detected.Count > 0)
             {

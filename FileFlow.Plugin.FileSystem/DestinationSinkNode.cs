@@ -3,12 +3,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("DestinationSinkNode_Name", "FileSystem", "DestinationSinkNode_Desc")]
+[NodeDefinition("DestinationSinkNode_Name", "Files", "DestinationSinkNode_Desc", PipelineRole.Sink,
+    "destino", "guardar", "mover", "escribir", "consolidar", "salida", "output", "sink", "destination")]
 public class DestinationSinkNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DestinationSinkNode_Name", "Destination Sink");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("DestinationSinkNode_Desc", "Writes or moves final processed file to projected target path.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

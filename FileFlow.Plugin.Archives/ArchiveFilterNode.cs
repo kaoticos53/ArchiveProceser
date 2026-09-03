@@ -4,7 +4,8 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Archives;
 
-[NodeDefinition("ArchiveFilterNode_Name", "Archives", "ArchiveFilterNode_Desc")]
+[NodeDefinition("ArchiveFilterNode_Name", "Archives", "ArchiveFilterNode_Desc", PipelineRole.Filter,
+    "inspeccionar", "filtrar", "comprimido", "contenido", "zip", "tar", "filter", "archive")]
 public class ArchiveFilterNode : IFlowNode
 {
     private static readonly Regex SecondaryVolumeRegex = new(

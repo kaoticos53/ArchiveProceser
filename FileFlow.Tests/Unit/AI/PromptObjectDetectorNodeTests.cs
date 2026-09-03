@@ -83,7 +83,7 @@ public class PromptObjectDetectorNodeTests
         var node = new PromptObjectDetectorNode();
 
         // Assert
-        node.Category.Should().Be("AI & Computer Vision");
+        node.Category.Should().Be("ImageVision");
         node.Inputs.Should().ContainSingle(p => p.Name == "In");
         node.Outputs.Should().Contain(p => p.Name == "ObjectsFound");
         node.Outputs.Should().Contain(p => p.Name == "NoObjects");

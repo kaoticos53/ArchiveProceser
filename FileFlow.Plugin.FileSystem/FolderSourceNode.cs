@@ -5,12 +5,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("FolderSourceNode_Name", "FileSystem", "FolderSourceNode_Desc")]
+[NodeDefinition("FolderSourceNode_Name", "Files", "FolderSourceNode_Desc", PipelineRole.Source,
+    "carpeta", "directorio", "escanear", "origen", "ingesta", "trigger", "watcher", "realtime", "folder", "files")]
 public class FolderSourceNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FolderSourceNode_Name", "Folder Source");
-    public string Category => "FileSystem";
+    public string Category => "Files";
     public string Description => LocalizationManager.Instance.GetString("FolderSourceNode_Desc", "Scans directory tree and emits each file or folder found.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = Array.Empty<NodePort>();

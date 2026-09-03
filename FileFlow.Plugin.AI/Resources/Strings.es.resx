@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Nombres y Descripciones de Nodos -->
+  <data name="SmartImageClassifierNode_Name" xml:space="preserve"><value>Clasificador Inteligente de Fotos (MobileNet)</value></data>
+  <data name="SmartImageClassifierNode_Desc" xml:space="preserve"><value>Analiza el contenido visual de fotos asignando categorías temáticas (Paisajes, Facturas, Vehículos, etc.) en metadatos.</value></data>
+  <data name="FaceDetectorNode_Name" xml:space="preserve"><value>Detector Facial (IA)</value></data>
+  <data name="FaceDetectorNode_Desc" xml:space="preserve"><value>Analiza imágenes para detectar la presencia y cantidad de rostros humanos, bifurcando flujos en fotos familiares o de objetos.</value></data>
+  <data name="ObjectDetectorNode_Name" xml:space="preserve"><value>Detector de Objetos (YOLO)</value></data>
+  <data name="ObjectDetectorNode_Desc" xml:space="preserve"><value>Detecta e identifica múltiples objetos cotidianos (personas, vehículos, mascotas, artículos) presentes en imágenes.</value></data>
+  <data name="PromptObjectDetectorNode_Name" xml:space="preserve"><value>Detector de Objetos por Prompt (Grounding DINO)</value></data>
+  <data name="PromptObjectDetectorNode_Desc" xml:space="preserve"><value>Detecta objetos y conceptos descritos en lenguaje natural libre con traducción automática Español-Inglés usando MarianMT.</value></data>
+  <data name="LocalWhisperTranscriberNode_Name" xml:space="preserve"><value>Transcriptor de Voz a Texto (Whisper)</value></data>
+  <data name="LocalWhisperTranscriberNode_Desc" xml:space="preserve"><value>Transcribe archivos de audio y vídeo a texto y subtítulos sincronizados (.srt) utilizando el modelo Whisper de forma local y privada.</value></data>
+  <data name="LocalOcrNode_Name" xml:space="preserve"><value>Reconocimiento Óptico de Caracteres Local (OCR)</value></data>
+  <data name="LocalOcrNode_Desc" xml:space="preserve"><value>Extrae texto de imágenes y documentos escaneados localmente usando el motor Tesseract OCR.</value></data>
+  <data name="LocalAiTranslatorNode_Name" xml:space="preserve"><value>Traductor Neuronal Local (NLLB-200 / MarianMT)</value></data>
+  <data name="LocalAiTranslatorNode_Desc" xml:space="preserve"><value>Traduce documentos, subtítulos y metadatos con modelos neuronales locales NLLB-200 y MarianMT.</value></data>
+  <data name="LocalLlmProcessorNode_Name" xml:space="preserve"><value>Procesador LLM Local (Qwen 2.5 / Phi-3.5)</value></data>
+  <data name="LocalLlmProcessorNode_Desc" xml:space="preserve"><value>Genera resúmenes ejecutivos, extrae datos estructurados a JSON y procesa prompts locales con LLM in-process.</value></data>
+  <data name="PromptTransformerNode_Name" xml:space="preserve"><value>Transformador Dinámico de Prompts</value></data>
+  <data name="PromptTransformerNode_Desc" xml:space="preserve"><value>Evalúa plantillas dinámicas con variables de metadatos, traduce a inglés y expande sinónimos visuales.</value></data>
+
+  <!-- Etiquetas de Parámetros -->
+  <data name="Param_SourceLanguage" xml:space="preserve"><value>Idioma Origen</value></data>
+  <data name="Param_TargetLanguage" xml:space="preserve"><value>Idioma Destino</value></data>
+  <data name="Param_InputSource" xml:space="preserve"><value>Origen de Entrada</value></data>
+  <data name="Param_MetadataKeyName" xml:space="preserve"><value>Nombre de Clave de Metadatos</value></data>
+  <data name="Param_OutputMode" xml:space="preserve"><value>Modo de Salida</value></data>
+  <data name="Param_TargetFileNamePattern" xml:space="preserve"><value>Patrón de Nombre de Archivo Destino</value></data>
+  <data name="Param_TranslateSrtTimestamps" xml:space="preserve"><value>Preservar Tiempos SRT</value></data>
+  <data name="Param_TaskType" xml:space="preserve"><value>Tipo de Tarea</value></data>
+  <data name="Param_SystemPrompt" xml:space="preserve"><value>Rol / Prompt de Sistema</value></data>
+  <data name="Param_UserPrompt" xml:space="preserve"><value>Prompt de Usuario / Plantilla</value></data>
+  <data name="Param_OutputFormat" xml:space="preserve"><value>Formato de Salida</value></data>
+  <data name="Param_SaveAsNewFile" xml:space="preserve"><value>Guardar como Archivo Nuevo</value></data>
+  <data name="Param_Temperature" xml:space="preserve"><value>Temperatura (Creatividad)</value></data>
+  <data name="Param_MaxTokens" xml:space="preserve"><value>Tokens Máximos</value></data>
+  <data name="Param_PromptTemplate" xml:space="preserve"><value>Plantilla de Prompt</value></data>
+  <data name="Param_ExpandSynonyms" xml:space="preserve"><value>Expandir Sinónimos Visuales</value></data>
+  <data name="Param_Prompt" xml:space="preserve"><value>Prompt de Búsqueda</value></data>
+  <data name="Param_MinimumConfidence" xml:space="preserve"><value>Confianza Mínima</value></data>
+  <data name="Param_AutoTranslateToEnglish" xml:space="preserve"><value>Auto-Traducir a Inglés</value></data>
+  <data name="Param_MaxDetections" xml:space="preserve"><value>Detecciones Máximas</value></data>
+  <data name="Param_ModelSize" xml:space="preserve"><value>Tamaño del Modelo Whisper</value></data>
+  <data name="Param_Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="Param_EngineMode" xml:space="preserve"><value>Modo de Motor OCR</value></data>
+  <data name="Param_Model" xml:space="preserve"><value>Modelo de IA</value></data>
+  <data name="Param_CustomModelPath" xml:space="preserve"><value>Ruta de Modelo Personalizado</value></data>
+  <data name="BackgroundRemoverNode_Name" xml:space="preserve"><value>Eliminador de Fondo IA</value></data>
+  <data name="BackgroundRemoverNode_Desc" xml:space="preserve"><value>Segmenta el sujeto y elimina el fondo de imágenes con redes neuronales RMBG y MODNet.</value></data>
+  <data name="SuperResolutionUpscalerNode_Name" xml:space="preserve"><value>Super-Resolución IA</value></data>
+  <data name="SuperResolutionUpscalerNode_Desc" xml:space="preserve"><value>Escala y restaura imágenes o documentos de baja resolución con modelos Real-ESRGAN.</value></data>
+  <data name="ContentModerationFilterNode_Name" xml:space="preserve"><value>Filtro de Moderación IA</value></data>
+  <data name="ContentModerationFilterNode_Desc" xml:space="preserve"><value>Evalúa contenido sensible con OpenNSFW2 y bifurca el flujo en puertos Seguro y Sensible.</value></data>
+  <data name="Param_BackgroundColor" xml:space="preserve"><value>Color de Fondo</value></data>
+  <data name="Param_ScaleFactor" xml:space="preserve"><value>Factor de Escala</value></data>
+  <data name="Param_MaxInputDimension" xml:space="preserve"><value>Dimensión Máxima de Entrada</value></data>
+  <data name="Param_SensitivityThreshold" xml:space="preserve"><value>Umbral de Sensibilidad</value></data>
+  <data name="VoiceActivityDetectorNode_Name" xml:space="preserve"><value>Detector de Actividad Vocal (Silero VAD)</value></data>
+  <data name="VoiceActivityDetectorNode_Desc" xml:space="preserve"><value>Detecta voz humana y recorta silencios en archivos de audio con Silero VAD.</value></data>
+  <data name="TextToSpeechNode_Name" xml:space="preserve"><value>Conversor de Texto a Voz (Piper TTS)</value></data>
+  <data name="TextToSpeechNode_Desc" xml:space="preserve"><value>Sintetiza locuciones de voz natural a partir de texto o metadatos usando Piper TTS.</value></data>
+  <data name="Param_Mode" xml:space="preserve"><value>Modo de Operación</value></data>
+  <data name="Param_MinSpeechDurationMs" xml:space="preserve"><value>Duración Mínima de Voz (ms)</value></data>
+  <data name="Param_PaddingDurationMs" xml:space="preserve"><value>Margen de Silencio / Padding (ms)</value></data>
+  <data name="Param_SpeechRate" xml:space="preserve"><value>Velocidad de Locución</value></data>
+  <data name="Param_CustomTextTemplate" xml:space="preserve"><value>Plantilla de Texto Personalizado</value></data>
+  <data name="PiiAnonymizerNode_Name" xml:space="preserve"><value>Anonimizador de Datos RGPD (PII)</value></data>
+  <data name="PiiAnonymizerNode_Desc" xml:space="preserve"><value>Detecta y anonimiza datos personales sensibles (DNI, IBAN, tarjetas, emails, teléfonos) en documentos.</value></data>
+  <data name="ZeroShotSemanticSearchNode_Name" xml:space="preserve"><value>Búsqueda y Clasificación Semántica (Zero-Shot)</value></data>
+  <data name="ZeroShotSemanticSearchNode_Desc" xml:space="preserve"><value>Clasifica y enruta documentos o imágenes mediante similitud semántica en lenguaje natural.</value></data>
+  <data name="Param_AnonymizationMode" xml:space="preserve"><value>Modo de Anonimización</value></data>
+  <data name="Param_FilterDniNie" xml:space="preserve"><value>Filtrar DNI / NIE</value></data>
+  <data name="Param_FilterIban" xml:space="preserve"><value>Filtrar Cuentas IBAN</value></data>
+  <data name="Param_FilterCreditCards" xml:space="preserve"><value>Filtrar Tarjetas de Crédito</value></data>
+  <data name="Param_FilterEmails" xml:space="preserve"><value>Filtrar Correos Electrónicos</value></data>
+  <data name="Param_FilterPhones" xml:space="preserve"><value>Filtrar Números de Teléfono</value></data>
+  <data name="Param_FilterIpAddresses" xml:space="preserve"><value>Filtrar Direcciones IP</value></data>
+  <data name="Param_FilterPersonNames" xml:space="preserve"><value>Filtrar Nombres de Personas</value></data>
+  <data name="Param_SearchQuery" xml:space="preserve"><value>Consulta de Búsqueda</value></data>
+  <data name="Param_CandidateLabels" xml:space="preserve"><value>Categorías Candidatas</value></data>
+  <data name="Param_TopK" xml:space="preserve"><value>Mejores Resultados (Top K)</value></data>
+</root>

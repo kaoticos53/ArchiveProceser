@@ -8,12 +8,13 @@ using Whisper.net;
 
 namespace FileFlow.Plugin.AI;
 
-[NodeDefinition("LocalWhisperTranscriberNode_Name", "AI & Computer Vision", "LocalWhisperTranscriberNode_Desc")]
+[NodeDefinition("LocalWhisperTranscriberNode_Name", "AudioVoice", "LocalWhisperTranscriberNode_Desc", PipelineRole.Analyze,
+    "audio", "voz", "transcribir", "subtitulos", "srt", "speech", "whisper", "mp3", "wav")]
 public class LocalWhisperTranscriberNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Name", "Transcriptor de Voz a Texto (Whisper)");
-    public string Category => "AI & Computer Vision";
+    public string Category => "AudioVoice";
     public string Description => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Desc", "Transcribe archivos de audio a texto y subtítulos .srt usando el modelo Whisper de forma local y privada.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =
@@ -29,7 +30,8 @@ public class LocalWhisperTranscriberNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["ModelSize"] = "Tiny",
+        ["ModelSize"] = "Auto",
+        ["CustomModelPath"] = "",
         ["Language"] = "Auto",
         ["GenerateSrtSubtitles"] = false,
         ["OutputDirectory"] = "{GlobalOutputDir}"
@@ -37,10 +39,15 @@ public class LocalWhisperTranscriberNode : IFlowNode
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("ModelSize", ParameterEditorType.Dropdown, DefaultValue: "Tiny", Options: ["Tiny", "Base", "Small"], DisplayOrder: 1),
-        new("Language", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "es", "en", "fr", "de", "it"], DisplayOrder: 2),
-        new("GenerateSrtSubtitles", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3),
-        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 4)
+        new("ModelSize", ParameterEditorType.Dropdown, DefaultValue: "Auto",
+            Options: ["Auto", "Tiny", "Base", "Small", "Custom"],
+            HelpText: "Tamaño del modelo Whisper ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
+        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
+            HelpText: "Ruta a un archivo .bin de Whisper local si seleccionó 'Custom'.", DisplayOrder: 2),
+        new("Language", ParameterEditorType.Dropdown, DefaultValue: "Auto",
+            Options: ["Auto", "es", "en", "fr", "de", "it"], DisplayOrder: 3),
+        new("GenerateSrtSubtitles", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 4),
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 5)
     ];
 
     private static readonly HashSet<string> _audioExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -67,20 +74,32 @@ public class LocalWhisperTranscriberNode : IFlowNode
 
         try
         {
-            string modelSize = Parameters.TryGetValue("ModelSize", out var ms) ? ms?.ToString() ?? "Tiny" : "Tiny";
+            string modelSize = Parameters.TryGetValue("ModelSize", out var ms) ? ms?.ToString() ?? "Auto" : "Auto";
+            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cp) ? cp?.ToString() : null;
             string lang = Parameters.TryGetValue("Language", out var l) ? l?.ToString() ?? "Auto" : "Auto";
             bool generateSrt = Parameters.TryGetValue("GenerateSrtSubtitles", out var gs) && ParameterHelper.GetBoolean(gs, false);
             string detectedLang = lang.Equals("Auto", StringComparison.OrdinalIgnoreCase) ? "auto" : lang;
 
-            string modelId = $"whisper-{modelSize.ToLowerInvariant()}";
+            string targetSelection = modelSize.Equals("Custom", StringComparison.OrdinalIgnoreCase)
+                ? "Custom"
+                : (modelSize.Equals("Auto", StringComparison.OrdinalIgnoreCase)
+                    ? "Auto"
+                    : $"whisper-{modelSize.ToLowerInvariant()}");
+
             context.Log($"[Whisper] Iniciando transcripción de '{item.FileName}' (modelo: {modelSize}, idioma: {lang})...", LogLevel.Information, item);
 
-            // Descargar modelo automáticamente si no está disponible
-            string? modelPath = await AiModelManager.EnsureModelAsync(modelId, context, item, cancellationToken).ConfigureAwait(false);
+            // Resolver modelo automáticamente o desde selección/archivo
+            string? modelPath = await AiModelManager.ResolveModelPathAsync(
+                targetSelection,
+                customPath,
+                AiTaskType.SpeechToText,
+                context,
+                item,
+                cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[Whisper] ⚠️ Modelo Whisper {modelSize} no disponible. El nodo pasa el archivo sin transcribir.", LogLevel.Warning, item);
+                context.Log($"[Whisper] ⚠️ Modelo Whisper ({modelSize}) no disponible. El nodo pasa el archivo sin transcribir.", LogLevel.Warning, item);
                 await context.EmitAsync("Out", item).ConfigureAwait(false);
                 return;
             }

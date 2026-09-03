@@ -14,20 +14,28 @@ namespace FileFlow.Sdk;
 
 public interface IFlowNode
 {
-    string Id { get; }
+    string Id { get; set; }
     string Name { get; }
     string Category { get; }
     string Description { get; }
-    IReadOnlyList<NodePinDefinition> Inputs { get; }
-    IReadOnlyList<NodePinDefinition> Outputs { get; }
-    
-    ValueTask ExecuteAsync(FileItemContext item, IFlowExecutionContext context);
-    ValidationResult ValidateConfiguration();
+    IReadOnlyList<NodePort> Inputs { get; }
+    IReadOnlyList<NodePort> Outputs { get; }
+    Dictionary<string, object?> Parameters { get; }
+    IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => Array.Empty<NodeParameterDescriptor>();
+    IReadOnlyList<NodeActionDescriptor> CustomActions => Array.Empty<NodeActionDescriptor>();
+
+    Task ExecuteAsync(
+        string inputPortName,
+        FileItemContext item,
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken);
+
+    ValidationResult ValidateConfiguration() => ValidationResult.Success();
 }
 ```
 
 #### Métodos:
-- **`ExecuteAsync(FileItemContext item, IFlowExecutionContext context)`**: Ejecuta la lógica asíncrona del nodo sobre un elemento en tránsito. Debe propagar el token `context.CancellationToken` en todas las llamadas I/O.
+- **`ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)`**: Ejecuta la lógica asíncrona del nodo cuando recibe un elemento por un puerto específico. Debe propagar obligatoriamente el `CancellationToken`.
 - **`ValidateConfiguration()`**: Valida que los parámetros requeridos (rutas, expresiones, patrones) estén correctamente formateados antes de iniciar el grafo.
 
 ---

@@ -4,12 +4,13 @@ using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("VariableInjectorNode_Name", "Metadata", "VariableInjectorNode_Desc")]
+[NodeDefinition("VariableInjectorNode_Name", "Integrations", "VariableInjectorNode_Desc", PipelineRole.Control,
+    "variables", "inyectar", "tokens", "metadata", "clave", "valor", "inject")]
 public class VariableInjectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Inyector de Variables");
-    public string Category => "Metadata";
+    public string Category => "Integrations";
     public string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calcula e inyecta variables personalizadas dinámicas en los metadatos del elemento para nodos posteriores.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]

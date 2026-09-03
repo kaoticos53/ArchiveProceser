@@ -5,12 +5,13 @@ using Tesseract;
 
 namespace FileFlow.Plugin.AI;
 
-[NodeDefinition("LocalOcrNode_Name", "AI & Computer Vision", "LocalOcrNode_Desc")]
+[NodeDefinition("LocalOcrNode_Name", "Documents", "LocalOcrNode_Desc", PipelineRole.Analyze,
+    "ocr", "texto", "imagen a texto", "escaner", "paddle", "leer", "text", "reconocimiento")]
 public class LocalOcrNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LocalOcrNode_Name", "Reconocimiento Óptico (OCR Local)");
-    public string Category => "AI & Computer Vision";
+    public string Category => "Documents";
     public string Description => LocalizationManager.Instance.GetString("LocalOcrNode_Desc", "Extrae texto desde imágenes y documentos escaneados usando Tesseract OCR 5 de forma local y privada.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

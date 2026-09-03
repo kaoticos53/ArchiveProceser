@@ -4,12 +4,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Network;
 
-[NodeDefinition("SmbCopyNode_Name", "Network & Remote", "SmbCopyNode_Desc")]
+[NodeDefinition("SmbCopyNode_Name", "Network", "SmbCopyNode_Desc", PipelineRole.Sink,
+    "smb", "nas", "red local", "unc", "carpeta compartida", "servidor", "windows")]
 public class SmbCopyNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmbCopyNode_Name", "Copiar a Red / NAS (SMB Copy)");
-    public string Category => "Network & Remote";
+    public string Category => "Network";
     public string Description => LocalizationManager.Instance.GetString("SmbCopyNode_Desc", "Copia archivos a carpetas compartidas de red local o servidores NAS (rutas UNC \\\\NAS\\Share) con reintentos automáticos y buffers asíncronos.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

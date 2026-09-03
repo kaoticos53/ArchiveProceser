@@ -6,7 +6,8 @@ using SharpCompress.Writers;
 
 namespace FileFlow.Plugin.Archives;
 
-[NodeDefinition("ArchiveCompressorNode_Name", "Archives", "ArchiveCompressorNode_Desc")]
+[NodeDefinition("ArchiveCompressorNode_Name", "Archives", "ArchiveCompressorNode_Desc", PipelineRole.Transform,
+    "comprimir", "empaquetar", "zip", "7z", "targz", "comprimido", "compress", "archive")]
 public class ArchiveCompressorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

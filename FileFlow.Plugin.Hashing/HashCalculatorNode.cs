@@ -4,12 +4,13 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Hashing;
 
-[NodeDefinition("HashCalculatorNode_Name", "Metadata", "HashCalculatorNode_Desc")]
+[NodeDefinition("HashCalculatorNode_Name", "Security", "HashCalculatorNode_Desc", PipelineRole.Analyze,
+    "hash", "sha256", "md5", "sha512", "checksum", "integridad", "criptografia", "seguridad")]
 public class HashCalculatorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("HashCalculatorNode_Name", "Calculador de Hash Criptográfico");
-    public string Category => "Metadata";
+    public string Category => "Security";
     public string Description => LocalizationManager.Instance.GetString("HashCalculatorNode_Desc", "Calcula el checksum o hash del contenido del archivo (SHA-256, MD5, SHA-512, SHA-1) y lo almacena en los metadatos para renombrado, verificación de integridad o deduplicación.");
 
 

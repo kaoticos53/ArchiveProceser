@@ -29,6 +29,9 @@ public partial class StatusBarViewModel : ObservableObject
     private string _cpuText = "-- %";
 
     [ObservableProperty]
+    private string _gpuText = "-- %";
+
+    [ObservableProperty]
     private string _globalOutputDir = @"C:\FileFlowOutput";
 
     [ObservableProperty]
@@ -120,6 +123,7 @@ public partial class StatusBarViewModel : ObservableObject
             {
                 RamText = metrics.RamFormatted;
                 CpuText = metrics.CpuFormatted;
+                GpuText = metrics.GpuFormatted;
             });
         };
     }

@@ -5,12 +5,13 @@ using FluentFTP;
 
 namespace FileFlow.Plugin.Network;
 
-[NodeDefinition("FtpUploadNode_Name", "Network & Remote", "FtpUploadNode_Desc")]
+[NodeDefinition("FtpUploadNode_Name", "Network", "FtpUploadNode_Desc", PipelineRole.Sink,
+    "ftp", "ftps", "subir", "servidor", "upload", "red", "remoto")]
 public class FtpUploadNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FtpUploadNode_Name", "Subir a FTP / FTPS (FTP Upload)");
-    public string Category => "Network & Remote";
+    public string Category => "Network";
     public string Description => LocalizationManager.Instance.GetString("FtpUploadNode_Desc", "Sube archivos a un servidor FTP o FTPS con soporte para TLS/SSL y creación automática de directorios remotos.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

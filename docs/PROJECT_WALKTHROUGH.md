@@ -2,6 +2,323 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-03] - Reorganización Inteligente de los 60 Nodos del Sistema (Opción 3: Taxonomía Unificada, Tags Multilingües y Perspectiva Dual)
+
+### 🎯 Funcionalidades Implementadas
+1. **Taxonomía Unificada de 11 Categorías Rebalanceadas**:
+   - Se reestructuraron las macro-categorías del sistema para agrupar armónicamente los 60 nodos oficiales en 11 dominios claros y concisos: `Files`, `ImageVision`, `AudioVoice`, `Documents`, `Data`, `LanguageAI`, `Security`, `Logic`, `Archives`, `Network`, `Integrations`.
+   - Se eliminaron fragmentaciones y duplicidades históricas (`MediaDocs`, `Metadata`, `Hashing`, `Data & Databases`).
+2. **Contrato de Roles de Pipeline ETL (`PipelineRole.cs`) en `FileFlow.Sdk`**:
+   - Incorporado enum `PipelineRole` con las etapas fundamentales del flujo de datos: `Source`, `Filter`, `Transform`, `Analyze`, `Sink`, `Control`.
+   - Ampliado el atributo `[NodeDefinition]` con propiedades `Role`, `Tags` y `SubCategory`.
+3. **Decoración Exhaustiva de los 60 Nodos Oficiales**:
+   - Se decoraron y actualizaron el 100% de los nodos a través de los 11 proyectos de plugins (`FileFlow.Plugin.*`):
+     - `FileFlow.Plugin.Images` (2 nodos): `ImageOptimizerNode`, `ExifMetadataNode`.
+     - `FileFlow.Plugin.Hashing` (2 nodos): `HashCalculatorNode`, `DeduplicationFilterNode`.
+     - `FileFlow.Plugin.Integrations` (3 nodos): `CliExecutionNode`, `WebhookNotificationNode`, `MediaTranscoderNode`.
+     - `FileFlow.Plugin.Scripting` (1 nodo): `CustomScriptNode`.
+     - `FileFlow.Plugin.Logic` (5 nodos): `SwitchCaseNode`, `ExpressionFilterNode`, `BatchBufferNode`, `ThrottleDelayNode`, `ForkJoinBarrierNode`.
+     - `FileFlow.Plugin.Archives` (3 nodos): `SmartUnpackNode`, `ArchiveCompressorNode`, `ArchiveFilterNode`.
+     - `FileFlow.Plugin.Documents` (4 nodos): `PdfMergeNode`, `PdfSplitNode`, `PdfTextExtractorNode`, `PdfMetadataNode`.
+     - `FileFlow.Plugin.Network` (5 nodos): `RemoteDownloadNode`, `FtpUploadNode`, `SftpUploadNode`, `SmbCopyNode`, `WebDavUploadNode`.
+     - `FileFlow.Plugin.Data` (7 nodos): `ExcelReaderNode`, `CsvReaderNode`, `DataLookupNode`, `ExcelReportGeneratorNode`, `CsvExportNode`, `SqliteDatabaseSinkNode`, `DataFormatConverterNode`.
+     - `FileFlow.Plugin.FileSystem` (12 nodos): `FolderSourceNode`, `DestinationSinkNode`, `AdvancedRenamerNode`, `FileRelocatorNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`, `DirectoryInspectorNode`, `EmptyDirectoryCleanerNode`, `DocumentProcessorNode`, `VariableInjectorNode`, `OperationReportNode`, `LogOutputNode`.
+     - `FileFlow.Plugin.AI` (16 nodos): `LocalOcrNode`, `SmartImageClassifierNode`, `FaceDetectorNode`, `ObjectDetectorNode`, `PromptObjectDetectorNode`, `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ContentModerationFilterNode`, `PiiAnonymizerNode`, `LocalWhisperTranscriberNode`, `VoiceActivityDetectorNode`, `TextToSpeechNode`, `LocalAiTranslatorNode`, `LocalLlmProcessorNode`, `PromptTransformerNode`, `ZeroShotSemanticSearchNode`.
+4. **Búsqueda Rápida Multilingüe por Sinónimos y Etiquetas (`Tags`)**:
+   - Cada nodo cuenta con un array de etiquetas en español e inglés que abarcan sinónimos, formatos de archivo y casos de uso (ej. "recortar", "fondo", "dni", "iban", "gdpr", "mp3", "excel", "duplicados", "silero", "piper").
+   - El motor de filtrado del Toolbox evalúa de forma reactiva `Name`, `Category`, `Description`, `Role`, `LocalizedRole` y todos sus `Tags`.
+5. **Perspectiva Dual en el Catálogo Visual (`ToolboxViewModel` y `NodeToolboxView.xaml`)**:
+   - Modo `ByCategory` (Dominio funcional) vs `ByPipelineRole` (Etapa de pipeline ETL).
+   - Botón selector dinámico en la cabecera del Toolbox para alternar de perspectiva al instante con hot-reload visual.
+   - En modo `ByPipelineRole`, los nodos se ordenan por su secuencia natural de datos: Ingesta (`Source`) $\rightarrow$ Filtro (`Filter`) $\rightarrow$ Transformación (`Transform`) $\rightarrow$ Análisis (`Analyze`) $\rightarrow$ Destino (`Sink`) $\rightarrow$ Control (`Control`).
+   - Badges de rol visuales (píldoras de colores y emojis) tanto en la tarjeta de cada nodo como en su tooltip interactivo.
+6. **Localización e Internacionalización Completa (i18n)**:
+   - Recursos multilingües agregados en `FileFlow.App/Resources/Strings.resx` y `Strings.es.resx` para las 11 categorías, los 6 roles y los textos/tooltips de la perspectiva dual.
+
+### 🧪 Validación y Pruebas
+- Nueva suite exhaustiva de pruebas en `FileFlow.Tests/Unit/Toolbox/ToolboxOrganizationTests.cs`:
+  - `AllNodes_MustHaveValidDefinitionAttribute_CategoryAndPipelineRole`: Verifica que los 60 nodos poseen atributos válidos, categoría, rol y etiquetas.
+  - `AllNodes_MustBelongToUnifiedTaxonomyCategories`: Valida la pertenencia estricta a las 11 categorías oficiales.
+  - `MultilingualSearch_ByTags_ShouldFindMatchingNodes`: Prueba de teoría con 13 consultas de búsqueda por tags en español e inglés.
+  - `PerspectiveToggle_ShouldGroupByPipelineRole_InProperOrder`: Valida la alternancia de perspectiva y el orden de los 6 roles de flujo.
+  - `PipelineRole_Localization_ShouldReturnValidStringsInBothLanguages`: Valida la localización en `es-ES` y `en-US`.
+- Suite completa de la solución: `dotnet test FileFlow.slnx` $\rightarrow$ **481 / 481 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - Plan C: Suite de Seguridad, RGPD y Búsqueda Semántica (PiiAnonymizerNode y ZeroShotSemanticSearchNode)
+
+### 🎯 Funcionalidades Implementadas
+1. **Taxonomía Extendida de Seguridad y Búsqueda (`AiTaskType.cs`)**:
+   - Nuevos tipos de tarea: `PiiAnonymization` y `SemanticEmbeddings`.
+2. **Nuevos Modelos Oficiales en Catálogo (`AiModelManager.cs`)**:
+   - `pii-ner-multilingual`: WikiNeural Multilingual NER (`PiiAnonymization`, 35 MB, Tier: `Lightweight`).
+   - `clip-vit-b32`: OpenAI CLIP ViT-B/32 (`SemanticEmbeddings`, 65 MB, Tier: `Balanced`, multimodal imagen y texto).
+   - `bge-small-multilingual`: BAAI BGE Small (`SemanticEmbeddings`, 45 MB, Tier: `Lightweight`, 384 dimensiones).
+3. **Motor de Detección y Sanitización RGPD (`PiiDetectionEngine.cs`)**:
+   - Detección algorítmica de DNIs y NIEs con comprobación de letra de control oficial.
+   - Detección de cuentas bancarias IBAN con validación MOD-97 según ISO 13616.
+   - Detección de tarjetas de crédito con algoritmo de validación de Luhn.
+   - Detección de correos electrónicos, números de teléfono, direcciones IPv4 e IPv6 y nombres de personas con contexto honorífico.
+   - Modos de anonimización: `TagReplacement` (`[DNI/NIE]`, `[EMAIL]`, `[IBAN]`, etc.), `Mask` (`****@domain.com`, `ES** ****`), `Hash` (`[ID_8f4a1c2b]` con SHA-256 para preservar correlación en auditorías) y `Remove`.
+4. **Motor de Embeddings y Clasificación Zero-Shot (`SemanticEmbeddingEngine.cs`)**:
+   - Codificación de vectores densos normalizados ($L_2 = 1.0$) para texto e imágenes.
+   - Similitud de coseno acelerada y ranking de categorías candidatas.
+   - Separación estricta entre categorías candidatas (`TopCategory`) y consultas de búsqueda (`SearchQuery` / `IsQueryMatch`).
+5. **Nuevos Nodos en `FileFlow.Plugin.AI`**:
+   - `PiiAnonymizerNode`: Puertos `In`, `Clean`, `SensitiveFound`, `Out`, `Error`. Parámetros `Model`, `CustomModelPath`, `AnonymizationMode`, toggles de filtrado individual y `OutputDirectory`. Genera archivos sanitizados de forma no destructiva (`_anonymized.txt`). Metadatos: `AI:PiiDetected`, `AI:PiiTotalCount`, `AI:PiiCategories`, `AI:PiiReportJson`.
+   - `ZeroShotSemanticSearchNode`: Puertos `In`, `Matched`, `Unmatched`, `Out`, `Error`. Parámetros `Model`, `CustomModelPath`, `SearchQuery`, `CandidateLabels`, `SimilarityThreshold`, `TopK`. Metadatos: `AI:TopCategory`, `AI:TopSimilarityScore`, `AI:IsQueryMatch`, `AI:CategoryScoresJson`.
+6. **Autonomía y Recursos Multilingües Co-ubicados (ADR-006)**:
+   - Todas las claves de nombres, descripciones y parámetros co-ubicadas en `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx`. Cero modificaciones a `FileFlow.App`.
+
+### 🧪 Validación y Pruebas
+- Nueva suite en `FileFlow.Tests/Unit/AI/SecurityAndSemanticNodesTests.cs`:
+  - `PiiAnonymizerNode_ShouldHaveValidPortsAndParameters`
+  - `ZeroShotSemanticSearchNode_ShouldHaveValidPortsAndParameters`
+  - `Catalog_ShouldContainSecurityAndSemanticModels`
+  - `HardwareCapabilityDetector_ShouldSelectOptimalModelForSecurityAndSemanticTasks` (teoría para PiiAnonymization y SemanticEmbeddings)
+  - `PiiDetectionEngine_AnonymizeText_ShouldDetectAndMaskPersonalData`
+  - `PiiDetectionEngine_AnonymizeText_WithCleanText_ShouldReturnNoPii`
+  - `SemanticEmbeddingEngine_ClassifyZeroShot_ShouldRankMatchingCategoryHighest`
+  - `PiiAnonymizerNode_ExecuteAsync_WithSensitiveData_ShouldEmitSensitiveFound`
+  - `PiiAnonymizerNode_ExecuteAsync_WithCleanData_ShouldEmitClean`
+  - `ZeroShotSemanticSearchNode_ExecuteAsync_WithMatchingQuery_ShouldEmitMatched`
+- Suite completa de la solución: `dotnet test FileFlow.slnx` $\rightarrow$ **464 / 464 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - Plan B: Suite de Audio y Voz (VoiceActivityDetectorNode Silero VAD y TextToSpeechNode Piper TTS)
+
+### 🎯 Funcionalidades Implementadas
+1. **Taxonomía Extendida de Audio (`AiTaskType.cs`)**:
+   - Nuevos tipos de tarea: `VoiceActivityDetection` y `TextToSpeech`.
+2. **Nuevos Modelos Oficiales en Catálogo (`AiModelManager.cs`)**:
+   - `silero-vad`: Silero VAD v5 (`VoiceActivityDetection`, 2 MB, Tier: `Lightweight`, inferencia por chunks de 32ms a 16kHz).
+   - `piper-es-davefx`: Piper TTS Español Davefx Medium (`TextToSpeech`, 63 MB, Tier: `Lightweight`, síntesis 22.050 Hz).
+   - `piper-en-lessac`: Piper TTS Inglés Lessac Medium (`TextToSpeech`, 63 MB, Tier: `Lightweight`, síntesis 22.050 Hz).
+3. **Motor Neural de Audio (`AudioInferenceEngine.cs`)**:
+   - Lectura y resampleo con NAudio (`AudioFileReader` / `WdlResamplingSampleProvider` / `StereoToMonoSampleProvider`) a 16kHz mono float.
+   - Silero VAD v4/v5 ONNX con tensores de estado recurrentes `state` / `h` y `c` a través de ventanas deslizantes de 512 muestras.
+   - Detección de intervalos de voz activos con histeresis y padding configurable (ej. 200ms).
+   - Exportación de audio sin silencios (`TrimSilence`) a `.wav` PCM de 16 bits.
+   - Síntesis vocal neural Piper TTS con modulación de velocidad de habla (`SpeechRate` 0.5x - 2.0x) y generador armónico de contingencia.
+4. **Nuevos Nodos en `FileFlow.Plugin.AI`**:
+   - `VoiceActivityDetectorNode`: Puertos `In`, `Speech`, `Silent`, `Out`, `Error`. Parámetros `Model` (`Auto`, `silero-vad`, `Custom`), `CustomModelPath`, `Mode` (`DetectOnly`, `TrimSilence`), `SensitivityThreshold`, `MinSpeechDurationMs`, `PaddingDurationMs`, `OutputDirectory`. Metadatos: `AI:VoiceDetected`, `AI:SpeechRatio`, `AI:SpeechDurationSeconds`, `AI:SpeechSegmentsCount`, `AI:SpeechSegmentsJson`.
+   - `TextToSpeechNode`: Puertos `In`, `Out`, `Error`. Parámetros `Model` (`Auto`, `piper-es-davefx`, `piper-en-lessac`, `Custom`), `CustomModelPath`, `InputSource` (`FileContent`, `MetadataKey`, `CustomText`), `MetadataKeyName`, `CustomTextTemplate`, `SpeechRate`, `OutputDirectory`. Metadatos: `AI:AudioGenerated`, `AI:AudioDurationSeconds`, `AI:TtsModel`.
+5. **Autonomía y Recursos Multilingües Co-ubicados (ADR-006)**:
+   - Claves de nombres, descripciones y parámetros agregadas en `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx`. Cero modificaciones a `FileFlow.App`.
+
+### 🧪 Validación y Pruebas
+- Nueva suite en `FileFlow.Tests/Unit/AI/AudioSuiteNodesTests.cs`:
+  - `VoiceActivityDetectorNode_ShouldHaveValidPortsAndParameters`
+  - `TextToSpeechNode_ShouldHaveValidPortsAndParameters`
+  - `Catalog_ShouldContainAudioModelsWithCorrectTaskTypes`
+  - `HardwareCapabilityDetector_ShouldSelectOptimalModelForAudioTasks` (teoría para VAD y TTS)
+  - `VoiceActivityDetectorNode_ExecuteAsync_WithNonExistentFile_ShouldEmitError`
+  - `VoiceActivityDetectorNode_ExecuteAsync_WithUnsupportedExtension_ShouldEmitSilentAndOut`
+  - `TextToSpeechNode_ExecuteAsync_WithNonExistentFile_ShouldEmitError`
+  - `AudioInferenceEngine_SynthesizeSpeech_ShouldGenerateValidWavFile`
+  - `AudioInferenceEngine_DetectVoiceActivity_OnGeneratedAudio_ShouldAnalyzeSamples`
+- Suite completa de la solución: `dotnet test FileFlow.slnx` $\rightarrow$ **453 / 453 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - Plan A: Suite de Visión Creativa y Restauración Documental (BackgroundRemover, SuperResolution, ContentModeration)
+
+### 🎯 Funcionalidades Implementadas
+1. **Taxonomía Extendida de Visión (`AiTaskType.cs`)**:
+   - Nuevos tipos de tarea: `BackgroundRemoval`, `SuperResolution`, `ContentModeration`.
+2. **Nuevos Modelos en el Catálogo Oficial (`AiModelManager.cs`)**:
+   - `rmbg-1.4`: Bria AI RMBG-1.4 (`BackgroundRemoval`, 176 MB, Tier: `Balanced`, GPU recomendada).
+   - `modnet`: MODNet Mobile Matting (`BackgroundRemoval`, 25 MB, Tier: `Lightweight`, inferencia rápida en CPU).
+   - `realesrgan-compact`: Real-ESRGAN Compact x4 (`SuperResolution`, 16 MB, Tier: `Lightweight`, escalado y restauración).
+   - `opennsfw2`: OpenNSFW2 (`ContentModeration`, 16 MB, Tier: `Lightweight`, clasificación de contenido sensible).
+3. **Inferencia Neural de Visión en `OnnxInferenceEngine.cs`**:
+   - `RemoveBackground(...)`: Inferencia de máscara de recorte de sujeto, recomposición en PNG con canal alfa transparente, sustitución por color de fondo o extracción aislada de máscara en escala de grises.
+   - `UpscaleImage(...)`: Super-resolución neural convolucional con escalado 2x y 4x decodificando el tensor HR de alta fidelidad.
+   - `DetectNsfwScore(...)`: Inferencia de clasificación y probabilidad de contenido explícito o inapropiado normalizada a [0.0 - 1.0].
+4. **Nuevos Nodos de Pipeline en `FileFlow.Plugin.AI`**:
+   - `BackgroundRemoverNode`: Puertos `In`, `Out`, `Mask`, `Error`. Parámetros `Model` (`Auto`, `rmbg-1.4`, `modnet`, `Custom`), `CustomModelPath`, `OutputMode` (`TransparentPng`, `ColorBackground`, `MaskOnly`), `BackgroundColor`, `OutputDirectory`.
+   - `SuperResolutionUpscalerNode`: Puertos `In`, `Out`, `Skipped`, `Error`. Parámetros `Model` (`Auto`, `realesrgan-compact`, `Custom`), `CustomModelPath`, `ScaleFactor` (`2x`, `4x`), `MaxInputDimension` (límite de memoria), `OutputDirectory`.
+   - `ContentModerationFilterNode`: Puertos `In`, `Safe`, `Sensitive`, `Error`. Parámetros `Model` (`Auto`, `opennsfw2`, `Custom`), `CustomModelPath`, `SensitivityThreshold`.
+5. **Autonomía y Recursos Multilingües Co-ubicados (ADR-006)**:
+   - Añadidas claves para nombres, descripciones y parámetros en `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx`. Cero contaminación de `FileFlow.App`.
+
+### 🧪 Validación y Pruebas
+- Nueva suite en `FileFlow.Tests/Unit/AI/VisionSuiteNodesTests.cs`:
+  - `BackgroundRemoverNode_ShouldHaveValidPortsAndParameters`
+  - `SuperResolutionUpscalerNode_ShouldHaveValidPortsAndParameters`
+  - `ContentModerationFilterNode_ShouldHaveValidPortsAndParameters`
+  - `Catalog_ShouldContainNewVisionModelsWithCorrectTaskTypes`
+  - `HardwareCapabilityDetector_ShouldSelectOptimalModelForNewVisionTasks` (teoría para `BackgroundRemoval`, `SuperResolution`, `ContentModeration`)
+  - `BackgroundRemoverNode_ExecuteAsync_WithNonExistentFile_ShouldEmitError`
+  - `SuperResolutionUpscalerNode_ExecuteAsync_WithUnsupportedFormat_ShouldEmitSkipped`
+  - `ContentModerationFilterNode_ExecuteAsync_WithNonExistentFile_ShouldEmitError`
+- Suite completa de la solución: `dotnet test FileFlow.slnx` $\rightarrow$ **443 / 443 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - Generalización de Modelos de IA por Función y Selector Inteligente por Hardware
+
+### 🎯 Funcionalidades Implementadas
+1. **Taxonomía de Tareas de IA (`AiTaskType.cs`)**:
+   - Definición del enum `AiTaskType`: `ObjectDetection`, `FaceDetection`, `ImageClassification`, `SpeechToText`, `TextTranslation`, `TextGenerationLlm`, `Ocr`.
+2. **Evaluador de Capacidades de Hardware (`HardwareCapabilityDetector.cs`)**:
+   - Detección precisa de memoria física del sistema mediante llamada Win32 a `kernel32!GlobalMemoryStatusEx` (con fallback de memoria disponible de `GC.GetGCMemoryInfo()`).
+   - Detección de núcleos de CPU lógicos (`Environment.ProcessorCount`).
+   - Detección de aceleración por GPU DirectML mediante sondeo de `SessionOptions.AppendExecutionProvider_DML(0)`.
+   - Clasificación por niveles de hardware: `"Lightweight"`, `"Balanced"`, `"Performance"`.
+   - Evaluación de compatibilidad de modelos (`ModelCompatibility`: `Recommended`, `Playable`, `InsufficientHardware`).
+   - Algoritmo de recomendación automática `GetOptimalModelForTask(AiTaskType task, bool preferSpeed = false)` que pondera compatibilidad, nivel del modelo y aceleración por GPU.
+3. **Catálogo Enriquecido y Métodos de Resolución (`AiModelManager.cs`)**:
+   - `AiModelInfo` extendido con: `TaskType`, `MinRamBytes`, `GpuRecommended`, `HardwareTier`.
+   - Nuevo método `GetModelsForTask(AiTaskType taskType)`.
+   - Nuevo método `ResolveModelPathAsync(modelSelection, customModelPath, taskType, context, item, cancellationToken)` que maneja de manera unificada:
+     - Modo `Auto`: selección inteligente basada en el hardware real del PC anfitrión.
+     - Modelo Oficial: selección explícita del catálogo y descarga transparente con telemetría.
+     - Archivo Personalizado (`Custom`): validación de archivo local `.onnx` o `.gguf` con registro de logs.
+4. **Actualización de Nodos de IA (`FileFlow.Plugin.AI`)**:
+   - `ObjectDetectorNode`: Parámetros `Model` (`Auto`, `tiny-yolov3`, `grounding-dino`, `Custom`) y `CustomModelPath` (`FilePath`).
+   - `FaceDetectorNode`: Parámetros `Model` (`Auto`, `ultraface`, `Custom`) y `CustomModelPath`.
+   - `SmartImageClassifierNode`: Parámetros `Model` (`Auto`, `mobilenetv2`, `Custom`) y `CustomModelPath`.
+   - `LocalAiTranslatorNode`: Parámetros `Model` (`Auto`, `nllb-200-600m`, `marian-es-en`, `marian-en-es`, `Custom`) y `CustomModelPath`.
+   - `LocalLlmProcessorNode`: Parámetros `Model` (`Auto`, `qwen2.5-1.5b-instruct`, `Custom`) y `CustomModelPath`.
+   - `LocalWhisperTranscriberNode`: Parámetro `ModelSize` extendido con `Auto` y `Custom`, más `CustomModelPath`.
+5. **Localización de Parámetros i18n (ADR-006 Co-ubicación Estricta)**:
+   - Añadidas claves `Param_Model` y `Param_CustomModelPath` en `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx`. Cero contaminación de `FileFlow.App`.
+
+### 🧪 Validación y Pruebas
+- Nueva suite `HardwareCapabilityDetectorTests.cs`:
+  - `Specs_ShouldReturnRealisticHardwareValues`
+  - `GetCompatibility_WithLowRamRequirement_ShouldBePlayableOrRecommended`
+  - `GetCompatibility_WithImpossiblyHighRamRequirement_ShouldReturnInsufficientHardware`
+  - `GetOptimalModelForTask_ShouldReturnValidModelMatchingTaskType` (teoría para todos los `AiTaskType`)
+  - `AiModelManager_GetModelsForTask_ShouldReturnCatalogModelsForSpecificTask`
+- Nueva suite `AiTaskModelResolutionTests.cs`:
+  - `ResolveModelPathAsync_WithCustomAndEmptyPath_ShouldReturnNull`
+  - `ResolveModelPathAsync_WithCustomAndNonExistentFile_ShouldReturnNull`
+  - `ResolveModelPathAsync_WithCustomAndExistingFile_ShouldReturnFullPath`
+  - Verificación de descriptores y opciones de dropdown para todos los 6 nodos de IA.
+- Suite de pruebas completa de la solución: `dotnet test FileFlow.slnx` $\rightarrow$ **433 / 433 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - Monitorización de GPU en la Barra de Estado Inferior
+
+### 🎯 Funcionalidades Implementadas
+1. **Muestreo de GPU en Tiempo Real (`SystemPerformanceMonitor.cs`)**:
+   - Incorporación de `GpuPercentage` y `GpuFormatted` en `PerformanceMetrics`.
+   - Consulta reactiva y en segundo plano (`Task.Run`) a través de la categoría de rendimiento oficial de Windows `"GPU Engine"` (`Utilization Percentage`) para todas las instancias del proceso actual (`pid_{currentProcess.Id}_*`).
+   - Muestreo asíncrono que evita cualquier congelamiento o caída de cuadros en el hilo de UI (Dispatcher).
+   - Liberación determinista de recursos y contadores en `Dispose()`.
+2. **Presentación Visual Reactiva (`StatusBarViewModel.cs` & `StatusBarView.xaml`)**:
+   - Nueva propiedad reactiva `GpuText` en `StatusBarViewModel`.
+   - Elemento visual en la barra de estado inferior: `🎮 GPU: {GpuText}` ubicado junto a las métricas de CPU y RAM.
+   - Tooltips localizados en español e inglés (`StatusBar_GpuToolTip`).
+
+### 🧪 Validación y Pruebas
+- Nueva suite en `FileFlow.Tests/Unit/App/SystemPerformanceMonitorTests.cs`:
+  - `PerformanceMetrics_GpuFormatted_ShouldFormatCorrectly`
+  - `PerformanceMetrics_RamFormatted_ShouldFormatMbAndGb`
+  - `SystemPerformanceMonitor_CanInstantiateAndDisposeWithoutErrors`
+- Suite de pruebas completa: `dotnet test FileFlow.slnx` $\rightarrow$ **413 / 413 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - URLs Configurables de Modelos de IA con Conmutación Multi-Espejo (Fallback)
+
+### 🎯 Funcionalidades Implementadas
+1. **Soporte de Múltiples URLs por Modelo y Conmutación Automática por Error (Fallback)**:
+   - Modificado `AiModelManager.DownloadModelWithProgressAsync` para iterar secuencialmente a través de la lista de URLs configuradas para cada modelo.
+   - Si un enlace o servidor CDN falla (HTTP 404, 500, timeout o rechazo de conexión), el motor informa en el log e intenta de inmediato el siguiente espejo configurado de forma transparente para el usuario.
+   - Si todos los enlaces fallan, se consolidan todos los errores en `AiModelManager.LastError` con viñetas detalladas de cada espejo intentado.
+2. **Persistencia Desacoplada en Disco (`ai_models_config.json`)**:
+   - Almacenamiento autónomo en `AppPaths.ConfigDirectory/ai_models_config.json` (`%AppData%/FileFlow/config/` o `data/config/` en modo portable) mediante `AiModelManager.SaveConfig()` y `LoadConfig()`.
+   - Métodos API: `GetConfiguredUrls(modelId)`, `GetDefaultUrls(modelId)`, `SetCustomUrls(modelId, urls)`, `ResetCustomUrls(modelId)`, `ResetAllCustomUrls()` y `HasCustomUrls(modelId)`.
+3. **Diálogo de Configuración de URLs (`AiModelUrlsConfigDialog.xaml`)**:
+   - Nuevo diálogo modal accesible con el botón **"⚙️ URLs"** en cada modelo (disponible tanto en la pestaña Ajustes de `WorkflowSettingsWindow.xaml` como en el gestor `AiModelDownloadDialog.xaml`).
+   - Editor multilínea para introducir una o varias URLs en orden de prioridad.
+   - Botón **"🔍 Probar Conexión"**: Realiza comprobaciones HTTP en vivo de cada URL y muestra el código de estado devuelto (`200 OK`, `404 Not Found`, etc.) y el tamaño reportado en MB.
+   - Botón **"🔄 Restablecer Predeterminadas"**: Recupera instantáneamente las URLs oficiales de fábrica verificadas.
+   - Distintivo visual (`🔧 URLs`) en las tarjetas de modelos que tienen configuraciones personalizadas activas.
+4. **Localización Completa (i18n)**:
+   - Incorporadas claves de localización en `Strings.resx` y `Strings.es.resx` (`AiModelUrls_Title`, `AiModelUrls_Subtitle`, `AiModelUrls_UrlsLabel`, `AiModelUrls_TestBtn`, `AiModelUrls_ResetBtn`, `AiModelUrls_SaveBtn`, `AiModelUrls_CancelBtn`, `AiModelUrls_StatusCustom`, `AiModelUrls_StatusDefault`, `AiModelUrls_BtnTooltip`).
+
+### 🧪 Validación y Pruebas
+- Creada nueva suite en `FileFlow.Tests/Unit/AI/AiModelManagerConfigTests.cs`:
+  - `AiModelManager_GetDefaultUrls_ShouldReturnWorkingUrlsForAllCatalogModels`
+  - `AiModelManager_SetCustomUrls_AndReset_ShouldPersistAndRevertProperly`
+  - `AiModelManager_DownloadWithFallback_ShouldTryNextMirrorWhenFirstFails`
+- Añadido test en `AiModelManagerViewModelTests.cs`:
+  - `AiModelItemViewModel_RefreshState_ReflectsCustomUrlsStatus`
+- Suite de pruebas completa: `dotnet test FileFlow.slnx` $\rightarrow$ **407 / 407 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-03] - Corrección de Descargas de Modelos MarianMT / NLLB-200 y Sistema de Diagnóstico de Errores
+
+### 🎯 Problema Detectado y Causa Raíz
+1. **Error 404 en Modelos MarianMT (`marian-es-en` y `marian-en-es`)**:
+   - **Causa**: Las URLs de descarga en `AiModelManager.Catalog` apuntaban a `https://huggingface.co/onnx-community/opus-mt-*/resolve/main/onnx/model.onnx`, archivo inexistente que devolvía HTTP 404 (Entry Not Found).
+   - **Solución**: Se actualizaron las URLs al binario ONNX quantizado oficial y disponible: `onnx/decoder_model_merged_quantized.onnx` (193 MB).
+2. **Rechazo o Congelamiento de Conexión en HuggingFace CDN / AWS CloudFront (`nllb-200-600m`)**:
+   - **Causa**: La instancia `HttpClient` de `AiModelManager` carecía de cabecera `User-Agent` estándar y configuración de redirecciones, provocando rechazo o interrupciones en conexiones hacia CloudFront (`us.aws.cdn.hf.co`).
+   - **Solución**: Se implementó `CreateHttpClient()` con `SocketsHttpHandler` configurado para redirecciones automáticas (`AllowAutoRedirect = true`, `MaxAutomaticRedirections = 10`), descompresión nativa y cabecera de agente completa (`FileFlowStudio/1.0`).
+3. **Error 404 en Grounding DINO / YOLO-World (`grounding-dino`)**:
+   - **Causa**: La URL en `AiModelManager.Catalog` apuntaba a `https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-worldv2.onnx`, pero Ultralytics solo publica archivos `.pt` (PyTorch) en sus releases de GitHub, por lo que GitHub devolvía HTTP 404 (Not Found).
+   - **Solución**: Se migró la URL de descarga al repositorio oficial de modelos ONNX en Hugging Face (`https://huggingface.co/Instemic/yolo-world-onnx/resolve/main/yolov8s-worldv2.onnx`), verificado con HTTP 200 OK y 51.1 MB. Se verificó igualmente que todos los 13 modelos del catálogo responden con HTTP 200 OK.
+4. **Ausencia Total de Mensajes de Diagnóstico ante Errores de Descarga**:
+   - **Causa**: Si una descarga fallaba, `AiModelManager.DownloadModelWithProgressAsync` devolvía `null` y el método `RefreshStatus()` en el ViewModel invocaba ciegamente `RefreshState()`, reseteando el estado de todos los modelos no instalados a `⏳ No descargado`. Además, el texto de progreso y errores solo se mostraba si `IsDownloading == true`, ocultándose automáticamente en cuanto terminaba la descarga.
+   - **Solución**:
+     - En `AiModelManager`: incorporación de `LastError` y captura de códigos HTTP exactos (ej. 404, 403, timeouts o bytes insuficientes).
+     - En `AiModelItemViewModel`: nuevas propiedades `ErrorMessage` y `HasError`. `RefreshState()` preserva el estado de error (`❌ Error en descarga`) y no sobreescribe mensajes si no se ha completado la instalación.
+     - En `AiModelManagerViewModel`: visualización de alerta modal (`MessageBox.Show`) con el detalle del fallo al descargar un modelo individual, y resumen consolidado de modelos fallidos al descargar en lote (`DownloadMissingModelsCommand`).
+     - En `AiModelDownloadDialog.xaml`: nuevo banner de error superior con botón para descartar y cuadro de advertencia persistente con borde rojo y tooltip por cada modelo fallido.
+
+### 🧪 Validación y Pruebas
+- Incorporadas 3 nuevas pruebas unitarias en `AiModelManagerViewModelTests.cs` (`AiModelItemViewModel_RefreshState_WithErrorMessage_RetainsErrorState`, `AiModelManagerViewModel_DownloadUnknownModel_SetsErrorStateAndDetails`, etc.).
+- Suite de pruebas completa: `dotnet test FileFlow.slnx` $\rightarrow$ **403 / 403 pruebas superadas al 100%**.
+
+---
+
+## [2026-09-03] - Suite de IA Lingüística y Modelos Locales: Traducción NLLB-200/MarianMT, LLM Local Qwen 2.5 y Transformador de Prompts
+
+### 🎯 Funcionalidades Añadidas
+1. **Infraestructura de Modelos y Motor de Inferencia de Lenguaje (`LanguageInferenceEngine` & `AiModelManager`)**:
+   - Incorporación al catálogo de `AiModelManager`:
+     - `nllb-200-600m`: Traductor neuronal universal en 200 idiomas (~600 MB ONNX).
+     - `qwen2.5-1.5b-instruct`: Modelo LLM multilingüe instruccional ligero (~1.1 GB GGUF Q4_K_M).
+     - `marian-en-es`: Modelo MarianMT de alta velocidad para traducción inglés a español (~60 MB ONNX).
+   - Nuevo motor centralizado `LanguageInferenceEngine` para traducción neuronal, preservación de timestamps en subtítulos `.srt`, procesamiento LLM (resúmenes, extracción JSON, traducción y explicación) y transformación dinámica de prompts.
+2. **Nodo de Traducción Neuronal Local (`LocalAiTranslatorNode`)**:
+   - Traducción multilingüe de archivos de texto (`.txt`, `.md`, `.srt`, `.csv`, `.json`, `.xml`, `.html`) o metadatos (`Ocr:Text`, `Whisper:Transcription`).
+   - Parámetros: `SourceLanguage`, `TargetLanguage`, `InputSource` (`FileContent` / `MetadataKey`), `MetadataKeyName`, `OutputMode` (`InjectMetadata` / `CreateNewFile` / `Both`), `TargetFileNamePattern` y `TranslateSrtTimestamps`.
+   - Inyección de metadatos `AI:SourceLanguage`, `AI:TargetLanguage`, `AI:TranslatedText` y `AI:TranslationModel`.
+3. **Nodo de Procesamiento LLM Local (`LocalLlmProcessorNode`)**:
+   - Ejecución in-process de modelos LLM para resúmenes ejecutivos, extracción estructurada a JSON y prompts con plantillas variables.
+   - Parámetros: `TaskType` (`Summarize`, `ExtractStructuredData`, `TranslateAndExplain`, `CustomPrompt`), `SystemPrompt`, `UserPrompt`, `OutputFormat` (`Markdown`, `PlainText`, `JSON`), `SaveAsNewFile`, `Temperature` y `MaxTokens`.
+   - Inyección de metadatos `AI:LlmResponse`, `AI:Summary`, `AI:ExtractedDataJson` y `AI:TokensGenerated`.
+4. **Transformador Dinámico de Prompts (`PromptTransformerNode`)**:
+   - Evaluación y traducción de plantillas dinámicas con metadatos (`{AI:Category}, gafas de sol, {UserTag}, coche rojo`) a inglés para alimentar directamente nodos de visión (`PromptObjectDetectorNode`, `SmartImageClassifierNode`).
+   - Expansión de sinónimos visuales (`ExpandSynonyms`) para potenciar la detección *open-vocabulary*.
+   - Inyección de metadatos `AI:EvaluatedPrompt` y `AI:TranslatedPrompt`.
+5. **Descentralización Total de Recursos (i18n) y Co-ubicación en `FileFlow.Plugin.AI`**:
+   - Creación de `Resources/Strings.resx` y `Resources/Strings.es.resx` dentro de `FileFlow.Plugin.AI/` para albergar todos los textos, nombres, descripciones y parámetros de los nodos de IA.
+   - Implementación de `AiPluginInitializer.cs` (`IPluginInitializer`) con registro estático determinista en `LocalizationManager.Instance`.
+   - Limpieza completa de claves de nodos en `FileFlow.App/Resources/Strings.*.resx`, garantizando que la app anfitriona quede 100% libre de strings acoplados de nodos.
+6. **Actualización de Reglas y Documentos de Arquitectura del Proyecto**:
+   - Incorporado el **Principio Arquitectónico de Co-ubicación y Autonomía Total de Plugins / Nodos (Self-Contained Plugins / Zero-Touch en FileFlow.App)** en `docs/architecture.md` (ADR-006), `.agents/rules/rules.md`, `AGENTS.md`, `GEMINI.md` y `.antigravity/knowledge/repo_architecture.md`.
+7. **Suite de Pruebas Unitarias Exhaustiva**:
+   - Nuevos tests en `FileFlow.Tests/Unit/AI/`:
+     - `LocalAiTranslatorNodeTests.cs` (5 tests).
+     - `LocalLlmProcessorNodeTests.cs` (4 tests).
+     - `PromptTransformerNodeTests.cs` (3 tests).
+   - **Validación Global**:
+     - `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
+     - `dotnet test FileFlow.slnx` $\rightarrow$ **401 / 401 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+
+---
+
 ## [2026-09-03] - Corrección de Persistencia en Catálogo de Nodos: Modo Compacto Permanente al Arrastrar y Seleccionar
 
 ### 🎯 Problema Detectado y Solución Implementada

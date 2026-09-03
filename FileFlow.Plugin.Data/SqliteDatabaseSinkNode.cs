@@ -6,7 +6,8 @@ using Microsoft.Data.Sqlite;
 
 namespace FileFlow.Plugin.Data;
 
-[NodeDefinition("SqliteDatabaseSinkNode_Name", "Data & Databases", "SqliteDatabaseSinkNode_Desc")]
+[NodeDefinition("SqliteDatabaseSinkNode_Name", "Data", "SqliteDatabaseSinkNode_Desc", PipelineRole.Sink,
+    "sqlite", "sql", "base de datos", "db", "guardar", "insertar", "auditoria")]
 public class SqliteDatabaseSinkNode : IFlowNode
 {
     private static readonly Lock _initLock = new();
@@ -14,7 +15,7 @@ public class SqliteDatabaseSinkNode : IFlowNode
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Name", "Registro de Auditoría SQLite");
-    public string Category => "Data & Databases";
+    public string Category => "Data";
     public string Description => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Desc", "Inserta un registro histórico y de auditoría en una base de datos SQLite con los metadatos y trazabilidad de cada archivo procesado.");
 
     public IReadOnlyList<NodePort> Inputs { get; } =

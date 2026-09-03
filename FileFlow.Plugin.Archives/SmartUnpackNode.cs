@@ -7,7 +7,8 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Archives;
 
-[NodeDefinition("SmartUnpackNode_Name", "Archives", "SmartUnpackNode_Desc")]
+[NodeDefinition("SmartUnpackNode_Name", "Archives", "SmartUnpackNode_Desc", PipelineRole.Source,
+    "descomprimir", "extraer", "zip", "rar", "7z", "tar", "unpack", "extract", "comprimido")]
 public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();

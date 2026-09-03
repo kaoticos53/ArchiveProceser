@@ -349,21 +349,41 @@
   <data name="Filter_Favorites" xml:space="preserve"><value>⭐ Favoritos</value></data>
   <data name="Filter_Frequent" xml:space="preserve"><value>🔥 Más Usados</value></data>
 
-  <!-- Categories -->
+  <!-- Categorías -->
   <data name="Category_All" xml:space="preserve"><value>Todas</value></data>
   <data name="Category_Favorites" xml:space="preserve"><value>⭐ Favoritos</value></data>
   <data name="Category_Frequent" xml:space="preserve"><value>🔥 Frecuentes</value></data>
-  <data name="Category_FileSystem" xml:space="preserve"><value>📁 Archivos</value></data>
-  <data name="Category_Archives" xml:space="preserve"><value>📦 Compresión</value></data>
-  <data name="Category_Images" xml:space="preserve"><value>🖼️ Imágenes</value></data>
-  <data name="Category_Documents" xml:space="preserve"><value>📄 Documentos y PDFs</value></data>
-  <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media &amp; Docs</value></data>
+  <data name="Category_Files" xml:space="preserve"><value>📁 Archivos y Sistema</value></data>
+  <data name="Category_FileSystem" xml:space="preserve"><value>📁 Archivos y Sistema</value></data>
+  <data name="Category_ImageVision" xml:space="preserve"><value>🖼️ Imagen y Visión IA</value></data>
+  <data name="Category_Images" xml:space="preserve"><value>🖼️ Imagen y Visión IA</value></data>
+  <data name="Category_AudioVoice" xml:space="preserve"><value>🎙️ Audio y Voz IA</value></data>
+  <data name="Category_Documents" xml:space="preserve"><value>📄 Documentos y PDF</value></data>
+  <data name="Category_Data" xml:space="preserve"><value>📊 Datos y Tablas</value></data>
+  <data name="Category_LanguageAI" xml:space="preserve"><value>🧠 Lenguaje y LLM</value></data>
+  <data name="Category_Security" xml:space="preserve"><value>🔒 Seguridad y RGPD</value></data>
+  <data name="Category_Logic" xml:space="preserve"><value>🔀 Lógica y Control</value></data>
+  <data name="Category_Archives" xml:space="preserve"><value>📦 Archivos Comprimidos</value></data>
+  <data name="Category_Network" xml:space="preserve"><value>🌐 Red y Nube</value></data>
+  <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integraciones y Diagnóstico</value></data>
+  <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media y Docs</value></data>
   <data name="Category_Metadata" xml:space="preserve"><value>🏷️ Metadatos</value></data>
   <data name="Category_Hashing" xml:space="preserve"><value>🔑 Hashes y Seguridad</value></data>
-  <data name="Category_Logic" xml:space="preserve"><value>🔀 Lógica</value></data>
-  <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integraciones</value></data>
   <data name="Category_Scripting" xml:space="preserve"><value>📜 Scripts</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
+
+  <!-- Roles de Pipeline (ETL / DAG) -->
+  <data name="Role_Source" xml:space="preserve"><value>📥 Origen / Ingesta</value></data>
+  <data name="Role_Filter" xml:space="preserve"><value>🔍 Filtro / Decisión</value></data>
+  <data name="Role_Transform" xml:space="preserve"><value>⚡ Transformación / Proceso</value></data>
+  <data name="Role_Analyze" xml:space="preserve"><value>🔬 Análisis / Metadatos</value></data>
+  <data name="Role_Sink" xml:space="preserve"><value>📤 Destino / Salida</value></data>
+  <data name="Role_Control" xml:space="preserve"><value>🎛️ Control / Utilidad</value></data>
+
+  <!-- Perspectivas del Toolbox -->
+  <data name="Toolbox_Perspective_Domain" xml:space="preserve"><value>Dominio</value></data>
+  <data name="Toolbox_Perspective_Pipeline" xml:space="preserve"><value>Etapa de Flujo</value></data>
+  <data name="Toolbox_Perspective_Tooltip" xml:space="preserve"><value>Cambiar agrupación: Por Categoría de Dominio o por Rol de Flujo ETL</value></data>
 
   <!-- Node Parameters Localized Keys (Spanish) -->
   <data name="Param_Width" xml:space="preserve"><value>Ancho</value></data>
@@ -589,12 +609,12 @@
   <data name="StatusBar_OutputFolderToolTip" xml:space="preserve"><value>Clic para abrir la carpeta de salida global en el Explorador de archivos</value></data>
   <data name="StatusBar_RamToolTip" xml:space="preserve"><value>Uso actual de memoria RAM de la aplicación</value></data>
   <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Uso actual de CPU del proceso de la aplicación</value></data>
+  <data name="StatusBar_GpuToolTip" xml:space="preserve"><value>Uso actual de GPU del proceso de la aplicación / DirectML</value></data>
   <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Clic para ajustar el grafo al área visible del lienzo. Nivel de zoom actual.</value></data>
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Valor Evaluado:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copiar valor evaluado al portapapeles</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contiene expresión dinámica / variables</value></data>
   <data name="Category_Data &amp; Databases" xml:space="preserve"><value>Datos y Bases de Datos</value></data>
-  <data name="Category_Data" xml:space="preserve"><value>Datos y Bases de Datos</value></data>
   <data name="ExcelReaderNode_Name" xml:space="preserve"><value>Lector de Hojas Excel</value></data>
   <data name="ExcelReaderNode_Desc" xml:space="preserve"><value>Lee archivos Excel (.xlsx) y emite cada fila como un registro de datos con sus columnas en los metadatos.</value></data>
   <data name="CsvReaderNode_Name" xml:space="preserve"><value>Lector de Archivos CSV / TSV</value></data>
@@ -609,18 +629,6 @@
   <data name="SqliteDatabaseSinkNode_Desc" xml:space="preserve"><value>Inserta un registro histórico y de auditoría en una base de datos SQLite con los metadatos y trazabilidad de cada archivo procesado.</value></data>
   <data name="DataFormatConverterNode_Name" xml:space="preserve"><value>Conversor de Formatos de Datos</value></data>
   <data name="Category_AI &amp; Computer Vision" xml:space="preserve"><value>IA y Visión por Computador</value></data>
-  <data name="LocalOcrNode_Name" xml:space="preserve"><value>Reconocimiento Óptico (OCR Local)</value></data>
-  <data name="LocalOcrNode_Desc" xml:space="preserve"><value>Extrae texto e información estructurada desde imágenes y documentos escaneados utilizando modelos locales de OCR.</value></data>
-  <data name="SmartImageClassifierNode_Name" xml:space="preserve"><value>Clasificador Visual de Fotos (IA)</value></data>
-  <data name="SmartImageClassifierNode_Desc" xml:space="preserve"><value>Analiza el contenido visual de fotografías e imágenes asignando una categoría temática (Paisajes, Facturas, Vehículos, etc.) en los metadatos.</value></data>
-  <data name="FaceDetectorNode_Name" xml:space="preserve"><value>Detector de Rostros (Facial)</value></data>
-  <data name="FaceDetectorNode_Desc" xml:space="preserve"><value>Analiza imágenes para detectar la presencia y el número de rostros humanos, bifurcando el flujo hacia fotos familiares o paisajes.</value></data>
-  <data name="ObjectDetectorNode_Name" xml:space="preserve"><value>Detector de Objetos (YOLO)</value></data>
-  <data name="ObjectDetectorNode_Desc" xml:space="preserve"><value>Detecta e identifica objetos múltiples (personas, vehículos, animales, objetos cotidianos) presentes en imágenes.</value></data>
-  <data name="PromptObjectDetectorNode_Name" xml:space="preserve"><value>Detector de Objetos por Prompt (Grounding DINO)</value></data>
-  <data name="PromptObjectDetectorNode_Desc" xml:space="preserve"><value>Detecta objetos y conceptos descritos en lenguaje natural libre con traducción automática Español-Inglés usando MarianMT.</value></data>
-  <data name="LocalWhisperTranscriberNode_Name" xml:space="preserve"><value>Transcriptor de Voz a Texto (Whisper)</value></data>
-  <data name="LocalWhisperTranscriberNode_Desc" xml:space="preserve"><value>Transcribe archivos de audio y vídeo a texto y subtítulos sincronizados (.srt) utilizando el modelo Whisper de forma local y privada.</value></data>
   <data name="Common_Copy" xml:space="preserve"><value>Copiar</value></data>
 
   <!-- Modelos de IA -->
@@ -637,8 +645,19 @@
   <data name="AiModelManager_StatusInstalled" xml:space="preserve"><value>Descargado</value></data>
   <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>No descargado</value></data>
   <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Descargando...</value></data>
+  <data name="AiModelManager_StatusError" xml:space="preserve"><value>Error en descarga</value></data>
   <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Descargar</value></data>
   <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Eliminar</value></data>
+  <data name="AiModelUrls_Title" xml:space="preserve"><value>Configurar URLs de Descarga</value></data>
+  <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure una o varias URLs de descarga para este modelo. Si un enlace falla o cambia, el motor intentará automáticamente el siguiente espejo.</value></data>
+  <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>URLs de descarga (una por línea, en orden de prioridad):</value></data>
+  <data name="AiModelUrls_TestBtn" xml:space="preserve"><value>🔍 Probar Conexión</value></data>
+  <data name="AiModelUrls_ResetBtn" xml:space="preserve"><value>🔄 Restablecer Predeterminadas</value></data>
+  <data name="AiModelUrls_SaveBtn" xml:space="preserve"><value>💾 Guardar URLs</value></data>
+  <data name="AiModelUrls_CancelBtn" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="AiModelUrls_StatusCustom" xml:space="preserve"><value>🔧 Personalizado</value></data>
+  <data name="AiModelUrls_StatusDefault" xml:space="preserve"><value>📦 Oficial / Predeterminado</value></data>
+  <data name="AiModelUrls_BtnTooltip" xml:space="preserve"><value>Configurar URLs de descarga y espejos alternativos</value></data>
 
   <!-- Log View Context Menu & Copy Actions -->
   <data name="Log_ContextMenu_CopyFullLine" xml:space="preserve"><value>📄 Copiar Línea Completa de Log</value></data>
