@@ -2317,7 +2317,41 @@ La barra de estado inferior de la aplicación mostraba las claves de localizaci�
    - Incorporado el archivo oficial [`LICENSE`](file:///LICENSE) con los términos completos de la **GNU General Public License v3.0 (GPLv3)** bajo copyright `Copyright (C) 2026 RGLara`.
    - Actualizado [`README.md`](file:///README.md) con insignias de GNU GPLv3, 57 nodos DAG oficiales y métricas de 477 tests aprobados al 100%.
    - Actualizado el pie de página del menú lateral (Drawer) en [`MainWindow.xaml`](file:///FileFlow.App/MainWindow.xaml) sustituyendo el texto de engine por el distintivo de copyright **`© RGLara`**.
-4. **Revisión, Ampliación Pedagógica y Sincronización Bilingüe de Manuales**:
+4. **Plan Maestro de Clean Code y Modularización - Etapa 1 Completada (`FileFlow.Plugin.Network`)**:
+   - Desacoplada la capa de protocolos de transporte de red mediante el patrón de diseño **Strategy / Factory**.
+   - Creados los módulos dedicados e independientes:
+     - [`INetworkTransportStrategy.cs`](file:///FileFlow.Plugin.Network/Transports/INetworkTransportStrategy.cs) y [`NetworkTransportRequests.cs`](file:///FileFlow.Plugin.Network/Transports/NetworkTransportRequests.cs).
+     - [`HttpTransportStrategy.cs`](file:///FileFlow.Plugin.Network/Transports/HttpTransportStrategy.cs) (HTTP/HTTPS GET/POST/PUT multipart).
+     - [`FtpTransportStrategy.cs`](file:///FileFlow.Plugin.Network/Transports/FtpTransportStrategy.cs) (FluentFTP con TLS/SSL, modo pasivo y carpetas remotas).
+     - [`SftpTransportStrategy.cs`](file:///FileFlow.Plugin.Network/Transports/SftpTransportStrategy.cs) (SSH.NET con contraseña o par de claves privadas).
+     - [`WebDavTransportStrategy.cs`](file:///FileFlow.Plugin.Network/Transports/WebDavTransportStrategy.cs) (Nextcloud/ownCloud WebDAV).
+     - [`SmbTransportStrategy.cs`](file:///FileFlow.Plugin.Network/Transports/SmbTransportStrategy.cs) (Rutas UNC de red local).
+     - [`NetworkTransportFactory.cs`](file:///FileFlow.Plugin.Network/Transports/NetworkTransportFactory.cs) (Resolución centralizada de estrategias).
+   - Refactorizados [`NetworkDownloadNode.cs`](file:///FileFlow.Plugin.Network/NetworkDownloadNode.cs) (reducido de 571 a 170 líneas) y [`NetworkUploadNode.cs`](file:///FileFlow.Plugin.Network/NetworkUploadNode.cs) (reducido de 485 a 160 líneas) a orquestadores delgados bajo el Principio de Responsabilidad Única (SRP).
+   - **477 / 477 pruebas unitarias e integración superadas al 100%**.
+5. **Plan Maestro de Clean Code y Modularización - Etapa 2 Completada (`FileFlow.Plugin.AI`)**:
+   - Descompuesto el monolito [`OnnxInferenceEngine.cs`](file:///FileFlow.Plugin.AI/OnnxInferenceEngine.cs) (reducido de **893 a 55 líneas**) en submódulos especializados dentro de [`FileFlow.Plugin.AI/Inference/`](file:///FileFlow.Plugin.AI/Inference/):
+     - [`OnnxSessionManager.cs`](file:///FileFlow.Plugin.AI/Inference/OnnxSessionManager.cs): Gestión thread-safe de `InferenceSession` con DirectML GPU y fallback a CPU ante excepciones runtime de operadores dinámicos (`node_Shape`).
+     - [`TensorPreprocessors.cs`](file:///FileFlow.Plugin.AI/Inference/TensorPreprocessors.cs): Operaciones de tensores NCHW, normalización, Softmax, Sigmoid, coincidencia semántica y etiquetas COCO/ImageNet.
+     - [`ImageClassificationInference.cs`](file:///FileFlow.Plugin.AI/Inference/ImageClassificationInference.cs): Clasificación MobileNet/ResNet y moderación sensible NSFW.
+     - [`FaceDetectionInference.cs`](file:///FileFlow.Plugin.AI/Inference/FaceDetectionInference.cs): Detección de rostros UltraFace RFB 320 con NMS y cálculo de IoU.
+     - [`ObjectDetectionInference.cs`](file:///FileFlow.Plugin.AI/Inference/ObjectDetectionInference.cs): Detección de objetos YOLO y detección open-vocabulary mediante prompts.
+     - [`SuperResolutionInference.cs`](file:///FileFlow.Plugin.AI/Inference/SuperResolutionInference.cs): Escalado y restauración neuronal (Real-ESRGAN / Swin2SR).
+     - [`BackgroundSegmentationInference.cs`](file:///FileFlow.Plugin.AI/Inference/BackgroundSegmentationInference.cs): Eliminación de fondo y segmentación RMBG/MODNet.
+   - **477 / 477 pruebas unitarias e integración superadas al 100%**.
+6. **Plan Maestro de Clean Code y Modularización - Etapa 3 Completada (`FileFlow.App`)**:
+   - Desacoplados y modularizados los ViewModels principales de la capa de presentación:
+     - [`NodeIconResolver.cs`](file:///FileFlow.App/Services/NodeIconResolver.cs): Servicio centralizado para la resolución de iconos de categorías y nodos, eliminando switches monolíticos en [`ToolboxViewModel.cs`](file:///FileFlow.App/ViewModels/ToolboxViewModel.cs).
+     - [`LogExportService.cs`](file:///FileFlow.App/Services/LogExportService.cs): Servicio desacoplado para exportación de registros y logs de ejecución, simplificando [`LogViewModel.cs`](file:///FileFlow.App/ViewModels/LogViewModel.cs).
+     - [`WorkflowExecutionCoordinator.cs`](file:///FileFlow.App/Services/WorkflowExecutionCoordinator.cs): Coordinador desacoplado para orquestación de flujos, depuración paso a paso y telemetría en tiempo real.
+   - **477 / 477 pruebas unitarias e integración superadas al 100%**.
+7. **Plan Maestro de Clean Code y Modularización - Etapa 4 Completada (`FileFlow.Core`)**:
+   - Descompuesto el orquestador central del grafo DAG [`WorkflowExecutor.cs`](file:///FileFlow.Core/Engine/WorkflowExecutor.cs) en módulos de responsabilidad única:
+     - [`WorkflowTaskTracker.cs`](file:///FileFlow.Core/Engine/WorkflowTaskTracker.cs): Seguimiento concurrente y drenaje determinista de tareas asíncronas de ejecución de nodos.
+     - [`WorkflowCheckpointHandler.cs`](file:///FileFlow.Core/Engine/WorkflowCheckpointHandler.cs): Gestión del ciclo de vida, comprobación de omisión de archivos y persistencia atómica de checkpoints de recuperación.
+     - [`WorkflowItemDispatcher.cs`](file:///FileFlow.Core/Engine/WorkflowItemDispatcher.cs): Despacho concurrente de elementos a través de aristas, clonación profunda para múltiples ramificaciones y captura de snapshots de depuración.
+   - **477 / 477 pruebas unitarias e integración superadas al 100%**.
+8. **Revisión, Ampliación Pedagógica y Sincronización Bilingüe de Manuales**:
    - Actualizados exhaustivamente [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md) (Español) y [`docs/user_manual.md`](file:///docs/user_manual.md) (Inglés) con el catálogo completo de los **57 Nodos DAG** estructurados en 11 categorías temáticas, explicación detallada de arquitectura, motor de tokens, modos de ejecución (Dry Run, Watchdog, Rollback, Debugger con Breakpoints) y 3 tutoriales educativos paso a paso (Organización fotográfica con EXIF/WebP, Ingesta remota SFTP con deduplicación y Pipeline de IA con OCR y anonimización de PII).
    - Actualizadas las guías para principiantes ([`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md) y [`docs/beginner_user_guide.md`](file:///docs/beginner_user_guide.md)) con nuevas recetas prácticas (Fusión de PDFs, OCR local de recibos/facturas sin nube, Descarga/Subida SFTP/WebDAV y uso del visor instantáneo QuickLook con la tecla `Espacio`).
    - Sincronizados [`docs/README.md`](file:///docs/README.md), [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) y [`.antigravity/knowledge/repo_architecture.md`](file:///.antigravity/knowledge/repo_architecture.md) con la licencia GNU GPLv3 y la suite de **477 pruebas automatizadas**.

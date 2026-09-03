@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Threading.Channels;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
@@ -18,6 +17,9 @@ public class WorkflowExecutor
     private readonly ConcurrentDictionary<string, List<WorkflowEdge>> _outgoingEdges = new();
     private readonly SemaphoreSlim _pauseSemaphore = new(1, 1);
     private readonly WorkflowTelemetryTracker _telemetryTracker = new();
+    private readonly WorkflowTaskTracker _taskTracker = new();
+    private readonly WorkflowCheckpointHandler _checkpointHandler = new();
+    private readonly WorkflowItemDispatcher _itemDispatcher;
 
     private int _maxDegreeOfParallelism = Environment.ProcessorCount;
     private SemaphoreSlim _concurrencyThrottle = new(Environment.ProcessorCount);
@@ -25,42 +27,46 @@ public class WorkflowExecutor
     private bool _isPaused;
     private bool _isRunning;
     private readonly HashSet<string> _startNodeIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _disabledLoggingNodeIds = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkflowDebugSession? DebugSession { get; set; }
     public ExecutionJournalService JournalService { get; } = new();
     public List<PlannedAction> PlannedActions { get; } = [];
-    public WorkflowCheckpointData? Checkpoint { get; set; }
-    public bool EnableCheckpointing { get; set; } = true;
-    private readonly Lock _checkpointLock = new();
+
+    public WorkflowCheckpointData? Checkpoint
+    {
+        get => _checkpointHandler.Checkpoint;
+        set => _checkpointHandler.Checkpoint = value;
+    }
+
+    public bool EnableCheckpointing
+    {
+        get => _checkpointHandler.EnableCheckpointing;
+        set => _checkpointHandler.EnableCheckpointing = value;
+    }
+
+    public bool IsRunning => _isRunning;
 
     public event Action<double, string>? ProgressChanged;
     public event Action<string, double, string>? NodeProgressChanged;
     public event Action<string, NodeExecutionStatus>? NodeStatusChanged;
     public event Action<string, LogLevel>? LogEmitted;
     public event Action<StructuredLogRecord>? StructuredLogEmitted;
-    public event Action<string, string, int>? EdgeItemDispatched;
-
-    private readonly ConcurrentDictionary<string, int> _edgeCounts = new(StringComparer.OrdinalIgnoreCase);
-
-    public TelemetrySnapshot GetTelemetrySnapshot()
+    public event Action<string, string, int>? EdgeItemDispatched
     {
-        return _telemetryTracker.GetSnapshot(_isRunning);
+        add => _itemDispatcher.EdgeItemDispatched += value;
+        remove => _itemDispatcher.EdgeItemDispatched -= value;
     }
 
-    public IReadOnlyDictionary<string, NodeTelemetryStats> GetNodeTelemetryStats()
+    public WorkflowExecutor()
     {
-        return _telemetryTracker.GetNodeStats();
+        _itemDispatcher = new WorkflowItemDispatcher(this, _telemetryTracker, _taskTracker, _checkpointHandler);
     }
 
-    public void SetTotalExpectedItems(long totalExpectedItems)
-    {
-        _telemetryTracker.SetTotalExpectedItems(totalExpectedItems);
-    }
-
-    public void SetCustomStatusMessage(string message)
-    {
-        _telemetryTracker.SetCustomStatusMessage(message);
-    }
+    public TelemetrySnapshot GetTelemetrySnapshot() => _telemetryTracker.GetSnapshot(_isRunning);
+    public IReadOnlyDictionary<string, NodeTelemetryStats> GetNodeTelemetryStats() => _telemetryTracker.GetNodeStats();
+    public void SetTotalExpectedItems(long totalExpectedItems) => _telemetryTracker.SetTotalExpectedItems(totalExpectedItems);
+    public void SetCustomStatusMessage(string message) => _telemetryTracker.SetCustomStatusMessage(message);
 
     public void RegisterPlannedAction(PlannedAction action)
     {
@@ -90,13 +96,7 @@ public class WorkflowExecutor
     }
 
     public string GlobalOutputDir { get; set; } = string.Empty;
-
-    public bool IsDryRun
-    {
-        get => _isDryRun;
-        set => _isDryRun = value;
-    }
-
+    public bool IsDryRun { get => _isDryRun; set => _isDryRun = value; }
     public bool IsPaused => _isPaused;
 
     public void Pause()
@@ -129,17 +129,6 @@ public class WorkflowExecutor
     }
 
     private string _currentExecutionId = Guid.NewGuid().ToString("N");
-    private readonly Lock _tasksLock = new();
-    private readonly List<Task> _activeNodeTasks = [];
-    private readonly HashSet<string> _disabledLoggingNodeIds = new(StringComparer.OrdinalIgnoreCase);
-
-    private void TrackTask(Task task)
-    {
-        lock (_tasksLock)
-        {
-            _activeNodeTasks.Add(task);
-        }
-    }
 
     public bool IsLoggingDisabledForNode(string? nodeId) => !string.IsNullOrWhiteSpace(nodeId) && _disabledLoggingNodeIds.Contains(nodeId);
 
@@ -158,21 +147,12 @@ public class WorkflowExecutor
         _nodeInstances.Clear();
         _outgoingEdges.Clear();
         _disabledLoggingNodeIds.Clear();
-        foreach (var disabledId in graph.DisabledLoggingNodeIds)
-        {
-            _disabledLoggingNodeIds.Add(disabledId);
-        }
-        foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled))
-        {
-            _disabledLoggingNodeIds.Add(nodeDto.Id);
-        }
+        foreach (var disabledId in graph.DisabledLoggingNodeIds) _disabledLoggingNodeIds.Add(disabledId);
+        foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
         _telemetryTracker.Reset();
         _isRunning = true;
-        lock (_tasksLock)
-        {
-            _activeNodeTasks.Clear();
-        }
+        _taskTracker.Clear();
 
         try
         {
@@ -181,62 +161,34 @@ public class WorkflowExecutor
 
             if (!validation.IsValid)
             {
-                foreach (var err in validation.Errors)
-                {
-                    NotifyLog($"Validation Error: {err}", LogLevel.Error);
-                }
+                foreach (var err in validation.Errors) NotifyLog($"Validation Error: {err}", LogLevel.Error);
                 throw new InvalidOperationException($"Workflow validation failed with {validation.Errors.Count} errors.");
             }
 
-            // Sincronizar breakpoints si hay una sesión de depuración
             if (DebugSession != null)
             {
                 DebugSession.SetBreakpoints(graph.BreakpointNodeIds);
             }
 
-            // Build node dictionary & outgoing edges map
             foreach (var node in validation.TopologicalOrder)
             {
                 _nodeInstances[node.Id] = node;
                 _outgoingEdges[node.Id] = graph.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
             }
 
-            if (EnableCheckpointing && !IsDryRun && !string.IsNullOrWhiteSpace(graph.Name))
-            {
-                if (Checkpoint == null)
-                {
-                    if (WorkflowCheckpointManager.Instance.HasPendingCheckpoint(graph.Name, out var savedCp) && savedCp != null)
-                    {
-                        Checkpoint = savedCp;
-                        NotifyLog($"[Checkpoint] Reanudando ejecución previa para '{graph.Name}' ({Checkpoint.CompletedFileKeys.Count} archivos ya completados).", LogLevel.Information);
-                    }
-                    else
-                    {
-                        Checkpoint = new WorkflowCheckpointData
-                        {
-                            WorkflowName = graph.Name,
-                            ExecutionId = _currentExecutionId
-                        };
-                    }
-                }
-            }
+            _checkpointHandler.InitializeCheckpoint(graph.Name, _currentExecutionId, IsDryRun, (msg, lvl) => NotifyLog(msg, lvl));
 
             NotifyLog($"Starting workflow execution '{graph.Name}' with {validation.TopologicalOrder.Count} nodes (DryRun={IsDryRun}, Debug={DebugSession != null}).", LogLevel.Information);
 
-            // Find entry nodes (nodes with no connected input edges)
             HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
             List<IFlowNode> startNodes = validation.TopologicalOrder.Where(n => !targetNodeIds.Contains(n.Id)).ToList();
-
             if (startNodes.Count == 0 && validation.TopologicalOrder.Count > 0)
             {
                 startNodes.Add(validation.TopologicalOrder[0]);
             }
 
             _startNodeIds.Clear();
-            foreach (var sn in startNodes)
-            {
-                _startNodeIds.Add(sn.Id);
-            }
+            foreach (var sn in startNodes) _startNodeIds.Add(sn.Id);
 
             List<Task> startTasks = [];
             foreach (var startNode in startNodes)
@@ -244,18 +196,10 @@ public class WorkflowExecutor
                 startTasks.Add(Task.Run(async () =>
                 {
                     await WaitIfPausedAsync(cancellationToken);
-                    // Trigger entry node with null or empty input port name
                     var dummyItem = new FileItemContext(string.Empty);
                     dummyItem.Metadata["WorkflowExecutionId"] = _currentExecutionId;
-                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
-                    {
-                        dummyItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
-                    }
-
-                    if (IsDryRun)
-                    {
-                        dummyItem.Metadata["DryRun"] = true;
-                    }
+                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) dummyItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                    if (IsDryRun) dummyItem.Metadata["DryRun"] = true;
 
                     var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, dummyItem);
 
@@ -291,11 +235,9 @@ public class WorkflowExecutor
 
             await Task.WhenAll(startTasks).ConfigureAwait(false);
 
-            // Wait for all asynchronously dispatched downstream node tasks to finish deterministically
             List<Exception> executionErrors = [];
-            await DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
+            await _taskTracker.DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
 
-            // Notify all nodes about workflow completion (e.g. for aggregators, batch emitters, consolidated reports)
             var completionDummy = new FileItemContext(string.Empty);
             completionDummy.Metadata["WorkflowExecutionId"] = _currentExecutionId;
             if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) completionDummy.Metadata["GlobalOutputDir"] = GlobalOutputDir;
@@ -314,18 +256,14 @@ public class WorkflowExecutor
                 }
             }
 
-            // Drain any subsequent downstream tasks dispatched by completion hooks
-            await DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
+            await _taskTracker.DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
 
             if (executionErrors.Count > 0)
             {
                 throw new AggregateException("Se produjeron errores durante la ejecución de los nodos del flujo.", executionErrors);
             }
 
-            if (EnableCheckpointing && !IsDryRun && !string.IsNullOrWhiteSpace(graph.Name))
-            {
-                WorkflowCheckpointManager.Instance.ClearCheckpoint(graph.Name);
-            }
+            _checkpointHandler.ClearCheckpoint(graph.Name, IsDryRun);
 
             _telemetryTracker.Stop();
             long finalFiles = _telemetryTracker.CompletedFilesCount;
@@ -340,11 +278,6 @@ public class WorkflowExecutor
         }
     }
 
-    /// <summary>
-    /// Ejecuta el grafo en modo continuo de supervisión de carpetas (Watch Folder Trigger Mode).
-    /// El motor inicializa el grafo y permanece escuchando los eventos de FolderWatcherService,
-    /// inyectando cada archivo recién completado directamente en los nodos de entrada del DAG.
-    /// </summary>
     public async Task ExecuteWatchModeAsync(
         WorkflowGraph graph,
         PluginLoader loader,
@@ -355,14 +288,8 @@ public class WorkflowExecutor
         _nodeInstances.Clear();
         _outgoingEdges.Clear();
         _disabledLoggingNodeIds.Clear();
-        foreach (var disabledId in graph.DisabledLoggingNodeIds)
-        {
-            _disabledLoggingNodeIds.Add(disabledId);
-        }
-        foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled))
-        {
-            _disabledLoggingNodeIds.Add(nodeDto.Id);
-        }
+        foreach (var disabledId in graph.DisabledLoggingNodeIds) _disabledLoggingNodeIds.Add(disabledId);
+        foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
         _telemetryTracker.Reset();
         _isRunning = true;
@@ -371,10 +298,7 @@ public class WorkflowExecutor
         var validation = validator.Validate(graph, loader);
         if (!validation.IsValid)
         {
-            foreach (var err in validation.Errors)
-            {
-                NotifyLog($"Validation Error: {err}", LogLevel.Error);
-            }
+            foreach (var err in validation.Errors) NotifyLog($"Validation Error: {err}", LogLevel.Error);
             throw new InvalidOperationException($"Workflow validation failed with {validation.Errors.Count} errors.");
         }
 
@@ -386,16 +310,10 @@ public class WorkflowExecutor
 
         HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
         List<IFlowNode> startNodes = validation.TopologicalOrder.Where(n => !targetNodeIds.Contains(n.Id)).ToList();
-        if (startNodes.Count == 0 && validation.TopologicalOrder.Count > 0)
-        {
-            startNodes.Add(validation.TopologicalOrder[0]);
-        }
+        if (startNodes.Count == 0 && validation.TopologicalOrder.Count > 0) startNodes.Add(validation.TopologicalOrder[0]);
 
         _startNodeIds.Clear();
-        foreach (var sn in startNodes)
-        {
-            _startNodeIds.Add(sn.Id);
-        }
+        foreach (var sn in startNodes) _startNodeIds.Add(sn.Id);
 
         NotifyLog($"Modo Vigilante Activo: Escuchando eventos en tiempo real para '{graph.Name}'...", LogLevel.Information);
 
@@ -412,18 +330,12 @@ public class WorkflowExecutor
                 {
                     var itemClone = item.DeepClone();
                     itemClone.Metadata["WorkflowExecutionId"] = _currentExecutionId;
-                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
-                    {
-                        itemClone.Metadata["GlobalOutputDir"] = GlobalOutputDir;
-                    }
-                    if (IsDryRun)
-                    {
-                        itemClone.Metadata["DryRun"] = true;
-                    }
+                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) itemClone.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                    if (IsDryRun) itemClone.Metadata["DryRun"] = true;
 
                     var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, itemClone);
 
-                    TrackTask(Task.Run(async () =>
+                    _taskTracker.TrackTask(Task.Run(async () =>
                     {
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
                         long startTicks = Stopwatch.GetTimestamp();
@@ -469,152 +381,20 @@ public class WorkflowExecutor
 
     internal Task DispatchEmitAsync(string sourceNodeId, string outputPortName, FileItemContext item, CancellationToken cancellationToken)
     {
-        item.Metadata["WorkflowExecutionId"] = _currentExecutionId;
-        if (!string.IsNullOrWhiteSpace(GlobalOutputDir))
-        {
-            item.Metadata["GlobalOutputDir"] = GlobalOutputDir;
-        }
-
-        if (IsDryRun)
-        {
-            item.Metadata["DryRun"] = true;
-        }
-
-        if (DebugSession != null)
-        {
-            DebugSession.RecordSnapshot(NodeDataSnapshot.CreateOutput(sourceNodeId, outputPortName, item));
-        }
-
-        if (_startNodeIds.Contains(sourceNodeId))
-        {
-            _telemetryTracker.IncrementSourceItemsEmitted();
-        }
-
-        if (Checkpoint != null && !string.IsNullOrWhiteSpace(item.OriginalPath) && Checkpoint.CompletedFileKeys.Contains(item.OriginalPath))
-        {
-            NotifyLog($"[Checkpoint] Omitiendo archivo completado previamente: {item.FileName}", LogLevel.Debug);
-            _telemetryTracker.IncrementCompletedFiles();
-            return Task.CompletedTask;
-        }
-
-        if (!_outgoingEdges.TryGetValue(sourceNodeId, out var edges))
-        {
-            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
-            if (Checkpoint != null && !string.IsNullOrWhiteSpace(item.OriginalPath))
-            {
-                lock (_checkpointLock)
-                {
-                    Checkpoint.CompletedFileKeys.Add(item.OriginalPath);
-                    Checkpoint.ProcessedItemsCount = doneFiles;
-                    WorkflowCheckpointManager.Instance.SaveCheckpoint(Checkpoint);
-                }
-            }
-            return Task.CompletedTask;
-        }
-
-        var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (matchingEdges.Count == 0)
-        {
-            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
-            if (Checkpoint != null && !string.IsNullOrWhiteSpace(item.OriginalPath))
-            {
-                lock (_checkpointLock)
-                {
-                    Checkpoint.CompletedFileKeys.Add(item.OriginalPath);
-                    Checkpoint.ProcessedItemsCount = doneFiles;
-                    WorkflowCheckpointManager.Instance.SaveCheckpoint(Checkpoint);
-                }
-            }
-            return Task.CompletedTask;
-        }
-
-        _telemetryTracker.AddTotalItems(matchingEdges.Count);
-        if (item.FileSizeBytes > 0)
-        {
-            _telemetryTracker.AddProcessedBytes(item.FileSizeBytes);
-        }
-
-        bool isMultipleTargets = matchingEdges.Count > 1;
-
-        string edgeKey = $"{sourceNodeId}:{outputPortName}";
-        int newCount = _edgeCounts.AddOrUpdate(edgeKey, 1, (_, c) => c + 1);
-        EdgeItemDispatched?.Invoke(sourceNodeId, outputPortName, newCount);
-
-        foreach (var edge in matchingEdges)
-        {
-            if (_nodeInstances.TryGetValue(edge.TargetNodeId, out var targetNode))
-            {
-                var targetItem = isMultipleTargets ? item.DeepClone() : item;
-
-                var task = Task.Run(async () =>
-                {
-                    await _concurrencyThrottle.WaitAsync(cancellationToken).ConfigureAwait(false);
-                    var targetContext = new WorkflowExecutionContext(targetNode.Id, this, cancellationToken, targetItem);
-                    try
-                    {
-                        await WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
-
-                        if (DebugSession != null)
-                        {
-                            DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(targetNode.Id, edge.TargetPortName, targetItem));
-                            await DebugSession.CheckBreakpointOrStepAsync(targetNode.Id, edge.TargetPortName, targetItem, cancellationToken).ConfigureAwait(false);
-                        }
-
-                        NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
-
-                        long startTicks = Stopwatch.GetTimestamp();
-                        try
-                        {
-                            await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken).ConfigureAwait(false);
-                            double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs);
-                            NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
-                        }
-                        catch (Exception ex) when (ex is not OperationCanceledException)
-                        {
-                            double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs);
-                            NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
-                            if (DebugSession != null)
-                            {
-                                await DebugSession.HandleNodeErrorAsync(targetNode.Id, edge.TargetPortName, targetItem, ex, cancellationToken).ConfigureAwait(false);
-                            }
-                            throw;
-                        }
-                    }
-                    finally
-                    {
-                        _concurrencyThrottle.Release();
-                        _telemetryTracker.IncrementProcessedItems();
-
-                        if (!targetContext.HasEmittedAnyDownstream)
-                        {
-                            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
-                            long totalFiles = _telemetryTracker.ExpectedTotalItems;
-                            long effective = Math.Max(totalFiles, doneFiles);
-                            double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 0.0;
-                            if (_isRunning && pct >= 100.0) pct = 99.0;
-                            else if (pct > 100.0) pct = 100.0;
-                            NotifyProgress(pct, $"⚡ Procesando: {doneFiles:N0}/{effective:N0} elementos ({pct:F0}%)");
-
-                            if (Checkpoint != null && !string.IsNullOrWhiteSpace(targetItem.OriginalPath))
-                            {
-                                lock (_checkpointLock)
-                                {
-                                    Checkpoint.CompletedFileKeys.Add(targetItem.OriginalPath);
-                                    Checkpoint.ProcessedItemsCount = doneFiles;
-                                    WorkflowCheckpointManager.Instance.SaveCheckpoint(Checkpoint);
-                                }
-                            }
-                        }
-                    }
-                }, cancellationToken);
-
-                TrackTask(task);
-            }
-        }
-
-        return Task.CompletedTask;
+        return _itemDispatcher.DispatchEmitAsync(
+            sourceNodeId,
+            outputPortName,
+            item,
+            _nodeInstances,
+            _outgoingEdges,
+            _startNodeIds,
+            _currentExecutionId,
+            GlobalOutputDir,
+            IsDryRun,
+            DebugSession,
+            _concurrencyThrottle,
+            WaitIfPausedAsync,
+            cancellationToken);
     }
 
     private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
@@ -629,47 +409,17 @@ public class WorkflowExecutor
         }
     }
 
-    private async Task DrainActiveTasksAsync(List<Exception> executionErrors)
-    {
-        while (true)
-        {
-            Task[] pending;
-            lock (_tasksLock)
-            {
-                _activeNodeTasks.RemoveAll(t => t.IsCompleted);
-                if (_activeNodeTasks.Count == 0) break;
-                pending = [.. _activeNodeTasks];
-            }
-
-            try
-            {
-                await Task.WhenAll(pending).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                if (ex is not OperationCanceledException)
-                {
-                    executionErrors.Add(ex);
-                }
-            }
-        }
-    }
-
     internal void NotifyNodeStatus(string nodeId, NodeExecutionStatus status)
     {
         NodeStatusChanged?.Invoke(nodeId, status);
         DebugSession?.NotifyNodeStatus(nodeId, status);
     }
 
-    internal void NotifyNodeProgress(string nodeId, double percentage, string statusMessage)
-    {
+    internal void NotifyNodeProgress(string nodeId, double percentage, string statusMessage) =>
         NodeProgressChanged?.Invoke(nodeId, percentage, statusMessage);
-    }
 
-    internal void NotifyProgress(double percentage, string statusMessage)
-    {
+    internal void NotifyProgress(double percentage, string statusMessage) =>
         ProgressChanged?.Invoke(percentage, statusMessage);
-    }
 
     internal void NotifyLog(
         string? nodeId,
@@ -711,8 +461,5 @@ public class WorkflowExecutor
         LogEmitted?.Invoke(formattedMsg, level);
     }
 
-    internal void NotifyLog(string message, LogLevel level)
-    {
-        NotifyLog(null, message, level);
-    }
+    internal void NotifyLog(string message, LogLevel level) => NotifyLog(null, message, level);
 }

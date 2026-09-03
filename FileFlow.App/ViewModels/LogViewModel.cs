@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Collections;
+using FileFlow.App.Services;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
@@ -540,31 +541,10 @@ public partial class LogViewModel : ObservableObject
     {
         if (TotalLogsCount == 0) return;
 
-        var dialog = new Microsoft.Win32.SaveFileDialog
+        string? exportedPath = await LogExportService.ExportLogsWithDialogAsync();
+        if (!string.IsNullOrEmpty(exportedPath))
         {
-            Filter = "Archivos de Log (*.log;*.txt)|*.log;*.txt|Todos los archivos (*.*)|*.*",
-            DefaultExt = ".log",
-            FileName = $"fileflow_execution_{DateTime.Now:yyyyMMdd_HHmmss}.log"
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            string targetPath = dialog.FileName;
-            try
-            {
-                await Task.Run(async () =>
-                {
-                    await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
-                    await using var writer = new StreamWriter(targetPath);
-                    await SqliteLogStore.Instance.ExportLogsAsync(writer).ConfigureAwait(false);
-                }).ConfigureAwait(false);
-
-                AddLog(LogLevel.Information, $"Log exportado exitosamente en: {targetPath}");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al exportar el log: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            AddLog(LogLevel.Information, $"Log exportado exitosamente en: {exportedPath}");
         }
     }
 }
