@@ -140,13 +140,13 @@
                     <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,12,0,0">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                             <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock Text="⚡ .NET 9 Ultra High Throughput" FontSize="11" Foreground="#94A3B8"/>
+                                <TextBlock Text="⚡ Procesamiento Asíncrono" FontSize="11" Foreground="#94A3B8"/>
                             </Border>
                             <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock Text="🧩 27 Nodos DAG" FontSize="11" Foreground="#94A3B8"/>
+                                <TextBlock x:Name="TxtNodesBadge" Text="🧩 60 Nodos DAG" FontSize="11" Foreground="#94A3B8"/>
                             </Border>
                             <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock Text="🛡️ Zip Slip &amp; Zero-Alloc" FontSize="11" Foreground="#94A3B8"/>
+                                <TextBlock Text="🛡️ Pipelines No Destructivos" FontSize="11" Foreground="#94A3B8"/>
                             </Border>
                         </StackPanel>
                     </StackPanel>

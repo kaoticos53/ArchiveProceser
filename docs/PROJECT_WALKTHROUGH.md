@@ -7,7 +7,13 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
 ### 🎯 Objetivos y Alcance
 Refactorización integral del código fuente para optimizar la mantenibilidad, eliminar deuda técnica, modularizar clases monolíticas, externalizar datos masivos estáticos y proporcionar abstracciones estándar para el desarrollo de nuevos plugins y nodos, manteniendo el 100% de compatibilidad con la suite de pruebas existente.
 
-### 🛠️ Fases Ejecutadas
+### 🛠️ Fases y Ajustes Ejecutados
+
+0. **Actualización de la Pantalla de Carga (`SplashScreenWindow.xaml`)**:
+   - Eliminada la referencia técnica a `.NET 9` en las insignias de características.
+   - Actualizado el distintivo del número de nodos al catálogo oficial completo (**`🧩 60 Nodos DAG`**).
+   - Modernizadas las insignias descriptivas: `⚡ Procesamiento Asíncrono`, `🧩 60 Nodos DAG` y `🛡️ Pipelines No Destructivos`.
+   - Incorporado el método `SetNodeCount(int count)` en `SplashScreenWindow.xaml.cs`.
 
 1. **Fase 2A: Limpieza Inmediata y Consolidación de Duplicados**:
    - Eliminados archivos duplicados en `FileFlow.App` (`RegexLibraryService.cs`, `RegexHelperViewModel.cs`, `RegexHelperWindow.xaml`, `RegexHelperWindow.xaml.cs`).

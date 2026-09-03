@@ -30,6 +30,14 @@ public partial class SplashScreenWindow : Window
         });
     }
 
+    public void SetNodeCount(int count)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            TxtNodesBadge.Text = $"🧩 {count} Nodos DAG";
+        });
+    }
+
     public async Task CloseWithFadeAsync()
     {
         await Dispatcher.InvokeAsync(async () =>

@@ -10,7 +10,12 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **481 / 481 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Loaders, AppPaths Storage, Portable Mode Provider, CLI Headless Runner, Document Plugins, Network Plugins, Data & Spreadsheet Plugins, AI & Computer Vision Plugins, File QuickPreviewer Providers, Watchdog Multi-Folder, Bottleneck Heatmap, Checkpointing & Resumption, Annotations & Group Boxes, AI Models Manager ViewModel, AI Model Persistence on Disk, LogConsole ViewModel Tests & Node Inspector Sync, PromptObjectDetectorNode & PromptTranslator MarianMT, Log Filtering & SQLite Sync, Toolbox Compact Mode Persistence, LocalAiTranslatorNode, LocalLlmProcessorNode, PromptTransformerNode, Download Error Reporting & Dismissal, AI Models Configurable URLs & Fallback, GPU Performance Metrics, HardwareCapabilityDetector, AiTaskModelResolutionTests, VisionSuiteNodesTests, AudioSuiteNodesTests, SecurityAndSemanticNodesTests, ToolboxOrganizationTests).
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
-  0. **Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular - Fases 2A a 2E Completadas)**:
+  0. **Actualización de la Pantalla de Carga (`SplashScreenWindow`)**:
+     - Eliminado el texto técnico referente a `.NET 9` en las insignias de características.
+     - Actualizado el distintivo del catálogo de nodos al total oficial consolidado (**`🧩 60 Nodos DAG`**).
+     - Modernizadas las insignias descriptivas: `⚡ Procesamiento Asíncrono`, `🧩 60 Nodos DAG` y `🛡️ Pipelines No Destructivos`.
+     - Añadido el método `SetNodeCount(int count)` en `SplashScreenWindow.xaml.cs`.
+  1. **Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular - Fases 2A a 2E Completadas)**:
      - **Fase 2A (Limpieza Inmediata)**: Eliminación de archivos duplicados en `FileFlow.App` y consolidación canónica en `FileFlow.Plugin.FileSystem/UI/` (`RegexLibraryService` con persistencia JSON y `RegexHelperViewModel` con soporte para `VariableTemplateResolver`). Normalizadas categorías de expresiones regulares.
      - **Fase 2B (Externalización de Datos Estáticos a EmbeddedResource)**:
        - `PromptTranslator.cs`: 650 conceptos visuales extraídos a `visual_concepts_es_en.json` embebido (reducción de 875 a 180 líneas).
