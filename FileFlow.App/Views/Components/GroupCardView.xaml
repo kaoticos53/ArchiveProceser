@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DataContext="{d:DesignInstance Type=vm:GroupViewModel}"
              Width="{Binding Width, Mode=TwoWay}"
@@ -89,17 +90,23 @@
                         <!-- Paleta de Colores de Grupo -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                             <Button Style="{StaticResource GroupColorCircleStyle}" Background="#3B82F6"
-                                    Command="{Binding ChangeColorCommand}" CommandParameter="#3B82F6" ToolTip="Azul" />
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#3B82F6" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Blue]}" />
                             <Button Style="{StaticResource GroupColorCircleStyle}" Background="#10B981"
-                                    Command="{Binding ChangeColorCommand}" CommandParameter="#10B981" ToolTip="Esmeralda" />
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#10B981" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Emerald]}" />
                             <Button Style="{StaticResource GroupColorCircleStyle}" Background="#8B5CF6"
-                                    Command="{Binding ChangeColorCommand}" CommandParameter="#8B5CF6" ToolTip="Violeta" />
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#8B5CF6" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Violet]}" />
                             <Button Style="{StaticResource GroupColorCircleStyle}" Background="#F59E0B"
-                                    Command="{Binding ChangeColorCommand}" CommandParameter="#F59E0B" ToolTip="Ámbar" />
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#F59E0B" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Amber]}" />
                             <Button Style="{StaticResource GroupColorCircleStyle}" Background="#EF4444"
-                                    Command="{Binding ChangeColorCommand}" CommandParameter="#EF4444" ToolTip="Rojo" />
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#EF4444" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Red]}" />
                             <Button Style="{StaticResource GroupColorCircleStyle}" Background="#64748B"
-                                    Command="{Binding ChangeColorCommand}" CommandParameter="#64748B" ToolTip="Pizarra" />
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#64748B" 
+                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Slate]}" />
                         </StackPanel>
 
                         <!-- Botón Eliminar / Desagrupar -->
@@ -113,7 +120,7 @@
                                 FontWeight="Bold"
                                 Padding="4,0"
                                 Cursor="Hand"
-                                ToolTip="Eliminar Grupo"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Group_DeleteToolTip]}"
                                 VerticalAlignment="Center" />
                     </Grid>
                 </Grid>

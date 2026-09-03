@@ -669,4 +669,66 @@
   <data name="Log_ContextMenu_Preview" xml:space="preserve"><value>👁️ Open File Preview</value></data>
   <data name="Log_ContextMenu_FilterNode" xml:space="preserve"><value>🎯 Filter by this Node</value></data>
   <data name="Log_ContextMenu_FilterFile" xml:space="preserve"><value>📄 Filter by this File</value></data>
+
+  <!-- Watchdog, Zoom & Canvas Tooltips -->
+  <data name="ControlBar_WatchModeToolTip" xml:space="preserve"><value>Starts or stops real-time Watchdog Mode to automatically process files as they arrive in source folders.</value></data>
+  <data name="Zoom_OutToolTip" xml:space="preserve"><value>Zoom Out (Ctrl + -)</value></data>
+  <data name="Zoom_InToolTip" xml:space="preserve"><value>Zoom In (Ctrl + +)</value></data>
+  <data name="Zoom_FitToolTip" xml:space="preserve"><value>Fit whole workflow to screen (Ctrl + 0)</value></data>
+  <data name="Zoom_AddNoteToolTip" xml:space="preserve"><value>Add Sticky Note to canvas</value></data>
+  <data name="Zoom_GroupToolTip" xml:space="preserve"><value>Group selected nodes or create group box (Ctrl+G)</value></data>
+  <data name="Zoom_FitBtn" xml:space="preserve"><value>Fit</value></data>
+  <data name="Zoom_NoteBtn" xml:space="preserve"><value>Note</value></data>
+  <data name="Zoom_GroupBtn" xml:space="preserve"><value>Group</value></data>
+
+  <!-- Group Colors & Color Picker -->
+  <data name="Color_Blue" xml:space="preserve"><value>Blue</value></data>
+  <data name="Color_Emerald" xml:space="preserve"><value>Emerald</value></data>
+  <data name="Color_Violet" xml:space="preserve"><value>Violet</value></data>
+  <data name="Color_Amber" xml:space="preserve"><value>Amber</value></data>
+  <data name="Color_Red" xml:space="preserve"><value>Red</value></data>
+  <data name="Color_Slate" xml:space="preserve"><value>Slate</value></data>
+  <data name="Group_DeleteToolTip" xml:space="preserve"><value>Delete Group</value></data>
+  <data name="ColorPicker_Palette" xml:space="preserve"><value>Quick Palette</value></data>
+  <data name="ColorPicker_Description" xml:space="preserve"><value>Color description</value></data>
+
+  <!-- Node Card, Telemetry & Inspector -->
+  <data name="Node_Bottleneck" xml:space="preserve"><value>⚠️ Bottleneck</value></data>
+  <data name="Node_ItemsProcessed" xml:space="preserve"><value>📦 Processed items:</value></data>
+  <data name="Node_LastItem" xml:space="preserve"><value>📄 Last item:</value></data>
+  <data name="Node_VariablesHeader" xml:space="preserve"><value>🔍 Context Variables and Metadata:</value></data>
+  <data name="Node_SwitchCaseNameToolTip" xml:space="preserve"><value>Case name and output port name</value></data>
+  <data name="Node_SwitchPatternsToolTip" xml:space="preserve"><value>Semicolon-separated patterns (e.g. jpg;png;webp)</value></data>
+  <data name="Node_SwitchDeleteToolTip" xml:space="preserve"><value>Delete this case</value></data>
+  <data name="Node_PreviewButton" xml:space="preserve"><value>👁️ Preview</value></data>
+  <data name="Node_PreviewToolTip" xml:space="preserve"><value>Open QuickLook preview for selected item</value></data>
+  <data name="Log_FilterTraceFileToolTip" xml:space="preserve"><value>Filter traceability for this file</value></data>
+  <data name="Log_JsonDetailsToolTip" xml:space="preserve"><value>Contains JSON details (click to expand)</value></data>
+  <data name="Log_PreviewButton" xml:space="preserve"><value>👁️ Preview</value></data>
+
+  <!-- Quick Previewer -->
+  <data name="Preview_MetadataSheet" xml:space="preserve"><value>🏷️ Metadata Sheet</value></data>
+  <data name="Preview_CopyPath" xml:space="preserve"><value>📋 Copy Path</value></data>
+  <data name="Preview_OpenExplorer" xml:space="preserve"><value>📂 Open in Explorer</value></data>
+  <data name="Preview_Close" xml:space="preserve"><value>Close (Esc)</value></data>
+  <data name="Preview_NoValidFile" xml:space="preserve"><value>No valid file generated or selected to preview.</value></data>
+
+  <!-- Dialog Messages -->
+  <data name="Msg_WatchModeNoSource" xml:space="preserve"><value>No existing source folders found in workflow nodes (e.g. FolderSourceNode).&#xA;Please configure an input folder before starting Watchdog Mode.</value></data>
+  <data name="Msg_ExecutionError" xml:space="preserve"><value>Error executing workflow: {0}</value></data>
+  <data name="Msg_RollbackNoEntries" xml:space="preserve"><value>No operations recorded to rollback.</value></data>
+  <data name="Msg_RollbackConfirm" xml:space="preserve"><value>Do you want to rollback {0} operations performed in the last execution?</value></data>
+  <data name="Msg_RollbackSuccess" xml:space="preserve"><value>Successfully rolled back {0} operations.</value></data>
+  <data name="Msg_NewWorkflowConfirm" xml:space="preserve"><value>Do you want to create a new workflow? The current canvas will be cleared.</value></data>
+  <data name="Msg_SaveError" xml:space="preserve"><value>Error saving workflow: {0}</value></data>
+  <data name="Msg_LoadError" xml:space="preserve"><value>Error loading workflow: {0}</value></data>
+  <data name="Msg_ExamplesNotFound" xml:space="preserve"><value>Examples folder was not found.</value></data>
+  <data name="Msg_ExamplesOpenError" xml:space="preserve"><value>Error opening examples folder: {0}</value></data>
+  <data name="Msg_ThemeFactoryNoDelete" xml:space="preserve"><value>Cannot delete factory default themes.</value></data>
+  <data name="Msg_ThemeExportSuccess" xml:space="preserve"><value>Theme exported successfully.</value></data>
+  <data name="Msg_ThemeImportSuccess" xml:space="preserve"><value>Theme '{0}' imported and added to your custom themes.</value></data>
+  <data name="Msg_NodeIsolatedTestSuccess" xml:space="preserve"><value>Test completed successfully for node '{0}'.</value></data>
+  <data name="Msg_NodeIsolatedTestError" xml:space="preserve"><value>Error during isolated node test: {0}</value></data>
+  <data name="Msg_GlobalOutputFolderError" xml:space="preserve"><value>Could not open global output directory: {0}</value></data>
+  <data name="Msg_ExternalToolsScanSuccess" xml:space="preserve"><value>External tools auto-discovery completed.</value></data>
 </root>

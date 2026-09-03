@@ -2299,6 +2299,24 @@ La barra de estado inferior de la aplicación mostraba las claves de localizaci�
 
 ---
 
+## [2026-09-03] - Actualización de Splash Screen e Internacionalización Integral de la UI (i18n / L10N)
+
+### 🛠 Cambios Implementados
+1. **Actualización de Pantalla de Carga (`SplashScreenWindow.xaml`)**:
+   - Eliminadas menciones directas al framework .NET.
+   - Actualizado el distintivo del catálogo a `🧩 60 Nodos DAG`.
+   - Insignias de arranque renovadas: `⚡ Procesamiento Asíncrono`, `🧩 60 Nodos DAG` y `🛡️ Pipelines No Destructivos`.
+   - Añadido el método `SetNodeCount(int count)` en `SplashScreenWindow.xaml.cs` para enlazar dinámicamente el conteo real de nodos descubiertos por `PluginLoader`.
+2. **Auditoría e Internacionalización Integral de la Interfaz Gráfica (i18n)**:
+   - Auditados todos los archivos de interfaz `.xaml` y `.cs` del proyecto en busca de textos literales sin traducir.
+   - Migrados todos los diálogos `MessageBox.Show`, tooltips, telemetría de nodos, paneles de inspección, visor QuickLook y editores modales de plugins a los diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
+   - Respetada la regla **ADR-006 (Zero-Touch en FileFlow.App / Self-Contained Plugins)**: los recursos de cada plugin (`FileFlow.Plugin.FileSystem`, `FileFlow.Plugin.Archives`, `FileFlow.Plugin.Integrations`, `FileFlow.Plugin.Scripting`) residen exclusivamente dentro de su propia carpeta de plugin sin contaminar `FileFlow.App`.
+   - Enlace reactivo en caliente con `LocalizationManager.Instance[...]` tanto en XAML como en ViewModels C#.
+3. **Verificación Automatizada de Pruebas**:
+   - `dotnet test`: **481 / 481 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)** en 8.0 s.
+
+---
+
 ## [2026-09-01] - Arquitectura de Modo Portable Autónomo y Generador de Distribución ZIP
 
 ### 🛠 Cambios Implementados

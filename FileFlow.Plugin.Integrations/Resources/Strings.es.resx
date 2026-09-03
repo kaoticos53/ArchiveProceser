@@ -47,4 +47,8 @@
   <data name="PresetManager_FfmpegArgs" xml:space="preserve"><value>Argumentos CLI de FFmpeg</value></data>
   <data name="PresetManager_SavePreset" xml:space="preserve"><value>💾 Guardar Cambios del Preset</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="PresetManager_MsgSaveSuccess" xml:space="preserve"><value>Preset guardado con éxito.</value></data>
+  <data name="PresetManager_MsgDefaultCannotDelete" xml:space="preserve"><value>No se pueden eliminar los presets predeterminados del sistema.</value></data>
+  <data name="PresetManager_MsgDeleteConfirm" xml:space="preserve"><value>¿Deseas eliminar el preset '{0}'?</value></data>
+  <data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>¿Deseas restablecer todos los presets a los valores por defecto del sistema?</value></data>
 </root>

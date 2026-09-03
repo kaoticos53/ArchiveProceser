@@ -5,6 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:controls="clr-namespace:FileFlow.App.Preview.Controls"
         xmlns:local="clr-namespace:FileFlow.App.Preview.Views"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         mc:Ignorable="d"
         Title="Vista Previa de Archivo — FileFlow Studio" 
         Height="700" Width="1050" MinWidth="600" MinHeight="450"
@@ -45,7 +46,7 @@
 
                 <!-- Botón de Cerrar -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Content="Cerrar (Esc)" Click="CloseButton_Click" Padding="12,4" Background="#1F2430" Foreground="#E1E4EA" Cursor="Hand" />
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_Close]}" Click="CloseButton_Click" Padding="12,4" Background="#1F2430" Foreground="#E1E4EA" Cursor="Hand" />
                 </StackPanel>
             </Grid>
         </Border>

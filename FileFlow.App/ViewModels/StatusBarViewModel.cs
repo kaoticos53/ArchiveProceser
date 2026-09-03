@@ -4,6 +4,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
@@ -175,7 +176,9 @@ public partial class StatusBarViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"No se pudo abrir la carpeta de salida global: {ex.Message}", "Error I/O", MessageBoxButton.OK, MessageBoxImage.Error);
+            string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_GlobalOutputFolderError", "No se pudo abrir la carpeta de salida global: {0}"), ex.Message);
+            string title = LocalizationManager.Instance.GetString("Error", "Error");
+            MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

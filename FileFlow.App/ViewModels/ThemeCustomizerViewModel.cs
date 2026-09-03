@@ -5,6 +5,7 @@ using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
+using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Themes;
 using Microsoft.Win32;
 
@@ -141,7 +142,9 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     {
         if (SelectedTheme == null || SelectedTheme.IsBuiltIn)
         {
-            MessageBox.Show("No se pueden eliminar los temas predefinidos de fábrica.", "Eliminar Tema", MessageBoxButton.OK, MessageBoxImage.Information);
+            string factoryMsg = LocalizationManager.Instance.GetString("Msg_ThemeFactoryNoDelete", "No se pueden eliminar los temas predefinidos de fábrica.");
+            string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Personalizador de Temas");
+            MessageBox.Show(factoryMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -226,11 +229,13 @@ public partial class ThemeCustomizerViewModel : ObservableObject
                 string json = _themeService.ExportThemeToJson(EditingTheme);
                 File.WriteAllText(sfd.FileName, json);
                 StatusMessage = $"Tema exportado con éxito a '{Path.GetFileName(sfd.FileName)}'.";
-                MessageBox.Show("Tema exportado correctamente.", "Exportación Exitosa", MessageBoxButton.OK, MessageBoxImage.Information);
+                string successMsg = LocalizationManager.Instance.GetString("Msg_ThemeExportSuccess", "Tema exportado correctamente.");
+                string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
+                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al exportar tema: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -253,11 +258,13 @@ public partial class ThemeCustomizerViewModel : ObservableObject
                 LoadThemes();
                 SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == imported.Id);
                 StatusMessage = $"Tema '{imported.Name}' importado con éxito.";
-                MessageBox.Show($"Tema '{imported.Name}' importado y añadido a tus temas personalizados.", "Importación Exitosa", MessageBoxButton.OK, MessageBoxImage.Information);
+                string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ThemeImportSuccess", "Tema '{0}' importado y añadido a tus temas personalizados."), imported.Name);
+                string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
+                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al importar tema: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

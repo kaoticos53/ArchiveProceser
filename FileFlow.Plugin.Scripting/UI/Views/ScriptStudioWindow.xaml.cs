@@ -115,7 +115,8 @@ public partial class ScriptStudioWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir el manual: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("ScriptStudio_ManualTitle", "Manual de Scripting");
+            MessageBox.Show($"Error: {ex.Message}", title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

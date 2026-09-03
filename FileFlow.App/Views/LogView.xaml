@@ -413,7 +413,7 @@
                                         Padding="0"
                                         Cursor="Hand"
                                         VerticalAlignment="Center"
-                                        ToolTip="Filtrar trazabilidad de este archivo"
+                                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_FilterTraceFileToolTip]}"
                                         Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
                                     <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="3" Padding="3,1">
                                         <TextBlock Text="{Binding ShortItemId, StringFormat='#{0}'}" 
@@ -488,7 +488,7 @@
                                             Margin="0,0,6,0"
                                             VerticalAlignment="Center"
                                             Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                            ToolTip="Contiene detalles JSON (clic para desplegar)">
+                                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_JsonDetailsToolTip]}">
                                         <TextBlock Text="{}{ } JSON" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
                                     </Border>
                                     <TextBlock Grid.Column="1" 

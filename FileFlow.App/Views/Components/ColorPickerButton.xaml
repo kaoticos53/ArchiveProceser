@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DesignWidth="360" d:DesignHeight="40">
     <Grid Margin="0,3">
@@ -15,11 +16,12 @@
         <!-- Color Label and Caption -->
         <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
             <TextBlock x:Name="TxtLabel" Text="Color" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-            <TextBlock x:Name="TxtDesc" Text="Descripción del color" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
+            <TextBlock x:Name="TxtDesc" Text="" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
         </StackPanel>
 
         <!-- Color Swatch Button with Palette Popup -->
-        <Button x:Name="BtnSwatch" Grid.Column="1" Click="BtnSwatch_Click" Style="{DynamicResource SecondaryButton}" Padding="2" Margin="0,0,6,0" ToolTip="Seleccionar color de la paleta rápida">
+        <Button x:Name="BtnSwatch" Grid.Column="1" Click="BtnSwatch_Click" Style="{DynamicResource SecondaryButton}" Padding="2" Margin="0,0,6,0" 
+                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}">
             <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="4" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Background="#6366F1" />
         </Button>
 
@@ -30,7 +32,7 @@
                     <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.4" />
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="Paleta Rápida" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6" />
                     
                     <!-- Predefined Swatches Grid -->
                     <UniformGrid Columns="6" Width="180">

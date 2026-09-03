@@ -669,4 +669,66 @@
   <data name="Log_ContextMenu_Preview" xml:space="preserve"><value>👁️ Abrir Vista Previa</value></data>
   <data name="Log_ContextMenu_FilterNode" xml:space="preserve"><value>🎯 Filtrar solo este Nodo</value></data>
   <data name="Log_ContextMenu_FilterFile" xml:space="preserve"><value>📄 Filtrar solo este Archivo</value></data>
+
+  <!-- Watchdog, Zoom & Canvas Tooltips -->
+  <data name="ControlBar_WatchModeToolTip" xml:space="preserve"><value>Activa o detiene el Modo Vigilante en tiempo real para procesar automáticamente los archivos según caigan en las carpetas de origen.</value></data>
+  <data name="Zoom_OutToolTip" xml:space="preserve"><value>Reducir Zoom (Ctrl + -)</value></data>
+  <data name="Zoom_InToolTip" xml:space="preserve"><value>Aumentar Zoom (Ctrl + +)</value></data>
+  <data name="Zoom_FitToolTip" xml:space="preserve"><value>Ajustar todo el flujo en pantalla (Ctrl + 0)</value></data>
+  <data name="Zoom_AddNoteToolTip" xml:space="preserve"><value>Añadir Nota Adhesiva al lienzo</value></data>
+  <data name="Zoom_GroupToolTip" xml:space="preserve"><value>Agrupar nodos seleccionados o crear marco de grupo (Ctrl+G)</value></data>
+  <data name="Zoom_FitBtn" xml:space="preserve"><value>Ajustar</value></data>
+  <data name="Zoom_NoteBtn" xml:space="preserve"><value>Nota</value></data>
+  <data name="Zoom_GroupBtn" xml:space="preserve"><value>Grupo</value></data>
+
+  <!-- Group Colors & Color Picker -->
+  <data name="Color_Blue" xml:space="preserve"><value>Azul</value></data>
+  <data name="Color_Emerald" xml:space="preserve"><value>Esmeralda</value></data>
+  <data name="Color_Violet" xml:space="preserve"><value>Violeta</value></data>
+  <data name="Color_Amber" xml:space="preserve"><value>Ámbar</value></data>
+  <data name="Color_Red" xml:space="preserve"><value>Rojo</value></data>
+  <data name="Color_Slate" xml:space="preserve"><value>Pizarra</value></data>
+  <data name="Group_DeleteToolTip" xml:space="preserve"><value>Eliminar Grupo</value></data>
+  <data name="ColorPicker_Palette" xml:space="preserve"><value>Paleta Rápida</value></data>
+  <data name="ColorPicker_Description" xml:space="preserve"><value>Descripción del color</value></data>
+
+  <!-- Node Card, Telemetry & Inspector -->
+  <data name="Node_Bottleneck" xml:space="preserve"><value>⚠️ Cuello de botella</value></data>
+  <data name="Node_ItemsProcessed" xml:space="preserve"><value>📦 Elementos procesados:</value></data>
+  <data name="Node_LastItem" xml:space="preserve"><value>📄 Último elemento:</value></data>
+  <data name="Node_VariablesHeader" xml:space="preserve"><value>🔍 Variables y Metadatos del Contexto:</value></data>
+  <data name="Node_SwitchCaseNameToolTip" xml:space="preserve"><value>Nombre del caso y del puerto de salida</value></data>
+  <data name="Node_SwitchPatternsToolTip" xml:space="preserve"><value>Patrones separados por punto y coma (ej. jpg;png;webp)</value></data>
+  <data name="Node_SwitchDeleteToolTip" xml:space="preserve"><value>Eliminar este caso</value></data>
+  <data name="Node_PreviewButton" xml:space="preserve"><value>👁️ Previsualizar</value></data>
+  <data name="Node_PreviewToolTip" xml:space="preserve"><value>Abrir Vista Previa (QuickLook) del archivo seleccionado</value></data>
+  <data name="Log_FilterTraceFileToolTip" xml:space="preserve"><value>Filtrar trazabilidad de este archivo</value></data>
+  <data name="Log_JsonDetailsToolTip" xml:space="preserve"><value>Contiene detalles JSON (clic para desplegar)</value></data>
+  <data name="Log_PreviewButton" xml:space="preserve"><value>👁️ Vista Previa</value></data>
+
+  <!-- Quick Previewer -->
+  <data name="Preview_MetadataSheet" xml:space="preserve"><value>🏷️ Ficha de Metadatos</value></data>
+  <data name="Preview_CopyPath" xml:space="preserve"><value>📋 Copiar Ruta</value></data>
+  <data name="Preview_OpenExplorer" xml:space="preserve"><value>📂 Explorador</value></data>
+  <data name="Preview_Close" xml:space="preserve"><value>Cerrar (Esc)</value></data>
+  <data name="Preview_NoValidFile" xml:space="preserve"><value>No hay un archivo válido generado o seleccionado para previsualizar.</value></data>
+
+  <!-- Dialog Messages -->
+  <data name="Msg_WatchModeNoSource" xml:space="preserve"><value>No se encontraron carpetas de origen existentes configuradas en los nodos del flujo (ej. FolderSourceNode).&#xA;Configure una carpeta de entrada antes de activar el Modo Vigilante.</value></data>
+  <data name="Msg_ExecutionError" xml:space="preserve"><value>Error al ejecutar el flujo: {0}</value></data>
+  <data name="Msg_RollbackNoEntries" xml:space="preserve"><value>No hay operaciones registradas para revertir.</value></data>
+  <data name="Msg_RollbackConfirm" xml:space="preserve"><value>¿Deseas revertir {0} operaciones realizadas en la última ejecución?</value></data>
+  <data name="Msg_RollbackSuccess" xml:space="preserve"><value>Se han revertido {0} operaciones con éxito.</value></data>
+  <data name="Msg_NewWorkflowConfirm" xml:space="preserve"><value>¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.</value></data>
+  <data name="Msg_SaveError" xml:space="preserve"><value>Error al guardar el flujo: {0}</value></data>
+  <data name="Msg_LoadError" xml:space="preserve"><value>Error al cargar el flujo: {0}</value></data>
+  <data name="Msg_ExamplesNotFound" xml:space="preserve"><value>No se encontró la carpeta de ejemplos.</value></data>
+  <data name="Msg_ExamplesOpenError" xml:space="preserve"><value>Error al abrir la carpeta de ejemplos: {0}</value></data>
+  <data name="Msg_ThemeFactoryNoDelete" xml:space="preserve"><value>No se pueden eliminar los temas predefinidos de fábrica.</value></data>
+  <data name="Msg_ThemeExportSuccess" xml:space="preserve"><value>Tema exportado correctamente.</value></data>
+  <data name="Msg_ThemeImportSuccess" xml:space="preserve"><value>Tema '{0}' importado y añadido a tus temas personalizados.</value></data>
+  <data name="Msg_NodeIsolatedTestSuccess" xml:space="preserve"><value>Prueba completada con éxito para el nodo '{0}'.</value></data>
+  <data name="Msg_NodeIsolatedTestError" xml:space="preserve"><value>Error durante la prueba aislada: {0}</value></data>
+  <data name="Msg_GlobalOutputFolderError" xml:space="preserve"><value>No se pudo abrir la carpeta de salida global: {0}</value></data>
+  <data name="Msg_ExternalToolsScanSuccess" xml:space="preserve"><value>Autobúsqueda de herramientas externas completada.</value></data>
 </root>

@@ -256,7 +256,9 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
 
             string json = RenamerPresetService.SerializePreset(preset);
             File.WriteAllText(saveDialog.FileName, json);
-            MessageBox.Show("Preset guardado exitosamente.", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+            string successMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_PresetSavedSuccess", "Preset guardado exitosamente.");
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Advanced Renaming Studio");
+            MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
@@ -286,7 +288,9 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar preset: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_PresetLoadError", "Error al cargar preset: {0}"), ex.Message);
+                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
+                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

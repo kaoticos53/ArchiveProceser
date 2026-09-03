@@ -286,7 +286,8 @@
                                     </Border.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9.5" FontWeight="Bold" VerticalAlignment="Center" />
-                                        <TextBlock Text=" ⚠️ Cuello de botella" Foreground="#FECDD3" FontSize="9" FontWeight="Bold" Margin="4,0,0,0" VerticalAlignment="Center"
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Bottleneck], StringFormat=' {0}'}" 
+                                                   Foreground="#FECDD3" FontSize="9" FontWeight="Bold" Margin="4,0,0,0" VerticalAlignment="Center"
                                                    Visibility="{Binding IsBottleneck, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     </StackPanel>
                                 </Border>
@@ -408,12 +409,12 @@
                                                                         <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
                                                                             <StackPanel>
                                                                                 <Grid Margin="0,0,0,3">
-                                                                                    <TextBlock Text="📦 Elementos procesados:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_ItemsProcessed]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                                                                                     <TextBlock Text="{Binding TransmittedCountText}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
                                                                                 </Grid>
 
                                                                                 <Grid>
-                                                                                    <TextBlock Text="📄 Último elemento:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_LastItem]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                                                                                     <TextBlock Text="{Binding LastItemInfoText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentSuccessBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" HorizontalAlignment="Right" />
                                                                                 </Grid>
                                                                             </StackPanel>
@@ -423,7 +424,7 @@
                                                                         <Border Visibility="{Binding HasMetadataVariables, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                                 Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
                                                                             <StackPanel>
-                                                                                <TextBlock Text="🔍 Variables y Metadatos del Contexto:" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,0,0,4" />
+                                                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_VariablesHeader]}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,0,0,4" />
                                                                                 <ItemsControl ItemsSource="{Binding MetadataVariables}">
                                                                                     <ItemsControl.ItemTemplate>
                                                                                         <DataTemplate>
@@ -527,12 +528,12 @@
                                                                         <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
                                                                             <StackPanel>
                                                                                 <Grid Margin="0,0,0,3">
-                                                                                    <TextBlock Text="📦 Elementos procesados:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_ItemsProcessed]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                                                                                     <TextBlock Text="{Binding TransmittedCountText}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Right" />
                                                                                 </Grid>
 
                                                                                 <Grid>
-                                                                                    <TextBlock Text="📄 Último elemento:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_LastItem]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                                                                                     <TextBlock Text="{Binding LastItemInfoText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentSuccessBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" HorizontalAlignment="Right" />
                                                                                 </Grid>
                                                                             </StackPanel>
@@ -542,7 +543,7 @@
                                                                         <Border Visibility="{Binding HasMetadataVariables, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                                 Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="5" Padding="8,6" Margin="0,0,0,8">
                                                                             <StackPanel>
-                                                                                <TextBlock Text="🔍 Variables y Metadatos del Contexto:" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,0,0,4" />
+                                                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_VariablesHeader]}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,0,0,4" />
                                                                                 <ItemsControl ItemsSource="{Binding MetadataVariables}">
                                                                                     <ItemsControl.ItemTemplate>
                                                                                         <DataTemplate>
@@ -641,11 +642,11 @@
                                                      Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource AccentPrimaryBrush}"
                                                      BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
                                                      Margin="0,0,4,0" FontWeight="SemiBold"
-                                                     ToolTip="Nombre del caso y del puerto de salida">
+                                                     ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_SwitchCaseNameToolTip]}">
                                                 <TextBox.Resources>
                                                     <Style TargetType="Border">
                                                         <Setter Property="CornerRadius" Value="4" />
-                                                    </Style>
+                                                     </Style>
                                                 </TextBox.Resources>
                                             </TextBox>
 
@@ -655,11 +656,11 @@
                                                      Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
                                                      BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
                                                      HorizontalAlignment="Stretch"
-                                                     ToolTip="Patrones separados por punto y coma (ej. jpg;png;webp)">
+                                                     ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_SwitchPatternsToolTip]}">
                                                 <TextBox.Resources>
                                                     <Style TargetType="Border">
                                                         <Setter Property="CornerRadius" Value="4,0,0,4" />
-                                                    </Style>
+                                                     </Style>
                                                 </TextBox.Resources>
                                             </TextBox>
 
@@ -670,7 +671,7 @@
                                                     Content="🗑"
                                                     Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentErrorBrush}"
                                                     BorderThickness="0" Padding="6,2" FontSize="10" Cursor="Hand"
-                                                    ToolTip="Eliminar este caso">
+                                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_SwitchDeleteToolTip]}">
                                                 <Button.Resources>
                                                     <Style TargetType="Border">
                                                         <Setter Property="CornerRadius" Value="0,4,4,0" />

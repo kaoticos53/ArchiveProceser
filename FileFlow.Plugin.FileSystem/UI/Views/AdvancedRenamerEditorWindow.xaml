@@ -113,15 +113,15 @@
                         
                         <Menu Grid.Column="1" Background="Transparent">
                             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_AddMethod]}" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="8,4" FontWeight="SemiBold" FontSize="11">
-                                <MenuItem Header="📝 1. Nuevos Nombres / Plantilla" Click="AddMethod_NewName_Click" />
-                                <MenuItem Header="🔍 2. Búsqueda y Reemplazo (Regex)" Click="AddMethod_SearchReplace_Click" />
-                                <MenuItem Header="📥 3. Inserción de Texto" Click="AddMethod_Insert_Click" />
-                                <MenuItem Header="✂️ 4. Eliminación de Caracteres" Click="AddMethod_Remove_Click" />
-                                <MenuItem Header="🔤 5. Conversión de Mayúsculas" Click="AddMethod_Case_Click" />
-                                <MenuItem Header="🔢 6. Numeración Incremental" Click="AddMethod_Numbering_Click" />
-                                <MenuItem Header="📋 7. Lista / Tabla de Sustituciones" Click="AddMethod_ReplaceList_Click" />
-                                <MenuItem Header="🧹 8. Limpieza, Recorte y Normalización" Click="AddMethod_TrimClean_Click" />
-                                <MenuItem Header="🔢 9. Normalizar y Rellenar Números (01, 02...)" Click="AddMethod_NormalizeNumbers_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Template]}" Click="AddMethod_NewName_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Replace]}" Click="AddMethod_SearchReplace_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Insert]}" Click="AddMethod_Insert_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Remove]}" Click="AddMethod_Remove_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Case]}" Click="AddMethod_Case_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Numbering]}" Click="AddMethod_Numbering_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_ListReplace]}" Click="AddMethod_ReplaceList_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Clean]}" Click="AddMethod_TrimClean_Click" />
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_PadNumbers]}" Click="AddMethod_NormalizeNumbers_Click" />
                             </MenuItem>
                         </Menu>
                     </Grid>
@@ -165,13 +165,13 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Button Grid.Column="0" Command="{Binding MoveStepUpCommand}" CommandParameter="{Binding SelectedStep}" Style="{DynamicResource SecondaryButton}" Padding="4,4" Margin="0,0,3,0">
-                            <TextBlock Text="▲ Subir" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_MoveUp]}" FontSize="11" />
                         </Button>
                         <Button Grid.Column="1" Command="{Binding MoveStepDownCommand}" CommandParameter="{Binding SelectedStep}" Style="{DynamicResource SecondaryButton}" Padding="4,4" Margin="3,0,3,0">
-                            <TextBlock Text="▼ Bajar" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_MoveDown]}" FontSize="11" />
                         </Button>
                         <Button Grid.Column="2" Command="{Binding RemoveStepCommand}" CommandParameter="{Binding SelectedStep}" Style="{DynamicResource SecondaryButton}" Padding="4,4" Margin="3,0,0,0">
-                            <TextBlock Text="🗑 Eliminar" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_Delete]}" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
                         </Button>
                     </Grid>
                 </Grid>

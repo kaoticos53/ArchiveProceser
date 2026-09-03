@@ -86,7 +86,9 @@ public partial class MediaPresetManagerWindow : Window
 
         MediaPresetManagerService.Instance.SavePreset(_selectedPreset);
         LoadPresetsList();
-        MessageBox.Show("Preset guardado con éxito.", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+        string successMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_MsgSaveSuccess", "Preset guardado con éxito.");
+        string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_WindowTitle", "Media Preset Manager");
+        MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void DeletePreset_Click(object sender, RoutedEventArgs e)
@@ -95,11 +97,15 @@ public partial class MediaPresetManagerWindow : Window
 
         if (_selectedPreset.IsSystemDefault)
         {
-            MessageBox.Show("No se pueden eliminar los presets predeterminados del sistema.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+            string defaultMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_MsgDefaultCannotDelete", "No se pueden eliminar los presets predeterminados del sistema.");
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Warning", "Aviso");
+            MessageBox.Show(defaultMsg, title, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var result = MessageBox.Show($"¿Deseas eliminar el preset '{_selectedPreset.Name}'?", "Confirmar Eliminación", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        string confirmMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_MsgDeleteConfirm", "¿Deseas eliminar el preset '{0}'?"), _selectedPreset.Name);
+        string confirmTitle = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_DeleteBtn", "Eliminar");
+        var result = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result == MessageBoxResult.Yes)
         {
             MediaPresetManagerService.Instance.DeletePreset(_selectedPreset.Id);
@@ -109,7 +115,9 @@ public partial class MediaPresetManagerWindow : Window
 
     private void ResetDefaults_Click(object sender, RoutedEventArgs e)
     {
-        var result = MessageBox.Show("¿Deseas restablecer todos los presets a los valores por defecto del sistema?", "Restablecer Presets", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        string resetMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_MsgResetConfirm", "¿Deseas restablecer todos los presets a los valores por defecto del sistema?");
+        string resetTitle = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_ResetBtn", "Restablecer");
+        var result = MessageBox.Show(resetMsg, resetTitle, MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result == MessageBoxResult.Yes)
         {
             MediaPresetManagerService.Instance.ResetToDefaults();

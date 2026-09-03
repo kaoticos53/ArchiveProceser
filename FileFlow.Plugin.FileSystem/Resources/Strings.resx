@@ -75,4 +75,22 @@
   <data name="AdvancedRenamer_FooterHint" xml:space="preserve"><value>Changes will be applied to the node upon clicking 'Save and Apply to Node'.</value></data>
   <data name="AdvancedRenamer_SaveAndApply" xml:space="preserve"><value>✓ Save &amp; Apply to Node</value></data>
   <data name="Param_ExtensionFilter" xml:space="preserve"><value>Extension Filter</value></data>
+
+  <!-- Advanced Renamer Tabs and Controls -->
+  <data name="Renamer_Tab_Template" xml:space="preserve"><value>📝 1. New Names / Template</value></data>
+  <data name="Renamer_Tab_Replace" xml:space="preserve"><value>🔍 2. Search &amp; Replace (Regex)</value></data>
+  <data name="Renamer_Tab_Insert" xml:space="preserve"><value>📥 3. Insert Text</value></data>
+  <data name="Renamer_Tab_Remove" xml:space="preserve"><value>✂️ 4. Delete Characters</value></data>
+  <data name="Renamer_Tab_Case" xml:space="preserve"><value>🔤 5. Case Conversion</value></data>
+  <data name="Renamer_Tab_Numbering" xml:space="preserve"><value>🔢 6. Incremental Numbering</value></data>
+  <data name="Renamer_Tab_ListReplace" xml:space="preserve"><value>📋 7. Substitution Table</value></data>
+  <data name="Renamer_Tab_Clean" xml:space="preserve"><value>🧹 8. Cleanup &amp; Trimming</value></data>
+  <data name="Renamer_Tab_PadNumbers" xml:space="preserve"><value>🔢 9. Pad Numbers (01, 02...)</value></data>
+  <data name="Renamer_Btn_MoveUp" xml:space="preserve"><value>▲ Move Up</value></data>
+  <data name="Renamer_Btn_MoveDown" xml:space="preserve"><value>▼ Move Down</value></data>
+  <data name="Renamer_Btn_Delete" xml:space="preserve"><value>🗑 Delete</value></data>
+  <data name="Renamer_Col_Search" xml:space="preserve"><value>Search Text (or Variable)</value></data>
+  <data name="Renamer_Col_Replace" xml:space="preserve"><value>Replace With (or Variable)</value></data>
+  <data name="Msg_PresetSavedSuccess" xml:space="preserve"><value>Preset saved successfully.</value></data>
+  <data name="Msg_PresetLoadError" xml:space="preserve"><value>Error loading preset: {0}</value></data>
 </root>

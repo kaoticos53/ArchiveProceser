@@ -15,6 +15,12 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
      - Actualizado el distintivo del catálogo de nodos al total oficial consolidado (**`🧩 60 Nodos DAG`**).
      - Modernizadas las insignias descriptivas: `⚡ Procesamiento Asíncrono`, `🧩 60 Nodos DAG` y `🛡️ Pipelines No Destructivos`.
      - Añadido el método `SetNodeCount(int count)` en `SplashScreenWindow.xaml.cs`.
+  1. **Internacionalización Integral de Textos Hardcoded en la Interfaz Gráfica (i18n / L10N)**:
+     - Auditados y migrados todos los textos literales sin traducir de la interfaz WPF (`FileFlow.App`) y de los editores y diálogos de los plugins (`FileFlow.Plugin.*`).
+     - Creadas más de 45 nuevas claves multilingües en `Strings.resx` y `Strings.es.resx` para telemetría de nodos, tooltips, panel de inspección, visor QuickLook, personalizador de temas, gestor de contraseñas, presets multimedia y renamer avanzado.
+     - Conectados todos los cuadros de diálogo `MessageBox.Show` a `LocalizationManager.Instance[...]` asegurando traducción dinámica en caliente.
+     - Cumplimiento estricto de **ADR-006 (Zero-Touch en FileFlow.App / Self-Contained Plugins)**: los recursos de los plugins se co-ubican exclusivamente en sus propias carpetas internas sin contaminar `FileFlow.App`.
+     - Suite completa de 481 tests superada con 100% de éxito.
   1. **Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular - Fases 2A a 2E Completadas)**:
      - **Fase 2A (Limpieza Inmediata)**: Eliminación de archivos duplicados en `FileFlow.App` y consolidación canónica en `FileFlow.Plugin.FileSystem/UI/` (`RegexLibraryService` con persistencia JSON y `RegexHelperViewModel` con soporte para `VariableTemplateResolver`). Normalizadas categorías de expresiones regulares.
      - **Fase 2B (Externalización de Datos Estáticos a EmbeddedResource)**:

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
+using FileFlow.Sdk.Localization;
 using Microsoft.Win32;
 
 namespace FileFlow.App.Views.Components;
@@ -119,11 +120,14 @@ public partial class WorkflowSettingsWindow : Window
             TxtSevenZip.Text = detected.SevenZipPath;
             TxtPython.Text = detected.PythonPath;
 
-            MessageBox.Show("Autobúsqueda de herramientas externas completada.", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+            string successMsg = LocalizationManager.Instance.GetString("Msg_ExternalToolsScanSuccess", "Autobúsqueda de herramientas externas completada.");
+            string title = LocalizationManager.Instance.GetString("SettingsTitle", "Ajustes");
+            MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error durante la autobúsqueda: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            string title = LocalizationManager.Instance.GetString("Error", "Error");
+            MessageBox.Show($"Error: {ex.Message}", title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {

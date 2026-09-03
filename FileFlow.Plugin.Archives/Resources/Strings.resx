@@ -38,4 +38,7 @@
   <data name="PasswordManager_ImportTxt" xml:space="preserve"><value>📥 Import (.txt)</value></data>
   <data name="PasswordManager_ExportTxt" xml:space="preserve"><value>📤 Export (.txt)</value></data>
   <data name="PasswordManager_SaveKeys" xml:space="preserve"><value>✅ Save Keys</value></data>
+  <data name="PasswordManager_MsgImportError" xml:space="preserve"><value>Error importing file: {0}</value></data>
+  <data name="PasswordManager_MsgExportSuccess" xml:space="preserve"><value>Passwords exported successfully to:\n{0}</value></data>
+  <data name="PasswordManager_MsgExportError" xml:space="preserve"><value>Error exporting file: {0}</value></data>
 </root>

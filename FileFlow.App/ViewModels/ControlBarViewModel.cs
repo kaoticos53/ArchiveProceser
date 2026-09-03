@@ -225,7 +225,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
         if (watchFolders.Count == 0)
         {
-            MessageBox.Show("No se encontraron carpetas de origen existentes configuradas en los nodos del flujo (ej. FolderSourceNode).\nConfigure una carpeta de entrada antes de activar el Modo Vigilante.", "Modo Vigilante", MessageBoxButton.OK, MessageBoxImage.Information);
+            string msg = LocalizationManager.Instance.GetString("Msg_WatchModeNoSource", "No se encontraron carpetas de origen configuradas.");
+            string title = LocalizationManager.Instance.GetString("WatchMode", "Modo Vigilante");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -288,10 +290,12 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
             else if (!result.Succeeded && !string.IsNullOrEmpty(result.ErrorMessage))
             {
-                _logViewModel.AddLog(LogLevel.Error, $"Error de Ejecución: {result.ErrorMessage}");
+                _logViewModel.AddLog(LogLevel.Error, $"Error: {result.ErrorMessage}");
                 if (!isDebug && !isWatchMode)
                 {
-                    MessageBox.Show($"Error al ejecutar el flujo: {result.ErrorMessage}", "Error de Ejecución", MessageBoxButton.OK, MessageBoxImage.Error);
+                    string msg = string.Format(LocalizationManager.Instance.GetString("Msg_ExecutionError", "Error al ejecutar el flujo: {0}"), result.ErrorMessage);
+                    string title = LocalizationManager.Instance.GetString("Error", "Error");
+                    MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             else if (result.Succeeded)
@@ -336,17 +340,22 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     {
         if (_lastJournalService == null || _lastJournalService.Entries.Count == 0)
         {
-            MessageBox.Show("No hay operaciones registradas para revertir.", "Deshacer Flujo", MessageBoxButton.OK, MessageBoxImage.Information);
+            string noEntriesMsg = LocalizationManager.Instance.GetString("Msg_RollbackNoEntries", "No hay operaciones registradas para revertir.");
+            string rollbackTitle = LocalizationManager.Instance.GetString("RollbackBtn", "Deshacer");
+            MessageBox.Show(noEntriesMsg, rollbackTitle, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        var result = MessageBox.Show($"¿Deseas revertir {_lastJournalService.Entries.Count} operaciones realizadas en la última ejecución?", "Confirmar Deshacer (Rollback)", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        string confirmMsg = string.Format(LocalizationManager.Instance.GetString("Msg_RollbackConfirm", "¿Deseas revertir {0} operaciones realizadas en la última ejecución?"), _lastJournalService.Entries.Count);
+        string confirmTitle = LocalizationManager.Instance.GetString("RollbackBtn", "Deshacer");
+        var result = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result == MessageBoxResult.Yes)
         {
             _logViewModel.AddLog(LogLevel.Information, "Iniciando Rollback de operaciones...");
             int undone = await _lastJournalService.RollbackAsync();
             _logViewModel.AddLog(LogLevel.Information, $"Rollback completado con éxito: {undone} operaciones revertidas.");
-            MessageBox.Show($"Se han revertido {undone} operaciones con éxito.", "Rollback Completado", MessageBoxButton.OK, MessageBoxImage.Information);
+            string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_RollbackSuccess", "Se han revertido {0} operaciones con éxito."), undone);
+            MessageBox.Show(successMsg, confirmTitle, MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
@@ -432,7 +441,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IsMenuOpen = false;
         if (_editorViewModel.Nodes.Count > 0)
         {
-            var result = MessageBox.Show("¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.", "Nuevo Flujo", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            string confirmMsg = LocalizationManager.Instance.GetString("Msg_NewWorkflowConfirm", "¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.");
+            string confirmTitle = LocalizationManager.Instance.GetString("NewWorkflowBtn", "Nuevo Flujo");
+            var result = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes)
             {
                 return;
@@ -448,7 +459,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     public async Task SaveWorkflowAsync()
     {
         IsMenuOpen = false;
-        var filePath = _fileDialogService.ShowSaveFileDialog("Guardar Flujo", "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json", "flujo.json");
+        string saveTitle = LocalizationManager.Instance.GetString("SaveWorkflowBtn", "Guardar Flujo");
+        var filePath = _fileDialogService.ShowSaveFileDialog(saveTitle, "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json", "flujo.json");
         if (!string.IsNullOrEmpty(filePath))
         {
             try
@@ -459,7 +471,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al guardar el flujo: {ex.Message}", "Error al Guardar", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_SaveError", "Error al guardar el flujo: {0}"), ex.Message);
+                string errorTitle = LocalizationManager.Instance.GetString("Error", "Error");
+                MessageBox.Show(errorMsg, errorTitle, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -468,7 +482,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     public async Task LoadWorkflowAsync()
     {
         IsMenuOpen = false;
-        var filePath = _fileDialogService.ShowOpenFileDialog("Cargar Flujo", "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json");
+        string loadTitle = LocalizationManager.Instance.GetString("LoadWorkflowBtn", "Cargar Flujo");
+        var filePath = _fileDialogService.ShowOpenFileDialog(loadTitle, "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json");
         if (!string.IsNullOrEmpty(filePath))
         {
             try
@@ -480,7 +495,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar el flujo: {ex.Message}", "Error al Cargar", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_LoadError", "Error al cargar el flujo: {0}"), ex.Message);
+                string errorTitle = LocalizationManager.Instance.GetString("Error", "Error");
+                MessageBox.Show(errorMsg, errorTitle, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -535,12 +552,16 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
             else
             {
-                MessageBox.Show("No se encontró la carpeta de ejemplos.", "Ejemplos de Flujos", MessageBoxButton.OK, MessageBoxImage.Warning);
+                string notFoundMsg = LocalizationManager.Instance.GetString("Msg_ExamplesNotFound", "No se encontró la carpeta de ejemplos.");
+                string examplesTitle = LocalizationManager.Instance.GetString("ControlBar_ExamplesBtn", "Ejemplos de Flujos");
+                MessageBox.Show(notFoundMsg, examplesTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir la carpeta de ejemplos: {ex.Message}", "Ejemplos de Flujos", MessageBoxButton.OK, MessageBoxImage.Error);
+            string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ExamplesOpenError", "Error al abrir la carpeta de ejemplos: {0}"), ex.Message);
+            string examplesTitle = LocalizationManager.Instance.GetString("ControlBar_ExamplesBtn", "Ejemplos de Flujos");
+            MessageBox.Show(errorMsg, examplesTitle, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

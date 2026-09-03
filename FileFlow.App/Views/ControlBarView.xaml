@@ -51,7 +51,7 @@
                 <Button Command="{Binding ToggleWatchModeCommand}" 
                         Padding="8,5" 
                         Margin="0,0,8,0" 
-                        ToolTip="Activa o detiene el Modo Vigilante en tiempo real para procesar automáticamente los archivos según caigan en las carpetas de origen.">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_WatchModeToolTip]}">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
                             <Style.Triggers>

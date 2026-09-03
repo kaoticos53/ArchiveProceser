@@ -72,7 +72,25 @@
   <data name="AdvancedRenamer_ColOriginalName" xml:space="preserve"><value>Nombre Original</value></data>
   <data name="AdvancedRenamer_ColResultName" xml:space="preserve"><value>Nombre Resultante</value></data>
   <data name="AdvancedRenamer_ColStatus" xml:space="preserve"><value>Estado</value></data>
-  <data name="AdvancedRenamer_FooterHint" xml:space="preserve"><value>Los cambios se aplicarán al nodo al hacer clic en 'Guardar y Aplicar al Nodo'.</value></data>
+  <data name="AdvancedRenamer_FooterHint" xml:space="preserve"><value>Los cambios se aplicarán al nodo al pulsar 'Guardar y Aplicar al Nodo'.</value></data>
   <data name="AdvancedRenamer_SaveAndApply" xml:space="preserve"><value>✓ Guardar y Aplicar al Nodo</value></data>
   <data name="Param_ExtensionFilter" xml:space="preserve"><value>Filtro de Extensiones</value></data>
+
+  <!-- Advanced Renamer Tabs and Controls -->
+  <data name="Renamer_Tab_Template" xml:space="preserve"><value>📝 1. Nuevos Nombres / Plantilla</value></data>
+  <data name="Renamer_Tab_Replace" xml:space="preserve"><value>🔍 2. Búsqueda y Reemplazo (Regex)</value></data>
+  <data name="Renamer_Tab_Insert" xml:space="preserve"><value>📥 3. Inserción de Texto</value></data>
+  <data name="Renamer_Tab_Remove" xml:space="preserve"><value>✂️ 4. Eliminación de Caracteres</value></data>
+  <data name="Renamer_Tab_Case" xml:space="preserve"><value>🔤 5. Conversión de Mayúsculas</value></data>
+  <data name="Renamer_Tab_Numbering" xml:space="preserve"><value>🔢 6. Numeración Incremental</value></data>
+  <data name="Renamer_Tab_ListReplace" xml:space="preserve"><value>📋 7. Lista / Tabla de Sustituciones</value></data>
+  <data name="Renamer_Tab_Clean" xml:space="preserve"><value>🧹 8. Limpieza, Recorte y Normalización</value></data>
+  <data name="Renamer_Tab_PadNumbers" xml:space="preserve"><value>🔢 9. Normalizar y Rellenar Números (01, 02...)</value></data>
+  <data name="Renamer_Btn_MoveUp" xml:space="preserve"><value>▲ Subir</value></data>
+  <data name="Renamer_Btn_MoveDown" xml:space="preserve"><value>▼ Bajar</value></data>
+  <data name="Renamer_Btn_Delete" xml:space="preserve"><value>🗑 Eliminar</value></data>
+  <data name="Renamer_Col_Search" xml:space="preserve"><value>Buscar Texto (o Variable)</value></data>
+  <data name="Renamer_Col_Replace" xml:space="preserve"><value>Reemplazar Con (o Variable)</value></data>
+  <data name="Msg_PresetSavedSuccess" xml:space="preserve"><value>Preset guardado exitosamente.</value></data>
+  <data name="Msg_PresetLoadError" xml:space="preserve"><value>Error al cargar preset: {0}</value></data>
 </root>

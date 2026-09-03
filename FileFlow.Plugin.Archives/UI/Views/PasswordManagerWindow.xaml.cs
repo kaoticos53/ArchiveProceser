@@ -54,7 +54,9 @@ public partial class PasswordManagerWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al importar archivo: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgImportError", "Error al importar archivo: {0}"), ex.Message);
+                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
+                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -74,11 +76,15 @@ public partial class PasswordManagerWindow : Window
             try
             {
                 File.WriteAllText(dialog.FileName, TxtPasswordEditor.Text);
-                MessageBox.Show($"Contraseñas exportadas con éxito a:\n{dialog.FileName}", "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
+                string successMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgExportSuccess", "Contraseñas exportadas con éxito a:\n{0}"), dialog.FileName);
+                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Success", "Éxito");
+                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al exportar archivo: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgExportError", "Error al exportar archivo: {0}"), ex.Message);
+                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
+                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="900"
              Background="#0B0D14">
@@ -42,7 +43,7 @@
 
                 <!-- Cabecera del Panel Lateral -->
                 <Border Grid.Row="0" Background="#1A1D27" Padding="14,10" BorderBrush="#252A3A" BorderThickness="0,0,0,1">
-                    <TextBlock Text="🏷️ Ficha de Metadatos" Foreground="#00E5FF" FontWeight="Bold" FontSize="13" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_MetadataSheet]}" Foreground="#00E5FF" FontWeight="Bold" FontSize="13" />
                 </Border>
 
                 <!-- Lista de Metadatos -->
@@ -64,8 +65,8 @@
                 <!-- Botones de Acción Rápida -->
                 <Border Grid.Row="2" Background="#1A1D27" Padding="10" BorderBrush="#252A3A" BorderThickness="0,1,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="📋 Copiar Ruta" Command="{Binding CopyPathToClipboardCommand}" Padding="10,6" Margin="0,0,8,0" Cursor="Hand" />
-                        <Button Content="📂 Explorador" Command="{Binding OpenInExplorerCommand}" Padding="10,6" Background="#00D2FF" Foreground="#0B0D14" FontWeight="Bold" Cursor="Hand" />
+                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_CopyPath]}" Command="{Binding CopyPathToClipboardCommand}" Padding="10,6" Margin="0,0,8,0" Cursor="Hand" />
+                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_OpenExplorer]}" Command="{Binding OpenInExplorerCommand}" Padding="10,6" Background="#00D2FF" Foreground="#0B0D14" FontWeight="Bold" Cursor="Hand" />
                     </StackPanel>
                 </Border>
             </Grid>

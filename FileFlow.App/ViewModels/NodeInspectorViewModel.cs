@@ -8,6 +8,7 @@ using FileFlow.App.Messages;
 using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.App.ViewModels;
@@ -312,13 +313,17 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
                 SelectedSnapshot = InspectedNode.OutputSnapshots.LastOrDefault() ?? snapshotIn;
                 UpdateMetadataDiff();
 
-                MessageBox.Show($"Prueba completada con éxito para el nodo '{InspectedNode.Title}'.", "Prueba Exitosa", MessageBoxButton.OK, MessageBoxImage.Information);
+                string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_NodeIsolatedTestSuccess", "Prueba completada con éxito para el nodo '{0}'."), InspectedNode.Title);
+                string title = LocalizationManager.Instance.GetString("Inspector_TestBtn", "Prueba");
+                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 InspectedNode.SetExecutionStatus(NodeExecutionStatus.PausedOnError, ex.Message);
-                _logViewModel?.AddLog(LogLevel.Error, $"[{InspectedNode.Title}] Error durante la prueba aislada: {ex.Message}");
-                MessageBox.Show($"Error durante la prueba aislada: {ex.Message}", "Fallo en la Prueba", MessageBoxButton.OK, MessageBoxImage.Error);
+                _logViewModel?.AddLog(LogLevel.Error, $"[{InspectedNode.Title}] Error: {ex.Message}");
+                string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_NodeIsolatedTestError", "Error durante la prueba aislada: {0}"), ex.Message);
+                string title = LocalizationManager.Instance.GetString("Error", "Error");
+                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -345,7 +350,9 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
 
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
-            MessageBox.Show("No hay un archivo válido generado o seleccionado para previsualizar.", "Vista Previa", MessageBoxButton.OK, MessageBoxImage.Information);
+            string noFileMsg = LocalizationManager.Instance.GetString("Preview_NoValidFile", "No hay un archivo válido generado o seleccionado para previsualizar.");
+            string title = LocalizationManager.Instance.GetString("Node_PreviewButton", "Vista Previa");
+            MessageBox.Show(noFileMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
