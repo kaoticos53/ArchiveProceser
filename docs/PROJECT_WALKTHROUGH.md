@@ -2312,8 +2312,17 @@ La barra de estado inferior de la aplicación mostraba las claves de localizaci�
    - Migrados todos los diálogos `MessageBox.Show`, tooltips, telemetría de nodos, paneles de inspección, visor QuickLook y editores modales de plugins a los diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
    - Respetada la regla **ADR-006 (Zero-Touch en FileFlow.App / Self-Contained Plugins)**: los recursos de cada plugin (`FileFlow.Plugin.FileSystem`, `FileFlow.Plugin.Archives`, `FileFlow.Plugin.Integrations`, `FileFlow.Plugin.Scripting`) residen exclusivamente dentro de su propia carpeta de plugin sin contaminar `FileFlow.App`.
    - Enlace reactivo en caliente con `LocalizationManager.Instance[...]` tanto en XAML como en ViewModels C#.
-3. **Verificación Automatizada de Pruebas**:
-   - `dotnet test`: **481 / 481 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)** en 8.0 s.
+3. **Corrección y Validación de Enlaces de Descarga de Modelos IA (23 Modelos 100% Funcionales)**:
+   - Auditadas mediante peticiones HTTP HEAD las URLs de los 23 modelos IA del catálogo embebido (`ai_models_catalog.json`).
+   - Corregidas las 4 URLs que retornaban error HTTP 404 (`MODNet`, `Real-ESRGAN Compact x4`, `OpenNSFW2 Moderation` y `WikiNeural Multilingual NER`), configurando repositorios oficiales y verificados de Hugging Face con espejos de respaldo (fallback mirrors).
+   - Verificado que el 100% de los modelos se descargan correctamente sin errores.
+4. **Implementación de Nodos de Descarga FTP y SFTP (`FtpDownloadNode` y `SftpDownloadNode`)**:
+   - Creados [`FtpDownloadNode.cs`](file:///FileFlow.Plugin.Network/FtpDownloadNode.cs) (FluentFTP, soporte TLS/SSL, modo pasivo/activo, plantillas de ruta y borrado remoto opcional) y [`SftpDownloadNode.cs`](file:///FileFlow.Plugin.Network/SftpDownloadNode.cs) (SSH.NET, autenticación por contraseña/clave privada, plantillas de tokens y borrado remoto).
+   - Co-ubicados recursos multilingües en `FileFlow.Plugin.Network/Resources/Strings.resx` y `Strings.es.resx` bajo ADR-006.
+   - Actualizado el catálogo oficial a **62 Nodos DAG**.
+   - Actualizados iconos de nodo diferenciados para subida (`📤`) y descarga (`📥`).
+5. **Verificación Automatizada de Pruebas**:
+   - `dotnet test`: **483 / 483 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)** en 8.0 s.
 
 ---
 

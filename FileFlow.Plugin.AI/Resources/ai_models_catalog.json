@@ -240,52 +240,54 @@
   "modnet": {
     "Id": "modnet",
     "FileName": "modnet_photographic_portrait_matting.onnx",
-    "DownloadUrl": "https://github.com/ZHKKKe/MODNet/raw/master/pretrained/modnet_photographic_portrait_matting.onnx",
-    "MinSizeBytes": 20000000,
-    "Description": "MODNet Portrait Matting - Recorte ultraligero y r\u00E1pido en CPU (25 MB)",
+    "DownloadUrl": "https://huggingface.co/Xenova/modnet/resolve/main/onnx/model.onnx",
+    "MinSizeBytes": 6000000,
+    "Description": "MODNet Portrait Matting - Recorte ultraligero y rápido en CPU (25 MB)",
     "FriendlyName": "MODNet Fast Matting",
-    "Category": "Visi\u00F3n",
+    "Category": "Visión",
     "DefaultUrls": null,
     "TaskType": 7,
     "MinRamBytes": 1000000000,
     "GpuRecommended": false,
     "HardwareTier": "Lightweight",
     "DownloadUrls": [
-      "https://github.com/ZHKKKe/MODNet/raw/master/pretrained/modnet_photographic_portrait_matting.onnx"
+      "https://huggingface.co/Xenova/modnet/resolve/main/onnx/model.onnx",
+      "https://huggingface.co/Xenova/modnet/resolve/main/onnx/model_quantized.onnx"
     ]
   },
   "realesrgan-compact": {
     "Id": "realesrgan-compact",
     "FileName": "realesr-general-x4v3.onnx",
-    "DownloadUrl": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.onnx",
-    "MinSizeBytes": 15000000,
-    "Description": "Real-ESRGAN Compact x4 - Super-resoluci\u00F3n y restauraci\u00F3n de fotos y documentos (16 MB)",
+    "DownloadUrl": "https://huggingface.co/Heliosoph/realesrgan-onnx/resolve/main/realesr-general-x4v3.onnx",
+    "MinSizeBytes": 4000000,
+    "Description": "Real-ESRGAN Compact x4 - Super-resolución y restauración de fotos y documentos (16 MB)",
     "FriendlyName": "Real-ESRGAN Compact x4",
-    "Category": "Visi\u00F3n",
+    "Category": "Visión",
     "DefaultUrls": null,
     "TaskType": 8,
     "MinRamBytes": 1500000000,
     "GpuRecommended": false,
     "HardwareTier": "Lightweight",
     "DownloadUrls": [
-      "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.onnx"
+      "https://huggingface.co/Heliosoph/realesrgan-onnx/resolve/main/realesr-general-x4v3.onnx",
+      "https://huggingface.co/SceneWorks/real-esrgan-onnx/resolve/main/real_esrgan_x4.onnx"
     ]
   },
   "opennsfw2": {
     "Id": "opennsfw2",
     "FileName": "open_nsfw.onnx",
-    "DownloadUrl": "https://huggingface.co/Falconsai/nsfw_image_detection/resolve/main/onnx/model.onnx",
+    "DownloadUrl": "https://huggingface.co/bluefoxcreation/open-nsfw/resolve/main/open-nsfw.onnx",
     "MinSizeBytes": 10000000,
-    "Description": "OpenNSFW2 - Clasificador neural de contenido sensible y moderaci\u00F3n (16 MB)",
+    "Description": "OpenNSFW2 - Clasificador neural de contenido sensible y moderación (23 MB)",
     "FriendlyName": "OpenNSFW2 Moderation",
-    "Category": "Visi\u00F3n",
+    "Category": "Visión",
     "DefaultUrls": null,
     "TaskType": 9,
     "MinRamBytes": 1000000000,
     "GpuRecommended": false,
     "HardwareTier": "Lightweight",
     "DownloadUrls": [
-      "https://huggingface.co/Falconsai/nsfw_image_detection/resolve/main/onnx/model.onnx"
+      "https://huggingface.co/bluefoxcreation/open-nsfw/resolve/main/open-nsfw.onnx"
     ]
   },
   "silero-vad": {
@@ -342,18 +344,19 @@
   "pii-ner-multilingual": {
     "Id": "pii-ner-multilingual",
     "FileName": "pii-ner-multilingual.onnx",
-    "DownloadUrl": "https://huggingface.co/Babelscape/wikineural-multilingual-ner/resolve/main/onnx/model.onnx",
+    "DownloadUrl": "https://huggingface.co/jdp8/wikineural-multilingual-ner/resolve/main/onnx/model.onnx",
     "MinSizeBytes": 30000000,
-    "Description": "WikiNeural Multilingual NER - Detecci\u00F3n de entidades nombradas y nombres propios PII (35 MB)",
+    "Description": "WikiNeural Multilingual NER - Detección de entidades nombradas y nombres propios PII (35 MB)",
     "FriendlyName": "WikiNeural Multilingual NER",
-    "Category": "Seguridad \u0026 RGPD",
+    "Category": "Seguridad & RGPD",
     "DefaultUrls": null,
     "TaskType": 12,
     "MinRamBytes": 1000000000,
     "GpuRecommended": false,
     "HardwareTier": "Lightweight",
     "DownloadUrls": [
-      "https://huggingface.co/Babelscape/wikineural-multilingual-ner/resolve/main/onnx/model.onnx"
+      "https://huggingface.co/jdp8/wikineural-multilingual-ner/resolve/main/onnx/model.onnx",
+      "https://huggingface.co/Xenova/bert-base-multilingual-cased-ner-hrl/resolve/main/onnx/model_quantized.onnx"
     ]
   },
   "clip-vit-b32": {

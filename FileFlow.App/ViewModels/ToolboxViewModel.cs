@@ -224,7 +224,11 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     else if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
                              !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
                     {
-                        filteredItems = filteredItems.Where(i => i.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase));
+                        var matching = filteredItems.Where(i => i.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+                        if (matching.Count > 0)
+                        {
+                            filteredItems = matching;
+                        }
                     }
 
                     var roleGroups = filteredItems.GroupBy(i => i.Role).ToDictionary(g => g.Key, g => g.ToList());
@@ -420,6 +424,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         CurrentPerspective = CurrentPerspective == ToolboxPerspective.ByCategory
             ? ToolboxPerspective.ByPipelineRole
             : ToolboxPerspective.ByCategory;
+        SelectedCategoryFilter = "Todas";
         OnPropertyChanged(nameof(IsPipelineRolePerspective));
         OnPropertyChanged(nameof(PerspectiveButtonText));
         RefreshToolbox();
@@ -483,8 +488,10 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         if (typeName.Contains("ObjectDetector", StringComparison.OrdinalIgnoreCase)) return "🎯";
         if (typeName.Contains("Whisper", StringComparison.OrdinalIgnoreCase)) return "🎙️";
         if (typeName.Contains("DocumentProcessor", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Pdf", StringComparison.OrdinalIgnoreCase)) return "📄";
-        if (typeName.Contains("Ftp", StringComparison.OrdinalIgnoreCase)) return "📤";
-        if (typeName.Contains("Sftp", StringComparison.OrdinalIgnoreCase)) return "🔒";
+        if (typeName.Contains("FtpDownload", StringComparison.OrdinalIgnoreCase)) return "📥";
+        if (typeName.Contains("FtpUpload", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Ftp", StringComparison.OrdinalIgnoreCase)) return "📤";
+        if (typeName.Contains("SftpDownload", StringComparison.OrdinalIgnoreCase)) return "📥";
+        if (typeName.Contains("SftpUpload", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Sftp", StringComparison.OrdinalIgnoreCase)) return "🔒";
         if (typeName.Contains("Smb", StringComparison.OrdinalIgnoreCase)) return "🖧";
         if (typeName.Contains("WebDav", StringComparison.OrdinalIgnoreCase)) return "☁️";
         if (typeName.Contains("RemoteDownload", StringComparison.OrdinalIgnoreCase)) return "📥";

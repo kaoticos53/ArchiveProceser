@@ -125,7 +125,7 @@ public class ToolboxOrganizationTests
         toolbox.SearchText = tagQuery;
 
         // Assert
-        var matchedItems = toolbox.CategoryGroups.SelectMany(g => g.Items).ToList();
+        var matchedItems = toolbox.CategoryGroups.ToList().SelectMany(g => g.Items.ToList()).ToList();
         matchedItems.Should().NotBeEmpty($"Searching for '{tagQuery}' should find matching nodes via Tags.");
         matchedItems.Should().Contain(i => i.TypeName.Contains(expectedNodeNameSubstring, StringComparison.OrdinalIgnoreCase),
             $"Searching for '{tagQuery}' must find '{expectedNodeNameSubstring}'.");

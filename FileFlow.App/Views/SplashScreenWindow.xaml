@@ -143,7 +143,7 @@
                                 <TextBlock Text="⚡ Procesamiento Asíncrono" FontSize="11" Foreground="#94A3B8"/>
                             </Border>
                             <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock x:Name="TxtNodesBadge" Text="🧩 60 Nodos DAG" FontSize="11" Foreground="#94A3B8"/>
+                                <TextBlock x:Name="TxtNodesBadge" Text="🧩 62 Nodos DAG" FontSize="11" Foreground="#94A3B8"/>
                             </Border>
                             <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
                                 <TextBlock Text="🛡️ Pipelines No Destructivos" FontSize="11" Foreground="#94A3B8"/>

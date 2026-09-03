@@ -21,6 +21,16 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
      - Conectados todos los cuadros de diálogo `MessageBox.Show` a `LocalizationManager.Instance[...]` asegurando traducción dinámica en caliente.
      - Cumplimiento estricto de **ADR-006 (Zero-Touch en FileFlow.App / Self-Contained Plugins)**: los recursos de los plugins se co-ubican exclusivamente en sus propias carpetas internas sin contaminar `FileFlow.App`.
      - Suite completa de 481 tests superada con 100% de éxito.
+  2. **Corrección de Enlaces de Descarga de Modelos IA (23/23 Modelos 100% Funcionales)**:
+     - Detectadas y reparadas las 4 URLs que retornaban error 404 (`MODNet`, `Real-ESRGAN Compact x4`, `OpenNSFW2 Moderation` y `WikiNeural Multilingual NER`).
+     - Reemplazadas por enlaces directos y verificados en Hugging Face con espejos de respaldo (fallback mirrors).
+     - Validación HTTP HEAD automatizada: los 23 modelos responden 200 OK.
+  3. **Incorporación de Nodos de Descarga FTP y SFTP (`FtpDownloadNode` y `SftpDownloadNode`)**:
+     - Creados [`FtpDownloadNode`](file:///FileFlow.Plugin.Network/FtpDownloadNode.cs) y [`SftpDownloadNode`](file:///FileFlow.Plugin.Network/SftpDownloadNode.cs) para completar el ciclo bidireccional de red en `FileFlow.Plugin.Network`.
+     - Soporte para TLS/SSL, claves privadas SSH (`.pem`), plantillas de tokens (`{FileName}`, `{Year}`, `{CustomMeta}`), borrado remoto post-descarga y simulación DryRun.
+     - Co-ubicados recursos en `FileFlow.Plugin.Network/Resources/Strings.*.resx` según ADR-006.
+     - Catálogo ampliado a **62 Nodos DAG**.
+     - Suite completa de **483 tests unitarios superados al 100%**.
   1. **Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular - Fases 2A a 2E Completadas)**:
      - **Fase 2A (Limpieza Inmediata)**: Eliminación de archivos duplicados en `FileFlow.App` y consolidación canónica en `FileFlow.Plugin.FileSystem/UI/` (`RegexLibraryService` con persistencia JSON y `RegexHelperViewModel` con soporte para `VariableTemplateResolver`). Normalizadas categorías de expresiones regulares.
      - **Fase 2B (Externalización de Datos Estáticos a EmbeddedResource)**:
