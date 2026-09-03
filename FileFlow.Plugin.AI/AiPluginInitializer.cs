@@ -41,4 +41,16 @@ public class AiPluginInitializer : IPluginInitializer
             }
         }
     }
+
+    /// <summary>
+    /// Libera deterministamente todas las sesiones ONNX y tensores en memoria de los motores de IA.
+    /// Previene fugas de memoria nativa y permite recargar modelos sin reiniciar la aplicación.
+    /// </summary>
+    public static void ClearAllSessions()
+    {
+        OnnxInferenceEngine.ClearSessionCache();
+        AudioInferenceEngine.ClearSessionCache();
+        SemanticEmbeddingEngine.ClearSessionCache();
+        LanguageInferenceEngine.ClearSessionCache();
+    }
 }

@@ -1,0 +1,393 @@
+{
+  "mobilenetv2": {
+    "Id": "mobilenetv2",
+    "FileName": "mobilenetv2-7.onnx",
+    "DownloadUrl": "https://github.com/onnx/models/raw/main/validated/vision/classification/mobilenet/model/mobilenetv2-7.onnx",
+    "MinSizeBytes": 12000000,
+    "Description": "MobileNetV2 ImageNet - Clasificador visual de im\u00E1genes (14 MB)",
+    "FriendlyName": "MobileNetV2 ImageNet",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 2,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/onnx/models/raw/main/validated/vision/classification/mobilenet/model/mobilenetv2-7.onnx"
+    ]
+  },
+  "ultraface": {
+    "Id": "ultraface",
+    "FileName": "version-RFB-320.onnx",
+    "DownloadUrl": "https://github.com/onnx/models/raw/main/validated/vision/body_analysis/ultraface/models/version-RFB-320.onnx",
+    "MinSizeBytes": 1000000,
+    "Description": "UltraFace RFB 320 - Detector de rostros (1.2 MB)",
+    "FriendlyName": "UltraFace RFB 320",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 1,
+    "MinRamBytes": 500000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/onnx/models/raw/main/validated/vision/body_analysis/ultraface/models/version-RFB-320.onnx"
+    ]
+  },
+  "tiny-yolov3": {
+    "Id": "tiny-yolov3",
+    "FileName": "tiny-yolov3-11.onnx",
+    "DownloadUrl": "https://github.com/onnx/models/raw/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx",
+    "MinSizeBytes": 30000000,
+    "Description": "Tiny YOLOv3 COCO - Detecci\u00F3n de 80 objetos comunes (34 MB)",
+    "FriendlyName": "Tiny YOLOv3 COCO",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 0,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/onnx/models/raw/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx"
+    ]
+  },
+  "whisper-tiny": {
+    "Id": "whisper-tiny",
+    "FileName": "ggml-tiny.bin",
+    "DownloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
+    "MinSizeBytes": 38000000,
+    "Description": "Whisper Tiny - Transcripci\u00F3n ultra-r\u00E1pida de voz (39 MB)",
+    "FriendlyName": "Whisper Tiny",
+    "Category": "Audio",
+    "DefaultUrls": null,
+    "TaskType": 3,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+    ]
+  },
+  "whisper-base": {
+    "Id": "whisper-base",
+    "FileName": "ggml-base.bin",
+    "DownloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
+    "MinSizeBytes": 72000000,
+    "Description": "Whisper Base - Transcripci\u00F3n equilibrada de voz (148 MB)",
+    "FriendlyName": "Whisper Base",
+    "Category": "Audio",
+    "DefaultUrls": null,
+    "TaskType": 3,
+    "MinRamBytes": 2000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
+    ]
+  },
+  "whisper-small": {
+    "Id": "whisper-small",
+    "FileName": "ggml-small.bin",
+    "DownloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+    "MinSizeBytes": 240000000,
+    "Description": "Whisper Small - Transcripci\u00F3n de alta fidelidad (488 MB)",
+    "FriendlyName": "Whisper Small",
+    "Category": "Audio",
+    "DefaultUrls": null,
+    "TaskType": 3,
+    "MinRamBytes": 4000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Performance",
+    "DownloadUrls": [
+      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+    ]
+  },
+  "tessdata-spa": {
+    "Id": "tessdata-spa",
+    "FileName": "tessdata/spa.traineddata",
+    "DownloadUrl": "https://github.com/tesseract-ocr/tessdata_fast/raw/main/spa.traineddata",
+    "MinSizeBytes": 1500000,
+    "Description": "Tesseract OCR - Datos de entrenamiento Espa\u00F1ol (2.3 MB)",
+    "FriendlyName": "Tesseract OCR (Espa\u00F1ol)",
+    "Category": "OCR",
+    "DefaultUrls": null,
+    "TaskType": 6,
+    "MinRamBytes": 500000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/tesseract-ocr/tessdata_fast/raw/main/spa.traineddata"
+    ]
+  },
+  "tessdata-eng": {
+    "Id": "tessdata-eng",
+    "FileName": "tessdata/eng.traineddata",
+    "DownloadUrl": "https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata",
+    "MinSizeBytes": 2500000,
+    "Description": "Tesseract OCR - Datos de entrenamiento Ingl\u00E9s (4.1 MB)",
+    "FriendlyName": "Tesseract OCR (Ingl\u00E9s)",
+    "Category": "OCR",
+    "DefaultUrls": null,
+    "TaskType": 6,
+    "MinRamBytes": 500000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata"
+    ]
+  },
+  "grounding-dino": {
+    "Id": "grounding-dino",
+    "FileName": "yolov8s-worldv2.onnx",
+    "DownloadUrl": "https://huggingface.co/Instemic/yolo-world-onnx/resolve/main/yolov8s-worldv2.onnx",
+    "MinSizeBytes": 35000000,
+    "Description": "Grounding DINO / YOLO-World - Detecci\u00F3n de objetos por prompt en texto libre (51 MB)",
+    "FriendlyName": "Grounding DINO / Open-Vocab",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 0,
+    "MinRamBytes": 2000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/Instemic/yolo-world-onnx/resolve/main/yolov8s-worldv2.onnx"
+    ]
+  },
+  "marian-es-en": {
+    "Id": "marian-es-en",
+    "FileName": "opus-mt-es-en.onnx",
+    "DownloadUrl": "https://huggingface.co/onnx-community/opus-mt-es-en/resolve/main/onnx/decoder_model_merged_quantized.onnx",
+    "MinSizeBytes": 40000000,
+    "Description": "Helsinki-NLP MarianMT - Traductor Espa\u00F1ol a Ingl\u00E9s para prompts (193 MB)",
+    "FriendlyName": "MarianMT ES-EN (Helsinki-NLP)",
+    "Category": "NLP / Texto",
+    "DefaultUrls": null,
+    "TaskType": 4,
+    "MinRamBytes": 2000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/onnx-community/opus-mt-es-en/resolve/main/onnx/decoder_model_merged_quantized.onnx"
+    ]
+  },
+  "marian-en-es": {
+    "Id": "marian-en-es",
+    "FileName": "opus-mt-en-es.onnx",
+    "DownloadUrl": "https://huggingface.co/onnx-community/opus-mt-en-es/resolve/main/onnx/decoder_model_merged_quantized.onnx",
+    "MinSizeBytes": 40000000,
+    "Description": "Helsinki-NLP MarianMT - Traductor Ingl\u00E9s a Espa\u00F1ol de alta velocidad (193 MB)",
+    "FriendlyName": "MarianMT EN-ES (Helsinki-NLP)",
+    "Category": "NLP / Texto",
+    "DefaultUrls": null,
+    "TaskType": 4,
+    "MinRamBytes": 2000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/onnx-community/opus-mt-en-es/resolve/main/onnx/decoder_model_merged_quantized.onnx"
+    ]
+  },
+  "nllb-200-600m": {
+    "Id": "nllb-200-600m",
+    "FileName": "nllb-200-distilled-600M.onnx",
+    "DownloadUrl": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_model_merged_quantized.onnx",
+    "MinSizeBytes": 200000000,
+    "Description": "Meta NLLB-200 (600M) - Traductor neuronal universal en 200 idiomas (475 MB)",
+    "FriendlyName": "NLLB-200 (Universal 200 Idiomas)",
+    "Category": "NLP / Texto",
+    "DefaultUrls": null,
+    "TaskType": 4,
+    "MinRamBytes": 4000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Performance",
+    "DownloadUrls": [
+      "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_model_merged_quantized.onnx"
+    ]
+  },
+  "qwen2.5-1.5b-instruct": {
+    "Id": "qwen2.5-1.5b-instruct",
+    "FileName": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "DownloadUrl": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "MinSizeBytes": 500000000,
+    "Description": "Qwen 2.5 1.5B Instruct - Modelo LLM local para res\u00FAmenes y extracci\u00F3n (1.1 GB)",
+    "FriendlyName": "Qwen 2.5 1.5B Instruct",
+    "Category": "LLM / Texto",
+    "DefaultUrls": null,
+    "TaskType": 5,
+    "MinRamBytes": 4000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    ]
+  },
+  "rmbg-1.4": {
+    "Id": "rmbg-1.4",
+    "FileName": "rmbg-1.4.onnx",
+    "DownloadUrl": "https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx",
+    "MinSizeBytes": 150000000,
+    "Description": "Bria AI RMBG-1.4 - Segmentaci\u00F3n y eliminaci\u00F3n de fondo de alta fidelidad (176 MB)",
+    "FriendlyName": "RMBG 1.4 Background Remover",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 7,
+    "MinRamBytes": 2000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx"
+    ]
+  },
+  "modnet": {
+    "Id": "modnet",
+    "FileName": "modnet_photographic_portrait_matting.onnx",
+    "DownloadUrl": "https://github.com/ZHKKKe/MODNet/raw/master/pretrained/modnet_photographic_portrait_matting.onnx",
+    "MinSizeBytes": 20000000,
+    "Description": "MODNet Portrait Matting - Recorte ultraligero y r\u00E1pido en CPU (25 MB)",
+    "FriendlyName": "MODNet Fast Matting",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 7,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/ZHKKKe/MODNet/raw/master/pretrained/modnet_photographic_portrait_matting.onnx"
+    ]
+  },
+  "realesrgan-compact": {
+    "Id": "realesrgan-compact",
+    "FileName": "realesr-general-x4v3.onnx",
+    "DownloadUrl": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.onnx",
+    "MinSizeBytes": 15000000,
+    "Description": "Real-ESRGAN Compact x4 - Super-resoluci\u00F3n y restauraci\u00F3n de fotos y documentos (16 MB)",
+    "FriendlyName": "Real-ESRGAN Compact x4",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 8,
+    "MinRamBytes": 1500000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.onnx"
+    ]
+  },
+  "opennsfw2": {
+    "Id": "opennsfw2",
+    "FileName": "open_nsfw.onnx",
+    "DownloadUrl": "https://huggingface.co/Falconsai/nsfw_image_detection/resolve/main/onnx/model.onnx",
+    "MinSizeBytes": 10000000,
+    "Description": "OpenNSFW2 - Clasificador neural de contenido sensible y moderaci\u00F3n (16 MB)",
+    "FriendlyName": "OpenNSFW2 Moderation",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 9,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://huggingface.co/Falconsai/nsfw_image_detection/resolve/main/onnx/model.onnx"
+    ]
+  },
+  "silero-vad": {
+    "Id": "silero-vad",
+    "FileName": "silero_vad.onnx",
+    "DownloadUrl": "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx",
+    "MinSizeBytes": 1500000,
+    "Description": "Silero VAD v5 - Detecci\u00F3n de actividad vocal y eliminaci\u00F3n de silencios (2 MB)",
+    "FriendlyName": "Silero VAD v5",
+    "Category": "Audio \u0026 Voz",
+    "DefaultUrls": null,
+    "TaskType": 10,
+    "MinRamBytes": 500000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
+    ]
+  },
+  "piper-es-davefx": {
+    "Id": "piper-es-davefx",
+    "FileName": "es_ES-davefx-medium.onnx",
+    "DownloadUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx",
+    "MinSizeBytes": 50000000,
+    "Description": "Piper TTS Espa\u00F1ol - S\u00EDntesis neural de voz natural en espa\u00F1ol davefx (63 MB)",
+    "FriendlyName": "Piper TTS Espa\u00F1ol (Davefx)",
+    "Category": "Audio \u0026 Voz",
+    "DefaultUrls": null,
+    "TaskType": 11,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx"
+    ]
+  },
+  "piper-en-lessac": {
+    "Id": "piper-en-lessac",
+    "FileName": "en_US-lessac-medium.onnx",
+    "DownloadUrl": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
+    "MinSizeBytes": 50000000,
+    "Description": "Piper TTS Ingl\u00E9s - S\u00EDntesis neural de voz natural en ingl\u00E9s lessac (63 MB)",
+    "FriendlyName": "Piper TTS Ingl\u00E9s (Lessac)",
+    "Category": "Audio \u0026 Voz",
+    "DefaultUrls": null,
+    "TaskType": 11,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
+    ]
+  },
+  "pii-ner-multilingual": {
+    "Id": "pii-ner-multilingual",
+    "FileName": "pii-ner-multilingual.onnx",
+    "DownloadUrl": "https://huggingface.co/Babelscape/wikineural-multilingual-ner/resolve/main/onnx/model.onnx",
+    "MinSizeBytes": 30000000,
+    "Description": "WikiNeural Multilingual NER - Detecci\u00F3n de entidades nombradas y nombres propios PII (35 MB)",
+    "FriendlyName": "WikiNeural Multilingual NER",
+    "Category": "Seguridad \u0026 RGPD",
+    "DefaultUrls": null,
+    "TaskType": 12,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://huggingface.co/Babelscape/wikineural-multilingual-ner/resolve/main/onnx/model.onnx"
+    ]
+  },
+  "clip-vit-b32": {
+    "Id": "clip-vit-b32",
+    "FileName": "clip-vit-base-patch32.onnx",
+    "DownloadUrl": "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/model.onnx",
+    "MinSizeBytes": 60000000,
+    "Description": "OpenAI CLIP ViT-B/32 - Embeddings multimodales texto e imagen para b\u00FAsqueda sem\u00E1ntica (65 MB)",
+    "FriendlyName": "CLIP ViT-B/32 Multimodal",
+    "Category": "B\u00FAsqueda Sem\u00E1ntica",
+    "DefaultUrls": null,
+    "TaskType": 13,
+    "MinRamBytes": 1500000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/model.onnx"
+    ]
+  },
+  "bge-small-multilingual": {
+    "Id": "bge-small-multilingual",
+    "FileName": "bge-small-en-v1.5.onnx",
+    "DownloadUrl": "https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/onnx/model.onnx",
+    "MinSizeBytes": 40000000,
+    "Description": "BAAI BGE Small - Embeddings sem\u00E1nticos de texto de 384 dimensiones para documentos (45 MB)",
+    "FriendlyName": "BGE Small Text Embeddings",
+    "Category": "B\u00FAsqueda Sem\u00E1ntica",
+    "DefaultUrls": null,
+    "TaskType": 13,
+    "MinRamBytes": 1000000000,
+    "GpuRecommended": false,
+    "HardwareTier": "Lightweight",
+    "DownloadUrls": [
+      "https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/onnx/model.onnx"
+    ]
+  }
+}

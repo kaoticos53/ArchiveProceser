@@ -10,7 +10,27 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **481 / 481 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Loaders, AppPaths Storage, Portable Mode Provider, CLI Headless Runner, Document Plugins, Network Plugins, Data & Spreadsheet Plugins, AI & Computer Vision Plugins, File QuickPreviewer Providers, Watchdog Multi-Folder, Bottleneck Heatmap, Checkpointing & Resumption, Annotations & Group Boxes, AI Models Manager ViewModel, AI Model Persistence on Disk, LogConsole ViewModel Tests & Node Inspector Sync, PromptObjectDetectorNode & PromptTranslator MarianMT, Log Filtering & SQLite Sync, Toolbox Compact Mode Persistence, LocalAiTranslatorNode, LocalLlmProcessorNode, PromptTransformerNode, Download Error Reporting & Dismissal, AI Models Configurable URLs & Fallback, GPU Performance Metrics, HardwareCapabilityDetector, AiTaskModelResolutionTests, VisionSuiteNodesTests, AudioSuiteNodesTests, SecurityAndSemanticNodesTests, ToolboxOrganizationTests).
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
-  0. **Reorganización Inteligente de los 60 Nodos del Sistema (Taxonomía Unificada, Tags Multilingües y Perspectiva Dual)**:
+  0. **Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular - Fases 2A a 2E Completadas)**:
+     - **Fase 2A (Limpieza Inmediata)**: Eliminación de archivos duplicados en `FileFlow.App` y consolidación canónica en `FileFlow.Plugin.FileSystem/UI/` (`RegexLibraryService` con persistencia JSON y `RegexHelperViewModel` con soporte para `VariableTemplateResolver`). Normalizadas categorías de expresiones regulares.
+     - **Fase 2B (Externalización de Datos Estáticos a EmbeddedResource)**:
+       - `PromptTranslator.cs`: 650 conceptos visuales extraídos a `visual_concepts_es_en.json` embebido (reducción de 875 a 180 líneas).
+       - `AiModelManager.cs`: Catálogo completo de 20 modelos extraído a `ai_models_catalog.json` embebido (reducción de más de 300 líneas).
+       - `BuiltInThemesCatalog.cs`: 12 temas de fábrica extraídos a `builtin_themes.json` embebido (reducción de 329 a 46 líneas).
+     - **Fase 2C (Modularización de Motores Monolíticos)**:
+       - Extracción de `AiModelUrlConfig.cs`: Gestión thread-safe y persistencia JSON de URLs.
+       - Extracción de `AiModelDownloader.cs`: Cliente HTTP `SocketsHttpHandler` desacoplado con soporte multi-espejo, failover automático, reporte de progreso y validación de integridad.
+       - `AiModelManager.cs`: Convertido en una fachada limpia de 215 líneas manteniendo la compatibilidad 100% de la API pública.
+       - Extracción de `AudioWaveUtilities.cs`: Desacople de operaciones de bajo nivel NAudio (decodificación, resampling a 16kHz, escritura PCM 16 bits y generador harmónico).
+     - **Fase 2D (Jerarquía y Clase Base Abstracta FlowNodeBase / AiFlowNodeBase)**:
+       - Creada `FlowNodeBase` en `FileFlow.Sdk` con tipado seguro `GetParameter<T>()`/`SetParameter<T>()`, inicialización de puertos y helpers `Log` y `EmitAsync`.
+       - Creada `AiFlowNodeBase` en `FileFlow.Plugin.AI` con resolución por hardware/catálogo.
+       - Migrado `FaceDetectorNode` a `AiFlowNodeBase`.
+     - **Fase 2E (Robustez, Ciclo de Vida ONNX y Excepciones)**:
+       - Implementado `ClearSessionCache()` en `LanguageInferenceEngine`.
+       - Implementado `AiPluginInitializer.ClearAllSessions()` para liberar deterministamente todas las sesiones ONNX en memoria (`OnnxInferenceEngine`, `AudioInferenceEngine`, `SemanticEmbeddingEngine`, `LanguageInferenceEngine`).
+       - Refinados bloques `catch` silenciosos con diagnóstico explícito.
+       - Aislamiento de concurrencia con `[Collection("Localization")]` en `ToolboxOrganizationTests`.
+  1. **Reorganización Inteligente de los 60 Nodos del Sistema (Taxonomía Unificada, Tags Multilingües y Perspectiva Dual)**:
      - Taxonomía limpia en 11 categorías de dominio: `Files`, `ImageVision`, `AudioVoice`, `Documents`, `Data`, `LanguageAI`, `Security`, `Logic`, `Archives`, `Network`, `Integrations`.
      - Nuevo enum `PipelineRole` (`Source`, `Filter`, `Transform`, `Analyze`, `Sink`, `Control`) en `FileFlow.Sdk`.
      - Decoración exhaustiva de los 60 nodos oficiales en los 11 proyectos de plugins con `PipelineRole` y array de `Tags` de búsqueda multilingües (español e inglés).

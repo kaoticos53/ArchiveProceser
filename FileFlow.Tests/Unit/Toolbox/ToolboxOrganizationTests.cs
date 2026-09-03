@@ -21,6 +21,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Toolbox;
 
+[Collection("Localization")]
 public class ToolboxOrganizationTests
 {
     private static readonly HashSet<string> ExpectedCategories = new(StringComparer.OrdinalIgnoreCase)

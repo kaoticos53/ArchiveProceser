@@ -72,7 +72,7 @@ public static class AudioInferenceEngine
         CancellationToken cancellationToken = default)
     {
         // 1. Leer y convertir audio a 16.000 Hz mono float[-1.0, 1.0]
-        var (samples, sampleRate, totalDuration) = await ReadAudioSamplesAsync(audioFilePath, cancellationToken).ConfigureAwait(false);
+        var (samples, sampleRate, totalDuration) = await AudioWaveUtilities.ReadAudioSamplesAsync(audioFilePath, cancellationToken).ConfigureAwait(false);
 
         if (samples.Length == 0)
         {
@@ -145,7 +145,7 @@ public static class AudioInferenceEngine
         if (!string.IsNullOrWhiteSpace(outputTrimmedPath) && voiceDetected)
         {
             trimmedPath = outputTrimmedPath;
-            await ExportTrimmedWavAsync(samples, sampleRate, mergedSegments, trimmedPath, cancellationToken).ConfigureAwait(false);
+            await AudioWaveUtilities.ExportTrimmedWavAsync(samples, sampleRate, mergedSegments, trimmedPath, cancellationToken).ConfigureAwait(false);
         }
 
         return new VadAnalysisResult(
@@ -296,84 +296,7 @@ public static class AudioInferenceEngine
         return merged;
     }
 
-    private static async Task<(float[] Samples, int SampleRate, double TotalDuration)> ReadAudioSamplesAsync(
-        string filePath,
-        CancellationToken cancellationToken)
-    {
-        return await Task.Run(() =>
-        {
-            using var reader = new AudioFileReader(filePath);
-            ISampleProvider source = reader;
 
-            // Resamplear a 16.000 Hz si difiere
-            if (reader.WaveFormat.SampleRate != 16000)
-            {
-                source = new WdlResamplingSampleProvider(source, 16000);
-            }
-
-            // Mezclar a mono si es estéreo
-            if (source.WaveFormat.Channels > 1)
-            {
-                source = new StereoToMonoSampleProvider(source);
-            }
-
-            var sampleList = new List<float>();
-            float[] buffer = new float[4096];
-            int read;
-            while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                for (int i = 0; i < read; i++)
-                {
-                    sampleList.Add(buffer[i]);
-                }
-            }
-
-            float[] samples = [.. sampleList];
-            double duration = (double)samples.Length / 16000.0;
-            return (samples, 16000, duration);
-        }, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task ExportTrimmedWavAsync(
-        float[] samples,
-        int sampleRate,
-        IReadOnlyList<SpeechSegment> segments,
-        string outputPath,
-        CancellationToken cancellationToken)
-    {
-        await Task.Run(() =>
-        {
-            string? dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
-
-            var trimmedSamples = new List<float>();
-            foreach (var seg in segments)
-            {
-                int startIdx = Math.Clamp((int)(seg.StartSeconds * sampleRate), 0, samples.Length);
-                int endIdx = Math.Clamp((int)(seg.EndSeconds * sampleRate), 0, samples.Length);
-                int count = endIdx - startIdx;
-                if (count > 0)
-                {
-                    trimmedSamples.AddRange(samples.AsSpan(startIdx, count).ToArray());
-                }
-            }
-
-            var waveFormat = new WaveFormat(sampleRate, 16, 1);
-            using var writer = new WaveFileWriter(outputPath, waveFormat);
-
-            // Convertir float a 16-bit PCM
-            byte[] pcmBuffer = new byte[trimmedSamples.Count * 2];
-            for (int i = 0; i < trimmedSamples.Count; i++)
-            {
-                short s = (short)Math.Clamp((int)(trimmedSamples[i] * 32767f), -32768, 32767);
-                pcmBuffer[i * 2] = (byte)(s & 0xff);
-                pcmBuffer[i * 2 + 1] = (byte)((s >> 8) & 0xff);
-            }
-
-            writer.Write(pcmBuffer, 0, pcmBuffer.Length);
-        }, cancellationToken).ConfigureAwait(false);
-    }
 
     /// <summary>
     /// Sintetiza voz neural a partir de texto usando Piper TTS hacia un archivo .wav PCM de 16 bits.
@@ -411,7 +334,7 @@ public static class AudioInferenceEngine
             }
 
             // Generador sintético harmónico de voz (para pruebas o fallback local offline)
-            return GenerateCadenceSpeechWav(text, outputWavPath, speechRate, sampleRate);
+            return AudioWaveUtilities.GenerateCadenceSpeechWav(text, outputWavPath, speechRate, sampleRate);
         }, cancellationToken).ConfigureAwait(false);
     }
 
@@ -451,66 +374,8 @@ public static class AudioInferenceEngine
             audioFloats = outputs.First().AsTensor<float>().ToArray();
         }
 
-        var waveFormat = new WaveFormat(sampleRate, 16, 1);
-        using var writer = new WaveFileWriter(outputWavPath, waveFormat);
-
-        byte[] pcmBuffer = new byte[audioFloats.Length * 2];
-        for (int i = 0; i < audioFloats.Length; i++)
-        {
-            short s = (short)Math.Clamp((int)(audioFloats[i] * 32767f), -32768, 32767);
-            pcmBuffer[i * 2] = (byte)(s & 0xff);
-            pcmBuffer[i * 2 + 1] = (byte)((s >> 8) & 0xff);
-        }
-
-        writer.Write(pcmBuffer, 0, pcmBuffer.Length);
+        AudioWaveUtilities.WritePcm16Wav(outputWavPath, audioFloats, sampleRate);
         return (double)audioFloats.Length / sampleRate;
-    }
-
-    private static double GenerateCadenceSpeechWav(
-        string text,
-        string outputWavPath,
-        double speechRate,
-        int sampleRate)
-    {
-        // Genera una locución sintetizada limpia modulada por longitud de palabras y sílabas
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        double wordDuration = 0.28 / Math.Clamp(speechRate, 0.5, 2.0);
-        int totalSamples = (int)(words.Length * wordDuration * sampleRate) + (sampleRate / 4);
-
-        float[] samples = new float[totalSamples];
-        int sampleIndex = 0;
-
-        foreach (var word in words)
-        {
-            int wordSamples = (int)(wordDuration * sampleRate);
-            double baseFreq = 160.0 + (word.Length * 8.0 % 60.0); // Modulación formant vocal
-
-            for (int i = 0; i < wordSamples && sampleIndex < totalSamples; i++)
-            {
-                double t = (double)i / sampleRate;
-                double env = Math.Sin(Math.PI * i / wordSamples); // Envolvente de sílaba
-                float s = (float)(env * (0.6 * Math.Sin(2 * Math.PI * baseFreq * t) + 0.3 * Math.Sin(4 * Math.PI * baseFreq * t)));
-                samples[sampleIndex++] = s;
-            }
-
-            // Pequeña pausa entre palabras (30 ms)
-            int pauseSamples = (int)(0.03 * sampleRate);
-            sampleIndex = Math.Min(totalSamples, sampleIndex + pauseSamples);
-        }
-
-        var waveFormat = new WaveFormat(sampleRate, 16, 1);
-        using var writer = new WaveFileWriter(outputWavPath, waveFormat);
-
-        byte[] pcmBuffer = new byte[totalSamples * 2];
-        for (int i = 0; i < totalSamples; i++)
-        {
-            short s = (short)Math.Clamp((int)(samples[i] * 32767f), -32768, 32767);
-            pcmBuffer[i * 2] = (byte)(s & 0xff);
-            pcmBuffer[i * 2 + 1] = (byte)((s >> 8) & 0xff);
-        }
-
-        writer.Write(pcmBuffer, 0, pcmBuffer.Length);
-        return (double)totalSamples / sampleRate;
     }
 
     /// <summary>

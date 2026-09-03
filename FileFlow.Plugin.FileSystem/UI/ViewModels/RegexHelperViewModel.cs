@@ -4,7 +4,9 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.FileSystem.UI.Services;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
+using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem.UI.ViewModels;
 
@@ -57,17 +59,13 @@ public partial class RegexHelperViewModel : ObservableObject
     private bool _isValidRegex = true;
 
     [ObservableProperty]
-    private string _regexErrorMessage = "✓ Expresión regular válida";
-
-    [ObservableProperty]
-    private string _replacementResult = string.Empty;
+    private string _regexErrorMessage = string.Empty;
 
     [ObservableProperty]
     private int _matchCount = 0;
 
-    public ObservableCollection<RegexMatchItemViewModel> Matches { get; } = [];
-    public ObservableCollection<RegexPatternItem> BuiltInPatterns { get; } = [];
-    public ObservableCollection<RegexPatternItem> UserPatterns { get; } = [];
+    [ObservableProperty]
+    private string _replacementResult = string.Empty;
 
     [ObservableProperty]
     private RegexPatternItem? _selectedLibraryItem;
@@ -76,37 +74,26 @@ public partial class RegexHelperViewModel : ObservableObject
     private string _newPatternName = string.Empty;
 
     [ObservableProperty]
-    private string _newPatternCategory = "General";
+    private string _newPatternCategory = "Personalizados";
 
     [ObservableProperty]
     private string _newPatternDescription = string.Empty;
 
+    public ObservableCollection<RegexMatchItemViewModel> Matches { get; } = [];
+    public ObservableCollection<RegexPatternItem> BuiltInPatterns { get; } = [];
+    public ObservableCollection<RegexPatternItem> UserPatterns { get; } = [];
+    public ObservableCollection<string> Categories { get; } = [];
+
     public RegexHelperViewModel(string initialPattern = "", string initialReplacement = "", string initialTestInput = "", RegexLibraryService? libraryService = null)
     {
         _libraryService = libraryService ?? RegexLibraryService.Instance;
-        _pattern = initialPattern;
-        _replacement = initialReplacement;
-        _testInput = string.IsNullOrWhiteSpace(initialTestInput) 
-            ? "documento_v1_2024.pdf\nserie_s01e02_1080p.mkv\n[Fansub] Anime 01.mp4\nfoto-vacaciones-01-2023.jpg" 
-            : initialTestInput;
 
-        LoadLibraryPatterns();
+        Pattern = initialPattern;
+        Replacement = initialReplacement;
+        TestInput = string.IsNullOrWhiteSpace(initialTestInput) ? GetDefaultSampleInput() : initialTestInput;
+
+        LoadLibrary();
         EvaluateRegex();
-    }
-
-    private void LoadLibraryPatterns()
-    {
-        BuiltInPatterns.Clear();
-        foreach (var p in _libraryService.GetBuiltInPatterns())
-        {
-            BuiltInPatterns.Add(p);
-        }
-
-        UserPatterns.Clear();
-        foreach (var p in _libraryService.GetUserPatterns())
-        {
-            UserPatterns.Add(p);
-        }
     }
 
     partial void OnPatternChanged(string value) => EvaluateRegex();
@@ -117,21 +104,108 @@ public partial class RegexHelperViewModel : ObservableObject
     partial void OnSinglelineChanged(bool value) => EvaluateRegex();
     partial void OnIgnorePatternWhitespaceChanged(bool value) => EvaluateRegex();
 
-    partial void OnSelectedLibraryItemChanged(RegexPatternItem? value)
+    public void EvaluateRegex()
     {
-        if (value != null)
+        Matches.Clear();
+        MatchCount = 0;
+        ReplacementResult = string.Empty;
+
+        if (string.IsNullOrEmpty(Pattern))
         {
-            ApplyLibraryPattern(value);
+            IsValidRegex = true;
+            RegexErrorMessage = "Introduce una expresión regular para comenzar a probar.";
+            ReplacementResult = TestInput;
+            return;
+        }
+
+        try
+        {
+            var options = RegexOptions.None;
+            if (IgnoreCase) options |= RegexOptions.IgnoreCase;
+            if (Multiline) options |= RegexOptions.Multiline;
+            if (Singleline) options |= RegexOptions.Singleline;
+            if (IgnorePatternWhitespace) options |= RegexOptions.IgnorePatternWhitespace;
+
+            var regex = new Regex(Pattern, options, RegexTimeout);
+            IsValidRegex = true;
+            RegexErrorMessage = "✓ Expresión regular válida y compilada correctamente.";
+
+            if (string.IsNullOrEmpty(TestInput))
+            {
+                return;
+            }
+
+            var matchCollection = regex.Matches(TestInput);
+            MatchCount = matchCollection.Count;
+
+            int matchIndex = 1;
+            foreach (Match match in matchCollection)
+            {
+                var matchVm = new RegexMatchItemViewModel
+                {
+                    MatchNumber = matchIndex++,
+                    Value = match.Value,
+                    Index = match.Index,
+                    Length = match.Length
+                };
+
+                for (int i = 1; i < match.Groups.Count; i++)
+                {
+                    var grp = match.Groups[i];
+                    string groupName = regex.GroupNameFromNumber(i);
+                    matchVm.Groups.Add(new RegexGroupItemViewModel
+                    {
+                        GroupNumber = i,
+                        GroupName = groupName,
+                        Value = grp.Value,
+                        Index = grp.Index,
+                        Length = grp.Length
+                    });
+                }
+
+                Matches.Add(matchVm);
+            }
+
+            if (!string.IsNullOrEmpty(Replacement))
+            {
+                var sampleContext = new FileItemContext(TestInput);
+                ReplacementResult = VariableTemplateResolver.ApplyRegexReplacement(regex, TestInput, Replacement, sampleContext, replaceAll: true);
+            }
+            else
+            {
+                ReplacementResult = regex.Replace(TestInput, string.Empty);
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            IsValidRegex = false;
+            RegexErrorMessage = $"Error sintáctico: {ex.Message}";
+            ReplacementResult = TestInput;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            IsValidRegex = false;
+            RegexErrorMessage = "Error: La evaluación superó el tiempo límite (1 segundo).";
+            ReplacementResult = TestInput;
         }
     }
 
     [RelayCommand]
-    public void ApplyLibraryPattern(RegexPatternItem? item)
+    public void LoadSampleInput()
+    {
+        TestInput = GetDefaultSampleInput();
+    }
+
+    [RelayCommand]
+    public void ApplyLibraryPattern(RegexPatternItem item)
     {
         if (item == null) return;
         Pattern = item.Pattern;
-        Replacement = item.Replacement;
-        if (!string.IsNullOrWhiteSpace(item.SampleInput) && string.IsNullOrWhiteSpace(TestInput))
+        if (!string.IsNullOrEmpty(item.Replacement))
+        {
+            Replacement = item.Replacement;
+        }
+        if (!string.IsNullOrEmpty(item.SampleInput))
         {
             TestInput = item.SampleInput;
         }
@@ -140,14 +214,10 @@ public partial class RegexHelperViewModel : ObservableObject
     [RelayCommand]
     public void SaveCurrentPattern()
     {
-        if (string.IsNullOrWhiteSpace(Pattern))
-        {
-            MessageBox.Show("Escribe un patrón de expresión regular antes de guardar.", "FileFlow", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(Pattern)) return;
 
-        string name = string.IsNullOrWhiteSpace(NewPatternName) ? $"Patrón_{DateTime.Now:yyyyMMdd_HHmmss}" : NewPatternName.Trim();
-        string category = string.IsNullOrWhiteSpace(NewPatternCategory) ? "General" : NewPatternCategory.Trim();
+        string name = string.IsNullOrWhiteSpace(NewPatternName) ? $"Patrón {DateTime.Now:yyyy-MM-dd HH:mm}" : NewPatternName.Trim();
+        string category = string.IsNullOrWhiteSpace(NewPatternCategory) ? "Personalizados" : NewPatternCategory.Trim();
 
         var item = new RegexPatternItem
         {
@@ -160,96 +230,60 @@ public partial class RegexHelperViewModel : ObservableObject
             IsBuiltIn = false
         };
 
-        _libraryService.AddUserPattern(item);
-        LoadLibraryPatterns();
+        _libraryService.SaveUserPattern(item);
+        LoadLibrary();
+
         NewPatternName = string.Empty;
         NewPatternDescription = string.Empty;
     }
 
     [RelayCommand]
-    public void DeleteUserPattern(RegexPatternItem? item)
+    public void DeleteUserPattern(RegexPatternItem item)
     {
         if (item == null || item.IsBuiltIn) return;
-        _libraryService.DeleteUserPattern(item.Name);
-        LoadLibraryPatterns();
+        _libraryService.DeleteUserPattern(item.Id);
+        LoadLibrary();
     }
 
     [RelayCommand]
-    public void LoadSampleInput()
+    public void ApplyAndClose(Window window)
     {
-        TestInput = "documento_v1_2024.pdf\nserie_s01e02_1080p.mkv\n[Fansub] Anime 01.mp4\nfoto-vacaciones-01-2023.jpg";
+        window.DialogResult = true;
+        window.Close();
     }
 
-    private void EvaluateRegex()
+    private void LoadLibrary()
     {
-        Matches.Clear();
-
-        if (string.IsNullOrEmpty(Pattern))
+        BuiltInPatterns.Clear();
+        foreach (var p in _libraryService.GetBuiltInPatterns())
         {
-            IsValidRegex = true;
-            RegexErrorMessage = "Introduce una expresión regular para probarla";
-            ReplacementResult = TestInput;
-            MatchCount = 0;
-            return;
+            BuiltInPatterns.Add(p);
         }
 
-        var options = RegexOptions.None;
-        if (IgnoreCase) options |= RegexOptions.IgnoreCase;
-        if (Multiline) options |= RegexOptions.Multiline;
-        if (Singleline) options |= RegexOptions.Singleline;
-        if (IgnorePatternWhitespace) options |= RegexOptions.IgnorePatternWhitespace;
-
-        try
+        UserPatterns.Clear();
+        foreach (var p in _libraryService.GetUserPatterns())
         {
-            var regex = new Regex(Pattern, options, RegexTimeout);
-            IsValidRegex = true;
-            RegexErrorMessage = "✓ Expresión regular sintácticamente correcta";
-
-            var matchCollection = regex.Matches(TestInput);
-            MatchCount = matchCollection.Count;
-
-            int matchIndex = 1;
-            foreach (Match m in matchCollection)
-            {
-                var matchVm = new RegexMatchItemViewModel
-                {
-                    MatchNumber = matchIndex++,
-                    Value = m.Value,
-                    Index = m.Index,
-                    Length = m.Length
-                };
-
-                for (int i = 0; i < m.Groups.Count; i++)
-                {
-                    var g = m.Groups[i];
-                    matchVm.Groups.Add(new RegexGroupItemViewModel
-                    {
-                        GroupNumber = i,
-                        GroupName = regex.GroupNameFromNumber(i),
-                        Value = g.Value,
-                        Index = g.Index,
-                        Length = g.Length
-                    });
-                }
-
-                Matches.Add(matchVm);
-            }
-
-            ReplacementResult = regex.Replace(TestInput, Replacement ?? string.Empty);
+            UserPatterns.Add(p);
         }
-        catch (ArgumentException ex)
+
+        Categories.Clear();
+        var allCats = BuiltInPatterns.Concat(UserPatterns).Select(p => p.Category).Distinct();
+        foreach (var cat in allCats)
         {
-            IsValidRegex = false;
-            RegexErrorMessage = $"⚠ Error en la sintaxis de la expresión regular: {ex.Message}";
-            ReplacementResult = TestInput;
-            MatchCount = 0;
+            Categories.Add(cat);
         }
-        catch (RegexMatchTimeoutException)
-        {
-            IsValidRegex = false;
-            RegexErrorMessage = "⚠ Timeout: la expresión regular tardó demasiado tiempo en evaluarse (posible backtracking catastrófico)";
-            ReplacementResult = TestInput;
-            MatchCount = 0;
-        }
+    }
+
+    private static string GetDefaultSampleInput()
+    {
+        return string.Join(Environment.NewLine, [
+            "serie_guapa_1x02_hdtv.mov",
+            "Breaking.Bad.S01E02.Pilot.1080p.mkv",
+            "1 - pepe.jpg",
+            "10 - kilo.jpg",
+            "informe_2026_09_01_borrador_v1.docx",
+            "Cancion Fabulosa (Official Video) [Audio 5.1].mp3",
+            "Factura #998! @ClienteAlfa?.pdf"
+        ]);
     }
 }

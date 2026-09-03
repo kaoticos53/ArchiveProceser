@@ -566,4 +566,19 @@ public static class LanguageInferenceEngine
             return word;
         });
     }
+
+    /// <summary>
+    /// Libera deterministamente todas las sesiones ONNX en caché de LanguageInferenceEngine.
+    /// </summary>
+    public static void ClearSessionCache()
+    {
+        foreach (var lazy in _sessions.Values)
+        {
+            if (lazy.IsValueCreated)
+            {
+                try { lazy.Value.Dispose(); } catch { }
+            }
+        }
+        _sessions.Clear();
+    }
 }

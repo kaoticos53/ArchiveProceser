@@ -28,7 +28,7 @@
   },
   {
     "Name": "Año en 4 dígitos (19xx o 20xx)",
-    "Category": "Fechas",
+    "Category": "Fechas y Tiempos",
     "Pattern": "\\b(19\\d\\d|20\\d\\d)\\b",
     "Replacement": "${1}",
     "Description": "Extrae el año en cuatro dígitos entre 1900 y 2099.",
@@ -37,7 +37,7 @@
   },
   {
     "Name": "Fecha YYYY-MM-DD",
-    "Category": "Fechas",
+    "Category": "Fechas y Tiempos",
     "Pattern": "(\\d{4})[-_](\\d{2})[-_](\\d{2})",
     "Replacement": "$1-$2-$3",
     "Description": "Reconoce y normaliza fechas en formato ISO estándar YYYY-MM-DD.",
@@ -46,7 +46,7 @@
   },
   {
     "Name": "Fecha DD-MM-YYYY a ISO",
-    "Category": "Fechas",
+    "Category": "Fechas y Tiempos",
     "Pattern": "(\\d{2})[-_](\\d{2})[-_](\\d{4})",
     "Replacement": "$3-$2-$1",
     "Description": "Invierte fechas europeas (DD-MM-YYYY) a formato cronológico (YYYY-MM-DD).",
@@ -55,7 +55,7 @@
   },
   {
     "Name": "Eliminar Corchetes y su contenido",
-    "Category": "Limpieza",
+    "Category": "Limpieza de Nombres",
     "Pattern": "\\[.*?\\]",
     "Replacement": "",
     "Description": "Elimina cualquier bloque encerrado entre corchetes como [YTS], [1080p] o [Grupo].",
@@ -64,7 +64,7 @@
   },
   {
     "Name": "Eliminar Paréntesis y su contenido",
-    "Category": "Limpieza",
+    "Category": "Limpieza de Nombres",
     "Pattern": "\\(.*?\\)",
     "Replacement": "",
     "Description": "Elimina cualquier bloque encerrado entre paréntesis como (Director Cut).",
@@ -73,7 +73,7 @@
   },
   {
     "Name": "Colapsar Espacios / Guiones Múltiples",
-    "Category": "Limpieza",
+    "Category": "Limpieza de Nombres",
     "Pattern": "[\\s_\\-]+",
     "Replacement": "_",
     "Description": "Reemplaza cualquier secuencia de espacios, guiones o barras bajas por un único guion bajo.",
@@ -82,7 +82,7 @@
   },
   {
     "Name": "Eliminar Caracteres Especiales",
-    "Category": "Limpieza",
+    "Category": "Limpieza de Nombres",
     "Pattern": "[^\\w\\s\\.\\-]",
     "Replacement": "",
     "Description": "Elimina símbolos no alfanuméricos como ¡!¿?#$%&/()=",

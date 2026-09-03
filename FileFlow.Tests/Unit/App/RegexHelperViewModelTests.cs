@@ -1,5 +1,5 @@
-using FileFlow.App.Services;
-using FileFlow.App.ViewModels;
+using FileFlow.Plugin.FileSystem.UI.Services;
+using FileFlow.Plugin.FileSystem.UI.ViewModels;
 using FluentAssertions;
 using Xunit;
 

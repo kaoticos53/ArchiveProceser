@@ -23,4 +23,9 @@
     <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\visual_concepts_es_en.json" />
+    <EmbeddedResource Include="Resources\ai_models_catalog.json" />
+  </ItemGroup>
+
 </Project>

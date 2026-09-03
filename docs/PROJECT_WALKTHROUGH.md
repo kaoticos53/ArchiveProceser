@@ -2,6 +2,55 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-03] - Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular)
+
+### 🎯 Objetivos y Alcance
+Refactorización integral del código fuente para optimizar la mantenibilidad, eliminar deuda técnica, modularizar clases monolíticas, externalizar datos masivos estáticos y proporcionar abstracciones estándar para el desarrollo de nuevos plugins y nodos, manteniendo el 100% de compatibilidad con la suite de pruebas existente.
+
+### 🛠️ Fases Ejecutadas
+
+1. **Fase 2A: Limpieza Inmediata y Consolidación de Duplicados**:
+   - Eliminados archivos duplicados en `FileFlow.App` (`RegexLibraryService.cs`, `RegexHelperViewModel.cs`, `RegexHelperWindow.xaml`, `RegexHelperWindow.xaml.cs`).
+   - Consolidada la versión canónica enriquecida en `FileFlow.Plugin.FileSystem/UI/` con soporte para `VariableTemplateResolver`, evaluación en vivo de transformadores y persistencia en disco de patrones de usuario.
+   - Normalizadas las categorías canónicas `"Fechas y Tiempos"` y `"Limpieza de Nombres"` en `regex_patterns.json`.
+
+2. **Fase 2B: Externalización de Datos Estáticos a EmbeddedResource**:
+   - **B1 (`PromptTranslator.cs`)**: Extraído el diccionario masivo de 650 conceptos visuales a `FileFlow.Plugin.AI/Resources/visual_concepts_es_en.json` cargado vía `EmbeddedResource`. El archivo se redujo de **875 a 180 líneas**.
+   - **B2 (`AiModelManager.cs`)**: Extraído el catálogo estático de 20 modelos de visión, lenguaje y audio a `FileFlow.Plugin.AI/Resources/ai_models_catalog.json` como `EmbeddedResource`. Reducción de más de **300 líneas**.
+   - **B3 (`BuiltInThemesCatalog.cs`)**: Extraídos los 12 temas de fábrica a `FileFlow.App/Resources/builtin_themes.json` como `EmbeddedResource`. Reducción de **329 a 46 líneas**.
+
+3. **Fase 2C: Modularización de Motores Monolíticos**:
+   - Extracción de **`AiModelUrlConfig.cs`**: Manejo thread-safe y persistencia JSON en disco de URLs oficiales y personalizadas de modelos.
+   - Extracción de **`AiModelDownloader.cs`**: Motor desacoplado de descarga HTTP con `SocketsHttpHandler`, soporte multi-espejo con fallback automático, validación de integridad por tamaño de archivo y reporte de progreso porcentual.
+   - **`AiModelManager.cs`** refactorizado como una fachada cohesiva y limpia de **215 líneas**.
+   - Extracción de **`AudioWaveUtilities.cs`**: Módulo desacoplado para operaciones con NAudio (decodificación de archivos, resampling a 16 kHz mono, exportación de fragmentos PCM de 16 bits y síntesis algorítmica harmónica de fallback). `AudioInferenceEngine.cs` reducido a **380 líneas**.
+
+4. **Fase 2D: Jerarquía de Nodos y Clase Base Abstracta (Requisito del Usuario)**:
+   - Creada la clase abstracta **`FlowNodeBase`** en `FileFlow.Sdk`:
+     - Inicialización estándar de colecciones de puertos (`Inputs`, `Outputs`).
+     - Métodos de acceso tipado a parámetros con fallback por defecto: `GetParameter<T>()` y `SetParameter<T>()`.
+     - Helpers de orquestación y diagnóstico: `EmitAsync()` y `Log()`.
+   - Creada la clase abstracta especializada **`AiFlowNodeBase`** en `FileFlow.Plugin.AI`:
+     - Soporte unificado de parámetros de selección de modelo (`Model` / `ModelSelection`) y rutas personalizadas (`CustomModelPath`).
+     - Método helper `ResolveModelPathAsync()` para resolver la ruta en disco (automática por hardware, catálogo o archivo custom).
+   - Migrado **`FaceDetectorNode`** a `AiFlowNodeBase` verificando la simplificación drástica del código fuente del nodo.
+
+5. **Fase 2E: Robustez, Ciclo de Vida ONNX y Refinamiento de Excepciones**:
+   - Implementado `ClearSessionCache()` en `LanguageInferenceEngine` para cerrar y liberar sesiones nativas ONNX de traducción y LLM.
+   - Implementado **`AiPluginInitializer.ClearAllSessions()`** que unifica la liberación determinista de memoria no administrada a través de todos los motores (`OnnxInferenceEngine`, `AudioInferenceEngine`, `SemanticEmbeddingEngine`, `LanguageInferenceEngine`).
+   - Refinados los bloques `catch` silenciosos en la carga/guardado de configuraciones con diagnóstico explícito de errores (`Debug.WriteLine`).
+   - Corregida la sincronización de pruebas en `ToolboxOrganizationTests` mediante `[Collection("Localization")]` para prevenir colisiones de cultura concurrentes.
+
+### 🧪 Validación y Pruebas
+- Suite completa de pruebas ejecutada mediante `.\test.ps1`:
+  - **Pruebas totales:** **481**
+  - **Pruebas superadas:** **481 (100%)**
+  - **Pruebas fallidas:** **0**
+  - **Advertencias de compilación:** **0**
+  - **Tiempo de ejecución:** **22.33 segundos**.
+
+---
+
 ## [2026-09-03] - Reorganización Inteligente de los 60 Nodos del Sistema (Opción 3: Taxonomía Unificada, Tags Multilingües y Perspectiva Dual)
 
 ### 🎯 Funcionalidades Implementadas

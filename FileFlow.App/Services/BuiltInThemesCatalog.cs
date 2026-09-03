@@ -1,328 +1,46 @@
+using System.IO;
+using System.Text.Json;
 using FileFlow.Sdk.Themes;
 
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Catálogo inmutable de temas de fábrica predefinidos para FileFlow Studio.
+/// Catálogo inmutable de temas de fábrica predefinidos para FileFlow Studio cargado desde recurso embebido JSON.
 /// </summary>
 public static class BuiltInThemesCatalog
 {
-    public static List<ThemeDefinition> GetThemes()
+    private static readonly List<ThemeDefinition> CachedThemes = LoadThemes();
+
+    public static List<ThemeDefinition> GetThemes() => CachedThemes.Select(t => t.Clone()).ToList();
+
+    private static List<ThemeDefinition> LoadThemes()
     {
-        return
-        [
-            new ThemeDefinition
+        var list = new List<ThemeDefinition>();
+        try
+        {
+            var assembly = typeof(BuiltInThemesCatalog).Assembly;
+            var resourceName = assembly.GetManifestResourceNames()
+                .FirstOrDefault(n => n.EndsWith("builtin_themes.json", StringComparison.OrdinalIgnoreCase));
+
+            if (resourceName != null)
             {
-                Id = "dark_fluent",
-                Name = "🌙 Oscuro Fluent (Predeterminado)",
-                Description = "Paleta moderna oscura de alta legibilidad estilo GitHub & Windows 11 Fluent.",
-                IsBuiltIn = true,
-                IsDark = true,
-                AppBackground = "#0D1117",
-                BgDark = "#0D1117",
-                BgEditor = "#10131B",
-                BgCard = "#161B22",
-                BgSurface = "#131720",
-                BgHeader = "#1A1F29",
-                BgHover = "#21262D",
-                AccentPrimary = "#6366F1",
-                AccentHover = "#4F46E5",
-                AccentGlow = "#818CF8",
-                AccentSuccess = "#10B981",
-                AccentWarning = "#F59E0B",
-                AccentError = "#EF4444",
-                AccentCyan = "#06B6D4",
-                AccentPurple = "#A855F7",
-                TextPrimary = "#F0F6FC",
-                TextSecondary = "#8B949E",
-                BorderDark = "#30363D",
-                BorderSubtle = "#21262D",
-                GridLine = "#1A202C",
-                ScrollbarThumb = "#384152",
-                ScrollbarThumbHover = "#4F5B73",
-                WireColorStart = "#818CF8",
-                WireColorMid = "#6366F1",
-                WireColorEnd = "#C084FC",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 6.0,
-                NodeShadowBlur = 24.0,
-                NodeShadowOpacity = 0.55
-            },
-            new ThemeDefinition
-            {
-                Id = "light_studio",
-                Name = "☀️ Claro Minimalista",
-                Description = "Entorno claro de alta luminosidad y contraste limpio para trabajo diurno.",
-                IsBuiltIn = true,
-                IsDark = false,
-                AppBackground = "#F8FAFC",
-                BgDark = "#F1F5F9",
-                BgEditor = "#F8FAFC",
-                BgCard = "#FFFFFF",
-                BgSurface = "#F1F5F9",
-                BgHeader = "#E2E8F0",
-                BgHover = "#CBD5E1",
-                AccentPrimary = "#4F46E5",
-                AccentHover = "#4338CA",
-                AccentGlow = "#6366F1",
-                AccentSuccess = "#059669",
-                AccentWarning = "#D97706",
-                AccentError = "#DC2626",
-                AccentCyan = "#0891B2",
-                AccentPurple = "#9333EA",
-                TextPrimary = "#0F172A",
-                TextSecondary = "#64748B",
-                BorderDark = "#CBD5E1",
-                BorderSubtle = "#E2E8F0",
-                GridLine = "#E2E8F0",
-                ScrollbarThumb = "#CBD5E1",
-                ScrollbarThumbHover = "#94A3B8",
-                WireColorStart = "#6366F1",
-                WireColorMid = "#4F46E5",
-                WireColorEnd = "#9333EA",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 6.0,
-                NodeShadowBlur = 16.0,
-                NodeShadowOpacity = 0.12
-            },
-            new ThemeDefinition
-            {
-                Id = "cyber_neon",
-                Name = "🔮 Cyber Neón",
-                Description = "Estética futurista con fondos violetas profundos y acentos cian y magenta brillantes.",
-                IsBuiltIn = true,
-                IsDark = true,
-                AppBackground = "#0B0814",
-                BgDark = "#0B0814",
-                BgEditor = "#0E0A1A",
-                BgCard = "#151026",
-                BgSurface = "#1C1533",
-                BgHeader = "#1A1330",
-                BgHover = "#2A1F4D",
-                AccentPrimary = "#D946EF",
-                AccentHover = "#C026D3",
-                AccentGlow = "#F472B6",
-                AccentSuccess = "#10E599",
-                AccentWarning = "#FBBF24",
-                AccentError = "#F43F5E",
-                AccentCyan = "#00F0FF",
-                AccentPurple = "#A855F7",
-                TextPrimary = "#FDF4FF",
-                TextSecondary = "#A78BFA",
-                BorderDark = "#3B2667",
-                BorderSubtle = "#251842",
-                GridLine = "#1F1438",
-                ScrollbarThumb = "#4C2889",
-                ScrollbarThumbHover = "#6D38C3",
-                WireColorStart = "#00F0FF",
-                WireColorMid = "#D946EF",
-                WireColorEnd = "#F472B6",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 8.0,
-                NodeShadowBlur = 28.0,
-                NodeShadowOpacity = 0.70
-            },
-            new ThemeDefinition
-            {
-                Id = "pastel_spring",
-                Name = "🌸 Primavera Pastel",
-                Description = "Gama de tonos pastel suaves y relajantes con acentos florales y menta.",
-                IsBuiltIn = true,
-                IsDark = false,
-                AppBackground = "#FFF5F7",
-                BgDark = "#FFE4E9",
-                BgEditor = "#FFF8FA",
-                BgCard = "#FFFFFF",
-                BgSurface = "#FFF0F3",
-                BgHeader = "#FCE7EC",
-                BgHover = "#FBCFE8",
-                AccentPrimary = "#EC4899",
-                AccentHover = "#DB2777",
-                AccentGlow = "#F472B6",
-                AccentSuccess = "#10B981",
-                AccentWarning = "#F59E0B",
-                AccentError = "#F43F5E",
-                AccentCyan = "#06B6D4",
-                AccentPurple = "#C084FC",
-                TextPrimary = "#4A044E",
-                TextSecondary = "#831843",
-                BorderDark = "#FBCFE8",
-                BorderSubtle = "#FCE7EC",
-                GridLine = "#FCE7EC",
-                ScrollbarThumb = "#F472B6",
-                ScrollbarThumbHover = "#EC4899",
-                WireColorStart = "#F472B6",
-                WireColorMid = "#EC4899",
-                WireColorEnd = "#C084FC",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 10.0,
-                NodeShadowBlur = 20.0,
-                NodeShadowOpacity = 0.15
-            },
-            new ThemeDefinition
-            {
-                Id = "midnight_oled",
-                Name = "🌌 Midnight OLED (Negro Puro)",
-                Description = "Fondo negro absoluto #000000 para pantallas OLED con máximo contraste visual.",
-                IsBuiltIn = true,
-                IsDark = true,
-                AppBackground = "#000000",
-                BgDark = "#000000",
-                BgEditor = "#050505",
-                BgCard = "#0D0D0D",
-                BgSurface = "#121212",
-                BgHeader = "#141414",
-                BgHover = "#1F1F1F",
-                AccentPrimary = "#8B5CF6",
-                AccentHover = "#7C3AED",
-                AccentGlow = "#A78BFA",
-                AccentSuccess = "#00E676",
-                AccentWarning = "#FFD600",
-                AccentError = "#FF1744",
-                AccentCyan = "#00E5FF",
-                AccentPurple = "#D500F9",
-                TextPrimary = "#FFFFFF",
-                TextSecondary = "#A0A0A0",
-                BorderDark = "#282828",
-                BorderSubtle = "#1A1A1A",
-                GridLine = "#141414",
-                ScrollbarThumb = "#333333",
-                ScrollbarThumbHover = "#555555",
-                WireColorStart = "#00E5FF",
-                WireColorMid = "#8B5CF6",
-                WireColorEnd = "#D500F9",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 6.0,
-                NodeShadowBlur = 30.0,
-                NodeShadowOpacity = 0.85
-            },
-            new ThemeDefinition
-            {
-                Id = "nord_slate",
-                Name = "❄️ Nord Slate (Ártico)",
-                Description = "Gama de colores nórdicos árticos fríos con excelente equilibrio ergonómico.",
-                IsBuiltIn = true,
-                IsDark = true,
-                AppBackground = "#2E3440",
-                BgDark = "#2E3440",
-                BgEditor = "#242933",
-                BgCard = "#3B4252",
-                BgSurface = "#343B48",
-                BgHeader = "#434C5E",
-                BgHover = "#4C566A",
-                AccentPrimary = "#88C0D0",
-                AccentHover = "#81A1C1",
-                AccentGlow = "#8FBCBB",
-                AccentSuccess = "#A3BE8C",
-                AccentWarning = "#EBCB8B",
-                AccentError = "#BF616A",
-                AccentCyan = "#88C0D0",
-                AccentPurple = "#B48EAD",
-                TextPrimary = "#ECEFF4",
-                TextSecondary = "#D8DEE9",
-                BorderDark = "#4C566A",
-                BorderSubtle = "#3B4252",
-                GridLine = "#2E3440",
-                ScrollbarThumb = "#4C566A",
-                ScrollbarThumbHover = "#5E81AC",
-                WireColorStart = "#8FBCBB",
-                WireColorMid = "#88C0D0",
-                WireColorEnd = "#B48EAD",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 6.0,
-                NodeShadowBlur = 22.0,
-                NodeShadowOpacity = 0.50
-            },
-            new ThemeDefinition
-            {
-                Id = "dracula_purple",
-                Name = "🧛 Dracula Purple",
-                Description = "Tema gótico oscuro con tonos morados y resaltados en rosa, cian y verde lima.",
-                IsBuiltIn = true,
-                IsDark = true,
-                AppBackground = "#282A36",
-                BgDark = "#282A36",
-                BgEditor = "#21222C",
-                BgCard = "#343746",
-                BgSurface = "#2D303E",
-                BgHeader = "#3A3D4D",
-                BgHover = "#44475A",
-                AccentPrimary = "#BD93F9",
-                AccentHover = "#A774F7",
-                AccentGlow = "#FF79C6",
-                AccentSuccess = "#50FA7B",
-                AccentWarning = "#F1FA8C",
-                AccentError = "#FF5555",
-                AccentCyan = "#8BE9FD",
-                AccentPurple = "#BD93F9",
-                TextPrimary = "#F8F8F2",
-                TextSecondary = "#6272A4",
-                BorderDark = "#44475A",
-                BorderSubtle = "#343746",
-                GridLine = "#2D303E",
-                ScrollbarThumb = "#44475A",
-                ScrollbarThumbHover = "#6272A4",
-                WireColorStart = "#8BE9FD",
-                WireColorMid = "#BD93F9",
-                WireColorEnd = "#FF79C6",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 6.0,
-                NodeShadowBlur = 24.0,
-                NodeShadowOpacity = 0.60
-            },
-            new ThemeDefinition
-            {
-                Id = "emerald_forest",
-                Name = "🌲 Emerald Forest",
-                Description = "Paleta orgánica en tonos verdes bosque profundos y acentos esmeralda brillantes.",
-                IsBuiltIn = true,
-                IsDark = true,
-                AppBackground = "#061A14",
-                BgDark = "#061A14",
-                BgEditor = "#04140F",
-                BgCard = "#0B2920",
-                BgSurface = "#0E3328",
-                BgHeader = "#123E31",
-                BgHover = "#184D3D",
-                AccentPrimary = "#10B981",
-                AccentHover = "#059669",
-                AccentGlow = "#34D399",
-                AccentSuccess = "#34D399",
-                AccentWarning = "#FBBF24",
-                AccentError = "#F87171",
-                AccentCyan = "#2DD4BF",
-                AccentPurple = "#A78BFA",
-                TextPrimary = "#ECFDF5",
-                TextSecondary = "#6EE7B7",
-                BorderDark = "#184D3D",
-                BorderSubtle = "#0E3328",
-                GridLine = "#0B2920",
-                ScrollbarThumb = "#184D3D",
-                ScrollbarThumbHover = "#10B981",
-                WireColorStart = "#2DD4BF",
-                WireColorMid = "#10B981",
-                WireColorEnd = "#34D399",
-                FontFamily = "Segoe UI Variable Text, Segoe UI, sans-serif",
-                CodeFontFamily = "Cascadia Code, Consolas, monospace",
-                BaseFontSize = 12.0,
-                CornerRadius = 6.0,
-                NodeShadowBlur = 24.0,
-                NodeShadowOpacity = 0.60
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream != null)
+                {
+                    using var reader = new StreamReader(stream, System.Text.Encoding.UTF8);
+                    string json = reader.ReadToEnd();
+                    var loaded = JsonSerializer.Deserialize<List<ThemeDefinition>>(json);
+                    if (loaded != null)
+                    {
+                        return loaded;
+                    }
+                }
             }
-        ];
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading embedded builtin themes: {ex.Message}");
+        }
+        return list;
     }
 }

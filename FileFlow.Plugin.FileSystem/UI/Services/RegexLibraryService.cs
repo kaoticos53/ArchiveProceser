@@ -79,7 +79,7 @@ public sealed class RegexLibraryService
     {
         return
         [
-            // Series y Episodios
+            // Series y Vídeo
             new RegexPatternItem
             {
                 Name = "Temporada y Episodio (NxN)",
@@ -92,118 +92,128 @@ public sealed class RegexLibraryService
             },
             new RegexPatternItem
             {
-                Name = "Temporada y Episodio (SnnEnn)",
+                Name = "Formato Estándar S01E02",
                 Category = "Series y Vídeo",
-                Pattern = @"[sS](\d+)[eE](\d+)",
-                Replacement = "S${1}E${2}",
+                Pattern = @"(?i)S(\d+)E(\d+)",
+                Replacement = "S$1E$2",
                 Description = "Normaliza patrones como s01e05 o S1E2 a estándar S01E05.",
                 SampleInput = "game_of_thrones.s08e06.720p.mkv",
                 IsBuiltIn = true
             },
             new RegexPatternItem
             {
-                Name = "Resolución y Calidad (1080p, 4K, etc.)",
+                Name = "Capítulo / Episodio / Parte",
                 Category = "Series y Vídeo",
-                Pattern = @"(1080p|720p|4k|2160p|480p|web-dl|bluray|hdtv)",
+                Pattern = @"(?i)\b(?:Cap[íi]tulo|Cap\.?|Episodio|Ep\.?|Parte|Part\.?)\s*(\d+)",
+                Replacement = "Cap $1",
+                Description = "Extrae el número de capítulo o episodio en español o inglés.",
+                SampleInput = "Capitulo 12 - El Final.mp4",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Etiquetas de Calidad y Códecs",
+                Category = "Series y Vídeo",
+                Pattern = @"(?i)\b(?:1080p|720p|2160p|4k|x264|x265|hevc|web-dl|bluray|hdrip|dvdrip)\b",
                 Replacement = "",
-                Description = "Identifica y permite eliminar etiquetas comunes de calidad multimedia.",
-                SampleInput = "Pelicula.2024.1080p.BluRay.x264.mp4",
+                Description = "Coincide con resoluciones y etiquetas técnicas comunes para facilitar su eliminación o reemplazo.",
+                SampleInput = "Pelicula.2023.1080p.BluRay.x264.mkv",
                 IsBuiltIn = true
             },
 
-            // Fechas y Años
+            // Fechas y Tiempos
             new RegexPatternItem
             {
-                Name = "Año en 4 dígitos (19xx o 20xx)",
-                Category = "Fechas",
-                Pattern = @"\b(19\d\d|20\d\d)\b",
-                Replacement = "${1}",
-                Description = "Extrae el año en cuatro dígitos entre 1900 y 2099.",
-                SampleInput = "Informe_Financiero_2024_Final.pdf",
-                IsBuiltIn = true
-            },
-            new RegexPatternItem
-            {
-                Name = "Fecha YYYY-MM-DD",
-                Category = "Fechas",
-                Pattern = @"(\d{4})[-_](\d{2})[-_](\d{2})",
+                Name = "Fecha ISO (YYYY-MM-DD)",
+                Category = "Fechas y Tiempos",
+                Pattern = @"(\d{4})[-_\.](\d{2})[-_\.](\d{2})",
                 Replacement = "$1-$2-$3",
-                Description = "Reconoce y normaliza fechas en formato ISO estándar YYYY-MM-DD.",
-                SampleInput = "backup_2023_11_25_full.tar.gz",
+                Description = "Detecta fechas en formato año-mes-día separadas por guión, punto o guión bajo.",
+                SampleInput = "informe_2026_09_01_borrador.docx",
                 IsBuiltIn = true
             },
             new RegexPatternItem
             {
-                Name = "Fecha DD-MM-YYYY a ISO",
-                Category = "Fechas",
-                Pattern = @"(\d{2})[-_](\d{2})[-_](\d{4})",
+                Name = "Fecha Europea (DD-MM-YYYY)",
+                Category = "Fechas y Tiempos",
+                Pattern = @"(\d{2})[-_\.](\d{2})[-_\.](\d{4})",
                 Replacement = "$3-$2-$1",
-                Description = "Invierte fechas europeas (DD-MM-YYYY) a formato cronológico (YYYY-MM-DD).",
-                SampleInput = "factura_31_12_2024.pdf",
+                Description = "Detecta formato día-mes-año y permite reordenarlo a formato ISO $3-$2-$1.",
+                SampleInput = "factura_01_09_2026.pdf",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Timestamp de Cámara (YYYYMMDD_HHMMSS)",
+                Category = "Fechas y Tiempos",
+                Pattern = @"(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})",
+                Replacement = "$1-$2-$3 $4.$5.$6",
+                Description = "Detecta marcas temporales continuas como 20260901_143022.",
+                SampleInput = "VID_20260901_143022.mp4",
                 IsBuiltIn = true
             },
 
-            // Limpieza y Sanitización
+            // Limpieza de Nombres
             new RegexPatternItem
             {
-                Name = "Eliminar Corchetes y su contenido",
-                Category = "Limpieza",
-                Pattern = @"\[.*?\]",
+                Name = "Eliminar Texto entre Paréntesis ()",
+                Category = "Limpieza de Nombres",
+                Pattern = @"\s*\([^\)]*\)",
                 Replacement = "",
-                Description = "Elimina cualquier bloque encerrado entre corchetes como [YTS], [1080p] o [Grupo].",
-                SampleInput = "[Fansub] Anime_Episodio_01 [1080p].mkv",
+                Description = "Elimina cualquier contenido encerrado entre paréntesis como '(2023)' o '(Oficial)'.",
+                SampleInput = "Cancion Fabulosa (Official Video) (2023).mp3",
                 IsBuiltIn = true
             },
             new RegexPatternItem
             {
-                Name = "Eliminar Paréntesis y su contenido",
-                Category = "Limpieza",
-                Pattern = @"\(.*?\)",
+                Name = "Eliminar Texto entre Corchetes []",
+                Category = "Limpieza de Nombres",
+                Pattern = @"\s*\[[^\]]*\]",
                 Replacement = "",
-                Description = "Elimina cualquier bloque encerrado entre paréntesis como (Director Cut).",
-                SampleInput = "Track 01 (Remastered 2024).flac",
+                Description = "Elimina cualquier contenido entre corchetes como '[1080p]' o '[Torrent]'.",
+                SampleInput = "Video_Vacaciones_[FullHD]_[Audio_5.1].mp4",
                 IsBuiltIn = true
             },
             new RegexPatternItem
             {
-                Name = "Colapsar Espacios / Guiones Múltiples",
-                Category = "Limpieza",
-                Pattern = @"[\s_\-]+",
-                Replacement = "_",
-                Description = "Reemplaza cualquier secuencia de espacios, guiones o barras bajas por un único guion bajo.",
-                SampleInput = "mi   archivo---con___espacios.txt",
+                Name = "Colapsar Espacios y Guiones Múltiples",
+                Category = "Limpieza de Nombres",
+                Pattern = @"[-_\.\s]{2,}",
+                Replacement = "-",
+                Description = "Reemplaza secuencias repetidas de guiones, espacios o puntos por un único guión.",
+                SampleInput = "documento---nuevo___final   v2.pdf",
                 IsBuiltIn = true
             },
             new RegexPatternItem
             {
-                Name = "Eliminar Caracteres Especiales",
-                Category = "Limpieza",
-                Pattern = @"[^\w\s\.\-]",
+                Name = "Eliminar Caracteres No Alfanuméricos",
+                Category = "Limpieza de Nombres",
+                Pattern = @"[^\w\.\-\s]",
                 Replacement = "",
-                Description = "Elimina símbolos no alfanuméricos como ¡!¿?#$%&/()=",
-                SampleInput = "¿Quién_es_el_número_#1?.docx",
+                Description = "Elimina símbolos extraños como #, !, ?, @, $, % preservando letras, números, puntos y guiones.",
+                SampleInput = "Factura #123! @Septiembre?.pdf",
                 IsBuiltIn = true
             },
 
-            // Numeración y Prefijos
+            // Estructura de Archivos
             new RegexPatternItem
             {
-                Name = "Extraer Primer Número",
-                Category = "Numeración",
-                Pattern = @"\b(\d+)\b",
-                Replacement = "$1",
-                Description = "Captura el primer número entero independiente encontrado en el texto.",
-                SampleInput = "Capítulo 4 - El Resurgimiento.mp4",
+                Name = "Separar Prefijo por Guión Bajo",
+                Category = "Estructura de Archivos",
+                Pattern = @"^([^_]+)_(.+)$",
+                Replacement = "$1 - $2",
+                Description = "Divide el nombre en dos mitades a partir del primer guión bajo.",
+                SampleInput = "CLIENTE_Contrato_Firmado.pdf",
                 IsBuiltIn = true
             },
             new RegexPatternItem
             {
-                Name = "Eliminar Números al Inicio",
-                Category = "Numeración",
-                Pattern = @"^\d+[\s\.\-_]*",
-                Replacement = "",
-                Description = "Limpia prefijos de track o numeración al principio como '01 - ', '002.', '12_'",
-                SampleInput = "01 - Bohemian Rhapsody.mp3",
+                Name = "Número Secuencial al Inicio",
+                Category = "Estructura de Archivos",
+                Pattern = @"^(\d+)\s*[-_.]?\s*(.+)$",
+                Replacement = "$1 - $2",
+                Description = "Captura el número de pista o secuencia al principio del archivo.",
+                SampleInput = "05 Track Title.flac",
                 IsBuiltIn = true
             }
         ];
@@ -213,7 +223,7 @@ public sealed class RegexLibraryService
     {
         lock (_lock)
         {
-            return _userPatterns.ToList().AsReadOnly();
+            return _userPatterns.Select(p => p.Clone()).ToList().AsReadOnly();
         }
     }
 
@@ -226,27 +236,84 @@ public sealed class RegexLibraryService
 
     public void AddUserPattern(RegexPatternItem item)
     {
-        if (item == null) return;
+        SaveUserPattern(item);
+    }
+
+    public void SaveUserPattern(RegexPatternItem pattern)
+    {
+        if (pattern == null) return;
         lock (_lock)
         {
-            item.IsBuiltIn = false;
-            _userPatterns.RemoveAll(p => p.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase));
-            _userPatterns.Add(item);
+            pattern.IsBuiltIn = false;
+            var existingIndex = _userPatterns.FindIndex(p => 
+                (!string.IsNullOrEmpty(pattern.Id) && p.Id.Equals(pattern.Id, StringComparison.OrdinalIgnoreCase)) ||
+                p.Name.Equals(pattern.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (existingIndex >= 0)
+            {
+                _userPatterns[existingIndex] = pattern.Clone();
+            }
+            else
+            {
+                _userPatterns.Add(pattern.Clone());
+            }
             SaveUserPatterns();
         }
     }
 
-    public bool DeleteUserPattern(string patternName)
+    public bool DeleteUserPattern(string identifier)
     {
+        if (string.IsNullOrWhiteSpace(identifier)) return false;
         lock (_lock)
         {
-            int removed = _userPatterns.RemoveAll(p => p.Name.Equals(patternName, StringComparison.OrdinalIgnoreCase));
+            int removed = _userPatterns.RemoveAll(p => 
+                p.Id.Equals(identifier, StringComparison.OrdinalIgnoreCase) || 
+                p.Name.Equals(identifier, StringComparison.OrdinalIgnoreCase));
+
             if (removed > 0)
             {
                 SaveUserPatterns();
                 return true;
             }
             return false;
+        }
+    }
+
+    public string ExportToJson()
+    {
+        lock (_lock)
+        {
+            return JsonSerializer.Serialize(_userPatterns, JsonOptions);
+        }
+    }
+
+    public int ImportFromJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return 0;
+
+        try
+        {
+            var imported = JsonSerializer.Deserialize<List<RegexPatternItem>>(json, JsonOptions);
+            if (imported == null || imported.Count == 0) return 0;
+
+            int addedCount = 0;
+            lock (_lock)
+            {
+                foreach (var item in imported)
+                {
+                    if (string.IsNullOrWhiteSpace(item.Pattern)) continue;
+                    item.Id = Guid.NewGuid().ToString("N");
+                    item.IsBuiltIn = false;
+                    _userPatterns.Add(item);
+                    addedCount++;
+                }
+                SaveUserPatterns();
+            }
+            return addedCount;
+        }
+        catch
+        {
+            return 0;
         }
     }
 

@@ -35,6 +35,10 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\builtin_themes.json" />
+  </ItemGroup>
+
   <Target Name="CopyPlugins" AfterTargets="Build;Publish">
     <PropertyGroup>
       <PluginsTargetFolder>$(TargetDir)Plugins\</PluginsTargetFolder>

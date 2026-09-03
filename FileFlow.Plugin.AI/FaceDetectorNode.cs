@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
@@ -9,33 +13,33 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("FaceDetectorNode_Name", "ImageVision", "FaceDetectorNode_Desc", PipelineRole.Filter,
     "rostros", "caras", "personas", "faces", "ultraface", "detector", "vision", "ia")]
-public class FaceDetectorNode : IFlowNode
+public class FaceDetectorNode : AiFlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("FaceDetectorNode_Name", "Detector de Rostros (Facial)");
-    public string Category => "ImageVision";
-    public string Description => LocalizationManager.Instance.GetString("FaceDetectorNode_Desc", "Analiza imágenes para detectar la presencia y el número de rostros humanos, bifurcando el flujo hacia fotos familiares o paisajes.");
+    public override string Name => LocalizationManager.Instance.GetString("FaceDetectorNode_Name", "Detector de Rostros (Facial)");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("FaceDetectorNode_Desc", "Analiza imágenes para detectar la presencia y el número de rostros humanos, bifurcando el flujo hacia fotos familiares o paisajes.");
+    public override AiTaskType TaskType => AiTaskType.FaceDetection;
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("FacesFound", typeof(FileItemContext), PortDirection.Output, "FacesFound"),
-        new NodePort("NoFaces", typeof(FileItemContext), PortDirection.Output, "NoFaces")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public FaceDetectorNode()
     {
-        ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
-        ["ConfidenceThreshold"] = 0.7,
-        ["MinimumFaces"] = 1
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("FacesFound", typeof(FileItemContext), PortDirection.Output, "FacesFound"),
+            new NodePort("NoFaces", typeof(FileItemContext), PortDirection.Output, "NoFaces")
+        ];
+
+        Parameters["Model"] = "Auto";
+        Parameters["CustomModelPath"] = "";
+        Parameters["ConfidenceThreshold"] = 0.7;
+        Parameters["MinimumFaces"] = 1;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "ultraface", "Custom"],
@@ -46,48 +50,39 @@ public class FaceDetectorNode : IFlowNode
         new("MinimumFaces", ParameterEditorType.Number, DefaultValue: 1, Min: 1, Max: 50, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"[FaceDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            Log(context, $"Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             item.Metadata["AI:HasFaces"] = false;
             item.Metadata["AI:FaceCount"] = 0;
-            await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "NoFaces").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
-        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp"))
+        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" or ".gif" or ".tiff"))
         {
-            context.Log($"[FaceDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
+            Log(context, $"Formato '{ext}' omitido (no es imagen compatible con detector facial).", LogLevel.Debug, item);
             item.Metadata["AI:HasFaces"] = false;
             item.Metadata["AI:FaceCount"] = 0;
-            await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "NoFaces").ConfigureAwait(false);
             return;
         }
 
         try
         {
-            context.Log($"[FaceDetector] Detectando rostros en {item.FileName}...", LogLevel.Information, item);
+            Log(context, $"Detectando rostros en {item.FileName}...", LogLevel.Information, item);
 
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
-
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                customPath,
-                AiTaskType.FaceDetection,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[FaceDetector] ⚠️ Modelo de detección facial no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
+                Log(context, "⚠️ Modelo de detección facial no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
                 item.Metadata["AI:HasFaces"] = false;
                 item.Metadata["AI:FaceCount"] = 0;
-                await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
+                await EmitAsync(context, item, "NoFaces").ConfigureAwait(false);
                 return;
             }
 
@@ -117,21 +112,21 @@ public class FaceDetectorNode : IFlowNode
 
             if (faceCount >= minFaces)
             {
-                context.Log($"[FaceDetector] ✅ {faceCount} rostro(s) detectado(s) en {item.FileName} (confianza máx: {maxConf * 100:F1}%).", LogLevel.Information, item);
-                await context.EmitAsync("FacesFound", item).ConfigureAwait(false);
+                Log(context, $"✅ {faceCount} rostro(s) detectado(s) en {item.FileName} (confianza máx: {maxConf * 100:F1}%).", LogLevel.Information, item);
+                await EmitAsync(context, item, "FacesFound").ConfigureAwait(false);
             }
             else
             {
-                context.Log($"[FaceDetector] ℹ️ No se detectaron suficientes rostros ({faceCount} < {minFaces}) en {item.FileName}.", LogLevel.Information, item);
-                await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
+                Log(context, $"ℹ️ No se detectaron suficientes rostros ({faceCount} < {minFaces}) en {item.FileName}.", LogLevel.Information, item);
+                await EmitAsync(context, item, "NoFaces").ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[FaceDetector] Error al procesar {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            Log(context, $"Error al procesar {item.FileName}: {ex.Message}", LogLevel.Error, item);
             item.Metadata["AI:HasFaces"] = false;
             item.Metadata["AI:FaceCount"] = 0;
-            await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "NoFaces").ConfigureAwait(false);
         }
     }
 }
