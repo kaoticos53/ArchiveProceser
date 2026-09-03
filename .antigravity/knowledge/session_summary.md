@@ -8,9 +8,53 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **375 / 375 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Loaders, AppPaths Storage, Portable Mode Provider, CLI Headless Runner, Document Plugins, Network Plugins, Data & Spreadsheet Plugins, AI & Computer Vision Plugins, File QuickPreviewer Providers, Watchdog Multi-Folder, Bottleneck Heatmap, Checkpointing & Resumption, Annotations & Group Boxes, AI Models Manager ViewModel, AI Model Persistence on Disk).
-- **Nuevas Funcionalidades Implementadas en Sesión**:
-  0. **Gestor y Diálogo de Descarga de Modelos de IA en Ajustes**:
+- **Suite de Pruebas**: `dotnet test FileFlow.slnx` $\rightarrow$ **389 / 389 Pruebas Pasadas con 100% de Éxito** (Unit, Integration, Security, Concurrency, JSON Loaders, AppPaths Storage, Portable Mode Provider, CLI Headless Runner, Document Plugins, Network Plugins, Data & Spreadsheet Plugins, AI & Computer Vision Plugins, File QuickPreviewer Providers, Watchdog Multi-Folder, Bottleneck Heatmap, Checkpointing & Resumption, Annotations & Group Boxes, AI Models Manager ViewModel, AI Model Persistence on Disk, LogConsole ViewModel Tests & Node Inspector Sync, PromptObjectDetectorNode & PromptTranslator MarianMT, Log Filtering & SQLite Sync, Toolbox Compact Mode Persistence).
+- **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  0. **Persistencia del Modo Compacto en el Catálogo de Nodos (Toolbox)**:
+     - Sincronización bidireccional inmediata de `IsCompactMode` en `ToolboxViewModel` con `UserPreferencesService.Instance.UpdatePreferences(...)`.
+     - Evita que `IncrementNodeUsage(typeName)` (disparado al arrastrar o instanciar un nodo) sobreescriba y desactive el modo compacto al invocar `RefreshToolbox()`.
+  1. **Corrección de Visibilidad y Sincronización en Filtro 'Todos' de la Consola de Logs**:
+     - Ingesta obligatoria en `SqliteLogStore` desde `AddStructuredLog` para asegurar que todos los logs estructurados emitidos durante la ejecución se persistan.
+     - Vaciado preventivo de `_pendingLogs` (`FlushAllPendingLogs()`) y volcado de SQLite antes de ejecutar consultas de filtrado.
+     - Reactivación reactiva de `IsLiveMode = true` al seleccionar *Todos* sin búsqueda y carga de la ventana más reciente de logs (`MaxLiveBufferSize`).
+  1. **Nodo de Detección de Objetos por Prompt (Grounding DINO / Open-Vocabulary) con Traductor MarianMT**:
+     - Nuevo nodo `PromptObjectDetectorNode` para detección en lenguaje natural libre con parámetros `Prompt`, `MinimumConfidence`, `AutoTranslateToEnglish`, `MaxDetections` y bifurcación `ObjectsFound` / `NoObjects`.
+     - Submódulo `PromptTranslator` con vocabulario visual de más de 400 términos, algoritmo voraz (*greedy matching*) para términos compuestos, limpieza de comandos y artículos, soporte de conjunciones (*" y "*, *" o "*), soporte de acentos, inversión sintáctica español-inglés y soporte neuronal MarianMT `opus-mt-es-en` de Helsinki-NLP.
+     - Inyección de metadatos `AI:Prompt`, `AI:TranslatedPrompt`, `AI:PromptObjects`, `AI:PromptObjectCount`, `AI:HasPromptObjects` y cajas delimitadoras `AI:DetectedBoxes` integradas con el previsualizador.
+  1. **Modernización de la Consola de Ejecución (LogView)**:
+     - **Diseño Adaptativo sin Scroll Horizontal**: Sustitución de `RowHeight="24"` estático por `MinRowHeight="26"` y envoltura multilínea adaptable en 2–3 líneas (`TextWrapping="Wrap"`, `MaxHeight="46"`, `TextTrimming="CharacterEllipsis"`) en columnas de Fichero y Mensaje, con `Width="*"` dinámico.
+     - **Menú Contextual Integral (`ContextMenu`) y Portapapeles**: Opciones de clic derecho para copiar línea completa, mensaje, ruta de archivo, nombre, ID de flujo, metadatos JSON, abrir vista previa y filtrar por nodo/archivo.
+     - **Atajos de Teclado y Doble Clic**: Atajo `Ctrl + C` para copiar la fila seleccionada y `Doble Clic` en la fila para abrir la previsualización del archivo (con cajas de IA) o alternar detalles.
+     - **Sincronización Reactiva de Datos con el Inspector de Nodos**: Al seleccionar cualquier log en la tabla, el panel lateral del Inspector de Nodos se actualiza automáticamente con la configuración del nodo emisor, seleccionando el snapshot correspondiente o generando uno con el archivo y metadatos (`DetailsJson`) del log en las pestañas de Salidas, Metadatos y evaluación de parámetros, sin alterar la cámara del grafo.
+  1. **Propagación de Metadatos de IA (Rostros y Objetos) al Previsualizador desde la Consola de Logs**:
+     - Serialización de los metadatos del elemento en el campo `DetailsJson` de cada `StructuredLogRecord` en `WorkflowExecutionContext` y `MockFlowExecutionContext`.
+     - `LogViewModel.PreviewLogFile` puebla `FilePreviewContext.Metadata` a partir de `DetailsJson`.
+     - `ImagePreviewProvider` decodifica de forma polimórfica los metadatos para resaltar las cajas de rostros y objetos (`AI:FaceBoxes` y `AI:DetectedBoxes`) con sus insignias de conteo y conmutador visual.
+  1. **Optimización de Memoria y Concurrencia Thread-Safe en Inferencia ONNX (Detección de Rostros y Objetos)**:
+     - Serialización de llamadas nativas a `session.Run(...)` mediante `Lock _inferenceLock`, evitando caídas críticas de DirectML / GPU y violaciones de acceso de memoria bajo procesamiento masivo concurrente.
+     - Modo `ExecutionMode.ORT_SEQUENTIAL` e `IntraOpNumThreads` balanceado para evitar contención con el ThreadPool de .NET.
+     - Redimensionado in-place (`image.Mutate`) en los nodos de IA que reduce el consumo de RAM de ~75 MB a **0.2 MB - 0.5 MB** por imagen procesada, previniendo pausas de GC y congelamientos de la UI.
+  1. **Corrección de Inferencia y Detección de Objetos en ObjectDetectorNode (Tiny YOLOv3 COCO 80)**:
+     - Detección de 3 tensores ONNX (`yolonms_layer_1`, `yolonms_layer_1:1`, `yolonms_layer_1:2` / `indices` int32).
+     - Mapeo dinámico de entradas `input_1` y `image_shape` evitando el fallo por orden de parámetros en ONNX Runtime.
+     - Catálogo de 80 clases COCO alineado (0 = `person`, 1 = `bicycle`...).
+     - Metadatos `AI:DetectedBoxes` y renderizado de bounding boxes con badges interactivos en el visor rápido.
+  1. **Emisión y Despacho de Logs en Modo Depuración y Pruebas Aisladas**:
+     - `MockFlowExecutionContext` en `NodeInspectorViewModel` ahora conecta directamente con `LogViewModel` y `SqliteLogStore`, emitiendo en tiempo real a la consola de ejecución todos los mensajes de log generados durante la prueba aislada del nodo.
+     - Ajuste en los niveles de registro de `FaceDetectorNode` y `ObjectDetectorNode` a `LogLevel.Information` y `LogLevel.Warning` para que todos los eventos clave (detección, modelo no disponible, formatos incompatibles o conteo 0) aparezcan inmediatamente en la consola.
+  1. **Selección Dinámica de Salidas en Inspector y Carrusel de Previsualización Multisalida**:
+     - Al seleccionar cualquier salida en la pestaña "Salidas" del Inspector de Nodos o pulsar su botón directo `👁️ Ver`, el previsualizador abre exactamente esa salida seleccionada con sus metadatos específicos.
+     - Se vinculan todas las salidas hermanas (`siblings`) generadas en las pruebas, permitiendo navegar hacia adelante y atrás (`◀ 2 de 5 ▶` o flechas) sin cerrar el visor.
+     - Indicador visual y de hover (borde cian `#00E5FF`) en la lista de salidas para identificar con claridad el elemento activo.
+  1. **Encuadre Visual de Rostros Detectados en el Previsualizador de Archivos**:
+     - `ImagePreviewProvider` ahora dibuja automáticamente recuadros cian neón con badges de porcentaje (`👤 Rostro #1 (95%)`) sobre cada rostro detectado por `FaceDetectorNode`.
+     - Soporte interactivo de Zoom y Rotación sincronizados y botón conmutador `👤 Rostros (N)` en la barra inferior del visor para mostrar/ocultar las cajas.
+  2. **Corrección de Inferencia Facial en FaceDetectorNode (UltraFace NMS + Softmax)**:
+     - Implementación de `FaceBox` con cálculo de IoU y Supresión de No Máximos (NMS con IoU `0.45`), Softmax numéricamente estable y normalización oficial `(pixel - 127)/128` eliminando conteos multiplicados y falsos positivos en el detector de rostros.
+  1. **Correcciones UI/XAML y Ciclo de Vida de Proceso**:
+     - Declaración de `AddOneConverter` en `<Window.Resources>` de `FilePreviewerWindow.xaml` para evitar fallo durante `InitializeComponent()`.
+     - Configuración explícita de `ShutdownMode="OnMainWindowClose"` en `App.xaml`, override `OnClosed` con `Shutdown()` en `MainWindow.xaml.cs` y llamada a `Environment.Exit()` en `App.OnExit` para garantizar que el proceso no quede en segundo plano.
+  1. **Gestor y Diálogo de Descarga de Modelos de IA en Ajustes**:
      - Nueva pestaña **`🤖 Modelos de IA`** (`Settings_TabAiModels`) en la ventana de ajustes (`WorkflowSettingsWindow.xaml`) con lista completa de modelos del catálogo, estados de instalación en disco, tamaños e individual/batch download.
      - Diálogo modal dedicado **`AiModelDownloadDialog`** (`AiModelDownloadDialog.xaml` / `.xaml.cs`) invocable desde Ajustes y flujos para descargar todos los modelos faltantes antes de su uso.
      - ViewModel reactivo `AiModelManagerViewModel` con cálculo de espacio en disco, barra de progreso numérico con `IProgress<double>` y cancelación segura.

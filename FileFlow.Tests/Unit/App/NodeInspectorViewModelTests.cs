@@ -108,4 +108,43 @@ public class NodeInspectorViewModelTests
         customParam.HasExpression.Should().BeTrue();
         customParam.EvaluatedValue.Should().Be(@"D:\Projects\FileFlow\Backup_test_data.zip");
     }
+
+    [Fact]
+    public void PreviewSpecificSnapshot_ShouldUpdateSelectedSnapshot_ToSpecifiedSnapshot()
+    {
+        // Arrange
+        var mockFileDialog = new Mock<IFileDialogService>();
+        var editorVm = new EditorViewModel(new PluginLoader());
+        var inspectorVm = new NodeInspectorViewModel(editorVm, mockFileDialog.Object);
+
+        var node = new FolderSourceNode();
+        var nodeVm = new NodeViewModel(node, new Point(0, 0));
+
+        var tempFile1 = Path.GetTempFileName();
+        var tempFile2 = Path.GetTempFileName();
+        try
+        {
+            var outItem1 = new FileItemContext(tempFile1);
+            var outSnap1 = NodeDataSnapshot.CreateOutput(nodeVm.Id, "Out", outItem1);
+            nodeVm.OutputSnapshots.Add(outSnap1);
+
+            var outItem2 = new FileItemContext(tempFile2);
+            var outSnap2 = NodeDataSnapshot.CreateOutput(nodeVm.Id, "Out", outItem2);
+            nodeVm.OutputSnapshots.Add(outSnap2);
+
+            inspectorVm.InspectNode(nodeVm, autoOpen: true);
+
+            // Act - Select the first snapshot
+            inspectorVm.SelectedSnapshot = outSnap1;
+
+            // Assert
+            inspectorVm.SelectedSnapshot.Should().Be(outSnap1);
+            inspectorVm.ActiveEvaluationContextFileName.Should().Be(Path.GetFileName(tempFile1));
+        }
+        finally
+        {
+            if (File.Exists(tempFile1)) File.Delete(tempFile1);
+            if (File.Exists(tempFile2)) File.Delete(tempFile2);
+        }
+    }
 }

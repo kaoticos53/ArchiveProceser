@@ -4,12 +4,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:controls="clr-namespace:FileFlow.App.Preview.Controls"
+        xmlns:local="clr-namespace:FileFlow.App.Preview.Views"
         mc:Ignorable="d"
         Title="Vista Previa de Archivo — FileFlow Studio" 
         Height="700" Width="1050" MinWidth="600" MinHeight="450"
         WindowStartupLocation="CenterOwner"
         Background="#0B0D14" Foreground="#E1E4EA"
         KeyDown="Window_KeyDown">
+
+    <Window.Resources>
+        <local:AddOneConverter x:Key="AddOneConverter" />
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>

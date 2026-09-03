@@ -11,17 +11,20 @@
         <Border Background="{DynamicResource BgCardBrush}" 
                 BorderBrush="{DynamicResource BorderDarkBrush}" 
                 BorderThickness="1" 
-                CornerRadius="6" 
-                Margin="0,0,0,8">
+                CornerRadius="6">
             <Expander IsExpanded="False" Padding="8,6">
                 <Expander.Header>
                     <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <!-- Header Row 1: Port + Timestamp -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
                             <TextBlock Text="{Binding IsInput, Converter={StaticResource InputOutputBulletConverter}}" FontSize="11" />
                             <TextBlock Text="{Binding PortName}" FontWeight="Bold" 
                                        Foreground="{Binding IsInput, Converter={StaticResource InputOutputBrushConverter}}" FontSize="12" />
@@ -29,8 +32,21 @@
                             <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
                         </StackPanel>
                         <!-- Header Row 2: Current Path -->
-                        <TextBlock Grid.Row="1" Text="{Binding ItemSnapshot.CurrentPath}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding ItemSnapshot.CurrentPath}" Foreground="{DynamicResource TextPrimaryBrush}" 
                                    FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" ToolTip="{Binding ItemSnapshot.CurrentPath}" />
+
+                        <!-- Botón Previsualizar Snapshot específico -->
+                        <Button Grid.RowSpan="2" Grid.Column="1"
+                                Command="{Binding DataContext.PreviewSpecificSnapshotCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,4" Margin="8,0,4,0" VerticalAlignment="Center"
+                                ToolTip="Previsualizar este archivo">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="👁️" FontSize="11" Foreground="#00E5FF" Margin="0,0,4,0" />
+                                <TextBlock Text="Ver" FontSize="10.5" FontWeight="SemiBold" Foreground="#00E5FF" />
+                            </StackPanel>
+                        </Button>
                     </Grid>
                 </Expander.Header>
                 <!-- Expandable Content: Full Metadata, Paths & Tags -->

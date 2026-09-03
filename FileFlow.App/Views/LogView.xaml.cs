@@ -132,6 +132,23 @@ public partial class LogView : UserControl
         }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
+    private void OnDataGridRowMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is DataGridRow row && row.Item is FileFlow.Sdk.Telemetry.StructuredLogRecord log)
+        {
+            if (!string.IsNullOrWhiteSpace(log.FilePath) && System.IO.File.Exists(log.FilePath))
+            {
+                _viewModel?.PreviewLogFileCommand.Execute(log);
+                e.Handled = true;
+            }
+            else
+            {
+                row.DetailsVisibility = row.DetailsVisibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+                e.Handled = true;
+            }
+        }
+    }
+
     private void OnDataGridPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)

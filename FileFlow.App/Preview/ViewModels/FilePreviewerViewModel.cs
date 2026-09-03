@@ -46,16 +46,27 @@ public partial class FilePreviewerViewModel : ObservableObject
             foreach (var s in siblings) NavigationItems.Add(s);
         }
 
-        if (NavigationItems.Count == 0)
+        int foundIdx = -1;
+        for (int i = 0; i < NavigationItems.Count; i++)
         {
-            NavigationItems.Add(context);
+            if (ReferenceEquals(NavigationItems[i], context) ||
+                string.Equals(NavigationItems[i].CurrentPath, context.CurrentPath, StringComparison.OrdinalIgnoreCase))
+            {
+                foundIdx = i;
+                break;
+            }
         }
 
-        int foundIdx = NavigationItems.IndexOf(context);
-        CurrentIndex = foundIdx >= 0 ? foundIdx : 0;
+        if (foundIdx < 0)
+        {
+            NavigationItems.Add(context);
+            foundIdx = NavigationItems.Count - 1;
+        }
+
+        CurrentIndex = foundIdx;
         TotalItemsCount = NavigationItems.Count;
 
-        await SetCurrentContextInternalAsync(context).ConfigureAwait(false);
+        await SetCurrentContextInternalAsync(NavigationItems[CurrentIndex]).ConfigureAwait(false);
     }
 
     private async Task SetCurrentContextInternalAsync(FilePreviewContext context)

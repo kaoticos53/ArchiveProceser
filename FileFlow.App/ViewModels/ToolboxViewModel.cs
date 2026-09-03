@@ -70,6 +70,14 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isCompactMode = true;
 
+    partial void OnIsCompactModeChanged(bool value)
+    {
+        if (UserPreferencesService.Instance.Preferences.IsCompactToolbox != value)
+        {
+            UserPreferencesService.Instance.UpdatePreferences(p => p.IsCompactToolbox = value);
+        }
+    }
+
     [ObservableProperty]
     private string _selectedCategoryFilter = "Todas";
 
@@ -89,6 +97,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     public ToolboxViewModel(PluginLoader pluginLoader)
     {
         _pluginLoader = pluginLoader;
+        _isCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
         _languageChangedHandler = (_, _) => RefreshToolbox();
         _preferencesChangedHandler = () => RefreshToolbox();
 

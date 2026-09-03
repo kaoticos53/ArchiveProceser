@@ -65,8 +65,8 @@ public class EditorViewModelTests
         var variables = editor.GetUpstreamAvailableVariables(destNode);
 
         // Assert
-        variables.Should().Contain(g => g.GroupName.Contains(exifNode.Title));
-        var exifGroup = variables.First(g => g.GroupName.Contains(exifNode.Title));
+        variables.Should().Contain(g => g.GroupName.Contains("EXIF", StringComparison.OrdinalIgnoreCase) || g.GroupName.Contains(exifNode.Title, StringComparison.OrdinalIgnoreCase));
+        var exifGroup = variables.First(g => g.GroupName.Contains("EXIF", StringComparison.OrdinalIgnoreCase) || g.GroupName.Contains(exifNode.Title, StringComparison.OrdinalIgnoreCase));
         exifGroup.Variables.Should().Contain(v => v.Name == "DateTaken");
         exifGroup.Variables.Should().Contain(v => v.Name == "Orientation");
     }

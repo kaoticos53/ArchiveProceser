@@ -13,12 +13,6 @@ public class AiNodesTests : IDisposable
 {
     private readonly string _tempDir;
 
-    public AiNodesTests()
-    {
-        _tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_AI_Test_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_tempDir);
-    }
-
     [Fact]
     public void AiModelManager_DirectoryResolution_ShouldPointToValidFolder()
     {
@@ -248,6 +242,32 @@ public class AiNodesTests : IDisposable
         emittedItem.Should().NotBeNull();
         emittedItem!.Metadata.Should().ContainKey("AI:FaceCount");
         emittedItem.Metadata.Should().ContainKey("AI:HasFaces");
+    }
+
+    private readonly Xunit.Abstractions.ITestOutputHelper? _testOutputHelper;
+
+    public AiNodesTests(Xunit.Abstractions.ITestOutputHelper? testOutputHelper = null)
+    {
+        _testOutputHelper = testOutputHelper;
+        _tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_AI_Test_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempDir);
+    }
+
+    [Fact]
+    public void TinyYoloV3_DetectObjects_ShouldRunInferenceAndReturnValidResults()
+    {
+        string modelPath = AiModelManager.GetModelPath("tiny-yolov3-11.onnx");
+        if (!File.Exists(modelPath)) return;
+
+        using var img = new Image<Rgb24>(640, 480);
+        var detections = OnnxInferenceEngine.DetectObjects(modelPath, img, confidenceThreshold: 0.1);
+
+        detections.Should().NotBeNull();
+        // Verificar que GetCocoLabel funciona para las 80 clases
+        OnnxInferenceEngine.GetCocoLabel(0).Should().Be("person");
+        OnnxInferenceEngine.GetCocoLabel(1).Should().Be("bicycle");
+        OnnxInferenceEngine.GetCocoLabel(2).Should().Be("car");
+        OnnxInferenceEngine.GetCocoLabel(79).Should().Be("toothbrush");
     }
 
     // ──────────────────────────────────────────────────────────────────────────

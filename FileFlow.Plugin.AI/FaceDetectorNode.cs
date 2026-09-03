@@ -3,6 +3,7 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI;
 
@@ -51,7 +52,7 @@ public class FaceDetectorNode : IFlowNode
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp"))
         {
-            context.Log($"[FaceDetector] Formato no compatible: {item.FileName}", LogLevel.Debug, item);
+            context.Log($"[FaceDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
             item.Metadata["AI:HasFaces"] = false;
             item.Metadata["AI:FaceCount"] = 0;
             await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
@@ -78,8 +79,9 @@ public class FaceDetectorNode : IFlowNode
             int minFaces = Parameters.TryGetValue("MinimumFaces", out var mf) ? ParameterHelper.GetInt32(mf, 1) : 1;
 
             using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            image.Mutate(x => x.Resize(320, 240));
 
-            var (faceCount, maxConf) = await Task.Run(
+            var (faceCount, maxConf, faces) = await Task.Run(
                 () => OnnxInferenceEngine.DetectFaces(modelPath, image, threshold),
                 cancellationToken).ConfigureAwait(false);
 
@@ -88,6 +90,15 @@ public class FaceDetectorNode : IFlowNode
             item.Metadata["AI:FaceMaxConfidence"] = Math.Round(maxConf, 4);
             item.Metadata["AI:Model"] = "ultraface-slim-320";
 
+            if (faces.Count > 0)
+            {
+                item.Metadata["AI:FaceBoxes"] = System.Text.Json.JsonSerializer.Serialize(faces);
+            }
+            else
+            {
+                item.Metadata.Remove("AI:FaceBoxes");
+            }
+
             if (faceCount >= minFaces)
             {
                 context.Log($"[FaceDetector] ✅ {faceCount} rostro(s) detectado(s) en {item.FileName} (confianza máx: {maxConf * 100:F1}%).", LogLevel.Information, item);
@@ -95,13 +106,13 @@ public class FaceDetectorNode : IFlowNode
             }
             else
             {
-                context.Log($"[FaceDetector] No se detectaron suficientes rostros ({faceCount}) en {item.FileName}.", LogLevel.Debug, item);
+                context.Log($"[FaceDetector] ℹ️ No se detectaron suficientes rostros ({faceCount} < {minFaces}) en {item.FileName}.", LogLevel.Information, item);
                 await context.EmitAsync("NoFaces", item).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[FaceDetector] Error al procesar {item.FileName}: {ex.Message}", LogLevel.Warning, item);
+            context.Log($"[FaceDetector] Error al procesar {item.FileName}: {ex.Message}", LogLevel.Error, item);
             item.Metadata["AI:HasFaces"] = false;
             item.Metadata["AI:FaceCount"] = 0;
             await context.EmitAsync("NoFaces", item).ConfigureAwait(false);

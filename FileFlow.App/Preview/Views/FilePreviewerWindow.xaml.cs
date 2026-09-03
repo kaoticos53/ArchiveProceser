@@ -28,11 +28,6 @@ public partial class FilePreviewerWindow : Window
         InitializeComponent();
         ViewModel = new FilePreviewerViewModel();
         DataContext = ViewModel;
-
-        if (!Resources.Contains("AddOneConverter"))
-        {
-            Resources.Add("AddOneConverter", new AddOneConverter());
-        }
     }
 
     public async Task ShowPreviewAsync(FilePreviewContext context, IEnumerable<FilePreviewContext>? siblings = null, Window? owner = null)

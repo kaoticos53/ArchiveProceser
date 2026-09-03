@@ -3,6 +3,7 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI;
 
@@ -69,6 +70,7 @@ public class SmartImageClassifierNode : IFlowNode
             }
 
             using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            image.Mutate(x => x.Resize(224, 224));
 
             var (category, label, confidence) = await Task.Run(
                 () => OnnxInferenceEngine.ClassifyImage(modelPath, image),

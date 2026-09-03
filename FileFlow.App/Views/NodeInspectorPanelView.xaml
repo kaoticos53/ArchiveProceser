@@ -283,15 +283,35 @@
                                 <ListBox.ItemContainerStyle>
                                     <Style TargetType="ListBoxItem">
                                         <Setter Property="Padding" Value="0" />
-                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Margin" Value="0,0,0,8" />
                                         <Setter Property="Background" Value="Transparent" />
-                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="BorderThickness" Value="1.5" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
                                         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListBoxItem">
-                                                    <ContentPresenter HorizontalAlignment="Stretch" />
+                                                    <Border x:Name="ItemContainerBorder" 
+                                                            Background="{TemplateBinding Background}" 
+                                                            BorderBrush="{TemplateBinding BorderBrush}" 
+                                                            BorderThickness="{TemplateBinding BorderThickness}" 
+                                                            CornerRadius="7">
+                                                        <ContentPresenter HorizontalAlignment="Stretch" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="ItemContainerBorder" Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                                                            <Setter TargetName="ItemContainerBorder" Property="Background" Value="{DynamicResource BgHoverBrush}" />
+                                                        </Trigger>
+                                                        <MultiTrigger>
+                                                            <MultiTrigger.Conditions>
+                                                                <Condition Property="IsMouseOver" Value="True" />
+                                                                <Condition Property="IsSelected" Value="False" />
+                                                            </MultiTrigger.Conditions>
+                                                            <Setter TargetName="ItemContainerBorder" Property="BorderBrush" Value="{DynamicResource BorderLightBrush}" />
+                                                        </MultiTrigger>
+                                                    </ControlTemplate.Triggers>
                                                 </ControlTemplate>
                                             </Setter.Value>
                                         </Setter>
@@ -326,15 +346,35 @@
                                 <ListBox.ItemContainerStyle>
                                     <Style TargetType="ListBoxItem">
                                         <Setter Property="Padding" Value="0" />
-                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Margin" Value="0,0,0,8" />
                                         <Setter Property="Background" Value="Transparent" />
-                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="BorderThickness" Value="1.5" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
                                         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListBoxItem">
-                                                    <ContentPresenter HorizontalAlignment="Stretch" />
+                                                    <Border x:Name="ItemContainerBorder" 
+                                                            Background="{TemplateBinding Background}" 
+                                                            BorderBrush="{TemplateBinding BorderBrush}" 
+                                                            BorderThickness="{TemplateBinding BorderThickness}" 
+                                                            CornerRadius="7">
+                                                        <ContentPresenter HorizontalAlignment="Stretch" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="ItemContainerBorder" Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                                                            <Setter TargetName="ItemContainerBorder" Property="Background" Value="{DynamicResource BgHoverBrush}" />
+                                                        </Trigger>
+                                                        <MultiTrigger>
+                                                            <MultiTrigger.Conditions>
+                                                                <Condition Property="IsMouseOver" Value="True" />
+                                                                <Condition Property="IsSelected" Value="False" />
+                                                            </MultiTrigger.Conditions>
+                                                            <Setter TargetName="ItemContainerBorder" Property="BorderBrush" Value="{DynamicResource BorderLightBrush}" />
+                                                        </MultiTrigger>
+                                                    </ControlTemplate.Triggers>
                                                 </ControlTemplate>
                                             </Setter.Value>
                                         </Setter>

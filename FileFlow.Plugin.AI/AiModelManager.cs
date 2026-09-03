@@ -111,6 +111,24 @@ public static class AiModelManager
             FriendlyName: "Tesseract OCR (Inglés)",
             Category: "OCR"
         ),
+        ["grounding-dino"] = new(
+            Id: "grounding-dino",
+            FileName: "yolov8s-worldv2.onnx",
+            DownloadUrl: "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-worldv2.onnx",
+            MinSizeBytes: 35_000_000,
+            Description: "Grounding DINO / YOLO-World - Detección de objetos por prompt en texto libre (45 MB)",
+            FriendlyName: "Grounding DINO / Open-Vocab",
+            Category: "Visión"
+        ),
+        ["marian-es-en"] = new(
+            Id: "marian-es-en",
+            FileName: "opus-mt-es-en.onnx",
+            DownloadUrl: "https://huggingface.co/onnx-community/opus-mt-es-en/resolve/main/onnx/model.onnx",
+            MinSizeBytes: 40_000_000,
+            Description: "Helsinki-NLP MarianMT - Traductor Español a Inglés para prompts (60 MB)",
+            FriendlyName: "MarianMT ES-EN (Helsinki-NLP)",
+            Category: "NLP / Texto"
+        ),
     };
 
     // ──────────────────────────────────────────────────────────────────────────

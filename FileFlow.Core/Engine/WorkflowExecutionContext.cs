@@ -60,7 +60,12 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         string? effectiveFileName = !string.IsNullOrWhiteSpace(filePath) ? null : CurrentItem?.FileName;
         string? itemId = CurrentItem?.IdString;
         long fileSize = CurrentItem?.FileSizeBytes ?? 0;
-        _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson: null, itemId: itemId, fileName: effectiveFileName);
+        string? detailsJson = null;
+        if (CurrentItem?.Metadata != null && CurrentItem.Metadata.Count > 0)
+        {
+            try { detailsJson = System.Text.Json.JsonSerializer.Serialize(CurrentItem.Metadata); } catch { }
+        }
+        _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson: detailsJson, itemId: itemId, fileName: effectiveFileName);
     }
 
     public void Log(string message, LogLevel level, FileItemContext? item, double durationMs = 0.0, string? detailsJson = null)
@@ -71,6 +76,10 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         string? fileName = effectiveItem?.FileName;
         string? itemId = effectiveItem?.IdString;
         long fileSize = effectiveItem?.FileSizeBytes ?? 0;
+        if (detailsJson == null && effectiveItem?.Metadata != null && effectiveItem.Metadata.Count > 0)
+        {
+            try { detailsJson = System.Text.Json.JsonSerializer.Serialize(effectiveItem.Metadata); } catch { }
+        }
         _executor.NotifyLog(_sourceNodeId, message, level, path, fileSize, durationMs, detailsJson, itemId, fileName);
     }
 
@@ -81,6 +90,10 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         string? effectiveFileName = !string.IsNullOrWhiteSpace(filePath) ? null : CurrentItem?.FileName;
         string? effectiveItemId = !string.IsNullOrWhiteSpace(itemId) ? itemId : CurrentItem?.IdString;
         long fileSize = CurrentItem?.FileSizeBytes ?? 0;
+        if (detailsJson == null && CurrentItem?.Metadata != null && CurrentItem.Metadata.Count > 0)
+        {
+            try { detailsJson = System.Text.Json.JsonSerializer.Serialize(CurrentItem.Metadata); } catch { }
+        }
         _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson, effectiveItemId, effectiveFileName);
     }
 

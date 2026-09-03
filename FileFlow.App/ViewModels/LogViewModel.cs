@@ -63,6 +63,16 @@ public partial class LogViewModel : ObservableObject
     [ObservableProperty]
     private int _debugCount;
 
+    [ObservableProperty]
+    private StructuredLogRecord? _selectedLog;
+
+    public event Action<StructuredLogRecord?>? LogSelectionChanged;
+
+    partial void OnSelectedLogChanged(StructuredLogRecord? value)
+    {
+        LogSelectionChanged?.Invoke(value);
+    }
+
     public event Action? OnLogBatchAdded;
     public event Action? OnLogsCleared;
     public event Action? OnFilterChanged;
@@ -103,6 +113,7 @@ public partial class LogViewModel : ObservableObject
     public void AddStructuredLog(StructuredLogRecord record)
     {
         _pendingLogs.Enqueue(record);
+        SqliteLogStore.Instance.EnqueueLog(record);
     }
 
     private void FlushPendingLogs()
@@ -130,7 +141,7 @@ public partial class LogViewModel : ObservableObject
             DebugCount += dbgs;
             TotalLogsCount += batch.Count;
 
-            if (IsLiveMode && string.IsNullOrWhiteSpace(SearchFilter) && ActiveFilter == LogFilterLevel.All && SortColumn == "Id")
+            if (IsLiveMode && string.IsNullOrWhiteSpace(SearchFilter) && ActiveFilter == LogFilterLevel.All && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
             {
                 Logs.AddRange(batch);
                 OnLogBatchAdded?.Invoke();
@@ -183,7 +194,11 @@ public partial class LogViewModel : ObservableObject
 
     async partial void OnActiveFilterChanged(LogFilterLevel value)
     {
-        if (value != LogFilterLevel.All)
+        if (value == LogFilterLevel.All && string.IsNullOrWhiteSpace(SearchFilter) && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
+        {
+            IsLiveMode = true;
+        }
+        else
         {
             IsLiveMode = false;
         }
@@ -193,6 +208,14 @@ public partial class LogViewModel : ObservableObject
 
     async partial void OnSearchFilterChanged(string value)
     {
+        if (string.IsNullOrWhiteSpace(value) && ActiveFilter == LogFilterLevel.All && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
+        {
+            IsLiveMode = true;
+        }
+        else
+        {
+            IsLiveMode = false;
+        }
         await LoadQueryResultsAsync();
         OnFilterChanged?.Invoke();
     }
@@ -213,6 +236,7 @@ public partial class LogViewModel : ObservableObject
     {
         try
         {
+            FlushAllPendingLogs();
             await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
             int total = await SqliteLogStore.Instance.GetTotalCountAsync().ConfigureAwait(false);
             int offset = Math.Max(0, total - MaxLiveBufferSize);
@@ -238,14 +262,27 @@ public partial class LogViewModel : ObservableObject
     {
         try
         {
+            FlushAllPendingLogs();
             await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
-            var filter = BuildCurrentFilter();
-            var results = await SqliteLogStore.Instance.GetLogsWindowAsync(0, 1000, filter).ConfigureAwait(false);
+
+            IReadOnlyList<StructuredLogRecord> queryResults;
+
+            if (ActiveFilter == LogFilterLevel.All && string.IsNullOrWhiteSpace(SearchFilter) && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
+            {
+                int total = await SqliteLogStore.Instance.GetTotalCountAsync().ConfigureAwait(false);
+                int offset = Math.Max(0, total - MaxLiveBufferSize);
+                queryResults = await SqliteLogStore.Instance.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
+            }
+            else
+            {
+                var filter = BuildCurrentFilter();
+                queryResults = await SqliteLogStore.Instance.GetLogsWindowAsync(0, MaxLiveBufferSize, filter).ConfigureAwait(false);
+            }
 
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 Logs.Clear();
-                foreach (var item in results)
+                foreach (var item in queryResults)
                 {
                     Logs.Add(item);
                 }
@@ -319,14 +356,16 @@ public partial class LogViewModel : ObservableObject
         TotalLogsCount = 0;
         ProgressPercentage = 0;
         StatusMessage = LocalizationManager.Instance["StatusReady"];
+        IsLiveMode = true;
+        ActiveFilter = LogFilterLevel.All;
+        SearchFilter = string.Empty;
+        SortColumn = "Id";
+        IsSortAscending = true;
 
         await SqliteLogStore.Instance.ClearAsync().ConfigureAwait(false);
 
         OnLogsCleared?.Invoke();
     }
-
-    [ObservableProperty]
-    private StructuredLogRecord? _selectedLog;
 
     [RelayCommand]
     public async Task FilterByItem(string? itemId)
@@ -335,6 +374,92 @@ public partial class LogViewModel : ObservableObject
         IsLiveMode = false;
         SearchFilter = itemId.Trim();
         await LoadQueryResultsAsync();
+    }
+
+    [RelayCommand]
+    public void CopyFullLogLine(StructuredLogRecord? log = null)
+    {
+        var target = log ?? SelectedLog;
+        if (target == null) return;
+        try
+        {
+            Clipboard.SetText(target.FormattedLine);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void CopyLogMessage(StructuredLogRecord? log = null)
+    {
+        var target = log ?? SelectedLog;
+        if (target == null || string.IsNullOrWhiteSpace(target.Message)) return;
+        try
+        {
+            Clipboard.SetText(target.Message);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void CopyLogFilePath(StructuredLogRecord? log = null)
+    {
+        var target = log ?? SelectedLog;
+        if (target == null || string.IsNullOrWhiteSpace(target.FilePath)) return;
+        try
+        {
+            Clipboard.SetText(target.FilePath);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void CopyLogFileName(StructuredLogRecord? log = null)
+    {
+        var target = log ?? SelectedLog;
+        if (target == null || string.IsNullOrWhiteSpace(target.FileName)) return;
+        try
+        {
+            Clipboard.SetText(target.FileName);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void CopyLogItemId(StructuredLogRecord? log = null)
+    {
+        var target = log ?? SelectedLog;
+        if (target == null || string.IsNullOrWhiteSpace(target.ItemId)) return;
+        try
+        {
+            Clipboard.SetText(target.ItemId);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void CopyLogDetailsJson(StructuredLogRecord? log = null)
+    {
+        var target = log ?? SelectedLog;
+        if (target == null || string.IsNullOrWhiteSpace(target.DetailsJson)) return;
+        try
+        {
+            Clipboard.SetText(target.DetailsJson);
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    public void FilterByNode(string? nodeName)
+    {
+        if (string.IsNullOrWhiteSpace(nodeName)) return;
+        SearchFilter = nodeName.Trim();
+    }
+
+    [RelayCommand]
+    public void FilterByFile(string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return;
+        SearchFilter = fileName.Trim();
     }
 
     [RelayCommand]
@@ -373,6 +498,39 @@ public partial class LogViewModel : ObservableObject
         }
 
         var ctx = new FileFlow.App.Preview.Core.FilePreviewContext(filePath);
+
+        if (!string.IsNullOrWhiteSpace(targetLog.DetailsJson))
+        {
+            try
+            {
+                var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(targetLog.DetailsJson);
+                if (dict != null)
+                {
+                    foreach (var kvp in dict)
+                    {
+                        if (kvp.Value is System.Text.Json.JsonElement je)
+                        {
+                            if (je.ValueKind == System.Text.Json.JsonValueKind.String)
+                                ctx.Metadata[kvp.Key] = je.GetString()!;
+                            else if (je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetInt32(out int intVal))
+                                ctx.Metadata[kvp.Key] = intVal;
+                            else if (je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetDouble(out double dblVal))
+                                ctx.Metadata[kvp.Key] = dblVal;
+                            else if (je.ValueKind == System.Text.Json.JsonValueKind.True || je.ValueKind == System.Text.Json.JsonValueKind.False)
+                                ctx.Metadata[kvp.Key] = je.GetBoolean();
+                            else
+                                ctx.Metadata[kvp.Key] = je.GetRawText();
+                        }
+                        else
+                        {
+                            ctx.Metadata[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
         var win = new FileFlow.App.Preview.Views.FilePreviewerWindow();
         _ = win.ShowPreviewAsync(ctx, owner: Application.Current.MainWindow);
     }

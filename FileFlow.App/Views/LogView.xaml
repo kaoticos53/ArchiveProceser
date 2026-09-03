@@ -252,7 +252,7 @@
                       BorderThickness="1"
                       FontFamily="Cascadia Code, Consolas, monospace"
                       FontSize="11"
-                      RowHeight="24"
+                      MinRowHeight="26"
                       SelectionMode="Single"
                       SelectionUnit="FullRow"
                       RowDetailsVisibilityMode="VisibleWhenSelected"
@@ -262,7 +262,7 @@
                       VirtualizingStackPanel.VirtualizationMode="Recycling"
                       ScrollViewer.CanContentScroll="True"
                       ScrollViewer.VerticalScrollBarVisibility="Auto"
-                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       ScrollViewer.IsDeferredScrollingEnabled="False">
                 
                 <DataGrid.ColumnHeaderStyle>
@@ -281,7 +281,50 @@
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
                         <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="MinHeight" Value="26" />
                         <Setter Property="VerticalContentAlignment" Value="Center" />
+                        <EventSetter Event="MouseDoubleClick" Handler="OnDataGridRowMouseDoubleClick" />
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}">
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyFullLine], FallbackValue='📄 Copiar Línea Completa de Log'}"
+                                              Command="{Binding DataContext.CopyFullLogLineCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyMessage], FallbackValue='💬 Copiar Mensaje'}"
+                                              Command="{Binding DataContext.CopyLogMessageCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyFilePath], FallbackValue='📁 Copiar Ruta del Archivo'}"
+                                              Command="{Binding DataContext.CopyLogFilePathCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}"
+                                              Visibility="{Binding FilePath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyFileName], FallbackValue='🏷️ Copiar Nombre de Archivo'}"
+                                              Command="{Binding DataContext.CopyLogFileNameCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}"
+                                              Visibility="{Binding FileName, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyItemId], FallbackValue='🆔 Copiar ID de Flujo'}"
+                                              Command="{Binding DataContext.CopyLogItemIdCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}"
+                                              Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyJson], FallbackValue='📦 Copiar Detalles / Metadatos JSON'}"
+                                              Command="{Binding DataContext.CopyLogDetailsJsonCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}"
+                                              Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <Separator />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_Preview], FallbackValue='👁️ Abrir Vista Previa'}"
+                                              Command="{Binding DataContext.PreviewLogFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding}"
+                                              Visibility="{Binding FilePath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_FilterNode], FallbackValue='🎯 Filtrar solo este Nodo'}"
+                                              Command="{Binding DataContext.FilterByNodeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding NodeName}"
+                                              Visibility="{Binding NodeName, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_FilterFile], FallbackValue='📄 Filtrar solo este Archivo'}"
+                                              Command="{Binding DataContext.FilterByFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              CommandParameter="{Binding FileName}"
+                                              Visibility="{Binding FileName, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
@@ -311,19 +354,19 @@
 
                 <DataGrid.Columns>
                     <!-- Hora -->
-                    <DataGridTemplateColumn Width="95">
+                    <DataGridTemplateColumn Width="85">
                         <DataGridTemplateColumn.Header>
                             <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColTime], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Timestamp" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" FontSize="10.5" />
+                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" FontSize="10" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
                     <!-- Nivel (Pill Badge con Fondo Translúcido) -->
-                    <DataGridTemplateColumn Width="65">
+                    <DataGridTemplateColumn Width="58">
                         <DataGridTemplateColumn.Header>
                             <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColLevel], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Level" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
@@ -331,13 +374,13 @@
                             <DataTemplate>
                                 <Border Background="{Binding Level, Converter={StaticResource LogLevelToBadgeBackgroundConverter}}"
                                         CornerRadius="3"
-                                        Padding="4,1"
+                                        Padding="3,1"
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center">
                                     <TextBlock Text="{Binding BadgeText}" 
                                                Foreground="{Binding Level, Converter={StaticResource LogLevelToBadgeForegroundConverter}}" 
                                                FontWeight="Bold" 
-                                               FontSize="9.5" 
+                                               FontSize="9" 
                                                VerticalAlignment="Center" />
                                 </Border>
                             </DataTemplate>
@@ -345,19 +388,19 @@
                     </DataGridTemplateColumn>
 
                     <!-- Nodo -->
-                    <DataGridTemplateColumn Width="125">
+                    <DataGridTemplateColumn Width="110">
                         <DataGridTemplateColumn.Header>
                             <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColNode], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="NodeName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding NodeName}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10.5" />
+                                <TextBlock Text="{Binding NodeName}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
                     <!-- ID Fichero (Badge clicable para trazabilidad de extremo a extremo) -->
-                    <DataGridTemplateColumn Width="85">
+                    <DataGridTemplateColumn Width="65">
                         <DataGridTemplateColumn.Header>
                             <Button Content="ID ⬍" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="ItemId" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
@@ -372,19 +415,19 @@
                                         VerticalAlignment="Center"
                                         ToolTip="Filtrar trazabilidad de este archivo"
                                         Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
-                                    <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="3" Padding="4,1">
+                                    <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="3" Padding="3,1">
                                         <TextBlock Text="{Binding ShortItemId, StringFormat='#{0}'}" 
                                                    Foreground="{DynamicResource AccentCyanBrush}" 
                                                    FontWeight="SemiBold" 
-                                                   FontSize="9.5" />
+                                                   FontSize="9" />
                                     </Border>
                                 </Button>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- Fichero -->
-                    <DataGridTemplateColumn Width="150">
+                    <!-- Fichero (Envoltura multilínea hasta 2 líneas) -->
+                    <DataGridTemplateColumn Width="125">
                         <DataGridTemplateColumn.Header>
                             <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColFile], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="FileName" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
@@ -392,9 +435,11 @@
                             <DataTemplate>
                                 <TextBlock Text="{Binding FileName}" 
                                            Foreground="{DynamicResource TextSecondaryBrush}" 
+                                           TextWrapping="Wrap"
+                                           MaxHeight="32"
                                            TextTrimming="CharacterEllipsis" 
                                            VerticalAlignment="Center"
-                                           FontSize="10.5">
+                                           FontSize="10">
                                     <TextBlock.ToolTip>
                                         <ToolTip Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}">
                                             <StackPanel>
@@ -410,27 +455,32 @@
                     </DataGridTemplateColumn>
 
                     <!-- Duración -->
-                    <DataGridTemplateColumn Width="80">
+                    <DataGridTemplateColumn Width="65">
                         <DataGridTemplateColumn.Header>
                             <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColDuration], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="DurationMs" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1} ms'}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center" FontSize="10.5" />
+                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1}ms'}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center" FontSize="10" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- Mensaje -->
+                    <!-- Mensaje (Expansor con Envoltura Dinámica en 2-3 Líneas) -->
                     <DataGridTemplateColumn Width="*">
                         <DataGridTemplateColumn.Header>
                             <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LogColMessage], StringFormat='{}{0} ⬍'}" Command="{Binding DataContext.SortByCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="Message" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" FontSize="10" Cursor="Hand" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
                                     <!-- Badge JSON si contiene detalles estructurados -->
-                                    <Border Background="{DynamicResource AccentPurpleBrush}" 
+                                    <Border Grid.Column="0" 
+                                            Background="{DynamicResource AccentPurpleBrush}" 
                                             Opacity="0.85" 
                                             CornerRadius="3" 
                                             Padding="4,1" 
@@ -441,8 +491,15 @@
                                             ToolTip="Contiene detalles JSON (clic para desplegar)">
                                         <TextBlock Text="{}{ } JSON" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
                                     </Border>
-                                    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10.5" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" 
+                                               Text="{Binding Message}" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                               TextWrapping="Wrap"
+                                               MaxHeight="46"
+                                               TextTrimming="CharacterEllipsis" 
+                                               VerticalAlignment="Center" 
+                                               FontSize="10.5" />
+                                </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

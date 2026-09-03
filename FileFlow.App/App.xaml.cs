@@ -117,6 +117,7 @@ public partial class App : Application
         }
 
         base.OnExit(e);
+        Environment.Exit(e.ApplicationExitCode);
     }
 
     private static void LogCrashToFile(object exception)

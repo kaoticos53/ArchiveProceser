@@ -3,6 +3,7 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI;
 
@@ -51,7 +52,7 @@ public class ObjectDetectorNode : IFlowNode
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp"))
         {
-            context.Log($"[ObjectDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Debug, item);
+            context.Log($"[ObjectDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
             await context.EmitAsync("Out", item).ConfigureAwait(false);
             return;
         }
@@ -75,9 +76,12 @@ public class ObjectDetectorNode : IFlowNode
             int maxDets = Parameters.TryGetValue("MaxDetections", out var md) ? ParameterHelper.GetInt32(md, 10) : 10;
 
             using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            int origW = image.Width;
+            int origH = image.Height;
+            image.Mutate(x => x.Resize(416, 416));
 
             var detected = await Task.Run(
-                () => OnnxInferenceEngine.DetectObjects(modelPath, image, threshold),
+                () => OnnxInferenceEngine.DetectObjects(modelPath, image, threshold, origW, origH),
                 cancellationToken).ConfigureAwait(false);
 
             // Aplicar filtro opcional
@@ -94,7 +98,26 @@ public class ObjectDetectorNode : IFlowNode
             item.Metadata["AI:ObjectScores"] = string.Join(", ", detected.Select(d => $"{d.Label}:{d.Confidence:F2}"));
             item.Metadata["AI:Model"] = "tiny-yolov3-11";
 
-            context.Log($"[ObjectDetector] ✅ {detected.Count} objeto(s) detectado(s): {item.Metadata["AI:DetectedObjects"]}", LogLevel.Information, item);
+            if (detected.Count > 0)
+            {
+                var boxes = detected.Select(d => d.Box).ToList();
+                item.Metadata["AI:DetectedBoxes"] = System.Text.Json.JsonSerializer.Serialize(boxes);
+                item.Metadata["AI:FaceBoxes"] = null!; // Avoid collision
+                item.Metadata.Remove("AI:FaceBoxes");
+            }
+            else
+            {
+                item.Metadata.Remove("AI:DetectedBoxes");
+            }
+
+            if (detected.Count > 0)
+            {
+                context.Log($"[ObjectDetector] ✅ {detected.Count} objeto(s) detectado(s): {item.Metadata["AI:DetectedObjects"]}", LogLevel.Information, item);
+            }
+            else
+            {
+                context.Log($"[ObjectDetector] ℹ️ 0 objetos detectados en {item.FileName} con umbral de confianza {threshold * 100:F0}%.", LogLevel.Information, item);
+            }
 
             await context.EmitAsync("Out", item).ConfigureAwait(false);
         }

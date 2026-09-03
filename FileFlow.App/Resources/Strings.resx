@@ -617,6 +617,8 @@
   <data name="FaceDetectorNode_Desc" xml:space="preserve"><value>Analyzes images to detect the presence and count of human faces, branching flows into family photos or objects.</value></data>
   <data name="ObjectDetectorNode_Name" xml:space="preserve"><value>Object Detector (YOLO)</value></data>
   <data name="ObjectDetectorNode_Desc" xml:space="preserve"><value>Detects and identifies multiple everyday objects (people, vehicles, pets, items) present in images.</value></data>
+  <data name="PromptObjectDetectorNode_Name" xml:space="preserve"><value>Prompt-based Object Detector (Grounding DINO)</value></data>
+  <data name="PromptObjectDetectorNode_Desc" xml:space="preserve"><value>Detects objects and concepts described in open natural language text prompts with automatic Spanish-English translation (MarianMT).</value></data>
   <data name="LocalWhisperTranscriberNode_Name" xml:space="preserve"><value>Speech-to-Text Transcriber (Whisper)</value></data>
   <data name="LocalWhisperTranscriberNode_Desc" xml:space="preserve"><value>Transcribes audio and video files to text and synchronized subtitles (.srt) using local Whisper AI.</value></data>
   <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
@@ -637,4 +639,15 @@
   <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Downloading...</value></data>
   <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Download</value></data>
   <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Delete</value></data>
+
+  <!-- Log View Context Menu & Copy Actions -->
+  <data name="Log_ContextMenu_CopyFullLine" xml:space="preserve"><value>📄 Copy Full Log Line</value></data>
+  <data name="Log_ContextMenu_CopyMessage" xml:space="preserve"><value>💬 Copy Message</value></data>
+  <data name="Log_ContextMenu_CopyFilePath" xml:space="preserve"><value>📁 Copy File Path</value></data>
+  <data name="Log_ContextMenu_CopyFileName" xml:space="preserve"><value>🏷️ Copy File Name</value></data>
+  <data name="Log_ContextMenu_CopyItemId" xml:space="preserve"><value>🆔 Copy Flow Item ID</value></data>
+  <data name="Log_ContextMenu_CopyJson" xml:space="preserve"><value>📦 Copy JSON Details / Metadata</value></data>
+  <data name="Log_ContextMenu_Preview" xml:space="preserve"><value>👁️ Open File Preview</value></data>
+  <data name="Log_ContextMenu_FilterNode" xml:space="preserve"><value>🎯 Filter by this Node</value></data>
+  <data name="Log_ContextMenu_FilterFile" xml:space="preserve"><value>📄 Filter by this File</value></data>
 </root>
