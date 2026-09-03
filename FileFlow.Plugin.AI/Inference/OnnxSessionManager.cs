@@ -19,33 +19,64 @@ public static class OnnxSessionManager
     public static Lock InferenceLock => _inferenceLock;
 
     /// <summary>
-    /// Obtiene o inicializa de forma diferida (thread-safe) la sesión ONNX asociada al modelo.
+    /// Obtiene o inicializa de forma diferida (thread-safe) la sesión ONNX asociada al modelo,
+    /// aplicando aceleración GPU DirectML para modelos pesados compatibles y CPU multihilo para modelos ligeros/heredados.
     /// </summary>
     public static InferenceSession GetOrCreateSession(string modelPath)
     {
         var lazy = _sessionCache.GetOrAdd(modelPath, path => new Lazy<InferenceSession>(() =>
         {
-            var options = new SessionOptions
+            if (ShouldUseDirectMl(path))
             {
-                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
-                ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
-                InterOpNumThreads = 1,
-                IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4)
-            };
+                try
+                {
+                    return CreateDirectMlSession(path);
+                }
+                catch
+                {
+                    return CreateCpuSession(path);
+                }
+            }
 
-            // Intentar GPU DirectML primero, caer en CPU si no está disponible
-            try
-            {
-                options.AppendExecutionProvider_DML(0);
-                return new InferenceSession(path, options);
-            }
-            catch
-            {
-                return CreateCpuSession(path);
-            }
+            return CreateCpuSession(path);
         }));
 
         return lazy.Value;
+    }
+
+    /// <summary>
+    /// Determina si un modelo debe beneficiarse de aceleración por GPU DirectML.
+    /// Habilita GPU para modelos pesados de visión de convolución pura (Super-Resolución, Remoción de fondos, Matting, etc.)
+    /// y reserva CPU para modelos con grafos complejos, atención dinámica o topologías heredadas.
+    /// </summary>
+    public static bool ShouldUseDirectMl(string modelPath)
+    {
+        if (!HardwareCapabilityDetector.Specs.HasDirectMlGpu)
+            return false;
+
+        string fileName = Path.GetFileName(modelPath);
+
+        return fileName.Contains("realesr", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("rmbg", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("modnet", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("open_nsfw", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("mobilenetv2", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Crea una sesión configurada con acelerador GPU DirectML (DML).
+    /// </summary>
+    public static InferenceSession CreateDirectMlSession(string modelPath)
+    {
+        var dmlOptions = new SessionOptions
+        {
+            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+            ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
+            InterOpNumThreads = 1,
+            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4)
+        };
+        dmlOptions.AppendExecutionProvider_DML(0);
+        return new InferenceSession(modelPath, dmlOptions);
     }
 
     /// <summary>

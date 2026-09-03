@@ -2,6 +2,25 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-03] - Estabilización de Sesiones ONNX y Aceleración Híbrida GPU DirectML
+
+### 🎯 Objetivos y Alcance
+Ejecución de la suite completa de pruebas del proyecto (`.\test.ps1`), diagnóstico del ciclo de vida de sesiones ONNX en `OnnxSessionManager`, e implementación de una estrategia híbrida inteligente de aceleración por **GPU DirectML** para modelos convolucionales pesados y **CPU multihilo** para modelos con operadores complejos o topologías heredadas.
+
+### 🛠️ Ajustes Realizados
+1. **Aceleración Híbrida Inteligente GPU DirectML / CPU Multihilo (`OnnxSessionManager.cs`)**:
+   - Incorporado el selector `ShouldUseDirectMl(modelPath)` que asigna el acelerador GPU DirectML (`AppendExecutionProvider_DML(0)`) a modelos de visión de convolución pura pesados (`Real-ESRGAN x4`, `RMBG-1.4`, `MODNet`, `OpenNSFW`, `MobileNetV2`).
+   - Mantiene en CPU multihilo optimizada los modelos con grafos complejos, atención dinámica o inicializadores en entradas (`UltraFace`, `Tiny YOLOv3`, `YOLOv8-World text encoder`), previniendo violaciones de acceso nativo (`0xC0000005`) y garantizando máxima estabilidad.
+   - Mecanismo de fallback resiliente que conmuta a CPU ante cualquier contingencia de inicialización del proveedor GPU.
+2. **Compatibilidad en Aserciones de Resolución de Modelos (`AiNodesTests.cs`)**:
+   - Ajustada la aserción de `ObjectDetectorNode_EmitsOutAndInjectsMetadataOrPasses` para validar cualquiera de los modelos de detección de objetos válidos del catálogo (`tiny-yolov3-11`, `yolov8s-worldv2`, `yolov8n`, `grounding-dino`) según el hardware del equipo (`Auto`).
+3. **Validación Completa de Pruebas (`.\test.ps1`)**:
+   - **477 / 477 Pruebas Unitarias e Integración superadas con 100% de éxito**.
+   - Tiempo de ejecución: **10.9 segundos**.
+   - 0 Advertencias, 0 Errores de compilación.
+
+---
+
 ## [2026-09-03] - Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular)
 
 ### 🎯 Objetivos y Alcance

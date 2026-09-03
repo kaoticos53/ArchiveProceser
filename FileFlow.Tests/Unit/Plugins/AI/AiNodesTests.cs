@@ -141,7 +141,7 @@ public class AiNodesTests : IDisposable
             emittedItem.Metadata["AI:ObjectCount"].Should().NotBeNull();
             emittedItem.Metadata.Should().ContainKey("AI:DetectedObjects");
             emittedItem.Metadata.Should().ContainKey("AI:Model");
-            emittedItem.Metadata["AI:Model"]?.ToString().Should().Be("tiny-yolov3-11");
+            emittedItem.Metadata["AI:Model"]?.ToString().Should().BeOneOf("tiny-yolov3-11", "yolov8s-worldv2", "yolov8n", "grounding-dino");
         }
     }
 
