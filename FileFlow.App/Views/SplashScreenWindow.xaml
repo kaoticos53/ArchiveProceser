@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="FileFlow Studio"
-        Width="520"
-        Height="320"
+        Width="540"
+        Height="350"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -34,24 +34,24 @@
     </Window.Resources>
 
     <Grid Margin="16">
-        <!-- Glow Effect Exterior -->
+        <!-- Glow Exterior -->
         <Border CornerRadius="16"
                 Background="#0F172A"
                 BorderBrush="#334155"
                 BorderThickness="1">
             <Border.Effect>
                 <DropShadowEffect Color="#6366F1"
-                                  BlurRadius="28"
+                                  BlurRadius="30"
                                   ShadowDepth="0"
-                                  Opacity="0.45" />
+                                  Opacity="0.4" />
             </Border.Effect>
 
             <Grid ClipToBounds="True">
-                <!-- Decorative Subtle Background Gradient Shapes -->
-                <Ellipse Width="260" Height="260"
+                <!-- Efectos Ambientales de Fondo -->
+                <Ellipse Width="280" Height="280"
                          HorizontalAlignment="Right" VerticalAlignment="Top"
-                         Margin="0,-80,-80,0"
-                         Opacity="0.15">
+                         Margin="0,-90,-90,0"
+                         Opacity="0.14">
                     <Ellipse.Fill>
                         <RadialGradientBrush>
                             <GradientStop Color="#6366F1" Offset="0"/>
@@ -60,9 +60,9 @@
                     </Ellipse.Fill>
                 </Ellipse>
 
-                <Ellipse Width="220" Height="220"
+                <Ellipse Width="240" Height="240"
                          HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                         Margin="-60,0,0,-60"
+                         Margin="-70,0,0,-70"
                          Opacity="0.12">
                     <Ellipse.Fill>
                         <RadialGradientBrush>
@@ -72,17 +72,23 @@
                     </Ellipse.Fill>
                 </Ellipse>
 
-                <Grid Margin="32,28,32,24">
+                <Grid Margin="32,26,32,20">
                     <Grid.RowDefinitions>
+                        <!-- 0: Header (Logo + Title + Version) -->
                         <RowDefinition Height="Auto"/>
+                        <!-- 1: Badges de características -->
                         <RowDefinition Height="*"/>
+                        <!-- 2: Status & Percentage -->
                         <RowDefinition Height="Auto"/>
+                        <!-- 3: Progress Bar -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- 4: Footer (Copyright & GitHub) -->
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Header with Icon and Title -->
+                    <!-- Header con Icono, Título y Versión -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Logo Glow Badge -->
+                        <!-- Logotipo Insignia con Gradiente -->
                         <Border Width="52" Height="52" CornerRadius="12" Margin="0,0,16,0">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -91,7 +97,7 @@
                                 </LinearGradientBrush>
                             </Border.Background>
                             <Border.Effect>
-                                <DropShadowEffect Color="#06B6D4" BlurRadius="14" ShadowDepth="0" Opacity="0.6"/>
+                                <DropShadowEffect Color="#06B6D4" BlurRadius="14" ShadowDepth="0" Opacity="0.55"/>
                             </Border.Effect>
                             <!-- Flow DAG Stylized Icon -->
                             <Viewbox Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -129,54 +135,54 @@
                                                Foreground="#94A3B8"/>
                                 </Border>
                             </StackPanel>
-                            <TextBlock Text="Automatización de Archivos y Motor de Flujos DAG"
+                            <TextBlock Text="Automatización Inteligente de Archivos y Motor DAG"
                                        FontSize="11"
                                        Foreground="#64748B"
                                        Margin="0,3,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Central Description / Features Mini Badges -->
-                    <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,12,0,0">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
-                            <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock Text="⚡ Procesamiento Asíncrono" FontSize="11" Foreground="#94A3B8"/>
+                    <!-- Distintivos de Capacidades del Motor -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,10,0,10">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="9,4" Margin="3,0">
+                                <TextBlock Text="⚡ Modo Asíncrono" FontSize="10.5" Foreground="#94A3B8"/>
                             </Border>
-                            <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock x:Name="TxtNodesBadge" Text="🧩 62 Nodos DAG" FontSize="11" Foreground="#94A3B8"/>
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="9,4" Margin="3,0">
+                                <TextBlock x:Name="TxtNodesBadge" Text="🧩 57 Nodos DAG" FontSize="10.5" Foreground="#38BDF8" FontWeight="SemiBold"/>
                             </Border>
-                            <Border Background="#1E293B" CornerRadius="12" Padding="10,4" Margin="4,0">
-                                <TextBlock Text="🛡️ Pipelines No Destructivos" FontSize="11" Foreground="#94A3B8"/>
+                            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="12" Padding="9,4" Margin="3,0">
+                                <TextBlock Text="🛡️ No Destructivo" FontSize="10.5" Foreground="#94A3B8"/>
                             </Border>
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Status Label & Loading Progress -->
+                    <!-- Etiqueta de Estado y Porcentaje -->
                     <Grid Grid.Row="2" Margin="0,0,0,6">
                         <TextBlock x:Name="TxtStatus"
                                    Text="Iniciando motor FileFlow..."
-                                   FontSize="12"
+                                   FontSize="11.5"
                                    Foreground="#CBD5E1"
                                    HorizontalAlignment="Left"
                                    TextTrimming="CharacterEllipsis"
-                                   MaxWidth="360"/>
+                                   MaxWidth="380"/>
 
                         <TextBlock x:Name="TxtPercentage"
                                    Text="0%"
-                                   FontSize="12"
+                                   FontSize="11.5"
                                    FontWeight="SemiBold"
                                    Foreground="#38BDF8"
                                    HorizontalAlignment="Right"/>
                     </Grid>
 
-                    <!-- Animated Progress Bar -->
-                    <Grid Grid.Row="3">
-                        <!-- Background Track -->
-                        <Border Height="6" CornerRadius="3" Background="#1E293B"/>
+                    <!-- Barra de Progreso Fluida con Gradiente -->
+                    <Grid Grid.Row="3" Margin="0,0,0,14">
+                        <!-- Track de Fondo -->
+                        <Border Height="5" CornerRadius="2.5" Background="#1E293B"/>
 
-                        <!-- Progress Bar Fill -->
+                        <!-- Relleno de Barra -->
                         <ProgressBar x:Name="PbProgress"
-                                     Height="6"
+                                     Height="5"
                                      Minimum="0"
                                      Maximum="100"
                                      Value="0"
@@ -188,11 +194,11 @@
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ProgressBar">
-                                                <Border CornerRadius="3" Background="Transparent" ClipToBounds="True">
+                                                <Border CornerRadius="2.5" Background="Transparent" ClipToBounds="True">
                                                     <Grid x:Name="PART_Track">
                                                         <Border x:Name="PART_Indicator"
                                                                 HorizontalAlignment="Left"
-                                                                CornerRadius="3">
+                                                                CornerRadius="2.5">
                                                             <Border.Background>
                                                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                                                     <GradientStop Color="#06B6D4" Offset="0"/>
@@ -209,6 +215,35 @@
                                 </Style>
                             </ProgressBar.Resources>
                         </ProgressBar>
+                    </Grid>
+
+                    <!-- Pie de Página: Autor / Copyright & Enlace a GitHub -->
+                    <Grid Grid.Row="4" Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Copyright & Autor -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="©" FontSize="10.5" Foreground="#64748B" Margin="0,0,3,0"/>
+                            <TextBlock Text="RGLara" FontSize="10" FontWeight="SemiBold" Foreground="#94A3B8"/>
+                        </StackPanel>
+
+                        <!-- Repositorio GitHub con Icono SVG -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Icono GitHub -->
+                            <Viewbox Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#64748B" Data="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock Text="github.com/kaoticos53/ArchiveProceser"
+                                       FontSize="9.5"
+                                       Foreground="#64748B"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Grid>
                 </Grid>
             </Grid>

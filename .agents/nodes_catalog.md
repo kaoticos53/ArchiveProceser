@@ -1,6 +1,6 @@
 # Catálogo Completo de Nodos y Especificaciones - FileFlow Studio
 
-Este catálogo contiene la especificación técnica completa de los **62 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
+Este catálogo contiene la especificación técnica completa de los **57 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
 
 ---
 
@@ -238,56 +238,27 @@ Este catálogo contiene la especificación técnica completa de los **62 nodos**
 
 ---
 
-## 8. Módulo: FileFlow.Plugin.Network (7 Nodos)
+## 8. Módulo: FileFlow.Plugin.Network (2 Nodos Unificados)
 
-### 1. FtpUploadNode
-- **Tipo:** Sink / Red
+### 1. NetworkDownloadNode
+- **Tipo:** Source / Ingesta y Descarga Multi-Protocolo
 - **Entradas:** `In` (`FileItemContext`)
 - **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `Host` (string), `Port` (int), `Username` (string), `Password` (string), `RemoteDirectory` (string), `Encryption` (`None`, `Explicit`, `Implicit`), `PassiveMode` (bool)
-- **Función:** Sube archivos a servidores FTP/FTPS con cifrado TLS/SSL y creación automática de carpetas remotas.
+- **Protocolos:** `HTTP / HTTPS`, `FTP / FTPS`, `SFTP / SSH`, `WebDAV / Nextcloud`, `SMB / Red Local`
+- **Parámetros Dinámicos:**
+  - Selector `Protocol` (`HTTP`, `FTP`, `SFTP`, `WebDAV`, `SMB`).
+  - Campos condicionales según protocolo: `SourceUrl`, `TimeoutSeconds`, `Host`, `Port`, `Username`, `Password`, `Encryption` (TLS/SSL), `PassiveMode`, `AuthMethod` (Password/PrivateKey), `PrivateKeyPath`, `PrivateKeyPassphrase`, `ServerUrl`, `UncPath`, `Domain`, `RemoteFilePath`, `DestinationFolder`, `FileName`, `Overwrite`, `DeleteAfterDownload`.
+- **Función:** Hub universal de descarga de archivos remotos desde cualquier fuente de red o nube hacia el sistema de archivos local con simulación DryRun y propagación de metadatos.
 
-### 2. FtpDownloadNode
-- **Tipo:** Source & Transformer / Descarga FTP
+### 2. NetworkUploadNode
+- **Tipo:** Sink / Transferencia y Subida Multi-Protocolo
 - **Entradas:** `In` (`FileItemContext`)
 - **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `Host` (string), `Port` (int), `Username` (string), `Password` (string), `RemoteFilePath` (string), `DestinationFolder` (string), `FileName` (string), `Encryption` (`None`, `Explicit`, `Implicit`), `PassiveMode` (bool), `Overwrite` (bool), `DeleteAfterDownload` (bool)
-- **Función:** Descarga archivos desde servidores FTP/FTPS hacia almacenamiento local con soporte para plantillas dinámicas y borrado remoto post-descarga.
-
-### 3. SftpUploadNode
-- **Tipo:** Sink / Red
-- **Entradas:** `In` (`FileItemContext`)
-- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `Host` (string), `Port` (int), `Username` (string), `AuthMethod` (`Password`, `PrivateKey`), `Password` (string), `PrivateKeyPath` (string), `PrivateKeyPassphrase` (string), `RemoteDirectory` (string)
-- **Función:** Transfiere archivos cifrados mediante SSH/SFTP hacia servidores remotos con soporte de llaves privadas.
-
-### 4. SftpDownloadNode
-- **Tipo:** Source & Transformer / Descarga SFTP
-- **Entradas:** `In` (`FileItemContext`)
-- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `Host` (string), `Port` (int), `Username` (string), `AuthMethod` (`Password`, `PrivateKey`), `Password` (string), `PrivateKeyPath` (string), `PrivateKeyPassphrase` (string), `RemoteFilePath` (string), `DestinationFolder` (string), `FileName` (string), `Overwrite` (bool), `DeleteAfterDownload` (bool)
-- **Función:** Descarga archivos cifrados mediante SFTP (SSH) desde servidores remotos Linux/VPS con soporte para claves privadas y borrado remoto.
-
-### 5. SmbCopyNode
-- **Tipo:** Sink / Almacenamiento Local
-- **Entradas:** `In` (`FileItemContext`)
-- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `UncPath` (string), `Domain` (string), `Username` (string), `Password` (string)
-- **Función:** Copia elementos hacia carpetas compartidas de red local y dispositivos NAS (rutas UNC).
-
-### 6. WebDavUploadNode
-- **Tipo:** Sink / Cloud Privado
-- **Entradas:** `In` (`FileItemContext`)
-- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `ServerUrl` (string), `Username` (string), `Password` (string), `RemotePath` (string)
-- **Función:** Sincroniza archivos con nubes privadas Nextcloud, ownCloud y servidores WebDAV.
-
-### 7. RemoteDownloadNode
-- **Tipo:** Trigger / Ingesta Remota
-- **Entradas:** `In` (`FileItemContext`)
-- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
-- **Parámetros:** `SourceUrl` (string), `DestinationFolder` (string), `FileName` (string), `Overwrite` (bool), `TimeoutSeconds` (int)
-- **Función:** Descarga archivos remotos vía HTTP/HTTPS hacia el sistema de archivos local.
+- **Protocolos:** `HTTP / HTTPS (POST/PUT)`, `FTP / FTPS`, `SFTP / SSH`, `WebDAV / Nextcloud`, `SMB / Red Local`
+- **Parámetros Dinámicos:**
+  - Selector `Protocol` (`HTTP`, `FTP`, `SFTP`, `WebDAV`, `SMB`).
+  - Campos condicionales según protocolo: `TargetUrl`, `HttpMethod` (POST/PUT), `AuthHeader`, `Host`, `Port`, `Username`, `Password`, `RemoteDirectory`, `Encryption`, `PassiveMode`, `AuthMethod`, `PrivateKeyPath`, `PrivateKeyPassphrase`, `ServerUrl`, `UncPath`, `Domain`.
+- **Función:** Hub universal de transferencia y subida de archivos procesados hacia APIs web, servidores FTP/SFTP, nubes WebDAV/Nextcloud y recursos compartidos de red Windows SMB.
 
 ---
 

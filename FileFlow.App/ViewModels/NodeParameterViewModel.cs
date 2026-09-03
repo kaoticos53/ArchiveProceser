@@ -44,6 +44,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     private bool _hasExpression;
 
     [ObservableProperty]
+    private bool _isVisible = true;
+
+    [ObservableProperty]
     private bool _isCopied;
 
     [ObservableProperty]

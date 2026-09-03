@@ -77,7 +77,7 @@ public class ToolboxViewModelTests
         var loader = new PluginLoader();
         loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.FtpUploadNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.NetworkUploadNode).Assembly);
 
         // Act
         using var toolbox = new ToolboxViewModel(loader);
@@ -95,7 +95,7 @@ public class ToolboxViewModelTests
 
         var netCategory = toolbox.AvailableCategories.FirstOrDefault(c => c.Key.Equals("Network", StringComparison.OrdinalIgnoreCase) || c.Key.Equals("Network & Remote", StringComparison.OrdinalIgnoreCase));
         netCategory.Should().NotBeNull("Network category must be discovered dynamically from the Network plugin");
-        netCategory!.Count.Should().Be(7, "Network plugin registers 7 network/remote nodes (Upload + Download)");
+        netCategory!.Count.Should().Be(2, "Network plugin registers 2 unified network nodes (Download + Upload)");
         netCategory.Icon.Should().Be("🌐");
     }
 

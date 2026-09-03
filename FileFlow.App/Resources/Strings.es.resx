@@ -731,4 +731,13 @@
   <data name="Msg_NodeIsolatedTestError" xml:space="preserve"><value>Error durante la prueba aislada: {0}</value></data>
   <data name="Msg_GlobalOutputFolderError" xml:space="preserve"><value>No se pudo abrir la carpeta de salida global: {0}</value></data>
   <data name="Msg_ExternalToolsScanSuccess" xml:space="preserve"><value>Autobúsqueda de herramientas externas completada.</value></data>
+
+  <!-- About Dialog -->
+  <data name="Drawer_About" xml:space="preserve"><value>Acerca de FileFlow Studio</value></data>
+  <data name="Drawer_AboutToolTip" xml:space="preserve"><value>Ver información de la aplicación, versión, autoría y repositorio</value></data>
+  <data name="About_Title" xml:space="preserve"><value>Acerca de FileFlow Studio</value></data>
+  <data name="About_Subtitle" xml:space="preserve"><value>Automatización Inteligente de Archivos y Motor DAG</value></data>
+  <data name="About_Description" xml:space="preserve"><value>Plataforma de ingeniería de flujos de trabajo basada en grafos dirigidos acíclicos (DAG) con arquitectura modular de plugins, procesamiento asíncrono de alto rendimiento, pipelines no destructivos y desacoplamiento reactivo por capas.</value></data>
+  <data name="About_VisitRepo" xml:space="preserve"><value>Repositorio en GitHub</value></data>
+  <data name="About_VisitRepoToolTip" xml:space="preserve"><value>Abrir el repositorio oficial del proyecto en tu navegador predeterminado</value></data>
 </root>

@@ -2302,12 +2302,26 @@ La barra de estado inferior de la aplicación mostraba las claves de localizaci�
 ## [2026-09-03] - Actualización de Splash Screen e Internacionalización Integral de la UI (i18n / L10N)
 
 ### 🛠 Cambios Implementados
-1. **Actualización de Pantalla de Carga (`SplashScreenWindow.xaml`)**:
-   - Eliminadas menciones directas al framework .NET.
-   - Actualizado el distintivo del catálogo a `🧩 60 Nodos DAG`.
-   - Insignias de arranque renovadas: `⚡ Procesamiento Asíncrono`, `🧩 60 Nodos DAG` y `🛡️ Pipelines No Destructivos`.
-   - Añadido el método `SetNodeCount(int count)` en `SplashScreenWindow.xaml.cs` para enlazar dinámicamente el conteo real de nodos descubiertos por `PluginLoader`.
-2. **Auditoría e Internacionalización Integral de la Interfaz Gráfica (i18n)**:
+1. **Actualización y Rediseño Elegante de la Pantalla de Carga (`SplashScreenWindow.xaml`)**:
+   - Reorganización armónica de elementos visuales con efecto Glassmorphism en `#0F172A`, gradientes de resplandor (`#6366F1` a `#06B6D4`) y badges de capacidades (`⚡ Modo Asíncrono`, `🧩 57 Nodos DAG`, `🛡️ No Destructivo`).
+   - Añadida información de autoría y copyright: **`© RGLara`**.
+   - Añadido enlace e icono oficial del repositorio: **`github.com/kaoticos53/ArchiveProceser`**.
+   - Barra de progreso con gradiente tricolor dinámico y tipografía nítida para estado y porcentajes.
+   - Enlace reactivo del método `SetNodeCount(int count)` para actualizar el distintivo de nodos dinámicamente.
+2. **Modal Interactivo "Acerca de FileFlow Studio" (`AboutDialogWindow.xaml`) e Integración en Menú**:
+   - Creada la ventana modal [`AboutDialogWindow.xaml`](file:///FileFlow.App/Views/AboutDialogWindow.xaml) replicando la estética premium y minimalista del Splash Screen.
+   - Botón interactivo con icono oficial para acceder directamente al repositorio GitHub ([`github.com/kaoticos53/ArchiveProceser`](https://github.com/kaoticos53/ArchiveProceser)) en el navegador predeterminado mediante `Process.Start`.
+   - Incorporado el comando `OpenAboutDialogCommand` en [`ControlBarViewModel.cs`](file:///FileFlow.App/ViewModels/ControlBarViewModel.cs) y añadido el botón *"ℹ️ Acerca de FileFlow Studio"* dentro de la sección *Ayuda y Recursos* del Drawer lateral en [`MainWindow.xaml`](file:///FileFlow.App/MainWindow.xaml).
+   - Localización bilingüe completa en `Strings.resx` y `Strings.es.resx`.
+3. **Adopción de Licencia GNU GPLv3 y Actualización de Documentación**:
+   - Incorporado el archivo oficial [`LICENSE`](file:///LICENSE) con los términos completos de la **GNU General Public License v3.0 (GPLv3)** bajo copyright `Copyright (C) 2026 RGLara`.
+   - Actualizado [`README.md`](file:///README.md) con insignias de GNU GPLv3, 57 nodos DAG oficiales y métricas de 477 tests aprobados al 100%.
+   - Actualizado el pie de página del menú lateral (Drawer) en [`MainWindow.xaml`](file:///FileFlow.App/MainWindow.xaml) sustituyendo el texto de engine por el distintivo de copyright **`© RGLara`**.
+4. **Revisión, Ampliación Pedagógica y Sincronización Bilingüe de Manuales**:
+   - Actualizados exhaustivamente [`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md) (Español) y [`docs/user_manual.md`](file:///docs/user_manual.md) (Inglés) con el catálogo completo de los **57 Nodos DAG** estructurados en 11 categorías temáticas, explicación detallada de arquitectura, motor de tokens, modos de ejecución (Dry Run, Watchdog, Rollback, Debugger con Breakpoints) y 3 tutoriales educativos paso a paso (Organización fotográfica con EXIF/WebP, Ingesta remota SFTP con deduplicación y Pipeline de IA con OCR y anonimización de PII).
+   - Actualizadas las guías para principiantes ([`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md) y [`docs/beginner_user_guide.md`](file:///docs/beginner_user_guide.md)) con nuevas recetas prácticas (Fusión de PDFs, OCR local de recibos/facturas sin nube, Descarga/Subida SFTP/WebDAV y uso del visor instantáneo QuickLook con la tecla `Espacio`).
+   - Sincronizados [`docs/README.md`](file:///docs/README.md), [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) y [`.antigravity/knowledge/repo_architecture.md`](file:///.antigravity/knowledge/repo_architecture.md) con la licencia GNU GPLv3 y la suite de **477 pruebas automatizadas**.
+5. **Auditoría e Internacionalización Integral de la Interfaz Gráfica (i18n)**:
    - Auditados todos los archivos de interfaz `.xaml` y `.cs` del proyecto en busca de textos literales sin traducir.
    - Migrados todos los diálogos `MessageBox.Show`, tooltips, telemetría de nodos, paneles de inspección, visor QuickLook y editores modales de plugins a los diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
    - Respetada la regla **ADR-006 (Zero-Touch en FileFlow.App / Self-Contained Plugins)**: los recursos de cada plugin (`FileFlow.Plugin.FileSystem`, `FileFlow.Plugin.Archives`, `FileFlow.Plugin.Integrations`, `FileFlow.Plugin.Scripting`) residen exclusivamente dentro de su propia carpeta de plugin sin contaminar `FileFlow.App`.
@@ -2316,13 +2330,17 @@ La barra de estado inferior de la aplicación mostraba las claves de localizaci�
    - Auditadas mediante peticiones HTTP HEAD las URLs de los 23 modelos IA del catálogo embebido (`ai_models_catalog.json`).
    - Corregidas las 4 URLs que retornaban error HTTP 404 (`MODNet`, `Real-ESRGAN Compact x4`, `OpenNSFW2 Moderation` y `WikiNeural Multilingual NER`), configurando repositorios oficiales y verificados de Hugging Face con espejos de respaldo (fallback mirrors).
    - Verificado que el 100% de los modelos se descargan correctamente sin errores.
-4. **Implementación de Nodos de Descarga FTP y SFTP (`FtpDownloadNode` y `SftpDownloadNode`)**:
-   - Creados [`FtpDownloadNode.cs`](file:///FileFlow.Plugin.Network/FtpDownloadNode.cs) (FluentFTP, soporte TLS/SSL, modo pasivo/activo, plantillas de ruta y borrado remoto opcional) y [`SftpDownloadNode.cs`](file:///FileFlow.Plugin.Network/SftpDownloadNode.cs) (SSH.NET, autenticación por contraseña/clave privada, plantillas de tokens y borrado remoto).
-   - Co-ubicados recursos multilingües en `FileFlow.Plugin.Network/Resources/Strings.resx` y `Strings.es.resx` bajo ADR-006.
-   - Actualizado el catálogo oficial a **62 Nodos DAG**.
-   - Actualizados iconos de nodo diferenciados para subida (`📤`) y descarga (`📥`).
+4. **Unificación Simétrica de Nodos de Red y Parámetros Dinámicos Reactivos**:
+   - **Sistema de Parámetros Condicionales**: Extendido `NodeParameterDescriptor` con `DependsOnKey` y `DependsOnValues`, implementada la reactividad en `NodeParameterManager`/`NodeParameterViewModel` y enlazada la visibilidad tanto en las tarjetas del lienzo ([`NodeParameterTemplates.xaml`](file:///FileFlow.App/Themes/Templates/NodeParameterTemplates.xaml)) como en el panel lateral de propiedades ([`NodeInspectorPanelView.xaml`](file:///FileFlow.App/Views/NodeInspectorPanelView.xaml)).
+   - **Editores Ricos de Parámetros**: Añadidos controles contextuales (`ComboBox` con opciones para selectores como `Protocol`/`Encryption`/`AuthMethod`, `CheckBox` para flags booleanos y `TextBox` con botón de exploración para carpetas y archivos).
+   - **Nodos Maestros Unificados**:
+     - [`NetworkDownloadNode.cs`](file:///FileFlow.Plugin.Network/NetworkDownloadNode.cs): Hub universal de descarga con soporte simétrico para **5 protocolos** (`HTTP/HTTPS`, `FTP/FTPS`, `SFTP/SSH`, `WebDAV/Nextcloud`, `SMB/Red Local`).
+     - [`NetworkUploadNode.cs`](file:///FileFlow.Plugin.Network/NetworkUploadNode.cs): Hub universal de subida y transferencia con soporte simétrico para los **5 protocolos** (`HTTP/HTTPS POST/PUT`, `FTP/FTPS`, `SFTP/SSH`, `WebDAV/Nextcloud`, `SMB/Red Local`).
+   - Reemplazados los 7 nodos dispersos anteriores por los 2 nodos maestros unificados.
+   - Catálogo oficial optimizado y consolidado en **57 Nodos DAG**.
+   - Co-ubicación de cadenas de localización en `FileFlow.Plugin.Network/Resources/Strings.resx` y `Strings.es.resx` bajo ADR-006.
 5. **Verificación Automatizada de Pruebas**:
-   - `dotnet test`: **483 / 483 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)** en 8.0 s.
+   - `dotnet test`: **477 / 477 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)** en 8.0 s.
 
 ---
 

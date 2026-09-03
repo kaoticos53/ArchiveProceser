@@ -175,7 +175,8 @@
                                 <ItemsControl ItemsSource="{Binding InspectedNode.Parameters}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:NodeParameterViewModel}">
-                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
+                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                                                    Visibility="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                 <StackPanel>
                                                     <Grid Margin="0,0,0,4">
                                                         <Grid.ColumnDefinitions>
@@ -190,7 +191,35 @@
                                                         </Border>
                                                     </Grid>
                                                     
-                                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" 
+                                                     <!-- Editor ComboBox para parámetros con opciones (Dropdowns como Protocol) -->
+                                                    <ComboBox ItemsSource="{Binding Options}"
+                                                              SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              IsEditable="False"
+                                                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                              BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="12" Padding="8,5"
+                                                              HorizontalAlignment="Stretch" />
+
+                                                    <!-- Editor CheckBox para booleanos/toggles -->
+                                                    <CheckBox IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              Visibility="{Binding IsBooleanAndNoOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              Foreground="{DynamicResource TextPrimaryBrush}"
+                                                              FontSize="12" VerticalAlignment="Center" Margin="2,4,0,4" />
+
+                                                    <!-- Editor con Botón Examinar para rutas de carpetas o archivos -->
+                                                    <Grid Visibility="{Binding HasBrowseButton, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="12" />
+                                                        <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" Content="📁" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" BorderThickness="0" Padding="10,5" FontSize="12" Cursor="Hand" Margin="4,0,0,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}" />
+                                                    </Grid>
+
+                                                    <!-- TextBox para parámetros de texto estándar -->
+                                                    <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Visibility="{Binding IsStandardInput, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="12" />
                                                     
                                                     <!-- Previsualización Evaluada en Vivo (cuando contiene expresiones dinámicas) -->

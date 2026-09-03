@@ -488,6 +488,8 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         if (typeName.Contains("ObjectDetector", StringComparison.OrdinalIgnoreCase)) return "🎯";
         if (typeName.Contains("Whisper", StringComparison.OrdinalIgnoreCase)) return "🎙️";
         if (typeName.Contains("DocumentProcessor", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Pdf", StringComparison.OrdinalIgnoreCase)) return "📄";
+        if (typeName.Contains("NetworkDownload", StringComparison.OrdinalIgnoreCase)) return "📥";
+        if (typeName.Contains("NetworkUpload", StringComparison.OrdinalIgnoreCase)) return "📤";
         if (typeName.Contains("FtpDownload", StringComparison.OrdinalIgnoreCase)) return "📥";
         if (typeName.Contains("FtpUpload", StringComparison.OrdinalIgnoreCase) || typeName.Contains("Ftp", StringComparison.OrdinalIgnoreCase)) return "📤";
         if (typeName.Contains("SftpDownload", StringComparison.OrdinalIgnoreCase)) return "📥";

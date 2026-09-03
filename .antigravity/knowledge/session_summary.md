@@ -25,12 +25,14 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
      - Detectadas y reparadas las 4 URLs que retornaban error 404 (`MODNet`, `Real-ESRGAN Compact x4`, `OpenNSFW2 Moderation` y `WikiNeural Multilingual NER`).
      - Reemplazadas por enlaces directos y verificados en Hugging Face con espejos de respaldo (fallback mirrors).
      - Validación HTTP HEAD automatizada: los 23 modelos responden 200 OK.
-  3. **Incorporación de Nodos de Descarga FTP y SFTP (`FtpDownloadNode` y `SftpDownloadNode`)**:
-     - Creados [`FtpDownloadNode`](file:///FileFlow.Plugin.Network/FtpDownloadNode.cs) y [`SftpDownloadNode`](file:///FileFlow.Plugin.Network/SftpDownloadNode.cs) para completar el ciclo bidireccional de red en `FileFlow.Plugin.Network`.
-     - Soporte para TLS/SSL, claves privadas SSH (`.pem`), plantillas de tokens (`{FileName}`, `{Year}`, `{CustomMeta}`), borrado remoto post-descarga y simulación DryRun.
-     - Co-ubicados recursos en `FileFlow.Plugin.Network/Resources/Strings.*.resx` según ADR-006.
-     - Catálogo ampliado a **62 Nodos DAG**.
-     - Suite completa de **483 tests unitarios superados al 100%**.
+  4. **Ventana Modal "Acerca de FileFlow Studio" (`AboutDialogWindow.xaml`) y Adopción GNU GPLv3**:
+     - Implementada la ventana modal estética y desacoplada con autoría `© RGLara`, licencia GNU GPLv3, badges de capacidades, resumen de arquitectura y botón interactivo para abrir [`https://github.com/kaoticos53/ArchiveProceser`](https://github.com/kaoticos53/ArchiveProceser) en el navegador.
+     - Integrado en el Drawer lateral de [`MainWindow.xaml`](file:///FileFlow.App/MainWindow.xaml) vía `OpenAboutDialogCommand` en [`ControlBarViewModel.cs`](file:///FileFlow.App/ViewModels/ControlBarViewModel.cs).
+     - Añadido el archivo oficial [`LICENSE`](file:///LICENSE) bajo **GNU General Public License v3.0 (GPLv3)**.
+     - Actualizado [`README.md`](file:///README.md) con badges de licencia GNU GPLv3, 57 nodos DAG y 477 tests al 100%.
+     - Reemplazado el pie de página del Drawer por el copyright **`© RGLara`**.
+     - Actualizados y ampliados didácticamente los manuales bilingües ([`docs/manual_de_usuario.md`](file:///docs/manual_de_usuario.md), [`docs/user_manual.md`](file:///docs/user_manual.md), [`docs/manual_usuario_principiantes.md`](file:///docs/manual_usuario_principiantes.md), [`docs/beginner_user_guide.md`](file:///docs/beginner_user_guide.md)) incorporando los 57 nodos, 11 categorías, recetas de IA/PDF/Red y atajos QuickLook.
+     - Suite completa de **477 tests unitarios e integración superados al 100%**.
   1. **Plan Maestro de Auditoría y Refactorización Limpia (Clean Code & Arquitectura Modular - Fases 2A a 2E Completadas)**:
      - **Fase 2A (Limpieza Inmediata)**: Eliminación de archivos duplicados en `FileFlow.App` y consolidación canónica en `FileFlow.Plugin.FileSystem/UI/` (`RegexLibraryService` con persistencia JSON y `RegexHelperViewModel` con soporte para `VariableTemplateResolver`). Normalizadas categorías de expresiones regulares.
      - **Fase 2B (Externalización de Datos Estáticos a EmbeddedResource)**:

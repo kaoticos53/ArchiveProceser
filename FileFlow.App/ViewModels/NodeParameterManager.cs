@@ -39,6 +39,7 @@ public sealed class NodeParameterManager
 
                 Parameters.Add(new NodeParameterViewModel(desc, val, nodeOwner: _nodeOwner));
             }
+            UpdateVisibilityConditions();
             return;
         }
 
@@ -59,6 +60,33 @@ public sealed class NodeParameterManager
 
             Parameters.Add(new NodeParameterViewModel(k, v, nodeOwner: _nodeOwner));
         }
+        UpdateVisibilityConditions();
+    }
+
+    public void UpdateVisibilityConditions()
+    {
+        foreach (var param in Parameters)
+        {
+            if (param.Descriptor == null || string.IsNullOrWhiteSpace(param.Descriptor.DependsOnKey))
+            {
+                param.IsVisible = true;
+                continue;
+            }
+
+            string targetKey = param.Descriptor.DependsOnKey;
+            var targetParam = Parameters.FirstOrDefault(p => p.Key.Equals(targetKey, StringComparison.OrdinalIgnoreCase));
+            string? currentValStr = targetParam?.Value?.ToString();
+
+            if (param.Descriptor.DependsOnValues != null && param.Descriptor.DependsOnValues.Count > 0)
+            {
+                param.IsVisible = !string.IsNullOrEmpty(currentValStr) &&
+                                  param.Descriptor.DependsOnValues.Any(v => v.Equals(currentValStr, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                param.IsVisible = !string.IsNullOrWhiteSpace(currentValStr) && !currentValStr.Equals("false", StringComparison.OrdinalIgnoreCase);
+            }
+        }
     }
 
     public void OnParameterValueChanged(string key, object? value)
@@ -68,6 +96,7 @@ public sealed class NodeParameterManager
         {
             _nodeInstance.Parameters[key] = value;
         }
+        UpdateVisibilityConditions();
     }
 
     public void OnParameterKeyRenamed(string oldKey, string newKey, object? value)

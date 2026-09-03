@@ -731,4 +731,13 @@
   <data name="Msg_NodeIsolatedTestError" xml:space="preserve"><value>Error during isolated node test: {0}</value></data>
   <data name="Msg_GlobalOutputFolderError" xml:space="preserve"><value>Could not open global output directory: {0}</value></data>
   <data name="Msg_ExternalToolsScanSuccess" xml:space="preserve"><value>External tools auto-discovery completed.</value></data>
+
+  <!-- About Dialog -->
+  <data name="Drawer_About" xml:space="preserve"><value>About FileFlow Studio</value></data>
+  <data name="Drawer_AboutToolTip" xml:space="preserve"><value>View application information, version, author and repository</value></data>
+  <data name="About_Title" xml:space="preserve"><value>About FileFlow Studio</value></data>
+  <data name="About_Subtitle" xml:space="preserve"><value>Intelligent File Automation and DAG Engine</value></data>
+  <data name="About_Description" xml:space="preserve"><value>Directed Acyclic Graph (DAG) workflow engineering platform with extensible plugins, asynchronous high-performance processing, non-destructive file pipelines, and responsive layer decoupling.</value></data>
+  <data name="About_VisitRepo" xml:space="preserve"><value>GitHub Repository</value></data>
+  <data name="About_VisitRepoToolTip" xml:space="preserve"><value>Open official project repository in your default web browser</value></data>
 </root>

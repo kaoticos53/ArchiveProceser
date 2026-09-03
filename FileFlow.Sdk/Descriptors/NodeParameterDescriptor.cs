@@ -12,5 +12,7 @@ public sealed record NodeParameterDescriptor(
     double? Min = null,
     double? Max = null,
     double? Step = null,
-    string? HelpText = null
+    string? HelpText = null,
+    string? DependsOnKey = null,
+    IReadOnlyList<string>? DependsOnValues = null
 );

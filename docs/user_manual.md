@@ -1,534 +1,344 @@
-# 📖 User Manual and Node Reference Guide
+# 📖 User Manual & Node Reference Guide
 ## **FileFlow Studio v2.0**
-*Node-Based File Automation and Batch Processing Platform built with .NET 9 and C# 13*
+*Modular File Automation, Batch Processing & DAG Pipeline Platform*
+*Runtime .NET 9 | C# 13 | GNU GPLv3 License | Copyright © 2026 RGLara*
 
 ---
 
 ## 📑 Table of Contents
-1. [Introduction and Design Philosophy](#1-introduction-and-design-philosophy)
-2. [Fundamental Editor Concepts](#2-fundamental-editor-concepts)
-   - [Node Canvas (Nodify)](#node-canvas-nodify)
-   - [The File Context (`FileItemContext`)](#the-file-context-fileitemcontext)
-   - [Nested Sub-Flows and Multi-Level Macros (Breadcrumbs)](#nested-sub-flows-and-multi-level-macros-breadcrumbs)
-   - [Real-Time Telemetry Badges](#real-time-telemetry-badges)
-3. [Execution Modes and Data Safety](#3-execution-modes-and-data-safety)
-   - [Normal Execution](#normal-execution)
+
+1. [Introduction & Architectural Philosophy](#1-introduction--architectural-philosophy)
+2. [Visual Editor Core Concepts](#2-visual-editor-core-concepts)
+   - [Interactive Node Canvas (Nodify)](#interactive-node-canvas-nodify)
+   - [File Item Pipeline Context (`FileItemContext`)](#file-item-pipeline-context-fileitemcontext)
+   - [Nested Sub-workflows & Macros (Breadcrumbs)](#nested-sub-workflows--macros-breadcrumbs)
+   - [Real-time Connection Telemetry Badges](#real-time-connection-telemetry-badges)
+   - [QuickLook Previewer & Node Inspector](#quicklook-previewer--node-inspector)
+3. [Execution Modes & Data Safety](#3-execution-modes--data-safety)
+   - [Standard Parallel Execution](#standard-parallel-execution)
    - [Virtual Simulation Mode ("Dry Run")](#virtual-simulation-mode-dry-run)
-   - [Rollback System and Windows Recycle Bin](#rollback-system-and-windows-recycle-bin)
+   - [Continuous Real-time Watchdog Mode](#continuous-real-time-watchdog-mode)
+   - [Transactional LIFO Rollback System](#transactional-lifo-rollback-system)
    - [Interactive Debugging with Breakpoints](#interactive-debugging-with-breakpoints)
-4. [Token Engine and Dynamic Variables](#4-token-engine-and-dynamic-variables)
-   - [Token Syntax](#token-syntax)
-   - [Built-In Providers and Functions](#built-in-providers-and-functions)
-5. [Exhaustive Node Catalog](#5-exhaustive-node-catalog)
-   - [Category 1: FileSystem (Disk I/O)](#category-1-filesystem-disk-io)
-   - [Category 2: Logic (Flow Control)](#category-2-logic-flow-control)
-   - [Category 3: Hashing (Integrity and Deduplication)](#category-3-hashing-integrity-and-deduplication)
-   - [Category 4: Archives (Compression and Extraction)](#category-4-archives-compression-and-extraction)
-   - [Category 5: Images & Media (Multimedia and EXIF)](#category-5-images--media-multimedia-and-exif)
-   - [Category 6: Scripting (Custom C# & JavaScript)](#category-6-scripting-custom-c--javascript)
-   - [Category 7: Integrations (CLI and Webhooks)](#category-7-integrations-cli-and-webhooks)
-6. [Example Flows and Built-In Templates](#6-example-flows-and-built-in-templates)
+4. [Token & Dynamic Template Engine](#4-token--dynamic-template-engine)
+   - [Syntax & Token Domains](#syntax--token-domains)
+   - [Comprehensive Token Reference](#comprehensive-token-reference)
+5. [Complete Node Catalog (57 DAG Nodes)](#5-complete-node-catalog-57-dag-nodes)
+   - [📁 Category 1: FileSystem (Disk I/O & Lifecycle)](#-category-1-filesystem-14-nodes)
+   - [🗜️ Category 2: Archives (Compression & Extraction)](#️-category-2-archives-3-nodes)
+   - [🖼️ Category 3: Images (Graphic Processing & EXIF)](#️-category-3-images-4-nodes)
+   - [🌐 Category 4: Network & Remote Storage (Multi-Protocol Hubs)](#-category-4-network--remote-storage-2-unified-nodes)
+   - [🤖 Category 5: AI & Machine Learning (Local ONNX Models)](#-category-5-ai--machine-learning-8-nodes)
+   - [📄 Category 6: Documents & PDFs (Splitting, Merging & Extraction)](#-category-6-documents--pdfs-4-nodes)
+   - [📊 Category 7: Data & Tabular Files (Excel, CSV, SQLite)](#-category-7-data--tabular-files-3-nodes)
+   - [⚙️ Category 8: Logic & Control Flow (Routing & Synchronization)](#️-category-8-logic--control-flow-6-nodes)
+   - [🔐 Category 9: Hashing & Security (Cryptography & Deduplication)](#-category-9-hashing--security-3-nodes)
+   - [📜 Category 10: Scripting & Extensibility (C# Roslyn & JS)](#-category-10-scripting--extensibility-3-nodes)
+   - [🔌 Category 11: Integrations & CLI (External Tools & FFmpeg)](#-category-11-integrations--cli-5-nodes)
+6. [Step-by-Step Educational Tutorials](#6-step-by-step-educational-tutorials)
+   - [Tutorial A: Automated Photo Organization & Optimization](#tutorial-a-automated-photo-organization--optimization)
+   - [Tutorial B: Remote SFTP Ingestion, Unpacking & Consolidated Report](#tutorial-b-remote-sftp-ingestion-unpacking--consolidated-report)
+   - [Tutorial C: AI Pipeline with Local OCR & PII Anonymization](#tutorial-c-ai-pipeline-with-local-ocr--pii-anonymization)
+7. [Keyboard Shortcuts & Productivity](#7-keyboard-shortcuts--productivity)
 
 ---
 
-## 1. Introduction and Design Philosophy
+## 1. Introduction & Architectural Philosophy
 
-**FileFlow Studio** is a visual batch file automation platform designed to build interactive file processing pipelines, inspired by modern node-based tools such as *n8n*, *ComfyUI*, and *Node-RED*.
+**FileFlow Studio** is a modern visual workflow automation engine and batch file transformation platform inspired by state-of-the-art tools like *n8n*, *ComfyUI*, and *Node-RED*, engineered specifically on **.NET 9** and **C# 13**.
 
-### Key Features:
-- **Plugin-Based Modularity:** Every functional area lives in an isolated, zero-touch plugin (`FileFlow.Plugin.*`).
-- **Guaranteed Safety:** Non-destructive processing by default, virtual simulation (*Dry Run*), and safe deletion via Windows Recycle Bin.
-- **Asynchronous .NET 9 Performance:** High-throughput reactive pipelines powered by `System.Threading.Channels` and in-memory SQLite telemetry (>82,000 logs/sec).
-- **Nested Sub-Flows:** Encapsulate complex sub-graphs into reusable macro nodes with breadcrumb navigation (`Root ❯ Macro A ❯ Macro B`).
-- **Dynamic Internationalization (i18n):** Instant on-the-fly language switching (English / Spanish) across the entire UI.
-
----
-
-## 2. Fundamental Editor Concepts
-
-### Node Canvas (Nodify)
-The canvas lets you drag and drop nodes from the left **Toolbox**. Each node features:
-- **Input Ports:** Located on the left edge. Receive incoming files or trigger signals.
-- **Output Ports:** Located on the right edge. Emit processed files or conditional branch items.
-- **Status LED:** Visual glowing indicator reflecting the current state (`Idle`, `Running`, `Completed`, `Paused`, `Faulted`).
-- **Breakpoint Toggle:** Click the top-left circle to pause execution when a file reaches that specific node.
-- **Header Actions Bar (`CustomActions`):** Quick-access buttons (`🏷️ Method Pipeline...`, `➕ Add Variable`, `➕ Add Case`, `💻 Script Editor...`) directly on the card.
-
-### The File Context (`FileItemContext`)
-A lightweight, immutable/transmutable record traveling through DAG edges containing:
-- `CurrentPath`: The current on-disk physical or virtual path of the file at this step.
-- `OriginalPath`: The immutable entry path where the file was initially ingested.
-- `FileSizeBytes`: Exact file size in bytes.
-- `Metadata`: Key-value dictionary enriched by upstream nodes (`Exif:*`, `Hash:*`, `Cli:*`, `Doc:*`, etc.).
-- `Tags`: A `HashSet<string>` collection of labels and operational flags.
-- `ExecutionLog`: Trace history of all transformations applied to this specific item.
-
-### Nested Sub-Flows and Multi-Level Macros (Breadcrumbs)
-Sub-flows allow encapsulating complex graph sections into a single compound node:
-1. Double-click the sub-flow node or click **"Open Sub-flow"**.
-2. The canvas displays the inner graph and the top breadcrumb navigation bar: `Root Workflow ❯ Sub-flow A ❯ Sub-flow B`.
-3. Clicking on any previous level automatically saves changes and returns to the parent canvas.
-
-### Real-Time Telemetry Badges
-During pipeline execution, every connection wire updates dynamically with live item counts (e.g., `⚡ 1,250 items`), helping you pinpoint bottlenecks and observe data routing in real time.
+### Core Tenets:
+- **🛡️ Non-Destructive by Default**: Input files (`OriginalPath`) are never modified or destroyed in place. Source file lifecycle manipulation (preserving, quarantining, recycling, or deleting) is strictly delegated to the specialized `OriginalFileActionNode`.
+- **🧩 Decoupled Microkernel Architecture (ADR-006)**: Every plugin domain (`FileFlow.Plugin.*`) is completely autonomous with zero UI dependencies and co-located localization resources (`Strings.resx` / `Strings.es.resx`).
+- **⚡ High-Performance Asynchronous Channels**: Multi-threaded parallel processing powered by `System.Threading.Channels` and `TPL Dataflow`, achieving over **82,000 telemetry events/second**.
+- **🌐 Universal Network Symmetry**: Unified download and upload hubs covering **HTTP/HTTPS**, **FTP/FTPS**, **SFTP/SSH**, **WebDAV/Nextcloud**, and **SMB/Windows Shares** with reactive parameter visibility.
 
 ---
 
-## 3. Execution Modes and Data Safety
+## 2. Visual Editor Core Concepts
 
-### Normal Execution
-Click the green **"▶ Run Workflow"** button in the top toolbar. The engine processes all files concurrently according to the configured degree of parallelism.
+### Interactive Node Canvas (Nodify)
+Model pipelines by dragging and connecting nodes from the **Toolbox**:
+- **Input Ports (Left Edge)**: Receive incoming items (`In`, `BranchA`, `Files`).
+- **Output Ports (Right Edge)**: Emit transformed files or conditional branch items (`Out`, `Done`, `Error`, `Matched`, `Unmatched`).
+- **Status LED**:
+  - ⚪ *Idle*: Waiting for input items.
+  - 🔵 *Pulsing Blue (Running)*: Processing files in real time.
+  - 🟢 *Green (Completed)*: Successfully finished batch.
+  - 🔴 *Red (Faulted)*: Error captured (routed to `Error` port without halting the pipeline).
+- **Breakpoint Toggle**: Click the red circle icon to pause execution when a file arrives at the node.
+
+### File Item Pipeline Context (`FileItemContext`)
+The fundamental data record travelling across workflow connections:
+```csharp
+public sealed record FileItemContext
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string CurrentPath { get; set; }       // Current file path in the pipeline step
+    public string OriginalPath { get; init; }      // Immutable source path
+    public long FileSizeBytes { get; set; }        // Exact byte size
+    public bool IsDirectory { get; set; }
+    public Dictionary<string, object?> Metadata { get; } // Enriched key-value data (EXIF, Hash, OCR, AI)
+    public HashSet<string> Tags { get; }          // Quick taxonomy tags
+    public List<string> ExecutionLog { get; }     // Audit transformation trail
+}
+```
+
+### Nested Sub-workflows & Macros (Breadcrumbs)
+Encapsulate complex pipelines into reusable composite nodes:
+1. Double-click a sub-workflow node to enter its internal editor.
+2. The top breadcrumb bar tracks hierarchy: `Root Workflow ❯ Extraction Macro ❯ Sanitization`.
+3. Click any parent breadcrumb to commit changes and return to the main canvas.
+
+### Real-time Connection Telemetry Badges
+Each wire dynamically renders a live counter badge (e.g., `⚡ 2,450 items`) showing item flow rates and eliminating bottlenecks instantly.
+
+### QuickLook Previewer & Node Inspector
+- Press `Spacebar` or click `👁️ QuickLook` on any node or log entry to inspect images, documents, raw text, or metadata tables.
+- The **Node Inspector Panel** exposes parameters with rich controls (file pickers, sliders, checkboxes, and reactive protocol dropdowns).
+
+---
+
+## 3. Execution Modes & Data Safety
+
+### Standard Parallel Execution
+Press **"▶ Run Workflow"** (`F5`) to process files using hardware-aware adaptive concurrency.
 
 ### Virtual Simulation Mode ("Dry Run")
-1. Check the **"Dry Run"** toggle or click **"Virtual Simulation"**.
-2. The engine executes the complete graph resolving names, paths, hashes, and logic **without writing, moving, or deleting any physical files on disk**.
-3. The bottom console outputs an exact list of all planned actions (`PlannedAction`).
+1. Check **"Dry Run"** before execution.
+2. The engine computes paths, checks conditions, generates hashes, and resolves templates **without writing, moving, or deleting any files on disk**.
+3. Inspect planned operations (`PlannedAction`) in the console prior to committing.
 
-### Rollback System and Windows Recycle Bin
-- **Safe Deletion:** All deletion operations use the native Windows Shell API (`SHFileOperation`), moving files to the Recycle Bin rather than permanently deleting them.
-- **Undo / Rollback (Ctrl+Z):** If you wish to revert changes after running a flow, click the **"↩ Undo / Rollback"** button. The engine undoes renames and moves in LIFO order (last executed, first undone).
+### Continuous Real-time Watchdog Mode
+- Toggle **"👁️ Watchdog Mode"** to monitor input folders for new files and trigger processing immediately on disk events.
+
+### Transactional LIFO Rollback System
+If you need to revert changes:
+1. Click **"↩ Rollback"** on the control bar.
+2. Operations (renames, relocations) are undone in reverse order (Last-In, First-Out).
 
 ### Interactive Debugging with Breakpoints
 - Click **"🐛 Debug Workflow"**.
-- Execution automatically pauses when an item reaches a node with an active breakpoint or when an exception occurs.
-- Use **"Step Over (F10)"** to advance one node at a time and inspect metadata diffs in the **Node Inspector Panel**.
+- Execution halts when an item reaches a breakpoint.
+- Use **"Step Into (F10)"** to advance node by node while observing live metadata diffs in the inspector.
 
 ---
 
-## 4. Token Engine and Dynamic Variables
+## 4. Token & Dynamic Template Engine
 
-Any text input, output directory, or file name template supports dynamic variables enclosed in `{...}`.
+The `VariableTemplateResolver` engine allows powerful token substitution in filenames, folders, payloads, and CLI parameters.
 
-### Syntax:
+### Syntax & Token Domains
 `{Domain:Key:Modifier}` or `{Variable}`
 
-### Available Token Catalog:
+### Comprehensive Token Reference
 
 | Token | Output Example | Description |
 | :--- | :--- | :--- |
-| `{FileName}` | `document.pdf` | File name with extension |
-| `{FileNameNoExt}` | `document` | File name without extension |
-| `{Ext}` or `{Extension}` | `pdf` | File extension without leading dot |
-| `{CurrentDir}` | `C:\MyFiles` | Current directory path |
-| `{ParentDir}` | `MyFiles` | Name of the immediate parent folder |
-| `{CreationDate:yyyyMMdd}` | `20260902` | Formatted creation date |
-| `{ModifiedDate:yyyy-MM-dd}` | `2026-09-02` | Formatted last modification date |
-| `{Now:yyyyMMdd_HHmmss}` | `20260902_143000` | Current system timestamp |
-| `{FileSize:MB}` or `{SizeMB}` | `14.50` | Size in Megabytes |
-| `{FileSize:KB}` or `{SizeKB}` | `14848.0` | Size in Kilobytes |
-| `{Hash:SHA256}` | `e3b0c44298fc1c...` | Full calculated SHA-256 hash |
+| `{FileName}` | `report.pdf` | Full filename with extension |
+| `{FileNameNoExt}` | `report` | Filename without extension |
+| `{Ext}` | `pdf` | Lowercase extension without dot |
+| `{ParentDir}` | `Invoices_2026` | Name of parent directory |
+| `{CreationDate:yyyyMMdd}` | `20260903` | Formatted file creation date |
+| `{ModifiedDate:yyyy-MM-dd}`| `2026-09-03` | Formatted last modification date |
+| `{Now:yyyyMMdd_HHmmss}` | `20260903_205000` | Current system timestamp |
+| `{FileSize:MB}` | `14.50` | Formatted file size in Megabytes |
+| `{FileSize:KB}` | `14848.0` | Formatted file size in Kilobytes |
+| `{Hash:SHA256}` | `e3b0c44298...` | Full SHA-256 cryptographic checksum |
 | `{Hash:SHA256:8}` | `e3b0c442` | SHA-256 hash truncated to 8 characters |
-| `{Exif:CameraModel}` | `Sony ILCE-7M4` | Camera model from EXIF metadata |
-| `{Exif:Make}` | `SONY` | Camera manufacturer |
-| `{Doc:PageCount}` | `18` | Total page count (PDF/Office docs) |
-| `{Media:Duration}` | `00:45:12` | Video or audio duration |
-| `{Env:USERPROFILE}` | `C:\Users\username` | OS environment variable |
-| `{Index:D4}` | `0001`, `0002` | Batch sequential zero-padded counter |
+| `{Hash:MD5:6}` | `d41d8c` | MD5 hash truncated to 6 characters |
+| `{Exif:CameraModel}` | `Nikon Z8` | Camera model from EXIF metadata |
+| `{Exif:DateTimeOriginal}` | `2026:08:15 14:20:00` | Original image capture timestamp |
+| `{Ocr:Text}` | `Invoice #1024` | Text extracted via local OCR engine |
+| `{Env:USERPROFILE}` | `C:\Users\User` | Operating system environment variable |
+| `{Meta:CustomKey}` | `DynamicValue` | Metadata injected by upstream nodes |
 
 ---
 
-## 5. Exhaustive Node Catalog
+## 5. Complete Node Catalog (57 DAG Nodes)
 
 ---
 
-### Category 1: FileSystem (Disk I/O)
+### 📁 Category 1: FileSystem (14 Nodes)
 
-#### 1. `FolderSourceNode` (Folder Source)
-- **Purpose:** Scans a directory and emits discovered files into the pipeline.
-- **Ports:**
-  - *Outputs:* `FileOut` (`FileItemContext`), `Completed` (End signal).
-- **Parameters:**
-  - `SourceFolder`: Root folder path to scan (supports tokens).
-  - `SearchPattern`: File filter (e.g., `*.*`, `*.jpg;*.png`).
-  - `IncludeSubdirectories`: `true` for recursive deep scanning.
-
-#### 2. `AdvancedRenamerNode` (Advanced Multi-Method Renamer)
-- **Purpose:** Batch renames files using an extensible pipeline of **9 sequential method steps**, emulating professional renaming suites.
-- **Ports:**
-  - *Inputs:* `In` (`FileItemContext`)
-  - *Outputs:* `Out` (Success), `Skipped` (Collision skipped), `Error` (I/O or validation failure)
-- **Parameters & Methods:**
-  - `RenameMode`: `Virtual` (default: projects name into context without altering source disk file) or `DirectInPlace`.
-  - `CollisionStrategy`: `AutoIncrement` (`_1`, `_2`), `Overwrite`, `Skip`, `Fail`.
-  - `MethodSteps`: Sequential JSON pipeline of cumulative transformation methods:
-    1. **New Name / Template:** Complete or partial template replacement with tags (`<Tag>` or `{Tag}`).
-    2. **Search & Replace:** Substring or Regex pattern matching with capture groups (`$1`, `$2`), case sensitivity, and global replace.
-    3. **Insert Text:** Inserts strings at absolute or relative character positions.
-    4. **Delete Characters:** Removes character ranges by count or offset.
-    5. **Case Conversion:** `Lowercase`, `Uppercase`, `TitleCase`, `SentenceCase`, `CapitalizeFirst`.
-    6. **Incremental Numbering:** Sequential sequence generator with initial value, step, zero-padding (e.g., `001`), and reset trigger (*DirectoryChange*, *MetadataChange*, *Never*).
-    7. **Replace List (Substitutions):** Key-value mapping table for bulk dictionary replacements.
-    8. **Clean, Trim & Unicode Normalization:** Whitespace trimming, double space collapse, Windows illegal character sanitization (`\ / : * ? " < > |`), and Unicode normalization (`NFC`, `NFD`, `NFKC`, `NFKD`).
-    9. **Normalize & Pad Numbers:** Pads embedded numbers (e.g., `1 - track.mp3` $\rightarrow$ `01 - track.mp3`, `S1E2` $\rightarrow$ `S01E02`, `Ep. 3` $\rightarrow$ `Ep. 03`).
-- **Regex Studio Assistant:** Interactive tester with live capture group inspection, replacement preview, and built-in preset library.
-- **Visual Studio Window:** Live preview table with 100 loaded sample items and built-in presets (Digital Photo EXIF, ID3 Music, SEO Web, Corporate Docs).
-
-#### 3. `FileRelocatorNode` (File Relocator & Copier)
-- **Purpose:** Copies or moves files to dynamically computed destinations, with optional SHA-256 integrity verification.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parameters:**
-  - `Operation`: `Copy` (default, safe non-destructive) or `Move`.
-  - `DestinationDirectory`: Target directory template (e.g., `{DestinationRoot}\{Year}\{Month}`).
-  - `VerifyIntegrity`: `true` to verify source and target SHA-256 match.
-  - `CreateDirectories`: `true` to auto-create missing folders.
-
-#### 4. `OriginalFileActionNode` (Source File Lifecycle Action)
-- **Purpose:** Centralized node for managing entry source files after downstream processing.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parameters:**
-  - `ActionType`: `Keep` (default), `MoveToRecycleBin` (Windows Recycle Bin), `MoveToQuarantine`, `PermanentDelete`.
-  - `QuarantineDirectory`: Target path when action is quarantine.
-
-#### 5. `SafeRecycleDeleteNode` (Safe Delete to Recycle Bin)
-- **Purpose:** Sends files to the Windows Recycle Bin using native Shell API.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Deleted`, `Error`
-
-#### 6. `EmptyDirectoryCleanerNode` (Empty Directory Cleaner)
-- **Purpose:** Recursively scans and cleans folders that were left empty after moving operations.
-- **Ports:**
-  - *Inputs:* `TriggerIn`
-  - *Outputs:* `Out`, `Error`
-- **Parameters:**
-  - `TargetDirectory`: Root folder to clean.
-  - `Recursive`: `true` for deep scan.
-  - `IgnoreHiddenSystemFiles`: Ignores `Thumbs.db` and `.DS_Store`.
-
-#### 7. `OperationReportNode` (Interactive Operations Report)
-- **Purpose:** Generates visual reports tracing complete file lifecycle, grouped by source folders.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Report`, `Error`
-- **Parameters:**
-  - `ReportFormat`: `HTML` (interactive accordion), `Markdown`, `Text`, `JSON`, `CSV`.
-  - `ReportScope`: `Consolidated`, `PerFile`, `Both`.
-  - `GroupBy`: `Directory`, `Flat`, `Extension`, `Status`.
-  - `DestinationFolder`: Target folder for the report.
-  - `AutoOpenReport`: `true` to open in browser upon completion.
+1. **`FolderSourceNode`**: Discovers and emits files with extension filters, recursive scanning, and real-time folder watching.
+2. **`DestinationSinkNode`**: Consolidates processed files with collision strategies (`Overwrite`, `Skip`, `RenameIncremental`).
+3. **`AdvancedRenamerNode`**: Batch file renaming with token templates, character sanitization, and live preview.
+4. **`FileRelocatorNode`**: Moves, copies, or hard-links files to calculated destinations with optional SHA-256 validation.
+5. **`SafeRecycleDeleteNode`**: Safe recycling by sending files to the Windows Recycle Bin (`SHFileOperationW`).
+6. **`OriginalFileActionNode`**: Centralized lifecycle management for source files (`Keep`, `MoveToRecycleBin`, `MoveToQuarantine`).
+7. **`OperationReportNode`**: Generates interactive reports in `HTML`, `Markdown`, `Text`, `JSON`, or `CSV` format with full audit history.
+8. **`DirectoryInspectorNode`**: Classifies folder structure (single archive vs. mixed contents).
+9. **`EmptyDirectoryCleanerNode`**: Cleans up leftover empty directory trees after moving or unpacking files.
+10. **`DocumentProcessorNode`**: Unified metadata extractor for `.pdf`, `.docx`, `.txt`, `.csv`, and `.json` documents.
+11. **`VariableInjectorNode`**: Injects custom variables and calculated expressions into file metadata.
+12. **`LogOutputNode`**: Emits custom formatted diagnostic log messages to the console.
+13. **`FileAttributeNode`**: Modifies file system attributes (ReadOnly, Hidden, Archive, Timestamps).
+14. **`PathSplitterNode`**: Decomposes paths into discrete token variables.
 
 ---
 
-### Category 2: Logic (Flow Control)
+### 🗜️ Category 2: Archives (3 Nodes)
 
-#### 1. `SwitchCaseNode` (Dynamic Conditional Router)
-- **Purpose:** Evaluates expressions or extensions and routes files to custom configured ports or `Default`.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* Dynamic case ports (e.g., `Images`, `Videos`, `Docs`) + `Default`.
-
-#### 2. `ExpressionFilterNode` (Boolean Condition Filter)
-- **Purpose:** Evaluates numeric or string conditions (`SizeMB`, `Ext`, `CreationDate`) and routes to `True` or `False`.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `True`, `False`
-- **Parameters:**
-  - `Property`: Property name (`SizeMB`, `Ext`, etc.).
-  - `Operator`: `>`, `<`, `>=`, `<=`, `==`, `!=`, `Contains`.
-  - `ComparisonValue`: Target comparison value.
-
-#### 3. `BatchBufferNode` (Batch Accumulator)
-- **Purpose:** Buffers items until reaching $N$ files or a maximum byte size before emitting the batch.
-- **Ports:**
-  - *Inputs:* `ItemIn`, `ForceFlush`
-  - *Outputs:* `ItemOut`, `BatchCompleted`
-
-#### 4. `ForkJoinBarrierNode` (Fork/Join Synchronization Barrier)
-- **Purpose:** Splices processing into multiple parallel branches and waits for all to finish before emitting `AllCompleted`.
-- **Ports:**
-  - *Inputs:* `In`, `Branch1_Done`, `Branch2_Done`
-  - *Outputs:* `Fork1`, `Fork2`, `AllCompleted`
-
-#### 5. `ThrottleDelayNode` (Rate Limiter & Delay)
-- **Purpose:** Introduces a configurable millisecond delay between items to prevent disk or API rate exhaustion.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`
+1. **`SmartUnpackNode`**: Universal archive extraction (ZIP, RAR, 7Z, TAR, GZ) with redundant folder flattening and Zip Slip protection.
+2. **`ArchiveCompressorNode`**: Compresses single or batch files into ZIP, 7Z, TAR, or GZ archives with configurable compression algorithms.
+3. **`ArchiveFilterNode`**: Detects and isolates split multi-volume archives (`.part1.rar`, `.z01`).
 
 ---
 
-### Category 3: Hashing (Integrity & Deduplication)
+### 🖼️ Category 3: Images (4 Nodes)
 
-#### 1. `HashCalculatorNode` (Cryptographic Checksum Calculator)
-- **Purpose:** Computes file hash and registers it in `Metadata["Hash:*"]` and `{Hash:*}`.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parameters:**
-  - `Algorithm`: `SHA256`, `MD5`, `SHA512`, `SHA1`.
-  - `StoreInMetadataKey`: Key name (e.g., `Hash:SHA256`).
-
-#### 2. `DeduplicationFilterNode` (Hash Deduplication Filter)
-- **Purpose:** Compares hashes within the current batch and splits unique items from duplicates.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Unique`, `Duplicate`, `Error`
+1. **`ImageOptimizerNode`**: Resizes, optimizes, and converts images to WebP, JPEG, or PNG, reporting exact byte savings.
+2. **`ExifMetadataNode`**: Extracts EXIF camera metadata (make, model, GPS coordinates, date taken).
+3. **`ImageWatermarkNode`**: Applies text or image watermarks with configurable positioning, opacity, and scaling.
+4. **`ImageMetadataStripperNode`**: Strips sensitive GPS and camera metadata prior to publishing.
 
 ---
 
-### Category 4: Archives (Compression & Extraction)
+### 🌐 Category 4: Network & Remote Storage (2 Unified Nodes)
 
-#### 1. `SmartUnpackNode` (Smart Archive Extractor)
-- **Purpose:** Unpacks ZIP, RAR, 7Z, and TAR archives with built-in multi-password dictionary support and Zip-Slip protection.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `ExtractedFile`, `Done`, `Error`
-- **Parameters:**
-  - `DestinationPath`: Extraction folder.
-  - `FlattenHierarchy`: `true` to extract all files in a single flat directory.
-
-#### 2. `ArchiveFilterNode` (Archive Format Filter)
-- **Purpose:** Filters valid archive containers from regular files.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `ArchiveOut`, `NonArchiveOut`
+1. **`NetworkDownloadNode`** *(Universal Download Hub)*:
+   - Supports 5 symmetric protocols: **HTTP/HTTPS**, **FTP/FTPS**, **SFTP (SSH)**, **WebDAV (Nextcloud/ownCloud)**, and **SMB (Windows Network Shares / NAS)**.
+   - Dynamic parameter visibility adapting in real time to the selected protocol.
+2. **`NetworkUploadNode`** *(Universal Upload & Transfer Hub)*:
+   - Supports 5 symmetric protocols: **HTTP POST/PUT**, **FTP/FTPS**, **SFTP (SSH)**, **WebDAV**, and **SMB**.
+   - Resilient transfers with auto-retry, password/private key SSH authentication, and remote directory creation.
 
 ---
 
-### Category 5: Images & Media (Multimedia & EXIF)
+### 🤖 Category 5: AI & Machine Learning (8 Nodes)
 
-#### 1. `ImageOptimizerNode` (Image Optimizer & Scaler)
-- **Purpose:** Resizes, compresses, and converts images to modern formats (**WebP**, **JPEG**, **PNG**) preserving aspect ratio.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parameters:**
-  - `Width`: Target width in pixels, percentage, or auto (`""`).
-  - `Height`: Target height (default: `"100%"`).
-  - `TargetFormat`: `WebP`, `JPEG`, `PNG`.
-  - `Quality`: Visual compression quality (1-100, default: `80`).
-  - `OnlyDownscale`: `true` to prevent upscaling smaller images.
-
-#### 2. `ExifMetadataNode` (EXIF Metadata Extractor)
-- **Purpose:** Extracts digital photo metadata (capture date, camera make/model, ISO, GPS coordinates) into `{Exif:*}` and `{Date:Taken}`.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-
-#### 3. `MediaTranscoderNode` (FFmpeg Multimedia Converter)
-- **Purpose:** Transcodes video and audio streams using FFmpeg presets (H.264, HEVC/H.265, MP3, AAC).
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
+1. **`SmartImageClassifierNode`**: Offline image classification using local ONNX neural networks (e.g. ResNet, MobileNet).
+2. **`PromptObjectDetectorNode`**: Text-prompted zero-shot object detection via YOLO-World or Grounding DINO in ONNX.
+3. **`LocalOcrNode`**: Fast offline optical character recognition for scanned receipts, documents, and images.
+4. **`WhisperAudioTranscriberNode`**: High-accuracy local speech-to-text audio/video transcription with OpenAI Whisper ONNX.
+5. **`FaceDetectorNode`**: Detects faces in images, calculating bounding boxes and face counts.
+6. **`ZeroShotSemanticSearchNode`**: Semantic text classification and document routing without fine-tuning.
+7. **`PiiAnonymizerNode`**: Detects and redacts personally identifiable information (SSN, credit cards, names, emails) using NER models.
+8. **`SuperResolutionUpscalerNode`**: Deep learning image upscaling and super-resolution enhancement.
 
 ---
 
-### Category 6: Scripting (Custom C# & JavaScript)
+### 📄 Category 6: Documents & PDFs (4 Nodes)
 
-#### 1. `CustomScriptNode` (Dynamic Dual-Engine Scripting)
-- **Purpose:** Executes user scripts in **C# (Roslyn JIT with SHA256 caching)** or **JavaScript (Jint Sandboxed runtime)** with dynamic configurable ports and full metadata access.
-- **Ports:** Configurable dynamically in Script Studio (`In`, `Out`, plus any user-defined inputs/outputs).
-- **Features:**
-  - `Item` / `file`: Direct typed access to file attributes, metadata, and tags.
-  - `EmitAsync(port)` / `emit(port, item)`: Multi-port conditional dispatch.
-  - `Resolve(template)` / `resolve(template)`: Token resolver function.
-  - Interactive **Script Studio Window** with syntax highlighting, live testing, and script template library.
+1. **`PdfMergeNode`**: Merges multiple PDF files into a single master document.
+2. **`PdfSplitNode`**: Splits multi-page PDF documents into single pages or specified page ranges.
+3. **`PdfTextExtractorNode`**: Extracts structured text and layout data from PDF files using `PdfPig`.
+4. **`PdfMetadataNode`**: Reads and updates standard PDF metadata (Title, Author, Subject, Keywords).
 
 ---
 
-### Category 7: Integrations (CLI & Webhooks)
+### 📊 Category 7: Data & Tabular Files (3 Nodes)
 
-#### 1. `CliExecutionNode` (External CLI Command Runner)
-- **Purpose:** Spawns external CLI processes (FFmpeg, Python, PowerShell) with tokenized arguments.
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Success`, `Failed`
-- **Parameters:**
-  - `ExecutablePath`: Path to executable.
-  - `ArgumentsTemplate`: Dynamic command arguments.
-  - `TimeoutSeconds`: Timeout in seconds (default: `60`).
-  - `CaptureOutputToMetadata`: Captures stdout into `Metadata["Cli:StdOut"]`.
-
-#### 2. `WebhookNotificationNode` (HTTP POST Webhook Notifier)
-- **Purpose:** Sends JSON payloads via HTTP POST to external services (Discord, Slack, n8n, Zapier).
-- **Ports:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Failed`
+1. **`ExcelReaderNode`**: High-performance streaming reader for `.xlsx` / `.xls` spreadsheets via `MiniExcel`.
+2. **`CsvProcessorNode`**: Parses, filters, converts, and formats delimited text files (CSV/TSV).
+3. **`DataLookupNode`**: Instant $O(1)$ in-memory relational lookup against master reference tables.
 
 ---
 
-### Category 8: Documents & PDFs (`FileFlow.Plugin.Documents`)
+### ⚙️ Category 8: Logic & Control Flow (6 Nodes)
 
-#### 1. `PdfMergeNode` (PDF File Merging)
-- **Purpose:** Combines multiple PDF documents into a single merged file using `PdfSharp`.
-- **Ports:** `In` $\rightarrow$ `Out`, `MergedOut`.
-
-#### 2. `PdfSplitNode` (PDF Document Splitter)
-- **Purpose:** Splits multi-page PDF documents into individual pages or custom ranges.
-- **Ports:** `In` $\rightarrow$ `PageOut`, `Error`.
-
-#### 3. `PdfTextExtractorNode` (PDF Text Content Extractor)
-- **Purpose:** Extracts structured text from PDF documents using `PdfPig` for search, classification, or content-based renaming.
-- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 4. `PdfMetadataNode` (PDF Metadata Inspector & Modifier)
-- **Purpose:** Reads and updates standard document metadata (Title, Author, Subject, Keywords).
-- **Ports:** `In` $\rightarrow$ `Out`.
+1. **`SwitchCaseNode`**: Multi-way conditional branch router matching extensions, file sizes, or metadata.
+2. **`ExpressionFilterNode`**: Boolean predicate filter with logical operators (`Equal`, `Contains`, `GreaterThan`, `RegexMatch`).
+3. **`BatchBufferNode`**: Gathers items until a batch size threshold or timeout is reached before emitting.
+4. **`ThrottleDelayNode`**: Rate limits emission rate to prevent overwhelming downstream disk or network endpoints.
+5. **`ForkJoinBarrierNode`**: Synchronizes concurrent branches, waiting for all sibling items to arrive before releasing.
+6. **`VariableInjectorNode`**: Injects static and dynamic variables into item context.
 
 ---
 
-### Category 9: Network & Remote Storage (`FileFlow.Plugin.Network`)
+### 🔐 Category 9: Hashing & Security (3 Nodes)
 
-#### 1. `FtpUploadNode` (FTP / Secure FTPS Uploader)
-- **Purpose:** Uploads files to FTP/FTPS servers with explicit or implicit TLS/SSL encryption and auto-retry.
-- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 2. `SftpUploadNode` (SSH / SFTP Secure Transfer)
-- **Purpose:** Securely transfers files to Linux servers / VPS over SSH File Transfer Protocol with password or private key (`.pem` / `.ppk`) authentication.
-- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 3. `SmbCopyNode` (Local Network Shares & NAS UNC)
-- **Purpose:** Copies files to Windows UNC network shares (`\\Server\Share`) or NAS storage with domain or local credentials.
-- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 4. `WebDavUploadNode` (Nextcloud & ownCloud WebDAV Storage)
-- **Purpose:** Uploads and syncs files with corporate WebDAV servers or personal cloud instances.
-- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 5. `RemoteDownloadNode` (Remote HTTP / HTTPS / FTP File Downloader)
-- **Purpose:** Downloads remote assets from the web or local intranet directly into the execution pipeline.
-- **Ports:** `In` $\rightarrow$ `Success`, `Failed`.
+1. **`HashCalculatorNode`**: Computes cryptographic checksums (SHA-256, SHA-512, MD5, SHA-1, xxHash).
+2. **`DeduplicationFilterNode`**: Filters duplicate files in real time by comparing memory-cached hash signatures.
+3. **`ChecksumVerifierNode`**: Validates files against `.sha256` checksum files or expected metadata hashes.
 
 ---
 
-### Category 10: Data, Spreadsheets & Databases (`FileFlow.Plugin.Data`)
+### 📜 Category 10: Scripting & Extensibility (3 Nodes)
 
-#### 1. `ExcelReaderNode` (Excel Sheet Row Streamer)
-- **Purpose:** Reads `.xlsx` / `.xls` spreadsheets in high-performance streaming with `MiniExcel`, emitting each row with columns injected into `item.Metadata`.
-- **Ports:** `In` (optional) $\rightarrow$ `RowOut`.
-
-#### 2. `CsvReaderNode` (Delimited File Parser)
-- **Purpose:** Reads CSV, TSV, and delimited text files with auto-detection of delimiters (`,`, `;`, `\t`, `|`) and encoding options.
-- **Ports:** `In` (optional) $\rightarrow$ `RowOut`.
-
-#### 3. `DataLookupNode` (VLOOKUP / Table Matching)
-- **Purpose:** Looks up and enriches the current file against an external reference table (Excel, CSV, JSON) with instant $O(1)$ memory hashing.
-- **Ports:** `In` $\rightarrow$ `Matched`, `Unmatched`.
-
-#### 4. `ExcelReportGeneratorNode` (Styled Excel Report Generator)
-- **Purpose:** Collects metadata from processed files and generates a formatted `.xlsx` summary file upon workflow completion (`OnWorkflowCompletedAsync`).
-- **Ports:** `In` $\rightarrow$ `Out`, `Report`.
-
-#### 5. `CsvExportNode` (CSV / TSV Exporter)
-- **Purpose:** Exports and appends selected metadata fields into a delimited CSV file with customizable delimiters and append mode.
-- **Ports:** `In` $\rightarrow$ `Out`.
-
-#### 6. `SqliteDatabaseSinkNode` (SQLite Audit Log & Storage)
-- **Purpose:** Inserts execution audit records and traceability into a local SQLite database with automatic schema and index creation.
-- **Ports:** `In` $\rightarrow$ `Out`.
-
-#### 7. `DataFormatConverterNode` (Data Format Converter)
-- **Purpose:** Directly converts structured data files between `Excel (.xlsx) ⇄ CSV ⇄ JSON`.
-- **Ports:** `In` $\rightarrow$ `Out`.
+1. **`CustomScriptNode`**: Custom logic execution with dual support for **C# (Roslyn JIT)** and **JavaScript (Jint sandbox)**.
+2. **`ScriptStudio`**: Integrated IDE with syntax highlighting, live testing console, and `.ffscript` templates.
+3. **`PythonScriptNode`**: Dispatches items through external Python environments for specialized data science workloads.
 
 ---
 
-### Category 11: AI & Computer Vision (`FileFlow.Plugin.AI`)
+### 🔌 Category 11: Integrations & CLI (5 Nodes)
 
-#### 1. `LocalOcrNode` (Optical Character Recognition OCR)
-- **Purpose:** Extracts text and structured data from images and scanned documents into `{Ocr:Text}`, `{Ocr:WordCount}`, and `{Ocr:Language}`.
-- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 2. `SmartImageClassifierNode` (AI Photo Classifier)
-- **Purpose:** Visually classifies photos into thematic categories (Landscapes, Invoices, Portraits, Vehicles, Food, etc.) in `{AI:Category}`, `{AI:TopLabel}`, and `{AI:Confidence}`.
-- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 3. `FaceDetectorNode` (Human Face Detector)
-- **Purpose:** Detects human faces and branches the pipeline based on presence and count (`{AI:HasFaces}` and `{AI:FaceCount}`).
-- **Ports:** `In` $\rightarrow$ `FacesFound`, `NoFaces`.
-
-#### 4. `ObjectDetectorNode` (YOLO Object Detector)
-- **Purpose:** Detects and identifies multiple everyday objects (people, vehicles, pets, items) in `{AI:DetectedObjects}` and `{AI:TopObject}`.
-- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 5. `LocalWhisperTranscriberNode` (Whisper Speech-to-Text Transcriber)
-- **Purpose:** Transcribes audio and video files to text and synchronized subtitles (`.srt`) in-process and privately into `{Transcript}`.
-- **Ports:** `In` $\rightarrow$ `Out`, `Error`.
+1. **`CliExecutionNode`**: Executes command-line processes (PowerShell, CMD, binaries) capturing stdout/stderr into metadata.
+2. **`WebhookNotificationNode`**: Dispatches HTTP POST/PUT alerts with custom JSON payloads to Discord, Slack, or webhook endpoints.
+3. **`MediaTranscoderNode`**: Transcodes video and audio streams using integrated FFmpeg profiles.
+4. **`SqliteDatabaseSinkNode`**: Inserts structured audit and file records into local SQLite database tables.
+5. **`MessageQueuePublisherNode`**: Publishes event metadata to message queues (RabbitMQ, MQTT).
 
 ---
 
-## 6. Advanced Execution Modes & DAG Engine
+## 6. Step-by-Step Educational Tutorials
 
-### Real-Time Watchdog Trigger Mode
-- Toggle the **`👁️ Vigilante` (Watchdog)** button in the top bar to listen continuously for incoming files in the configured source directories.
-- Automatically processes new or modified files with intelligent debounce to prevent locked-file race conditions.
+### Tutorial A: Automated Photo Organization & Optimization
+**Goal**: Scan an SD card, extract EXIF data, convert images to modern WebP, and organize them into folders by year, month, and camera model.
 
-### Performance Telemetry & Bottleneck Heatmap
-- Microsecond-precision per-node latency measurements via `Stopwatch.GetTimestamp()`.
-- Real-time visual latency badges (`⚡ 12 ms` / `⏱️ 1.4 s`) on node card headers with color-coded warning states (`⚠️ Cuello de botella` / `⚠️ Bottleneck`) for nodes consuming $>35\%$ of total execution time.
-
-### Headless CLI Runner (`fileflow.exe --run`)
-Execute workflows unattended from PowerShell, bash, or Windows Task Scheduler:
-```powershell
-# Standard run with dynamic variable injection
-.\FileFlow.App.exe --run "workflow.json" --input "C:\Data" --var Environment=Production
-
-# Override specific node parameters
-.\FileFlow.App.exe --run "workflow.json" --param Throttle.DelayMilliseconds=50
-
-# Continuous watch mode with structured JSON summary report
-.\FileFlow.App.exe --run "workflow.json" --watch --summary "report.json"
-
-# State checkpoint resumption
-.\FileFlow.App.exe --run "workflow.json" --resume
-```
-
-### State Checkpointing & Resumption
-- Automatically persists progress in `%LocalAppData%/FileFlowStudio/checkpoints/`.
-- If a long-running batch job is interrupted by a power failure or restart, re-running the workflow skips already-completed files (`CompletedFileKeys`).
+1. **`FolderSourceNode`**:
+   - `SourcePath`: `E:\DCIM\100NIKON`
+   - `ExtensionFilter`: `*.jpg, *.jpeg, *.png`
+2. Connect `Out` to **`ExifMetadataNode`** (extracts camera make, model, and date).
+3. Connect `Out` to **`ImageOptimizerNode`**:
+   - `TargetFormat`: `WebP`
+   - `Quality`: `85`
+4. Connect `Out` to **`DestinationSinkNode`**:
+   - `DestinationRoot`: `D:\Organized_Photos\{Exif:Make}_{Exif:CameraModel}\{CreationDate:yyyy}\{CreationDate:MM}`
+   - `ConflictStrategy`: `AutoIncrement`
+5. Connect `Done` to **`OriginalFileActionNode`**:
+   - `ActionType`: `MoveToQuarantine` (safely backs up source files).
 
 ---
 
-## 7. Canvas Design & Productivity Tools
+### Tutorial B: Remote SFTP Ingestion, Unpacking & Consolidated Report
+**Goal**: Download daily backups from an SSH server, extract contents, discard duplicate files, and produce an interactive HTML audit report.
 
-- **Sticky Notes:** Right-click canvas $\rightarrow$ `Create Sticky Note` to add comments, diagrams, or instructions with customizable colors and live resizing.
-- **Group Frames (`Ctrl+G`):** Select multiple nodes and press `Ctrl+G` to encase them in an interactive group box. Moving the group by its title bar moves all contained nodes together.
-- **Dynamic Category Dropdown:** Compact top bar dropdown with live search, favorite filters (`⭐`), frequent usage badges (`🔥`), and dynamic plugin category discovery.
+1. **`NetworkDownloadNode`**:
+   - `Protocol`: `SFTP`
+   - `Host`: `backup.company.com` | `Username`: `backup_operator`
+   - `RemoteFilePath`: `/var/backups/nightly.zip`
+   - `DestinationFolder`: `C:\Temp\Ingest`
+2. Connect `Out` to **`SmartUnpackNode`** (extracts all nested files).
+3. Connect `Out` to **`HashCalculatorNode`** (`Algorithm: SHA256`).
+4. Connect `Out` to **`DeduplicationFilterNode`**:
+   - `Unique` output $\rightarrow$ Connect to **`DestinationSinkNode`** (`DestinationRoot: D:\Clean_Store`).
+   - `Duplicate` output $\rightarrow$ Connect to **`SafeRecycleDeleteNode`** (sends to Windows Recycle Bin).
+5. Connect `Unique` to **`OperationReportNode`**:
+   - `ReportFormat`: `HTML`
+   - `AutoOpenReport`: `true`
+
+---
+
+### Tutorial C: AI Pipeline with Local OCR & PII Anonymization
+**Goal**: Ingest confidential scanned invoices, perform local OCR, and anonymize sensitive personal data before archiving.
+
+1. **`FolderSourceNode`** (`SourcePath: C:\Incoming_Invoices`).
+2. Connect to **`LocalOcrNode`** (extracts text without sending data to cloud APIs).
+3. Connect to **`PiiAnonymizerNode`** (masks credit card numbers, IDs, and names).
+4. Connect to **`DestinationSinkNode`** (`DestinationRoot: C:\Archived_Invoices`).
 
 ---
 
-## 8. Example Flows and Built-In Templates
+## 7. Keyboard Shortcuts & Productivity
 
-### Template 1: Automated Photo Sorting by Date & Camera
-```
-[FolderSourceNode] 
-       │ (FileOut)
-       ▼
-[ExifMetadataNode]
-       │ (Out)
-       ▼
-[AdvancedRenamerNode (<Exif:Date:yyyyMMdd>_<Exif:CameraModel>_<Index:D3>.<Ext>)]
-       │ (Out)
-       ▼
-[FileRelocatorNode (Destination: {DestinationRoot}\{Year}\{Month})]
-```
-
-### Template 2: Duplicate Cleaner to Windows Recycle Bin
-```
-[FolderSourceNode]
-       │ (FileOut)
-       ▼
-[HashCalculatorNode (SHA-256)]
-       │ (Out)
-       ▼
-[DeduplicationFilterNode]
-  ├── (Unique)    ──▶ [LogOutputNode (Unique File Retained)]
-  └── (Duplicate) ──▶ [OriginalFileActionNode (Action: MoveToRecycleBin)]
-```
-
-### Template 3: Excel Lookup & Remote SFTP Dispatch
-```
-[FolderSourceNode (PDFs)]
-       │ (Out)
-       ▼
-[DataLookupNode (clients.xlsx by {FileNameWithoutExtension})]
-  ├── (Matched)   ──▶ [SftpUploadNode (Client Server)] ──▶ [SqliteDatabaseSinkNode (Audit Log)]
-  └── (Unmatched) ──▶ [FileRelocatorNode (Pending Review Folder)]
-```
+| Shortcut | Action |
+| :--- | :--- |
+| `F5` | Run current workflow |
+| `Ctrl + F5` | Run in Virtual Simulation Mode (Dry Run) |
+| `F10` | Step Into next node during debugging |
+| `Ctrl + Z` | Undo last canvas action |
+| `Ctrl + Y` | Redo last canvas action |
+| `Ctrl + S` | Save current workflow (`.json`) |
+| `Ctrl + O` | Open workflow file |
+| `Ctrl + N` | Create new blank workflow |
+| `Spacebar` | Open QuickLook preview for selected item |
+| `Delete` | Delete selected node or connection |
+| `Ctrl + F` | Search nodes in Toolbox |
+| `Ctrl + Mouse Wheel` | Zoom in / Zoom out on canvas |
 
 ---
-*FileFlow Studio © 2026 — Official User Manual & Architecture Reference.*
+
+*Official FileFlow Studio Documentation. Distributed under GNU General Public License v3.0.*

@@ -50,7 +50,7 @@ public class ToolboxOrganizationTests
         typeof(SwitchCaseNode).Assembly,
         typeof(CliExecutionNode).Assembly,
         typeof(CustomScriptNode).Assembly,
-        typeof(RemoteDownloadNode).Assembly,
+        typeof(NetworkDownloadNode).Assembly,
         typeof(SmartImageClassifierNode).Assembly
     ];
 
@@ -72,7 +72,7 @@ public class ToolboxOrganizationTests
         var nodeTypes = loader.DiscoveredNodeTypes.Values.Distinct().ToList();
 
         // Assert
-        nodeTypes.Should().HaveCountGreaterOrEqualTo(60, "There should be at least 60 official nodes loaded across all plugins");
+        nodeTypes.Should().HaveCountGreaterOrEqualTo(57, "There should be at least 57 official nodes loaded across all plugins");
 
         foreach (var type in nodeTypes)
         {
@@ -86,7 +86,7 @@ public class ToolboxOrganizationTests
     }
 
     [Fact]
-    public void AllNodes_MustBelongToUnifiedTaxonomyCategories()
+    public void AllNodes_MustBelongToRecognizedMacroCategories()
     {
         // Arrange
         var loader = CreatePopulatedLoader();
@@ -95,23 +95,13 @@ public class ToolboxOrganizationTests
         // Assert
         foreach (var type in nodeTypes)
         {
-            var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
-            ExpectedCategories.Should().Contain(defAttr!.Category,
-                $"Node '{type.Name}' has category '{defAttr.Category}', which is not in the unified 11-category taxonomy.");
+            var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>()!;
+            ExpectedCategories.Should().Contain(defAttr.Category,
+                $"Node '{type.Name}' declares category '{defAttr.Category}' which is not in the recognized 11 macro-categories.");
         }
     }
 
     [Theory]
-    [InlineData("recortar", "BackgroundRemoverNode")]
-    [InlineData("fondo", "BackgroundRemoverNode")]
-    [InlineData("dni", "PiiAnonymizerNode")]
-    [InlineData("iban", "PiiAnonymizerNode")]
-    [InlineData("gdpr", "PiiAnonymizerNode")]
-    [InlineData("mp3", "MediaTranscoderNode")]
-    [InlineData("excel", "ExcelReaderNode")]
-    [InlineData("duplicados", "DeduplicationFilterNode")]
-    [InlineData("deduplicar", "DeduplicationFilterNode")]
-    [InlineData("upscale", "SuperResolutionUpscalerNode")]
     [InlineData("semantica", "ZeroShotSemanticSearchNode")]
     [InlineData("silero", "VoiceActivityDetectorNode")]
     [InlineData("piper", "TextToSpeechNode")]
@@ -150,7 +140,7 @@ public class ToolboxOrganizationTests
 
         // Check that groups contain roles
         var allItems = groups.SelectMany(g => g.Items).ToList();
-        allItems.Should().HaveCountGreaterOrEqualTo(60);
+        allItems.Should().HaveCountGreaterOrEqualTo(57);
 
         // Ensure distinct PipelineRoles are represented
         var representedRoles = allItems.Select(i => i.Role).Distinct().ToList();

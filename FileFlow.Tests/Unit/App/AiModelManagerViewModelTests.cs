@@ -6,6 +6,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+[Collection("AiModelDownloadSequential")]
 public class AiModelManagerViewModelTests
 {
     [Fact]

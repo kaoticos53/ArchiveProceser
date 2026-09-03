@@ -565,6 +565,24 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    public void OpenAboutDialog()
+    {
+        IsMenuOpen = false;
+        try
+        {
+            var aboutDialog = new Views.AboutDialogWindow
+            {
+                Owner = Application.Current?.MainWindow
+            };
+            aboutDialog.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir la ventana Acerca de: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

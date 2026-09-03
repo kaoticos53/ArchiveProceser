@@ -1,4 +1,5 @@
 using System.IO;
+using FileFlow.App.ViewModels;
 using FileFlow.Plugin.Network;
 using FileFlow.Sdk;
 using FluentAssertions;
@@ -44,270 +45,350 @@ public class NetworkNodesTests
         resolved.Should().EndWith("report_2026.pdf");
     }
 
-    [Fact]
-    public async Task FtpUploadNode_DryRun_ShouldEmitOutWithSimulatedRemoteUrl()
-    {
-        // Arrange
-        var node = new FtpUploadNode();
-        node.Parameters["Host"] = "ftp.mycompany.com";
-        node.Parameters["Port"] = 21;
-        node.Parameters["RemoteDirectory"] = "/backups/test";
-
-        string testFile = CreateTestFile("sample.txt");
-        var item = new FileItemContext(testFile);
-
-        var mockContext = new Mock<IFlowExecutionContext>();
-        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
-
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
-            .Returns(Task.CompletedTask);
-
-        // Act
-        await node.ExecuteAsync("In", item, mockContext.Object);
-
-        // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        emittedItem!.Metadata.Should().ContainKey("RemoteUrl");
-        emittedItem.Metadata["RemoteUrl"]?.ToString().Should().Be("ftp://ftp.mycompany.com:21/backups/test/sample.txt");
-    }
+    #region NetworkDownloadNode Tests (5 Protocolos Simétricos)
 
     [Fact]
-    public async Task SftpUploadNode_DryRun_ShouldEmitOutWithSimulatedSftpUrl()
+    public async Task NetworkDownloadNode_Http_DryRun_ShouldSimulateAndEmitOut()
     {
         // Arrange
-        var node = new SftpUploadNode();
-        node.Parameters["Host"] = "vps.linux.com";
-        node.Parameters["Port"] = 22;
-        node.Parameters["RemoteDirectory"] = "/var/www/uploads";
-
-        string testFile = CreateTestFile("data.csv");
-        var item = new FileItemContext(testFile);
-
-        var mockContext = new Mock<IFlowExecutionContext>();
-        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
-
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
-            .Returns(Task.CompletedTask);
-
-        // Act
-        await node.ExecuteAsync("In", item, mockContext.Object);
-
-        // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        emittedItem!.Metadata.Should().ContainKey("RemoteUrl");
-        emittedItem.Metadata["RemoteUrl"]?.ToString().Should().Be("sftp://vps.linux.com:22/var/www/uploads/data.csv");
-    }
-
-    [Fact]
-    public async Task SmbCopyNode_ShouldCopyFileLocallyAndEmitOutPort()
-    {
-        // Arrange
-        string destFolder = Path.Combine(_testDir, "NasOutput");
-        var node = new SmbCopyNode();
-        node.Parameters["DestinationFolder"] = destFolder;
-        node.Parameters["Overwrite"] = true;
-
-        string testFile = CreateTestFile("package.zip", "ZIP content");
-        var item = new FileItemContext(testFile);
-
-        var mockContext = new Mock<IFlowExecutionContext>();
-        mockContext.SetupGet(c => c.IsDryRun).Returns(false);
-
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
-            .Returns(Task.CompletedTask);
-
-        // Act
-        await node.ExecuteAsync("In", item, mockContext.Object);
-
-        // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        string expectedDestFile = Path.Combine(destFolder, "package.zip");
-        File.Exists(expectedDestFile).Should().BeTrue();
-        emittedItem!.Metadata.Should().ContainKey("NetworkPath");
-        emittedItem.Metadata["NetworkPath"]?.ToString().Should().Be(expectedDestFile);
-    }
-
-    [Fact]
-    public async Task WebDavUploadNode_DryRun_ShouldEmitOutWithWebDavUrl()
-    {
-        // Arrange
-        var node = new WebDavUploadNode();
-        node.Parameters["ServerUrl"] = "https://nextcloud.company.com/remote.php/dav/files/admin";
-        node.Parameters["RemoteDirectory"] = "/Finance/2026";
-
-        string testFile = CreateTestFile("invoice.pdf");
-        var item = new FileItemContext(testFile);
-
-        var mockContext = new Mock<IFlowExecutionContext>();
-        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
-
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
-            .Returns(Task.CompletedTask);
-
-        // Act
-        await node.ExecuteAsync("In", item, mockContext.Object);
-
-        // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        emittedItem!.Metadata.Should().ContainKey("RemoteUrl");
-        emittedItem.Metadata["RemoteUrl"]?.ToString().Should().Be("https://nextcloud.company.com/remote.php/dav/files/admin/Finance/2026/invoice.pdf");
-    }
-
-    [Fact]
-    public async Task RemoteDownloadNode_DryRun_ShouldSimulateDownloadAndEmitOut()
-    {
-        // Arrange
-        string destFolder = Path.Combine(_testDir, "Downloads");
-        var node = new RemoteDownloadNode();
+        string destFolder = Path.Combine(_testDir, "Downloads_Http");
+        var node = new NetworkDownloadNode();
+        node.Parameters["Protocol"] = "HTTP";
         node.Parameters["SourceUrl"] = "https://cdn.example.com/assets/logo.png";
         node.Parameters["DestinationFolder"] = destFolder;
 
-        var item = new FileItemContext("initial.tmp");
-
+        var item = new FileItemContext("trigger.tmp");
         var mockContext = new Mock<IFlowExecutionContext>();
         mockContext.SetupGet(c => c.IsDryRun).Returns(true);
 
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
             .Returns(Task.CompletedTask);
 
         // Act
         await node.ExecuteAsync("In", item, mockContext.Object);
 
         // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        emittedItem!.Metadata.Should().ContainKey("SourceUrl");
-        emittedItem.Metadata["SourceUrl"]?.ToString().Should().Be("https://cdn.example.com/assets/logo.png");
-        emittedItem.CurrentPath.Should().Be(Path.Combine(destFolder, "logo.png"));
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata.Should().ContainKey("DownloadedPath");
+        emitted.CurrentPath.Should().Be(Path.Combine(destFolder, "logo.png"));
     }
 
     [Fact]
-    public async Task FtpDownloadNode_DryRun_ShouldSimulateDownloadAndEmitOut()
+    public async Task NetworkDownloadNode_Ftp_DryRun_ShouldSimulateAndEmitOut()
     {
         // Arrange
-        string destFolder = Path.Combine(_testDir, "FtpDownloads");
-        var node = new FtpDownloadNode();
+        string destFolder = Path.Combine(_testDir, "Downloads_Ftp");
+        var node = new NetworkDownloadNode();
+        node.Parameters["Protocol"] = "FTP";
         node.Parameters["Host"] = "ftp.acme.org";
         node.Parameters["Port"] = 21;
-        node.Parameters["RemoteFilePath"] = "/reports/annual_2026.csv";
+        node.Parameters["RemoteFilePath"] = "/reports/annual.csv";
         node.Parameters["DestinationFolder"] = destFolder;
 
         var item = new FileItemContext("trigger.tmp");
-
         var mockContext = new Mock<IFlowExecutionContext>();
         mockContext.SetupGet(c => c.IsDryRun).Returns(true);
 
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
             .Returns(Task.CompletedTask);
 
         // Act
         await node.ExecuteAsync("In", item, mockContext.Object);
 
         // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        emittedItem!.Metadata.Should().ContainKey("RemoteUrl");
-        emittedItem.Metadata["RemoteUrl"]?.ToString().Should().Be("ftp://ftp.acme.org:21/reports/annual_2026.csv");
-        emittedItem.CurrentPath.Should().Be(Path.Combine(destFolder, "annual_2026.csv"));
-        emittedItem.Metadata.Should().ContainKey("DownloadedPath");
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().Be("ftp://ftp.acme.org:21/reports/annual.csv");
+        emitted.CurrentPath.Should().Be(Path.Combine(destFolder, "annual.csv"));
     }
 
     [Fact]
-    public async Task SftpDownloadNode_DryRun_ShouldSimulateDownloadAndEmitOut()
+    public async Task NetworkDownloadNode_Sftp_DryRun_ShouldSimulateAndEmitOut()
     {
         // Arrange
-        string destFolder = Path.Combine(_testDir, "SftpDownloads");
-        var node = new SftpDownloadNode();
-        node.Parameters["Host"] = "sftp.securecorp.net";
-        node.Parameters["Port"] = 2222;
-        node.Parameters["Username"] = "operator";
-        node.Parameters["RemoteFilePath"] = "/var/data/archive.tar.gz";
+        string destFolder = Path.Combine(_testDir, "Downloads_Sftp");
+        var node = new NetworkDownloadNode();
+        node.Parameters["Protocol"] = "SFTP";
+        node.Parameters["Host"] = "sftp.corp.net";
+        node.Parameters["Port"] = 22;
+        node.Parameters["Username"] = "admin";
+        node.Parameters["RemoteFilePath"] = "/var/data/dump.sql";
         node.Parameters["DestinationFolder"] = destFolder;
 
         var item = new FileItemContext("trigger.tmp");
-
         var mockContext = new Mock<IFlowExecutionContext>();
         mockContext.SetupGet(c => c.IsDryRun).Returns(true);
 
-        FileItemContext? emittedItem = null;
-        string? emittedPort = null;
-
-        mockContext
-            .Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
-            .Callback<string, FileItemContext>((port, it) =>
-            {
-                emittedPort = port;
-                emittedItem = it;
-            })
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
             .Returns(Task.CompletedTask);
 
         // Act
         await node.ExecuteAsync("In", item, mockContext.Object);
 
         // Assert
-        emittedPort.Should().Be("Out");
-        emittedItem.Should().NotBeNull();
-        emittedItem!.Metadata.Should().ContainKey("RemoteUrl");
-        emittedItem.Metadata["RemoteUrl"]?.ToString().Should().Be("sftp://operator@sftp.securecorp.net:2222/var/data/archive.tar.gz");
-        emittedItem.CurrentPath.Should().Be(Path.Combine(destFolder, "archive.tar.gz"));
-        emittedItem.Metadata.Should().ContainKey("DownloadedPath");
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().Be("sftp://admin@sftp.corp.net:22/var/data/dump.sql");
+        emitted.CurrentPath.Should().Be(Path.Combine(destFolder, "dump.sql"));
     }
+
+    [Fact]
+    public async Task NetworkDownloadNode_WebDav_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        string destFolder = Path.Combine(_testDir, "Downloads_WebDav");
+        var node = new NetworkDownloadNode();
+        node.Parameters["Protocol"] = "WebDAV";
+        node.Parameters["ServerUrl"] = "https://cloud.company.com/remote.php/dav/files/user/invoices/inv_01.pdf";
+        node.Parameters["DestinationFolder"] = destFolder;
+
+        var item = new FileItemContext("trigger.tmp");
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.CurrentPath.Should().Be(Path.Combine(destFolder, "inv_01.pdf"));
+    }
+
+    [Fact]
+    public async Task NetworkDownloadNode_Smb_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        string destFolder = Path.Combine(_testDir, "Downloads_Smb");
+        var node = new NetworkDownloadNode();
+        node.Parameters["Protocol"] = "SMB";
+        node.Parameters["UncPath"] = @"\\server\share\data.zip";
+        node.Parameters["DestinationFolder"] = destFolder;
+
+        var item = new FileItemContext("trigger.tmp");
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.CurrentPath.Should().Be(Path.Combine(destFolder, "data.zip"));
+    }
+
+    #endregion
+
+    #region NetworkUploadNode Tests (5 Protocolos Simétricos)
+
+    [Fact]
+    public async Task NetworkUploadNode_Http_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        var node = new NetworkUploadNode();
+        node.Parameters["Protocol"] = "HTTP";
+        node.Parameters["TargetUrl"] = "https://api.example.com/v1/ingest";
+        node.Parameters["HttpMethod"] = "POST";
+
+        string testFile = CreateTestFile("payload.json", "{}");
+        var item = new FileItemContext(testFile);
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().Be("https://api.example.com/v1/ingest");
+    }
+
+    [Fact]
+    public async Task NetworkUploadNode_Ftp_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        var node = new NetworkUploadNode();
+        node.Parameters["Protocol"] = "FTP";
+        node.Parameters["Host"] = "ftp.acme.org";
+        node.Parameters["Port"] = 21;
+        node.Parameters["RemoteDirectory"] = "/inbox";
+
+        string testFile = CreateTestFile("sales.csv", "1,2,3");
+        var item = new FileItemContext(testFile);
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().Be("ftp://ftp.acme.org:21/inbox/sales.csv");
+    }
+
+    [Fact]
+    public async Task NetworkUploadNode_Sftp_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        var node = new NetworkUploadNode();
+        node.Parameters["Protocol"] = "SFTP";
+        node.Parameters["Host"] = "vps.server.com";
+        node.Parameters["Port"] = 22;
+        node.Parameters["Username"] = "deploy";
+        node.Parameters["RemoteDirectory"] = "/var/www/uploads";
+
+        string testFile = CreateTestFile("site.tar.gz", "archive data");
+        var item = new FileItemContext(testFile);
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().Be("sftp://deploy@vps.server.com:22/var/www/uploads/site.tar.gz");
+    }
+
+    [Fact]
+    public async Task NetworkUploadNode_WebDav_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        var node = new NetworkUploadNode();
+        node.Parameters["Protocol"] = "WebDAV";
+        node.Parameters["ServerUrl"] = "https://nextcloud.company.com/remote.php/dav/files/admin/Finance";
+
+        string testFile = CreateTestFile("invoice.pdf", "pdf data");
+        var item = new FileItemContext(testFile);
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().Be("https://nextcloud.company.com/remote.php/dav/files/admin/Finance/invoice.pdf");
+    }
+
+    [Fact]
+    public async Task NetworkUploadNode_Smb_DryRun_ShouldSimulateAndEmitOut()
+    {
+        // Arrange
+        var node = new NetworkUploadNode();
+        node.Parameters["Protocol"] = "SMB";
+        node.Parameters["UncPath"] = @"\\nas\backup";
+
+        string testFile = CreateTestFile("system.bak", "backup payload");
+        var item = new FileItemContext(testFile);
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(true);
+
+        FileItemContext? emitted = null;
+        string? port = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, it) => { port = p; emitted = it; })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        // Assert
+        port.Should().Be("Out");
+        emitted.Should().NotBeNull();
+        emitted!.Metadata["RemoteUrl"]?.ToString().Should().EndWith("system.bak");
+    }
+
+    #endregion
+
+    #region Reactividad y Parámetros Dinámicos (DependsOn)
+
+    [Fact]
+    public void NetworkDownloadNode_ParameterVisibility_ShouldChangeDynamicallyWithProtocol()
+    {
+        // Arrange
+        var node = new NetworkDownloadNode();
+        var nodeVm = new NodeViewModel(node, new System.Windows.Point(0, 0));
+
+        var protocolParam = nodeVm.Parameters.First(p => p.Key == "Protocol");
+        var sourceUrlParam = nodeVm.Parameters.First(p => p.Key == "SourceUrl");
+        var hostParam = nodeVm.Parameters.First(p => p.Key == "Host");
+        var privateKeyParam = nodeVm.Parameters.First(p => p.Key == "PrivateKeyPath");
+
+        // 1. Con Protocol = HTTP (Default)
+        protocolParam.Value = "HTTP";
+        sourceUrlParam.IsVisible.Should().BeTrue("SourceUrl must be visible for HTTP");
+        hostParam.IsVisible.Should().BeFalse("Host must be hidden for HTTP");
+        privateKeyParam.IsVisible.Should().BeFalse("PrivateKeyPath must be hidden for HTTP");
+
+        // 2. Con Protocol = FTP
+        protocolParam.Value = "FTP";
+        sourceUrlParam.IsVisible.Should().BeFalse("SourceUrl must be hidden for FTP");
+        hostParam.IsVisible.Should().BeTrue("Host must be visible for FTP");
+        privateKeyParam.IsVisible.Should().BeFalse("PrivateKeyPath must be hidden for FTP");
+
+        // 3. Con Protocol = SFTP
+        protocolParam.Value = "SFTP";
+        sourceUrlParam.IsVisible.Should().BeFalse("SourceUrl must be hidden for SFTP");
+        hostParam.IsVisible.Should().BeTrue("Host must be visible for SFTP");
+        privateKeyParam.IsVisible.Should().BeTrue("PrivateKeyPath must be visible for SFTP");
+    }
+
+    #endregion
 }

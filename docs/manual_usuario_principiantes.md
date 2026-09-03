@@ -137,7 +137,42 @@ Cuando abres FileFlow Studio, la pantalla se divide en 4 partes muy fáciles de 
 
 ---
 
-### 📊 Receta 5: Modo Vigilante Automático (Procesar lo que entre solo)
+### 📄 Receta 5: Unir múltiples facturas o apuntes en un único PDF
+
+**El Problema:** Tienes 10 páginas sueltas en PDF y necesitas enviarlas en un único archivo combinado.
+
+**La Solución:**
+1. Pon un **"Lector de Carpetas"** con la carpeta donde están tus PDFs sueltos.
+2. Añade la caja **"Unir PDFs"** (`PdfMergeNode`).
+   - Conéctalas.
+   - En el panel derecho, pon el nombre que quieras para el documento final (por ejemplo: `Facturas_Consolidadas.pdf`) y la carpeta de destino.
+3. Pulsa **"▶ Ejecutar Flujo"**.
+
+---
+
+### 🤖 Receta 6: Extraer texto de fotos de documentos con Inteligencia Artificial (OCR)
+
+**El Problema:** Te han mandado fotos de documentos o tickets y quieres extraer su texto automáticamente sin escribirlo a mano.
+
+**La Solución:**
+1. Pon un **"Lector de Carpetas"** con tus imágenes.
+2. Añade la caja **"OCR Local"** (`LocalOcrNode`). ¡Funciona 100% en tu ordenador sin subir nada a Internet ni pagar suscripciones!
+3. Añade la caja **"Generador de Informes"** (`OperationReportNode`) configurado en `HTML` o `Markdown`.
+4. Pulsa **"▶ Ejecutar Flujo"** y verás todo el texto reconocido listo para copiar.
+
+---
+
+### 🌐 Receta 7: Descargar y Subir a Servidores o Nubes Privadas (SFTP / WebDAV)
+
+**El Problema:** Quieres descargar archivos de un servidor remoto o subirlos a Nextcloud de forma automática.
+
+**La Solución:**
+1. Para descargar: Añade la caja **"Descargar de Red y Nube"** (`NetworkDownloadNode`), elige tu método (por ejemplo `SFTP` o `WebDAV`) y rellena los datos de tu servidor.
+2. Para subir: Añade la caja **"Subir a Red y Nube"** (`NetworkUploadNode`) al final de cualquier flujo para enviar el resultado a tu servidor.
+
+---
+
+### 📊 Receta 8: Modo Vigilante Automático (Procesar lo que entre solo)
 
 **El Problema:** Quieres que cada vez que descargues un PDF o una foto a tu carpeta, se ordene sola sin tener que abrir el programa y darle a Ejecutar cada vez.
 
@@ -145,6 +180,14 @@ Cuando abres FileFlow Studio, la pantalla se divide en 4 partes muy fáciles de 
 1. Crea tu flujo habitual (ej. `Lector de Carpetas` $\rightarrow$ `Filtro` $\rightarrow$ `Mover`).
 2. En lugar de pulsar Ejecutar, pulsa el botón **"👁️ Vigilante"** en la barra superior.
 3. El botón se iluminará en verde esmeralda. Ahora puedes minimizar el programa: cada archivo nuevo que caiga en la carpeta se procesará al instante de forma automática.
+
+---
+
+### 👁️ El Truco de la Tecla Espacio (Visor Rápido QuickLook)
+¿Quieres ver cómo ha quedado una foto, leer un documento o ver qué metadatos tiene un archivo sin abrir programas externos?
+1. Haz clic sobre cualquier archivo en la consola o sobre una tarjeta en el lienzo.
+2. Pulsa la tecla **Espacio**.
+3. ¡Se abrirá una ventana instantánea para previsualizar imágenes, texto o tablas al vuelo! Vuelve a pulsar `Espacio` o `Esc` para cerrarla.
 
 ---
 

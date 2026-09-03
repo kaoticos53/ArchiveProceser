@@ -10,6 +10,7 @@
 ```
 ArchiveProceser/
 ├── FileFlow.slnx                     # Solución XML de .NET 9
+├── LICENSE                           # Licencia GNU General Public License v3.0 (GNU GPLv3)
 ├── GEMINI.md                         # Directivas de contexto y persistencia
 ├── .antigravity/
 │   ├── mcp.json                      # Configuración de servidores MCP (Memory & Filesystem)
@@ -22,12 +23,15 @@ ArchiveProceser/
 ├── FileFlow.Plugin.FileSystem/       # Plugin de E/S de disco, escaneo, renombrado, reubicación y reciclaje Win32
 ├── FileFlow.Plugin.Logic/            # Plugin de control de flujo (BatchBuffer, Throttle, ForkJoin, SwitchCase, Filter)
 ├── FileFlow.Plugin.Hashing/          # Plugin de integridad criptográfica (SHA, MD5) y deduplicación en memoria
-├── FileFlow.Plugin.Archives/         # Plugin de descompresión inteligente (SharpCompress)
-├── FileFlow.Plugin.Images/           # Plugin de optimización y metadatos EXIF (ImageSharp)
+├── FileFlow.Plugin.Archives/         # Plugin de compresión y descompresión inteligente (SharpCompress)
+├── FileFlow.Plugin.Images/           # Plugin de procesamiento gráfico, optimización y metadatos EXIF (ImageSharp)
 ├── FileFlow.Plugin.Documents/        # Plugin de documentos y PDFs (PdfSharp, PdfPig: Merge, Split, Text Extract, Metadata)
+├── FileFlow.Plugin.Data/             # Plugin de hojas de cálculo y bases de datos (MiniExcel, CsvHelper, SQLite)
+├── FileFlow.Plugin.Network/          # Plugin de red y nube unificado (HTTP, FTP/FTPS, SFTP/SSH, WebDAV, SMB)
+├── FileFlow.Plugin.AI/               # Plugin de inferencia local de IA (ONNX Runtime, Whisper, Vision, OCR)
 ├── FileFlow.Plugin.Scripting/        # Plugin de scripting dinámico en C# (Roslyn) y JavaScript (Jint)
-├── FileFlow.Plugin.Integrations/     # Plugin de integraciones externas (CLI Process Runner, Webhooks HTTP)
-└── FileFlow.Tests/                   # Suite de Pruebas Unitarias e Integración xUnit (.NET 9)
+├── FileFlow.Plugin.Integrations/     # Plugin de integraciones externas (CLI Process Runner, Webhooks HTTP, FFmpeg)
+└── FileFlow.Tests/                   # Suite de Pruebas Unitarias e Integración xUnit (.NET 9, 477 tests)
 ```
 
 ---

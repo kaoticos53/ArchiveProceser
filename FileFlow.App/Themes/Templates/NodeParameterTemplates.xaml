@@ -6,7 +6,7 @@
 
     <!-- Node Parameter Row DataTemplate -->
     <DataTemplate x:Key="NodeParameterItemTemplate" DataType="{x:Type vm:NodeParameterViewModel}">
-        <Grid Margin="0,3">
+        <Grid Margin="0,3" Visibility="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
             <!-- Standard Node Parameter Row -->
             <Grid Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>

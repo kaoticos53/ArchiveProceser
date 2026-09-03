@@ -34,7 +34,7 @@ public partial class MainViewModel : ObservableObject
         PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.AI.PromptObjectDetectorNode).Assembly);
         PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Data.ExcelReaderNode).Assembly);
         PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.RemoteDownloadNode).Assembly);
+        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.NetworkDownloadNode).Assembly);
 
         // Dynamically load any additional external plugin assemblies in /Plugins directory
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;

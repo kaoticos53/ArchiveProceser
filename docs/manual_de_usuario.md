@@ -1,549 +1,345 @@
 # 📖 Manual de Usuario y Guía de Referencia de Nodos
 ## **FileFlow Studio v2.0**
-*Plataforma de Automatización y Procesamiento de Archivos basada en Nodos en .NET 9 y C# 13*
+*Plataforma Modular de Automatización, Procesamiento Masivo y Transformación de Archivos basada en Grafos DAG*
+*Runtime .NET 9 | C# 13 | Licencia GNU GPLv3 | Copyright © 2026 RGLara*
 
 ---
 
 ## 📑 Tabla de Contenidos
+
 1. [Introducción y Filosofía de Diseño](#1-introducción-y-filosofía-de-diseño)
-2. [Conceptos Fundamentales del Editor](#2-conceptos-fundamentales-del-editor)
-   - [Lienzo de Nodos (Nodify)](#lienzo-de-nodos-nodify)
+2. [Conceptos Fundamentales del Editor Visual](#2-conceptos-fundamentales-del-editor-visual)
+   - [Lienzo de Nodos Interactivo (Nodify)](#lienzo-de-nodos-interactivo-nodify)
    - [El Contexto del Archivo (`FileItemContext`)](#el-contexto-del-archivo-fileitemcontext)
    - [Sub-flujos y Macros Multinivel (Breadcrumbs)](#sub-flujos-y-macros-multinivel-breadcrumbs)
-   - [Badges de Telemetría en Tiempo Real](#badges-de-telemetría-en-tiempo-real)
+   - [Telemetría Reactiva en Conexiones](#telemetría-reactiva-en-conexiones)
+   - [Visor Rápido QuickLook e Inspector](#visor-rápido-quicklook-e-inspector)
 3. [Modos de Ejecución y Seguridad de Datos](#3-modos-de-ejecución-y-seguridad-de-datos)
-   - [Ejecución Normal](#ejecución-normal)
+   - [Ejecución Normal en Paralelo](#ejecución-normal-en-paralelo)
    - [Modo Simulación Virtual ("Dry Run")](#modo-simulación-virtual-dry-run)
-   - [Sistema de Rollback y Papelera de Windows](#sistema-de-rollback-y-papelera-de-windows)
-   - [Depuración Interactiva con Breakpoints](#depuración-interactiva-con-breakpoints)
+   - [Modo Monitorización Continua (Watchdog)](#modo-monitorización-continua-watchdog)
+   - [Sistema de Rollback Transaccional (LIFO)](#sistema-de-rollback-transaccional-lifo)
+   - [Depuración Interactiva con Puntos de Interrupción (Breakpoints)](#depuración-interactiva-con-puntos-de-interrupción-breakpoints)
 4. [Motor de Tokens y Variables Dinámicas](#4-motor-de-tokens-y-variables-dinámicas)
-   - [Sintaxis de Tokens](#sintaxis-de-tokens)
-   - [Proveedores y Funciones Nativas](#proveedores-y-funciones-nativas)
-5. [Catálogo Exhaustivo de Nodos](#5-catálogo-exhaustivo-de-nodos)
-   - [Categoría 1: FileSystem (E/S de Disco)](#categoría-1-filesystem-es-de-disco)
-   - [Categoría 2: Logic (Control de Flujo)](#categoría-2-logic-control-de-flujo)
-   - [Categoría 3: Hashing (Integridad y Deduplicación)](#categoría-3-hashing-integridad-y-deduplicación)
-   - [Categoría 4: Archives (Compresión y Desempaquetado)](#categoría-4-archives-compresión-y-desempaquetado)
-   - [Categoría 5: Images & Media (Multimedia y EXIF)](#categoría-5-images--media-multimedia-y-exif)
-   - [Categoría 6: Integrations (CLI y Webhooks)](#categoría-6-integrations-cli-y-webhooks)
-6. [Flujos de Ejemplo y Plantillas Predefinidas](#6-flujos-de-ejemplo-y-plantillas-predefinidas)
+   - [Sintaxis y Dominios](#sintaxis-y-dominios)
+   - [Tabla Completa de Tokens](#tabla-completa-de-tokens)
+5. [Catálogo Exhaustivo de Nodos (57 Nodos DAG)](#5-catálogo-exhaustivo-de-nodos-57-nodos-dag)
+   - [📁 Categoría 1: FileSystem (E/S de Disco y Ciclo de Vida)](#-categoría-1-filesystem-14-nodos)
+   - [🗜️ Categoría 2: Archives (Compresión y Desempaquetado)](#️-categoría-2-archives-3-nodos)
+   - [🖼️ Categoría 3: Images (Procesamiento Gráfico y EXIF)](#️-categoría-3-images-4-nodos)
+   - [🌐 Categoría 4: Network & Remote Storage (Hubs Multi-Protocolo)](#-categoría-4-network--remote-storage-2-nodos-unificados)
+   - [🤖 Categoría 5: AI & Machine Learning (Inferencia Local ONNX)](#-categoría-5-ai--machine-learning-8-nodos)
+   - [📄 Categoría 6: Documents & PDFs (Gestión y Extracción)](#-categoría-6-documents--pdfs-4-nodos)
+   - [📊 Categoría 7: Data & Tabular Files (Excel, CSV, SQLite)](#-categoría-7-data--tabular-files-3-nodos)
+   - [⚙️ Categoría 8: Logic & Control Flow (Ruteo y Sincronización)](#️-categoría-8-logic--control-flow-6-nodos)
+   - [🔐 Categoría 9: Hashing & Security (Criptografía y Duplicados)](#-categoría-9-hashing--security-3-nodos)
+   - [📜 Categoría 10: Scripting & Extensibility (C# Roslyn & JS)](#-categoría-10-scripting--extensibility-3-nodos)
+   - [🔌 Categoría 11: Integrations & CLI (Herramientas Externas)](#-categoría-11-integrations--cli-5-nodos)
+6. [Tutoriales Prácticos Paso a Paso](#6-tutoriales-prácticos-paso-a-paso)
+   - [Tutorial A: Organización y Optimización Automatizada de Fotografías](#tutorial-a-organización-y-optimización-automatizada-de-fotografías)
+   - [Tutorial B: Ingesta Remota SFTP, Extracción y Reporte Consolidado](#tutorial-b-ingesta-remota-sftp-extracción-y-reporte-consolidado)
+   - [Tutorial C: Pipeline de Inteligencia Artificial con OCR y Anonimización](#tutorial-c-pipeline-de-inteligencia-artificial-con-ocr-y-anonimización)
+7. [Atajos de Teclado y Productividad](#7-atajos-de-teclado-y-productividad)
 
 ---
 
 ## 1. Introducción y Filosofía de Diseño
 
-**FileFlow Studio** es una plataforma de automatización de archivos diseñada para crear pipelines visuales de procesamiento masivo, inspirada en herramientas como *n8n*, *ComfyUI* y *Node-RED*.
+**FileFlow Studio** es un entorno de ingeniería visual y orquestación de procesamiento de archivos por lotes inspirado en herramientas de vanguardia como *n8n*, *ComfyUI* y *Node-RED*, diseñado específicamente para aprovechar la potencia de **.NET 9** y **C# 13**.
 
-### Características Principales:
-- **Modularidad por Plugins:** Cada grupo de funcionalidades vive en un plugin desacoplado (`FileFlow.Plugin.*`).
-- **Seguridad Garantizada:** Simulación previa mediante *Dry Run* y borrado recuperable con la Papelera de reciclaje de Windows.
-- **Rendimiento Asíncrono en .NET 9:** Canales reactivos sin bloqueo de interfaz gráfica.
-- **Sub-flujos Anidados:** Capacidad de crear sub-grafos dentro de macros reutilizables con navegación por migas de pan (*Breadcrumbs*).
+### Pilares Fundamentales:
+- **🛡️ Inmutabilidad y Seguridad por Defecto**: Los flujos son no destructivos. Los archivos originales (`OriginalPath`) jamás se modifican ni se eliminan a menos que se configure explícitamente el nodo `OriginalFileActionNode`.
+- **🧩 Arquitectura de Microkernel Desacoplado (ADR-006)**: Cada funcionalidad reside en un plugin autónomo (`FileFlow.Plugin.*`) con cero dependencias hacia la interfaz gráfica y con recursos de localización co-ubicados.
+- **⚡ Rendimiento Asíncrono Concurrente**: Despacho paralelo multihilo impulsado por `System.Threading.Channels` y `TPL Dataflow`, superando los **82.000 eventos de telemetría/segundo**.
+- **🌐 Simetría e Inteligencia en Red**: Nodos maestros universales para transferencias remotas (`HTTP`, `FTP`, `SFTP`, `WebDAV`, `SMB`) con parámetros dinámicos contextuales.
 
 ---
 
-## 2. Conceptos Fundamentales del Editor
+## 2. Conceptos Fundamentales del Editor Visual
 
-### Lienzo de Nodos (Nodify)
-El lienzo permite arrastrar nodos desde la **Caja de Herramientas (Toolbox)** izquierda. Cada nodo dispone de:
-- **Puertos de Entrada (Input Ports):** Ubicados a la izquierda. Reciben archivos o señales de control.
-- **Puertos de Salida (Output Ports):** Ubicados a la derecha. Emiten archivos procesados o desvíos condicionales.
-- **LED de Estado:** Indicador luminoso que refleja el estado de ejecución (`Idle`, `Running`, `Completed`, `Paused`, `Faulted`).
-- **Punto de Interrupción (Breakpoint):** Clic en el círculo rojo superior para pausar la ejecución en ese nodo.
+### Lienzo de Nodos Interactivo (Nodify)
+El lienzo visual permite modelar tuberías de trabajo arrastrando nodos desde la **Caja de Herramientas (Toolbox)**:
+- **Puertos de Entrada (Izquierda)**: Reciben archivos entrantes (`In`, `BranchA`, `Files`).
+- **Puertos de Salida (Derecha)**: Emiten elementos procesados o bifurcaciones condicionales (`Out`, `Done`, `Error`, `Matched`, `Unmatched`).
+- **Indicador LED de Estado**:
+  - ⚪ *Gris (Inactivo)*: En espera.
+  - 🔵 *Azul Pulsante (En Ejecución)*: Procesando elementos en tiempo real.
+  - 🟢 *Verde (Completado)*: Finalizado exitosamente.
+  - 🔴 *Rojo (Error)*: Excepción capturada (desviada al puerto de error sin interrumpir el flujo general).
+- **Punto de Interrupción (Breakpoint)**: Clic en el círculo superior para pausar la ejecución al llegar un archivo.
 
 ### El Contexto del Archivo (`FileItemContext`)
-Un registro inmutable/transmutable que viaja a través de los cables del grafo conteniendo:
-- `CurrentPath`: Ruta actual del archivo en el paso del pipeline.
-- `OriginalPath`: Ruta de origen con la que inició el flujo.
-- `FileSizeBytes`: Tamaño exacto en bytes.
-- `Metadata`: Diccionario de clave-valor enriquecido por los nodos (`Exif:*`, `Hash:*`, `Cli:*`, etc.).
-- `ExecutionLog`: Historial de transformaciones aplicadas.
+La unidad fundamental de datos que fluye por las conexiones del grafo:
+```csharp
+public sealed record FileItemContext
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string CurrentPath { get; set; }       // Ruta actual en el paso del pipeline
+    public string OriginalPath { get; init; }      // Ruta inmutable de origen
+    public long FileSizeBytes { get; set; }        // Tamaño exacto en bytes
+    public bool IsDirectory { get; set; }
+    public Dictionary<string, object?> Metadata { get; } // Metadatos enriquecidos (EXIF, Hash, OCR, AI)
+    public HashSet<string> Tags { get; }          // Etiquetas de clasificación rápida
+    public List<string> ExecutionLog { get; }     // Historial de auditoría
+}
+```
 
 ### Sub-flujos y Macros Multinivel (Breadcrumbs)
-Los sub-flujos permiten encapsular conjuntos de nodos dentro de un único nodo compuesto:
-1. Para editar el sub-flujo, haz doble clic en el nodo o pulsa **"Abrir Sub-flujo"**.
-2. El lienzo mostrará el sub-grafo interno y una barra superior de migas de pan (*Breadcrumbs*): `Root Workflow ❯ Sub-flujo A ❯ Sub-flujo B`.
-3. Al hacer clic en un nivel anterior de la barra de migas de pan, los cambios se guardan y vuelves al flujo padre.
+Encapsula sub-grafos complejos dentro de nodos compuestos:
+1. Haz doble clic en un nodo de sub-flujo para abrir su editor interno.
+2. La barra superior de migas de pan (*Breadcrumbs*) te permite navegar entre niveles jerárquicos: `Flujo Principal ❯ Macro Extracción ❯ Normalización`.
+3. Al pulsar un nivel superior, el sub-flujo se valida y vuelve al lienzo padre.
 
-### Badges de Telemetría en Tiempo Real
-Durante la ejecución, cada cable de conexión entre nodos actualiza dinámicamente un contador de elementos procesados (ej. `⚡ 1,250 items`), permitiendo identificar cuellos de botella o desvíos condicionales en vivo.
+### Telemetría Reactiva en Conexiones
+Cada conexión física entre nodos cuenta con un indicador numérico en tiempo real (ej. `⚡ 2,450`) que informa cuántos archivos han atravesado ese enlace, facilitando el diagnóstico visual instantáneo.
+
+### Visor Rápido QuickLook e Inspector
+- Pulsa la tecla `Espacio` o el botón `👁️ QuickLook` en cualquier nodo o elemento del registro para previsualizar instantáneamente imágenes, texto, PDFs o tablas de metadatos.
+- El **Inspector Lateral** expone todos los parámetros del nodo seleccionado con controles enriquecidos (selectores de archivo, sliders, checkboxes y desplegables reactivos).
 
 ---
 
 ## 3. Modos de Ejecución y Seguridad de Datos
 
-### Ejecución Normal
-Pulsa el botón verde **"▶ Ejecutar Flujo"** en la barra superior. El motor procesará todos los archivos en paralelo o según las restricciones de concurrencia adaptativa configuradas.
+### Ejecución Normal en Paralelo
+Pulsa **"▶ Ejecutar Flujo"** (`F5`). El motor orquesta el despacho a través de canales de alto rendimiento particionados por hardware y tipo de disco.
 
 ### Modo Simulación Virtual ("Dry Run")
-1. Marca la casilla **"Dry Run"** o pulsa **"Simulación Virtual"**.
-2. El motor recorrerá todo el grafo resolviendo nombres, rutas, hashes y condiciones **sin modificar, mover ni eliminar ningún archivo real en el disco**.
-3. En la consola inferior se generará un desglose de todas las acciones planificadas (`PlannedAction`).
+1. Activa la casilla **"Dry Run"** antes de ejecutar.
+2. El motor evalúa todos los cálculos de rutas, condiciones, renombrados y consultas a bases de datos **sin realizar modificaciones reales en disco**.
+3. Consulta el diario de acciones planificadas en la consola para auditar el resultado antes de la ejecución real.
 
-### Sistema de Rollback y Papelera de Windows
-- **Borrado Seguro:** Todos los nodos de eliminación utilizan la API nativa de Windows Shell (`SHFileOperation`), enviando los ficheros a la Papelera de reciclaje.
-- **Deshacer (Rollback):** Si tras ejecutar un flujo deseas revertir los cambios, pulsa el botón **"↩ Deshacer"** en la barra superior. El sistema deshará los renombrados y movimientos en orden LIFO (último en ejecutarse, primero en deshacerse).
+### Modo Monitorización Continua (Watchdog)
+- Activa el modo centinela pulsando **"👁️ Modo Vigilante"**.
+- El sistema monitorizará automáticamente las carpetas de origen configuradas y disparará el procesamiento en cuanto se detecten nuevos archivos en disco.
 
-### Depuración Interactiva con Breakpoints
-- Pulsa **"🐛 Depurar Flujo"**.
-- La ejecución se detendrá automáticamente cuando un archivo alcance un nodo con breakpoint activo o cuando ocurra una excepción.
-- Usa **"Paso a Paso (F10)"** para avanzar un nodo a la vez e inspecciona el diff de metadatos en el panel lateral **Inspector de Nodos**.
+### Sistema de Rollback Transaccional (LIFO)
+Si necesitas deshacer una ejecución:
+1. Pulsa **"↩ Deshacer"** en la barra superior.
+2. El sistema revierte todas las operaciones de renombrado y movimiento en orden inverso (último en ejecutarse, primero en restaurarse).
+
+### Depuración Interactiva con Puntos de Interrupción (Breakpoints)
+- Pulsa **"🐛 Depurar"**.
+- Al alcanzar un nodo con breakpoint activo, la ejecución se pausará.
+- Usa **"Paso a Paso (F10)"** para inspeccionar las transformaciones de metadatos nodo a nodo.
 
 ---
 
 ## 4. Motor de Tokens y Variables Dinámicas
 
-Cualquier campo de texto, carpeta o plantilla de nombre admite variables dinámicas encerradas entre llaves `{...}`.
+El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, nombres de archivo y comandos externos.
 
-### Sintaxis General:
+### Sintaxis y Dominios
 `{Dominio:Clave:Modificador}` o `{Variable}`
 
-### Tabla de Tokens Disponibles:
+### Tabla Completa de Tokens
 
 | Token | Ejemplo de Salida | Descripción |
 | :--- | :--- | :--- |
-| `{FileName}` | `documento.pdf` | Nombre del archivo con extensión |
-| `{FileNameNoExt}` | `documento` | Nombre sin extensión |
-| `{Ext}` | `pdf` | Extensión sin punto |
-| `{CurrentDir}` | `C:\MisArchivos` | Directorio actual |
-| `{ParentDir}` | `MisArchivos` | Nombre de la carpeta contenedora |
-| `{CreationDate:yyyyMMdd}` | `20260822` | Fecha de creación del archivo con formato |
-| `{ModifiedDate:yyyy-MM-dd}` | `2026-08-22` | Fecha de última modificación |
-| `{Now:yyyyMMdd_HHmmss}` | `20260822_143000` | Fecha y hora actual del sistema |
-| `{FileSize:MB}` | `14.50` | Tamaño en Megabytes |
+| `{FileName}` | `informe.pdf` | Nombre completo del archivo con extensión |
+| `{FileNameNoExt}` | `informe` | Nombre del archivo sin extensión |
+| `{Ext}` | `pdf` | Extensión en minúsculas (sin punto) |
+| `{ParentDir}` | `Facturas_2026` | Nombre del directorio contenedor |
+| `{CreationDate:yyyyMMdd}` | `20260903` | Fecha de creación formateada |
+| `{ModifiedDate:yyyy-MM-dd}`| `2026-09-03` | Fecha de última modificación |
+| `{Now:yyyyMMdd_HHmmss}` | `20260903_205000` | Marca de tiempo actual del sistema |
+| `{FileSize:MB}` | `14.50` | Tamaño en Megabytes formateado |
 | `{FileSize:KB}` | `14848.0` | Tamaño en Kilobytes |
-| `{Hash:SHA256}` | `e3b0c442...` | Hash SHA-256 completo |
+| `{Hash:SHA256}` | `e3b0c44298...` | Suma de comprobación SHA-256 completa |
 | `{Hash:SHA256:8}` | `e3b0c442` | Hash SHA-256 truncado a 8 caracteres |
-| `{Hash:MD5:6}` | `d41d8c` | Hash MD5 truncado |
+| `{Hash:MD5:6}` | `d41d8c` | Hash MD5 truncado a 6 caracteres |
 | `{Exif:CameraModel}` | `Nikon Z8` | Modelo de cámara desde metadatos EXIF |
-| `{Exif:Make}` | `NIKON` | Fabricante de cámara |
-| `{Env:USERPROFILE}` | `C:\Users\ricardo` | Variable de entorno del sistema operativo |
-| `{Index:D4}` | `0001`, `0002` | Contador secuencial en el lote |
+| `{Exif:DateTimeOriginal}` | `2026:08:15 14:20:00` | Fecha y hora original de la captura |
+| `{Ocr:Text}` | `Factura N° 1024` | Texto extraído mediante OCR |
+| `{Env:USERPROFILE}` | `C:\Users\Usuario` | Variable de entorno del sistema operativo |
+| `{Meta:MiClave}` | `ValorPersonalizado`| Metadato inyectado por nodos previos |
 
 ---
 
-## 5. Catálogo Exhaustivo de Nodos
+## 5. Catálogo Exhaustivo de Nodos (57 Nodos DAG)
 
 ---
 
-### Categoría 1: FileSystem (E/S de Disco)
+### 📁 Categoría 1: FileSystem (14 Nodos)
 
-#### 1. `FolderSourceNode` (Origen de Carpeta)
-- **Propósito:** Inicia el flujo escaneando un directorio y emitiendo cada archivo encontrado.
-- **Puertos:**
-  - *Outputs:* `FileOut` (`FileItemContext`), `Completed` (Señal de fin).
-- **Parámetros:**
-  - `SourceFolder`: Ruta de la carpeta a escanear (admite tokens).
-  - `SearchPattern`: Filtro de archivos (ej. `*.*`, `*.jpg;*.png`).
-  - `IncludeSubdirectories`: `true` para escaneo recursivo.
-
-#### 2. `AdvancedRenamerNode` (Renombrador Avanzado con Pipeline de Métodos y Tokens)
-- **Propósito:** Transforma masivamente nombres de archivos y carpetas mediante un pipeline de hasta **9 métodos acumulativos secuenciales**, emulando las capacidades profesionales de *Advanced Renamer*.
-- **Puertos:**
-  - *Inputs:* `In` (`FileItemContext`)
-  - *Outputs:* `Out` (Renombrado exitoso), `Skipped` (Omitido por colisión), `Error` (Fallo en E/S o validación)
-- **Parámetros y Métodos del Pipeline:**
-  - `CollisionStrategy`: Estrategia atómica de resolución de colisiones:
-    - `AutoIncrement`: Añade automáticamente sufijos incrementales (`_1`, `_2`, `_3`) sin bloquear el lote concurrente.
-    - `Overwrite`: Sobrescribe el destino si ya existe.
-    - `Skip`: Omite el archivo y lo desvía por el puerto `Skipped`.
-    - `Fail`: Interrumpe la ejecución con error controlado.
-  - `MethodSteps`: Pipeline JSON de métodos acumulativos que se aplican en orden secuencial:
-    1. **Nuevos Nombres / Plantillas:** Sustitución total o parcial basada en plantillas con etiquetas dinámicas (`<Tag>` o `{Tag}`).
-    2. **Búsqueda y Reemplazo:** Búsqueda de subcadenas o patrones mediante **Regex** con grupos de captura (`$1`, `$2`), distinción de mayúsculas y reemplazo selectivo o global.
-    3. **Inserción de Texto:** Agrega cadenas en posiciones absolutas o relativas (desde el inicio o desde el final del nombre).
-    4. **Eliminación de Caracteres:** Suprime rangos de caracteres por conteo o posiciones relativas.
-    5. **Conversión de Mayúsculas / Minúsculas:** `Lowercase`, `Uppercase`, `TitleCase` (Tipo Título), `SentenceCase` (Tipo Oración) o `CapitalizeFirst`.
-    6. **Numeración Incremental:** Generador de secuencias numéricas con valor inicial, incremento, relleno de ceros (*padding*, ej. `001`) y condición de reinicio (*DirectoryChange*, *MetadataChange* o *Never*).
-    7. **Tabla de Sustituciones (Replace List):** Mapeo de pares clave-valor para reemplazos masivos o depuración de palabras clave.
-    8. **Limpieza, Recorte y Normalización:** Recorte de espacios en extremos (*Trim*), colapso de espacios múltiples, sanitización de caracteres ilegales de Windows (`\ / : * ? " < > |`) y normalización Unicode (`NFC`, `NFD`, `NFKC`, `NFKD`).
-    9. **Normalización y Relleno de Ceros (Padding) en Números:** Estandariza dígitos existentes en secuencias (`1 - pepe.jpg` $\rightarrow$ `01 - pepe.jpg`), temporadas y episodios de series (`serie guapa 1x1.mov` $\rightarrow$ `serie guapa 1x01.mov`, `S1E2` $\rightarrow$ `S01E02`, `Cap. 2` $\rightarrow$ `Cap. 02`), capítulos y pistas de audio.
-- **Asistente y Probador Visual de Expresiones Regulares (Regex Studio):** Botón `⚡ Regex...` disponible en todos los campos que admiten expresiones regulares (Búsqueda/Reemplazo, Eliminación, Normalización Numérica y Tabla de Sustituciones). Permite:
-  - Probar expresiones en tiempo real con nombres de archivo de muestra.
-  - Inspeccionar el desglose de grupos de captura (`$1`, `$2`, `${grupo}`).
-  - Simular el texto resultante tras el reemplazo.
-  - Cargar patrones predefinidos (Series/Episodios, Fechas ISO/Europeas, Timestamps, Limpieza de corchetes/paréntesis, Códecs).
-  - Guardar patrones favoritos personalizados con persistencia automática en el perfil de usuario.
-- **Estudio Visual Integrado (Studio):** Botón `🏷️ Pipeline de Métodos...` en la tarjeta del nodo y en el inspector para abrir el editor visual interactivo con **Live Preview en tiempo real** y catálogo de **Presets integrados** (Fotografía EXIF, Música ID3, Web/SEO, Documentos Empresariales).
-
-#### 3. `FileRelocatorNode` (Reubicador y Copiador de Archivos)
-- **Propósito:** Mueve o copia archivos a rutas calculadas dinámicamente, verificando la integridad binaria mediante hash SHA-256.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parámetros:**
-  - `Operation`: `Move` (Mover) o `Copy` (Copiar).
-  - `DestinationDirectory`: Ruta destino (ej. `{SourceDir}\{Year}\{Month}`).
-  - `VerifyIntegrity`: `true` para comprobar que el hash origen y destino coincidan.
-  - `CreateDirectories`: `true` para crear carpetas automáticamente si no existen.
-
-#### 4. `SafeRecycleDeleteNode` (Borrado Seguro a Papelera)
-- **Propósito:** Envía archivos a la Papelera de reciclaje de Windows mediante la API nativa del Shell (recuperable y con soporte de Deshacer).
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Deleted`, `Error`
-- **Parámetros:**
-  - `DeleteOriginalPath`: `true` para borrar el archivo original de entrada, `false` para la ruta actual.
-
-#### 5. `EmptyDirectoryCleanerNode` (Limpiador de Carpetas Vacías)
-- **Propósito:** Recorre un directorio y elimina de forma recursiva todas las carpetas que hayan quedado vacías tras un procesamiento.
-- **Puertos:**
-  - *Inputs:* `TriggerIn`
-  - *Outputs:* `Out`, `Error`
-- **Parámetros:**
-  - `TargetDirectory`: Directorio a limpiar (ej. `{SourceDir}`).
-  - `Recursive`: `true` para analizar subcarpetas en profundidad.
-  - `IgnoreHiddenSystemFiles`: `true` para considerar vacía una carpeta que solo contenga `Thumbs.db` o `.DS_Store`.
-
-#### 6. `OperationReportNode` (Reporte Visual de Operaciones)
-- **Propósito:** Genera un informe visual interactivo y estético con la trazabilidad completa del ciclo de vida y transformaciones de cada archivo (desde origen hasta destino con pasos y metadatos), agrupado jerárquicamente por la estructura de carpetas de origen.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out` (Reenvía el archivo sin modificar), `Report` (Emite el archivo de reporte generado), `Error`
-- **Parámetros:**
-  - `ReportFormat`: Desplegable con `HTML`, `Markdown`, `Text`, `JSON`, `CSV` (default: `HTML`).
-  - `ReportScope`: `Consolidated` (informe único para todo el lote), `PerFile` (reporte individual adjunto) o `Both` (ambos).
-  - `GroupBy`: Criterio de agrupación dinámica en el reporte:
-    - `Directory` *(Por Defecto)*: Acordeón interactivo con carpetas colapsables, conteo de archivos, volumen y estados por subdirectorio.
-    - `Flat`: Listado plano secuencial sin agrupadores.
-    - `Extension`: Agrupación por tipo/formato de archivo (`.jpg`, `.pdf`, etc.).
-    - `Status`: Agrupación por archivos exitosos vs con errores/alertas.
-  - `DestinationFolder`: Ruta o plantilla destino (default: `{RelativeDir}\Output`).
-  - `ReportFileName`: Plantilla de nombre (default: `Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}`).
-  - `Theme`: `ModernDark` (modo oscuro moderno con tarjetas y timeline) o `CleanLight`.
-  - `AutoOpenReport`: `true` para abrir automáticamente el reporte en el navegador/visor predeterminado al culminar.
-  - `IncludeMetadata`: `true` para incluir tablas desplegables con todos los atributos EXIF/Hash/Tags.
+1. **`FolderSourceNode`**: Inicia el pipeline escaneando directorios con filtros por extensión, recursividad y soporte de monitorización reactiva en tiempo real.
+2. **`DestinationSinkNode`**: Receptor final de archivos con estrategias de resolución de colisiones (`Overwrite`, `Skip`, `RenameIncremental`).
+3. **`AdvancedRenamerNode`**: Renombrado avanzado con plantillas dinámicas de tokens, sanitización de caracteres y previsualización.
+4. **`FileRelocatorNode`**: Mueve, copia o crea enlaces duros hacia rutas calculadas con validación opcional SHA-256.
+5. **`SafeRecycleDeleteNode`**: Eliminación segura enviando los archivos a la Papelera de reciclaje de Windows mediante `SHFileOperationW`.
+6. **`OriginalFileActionNode`**: Controla el ciclo de vida del archivo original (`Keep`, `MoveToRecycleBin`, `MoveToQuarantine`).
+7. **`OperationReportNode`**: Genera informes interactivos multi-formato (`HTML`, `Markdown`, `Text`, `JSON`, `CSV`) con trazabilidad completa.
+8. **`DirectoryInspectorNode`**: Clasifica carpetas según su contenido estructural (comprimido único vs. archivos mixtos).
+9. **`EmptyDirectoryCleanerNode`**: Limpieza determinista de árboles de directorios vacíos tras operaciones de movimiento.
+10. **`DocumentProcessorNode`**: Extracción unificada de metadatos en documentos (`.pdf`, `.docx`, `.txt`, `.csv`, `.json`).
+11. **`VariableInjectorNode`**: Inyecta variables personalizadas y metadatos calculados en el contexto del archivo.
+12. **`LogOutputNode`**: Emite trazas enriquecidas y personalizadas a la consola de ejecución.
+13. **`FileAttributeNode`**: Modifica atributos de archivo del sistema (Lectura, Oculto, Temporal, Timestamps).
+14. **`PathSplitterNode`**: Descompone la ruta en partes individuales inyectándolas como variables independientes.
 
 ---
 
-### Categoría 2: Logic (Control de Flujo)
+### 🗜️ Categoría 2: Archives (3 Nodos)
 
-#### 1. `BatchBufferNode` (Agrupador de Lotes)
-- **Propósito:** Acumula archivos en memoria hasta alcanzar $N$ elementos o un tamaño total en MB antes de emitirlos juntos.
-- **Puertos:**
-  - *Inputs:* `ItemIn`, `ForceFlush`
-  - *Outputs:* `ItemOut`, `BatchCompleted`
-- **Parámetros:**
-  - `BatchSize`: Número de archivos por lote (ej. `10`, `50`).
-  - `MaxBatchSizeBytes`: Tamaño máximo acumulado antes de disparar el lote.
-
-#### 2. `ThrottleDelayNode` (Control de Tasa y Pausa)
-- **Propósito:** Regula la velocidad del flujo introduciendo una pausa en milisegundos entre archivos para evitar saturación de I/O.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`
-- **Parámetros:**
-  - `DelayMilliseconds`: Tiempo de espera por archivo (ej. `250` ms).
-
-#### 3. `ForkJoinBarrierNode` (Barrera de Sincronización)
-- **Propósito:** Bifurca un archivo hacia múltiples ramas paralelas (`Fork1`, `Fork2`) y espera a que todas terminen para emitir `AllCompleted`.
-- **Puertos:**
-  - *Inputs:* `In`, `Branch1_Done`, `Branch2_Done`
-  - *Outputs:* `Fork1`, `Fork2`, `AllCompleted`
-- **Parámetros:**
-  - `RequiredBranchesCount`: Número de ramas a sincronizar (default: `2`).
-
-#### 4. `SwitchCaseNode` (Enrutador Condicional Dinámico)
-- **Propósito:** Evalúa una expresión o extensión del archivo y lo enruta dinámicamente hacia uno de sus casos configurados o hacia el puerto `Default`.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* Dinámicos según los casos configurados (ej. `Imagenes`, `Videos`, `Documentos`) + `Default`.
-- **Parámetros y Casos Dinámicos:**
-  - `Expression`: Variable o token a evaluar (ej. `{Ext}`, `{ParentDir}`, `{FileSize:MB}`).
-  - **Botón `➕ Caso`:** Añade dinámicamente nuevas condiciones al nodo y crea automáticamente el puerto de salida correspondiente.
-  - **Nombre del Caso:** Define tanto la etiqueta del caso como el nombre visual del puerto de salida.
-  - **Patrón:** Lista de extensiones o textos separados por punto y coma (ej. `jpg;jpeg;png;webp`).
-  - **Puerto `Default`:** Captura automáticamente cualquier archivo que no coincida con ninguno de los casos definidos.
-
-
-#### 5. `ExpressionFilterNode` (Filtro por Condición Lógica)
-- **Propósito:** Evalúa condiciones numéricas o de texto sobre propiedades (`SizeMB`, `Ext`, `CreationDate`) y desvía por `True` o `False`.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `True`, `False`
-- **Parámetros:**
-  - `Property`: Propiedad a evaluar (`SizeMB`, `Ext`, etc.).
-  - `Operator`: `>`, `<`, `>=`, `<=`, `==`, `!=`, `Contains`.
-  - `ComparisonValue`: Valor de comparación (ej. `50`).
+1. **`SmartUnpackNode`**: Descompresión universal (ZIP, RAR, 7Z, TAR, GZ) con aplanado de carpetas redundantes y protección anti *Zip Slip*.
+2. **`ArchiveCompressorNode`**: Empaqueta y comprime archivos individuales o lotes en formatos ZIP, 7Z, TAR o GZ con nivel de compresión configurable.
+3. **`ArchiveFilterNode`**: Detecta y procesa exclusivamente la primera parte de archivos divididos multivolumen (`.part1.rar`, `.z01`).
 
 ---
 
-### Categoría 3: Hashing (Integridad y Deduplicación)
+### 🖼️ Categoría 3: Images (4 Nodos)
 
-#### 1. `HashCalculatorNode` (Calculador de Hash Criptográfico)
-- **Propósito:** Calcula el checksum del contenido del archivo y lo inyecta en `Metadata["Hash:*"]` y `{Hash:*}`.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parámetros:**
-  - `Algorithm`: `SHA256`, `MD5`, `SHA512`, `SHA1`.
-  - `StoreInMetadataKey`: Clave de destino (ej. `Hash:SHA256`).
-
-#### 2. `DeduplicationFilterNode` (Filtro de Deduplicación por Hash)
-- **Propósito:** Compara el hash del contenido en el lote actual y separa archivos originales de copias duplicadas.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Unique` (Archivo único), `Duplicate` (Archivo duplicado), `Error`
-- **Parámetros:**
-  - `HashMetadataKey`: Clave de hash a verificar (ej. `Hash:SHA256`).
+1. **`ImageOptimizerNode`**: Optimiza, redimensiona y convierte imágenes a WebP, JPEG o PNG calculando el porcentaje exacto de ahorro de bytes.
+2. **`ExifMetadataNode`**: Extrae metadatos EXIF de cámaras (fabricante, modelo, coordenadas GPS, fecha de captura).
+3. **`ImageWatermarkNode`**: Aplica marcas de agua visuales de texto o logotipo con opacidad y posición configurable.
+4. **`ImageMetadataStripperNode`**: Elimina metadatos privados e información GPS para garantizar la privacidad antes de compartir imágenes.
 
 ---
 
-### Categoría 4: Archives (Compresión y Desempaquetado)
+### 🌐 Categoría 4: Network & Remote Storage (2 Nodos Unificados)
 
-#### 1. `SmartUnpackNode` (Descompresión Inteligente)
-- **Propósito:** Descomprime archivos ZIP, RAR, 7z o TAR extrayendo su contenido a una carpeta destino.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `ExtractedFile`, `Done`, `Error`
-- **Parámetros:**
-  - `DestinationPath`: Carpeta donde extraer los archivos.
-  - `FlattenHierarchy`: `true` para extraer todos los archivos en el mismo nivel.
-
-#### 2. `ArchiveFilterNode` (Filtro de Archivos Comprimidos)
-- **Propósito:** Separa archivos comprimidos válidos de otros tipos de archivo.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `ArchiveOut`, `NonArchiveOut`
+1. **`NetworkDownloadNode`** *(Hub Universal de Descarga)*:
+   - Soporta 5 protocolos simétricos: **HTTP/HTTPS**, **FTP/FTPS**, **SFTP (SSH)**, **WebDAV (Nextcloud/ownCloud)** y **SMB (Red Local/NAS)**.
+   - Parámetros dinámicos contextuales que se adaptan en tiempo real según el protocolo seleccionado.
+2. **`NetworkUploadNode`** *(Hub Universal de Subida y Transferencia)*:
+   - Soporta 5 protocolos simétricos: **HTTP POST/PUT**, **FTP/FTPS**, **SFTP (SSH)**, **WebDAV** y **SMB**.
+   - Transferencias seguras con reintentos automáticos, autenticación por contraseña o claves privadas SSH y creación remota de directorios.
 
 ---
 
-### Categoría 5: Images & Media (Multimedia y EXIF)
+### 🤖 Categoría 5: AI & Machine Learning (8 Nodos)
 
-#### 1. `ImageOptimizerNode` (Optimizador y Escalador de Imágenes)
-- **Propósito:** Comprime, convierte y redimensiona imágenes a formatos modernos (**WebP**, **JPEG**, **PNG**) con cálculo automático de porcentaje de ahorro de espacio (%) y control avanzado de aspecto y escala.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
-- **Parámetros:**
-  - `SizeMode`: Modo de cálculo (`"Pixels"` para dimensiones exactas en píxeles o `"Percentage"` para escala relativa en %).
-  - `Width`: Ancho objetivo en píxeles. Si se configura solo el ancho y `Height = 0`, el alto se calcula automáticamente para mantener la relación de aspecto.
-  - `Height`: Alto objetivo en píxeles. Si se configura solo el alto y `Width = 0`, el ancho se calcula automáticamente para mantener la relación de aspecto.
-  - `ScalePercentage`: Porcentaje de escala (ej. `50.0` para reducir al 50%, `150.0` para agrandar al 150%).
-  - `ScalePercentageY`: Porcentaje vertical en caso de desear relación de aspecto asimétrica cuando `MaintainAspectRatio` está desactivado.
-  - `MaintainAspectRatio`: Si es `true`, conserva la relación de aspecto original de la imagen; si es `false`, fuerza las dimensiones especificadas.
-  - `OnlyDownscale`: Si es `true`, **solo reduce imágenes mayores al tamaño objetivo y no agranda imágenes más pequeñas**, evitando pixelado y aumento innecesario de peso. Si es `false`, escala incondicionalmente todas las imágenes.
-  - `TargetFormat`: Formato de compresión (`"WebP"`, `"JPEG"`, `"PNG"`).
-  - `Quality`: Calidad de compresión visual (1-100, default: `80`).
-  - `OutputDirectory`: Carpeta de destino con soporte de variables (ej. `{RelativeDir}\OptimizedImages`).
-
-#### 2. `ExifMetadataNode` (Extracción Estructurada de Metadatos EXIF)
-- **Propósito:** Extrae datos EXIF de cámara (fecha de captura, marca, modelo, ISO, apertura, coordenadas GPS) e inyecta metadatos `{Exif:*}` y `{Date:Taken}` en el archivo.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Error`
+1. **`SmartImageClassifierNode`**: Clasifica imágenes sin conexión mediante modelos ONNX locales (ej. ResNet, MobileNet).
+2. **`PromptObjectDetectorNode`**: Detección de objetos guiada por texto mediante YOLO-World o Grounding DINO en ONNX.
+3. **`LocalOcrNode`**: Reconocimiento óptico de caracteres local para extraer texto de imágenes y facturas escaneadas.
+4. **`WhisperAudioTranscriberNode`**: Transcripción automática de voz a texto para archivos de audio y video mediante Whisper local.
+5. **`FaceDetectorNode`**: Detecta rostros en fotografías inyectando coordenadas de bounding boxes y conteo total.
+6. **`ZeroShotSemanticSearchNode`**: Clasificación semántica sin entrenamiento previo basada en similitud de texto.
+7. **`PiiAnonymizerNode`**: Detección y anonimización de datos personales (DNI, tarjetas, nombres, emails) mediante modelos NER.
+8. **`SuperResolutionUpscalerNode`**: Escalado y mejora de resolución de imágenes mediante redes neuronales convolucionales.
 
 ---
 
-### Categoría 6: Integrations (CLI y Webhooks)
+### 📄 Categoría 6: Documents & PDFs (4 Nodos)
 
-#### 1. `CliExecutionNode` (Ejecutor de Comandos y Procesos CLI)
-- **Propósito:** Ejecuta herramientas de consola externas (FFmpeg, PowerShell, Python) pasando argumentos dinámicos con tokens.
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Success`, `Failed`
-- **Parámetros:**
-  - `ExecutablePath`: Ruta del ejecutable (ej. `ffmpeg.exe` o `cmd.exe`).
-  - `ArgumentsTemplate`: Argumentos con tokens (ej. `/c echo Procesando {FileName}`).
-  - `TimeoutSeconds`: Límite de tiempo en segundos (default: `60`).
-  - `CaptureOutputToMetadata`: Guarda la salida estándar en `Metadata["Cli:StdOut"]`.
-
-#### 2. `WebhookNotificationNode` (Notificador Webhook HTTP POST)
-- **Propósito:** Dispara notificaciones HTTP POST con cuerpo JSON hacia servicios externos (Discord, Slack, n8n, Zapier).
-- **Puertos:**
-  - *Inputs:* `In`
-  - *Outputs:* `Out`, `Failed`
-- **Parámetros:**
-  - `Url`: URL del endpoint webhook (ej. `https://discord.com/api/webhooks/...`).
-  - `PayloadTemplate`: Cuerpo JSON con tokens (ej. `{"content": "Archivo {FileName} procesado ({FileSize:MB} MB)"}`).
-  - `TimeoutSeconds`: Timeout de la petición HTTP (default: `15`).
+1. **`PdfMergeNode`**: Fusiona múltiples archivos PDF en un único documento maestro consolidado.
+2. **`PdfSplitNode`**: Divide documentos PDF en páginas individuales o por rangos especificados.
+3. **`PdfTextExtractorNode`**: Extrae el contenido de texto completo de documentos PDF mediante `PdfPig`.
+4. **`PdfMetadataNode`**: Inspecciona y actualiza metadatos estándar de documentos PDF (Título, Autor, Palabras Clave).
 
 ---
 
-### Categoría 7: Documents & PDFs (`FileFlow.Plugin.Documents`)
+### 📊 Categoría 7: Data & Tabular Files (3 Nodos)
 
-#### 1. `PdfMergeNode` (Unión de Archivos PDF)
-- **Propósito:** Combina múltiples archivos PDF en un único documento consolidado al concluir el flujo o por lotes con `PdfSharp`.
-- **Puertos:** `In` $\rightarrow$ `Out`, `MergedOut`.
-
-#### 2. `PdfSplitNode` (División de PDFs por Páginas)
-- **Propósito:** Divide un documento PDF en páginas individuales o rangos específicos.
-- **Puertos:** `In` $\rightarrow$ `PageOut`, `Error`.
-
-#### 3. `PdfTextExtractorNode` (Extracción de Texto y Contenido PDF)
-- **Propósito:** Extrae texto estructurado desde documentos PDF mediante `PdfPig` para búsquedas, clasificación o renombrado por contenido.
-- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 4. `PdfMetadataNode` (Inspección y Modificación de Metadatos PDF)
-- **Propósito:** Lee y actualiza metadatos estándar (Título, Autor, Asunto, Palabras Clave) en documentos PDF.
-- **Puertos:** `In` $\rightarrow$ `Out`.
+1. **`ExcelReaderNode`**: Lector de hojas de cálculo Excel (`.xlsx`, `.xls`) de ultra-alto rendimiento en streaming con `MiniExcel`.
+2. **`CsvProcessorNode`**: Ingesta, procesado y conversión avanzada de archivos delimitados CSV/TSV.
+3. **`DataLookupNode`**: Cruce relacional de datos $O(1)$ en memoria contra tablas maestras de referencia.
 
 ---
 
-### Categoría 8: Network & Remote Storage (`FileFlow.Plugin.Network`)
+### ⚙️ Categoría 8: Logic & Control Flow (6 Nodos)
 
-#### 1. `FtpUploadNode` (Subida a Servidores FTP / FTPS Seguro)
-- **Propósito:** Sube archivos a servidores FTP/FTPS con cifrado explícito o implícito TLS/SSL y reanudación automática.
-- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 2. `SftpUploadNode` (Transferencia Segura SSH / SFTP)
-- **Propósito:** Transfiere archivos hacia servidores Linux / VPS mediante SSH File Transfer Protocol con soporte para contraseña o clave privada (`.pem` / `.ppk`).
-- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 3. `SmbCopyNode` (Copia a Recursos Compartidos de Red Local / NAS)
-- **Propósito:** Copia archivos a rutas de red UNC (`\\Servidor\Carpeta`) o almacenamiento NAS con autenticación de dominio o usuario local.
-- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 4. `WebDavUploadNode` (Nubes Privadas Nextcloud / ownCloud WebDAV)
-- **Propósito:** Publica y sincroniza archivos con servidores WebDAV corporativos o nubes personales.
-- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
-
-#### 5. `RemoteDownloadNode` (Descarga de Archivos Remotos HTTP / HTTPS / FTP)
-- **Propósito:** Descarga archivos remotos desde Internet o servidores locales incorporándolos directamente al pipeline de procesamiento.
-- **Puertos:** `In` $\rightarrow$ `Success`, `Failed`.
+1. **`SwitchCaseNode`**: Enrutador condicional multidireccional basado en reglas de coincidencia de extensiones o metadatos.
+2. **`ExpressionFilterNode`**: Filtro booleano con operadores lógicos (`Equal`, `Contains`, `GreaterThan`, `RegexMatch`).
+3. **`BatchBufferNode`**: Acumula elementos en memoria hasta alcanzar un tamaño de lote o límite de tiempo.
+4. **`ThrottleDelayNode`**: Controla la tasa de emisión introduciendo pausas para evitar la saturación de I/O o APIs remotas.
+5. **`ForkJoinBarrierNode`**: Sincroniza ramas paralelas de procesamiento esperando a que todas culminen antes de continuar.
+6. **`VariableInjectorNode`**: Inyecta y calcula variables personalizadas en el flujo.
 
 ---
 
-### Categoría 9: Data, Spreadsheets & Databases (`FileFlow.Plugin.Data`)
+### 🔐 Categoría 9: Hashing & Security (3 Nodos)
 
-#### 1. `ExcelReaderNode` (Lector de Hojas Excel)
-- **Propósito:** Lee hojas de cálculo `.xlsx` / `.xls` en streaming de alta velocidad y emite cada fila con sus columnas en `item.Metadata`.
-- **Puertos:** `In` (opcional) $\rightarrow$ `RowOut`.
-
-#### 2. `CsvReaderNode` (Lector de Archivos CSV / TSV)
-- **Propósito:** Parser de archivos delimitados con autodetección de delimitador (`,`, `;`, `\t`, `|`) y compatibilidad con codificaciones internacionales.
-- **Puertos:** `In` (opcional) $\rightarrow$ `RowOut`.
-
-#### 3. `DataLookupNode` (Cruce de Datos / VLOOKUP)
-- **Propósito:** Cruza y enriquece cada archivo contra una tabla de referencia externa (Excel, CSV, JSON) en memoria con índice hash instantáneo $O(1)$.
-- **Puertos:** `In` $\rightarrow$ `Matched`, `Unmatched`.
-
-#### 4. `ExcelReportGeneratorNode` (Generador de Reportes Excel .xlsx)
-- **Propósito:** Acumula los metadatos de los archivos procesados y genera una hoja de cálculo formateada al completar el flujo (`OnWorkflowCompletedAsync`).
-- **Puertos:** `In` $\rightarrow$ `Out`, `Report`.
-
-#### 5. `CsvExportNode` (Exportador CSV / TSV)
-- **Propósito:** Exporta y agrega metadatos seleccionados a un archivo plano delimitado con soporte para modo append.
-- **Puertos:** `In` $\rightarrow$ `Out`.
-
-#### 6. `SqliteDatabaseSinkNode` (Auditoría e Inserción SQLite)
-- **Propósito:** Inserta registros de auditoría y trazabilidad en una base de datos SQLite local con creación automática de esquemas e índices.
-- **Puertos:** `In` $\rightarrow$ `Out`.
-
-#### 7. `DataFormatConverterNode` (Conversor de Formatos de Datos)
-- **Propósito:** Convierte directamente archivos estructurados entre formatos `Excel (.xlsx) ⇄ CSV ⇄ JSON`.
-- **Puertos:** `In` $\rightarrow$ `Out`.
+1. **`HashCalculatorNode`**: Calcula sumas criptográficas (SHA-256, SHA-512, MD5, SHA-1, xxHash).
+2. **`DeduplicationFilterNode`**: Filtra y desvía archivos duplicados en tiempo real comparando sus firmas hash en memoria.
+3. **`ChecksumVerifierNode`**: Valida archivos contra sumas de verificación provistas en archivos `.sha256` o metadatos.
 
 ---
 
-### Categoría 10: Scripting & Extensibility (`FileFlow.Plugin.Scripting`)
+### 📜 Categoría 10: Scripting & Extensibility (3 Nodos)
 
-#### 1. `CustomScriptNode` (Nodo de Scripting Dual C# & JavaScript)
-- **Propósito:** Permite programar lógica de transformación a medida usando **C# (compilación JIT Roslyn en memoria)** o **JavaScript (sandbox Jint administrado)**.
-- **Puertos:** Puertos dinámicos configurables por el usuario (`Inputs` y `Outputs` editables).
-- **Herramienta Integrada:** Incluye **ScriptStudio**, un entorno de desarrollo integrado con editor AvalonEdit, resaltado sintáctico, consola de pruebas en vivo y biblioteca de plantillas `.ffscript`.
-
----
-
-### Categoría 11: AI & Computer Vision (`FileFlow.Plugin.AI`)
-
-#### 1. `LocalOcrNode` (Reconocimiento Óptico de Caracteres OCR)
-- **Propósito:** Extrae texto e información estructurada desde imágenes y documentos escaneados inyectando `{Ocr:Text}`, `{Ocr:WordCount}` y `{Ocr:Language}`.
-- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 2. `SmartImageClassifierNode` (Clasificador Visual de Fotos)
-- **Propósito:** Analiza el contenido visual de fotografías e imágenes asignando categorías temáticas (Paisajes, Facturas, Retratos, Vehículos, Comida, etc.) en `{AI:Category}`, `{AI:TopLabel}` y `{AI:Confidence}`.
-- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 3. `FaceDetectorNode` (Detector de Rostros Humanos)
-- **Propósito:** Detecta caras humanas y bifurca el flujo según la presencia y conteo de personas (`{AI:HasFaces}` y `{AI:FaceCount}`).
-- **Puertos:** `In` $\rightarrow$ `FacesFound`, `NoFaces`.
-
-#### 4. `ObjectDetectorNode` (Detector de Objetos YOLO)
-- **Propósito:** Detecta e identifica múltiples objetos cotidianos (personas, vehículos, animales, objetos) en `{AI:DetectedObjects}` y `{AI:TopObject}`.
-- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
-
-#### 5. `LocalWhisperTranscriberNode` (Transcriptor de Voz a Texto Whisper)
-- **Propósito:** Transcribe audios y vídeos a texto y subtítulos sincronizados `.srt` de forma 100% local y privada inyectando `{Transcript}`.
-- **Puertos:** `In` $\rightarrow$ `Out`, `Error`.
+1. **`CustomScriptNode`**: Ejecución de código a medida con soporte dual para **C# (Roslyn JIT)** y **JavaScript (Jint sandbox)**.
+2. **`ScriptStudio`**: Entorno integrado de desarrollo con resaltado sintáctico, plantillas `.ffscript` y pruebas en vivo.
+3. **`PythonScriptNode`**: Integración con entornos de ejecución Python externos para procesamiento avanzado.
 
 ---
 
-## 6. Modos de Ejecución Avanzados y Motor DAG
+### 🔌 Categoría 11: Integrations & CLI (5 Nodos)
 
-### Modo Vigilante en Tiempo Real (Watchdog Trigger Mode)
-- Al pulsar el botón **`👁️ Vigilante`** en la barra superior, FileFlow Studio permanece escuchando en segundo plano las carpetas de origen configuradas en el flujo.
-- Cada nuevo archivo copiado o descargado es detectado tras un debounce inteligente (evitando bloqueos de archivo en escritura) y procesado inmediatamente por el pipeline sin tener que reiniciar la ejecución.
-
-### Telemetría y Mapa de Cuellos de Botella (Bottleneck Heatmap)
-- Medición de microsegundos en tiempo real con `Stopwatch.GetTimestamp()`.
-- Badges dinámicos en la cabecera de las tarjetas de nodos que indican la latencia media (`⚡ 12 ms` / `⏱️ 1.2 s`) y resaltan en color de advertencia (`⚠️ Cuello de botella`) los nodos que consumen más del 35% del tiempo total del pipeline.
-
-### Modo Headless / Ejecutor CLI (`fileflow.exe --run`)
-FileFlow Studio puede ejecutarse de forma desatendida desde scripts PowerShell, bash o el Programador de Tareas de Windows:
-```powershell
-# Ejecución estándar con inyección de variables globales
-.\FileFlow.App.exe --run "flujo.json" --input "C:\Datos" --var Environment=Production
-
-# Sobrescritura de parámetros específicos por nodo
-.\FileFlow.App.exe --run "flujo.json" --param Throttle.DelayMilliseconds=50
-
-# Modo vigilante en consola con reporte estructurado JSON
-.\FileFlow.App.exe --run "flujo.json" --watch --summary "reporte.json"
-
-# Reanudación de flujos interrumpidos mediante puntos de control
-.\FileFlow.App.exe --run "flujo.json" --resume
-```
-
-### Puntos de Control y Reanudación Automática (State Checkpointing)
-- Al procesar miles de archivos, FileFlow Studio guarda automáticamente puntos de control atómicos en `%LocalAppData%/FileFlowStudio/checkpoints/`.
-- Si el proceso se interrumpe por corte eléctrico o reinicio del sistema, al volver a ejecutar el flujo detecta el progreso previo y **omite el reprocesamiento innecesario de los archivos ya completados exitosamente**.
+1. **`CliExecutionNode`**: Ejecuta scripts y binarios del sistema (PowerShell, CMD, ejecutables nativos) capturando stdout/stderr.
+2. **`WebhookNotificationNode`**: Envío de alertas y eventos HTTP POST/PUT a Discord, Slack o webhooks personalizados.
+3. **`MediaTranscoderNode`**: Conversión y transcodificación de audio y video mediante FFmpeg integrado.
+4. **`SqliteDatabaseSinkNode`**: Inserción de registros estructurados de auditoría en bases de datos SQLite locales.
+5. **`MessageQueuePublisherNode`**: Publica mensajes y metadatos de archivos en colas de mensajería (RabbitMQ, MQTT).
 
 ---
 
-## 7. Herramientas de Diseño y Productividad en el Lienzo
+## 6. Tutoriales Prácticos Paso a Paso
 
-- **Notas Adhesivas (Sticky Notes):** Clic secundario en el lienzo $\rightarrow$ `Crear Nota Adhesiva` para añadir instrucciones, comentarios o documentación técnica directamente sobre el grafo con colores personalizables y redimensionado.
-- **Marcos de Agrupación Visual (Group Frames):** Selecciona múltiples nodos y presiona `Ctrl+G` para encapsularlos en un marco visual delimitado. Al mover el marco por su cabecera, todos los nodos contenidos se desplazan coordinadamente de forma interactiva.
-- **Selector Desplegable de Categorías (Dropdown ComboBox):** Barra superior de herramientas compacta con búsqueda en tiempo real, filtros de favoritos (`⭐`), más usados (`🔥`) y badges numéricos reactivos por categoría.
+### Tutorial A: Organización y Optimización Automatizada de Fotografías
+**Objetivo**: Escanear una tarjeta SD, extraer metadatos EXIF, optimizar imágenes a WebP y organizarlas en carpetas por año y modelo de cámara.
+
+1. **`FolderSourceNode`**:
+   - `SourcePath`: `E:\DCIM\100NIKON`
+   - `ExtensionFilter`: `*.jpg, *.jpeg, *.png`
+2. Conecta `Out` a **`ExifMetadataNode`** (extrae cámara y fecha).
+3. Conecta `Out` a **`ImageOptimizerNode`**:
+   - `TargetFormat`: `WebP`
+   - `Quality`: `85`
+4. Conecta `Out` a **`DestinationSinkNode`**:
+   - `DestinationRoot`: `D:\Fotos_Organizadas\{Exif:Make}_{Exif:CameraModel}\{CreationDate:yyyy}\{CreationDate:MM}`
+   - `ConflictStrategy`: `AutoIncrement`
+5. Conecta `Done` a **`OriginalFileActionNode`**:
+   - `ActionType`: `MoveToQuarantine` (respalda los originales de forma segura).
+
+---
+
+### Tutorial B: Ingesta Remota SFTP, Extracción y Reporte Consolidado
+**Objetivo**: Descargar copias de seguridad desde un servidor SSH remoto, descomprimir su contenido, descartar duplicados y generar un informe HTML interactivo.
+
+1. **`NetworkDownloadNode`**:
+   - `Protocol`: `SFTP`
+   - `Host`: `backup.miempresa.com` | `Username`: `operador`
+   - `RemoteFilePath`: `/var/backups/daily.zip`
+   - `DestinationFolder`: `C:\Temp\Ingesta`
+2. Conecta `Out` a **`SmartUnpackNode`** (descomprime y extrae los archivos contenidos).
+3. Conecta `Out` a **`HashCalculatorNode`** (`Algorithm: SHA256`).
+4. Conecta `Out` a **`DeduplicationFilterNode`**:
+   - Salida `Unique` $\rightarrow$ Conecta a **`DestinationSinkNode`** (`DestinationRoot: D:\Almacen_Limpio`).
+   - Salida `Duplicate` $\rightarrow$ Conecta a **`SafeRecycleDeleteNode`** (envía a papelera).
+5. Conecta `Unique` a **`OperationReportNode`**:
+   - `ReportFormat`: `HTML`
+   - `AutoOpenReport`: `true`
 
 ---
 
-## 8. Flujos de Ejemplo y Plantillas Predefinidas
+### Tutorial C: Pipeline de Inteligencia Artificial con OCR y Anonimización
+**Objetivo**: Procesar facturas y documentos confidenciales, extraer el texto mediante OCR y anonimizar datos personales antes de archivarlos.
 
-### Plantilla 1: Organización Fotográfica Automática
-```
-[FolderSourceNode] 
-       │ (FileOut)
-       ▼
-[HashCalculatorNode (SHA-256)]
-       │ (Out)
-       ▼
-[AdvancedRenamerNode ({CreationDate:yyyyMMdd}_{Hash:SHA256:8}_{FileNameNoExt}.{Ext})]
-       │ (Out)
-       ▼
-[FileRelocatorNode (Destination: {SourceDir}\{Year}\{Month})]
-```
-
-### Plantilla 2: Limpieza de Duplicados a la Papelera
-```
-[FolderSourceNode]
-       │ (FileOut)
-       ▼
-[DeduplicationFilterNode]
-  ├── (Unique)    ──▶ [LogOutputNode (Archivo Único Conservado)]
-  └── (Duplicate) ──▶ [SafeRecycleDeleteNode (Papelera de Windows)]
-```
-
-### Plantilla 3: Cruce de Datos Excel y Envío Remoto por SFTP
-```
-[FolderSourceNode (PDFs)]
-       │ (Out)
-       ▼
-[DataLookupNode (clientes.xlsx por {FileNameWithoutExtension})]
-  ├── (Matched)   ──▶ [SftpUploadNode (Servidor Cliente)] ──▶ [SqliteDatabaseSinkNode (Auditoría)]
-  └── (Unmatched) ──▶ [FileRelocatorNode (Carpeta de Revisión Pendiente)]
-```
+1. **`FolderSourceNode`** (`SourcePath: C:\Facturas_Nuevas`).
+2. Conecta a **`LocalOcrNode`** (extrae texto de la imagen).
+3. Conecta a **`PiiAnonymizerNode`** (detecta y enmascara DNI, tarjetas de crédito y nombres).
+4. Conecta a **`DestinationSinkNode`** (`DestinationRoot: C:\Facturas_Anonimizadas`).
 
 ---
-*FileFlow Studio © 2026 - Documentación Oficial.*
+
+## 7. Atajos de Teclado y Productividad
+
+| Atajo | Acción |
+| :--- | :--- |
+| `F5` | Ejecutar flujo de trabajo actual |
+| `Ctrl + F5` | Ejecutar en Modo Simulación Virtual (Dry Run) |
+| `F10` | Avanzar un paso en modo Depuración |
+| `Ctrl + Z` | Deshacer última acción en el lienzo |
+| `Ctrl + Y` | Rehacer última acción en el lienzo |
+| `Ctrl + S` | Guardar flujo de trabajo actual (`.json`) |
+| `Ctrl + O` | Abrir archivo de flujo de trabajo |
+| `Ctrl + N` | Crear nuevo flujo en blanco |
+| `Espacio` | Abrir visor rápido QuickLook para el elemento seleccionado |
+| `Supr / Delete` | Eliminar nodo o conexión seleccionada |
+| `Ctrl + F` | Buscar nodos en la Caja de Herramientas |
+| `Ctrl + Wheel` | Zoom in / Zoom out en el lienzo visual |
+
+---
+
+*Manual oficial de FileFlow Studio. Distribuido bajo licencia GNU General Public License v3.0.*

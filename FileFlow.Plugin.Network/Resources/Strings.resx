@@ -31,19 +31,36 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
-  <!-- Network Nodes -->
-  <data name="FtpUploadNode_Name" xml:space="preserve"><value>FTP / FTPS Upload</value></data>
-  <data name="FtpUploadNode_Desc" xml:space="preserve"><value>Uploads files to an FTP or FTPS server with TLS/SSL encryption and auto-created remote directories.</value></data>
-  <data name="FtpDownloadNode_Name" xml:space="preserve"><value>FTP / FTPS Download</value></data>
-  <data name="FtpDownloadNode_Desc" xml:space="preserve"><value>Downloads files from an FTP or FTPS server to a local folder for pipeline processing.</value></data>
-  <data name="SftpUploadNode_Name" xml:space="preserve"><value>SFTP / SSH Upload</value></data>
-  <data name="SftpUploadNode_Desc" xml:space="preserve"><value>Securely transfers files via SFTP (SSH) to Linux/VPS servers supporting passwords and private keys.</value></data>
-  <data name="SftpDownloadNode_Name" xml:space="preserve"><value>SFTP / SSH Download</value></data>
-  <data name="SftpDownloadNode_Desc" xml:space="preserve"><value>Securely downloads files via SFTP (SSH) from Linux/VPS servers to a local folder.</value></data>
-  <data name="WebDavUploadNode_Name" xml:space="preserve"><value>WebDAV / Nextcloud Upload</value></data>
-  <data name="WebDavUploadNode_Desc" xml:space="preserve"><value>Uploads files to WebDAV storage servers (Nextcloud, ownCloud, NAS, Apache WebDAV).</value></data>
-  <data name="SmbCopyNode_Name" xml:space="preserve"><value>SMB / Windows Share Copy</value></data>
-  <data name="SmbCopyNode_Desc" xml:space="preserve"><value>Copies files to local network shares (UNC path) with optional Windows network credentials.</value></data>
-  <data name="RemoteDownloadNode_Name" xml:space="preserve"><value>HTTP / HTTPS Remote Download</value></data>
-  <data name="RemoteDownloadNode_Desc" xml:space="preserve"><value>Downloads remote files from HTTP or HTTPS URLs to a local folder for workflow processing.</value></data>
+  <!-- Nodos Maestros de Red y Nube -->
+  <data name="NetworkDownloadNode_Name" xml:space="preserve"><value>Network / Cloud Download</value></data>
+  <data name="NetworkDownloadNode_Desc" xml:space="preserve"><value>Downloads files from remote HTTP/HTTPS, FTP/FTPS, SFTP/SSH, WebDAV or local network SMB servers into a target destination folder.</value></data>
+  
+  <data name="NetworkUploadNode_Name" xml:space="preserve"><value>Network / Cloud Upload</value></data>
+  <data name="NetworkUploadNode_Desc" xml:space="preserve"><value>Transfers processed files to remote HTTP/HTTPS (POST/PUT), FTP/FTPS, SFTP/SSH, WebDAV or local network SMB shares.</value></data>
+
+  <!-- Parámetros -->
+  <data name="Param_Protocol" xml:space="preserve"><value>Protocol</value></data>
+  <data name="Param_SourceUrl" xml:space="preserve"><value>Source URL</value></data>
+  <data name="Param_TargetUrl" xml:space="preserve"><value>Target Endpoint URL</value></data>
+  <data name="Param_HttpMethod" xml:space="preserve"><value>HTTP Method</value></data>
+  <data name="Param_AuthHeader" xml:space="preserve"><value>Auth Header (Bearer/Basic)</value></data>
+  <data name="Param_Host" xml:space="preserve"><value>Host / Server IP</value></data>
+  <data name="Param_Port" xml:space="preserve"><value>Port</value></data>
+  <data name="Param_Username" xml:space="preserve"><value>Username</value></data>
+  <data name="Param_Password" xml:space="preserve"><value>Password</value></data>
+  <data name="Param_RemoteFilePath" xml:space="preserve"><value>Remote File Path</value></data>
+  <data name="Param_RemoteDirectory" xml:space="preserve"><value>Remote Directory</value></data>
+  <data name="Param_Encryption" xml:space="preserve"><value>TLS/SSL Encryption</value></data>
+  <data name="Param_PassiveMode" xml:space="preserve"><value>Passive Mode (PASV)</value></data>
+  <data name="Param_AuthMethod" xml:space="preserve"><value>Authentication Method</value></data>
+  <data name="Param_PrivateKeyPath" xml:space="preserve"><value>Private Key File (.pem/.key)</value></data>
+  <data name="Param_PrivateKeyPassphrase" xml:space="preserve"><value>Key Passphrase</value></data>
+  <data name="Param_ServerUrl" xml:space="preserve"><value>WebDAV Server URL</value></data>
+  <data name="Param_UncPath" xml:space="preserve"><value>SMB / UNC Network Path</value></data>
+  <data name="Param_Domain" xml:space="preserve"><value>Windows Domain</value></data>
+  <data name="Param_DestinationFolder" xml:space="preserve"><value>Destination Folder</value></data>
+  <data name="Param_FileName" xml:space="preserve"><value>Local File Name (Optional)</value></data>
+  <data name="Param_Overwrite" xml:space="preserve"><value>Overwrite Existing</value></data>
+  <data name="Param_DeleteAfterDownload" xml:space="preserve"><value>Delete From Server After Download</value></data>
+  <data name="Param_TimeoutSeconds" xml:space="preserve"><value>Timeout (Seconds)</value></data>
 </root>

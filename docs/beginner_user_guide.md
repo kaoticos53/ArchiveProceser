@@ -137,7 +137,42 @@ Done! All your photos are now named `20260815_SonyA7_001.jpg`, neatly sorted by 
 
 ---
 
-### 📊 Recipe 5: Automatic Watchdog Mode (Process Files as They Land)
+### 📄 Recipe 5: Merge Multiple Invoices or Notes into a Single PDF
+
+**The Problem:** You have 10 loose PDF pages and need to send them as a single combined PDF document.
+
+**The Solution:**
+1. Place a **"Folder Source"** box pointing to your loose PDF files.
+2. Add the **"Merge PDFs"** box (`PdfMergeNode`).
+   - Connect them.
+   - In the right panel, enter your desired output filename (e.g., `Combined_Invoices.pdf`) and the destination folder.
+3. Click **"▶ Run Workflow"**.
+
+---
+
+### 🤖 Recipe 6: Extract Text from Document Photos with Local AI (OCR)
+
+**The Problem:** You received scanned receipts or photos of physical documents and want to extract their text automatically without typing it by hand.
+
+**The Solution:**
+1. Place a **"Folder Source"** box pointing to your image files.
+2. Add the **"Local OCR"** box (`LocalOcrNode`). It runs 100% locally on your computer with zero cloud uploads or subscription fees!
+3. Add the **"Operation Report"** box (`OperationReportNode`) configured for `HTML` or `Markdown`.
+4. Click **"▶ Run Workflow"** to preview all recognized text ready to copy.
+
+---
+
+### 🌐 Recipe 7: Download and Upload to Remote Servers & Private Clouds (SFTP / WebDAV)
+
+**The Problem:** You want to download files from an SSH server or upload backups to Nextcloud automatically.
+
+**The Solution:**
+1. To Download: Add the **"Network Download Hub"** box (`NetworkDownloadNode`), select your protocol (e.g. `SFTP` or `WebDAV`), and fill in your connection details.
+2. To Upload: Add the **"Network Upload Hub"** box (`NetworkUploadNode`) at the end of any pipeline to push results straight to your server.
+
+---
+
+### 📊 Recipe 8: Automatic Watchdog Mode (Process Files as They Land)
 
 **The Problem:** You want new files added to your Downloads or Inbox folder to be sorted automatically in the background without manually launching FileFlow Studio every time.
 
@@ -145,6 +180,14 @@ Done! All your photos are now named `20260815_SonyA7_001.jpg`, neatly sorted by 
 1. Build your flow (e.g. `FolderSource` $\rightarrow$ `Filter` $\rightarrow$ `MoveFile`).
 2. Click the **"👁️ Vigilante" (Watchdog)** button in the top bar.
 3. The button illuminates in vibrant emerald green. You can now minimize the app: whenever a new file lands in the folder, it is immediately processed automatically.
+
+---
+
+### 👁️ The Spacebar Trick (QuickLook Instant Previewer)
+Want to check how a photo turned out, read an extracted document, or review metadata tables without opening third-party tools?
+1. Click on any file in the console or a card on the canvas.
+2. Press the **Spacebar**.
+3. A sleek preview window pops up showing images, text, and metadata tables on the fly! Press `Spacebar` or `Esc` again to close it.
 
 ---
 

@@ -287,6 +287,13 @@
                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ExampleFlows]}" FontSize="14" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
+
+                        <Button Command="{Binding ControlBar.OpenAboutDialogCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AboutToolTip]}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ℹ️" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_About]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -294,7 +301,7 @@
                 <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,10">
                     <StackPanel HorizontalAlignment="Center">
                         <TextBlock Text="{Binding AppVersionDisplay}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_VersionToolTip]}" />
-                        <TextBlock Text="Engine .NET 9 | C# 13" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <TextBlock Text="© RGLara" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,3,0,0" />
                     </StackPanel>
                 </Border>
             </Grid>
