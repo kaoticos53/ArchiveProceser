@@ -14,9 +14,63 @@ public static class OnnxSessionManager
     private static readonly Lock _inferenceLock = new();
 
     /// <summary>
+    /// Evento notificado globalmente cuando una sesión ONNX se carga o descarga de la memoria.
+    /// </summary>
+    public static event Action? SessionStateChanged;
+
+    /// <summary>
     /// Bloqueo global de inferencia para sincronizar ejecuciones de tensores en modelos no reentrantes.
     /// </summary>
     public static Lock InferenceLock => _inferenceLock;
+
+    /// <summary>
+    /// Indica si la sesión ONNX del modelo especificado se encuentra actualmente cargada en memoria.
+    /// </summary>
+    public static bool IsSessionLoaded(string modelPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelPath)) return false;
+        return _sessionCache.TryGetValue(modelPath, out var lazy) && lazy.IsValueCreated;
+    }
+
+    /// <summary>
+    /// Obtiene el número de sesiones ONNX activas cargadas en memoria.
+    /// </summary>
+    public static int GetLoadedSessionCount()
+    {
+        return _sessionCache.Values.Count(lazy => lazy.IsValueCreated);
+    }
+
+    /// <summary>
+    /// Obtiene la lista de rutas de modelos actualmente cargados en memoria.
+    /// </summary>
+    public static IReadOnlyList<string> GetLoadedModelPaths()
+    {
+        return _sessionCache.Where(kv => kv.Value.IsValueCreated).Select(kv => kv.Key).ToList();
+    }
+
+    /// <summary>
+    /// Descarga y libera deterministamente la sesión ONNX asociada a la ruta de modelo especificada.
+    /// </summary>
+    public static bool UnloadSession(string modelPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelPath)) return false;
+
+        if (_sessionCache.TryRemove(modelPath, out var lazy))
+        {
+            if (lazy.IsValueCreated)
+            {
+                try { lazy.Value.Dispose(); } catch { }
+            }
+            try
+            {
+                SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
+            }
+            catch { }
+            SessionStateChanged?.Invoke();
+            return true;
+        }
+        return false;
+    }
 
     /// <summary>
     /// Obtiene o inicializa de forma diferida (thread-safe) la sesión ONNX asociada al modelo,
@@ -24,24 +78,36 @@ public static class OnnxSessionManager
     /// </summary>
     public static InferenceSession GetOrCreateSession(string modelPath)
     {
+        bool isNew = !_sessionCache.ContainsKey(modelPath);
         var lazy = _sessionCache.GetOrAdd(modelPath, path => new Lazy<InferenceSession>(() =>
         {
+            InferenceSession session;
             if (ShouldUseDirectMl(path))
             {
                 try
                 {
-                    return CreateDirectMlSession(path);
+                    session = CreateDirectMlSession(path);
                 }
                 catch
                 {
-                    return CreateCpuSession(path);
+                    session = CreateCpuSession(path);
                 }
             }
+            else
+            {
+                session = CreateCpuSession(path);
+            }
 
-            return CreateCpuSession(path);
+            SessionStateChanged?.Invoke();
+            return session;
         }));
 
-        return lazy.Value;
+        var instance = lazy.Value;
+        if (isNew)
+        {
+            SessionStateChanged?.Invoke();
+        }
+        return instance;
     }
 
     /// <summary>
@@ -150,5 +216,11 @@ public static class OnnxSessionManager
             }
         }
         _sessionCache.Clear();
+        try
+        {
+            SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
+        }
+        catch { }
+        SessionStateChanged?.Invoke();
     }
 }

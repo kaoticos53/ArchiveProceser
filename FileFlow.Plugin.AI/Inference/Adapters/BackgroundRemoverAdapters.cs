@@ -97,33 +97,19 @@ public class RmbgSegmentationAdapter : IBackgroundRemoverAdapter
 
         using var finalMask = rawMask.Clone(ctx => ctx.Resize(origW, origH));
 
-        byte[] maskBytes = new byte[origW * origH];
-        finalMask.ProcessPixelRows(maskAccessor =>
-        {
-            for (int y = 0; y < origH; y++)
-            {
-                var row = maskAccessor.GetRowSpan(y);
-                int offset = y * origW;
-                for (int x = 0; x < origW; x++)
-                {
-                    maskBytes[offset + x] = row[x].PackedValue;
-                }
-            }
-        });
-
         if (maskOnly)
         {
             var resultMask = new Image<Rgba32>(origW, origH);
-            resultMask.ProcessPixelRows(accessor =>
+            finalMask.ProcessPixelRows(resultMask, (maskAcc, resAcc) =>
             {
                 for (int y = 0; y < origH; y++)
                 {
-                    var row = accessor.GetRowSpan(y);
-                    int offset = y * origW;
+                    var maskRow = maskAcc.GetRowSpan(y);
+                    var resRow = resAcc.GetRowSpan(y);
                     for (int x = 0; x < origW; x++)
                     {
-                        byte alpha = maskBytes[offset + x];
-                        row[x] = new Rgba32(alpha, alpha, alpha, 255);
+                        byte alpha = maskRow[x].PackedValue;
+                        resRow[x] = new Rgba32(alpha, alpha, alpha, 255);
                     }
                 }
             });
@@ -131,17 +117,16 @@ public class RmbgSegmentationAdapter : IBackgroundRemoverAdapter
         }
 
         var result = image.Clone();
-        result.ProcessPixelRows(dstAccessor =>
+        finalMask.ProcessPixelRows(result, (maskAcc, resAcc) =>
         {
             for (int y = 0; y < origH; y++)
             {
-                var dstRow = dstAccessor.GetRowSpan(y);
-                int offset = y * origW;
-
+                var maskRow = maskAcc.GetRowSpan(y);
+                var resRow = resAcc.GetRowSpan(y);
                 for (int x = 0; x < origW; x++)
                 {
-                    byte alpha = maskBytes[offset + x];
-                    var srcPx = dstRow[x];
+                    byte alpha = maskRow[x].PackedValue;
+                    var srcPx = resRow[x];
 
                     if (backgroundColor.HasValue)
                     {
@@ -150,11 +135,11 @@ public class RmbgSegmentationAdapter : IBackgroundRemoverAdapter
                         byte r = (byte)(srcPx.R * a + bg.R * (1.0f - a));
                         byte g = (byte)(srcPx.G * a + bg.G * (1.0f - a));
                         byte b = (byte)(srcPx.B * a + bg.B * (1.0f - a));
-                        dstRow[x] = new Rgba32(r, g, b, 255);
+                        resRow[x] = new Rgba32(r, g, b, 255);
                     }
                     else
                     {
-                        dstRow[x] = new Rgba32(srcPx.R, srcPx.G, srcPx.B, alpha);
+                        resRow[x] = new Rgba32(srcPx.R, srcPx.G, srcPx.B, alpha);
                     }
                 }
             }

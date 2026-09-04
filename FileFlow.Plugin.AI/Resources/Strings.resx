@@ -110,4 +110,6 @@
   <data name="Param_SearchQuery" xml:space="preserve"><value>Search Query</value></data>
   <data name="Param_CandidateLabels" xml:space="preserve"><value>Candidate Category Labels</value></data>
   <data name="Param_TopK" xml:space="preserve"><value>Top K Results</value></data>
+  <data name="Param_SkipIfExists" xml:space="preserve"><value>Skip If File Exists</value></data>
+  <data name="Param_SkipIfExists_Desc" xml:space="preserve"><value>If the output file already exists at the destination, skips heavy neural inference and reuses the existing file.</value></data>
 </root>

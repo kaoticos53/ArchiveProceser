@@ -1,4 +1,5 @@
 using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -32,24 +33,22 @@ public class RealEsrganAdapter : ISuperResolutionAdapter
         string inputName = session.InputNames[0];
         var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, tensor) };
 
-        float[] outputData;
-        int outH;
-        int outW;
+        using var outputs = OnnxSessionManager.RunInference(modelPath, inputs);
+        var outTensor = outputs.First().AsTensor<float>();
+        var dims = outTensor.Dimensions;
+        int outH = dims.Length >= 3 ? dims[^2] : origH * 4;
+        int outW = dims.Length >= 4 ? dims[^1] : origW * 4;
 
-        using (var outputs = OnnxSessionManager.RunInference(modelPath, inputs))
-        {
-            var outTensor = outputs.First().AsTensor<float>();
-            var dims = outTensor.Dimensions;
-            outH = dims.Length >= 3 ? dims[^2] : origH * 4;
-            outW = dims.Length >= 4 ? dims[^1] : origW * 4;
-            outputData = outTensor.ToArray();
-        }
+        Memory<float> outputMem = outTensor is DenseTensor<float> dense
+            ? dense.Buffer
+            : outTensor.ToArray();
 
         var upscaled = new Image<Rgb24>(outW, outH);
         int planeSize = outH * outW;
 
         upscaled.ProcessPixelRows(accessor =>
         {
+            var span = outputMem.Span;
             for (int y = 0; y < outH; y++)
             {
                 var row = accessor.GetRowSpan(y);
@@ -57,9 +56,9 @@ public class RealEsrganAdapter : ISuperResolutionAdapter
                 for (int x = 0; x < outW; x++)
                 {
                     int idx = offset + x;
-                    float r = Math.Clamp(outputData[idx], 0f, 1f) * 255f;
-                    float g = Math.Clamp(outputData[planeSize + idx], 0f, 1f) * 255f;
-                    float b = Math.Clamp(outputData[planeSize * 2 + idx], 0f, 1f) * 255f;
+                    float r = Math.Clamp(span[idx], 0f, 1f) * 255f;
+                    float g = Math.Clamp(span[planeSize + idx], 0f, 1f) * 255f;
+                    float b = Math.Clamp(span[planeSize * 2 + idx], 0f, 1f) * 255f;
                     row[x] = new Rgb24((byte)r, (byte)g, (byte)b);
                 }
             }

@@ -240,7 +240,15 @@ public class WorkflowExecutor
             await Task.WhenAll(startTasks).ConfigureAwait(false);
 
             List<Exception> executionErrors = [];
-            await _taskTracker.DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
+            await _taskTracker.DrainActiveTasksAsync(executionErrors, remaining =>
+            {
+                long doneFiles = _telemetryTracker.CompletedFilesCount;
+                long totalFiles = _telemetryTracker.ExpectedTotalItems;
+                long effective = Math.Max(totalFiles, doneFiles + remaining);
+                double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 95.0;
+                if (pct >= 100.0) pct = 99.0;
+                NotifyProgress(pct, $"⚡ Finalizando cola de tareas: {remaining} restante(s) ({doneFiles:N0}/{effective:N0})...");
+            }).ConfigureAwait(false);
 
             var completionDummy = new FileItemContext(string.Empty);
             completionDummy.Metadata["WorkflowExecutionId"] = _currentExecutionId;
@@ -260,7 +268,10 @@ public class WorkflowExecutor
                 }
             }
 
-            await _taskTracker.DrainActiveTasksAsync(executionErrors).ConfigureAwait(false);
+            await _taskTracker.DrainActiveTasksAsync(executionErrors, remaining =>
+            {
+                NotifyProgress(99.0, $"⚡ Finalizando operaciones de post-flujo ({remaining} pendiente(s))...");
+            }).ConfigureAwait(false);
 
             if (executionErrors.Count > 0)
             {

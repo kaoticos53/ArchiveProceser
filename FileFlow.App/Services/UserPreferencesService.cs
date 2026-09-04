@@ -22,6 +22,8 @@ public class UserPreferencesData
     public int MaxLogEntries { get; set; } = 50000;
     public bool EnableAutoSave { get; set; } = true;
     public int AutoSaveIntervalMinutes { get; set; } = 5;
+    public bool EnableCheckpointing { get; set; } = true;
+    public bool AutoUnloadAiModelsOnCompletion { get; set; } = false;
 }
 
 public class UserPreferencesService

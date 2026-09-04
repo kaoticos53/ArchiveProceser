@@ -1,4 +1,5 @@
 using System.IO;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
@@ -9,8 +10,66 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("ObjectDetectorNode_Name", "ImageVision", "ObjectDetectorNode_Desc", PipelineRole.Analyze,
     "objetos", "yolo", "detectar", "vision", "ia", "personas", "coches", "bounding box")]
-public class ObjectDetectorNode : IFlowNode
+public class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public ObjectDetectorNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ObjectDetection);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public bool IsGpuAccelerated
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ObjectDetection);
+            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.ObjectDetection);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.ObjectDetection, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ObjectDetection);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ObjectDetectorNode_Name", "Detector de Objetos (SSD)");
     public string Category => "ImageVision";
@@ -107,6 +166,11 @@ public class ObjectDetectorNode : IFlowNode
             item.Metadata["AI:ObjectCount"] = detected.Count;
             item.Metadata["AI:ObjectScores"] = string.Join(", ", detected.Select(d => $"{d.Label}:{d.Confidence:F2}"));
             item.Metadata["AI:Model"] = Path.GetFileNameWithoutExtension(modelPath);
+            if (IsGpuAccelerated)
+            {
+                item.Metadata["AI:DirectMlAccelerated"] = true;
+                item.Metadata["AI:Device"] = "GPU (DirectML)";
+            }
 
             if (detected.Count > 0)
             {

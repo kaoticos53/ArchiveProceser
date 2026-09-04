@@ -51,6 +51,35 @@ public class WorkflowCheckpointTests : IDisposable
     }
 
     [Fact]
+    public void CheckpointManager_ClearAllCheckpoints_RemovesAllStoredCheckpoints()
+    {
+        // Arrange
+        var manager = new WorkflowCheckpointManager(_testBaseDir);
+        manager.SaveCheckpoint(new WorkflowCheckpointData
+        {
+            WorkflowName = "Flow 1",
+            ProcessedItemsCount = 5,
+            CompletedFileKeys = ["C:\\test1.txt"]
+        });
+        manager.SaveCheckpoint(new WorkflowCheckpointData
+        {
+            WorkflowName = "Flow 2",
+            ProcessedItemsCount = 3,
+            CompletedFileKeys = ["C:\\test2.txt"]
+        });
+
+        manager.HasPendingCheckpoint("Flow 1", out _).Should().BeTrue();
+        manager.HasPendingCheckpoint("Flow 2", out _).Should().BeTrue();
+
+        // Act
+        manager.ClearAllCheckpoints();
+
+        // Assert
+        manager.HasPendingCheckpoint("Flow 1", out _).Should().BeFalse();
+        manager.HasPendingCheckpoint("Flow 2", out _).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task WorkflowExecutor_WithExistingCheckpoint_SkipsCompletedItems()
     {
         // Arrange
@@ -108,6 +137,60 @@ public class WorkflowCheckpointTests : IDisposable
         executor.Checkpoint.Should().NotBeNull();
         executor.Checkpoint!.CompletedFileKeys.Should().Contain(file1);
         executor.Checkpoint.CompletedFileKeys.Should().Contain(file2);
+    }
+
+    [Fact]
+    public async Task WorkflowExecutor_BranchingWorkflow_DoesNotTriggerSpuriousCheckpointSkipDuringExecution()
+    {
+        // Arrange
+        string file1 = Path.Combine(_tempFilesDir, "branch_item.txt");
+        await File.WriteAllTextAsync(file1, "Branching item content");
+
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(ThrottleDelayNode).Assembly);
+
+        var graph = new WorkflowGraph { Name = "Branching Checkpoint Test" };
+        var src = new WorkflowNode
+        {
+            Id = "src-1",
+            NodeTypeName = typeof(FolderSourceNode).FullName!,
+            Parameters = new Dictionary<string, object?> { ["SourcePath"] = _tempFilesDir }
+        };
+        var branchA = new WorkflowNode
+        {
+            Id = "branch-a",
+            NodeTypeName = typeof(ThrottleDelayNode).FullName!,
+            Parameters = new Dictionary<string, object?> { ["DelayMilliseconds"] = 1 }
+        };
+        var branchB = new WorkflowNode
+        {
+            Id = "branch-b",
+            NodeTypeName = typeof(ThrottleDelayNode).FullName!,
+            Parameters = new Dictionary<string, object?> { ["DelayMilliseconds"] = 10 }
+        };
+        graph.Nodes.Add(src);
+        graph.Nodes.Add(branchA);
+        graph.Nodes.Add(branchB);
+
+        // src -> branchA y src -> branchB (2 ramas paralelas)
+        graph.Edges.Add(new WorkflowEdge { SourceNodeId = "src-1", SourcePortName = "Out", TargetNodeId = "branch-a", TargetPortName = "In" });
+        graph.Edges.Add(new WorkflowEdge { SourceNodeId = "src-1", SourcePortName = "Out", TargetNodeId = "branch-b", TargetPortName = "In" });
+
+        var executor = new WorkflowExecutor
+        {
+            IsDryRun = false,
+            EnableCheckpointing = true
+        };
+
+        var logMessages = new List<string>();
+        executor.LogEmitted += (msg, level) => logMessages.Add(msg);
+
+        // Act
+        await executor.ExecuteAsync(graph, loader, CancellationToken.None);
+
+        // Assert: Durante la ejecución limpia, NINGUNA rama debe emitir "Omitiendo archivo completado previamente"
+        logMessages.Should().NotContain(msg => msg.Contains("Omitiendo archivo completado previamente"));
     }
 
     public void Dispose()

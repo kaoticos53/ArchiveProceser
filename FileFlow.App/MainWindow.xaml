@@ -270,6 +270,13 @@
                             </StackPanel>
                         </Button>
 
+                        <Button Command="{Binding ControlBar.OpenMetricsDashboardCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_MetricsDashboardToolTip], FallbackValue='Abrir panel centralizado de rendimiento y profiling del flujo'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_MetricsDashboard], FallbackValue='Métricas y Rendimiento'}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
                         <Button Command="{Binding ControlBar.OpenWorkflowSettingsCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_SettingsToolTip]}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0" />

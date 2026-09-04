@@ -140,12 +140,29 @@
 
                             <!-- Nivel Mínimo de Logs -->
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
-                            <ComboBox x:Name="CmbDefaultLogLevel" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11">
+                            <ComboBox x:Name="CmbDefaultLogLevel" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" Margin="0,0,0,14">
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelInfo]}" Tag="Information" IsSelected="True" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelWarning]}" Tag="Warning" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelError]}" Tag="Error" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelDebug]}" Tag="Debug" />
                             </ComboBox>
+
+                            <!-- Puntos de Control (Checkpoints) -->
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckpointingTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckpointingDesc]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="ChkEnableCheckpointing" Grid.Column="0" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableCheckpointing]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" IsChecked="True" />
+                                <Button Grid.Column="1" Click="ClearCheckpoints_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Cursor="Hand">
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ClearCheckpointsBtn]}" FontSize="10.5" />
+                                </Button>
+                            </Grid>
+
+                            <!-- Descarga Automática de Modelos IA -->
+                            <CheckBox x:Name="ChkAutoUnloadAiModels" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels]}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels_Desc]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,12,0,0" />
                         </StackPanel>
                     </ScrollViewer>
                 </Border>

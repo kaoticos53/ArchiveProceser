@@ -10,7 +10,8 @@
              xmlns:conv="clr-namespace:FileFlow.App.Converters"
              mc:Ignorable="d" 
              d:DataContext="{d:DesignInstance Type=vm:NodeViewModel}"
-             HorizontalAlignment="Stretch">
+             HorizontalAlignment="Stretch"
+             PreviewMouseDown="UserControl_PreviewMouseDown">
 
     <UserControl.Resources>
         <ResourceDictionary>
@@ -660,55 +661,134 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Etiqueta de Categoría (Izquierda) -->
-                        <Border Grid.Column="0" 
-                                Background="{DynamicResource BgSurfaceBrush}" 
-                                BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                BorderThickness="1" 
-                                CornerRadius="5" 
-                                Padding="6,1.5" 
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="9.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        </Border>
+                        <!-- Etiqueta de Categoría e Indicador de Modelo IA (Izquierda) -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource BgSurfaceBrush}" 
+                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="5" 
+                                    Padding="6,1.5" 
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="9.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            </Border>
 
-                        <!-- Badge de Latencia y Cuello de Botella (Derecha, dejando espacio para el tirador de redimensión) -->
-                        <Border Grid.Column="1" 
-                                Margin="4,0,16,0" 
-                                Padding="5,1.5" 
-                                CornerRadius="5" 
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                Visibility="{Binding LatencyText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"
-                                ToolTip="{Binding BottleneckRatioText}">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Background" Value="#1E293B" />
-                                    <Setter Property="BorderBrush" Value="#475569" />
-                                    <Setter Property="BorderThickness" Value="1" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Low}">
-                                            <Setter Property="Background" Value="#064E3B" />
-                                            <Setter Property="BorderBrush" Value="#10B981" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Medium}">
-                                            <Setter Property="Background" Value="#78350F" />
-                                            <Setter Property="BorderBrush" Value="#F59E0B" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.High}">
-                                            <Setter Property="Background" Value="#881337" />
-                                            <Setter Property="BorderBrush" Value="#F43F5E" />
-                                            <Setter Property="Effect">
-                                                <Setter.Value>
-                                                    <DropShadowEffect Color="#F43F5E" BlurRadius="6" ShadowDepth="0" Opacity="0.8" />
-                                                </Setter.Value>
-                                            </Setter>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
-                        </Border>
+                            <!-- Control / Botón LED de Estado de Modelo IA -->
+                            <Button Margin="5,0,0,0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Command="{Binding ToggleModelLoadCommand}"
+                                    Visibility="{Binding IsModelManaged, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    ToolTip="{Binding ModelStatusToolTip}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{DynamicResource BgSurfaceBrush}"
+                                                BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="5"
+                                                Padding="5,1.5">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <!-- Micro LED -->
+                                                <Border Width="7" Height="7" CornerRadius="3.5" Margin="0,0,4,0" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#64748B" />
+                                                            <Setter Property="BorderBrush" Value="#475569" />
+                                                            <Setter Property="BorderThickness" Value="1" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsModelLoaded}" Value="True">
+                                                                    <Setter Property="Background" Value="#10B981" />
+                                                                    <Setter Property="BorderBrush" Value="#34D399" />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#10B981" BlurRadius="6" ShadowDepth="0" Opacity="0.95" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsModelLoading}" Value="True">
+                                                                    <Setter Property="Background" Value="#F59E0B" />
+                                                                    <Setter Property="BorderBrush" Value="#FCD34D" />
+                                                                    <Setter Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect Color="#F59E0B" BlurRadius="6" ShadowDepth="0" Opacity="0.95" />
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                </Border>
+                                                <TextBlock Text="AI" FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Badges de Métricas / Telemetría (Latencia, RAM, GPU) con ToolTip Detallado -->
+                        <StackPanel Grid.Column="1" 
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Margin="4,0,16,0"
+                                    ToolTip="{Binding DetailedMetricsToolTip}">
+                            <!-- Badge de Aceleración GPU -->
+                            <Border Margin="0,0,3,0" 
+                                    Padding="4,1.5" 
+                                    CornerRadius="4" 
+                                    Background="#083344" 
+                                    BorderBrush="#06B6D4" 
+                                    BorderThickness="1"
+                                    Visibility="{Binding IsGpuAccelerated, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="🎮 GPU" Foreground="#22D3EE" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" />
+                            </Border>
+
+                            <!-- Badge de Memoria RAM Rodante -->
+                            <Border Margin="0,0,3,0" 
+                                    Padding="4,1.5" 
+                                    CornerRadius="4" 
+                                    Background="#1E1B4B" 
+                                    BorderBrush="#6366F1" 
+                                    BorderThickness="1"
+                                    Visibility="{Binding RollingRamText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
+                                <TextBlock Text="{Binding RollingRamText}" Foreground="#A5B4FC" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" />
+                            </Border>
+
+                            <!-- Badge de Latencia y Cuello de Botella -->
+                            <Border Padding="5,1.5" 
+                                    CornerRadius="4" 
+                                    Visibility="{Binding LatencyText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#1E293B" />
+                                        <Setter Property="BorderBrush" Value="#475569" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Low}">
+                                                <Setter Property="Background" Value="#064E3B" />
+                                                <Setter Property="BorderBrush" Value="#10B981" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Medium}">
+                                                <Setter Property="Background" Value="#78350F" />
+                                                <Setter Property="BorderBrush" Value="#F59E0B" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.High}">
+                                                <Setter Property="Background" Value="#881337" />
+                                                <Setter Property="BorderBrush" Value="#F43F5E" />
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect Color="#F43F5E" BlurRadius="6" ShadowDepth="0" Opacity="0.8" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>

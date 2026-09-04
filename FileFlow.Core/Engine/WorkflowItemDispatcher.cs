@@ -67,13 +67,13 @@ public sealed class WorkflowItemDispatcher
         if (startNodeIds.Contains(sourceNodeId))
         {
             _telemetryTracker.IncrementSourceItemsEmitted();
-        }
 
-        if (_checkpointHandler.IsFileAlreadyCompleted(item.OriginalPath))
-        {
-            _executor.NotifyLog($"[Checkpoint] Omitiendo archivo completado previamente: {item.FileName}", LogLevel.Debug);
-            _telemetryTracker.IncrementCompletedFiles();
-            return Task.CompletedTask;
+            if (_checkpointHandler.IsFileAlreadyCompleted(item.OriginalPath))
+            {
+                _executor.NotifyLog($"[Checkpoint] Omitiendo archivo completado previamente: {item.FileName}", LogLevel.Debug);
+                _telemetryTracker.IncrementCompletedFiles();
+                return Task.CompletedTask;
+            }
         }
 
         if (!outgoingEdges.TryGetValue(sourceNodeId, out var edges))
@@ -124,19 +124,37 @@ public sealed class WorkflowItemDispatcher
                         }
 
                         _executor.NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
+                        if (!string.IsNullOrWhiteSpace(targetItem.FileName))
+                        {
+                            long doneFiles = _telemetryTracker.CompletedFilesCount;
+                            long totalFiles = _telemetryTracker.ExpectedTotalItems;
+                            long effective = Math.Max(totalFiles, doneFiles);
+                            double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 0.0;
+                            if (_executor.IsRunning && pct >= 100.0) pct = 99.0;
+                            _executor.NotifyProgress(pct, $"⚡ {targetNode.Name}: {targetItem.FileName}");
+                        }
 
+                        long startAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
                         long startTicks = Stopwatch.GetTimestamp();
                         try
                         {
                             await targetNode.ExecuteAsync(edge.TargetPortName, targetItem, targetContext, cancellationToken).ConfigureAwait(false);
                             double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs);
+                            long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+                            long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
+                            bool isGpu = targetItem.Metadata.ContainsKey("AI:DirectMlAccelerated") || 
+                                         (targetItem.Metadata.TryGetValue("AI:Device", out var dev) && dev?.ToString()?.Contains("GPU", StringComparison.OrdinalIgnoreCase) == true) ||
+                                         (targetNode is IModelLifecycleNode lifecycleNode && lifecycleNode.IsGpuAccelerated);
+
+                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs, allocatedBytes, 0.0, isGpu);
                             _executor.NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Completed);
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
                         {
                             double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs);
+                            long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+                            long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
+                            _telemetryTracker.RecordNodeExecution(targetNode.Id, elapsedMs, allocatedBytes, 0.0, false);
                             _executor.NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Faulted);
                             if (debugSession != null)
                             {

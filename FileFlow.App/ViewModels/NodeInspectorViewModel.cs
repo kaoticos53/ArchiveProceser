@@ -102,6 +102,13 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
         }
     }
 
+    [RelayCommand]
+    public void ResetNodeMetrics()
+    {
+        if (InspectedNode == null) return;
+        InspectedNode.UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats.Empty(InspectedNode.Id));
+    }
+
     public void InspectLogRecord(StructuredLogRecord? log)
     {
         if (log == null) return;

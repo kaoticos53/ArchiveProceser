@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.TemplateEngine;
@@ -16,8 +17,56 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("LocalLlmProcessorNode_Name", "LanguageAI", "LocalLlmProcessorNode_Desc", PipelineRole.Analyze,
     "llm", "ia", "phi", "resumen", "extraer json", "razonamiento", "generativo", "chat")]
-public class LocalLlmProcessorNode : IFlowNode
+public class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public LocalLlmProcessorNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextGenerationLlm);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.TextGenerationLlm);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.TextGenerationLlm, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextGenerationLlm);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LocalLlmProcessorNode_Name", "Procesador LLM Local (Qwen 2.5 / Phi-3.5)");
     public string Category => "LanguageAI";

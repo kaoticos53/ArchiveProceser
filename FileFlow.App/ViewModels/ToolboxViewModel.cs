@@ -102,9 +102,9 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     partial void OnSelectedCategoryItemChanged(ToolboxCategoryFilterItem? value)
     {
         if (_isRefreshing) return;
-        if (value != null && !_selectedCategoryFilter.Equals(value.Key, StringComparison.OrdinalIgnoreCase))
+        if (value != null && !SelectedCategoryFilter.Equals(value.Key, StringComparison.OrdinalIgnoreCase))
         {
-            _selectedCategoryFilter = value.Key;
+            SelectedCategoryFilter = value.Key;
             RefreshToolbox();
         }
     }
@@ -386,15 +386,17 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             }
         }
 
+#pragma warning disable MVVMTK0034
         if (matchedItem != null)
         {
-            SelectedCategoryItem = matchedItem;
+            _selectedCategoryItem = matchedItem;
         }
         else if (AvailableCategories.Count > 0)
         {
-            SelectedCategoryFilter = AvailableCategories[0].Key;
-            SelectedCategoryItem = AvailableCategories[0];
+            _selectedCategoryFilter = AvailableCategories[0].Key;
+            _selectedCategoryItem = AvailableCategories[0];
         }
+#pragma warning restore MVVMTK0034
     }
 
     public void Dispose()

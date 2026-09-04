@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -16,8 +17,37 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PiiAnonymizerNode_Name", "Security", "PiiAnonymizerNode_Desc", PipelineRole.Transform,
     "gdpr", "rgpd", "dni", "nie", "iban", "tarjeta", "privacidad", "ofuscar", "anonimizar", "luhn", "email", "telefono")]
-public class PiiAnonymizerNode : IFlowNode
+public class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public PiiAnonymizerNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string? modelPath = AiModelManager.ResolveModelPathSync("marian-es-en", AiTaskType.TextTranslation);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier => "RGPD Regex / NER";
+
+    public Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        ModelStatusChanged?.Invoke();
+        return Task.CompletedTask;
+    }
+
+    public void UnloadModel()
+    {
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PiiAnonymizerNode_Name", "Anonimizador de Datos RGPD (PII)");
     public string Category => "Security";
@@ -47,7 +77,8 @@ public class PiiAnonymizerNode : IFlowNode
         ["FilterPhones"] = true,
         ["FilterIpAddresses"] = true,
         ["FilterPersonNames"] = true,
-        ["OutputDirectory"] = "{GlobalOutputDir}"
+        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["SkipIfExists"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
@@ -73,7 +104,9 @@ public class PiiAnonymizerNode : IFlowNode
         new("FilterPersonNames", ParameterEditorType.Toggle, DefaultValue: true,
             HelpText: "Detectar y anonimizar nombres propios de personas por contexto honorífico.", DisplayOrder: 9),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta donde se guardará el archivo sanitizado resultante.", DisplayOrder: 10)
+            HelpText: "Carpeta donde se guardará el archivo sanitizado resultante.", DisplayOrder: 10),
+        new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
+            HelpText: "Si el archivo resultante ya existe en destino, omite el análisis y reutiliza el archivo.", DisplayOrder: 11)
     ];
 
     private static readonly HashSet<string> _textExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -111,6 +144,41 @@ public class PiiAnonymizerNode : IFlowNode
             bool filterIps = Parameters.TryGetValue("FilterIpAddresses", out var ipVal) && ParameterHelper.GetBoolean(ipVal, true);
             bool filterNames = Parameters.TryGetValue("FilterPersonNames", out var nameVal) && ParameterHelper.GetBoolean(nameVal, true);
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+
+            string targetDir;
+            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+            {
+                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
+                {
+                    targetDir = godVal.ToString()!;
+                }
+                else
+                {
+                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+                }
+            }
+            else
+            {
+                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
+            }
+
+            Directory.CreateDirectory(targetDir);
+
+            string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_anonymized{ext}";
+            string targetPath = Path.Combine(targetDir, targetFileName);
+
+            if (skipIfExists && File.Exists(targetPath))
+            {
+                context.Log($"[PiiAnonymizer] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo análisis.", LogLevel.Information, item);
+                var existingItem = item.DeepClone();
+                existingItem.CurrentPath = targetPath;
+                existingItem.PhysicalPath = targetPath;
+                existingItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                await context.EmitAsync("Clean", existingItem).ConfigureAwait(false);
+                await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
+                return;
+            }
 
             var options = new PiiOptions(
                 Mode: mode,
@@ -127,15 +195,6 @@ public class PiiAnonymizerNode : IFlowNode
             string rawText = await File.ReadAllTextAsync(item.CurrentPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 
             var result = await Task.Run(() => PiiDetectionEngine.AnonymizeText(rawText, options), cancellationToken).ConfigureAwait(false);
-
-            string targetDir = ParameterHelper.ResolveOutputPath(
-                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
-                item);
-
-            Directory.CreateDirectory(targetDir);
-
-            string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_anonymized{ext}";
-            string targetPath = Path.Combine(targetDir, targetFileName);
 
             await File.WriteAllTextAsync(targetPath, result.SanitizedText, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
 

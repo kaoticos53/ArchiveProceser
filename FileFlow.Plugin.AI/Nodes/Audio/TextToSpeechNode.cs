@@ -15,8 +15,52 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("TextToSpeechNode_Name", "AudioVoice", "TextToSpeechNode_Desc", PipelineRole.Transform,
     "tts", "piper", "voz", "hablar", "sintesis", "texto a voz", "audio", "locucion", "speech")]
-public class TextToSpeechNode : IFlowNode
+public class TextToSpeechNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public TextToSpeechNode()
+    {
+        AudioInferenceEngine.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextToSpeech);
+            return modelPath != null && AudioInferenceEngine.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.TextToSpeech);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.TextToSpeech, cancellationToken: cancellationToken).ConfigureAwait(false);
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextToSpeech);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            AudioInferenceEngine.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("TextToSpeechNode_Name", "Conversor de Texto a Voz (Piper TTS)");
     public string Category => "AudioVoice";
@@ -40,7 +84,8 @@ public class TextToSpeechNode : IFlowNode
         ["MetadataKeyName"] = "AI:Translation",
         ["CustomTextTemplate"] = "",
         ["SpeechRate"] = 1.0,
-        ["OutputDirectory"] = "{GlobalOutputDir}"
+        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["SkipIfExists"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
@@ -58,7 +103,9 @@ public class TextToSpeechNode : IFlowNode
         new("SpeechRate", ParameterEditorType.Slider, DefaultValue: 1.0, Min: 0.5, Max: 2.0, Step: 0.1,
             HelpText: "Velocidad de locución de la voz (1.0 = velocidad normal).", DisplayOrder: 5),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán los archivos .wav generados.", DisplayOrder: 6)
+            HelpText: "Carpeta de destino donde se guardarán los archivos .wav generados.", DisplayOrder: 6),
+        new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
+            HelpText: "Si el archivo resultante ya existe en destino, omite la síntesis TTS y reutiliza el archivo.", DisplayOrder: 7)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -109,6 +156,41 @@ public class TextToSpeechNode : IFlowNode
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
             double speechRate = Parameters.TryGetValue("SpeechRate", out var srVal) ? ParameterHelper.GetDouble(srVal, 1.0) : 1.0;
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+
+            string targetDir;
+            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+            {
+                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
+                {
+                    targetDir = godVal.ToString()!;
+                }
+                else
+                {
+                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+                }
+            }
+            else
+            {
+                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
+            }
+
+            Directory.CreateDirectory(targetDir);
+
+            string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_tts.wav";
+            string targetPath = Path.Combine(targetDir, targetFileName);
+
+            if (skipIfExists && File.Exists(targetPath))
+            {
+                context.Log($"[PiperTTS] ⏭️ El archivo de audio ya existe ('{targetFileName}'). Omitiendo síntesis.", LogLevel.Information, item);
+                var existingItem = item.DeepClone();
+                existingItem.CurrentPath = targetPath;
+                existingItem.PhysicalPath = targetPath;
+                existingItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                existingItem.Metadata["AI:AudioGenerated"] = true;
+                await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
+                return;
+            }
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
@@ -118,15 +200,6 @@ public class TextToSpeechNode : IFlowNode
                 cancellationToken).ConfigureAwait(false);
 
             context.Log($"[PiperTTS] 🔊 Sintetizando audio para '{item.FileName}' ({textToSynthesize.Length} caracteres)...", LogLevel.Information, item);
-
-            string targetDir = ParameterHelper.ResolveOutputPath(
-                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
-                item);
-
-            Directory.CreateDirectory(targetDir);
-
-            string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_tts.wav";
-            string targetPath = Path.Combine(targetDir, targetFileName);
 
             double audioDuration = await AudioInferenceEngine.SynthesizeSpeechAsync(
                 modelPath,

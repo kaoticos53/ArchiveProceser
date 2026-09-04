@@ -159,6 +159,29 @@ public class VisionSuiteNodesTests : IDisposable
     }
 
     [Fact]
+    public async Task BackgroundRemoverNode_ExecuteAsync_WhenOutputFileExistsAndSkipIfExistsTrue_ShouldBypassInferenceAndEmitOut()
+    {
+        // Arrange
+        string sourceFile = Path.Combine(_tempDir, "photo.png");
+        await File.WriteAllTextAsync(sourceFile, "fake image content");
+        
+        string expectedOutputFile = Path.Combine(_tempDir, "photo_nobg.png");
+        await File.WriteAllTextAsync(expectedOutputFile, "pre-existing output content");
+
+        var node = new BackgroundRemoverNode();
+        node.Parameters["SkipIfExists"] = true;
+
+        var item = new FileItemContext(sourceFile);
+        var mockContext = new Mock<IFlowExecutionContext>();
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert: should emit "Out" with cloned item pointing to expectedOutputFile
+        mockContext.Verify(c => c.EmitAsync("Out", It.Is<FileItemContext>(ctx => ctx.CurrentPath == expectedOutputFile)), Times.Once);
+    }
+
+    [Fact]
     public async Task SuperResolutionUpscalerNode_ExecuteAsync_WithUnsupportedFormat_ShouldEmitSkipped()
     {
         // Arrange

@@ -32,6 +32,7 @@
                 <Style TargetType="{x:Type nodify:ItemContainer}" BasedOn="{StaticResource {x:Type nodify:ItemContainer}}">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <Setter Property="Panel.ZIndex" Value="{Binding ZIndex, Mode=TwoWay}" />
                     <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
                     <Setter Property="MinWidth" Value="240" />
                     <Setter Property="MaxWidth" Value="600" />
@@ -47,6 +48,11 @@
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>
+                    <Style.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Panel.ZIndex" Value="10000" />
+                        </Trigger>
+                    </Style.Triggers>
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 

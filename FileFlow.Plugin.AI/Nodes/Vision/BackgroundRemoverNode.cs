@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -17,8 +18,66 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("BackgroundRemoverNode_Name", "ImageVision", "BackgroundRemoverNode_Desc", PipelineRole.Transform,
     "fondo", "recortar", "transparente", "png", "mascara", "alpha", "quitar fondo", "cutout")]
-public class BackgroundRemoverNode : IFlowNode
+public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public BackgroundRemoverNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.BackgroundRemoval);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.BackgroundRemoval);
+        }
+    }
+
+    public bool IsGpuAccelerated
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.BackgroundRemoval);
+            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.BackgroundRemoval, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.BackgroundRemoval);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("BackgroundRemoverNode_Name", "Eliminador de Fondo IA");
     public string Description => LocalizationManager.Instance.GetString("BackgroundRemoverNode_Desc", "Segmenta el sujeto y elimina el fondo de imágenes con redes neuronales RMBG y MODNet.");
@@ -42,7 +101,8 @@ public class BackgroundRemoverNode : IFlowNode
         ["Model"] = "Auto",
         ["OutputMode"] = "TransparentPng",
         ["BackgroundColor"] = "#FFFFFF",
-        ["OutputDirectory"] = "{GlobalOutputDir}"
+        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["SkipIfExists"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
@@ -56,7 +116,9 @@ public class BackgroundRemoverNode : IFlowNode
         new("BackgroundColor", ParameterEditorType.Text, DefaultValue: "#FFFFFF",
             HelpText: "Color de fondo hexadecimal (ej. #FFFFFF) si seleccionó 'ColorBackground'.", DisplayOrder: 3),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán las imágenes procesadas.", DisplayOrder: 4)
+            HelpText: "Carpeta de destino donde se guardarán las imágenes procesadas.", DisplayOrder: 4),
+        new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
+            HelpText: "Si el archivo resultante ya existe en destino, omite la inferencia neural y reutiliza el archivo.", DisplayOrder: 5)
     ];
 
     private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -88,6 +150,71 @@ public class BackgroundRemoverNode : IFlowNode
             string outputMode = Parameters.TryGetValue("OutputMode", out var omVal) ? omVal?.ToString() ?? "TransparentPng" : "TransparentPng";
             string bgColorHex = Parameters.TryGetValue("BackgroundColor", out var bgVal) ? bgVal?.ToString() ?? "#FFFFFF" : "#FFFFFF";
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+
+            string targetDir;
+            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+            {
+                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
+                {
+                    targetDir = godVal.ToString()!;
+                }
+                else
+                {
+                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+                }
+            }
+            else
+            {
+                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
+            }
+
+            Directory.CreateDirectory(targetDir);
+
+            bool maskOnly = string.Equals(outputMode, "MaskOnly", StringComparison.OrdinalIgnoreCase);
+            string targetFileName = maskOnly
+                ? Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png"
+                : Path.GetFileNameWithoutExtension(item.CurrentPath) + "_nobg.png";
+            string targetPath = Path.Combine(targetDir, targetFileName);
+
+            if (skipIfExists && File.Exists(targetPath))
+            {
+                context.Log($"[BackgroundRemover] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo inferencia.", LogLevel.Information, item);
+
+                if (maskOnly)
+                {
+                    var maskItem = item.DeepClone();
+                    maskItem.CurrentPath = targetPath;
+                    maskItem.PhysicalPath = targetPath;
+                    maskItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                    maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
+                    await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
+                }
+                else
+                {
+                    var outItem = item.DeepClone();
+                    outItem.CurrentPath = targetPath;
+                    outItem.PhysicalPath = targetPath;
+                    outItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                    outItem.Metadata["AI:BackgroundRemoved"] = true;
+                    await context.EmitAsync("Out", outItem).ConfigureAwait(false);
+
+                    string maskFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png";
+                    string maskPath = Path.Combine(targetDir, maskFileName);
+                    if (File.Exists(maskPath))
+                    {
+                        var maskItem = item.DeepClone();
+                        maskItem.CurrentPath = maskPath;
+                        maskItem.PhysicalPath = maskPath;
+                        maskItem.FileSizeBytes = new FileInfo(maskPath).Length;
+                        maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
+                        await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
+                    }
+                }
+
+                await context.EmitAsync("Bypass", item).ConfigureAwait(false);
+                return;
+            }
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
@@ -102,6 +229,13 @@ public class BackgroundRemoverNode : IFlowNode
                 await context.EmitAsync("Bypass", item).ConfigureAwait(false);
                 await context.EmitAsync("Error", item).ConfigureAwait(false);
                 return;
+            }
+
+            bool isDml = OnnxSessionManager.ShouldUseDirectMl(modelPath);
+            if (isDml)
+            {
+                item.Metadata["AI:DirectMlAccelerated"] = true;
+                item.Metadata["AI:Device"] = "GPU (DirectML)";
             }
 
             context.Log($"[BackgroundRemover] ✂️ Eliminando fondo de '{item.FileName}'...", LogLevel.Information, item);
@@ -119,43 +253,36 @@ public class BackgroundRemoverNode : IFlowNode
                 }
             }
 
-            bool maskOnly = string.Equals(outputMode, "MaskOnly", StringComparison.OrdinalIgnoreCase);
-
             using var originalImage = await Image.LoadAsync<Rgba32>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
 
             using var processedImage = await Task.Run(
                 () => OnnxInferenceEngine.RemoveBackground(modelPath, originalImage, bgColor, maskOnly),
                 cancellationToken).ConfigureAwait(false);
 
-            // Determinar directorio de salida no destructivo
-            string targetDir = ParameterHelper.ResolveOutputPath(
-                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
-                item);
-
-            Directory.CreateDirectory(targetDir);
+            if (isDml)
+            {
+                item.Metadata["AI:DirectMlAccelerated"] = true;
+                item.Metadata["AI:Device"] = "GPU (DirectML)";
+            }
 
             if (maskOnly)
             {
-                // Modo solo máscara
-                string maskFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png";
-                string maskPath = Path.Combine(targetDir, maskFileName);
-                await processedImage.SaveAsPngAsync(maskPath, cancellationToken).ConfigureAwait(false);
+                // Modo solo máscara (targetPath ya es el maskPath)
+                await processedImage.SaveAsPngAsync(targetPath, cancellationToken).ConfigureAwait(false);
 
                 var maskItem = item.DeepClone();
-                maskItem.CurrentPath = maskPath;
-                maskItem.PhysicalPath = maskPath;
-                maskItem.FileSizeBytes = new FileInfo(maskPath).Length;
+                maskItem.CurrentPath = targetPath;
+                maskItem.PhysicalPath = targetPath;
+                maskItem.FileSizeBytes = new FileInfo(targetPath).Length;
                 maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                 maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
 
-                context.Log($"[BackgroundRemover] ✅ Máscara generada con éxito: '{maskFileName}'", LogLevel.Information, maskItem);
+                context.Log($"[BackgroundRemover] ✅ Máscara generada con éxito: '{targetFileName}'", LogLevel.Information, maskItem);
                 await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
             }
             else
             {
                 // Modo imagen procesada (transparente o color)
-                string targetFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_nobg.png";
-                string targetPath = Path.Combine(targetDir, targetFileName);
                 await processedImage.SaveAsPngAsync(targetPath, cancellationToken).ConfigureAwait(false);
 
                 var outItem = item.DeepClone();

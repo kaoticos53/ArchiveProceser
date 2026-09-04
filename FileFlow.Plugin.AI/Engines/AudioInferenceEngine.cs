@@ -38,11 +38,40 @@ public record VadAnalysisResult(
 /// </summary>
 public static class AudioInferenceEngine
 {
-    private static readonly ConcurrentDictionary<string, Lazy<InferenceSession>> _sessionCache = new();
+    private static readonly ConcurrentDictionary<string, Lazy<InferenceSession>> _sessionCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Lock _inferenceLock = new();
+
+    public static event Action? SessionStateChanged;
+
+    public static bool IsSessionLoaded(string modelPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelPath)) return false;
+        return _sessionCache.TryGetValue(modelPath, out var lazy) && lazy.IsValueCreated;
+    }
+
+    public static int GetLoadedSessionCount()
+    {
+        return _sessionCache.Values.Count(lazy => lazy.IsValueCreated);
+    }
+
+    public static bool UnloadSession(string modelPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelPath)) return false;
+        if (_sessionCache.TryRemove(modelPath, out var lazy))
+        {
+            if (lazy.IsValueCreated)
+            {
+                try { lazy.Value.Dispose(); } catch { }
+            }
+            SessionStateChanged?.Invoke();
+            return true;
+        }
+        return false;
+    }
 
     private static InferenceSession GetOrCreateSession(string modelPath)
     {
+        bool isNew = !_sessionCache.ContainsKey(modelPath);
         var lazy = _sessionCache.GetOrAdd(modelPath, path => new Lazy<InferenceSession>(() =>
         {
             var options = new SessionOptions
@@ -53,10 +82,17 @@ public static class AudioInferenceEngine
                 IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4)
             };
 
-            return new InferenceSession(path, options);
+            var session = new InferenceSession(path, options);
+            SessionStateChanged?.Invoke();
+            return session;
         }));
 
-        return lazy.Value;
+        var instance = lazy.Value;
+        if (isNew)
+        {
+            SessionStateChanged?.Invoke();
+        }
+        return instance;
     }
 
     /// <summary>
@@ -391,5 +427,6 @@ public static class AudioInferenceEngine
             }
         }
         _sessionCache.Clear();
+        SessionStateChanged?.Invoke();
     }
 }

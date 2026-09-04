@@ -107,4 +107,30 @@ public class WorkflowCheckpointManager
             catch { }
         }
     }
+
+    public int ClearAllCheckpoints()
+    {
+        int deletedCount = 0;
+        lock (_lock)
+        {
+            try
+            {
+                if (Directory.Exists(_checkpointDirectory))
+                {
+                    var files = Directory.GetFiles(_checkpointDirectory, "*.checkpoint.json");
+                    foreach (var file in files)
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                            deletedCount++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+        return deletedCount;
+    }
 }

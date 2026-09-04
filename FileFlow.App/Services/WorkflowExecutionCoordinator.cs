@@ -17,7 +17,8 @@ public record WorkflowExecutionOptions(
     int MaxParallelThreads,
     string WorkflowName,
     bool IsWatchMode = false,
-    FolderWatcherService? WatcherService = null
+    FolderWatcherService? WatcherService = null,
+    bool EnableCheckpointing = true
 );
 
 /// <summary>
@@ -75,7 +76,8 @@ public sealed class WorkflowExecutionCoordinator
         {
             GlobalOutputDir = effectiveGlobalDir,
             IsDryRun = options.IsDryRun,
-            MaxDegreeOfParallelism = options.IsDebug ? 1 : options.MaxParallelThreads
+            MaxDegreeOfParallelism = options.IsDebug ? 1 : options.MaxParallelThreads,
+            EnableCheckpointing = options.EnableCheckpointing
         };
 
         if (options.IsDebug)
@@ -242,6 +244,46 @@ public sealed class WorkflowExecutionCoordinator
 
             FlushPendingUiUpdates(pendingEdgeUpdates, pendingStatusUpdates, pendingNodeProgressUpdates);
             _logViewModel.FlushAllPendingLogs();
+
+            if (UserPreferencesService.Instance.Preferences.AutoUnloadAiModelsOnCompletion)
+            {
+                try
+                {
+                    foreach (var node in _editorViewModel.Nodes)
+                    {
+                        if (node.IsModelManaged && node.IsModelLoaded)
+                        {
+                            node.ToggleModelLoadCommand.Execute(null);
+                        }
+                    }
+                    FileFlow.Plugin.AI.AiPluginInitializer.ClearAllSessions();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[WorkflowExecutionCoordinator] Error auto-unloading AI models: {ex.Message}");
+                }
+            }
+
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                foreach (var node in _editorViewModel.Nodes)
+                {
+                    if (node.IsModelManaged)
+                    {
+                        node.UpdateModelStatus();
+                    }
+                }
+            });
+
+            // Liberación determinista de memoria, purga de pools y recorte de Working Set del proceso
+            try
+            {
+                FileFlow.Core.Utils.MemoryReclamationHelper.ReclaimMemory(trimWorkingSet: true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WorkflowExecutionCoordinator] Error reclaiming memory: {ex.Message}");
+            }
 
             _activeExecutor = null;
             _activeDebugSession = null;

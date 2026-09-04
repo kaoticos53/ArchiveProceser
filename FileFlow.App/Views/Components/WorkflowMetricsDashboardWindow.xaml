@@ -1,0 +1,319 @@
+<Window x:Class="FileFlow.App.Views.Components.WorkflowMetricsDashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:WorkflowMetricsDashboardViewModel}"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MetricsDashboard_Title], FallbackValue='FileFlow - Panel Centralizado de Rendimiento y Métricas'}"
+        Width="1050" Height="680"
+        MinWidth="850" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <!-- Fondo y Marco Estilizado -->
+    <Border CornerRadius="12"
+            Background="#0F172A"
+            BorderBrush="#334155"
+            BorderThickness="1"
+            Margin="10">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="25" ShadowDepth="0" Opacity="0.6" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />  <!-- Cabecera -->
+                <RowDefinition Height="Auto" />  <!-- KPIs -->
+                <RowDefinition Height="*" />     <!-- Gráficas + DataGrid -->
+                <RowDefinition Height="Auto" />  <!-- Barra inferior -->
+            </Grid.RowDefinitions>
+
+            <!-- 1. Cabecera Personalizada -->
+            <Border Grid.Row="0" Background="#1E293B" CornerRadius="12,12,0,0" Padding="16,12" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="📊 " FontSize="18" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MetricsDashboard_Title], FallbackValue='Panel de Rendimiento y Profiling de Flujo'}"
+                                   FontWeight="Bold" FontSize="15" Foreground="#F8FAFC" VerticalAlignment="Center" />
+                        <Border Margin="12,0,0,0" Padding="8,2" CornerRadius="10" Background="#334155">
+                            <TextBlock Text="{Binding TotalNodesCount, StringFormat='{}{0} Nodos'}" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Command="{Binding RefreshMetricsCommand}" Style="{StaticResource SecondaryButton}" Padding="10,5" Margin="0,0,8,0"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Refresh], FallbackValue='Actualizar'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔄 " FontSize="12" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Refresh], FallbackValue='Actualizar'}" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <Button Click="CloseButton_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="Cerrar">
+                            <TextBlock Text="✕" FontSize="12" Foreground="#94A3B8" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 2. KPIs Globales -->
+            <Grid Grid.Row="1" Margin="16,14,16,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- KPI 1: Invocaciones Totales -->
+                <Border Grid.Column="0" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="0,0,6,0" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="📦 Invocaciones" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        <TextBlock Text="{Binding TotalInvocations, StringFormat='{}{0:N0}'}" FontSize="18" FontWeight="Bold" Foreground="#F8FAFC" Margin="0,4,0,0" />
+                        <TextBlock Text="Ejecuciones de nodos" FontSize="9.5" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+
+                <!-- KPI 2: Tiempo Acumulado -->
+                <Border Grid.Column="1" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="⏱️ Tiempo Total" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        <TextBlock Text="{Binding FormattedTotalDuration}" FontSize="18" FontWeight="Bold" Foreground="#38BDF8" Margin="0,4,0,0" />
+                        <TextBlock Text="Tiempo flujo acumulado" FontSize="9.5" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+
+                <!-- KPI 3: Latencia Media -->
+                <Border Grid.Column="2" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="⚡ Latencia Media" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        <TextBlock Text="{Binding FormattedAvgLatency}" FontSize="18" FontWeight="Bold" Foreground="#34D399" Margin="0,4,0,0" />
+                        <TextBlock Text="Por elemento / nodo" FontSize="9.5" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+
+                <!-- KPI 4: RAM Asignada -->
+                <Border Grid.Column="3" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="💾 RAM Estimada" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        <TextBlock Text="{Binding FormattedTotalRam}" FontSize="18" FontWeight="Bold" Foreground="#A78BFA" Margin="0,4,0,0" />
+                        <TextBlock Text="Total asignaciones" FontSize="9.5" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+
+                <!-- KPI 5: GPU DirectML -->
+                <Border Grid.Column="4" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="🎮 Ops GPU" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        <TextBlock Text="{Binding GpuAcceleratedOpsCount, StringFormat='{}{0} nodos'}" FontSize="18" FontWeight="Bold" Foreground="#22D3EE" Margin="0,4,0,0" />
+                        <TextBlock Text="Aceleración DirectML" FontSize="9.5" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+
+                <!-- KPI 6: Cuellos de Botella -->
+                <Border Grid.Column="5" Background="#1E293B" CornerRadius="8" Padding="12,10" Margin="6,0,0,0" BorderBrush="#334155" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="⚠️ Cuellos Botella" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                        <TextBlock Text="{Binding BottleneckNodesCount, StringFormat='{}{0} nodos'}" FontSize="18" FontWeight="Bold" Foreground="#F43F5E" Margin="0,4,0,0" />
+                        <TextBlock Text="&gt; 25% tiempo flujo" FontSize="9.5" Foreground="#64748B" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- 3. Contenido Principal: Gráficos de Distribución (Izquierda) + Ranking DataGrid (Derecha) -->
+            <Grid Grid.Row="2" Margin="16,4,16,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="340" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Columna Izquierda: Gráficos de Distribución -->
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
+                    <StackPanel>
+                        <!-- Distribución de Tiempo por Nodo -->
+                        <Border Background="#1E293B" CornerRadius="8" BorderBrush="#334155" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="⏱️ Distribución de Tiempo (%)" FontWeight="Bold" FontSize="12.5" Foreground="#F8FAFC" Margin="0,0,0,8" />
+                                <ItemsControl ItemsSource="{Binding TimeDistributionBars}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid Grid.Row="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#E2E8F0" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FormattedValue}" FontSize="10.5" Foreground="#94A3B8" />
+                                                </Grid>
+                                                <ProgressBar Grid.Row="1" Value="{Binding Percentage}" Maximum="100" Height="6" Margin="0,3,0,0" Foreground="{DynamicResource AccentPrimaryBrush}" Background="#0F172A" BorderThickness="0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Distribución de Memoria RAM por Nodo -->
+                        <Border Background="#1E293B" CornerRadius="8" BorderBrush="#334155" BorderThickness="1" Padding="12">
+                            <StackPanel>
+                                <TextBlock Text="💾 Asignación de RAM (%)" FontWeight="Bold" FontSize="12.5" Foreground="#F8FAFC" Margin="0,0,0,8" />
+                                <ItemsControl ItemsSource="{Binding RamDistributionBars}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid Grid.Row="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#E2E8F0" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FormattedValue}" FontSize="10.5" Foreground="#A5B4FC" />
+                                                </Grid>
+                                                <ProgressBar Grid.Row="1" Value="{Binding Percentage}" Maximum="100" Height="6" Margin="0,3,0,0" Foreground="#818CF8" Background="#0F172A" BorderThickness="0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Columna Derecha: Ranking Detallado en DataGrid -->
+                <Border Grid.Column="1" Background="#1E293B" CornerRadius="8" BorderBrush="#334155" BorderThickness="1" Padding="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="📋 Tabla Comparativa de Rendimiento por Nodo" FontWeight="Bold" FontSize="12.5" Foreground="#F8FAFC" Margin="6,4,6,8" />
+
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding NodeRows}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="True"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  RowBackground="#0F172A"
+                                  AlternatingRowBackground="#182234"
+                                  Foreground="#F8FAFC"
+                                  GridLinesVisibility="Horizontal"
+                                  HorizontalGridLinesBrush="#334155"
+                                  HeadersVisibility="Column"
+                                  FontSize="11.5">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#1E293B" />
+                                    <Setter Property="Foreground" Value="#94A3B8" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="Padding" Value="8,6" />
+                                    <Setter Property="BorderBrush" Value="#334155" />
+                                    <Setter Property="BorderThickness" Value="0,0,1,1" />
+                                </Style>
+                                <Style TargetType="DataGridCell">
+                                    <Setter Property="Padding" Value="8,6" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                </Style>
+                            </DataGrid.Resources>
+
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Nodo" Binding="{Binding Title}" Width="150" FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Categoría" Binding="{Binding Category}" Width="100" />
+                                <DataGridTextColumn Header="Invocaciones" Binding="{Binding ExecutionCount}" Width="85" />
+                                <DataGridTextColumn Header="Latencia Total" Binding="{Binding FormattedAvgDuration}" Width="95" />
+                                <DataGridTextColumn Header="Latencia (8 ops)" Binding="{Binding FormattedRollingDuration}" Width="105" />
+                                <DataGridTextColumn Header="RAM Media" Binding="{Binding FormattedAvgRam}" Width="90" />
+                                <DataGridTextColumn Header="RAM Pico" Binding="{Binding FormattedPeakRam}" Width="90" />
+                                <DataGridTemplateColumn Header="GPU" Width="55">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="4,1" CornerRadius="3" Background="#083344" BorderBrush="#06B6D4" BorderThickness="1"
+                                                    HorizontalAlignment="Center"
+                                                    Visibility="{Binding IsGpuAccelerated, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <TextBlock Text="GPU" FontSize="8.5" FontWeight="Bold" Foreground="#22D3EE" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Cuello Botella" Width="95">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding BottleneckPercentageText}" 
+                                                       FontWeight="Bold"
+                                                       Foreground="#F43F5E" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- 4. Barra Inferior de Acciones -->
+            <Border Grid.Row="3" Background="#1E293B" CornerRadius="0,0,12,12" Padding="16,10" BorderBrush="#334155" BorderThickness="0,1,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource SecondaryButton}" Padding="10,5" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📄 " FontSize="11" />
+                                <TextBlock Text="Exportar CSV" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ExportJsonCommand}" Style="{StaticResource SecondaryButton}" Padding="10,5" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{}{ } " FontSize="11" />
+                                <TextBlock Text="Exportar JSON" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ResetAllMetricsCommand}" Style="{StaticResource SecondaryButton}" Padding="10,5">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔄 " FontSize="11" />
+                                <TextBlock Text="Restablecer Todo" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Click="CloseButton_Click" Style="{StaticResource PrimaryButton}" Padding="14,6">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close], FallbackValue='Cerrar'}" FontSize="11.5" FontWeight="Bold" />
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

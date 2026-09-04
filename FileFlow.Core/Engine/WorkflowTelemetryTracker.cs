@@ -22,6 +22,8 @@ public sealed class WorkflowTelemetryTracker
     private readonly ConcurrentDictionary<string, (long count, double totalMs)> _nodeStats = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _nodeStatsLock = new();
 
+    private readonly RollingNodeMetricsTracker _rollingTracker = new();
+
     public void Reset()
     {
         Interlocked.Exchange(ref _processedItemsCount, 0);
@@ -37,6 +39,7 @@ public sealed class WorkflowTelemetryTracker
             _nodeStats.Clear();
         }
 
+        _rollingTracker.Reset();
         _stopwatch.Restart();
     }
 
@@ -83,14 +86,17 @@ public sealed class WorkflowTelemetryTracker
         }
     }
 
-    public void RecordNodeExecution(string nodeId, double durationMs)
+    public void RecordNodeExecution(string nodeId, double durationMs, long allocatedBytes = 0, double cpuPercentage = 0.0, bool gpuAccelerated = false)
     {
         if (string.IsNullOrWhiteSpace(nodeId)) return;
 
+        double safeDuration = Math.Max(0.0, durationMs);
         _nodeStats.AddOrUpdate(
             nodeId,
-            (1, Math.Max(0.0, durationMs)),
-            (_, existing) => (existing.count + 1, existing.totalMs + Math.Max(0.0, durationMs)));
+            (1, safeDuration),
+            (_, existing) => (existing.count + 1, existing.totalMs + safeDuration));
+
+        _rollingTracker.RecordSample(nodeId, safeDuration, allocatedBytes, cpuPercentage, gpuAccelerated);
     }
 
     public long ExpectedTotalItems => Volatile.Read(ref _expectedTotalItems);
@@ -145,6 +151,8 @@ public sealed class WorkflowTelemetryTracker
                 heatLevel = LatencyHeatLevel.High;
             }
 
+            var (rollingAvgMs, rollingAvgAlloc, peakAlloc, avgCpu, hasGpu, recent) = _rollingTracker.GetRollingMetrics(nodeId);
+
             result[nodeId] = new NodeTelemetryStats(
                 NodeId: nodeId,
                 ProcessedCount: count,
@@ -152,7 +160,13 @@ public sealed class WorkflowTelemetryTracker
                 AverageTimeMs: avgMs,
                 RelativeBottleneckRatio: ratio,
                 IsBottleneck: isBottleneck,
-                HeatLevel: heatLevel
+                HeatLevel: heatLevel,
+                RollingAvgDurationMs: rollingAvgMs > 0 ? rollingAvgMs : avgMs,
+                RollingAvgAllocatedBytes: rollingAvgAlloc,
+                PeakAllocatedBytes: peakAlloc,
+                AvgCpuPercentage: avgCpu,
+                IsGpuAccelerated: hasGpu,
+                RecentSamples: recent
             );
         }
 

@@ -33,6 +33,18 @@ public partial class StatusBarViewModel : ObservableObject
     private string _gpuText = "-- %";
 
     [ObservableProperty]
+    private int _loadedAiModelsCount;
+
+    [ObservableProperty]
+    private bool _hasLoadedAiModels;
+
+    [ObservableProperty]
+    private string _loadedAiModelsText = string.Empty;
+
+    [ObservableProperty]
+    private string _loadedAiModelsToolTip = string.Empty;
+
+    [ObservableProperty]
     private string _globalOutputDir = @"C:\FileFlowOutput";
 
     [ObservableProperty]
@@ -67,7 +79,41 @@ public partial class StatusBarViewModel : ObservableObject
             }
         };
 
-        _editorViewModel.Nodes.CollectionChanged += (s, e) => NodeCount = _editorViewModel.Nodes.Count;
+        // Subscripciones a eventos de nodos para seguimiento reactivo de modelos IA
+        void HookNode(NodeViewModel node)
+        {
+            node.PropertyChanged += Node_PropertyChanged;
+        }
+
+        void UnhookNode(NodeViewModel node)
+        {
+            node.PropertyChanged -= Node_PropertyChanged;
+        }
+
+        foreach (var node in _editorViewModel.Nodes)
+        {
+            HookNode(node);
+        }
+
+        _editorViewModel.Nodes.CollectionChanged += (s, e) =>
+        {
+            NodeCount = _editorViewModel.Nodes.Count;
+            if (e.OldItems != null)
+            {
+                foreach (NodeViewModel node in e.OldItems)
+                {
+                    UnhookNode(node);
+                }
+            }
+            if (e.NewItems != null)
+            {
+                foreach (NodeViewModel node in e.NewItems)
+                {
+                    HookNode(node);
+                }
+            }
+            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+        };
         _editorViewModel.Connections.CollectionChanged += (s, e) => ConnectionCount = _editorViewModel.Connections.Count;
 
         NodeCount = _editorViewModel.Nodes.Count;
@@ -127,6 +173,59 @@ public partial class StatusBarViewModel : ObservableObject
                 GpuText = metrics.GpuFormatted;
             });
         };
+
+        // Estado de modelos de IA en memoria
+        FileFlow.Plugin.AI.Inference.OnnxSessionManager.SessionStateChanged += () =>
+        {
+            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+        };
+        FileFlow.Plugin.AI.AudioInferenceEngine.SessionStateChanged += () =>
+        {
+            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+        };
+        LocalizationManager.Instance.LanguageChanged += (s, e) =>
+        {
+            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+        };
+        UpdateAiModelCount();
+    }
+
+    private void Node_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(NodeViewModel.IsModelLoaded))
+        {
+            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+        }
+    }
+
+    public void UpdateAiModelCount()
+    {
+        int onnxCount = FileFlow.Plugin.AI.Inference.OnnxSessionManager.GetLoadedSessionCount();
+        int audioCount = FileFlow.Plugin.AI.AudioInferenceEngine.GetLoadedSessionCount();
+        int canvasLoadedCount = _editorViewModel.Nodes.Count(n => n.IsModelLoaded);
+        int total = Math.Max(canvasLoadedCount, onnxCount + audioCount);
+
+        LoadedAiModelsCount = total;
+        HasLoadedAiModels = total > 0;
+        LoadedAiModelsText = string.Format(
+            LocalizationManager.Instance.GetString("StatusBar_AiModelsLoadedCount", "{0} loaded"),
+            total);
+        LoadedAiModelsToolTip = LocalizationManager.Instance.GetString("StatusBar_ClearAiMemoryToolTip", "Descarga todos los modelos ONNX/IA de la memoria RAM/VRAM y libera memoria.");
+    }
+
+    [RelayCommand]
+    public void ClearAllAiModels()
+    {
+        FileFlow.Plugin.AI.AiPluginInitializer.ClearAllSessions();
+        foreach (var node in _editorViewModel.Nodes)
+        {
+            if (node.IsModelManaged)
+            {
+                node.UnloadModel();
+            }
+        }
+        FileFlow.Core.Utils.MemoryReclamationHelper.ReclaimMemory(trimWorkingSet: true);
+        UpdateAiModelCount();
     }
 
     private void UpdateActiveStatusMessage(string? rawMessage)

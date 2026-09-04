@@ -21,7 +21,13 @@ public readonly record struct NodeTelemetryStats(
     double AverageTimeMs,
     double RelativeBottleneckRatio,
     bool IsBottleneck,
-    LatencyHeatLevel HeatLevel
+    LatencyHeatLevel HeatLevel,
+    double RollingAvgDurationMs = 0.0,
+    long RollingAvgAllocatedBytes = 0,
+    long PeakAllocatedBytes = 0,
+    double AvgCpuPercentage = 0.0,
+    bool IsGpuAccelerated = false,
+    IReadOnlyList<NodeExecutionSample>? RecentSamples = null
 )
 {
     public static NodeTelemetryStats Empty(string nodeId) => new(
@@ -31,6 +37,12 @@ public readonly record struct NodeTelemetryStats(
         AverageTimeMs: 0.0,
         RelativeBottleneckRatio: 0.0,
         IsBottleneck: false,
-        HeatLevel: LatencyHeatLevel.None
+        HeatLevel: LatencyHeatLevel.None,
+        RollingAvgDurationMs: 0.0,
+        RollingAvgAllocatedBytes: 0,
+        PeakAllocatedBytes: 0,
+        AvgCpuPercentage: 0.0,
+        IsGpuAccelerated: false,
+        RecentSamples: Array.Empty<NodeExecutionSample>()
     );
 }

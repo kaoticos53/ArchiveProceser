@@ -32,23 +32,37 @@ public sealed class WorkflowTaskTracker
 
     /// <summary>
     /// Espera de forma determinista hasta que todas las tareas activas hayan finalizado,
-    /// recolectando cualquier excepción no cancelada en la lista de errores.
+    /// recolectando cualquier excepción no cancelada en la lista de errores y notificando el número de tareas restantes.
     /// </summary>
-    public async Task DrainActiveTasksAsync(List<Exception> executionErrors)
+    public async Task DrainActiveTasksAsync(List<Exception> executionErrors, Action<int>? progressCallback = null)
     {
         while (true)
         {
             Task[] pending;
+            int remainingCount;
             lock (_tasksLock)
             {
                 _activeTasks.RemoveAll(t => t.IsCompleted);
-                if (_activeTasks.Count == 0) break;
+                remainingCount = _activeTasks.Count;
+                if (remainingCount == 0) break;
                 pending = [.. _activeTasks];
             }
 
+            progressCallback?.Invoke(remainingCount);
+
             try
             {
-                await Task.WhenAll(pending).ConfigureAwait(false);
+                var completed = await Task.WhenAny(pending).ConfigureAwait(false);
+                if (completed.IsFaulted && completed.Exception != null)
+                {
+                    foreach (var inner in completed.Exception.InnerExceptions)
+                    {
+                        if (inner is not OperationCanceledException)
+                        {
+                            executionErrors.Add(inner);
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {

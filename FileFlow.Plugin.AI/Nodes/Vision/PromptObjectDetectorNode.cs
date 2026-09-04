@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
@@ -18,8 +19,55 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PromptObjectDetectorNode_Name", "ImageVision", "PromptObjectDetectorNode_Desc", PipelineRole.Analyze,
     "dino", "grounding dino", "prompt", "objeto", "detectar", "texto a objeto", "vision")]
-public class PromptObjectDetectorNode : IFlowNode
+public class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public PromptObjectDetectorNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string? modelPath = AiModelManager.ResolveModelPathSync("Auto", AiTaskType.ObjectDetection);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public bool IsGpuAccelerated
+    {
+        get
+        {
+            string? modelPath = AiModelManager.ResolveModelPathSync("Auto", AiTaskType.ObjectDetection);
+            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier => AiModelManager.GetModelDisplayName("Auto", AiTaskType.ObjectDetection);
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string? modelPath = await AiModelManager.ResolveModelPathAsync("Auto", AiTaskType.ObjectDetection, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string? modelPath = AiModelManager.ResolveModelPathSync("Auto", AiTaskType.ObjectDetection);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Name", "Detector de Objetos por Prompt (Grounding DINO)");
     public string Category => "ImageVision";
@@ -115,6 +163,11 @@ public class PromptObjectDetectorNode : IFlowNode
             item.Metadata["AI:PromptObjectCount"] = detected.Count;
             item.Metadata["AI:HasPromptObjects"] = detected.Count > 0;
             item.Metadata["AI:Model"] = "yolov8-prompt-detector";
+            if (IsGpuAccelerated)
+            {
+                item.Metadata["AI:DirectMlAccelerated"] = true;
+                item.Metadata["AI:Device"] = "GPU (DirectML)";
+            }
 
             if (detected.Count > 0)
             {

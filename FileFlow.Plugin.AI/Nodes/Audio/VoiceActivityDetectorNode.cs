@@ -15,8 +15,52 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("VoiceActivityDetectorNode_Name", "AudioVoice", "VoiceActivityDetectorNode_Desc", PipelineRole.Filter,
     "vad", "silero", "voz", "silencio", "recortar silencios", "audio", "speech", "speech detection")]
-public class VoiceActivityDetectorNode : IFlowNode
+public class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public VoiceActivityDetectorNode()
+    {
+        AudioInferenceEngine.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.VoiceActivityDetection);
+            return modelPath != null && AudioInferenceEngine.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.VoiceActivityDetection);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.VoiceActivityDetection, cancellationToken: cancellationToken).ConfigureAwait(false);
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.VoiceActivityDetection);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            AudioInferenceEngine.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("VoiceActivityDetectorNode_Name", "Detector de Actividad Vocal (Silero VAD)");
     public string Category => "AudioVoice";
@@ -42,7 +86,8 @@ public class VoiceActivityDetectorNode : IFlowNode
         ["SensitivityThreshold"] = 0.5,
         ["MinSpeechDurationMs"] = 250,
         ["PaddingDurationMs"] = 200,
-        ["OutputDirectory"] = "{GlobalOutputDir}"
+        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["SkipIfExists"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
@@ -60,7 +105,9 @@ public class VoiceActivityDetectorNode : IFlowNode
         new("PaddingDurationMs", ParameterEditorType.Number, DefaultValue: 200, Min: 0, Max: 1000,
             HelpText: "Margen de seguridad en milisegundos antes y después de cada tramo de voz.", DisplayOrder: 5),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta donde se guardará el audio recortado si el modo es 'TrimSilence'.", DisplayOrder: 6)
+            HelpText: "Carpeta donde se guardará el audio recortado si el modo es 'TrimSilence'.", DisplayOrder: 6),
+        new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
+            HelpText: "Si el archivo resultante ya existe en destino, omite el procesamiento y reutiliza el archivo.", DisplayOrder: 7)
     ];
 
     private static readonly HashSet<string> _supportedAudioExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -95,6 +142,45 @@ public class VoiceActivityDetectorNode : IFlowNode
             int minSpeechMs = Parameters.TryGetValue("MinSpeechDurationMs", out var msmVal) ? ParameterHelper.GetInt32(msmVal, 250) : 250;
             int paddingMs = Parameters.TryGetValue("PaddingDurationMs", out var pdVal) ? ParameterHelper.GetInt32(pdVal, 200) : 200;
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+
+            string? trimmedWavPath = null;
+            if (string.Equals(mode, "TrimSilence", StringComparison.OrdinalIgnoreCase))
+            {
+                string targetDir;
+                if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
+                    {
+                        targetDir = godVal.ToString()!;
+                    }
+                    else
+                    {
+                        targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+                    }
+                }
+                else
+                {
+                    targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
+                }
+
+                Directory.CreateDirectory(targetDir);
+                trimmedWavPath = Path.Combine(targetDir, $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_trimmed.wav");
+
+                if (skipIfExists && File.Exists(trimmedWavPath))
+                {
+                    context.Log($"[SileroVAD] ⏭️ El archivo de salida ya existe ('{Path.GetFileName(trimmedWavPath)}'). Omitiendo inferencia.", LogLevel.Information, item);
+                    var trimmedItem = item.DeepClone();
+                    trimmedItem.CurrentPath = trimmedWavPath;
+                    trimmedItem.PhysicalPath = trimmedWavPath;
+                    trimmedItem.FileSizeBytes = new FileInfo(trimmedWavPath).Length;
+                    trimmedItem.Metadata["AI:VoiceDetected"] = true;
+                    trimmedItem.Metadata["AI:SilenceTrimmed"] = true;
+                    await context.EmitAsync("Speech", trimmedItem).ConfigureAwait(false);
+                    await context.EmitAsync("Out", trimmedItem).ConfigureAwait(false);
+                    return;
+                }
+            }
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
@@ -104,17 +190,6 @@ public class VoiceActivityDetectorNode : IFlowNode
                 cancellationToken).ConfigureAwait(false);
 
             context.Log($"[SileroVAD] 🎙️ Analizando actividad vocal en '{item.FileName}'...", LogLevel.Information, item);
-
-            string? trimmedWavPath = null;
-            if (string.Equals(mode, "TrimSilence", StringComparison.OrdinalIgnoreCase))
-            {
-                string targetDir = ParameterHelper.ResolveOutputPath(
-                    string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
-                    item);
-
-                Directory.CreateDirectory(targetDir);
-                trimmedWavPath = Path.Combine(targetDir, $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_trimmed.wav");
-            }
 
             var analysis = await AudioInferenceEngine.DetectVoiceActivityAsync(
                 modelPath,

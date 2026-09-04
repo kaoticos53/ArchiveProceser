@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -16,8 +17,56 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("LocalAiTranslatorNode_Name", "LanguageAI", "LocalAiTranslatorNode_Desc", PipelineRole.Transform,
     "traducir", "traduccion", "idiomas", "marian", "nllb", "ingles", "español", "translator")]
-public class LocalAiTranslatorNode : IFlowNode
+public class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public LocalAiTranslatorNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextTranslation);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.TextTranslation);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.TextTranslation, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextTranslation);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LocalAiTranslatorNode_Name", "Traductor Neuronal Local (NLLB-200 / MarianMT)");
     public string Category => "LanguageAI";

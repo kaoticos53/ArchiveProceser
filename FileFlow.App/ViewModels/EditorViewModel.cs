@@ -206,11 +206,20 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    private int _maxZIndex = 0;
+
+    public void BringToFront(NodeViewModel node)
+    {
+        if (node == null) return;
+        node.ZIndex = ++_maxZIndex;
+    }
+
     private void OnNodePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (sender is NodeViewModel nodeVm && e.PropertyName == nameof(NodeViewModel.IsSelected) && nodeVm.IsSelected)
         {
             SelectedNode = nodeVm;
+            BringToFront(nodeVm);
         }
     }
 

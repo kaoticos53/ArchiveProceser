@@ -130,5 +130,40 @@ public class EditorViewModelTests
         heightParam.Should().NotBeNull();
         heightParam!.Value.Should().Be("100%");
     }
+
+    [Fact]
+    public void NodeViewModel_SelectionAndBringToFront_IncrementsZIndex()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        var editor = new EditorViewModel(loader);
+
+        var node1 = new NodeViewModel(new FolderSourceNode(), new Point(0, 0)) { ParentEditor = editor };
+        var node2 = new NodeViewModel(new DestinationSinkNode(), new Point(100, 100)) { ParentEditor = editor };
+
+        editor.Nodes.Add(node1);
+        editor.Nodes.Add(node2);
+
+        // Initial ZIndex
+        node1.ZIndex.Should().Be(0);
+        node2.ZIndex.Should().Be(0);
+
+        // Act 1: Select node 1
+        node1.IsSelected = true;
+
+        // Assert 1: node1 should have higher ZIndex
+        node1.ZIndex.Should().BeGreaterThan(0);
+        node1.ZIndex.Should().BeGreaterThan(node2.ZIndex);
+
+        // Act 2: Select node 2
+        node2.IsSelected = true;
+
+        // Assert 2: node2 should now have higher ZIndex than node1
+        node2.ZIndex.Should().BeGreaterThan(node1.ZIndex);
+
+        // Act 3: Explicit BringToFront on node 1
+        editor.BringToFront(node1);
+        node1.ZIndex.Should().BeGreaterThan(node2.ZIndex);
+    }
 }
 

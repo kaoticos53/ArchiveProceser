@@ -177,7 +177,7 @@ public static class AiModelManager
     public static async Task<string?> ResolveModelPathAsync(
         string? modelSelection,
         AiTaskType taskType,
-        IFlowExecutionContext context,
+        IFlowExecutionContext? context = null,
         FileItemContext? item = null,
         CancellationToken cancellationToken = default)
     {
@@ -188,7 +188,7 @@ public static class AiModelManager
         {
             var optimalModel = HardwareCapabilityDetector.GetOptimalModelForTask(taskType);
             targetModelId = optimalModel.Id;
-            context.Log($"[AiModelManager] ⚡ Modo Automático: seleccionado '{optimalModel.FriendlyName}' basado en el hardware del equipo ({HardwareCapabilityDetector.Specs.HardwareTier}, RAM: {HardwareCapabilityDetector.Specs.TotalRamGb:F1} GB, GPU DirectML: {HardwareCapabilityDetector.Specs.HasDirectMlGpu}).", LogLevel.Debug, item);
+            context?.Log($"[AiModelManager] ⚡ Modo Automático: seleccionado '{optimalModel.FriendlyName}' basado en el hardware del equipo ({HardwareCapabilityDetector.Specs.HardwareTier}, RAM: {HardwareCapabilityDetector.Specs.TotalRamGb:F1} GB, GPU DirectML: {HardwareCapabilityDetector.Specs.HasDirectMlGpu}).", LogLevel.Debug, item);
         }
         else
         {
@@ -197,6 +197,47 @@ public static class AiModelManager
 
         // Caso 2: Modelo del catálogo oficial (se asegura su descarga y existencia)
         return await EnsureModelAsync(targetModelId, context, item, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Resuelve de forma síncrona la ruta del archivo del modelo si ya se encuentra descargado en disco.
+    /// </summary>
+    public static string? ResolveModelPathSync(string? modelSelection, AiTaskType taskType)
+    {
+        string targetModelId;
+        if (string.IsNullOrWhiteSpace(modelSelection) || string.Equals(modelSelection, "Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var optimalModel = HardwareCapabilityDetector.GetOptimalModelForTask(taskType);
+            targetModelId = optimalModel.Id;
+        }
+        else
+        {
+            targetModelId = modelSelection.Trim();
+        }
+
+        if (Catalog.TryGetValue(targetModelId, out var info))
+        {
+            string path = GetModelPath(info.FileName);
+            if (File.Exists(path)) return path;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Obtiene el nombre amigable de visualización del modelo según la selección actual del usuario.
+    /// </summary>
+    public static string GetModelDisplayName(string? modelSelection, AiTaskType taskType)
+    {
+        if (string.IsNullOrWhiteSpace(modelSelection) || string.Equals(modelSelection, "Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var optimal = HardwareCapabilityDetector.GetOptimalModelForTask(taskType);
+            return $"{optimal.FriendlyName} (Auto)";
+        }
+        if (Catalog.TryGetValue(modelSelection.Trim(), out var info))
+        {
+            return info.FriendlyName;
+        }
+        return modelSelection;
     }
 
     #endregion

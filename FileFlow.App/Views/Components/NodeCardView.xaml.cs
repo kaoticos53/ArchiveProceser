@@ -20,6 +20,14 @@ public partial class NodeCardView : UserControl
         }
     }
 
+    private void UserControl_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DataContext is NodeViewModel node)
+        {
+            node.ParentEditor?.BringToFront(node);
+        }
+    }
+
     private void Node_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (DataContext is NodeViewModel node)

@@ -1,4 +1,5 @@
 using System.IO;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using SixLabors.ImageSharp;
@@ -9,8 +10,66 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("SmartImageClassifierNode_Name", "ImageVision", "SmartImageClassifierNode_Desc", PipelineRole.Analyze,
     "clasificar", "imagen", "foto", "vision", "ia", "mobilenet", "etiquetas", "classifier")]
-public class SmartImageClassifierNode : IFlowNode
+public class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public SmartImageClassifierNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ImageClassification);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public bool IsGpuAccelerated
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ImageClassification);
+            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.ImageClassification);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.ImageClassification, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ImageClassification);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Name", "Clasificador Visual de Fotos (IA)");
     public string Category => "ImageVision";
@@ -100,6 +159,11 @@ public class SmartImageClassifierNode : IFlowNode
             item.Metadata["AI:TopLabel"] = label;
             item.Metadata["AI:Confidence"] = Math.Round(confidence, 4);
             item.Metadata["AI:Model"] = "mobilenetv2-7";
+            if (IsGpuAccelerated)
+            {
+                item.Metadata["AI:DirectMlAccelerated"] = true;
+                item.Metadata["AI:Device"] = "GPU (DirectML)";
+            }
 
             context.Log($"[ImageClassifier] ✅ Clasificación: '{category}' ({label}) — confianza: {confidence * 100:F1}%", LogLevel.Information, item);
 

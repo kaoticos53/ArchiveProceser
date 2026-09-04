@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -14,8 +16,46 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PromptTransformerNode_Name", "LanguageAI", "PromptTransformerNode_Desc", PipelineRole.Transform,
     "prompt", "enriquecer", "estilo", "transformar prompt", "asistente", "ia", "plantilla")]
-public class PromptTransformerNode : IFlowNode
+public class PromptTransformerNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public PromptTransformerNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string? modelPath = AiModelManager.ResolveModelPathSync("marian-es-en", AiTaskType.TextTranslation);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier => AiModelManager.GetModelDisplayName("marian-es-en", AiTaskType.TextTranslation);
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string? modelPath = await AiModelManager.ResolveModelPathAsync("marian-es-en", AiTaskType.TextTranslation, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string? modelPath = AiModelManager.ResolveModelPathSync("marian-es-en", AiTaskType.TextTranslation);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PromptTransformerNode_Name", "Transformador Dinámico de Prompts");
     public string Category => "LanguageAI";

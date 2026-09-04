@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -17,8 +18,66 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("ContentModerationFilterNode_Name", "Security", "ContentModerationFilterNode_Desc", PipelineRole.Filter,
     "moderacion", "nsfw", "sensible", "inapropiado", "seguridad", "filtro", "opennsfw")]
-public class ContentModerationFilterNode : IFlowNode
+public class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public ContentModerationFilterNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ContentModeration);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public bool IsGpuAccelerated
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ContentModeration);
+            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.ContentModeration);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.ContentModeration, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ContentModeration);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ContentModerationFilterNode_Name", "Filtro de Moderación IA");
     public string Description => LocalizationManager.Instance.GetString("ContentModerationFilterNode_Desc", "Evalúa contenido sensible con OpenNSFW2 y bifurca el flujo en puertos Seguro y Sensible.");
@@ -109,6 +168,11 @@ public class ContentModerationFilterNode : IFlowNode
             item.Metadata["AI:NsfwScore"] = nsfwScore;
             item.Metadata["AI:IsSensitiveContent"] = isSensitive;
             item.Metadata["AI:ModerationModel"] = Path.GetFileNameWithoutExtension(modelPath);
+            if (IsGpuAccelerated)
+            {
+                item.Metadata["AI:DirectMlAccelerated"] = true;
+                item.Metadata["AI:Device"] = "GPU (DirectML)";
+            }
 
             if (isSensitive)
             {

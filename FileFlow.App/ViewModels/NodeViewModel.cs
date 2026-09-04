@@ -40,8 +40,15 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private int _zIndex = 0;
+
     partial void OnIsSelectedChanged(bool value)
     {
+        if (value && ParentEditor != null)
+        {
+            ParentEditor.BringToFront(this);
+        }
     }
 
     [RelayCommand]
@@ -97,6 +104,18 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     private string _latencyText = string.Empty;
 
     [ObservableProperty]
+    private string _rollingRamText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isGpuAccelerated;
+
+    [ObservableProperty]
+    private string _detailedMetricsToolTip = string.Empty;
+
+    [ObservableProperty]
+    private FileFlow.Sdk.Telemetry.NodeTelemetryStats _currentStats;
+
+    [ObservableProperty]
     private bool _isBottleneck;
 
     [ObservableProperty]
@@ -105,29 +124,201 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _bottleneckRatioText = string.Empty;
 
+    // AI Model Lifecycle Support
+    public bool IsModelManaged => _nodeInstance is IModelLifecycleNode;
+
+    [ObservableProperty]
+    private bool _isModelLoaded;
+
+    [ObservableProperty]
+    private bool _isModelLoading;
+
+    [ObservableProperty]
+    private string? _modelIdentifier;
+
+    [ObservableProperty]
+    private string _modelStatusToolTip = string.Empty;
+
+    [RelayCommand]
+    public async Task ToggleModelLoadAsync()
+    {
+        if (_nodeInstance is not IModelLifecycleNode lifecycleNode || IsModelLoading) return;
+
+        if (lifecycleNode.IsModelLoaded)
+        {
+            lifecycleNode.UnloadModel();
+            FileFlow.Core.Utils.MemoryReclamationHelper.ReclaimMemory(trimWorkingSet: true);
+            UpdateModelStatus();
+        }
+        else
+        {
+            try
+            {
+                IsModelLoading = true;
+                ModelStatusToolTip = LocalizationManager.Instance.GetString("Node_ModelLoading_ToolTip", "Cargando modelo de IA...");
+                await lifecycleNode.PreloadModelAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NodeViewModel] Error preloading model: {ex.Message}");
+            }
+            finally
+            {
+                IsModelLoading = false;
+                UpdateModelStatus();
+            }
+        }
+    }
+
+    public void UnloadModel()
+    {
+        if (_nodeInstance is IModelLifecycleNode lifecycleNode && lifecycleNode.IsModelLoaded)
+        {
+            lifecycleNode.UnloadModel();
+            UpdateModelStatus();
+        }
+    }
+
+    private void OnModelStatusChanged()
+    {
+        UpdateModelStatus();
+    }
+
+    public void UpdateModelStatus()
+    {
+        if (_nodeInstance is not IModelLifecycleNode lifecycleNode) return;
+
+        var dispatcher = Application.Current?.Dispatcher;
+        void Action()
+        {
+            IsModelLoaded = lifecycleNode.IsModelLoaded;
+            ModelIdentifier = lifecycleNode.ModelIdentifier;
+            ModelStatusToolTip = IsModelLoaded
+                ? LocalizationManager.Instance.GetString("Node_ModelLoaded_ToolTip", "El modelo de IA está cargado en memoria (RAM/VRAM). Haz clic para descargarlo y liberar memoria.")
+                : LocalizationManager.Instance.GetString("Node_ModelUnloaded_ToolTip", "El modelo de IA no está cargado en memoria. Haz clic para precargarlo en memoria.");
+        }
+
+        if (dispatcher == null || dispatcher.CheckAccess())
+        {
+            Action();
+        }
+        else
+        {
+            dispatcher.InvokeAsync(Action);
+        }
+    }
+
     public void UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
     {
+        CurrentStats = stats;
         if (stats.ProcessedCount > 0)
         {
-            LatencyText = stats.AverageTimeMs < 1.0
-                ? $"⚡ {stats.AverageTimeMs * 1000:F0} µs"
-                : (stats.AverageTimeMs < 1000.0
-                    ? $"⚡ {stats.AverageTimeMs:F1} ms"
-                    : $"⏱️ {stats.AverageTimeMs / 1000.0:F2} s");
+            var effLatency = stats.RollingAvgDurationMs > 0 ? stats.RollingAvgDurationMs : stats.AverageTimeMs;
+            LatencyText = effLatency < 1.0
+                ? $"⚡ {effLatency * 1000:F0} µs"
+                : (effLatency < 1000.0
+                    ? $"⚡ {effLatency:F1} ms"
+                    : $"⏱️ {effLatency / 1000.0:F2} s");
 
+            if (stats.RollingAvgAllocatedBytes >= 1024 * 1024)
+            {
+                RollingRamText = $"💾 {stats.RollingAvgAllocatedBytes / (1024.0 * 1024.0):F1} MB";
+            }
+            else if (stats.RollingAvgAllocatedBytes >= 1024)
+            {
+                RollingRamText = $"💾 {stats.RollingAvgAllocatedBytes / 1024.0:F0} KB";
+            }
+            else if (stats.RollingAvgAllocatedBytes > 0)
+            {
+                RollingRamText = $"💾 {stats.RollingAvgAllocatedBytes} B";
+            }
+            else
+            {
+                RollingRamText = string.Empty;
+            }
+
+            IsGpuAccelerated = stats.IsGpuAccelerated;
             IsBottleneck = stats.IsBottleneck;
             HeatLevel = stats.HeatLevel;
             BottleneckRatioText = stats.RelativeBottleneckRatio > 0.05
                 ? $"{stats.RelativeBottleneckRatio * 100:F0}% del tiempo"
                 : string.Empty;
+
+            DetailedMetricsToolTip = BuildDetailedMetricsToolTip(stats);
         }
         else
         {
             LatencyText = string.Empty;
+            RollingRamText = string.Empty;
+            IsGpuAccelerated = false;
             IsBottleneck = false;
             HeatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
             BottleneckRatioText = string.Empty;
+            DetailedMetricsToolTip = string.Empty;
         }
+    }
+
+    private string BuildDetailedMetricsToolTip(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"📊 {Title} ({Category})");
+        sb.AppendLine($"──────────────────────────────");
+        sb.AppendLine($"Procesados: {stats.ProcessedCount} items");
+        sb.AppendLine($"Latencia media total: {FormatLatencyHelper(stats.AverageTimeMs)}");
+        if (stats.RollingAvgDurationMs > 0)
+        {
+            sb.AppendLine($"Latencia rodante (últimas 8 ops): {FormatLatencyHelper(stats.RollingAvgDurationMs)}");
+        }
+        if (stats.RecentSamples != null && stats.RecentSamples.Count > 0)
+        {
+            var min = stats.RecentSamples.Min(s => s.DurationMs);
+            var max = stats.RecentSamples.Max(s => s.DurationMs);
+            sb.AppendLine($"Rango latencia reciente: Min {FormatLatencyHelper(min)} | Max {FormatLatencyHelper(max)}");
+        }
+        
+        if (stats.RollingAvgAllocatedBytes > 0 || stats.PeakAllocatedBytes > 0)
+        {
+            sb.AppendLine($"RAM media por item: {FormatBytesHelper(stats.RollingAvgAllocatedBytes)} (Pico: {FormatBytesHelper(stats.PeakAllocatedBytes)})");
+        }
+        if (stats.AvgCpuPercentage > 0)
+        {
+            sb.AppendLine($"Carga CPU estimada: {stats.AvgCpuPercentage:F1}%");
+        }
+        if (stats.IsGpuAccelerated)
+        {
+            sb.AppendLine($"Aceleración por Hardware: GPU / DirectML 🎮");
+        }
+        if (stats.IsBottleneck)
+        {
+            sb.AppendLine($"⚠️ Cuello de botella detectado: {stats.RelativeBottleneckRatio * 100:F0}% del tiempo total");
+        }
+        if (stats.RecentSamples != null && stats.RecentSamples.Count > 0)
+        {
+            sb.AppendLine($"──────────────────────────────");
+            sb.AppendLine($"Historial reciente ({stats.RecentSamples.Count} ops):");
+            for (int i = 0; i < stats.RecentSamples.Count; i++)
+            {
+                var sample = stats.RecentSamples[i];
+                var gpuTag = sample.GpuAccelerated ? " [GPU]" : "";
+                sb.AppendLine($"  #{i + 1}: {FormatLatencyHelper(sample.DurationMs)} | {FormatBytesHelper(sample.AllocatedBytes)}{gpuTag} ({sample.Timestamp:HH:mm:ss})");
+            }
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    private static string FormatLatencyHelper(double ms)
+    {
+        if (ms < 1.0) return $"{ms * 1000:F0} µs";
+        if (ms < 1000.0) return $"{ms:F1} ms";
+        return $"{ms / 1000.0:F2} s";
+    }
+
+    private static string FormatBytesHelper(long bytes)
+    {
+        if (bytes >= 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        if (bytes >= 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        if (bytes >= 1024) return $"{bytes / 1024.0:F0} KB";
+        return $"{bytes} B";
     }
 
     partial void OnExecutionStatusChanged(NodeExecutionStatus value)
@@ -139,9 +330,12 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             ProgressPercentage = 0;
             ProgressMessage = string.Empty;
             LatencyText = string.Empty;
+            RollingRamText = string.Empty;
+            IsGpuAccelerated = false;
             IsBottleneck = false;
             HeatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
             BottleneckRatioText = string.Empty;
+            DetailedMetricsToolTip = string.Empty;
         }
         else if (value == NodeExecutionStatus.Completed)
         {
@@ -215,6 +409,12 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         foreach (var action in node.CustomActions)
         {
             CustomActions.Add(new NodeActionViewModel(action, this));
+        }
+
+        if (node is IModelLifecycleNode lifecycleNode)
+        {
+            lifecycleNode.ModelStatusChanged += OnModelStatusChanged;
+            UpdateModelStatus();
         }
 
         LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
@@ -304,11 +504,16 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         Title = _nodeInstance.Name;
         Description = _nodeInstance.Description;
         Category = _nodeInstance.Category;
+        UpdateModelStatus();
     }
 
     public void Cleanup()
     {
         LocalizationManager.Instance.LanguageChanged -= OnLanguageChanged;
+        if (_nodeInstance is IModelLifecycleNode lifecycleNode)
+        {
+            lifecycleNode.ModelStatusChanged -= OnModelStatusChanged;
+        }
         _parameterManager.Dispose();
         InputSnapshots.Clear();
         OutputSnapshots.Clear();

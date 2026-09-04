@@ -110,4 +110,6 @@
   <data name="Param_SearchQuery" xml:space="preserve"><value>Consulta de Búsqueda</value></data>
   <data name="Param_CandidateLabels" xml:space="preserve"><value>Categorías Candidatas</value></data>
   <data name="Param_TopK" xml:space="preserve"><value>Mejores Resultados (Top K)</value></data>
+  <data name="Param_SkipIfExists" xml:space="preserve"><value>Omitir si ya existe</value></data>
+  <data name="Param_SkipIfExists_Desc" xml:space="preserve"><value>Si el archivo de salida ya existe en la carpeta de destino, omite la inferencia neural pesada y reutiliza el archivo existente.</value></data>
 </root>

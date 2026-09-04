@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
+using FileFlow.Core.Engine;
 using FileFlow.Sdk.Localization;
 using Microsoft.Win32;
 
@@ -40,6 +41,8 @@ public partial class WorkflowSettingsWindow : Window
         TxtMaxThreads.Text = prefs.MaxParallelThreads.ToString();
         ChkDefaultDryRun.IsChecked = prefs.DefaultDryRunState;
         SelectComboBoxByTag(CmbDefaultLogLevel, prefs.DefaultLogLevel);
+        ChkEnableCheckpointing.IsChecked = prefs.EnableCheckpointing;
+        ChkAutoUnloadAiModels.IsChecked = prefs.AutoUnloadAiModelsOnCompletion;
 
         // Tab 4: External Tools
         var tools = ExternalToolsService.Instance.Config;
@@ -198,6 +201,8 @@ public partial class WorkflowSettingsWindow : Window
             }
             prefs.DefaultDryRunState = ChkDefaultDryRun.IsChecked == true;
             prefs.DefaultLogLevel = (CmbDefaultLogLevel.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Information";
+            prefs.EnableCheckpointing = ChkEnableCheckpointing.IsChecked == true;
+            prefs.AutoUnloadAiModelsOnCompletion = ChkAutoUnloadAiModels.IsChecked == true;
         });
 
         // 2. Save External Tools Config
@@ -216,6 +221,16 @@ public partial class WorkflowSettingsWindow : Window
 
         DialogResult = true;
         Close();
+    }
+
+    private void ClearCheckpoints_Click(object sender, RoutedEventArgs e)
+    {
+        int deleted = WorkflowCheckpointManager.Instance.ClearAllCheckpoints();
+        string title = LocalizationManager.Instance.GetString("Settings_CheckpointingTitle", "Puntos de Control");
+        string msg = string.Format(
+            LocalizationManager.Instance.GetString("Settings_CheckpointsClearedMsg", "Se han eliminado {0} punto(s) de control almacenados en disco."),
+            deleted);
+        MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void OpenThemeCustomizer_Click(object sender, RoutedEventArgs e)

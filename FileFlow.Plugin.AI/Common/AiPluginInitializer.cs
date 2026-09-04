@@ -52,5 +52,10 @@ public class AiPluginInitializer : IPluginInitializer
         AudioInferenceEngine.ClearSessionCache();
         SemanticEmbeddingEngine.ClearSessionCache();
         LanguageInferenceEngine.ClearSessionCache();
+        try
+        {
+            SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
+        }
+        catch { }
     }
 }

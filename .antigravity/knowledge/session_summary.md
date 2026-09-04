@@ -8,8 +8,66 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **480 / 480 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **498 / 498 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --21. **Telemetría Reactiva de Drenaje de Cola de Tareas y Progreso en Vivo de Inferencia Final**:
+      - **Problema**: Al finalizar la emisión de archivos desde el nodo de origen, el flujo parecía "congelado" durante los últimos 20-30 segundos mientras los últimos elementos de la cola se procesaban secuencialmente a través de los nodos de inferencia de IA sin actualizar la interfaz de usuario.
+      - **Solución**:
+        1. **`WorkflowTaskTracker.cs`**: `DrainActiveTasksAsync` ahora utiliza `Task.WhenAny(pending)` y recibe un `progressCallback(remaining)` que notifica de forma reactiva cada vez que cualquier tarea individual finaliza en la cola.
+        2. **`WorkflowExecutor.cs`**: Enlaza el callback de tareas restantes con `NotifyProgress` para reflejar en vivo el número de elementos restantes en la cola (`⚡ Finalizando cola de tareas: N restante(s)`).
+        3. **`WorkflowItemDispatcher.cs`**: Notifica el estado dinámico y nombre del archivo activo en el momento en que cualquier nodo intermedio comienza a procesarlo (`⚡ [Nombre Nodo]: [Nombre Archivo]`).
+      - **Validación**: 498 / 498 pruebas unitarias e integración superadas al 100%.
+  --20. **Corrección de Detección de GPU (DirectML) en Telemetría y Sincronización Reactiva de Modelos IA en Barra de Estado**:
+      - **Problema**: A pesar de que los logs del nodo eliminador de fondos (`BackgroundRemoverNode`) indicaban el uso de DirectML en GPU, el badge `[🎮 GPU]` no aparecía en las tarjetas ni en las estadísticas del dashboard. Además, el contador de modelos de IA cargados (`[🟢 N cargados]`) no se sincronizaba reactivamente en la barra de estado inferior.
+      - **Solución**:
+        1. **Contrato `IModelLifecycleNode` en SDK**: Añadida la propiedad `bool IsGpuAccelerated => false;`.
+        2. **Nodos de IA (`FileFlow.Plugin.AI`)**: Implementada `IsGpuAccelerated` en `AiFlowNodeBase`, `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ObjectDetectorNode`, `SmartImageClassifierNode`, `PromptObjectDetectorNode` y `ContentModerationFilterNode`. Inyección explícita de `AI:DirectMlAccelerated = true` y `AI:Device = "GPU (DirectML)"` en los metadatos de los ítems de salida.
+        3. **Despachador del Motor (`WorkflowItemDispatcher.cs`)**: La detección de GPU ahora verifica metadatos del ítem e inspecciona directamente `lifecycleNode.IsGpuAccelerated`.
+        4. **Barra de Estado (`StatusBarViewModel.cs`)**: Suscripción reactiva a la colección de nodos del canvas y a `NodeViewModel.PropertyChanged` para `IsModelLoaded`, calculando el total de forma precisa entre sesiones ONNX y nodos activos en canvas, con comando de descarga limpia `ClearAllAiModels`.
+        5. **Toolbox (`ToolboxViewModel.cs`)**: Corregida la asignación de propiedad `SelectedCategoryFilter` en `OnSelectedCategoryItemChanged`.
+      - **Validación**: 498 / 498 pruebas unitarias e integración superadas al 100%.
+  --19. **Sistema Integral de Métricas, Profiling y Telemetría Granular por Nodo (Ventana Rodante N=8, Micro-HUD, Inspector y Dashboard Centralizado)**:
+      - **Objetivo**: Sistema completo de métricas y perfilado midiendo Latencia real, Asignación de RAM por ítem, CPU (%) y Aceleración GPU en una ventana rodante de 8 operaciones con ultra-bajo overhead (< 0.05%), badges en tarjetas de nodos, pestaña en el Inspector y Dashboard modal centralizado.
+      - **Solución**:
+        1. **SDK (`NodeExecutionSample` & `NodeTelemetryStats`)**: `NodeExecutionSample` como `readonly record struct` sin heap allocation. `NodeTelemetryStats` extendido con `RollingAvgDurationMs`, `RollingAvgAllocatedBytes`, `PeakAllocatedBytes`, `AvgCpuPercentage`, `IsGpuAccelerated` y `RecentSamples`.
+        2. **Core (`RollingNodeMetricsTracker` & `WorkflowTelemetryTracker`)**: Búfer circular concurrente de tamaño fijo $N=8$, cálculo $O(1)$ de medias móviles y picos, orden cronológico garantizado. Instrumentación de `GC.GetAllocatedBytesForCurrentThread()` y `Stopwatch.GetTimestamp()` en `WorkflowItemDispatcher`.
+        3. **Micro-HUD en Tarjetas (`NodeCardView.xaml` / `NodeViewModel.cs`)**: Badges `[⚡ ms]` (con código de calor), `[💾 RAM]` y `[🎮 GPU]` con tooltip enriquecido detallando el desglose de las 8 operaciones.
+        4. **Inspector Lateral (`NodeInspectorPanelView.xaml`)**: Nueva pestaña `[📊 Rendimiento]` con 4 tarjetas KPI, lista de muestras recientes y botón de restablecimiento.
+        5. **Dashboard Centralizado (`WorkflowMetricsDashboardWindow.xaml` / `WorkflowMetricsDashboardViewModel.cs`)**: Modal independiente con 6 KPIs globales, gráficos vectoriales de distribución de tiempo y RAM, tabla DataGrid sortable y exportación CSV/JSON.
+        6. **Drawer (`MainWindow.xaml`)**: Entrada directa `📊 Métricas y Rendimiento`.
+      - **Validación**: 498 / 498 pruebas unitarias e integración superadas al 100% (5 nuevos tests en `RollingNodeMetricsTrackerTests.cs`).
+  --18. **Optimización Integral de Memoria RAM/VRAM, Purga de Pools y Recorte de Working Set en Flujos de IA**:
+      - **Problema**: Al ejecutar flujos de visión/IA sobre múltiples fotos de alta resolución, la memoria alcanzaba hasta 4 GB y no se devolvía a Windows incluso descargando el modelo debido a: 1) retención de páginas en el Working Set de .NET GC, 2) buffers retenidos en el pool de `ImageSharp`, 3) asignaciones redundantes en Large Object Heap (`byte[] maskBytes` de 24 MB y `outTensor.ToArray()`).
+      - **Solución**:
+        1. **`MemoryReclamationHelper` (`FileFlow.Core/Utils/MemoryReclamationHelper.cs`)**: Ejecuta purga en 3 fases: invocación de callbacks registrados (purga de ImageSharp `ReleaseRetainedResources()`), recolección forzada de Generación 2 con compactación agresiva del LOH (`GCCollectionMode.Aggressive`), y recorte nativo de Working Set del proceso vía Win32 `SetProcessWorkingSetSize(Handle, -1, -1)`.
+        2. **Optimización en Adaptadores de Inferencia (`FileFlow.Plugin.AI`)**: Eliminada la asignación de arreglos en LOH en `BackgroundRemoverAdapters.cs` procesando píxeles directamente mediante `finalMask.ProcessPixelRows(result, ...)`. En `SuperResolutionAdapters.cs`, eliminada la copia masiva `outTensor.ToArray()` leyendo directo de `Memory<float>`.
+        3. **Integración en Ciclo de Vida (`WorkflowExecutionCoordinator.cs`)**: En el bloque `finally` de `RunAsync`, siempre se invoca `MemoryReclamationHelper.ReclaimMemory(trimWorkingSet: true)` al concluir cualquier flujo (normal, cancelado o fallido).
+        4. **Barra de Estado y Tarjetas**: En `ClearAllAiModelsCommand` y al descargar desde el LED `[🟢 AI]`, se invoca la purga y el recorte de memoria. Se retiró el botón redundante de zoom `[🔍 100%]` de la barra de estado para recuperar espacio y mantener la interfaz limpia.
+      - **Validación**: 493 / 493 pruebas unitarias e integración superadas al 100% (3 nuevos tests en `MemoryReclamationTests.cs`).
+  --17. **Gestión de Memoria y Ciclo de Vida de Modelos de IA (Carga/Descarga Interactiva & Liberación de VRAM/RAM)**:
+      - **Objetivo**: Permitir al usuario visualizar el estado de carga en RAM/VRAM de los modelos de IA en cada tarjeta de nodo del canvas, precargarlos o descargarlos bajo demanda con un clic, liberar toda la memoria global de IA desde la barra de estado y opcionalmente descargar los modelos de forma automática al terminar la ejecución del pipeline.
+      - **Solución**:
+        1. **SDK (`IModelLifecycleNode.cs`)**: Interfaz desacoplada con `IsModelLoaded`, `ModelIdentifier`, `PreloadModelAsync`, `UnloadModel` y evento `ModelStatusChanged`.
+        2. **Plugin AI**: Métodos de inspección y descarga en `OnnxSessionManager` y `AudioInferenceEngine`, soporte en `AiModelManager` y contrato `IModelLifecycleNode` en todos los nodos de IA.
+        3. **Tarjetas de Nodos (`NodeCardView.xaml` / `NodeViewModel.cs`)**: Micro-LED interactivo `[🟢/⚪ AI]` con tooltip informativo y comando `ToggleModelLoadCommand`.
+        4. **Barra de Estado (`StatusBarView.xaml` / `StatusBarViewModel.cs`)**: Indicador de modelos activos `[🟢 N activos]` y botón `[🧹 Liberar Memoria IA]` vinculado a `ClearAllAiModelsCommand`.
+        5. **Ajustes y Coordinador**: Opción `AutoUnloadAiModelsOnCompletion` en Preferencias/Ajustes de Rendimiento y liberación automática en `finally` de `WorkflowExecutionCoordinator`.
+      - **Validación**: 490 / 490 pruebas unitarias e integración superadas al 100% (6 nuevos tests en `ModelLifecycleAndMemoryTests.cs`).
+  --16. **Prioridad de Primer Plano (Z-Index / BringToFront) en Nodos del Canvas**:
+      - **Problema**: Al manipular o seleccionar nodos en el editor visual, algunos nodos seleccionados quedaban por detrás de otros nodos no seleccionados debido al orden de pintado por índice en la colección `Nodes`.
+      - **Solución**:
+        1. En `EditorView.xaml` (`ItemContainerStyle`), se enlazó `Panel.ZIndex` a `NodeViewModel.ZIndex` y se agregó un `Trigger` sobre `IsSelected == True` que asigna `Panel.ZIndex = 10000`.
+        2. En `NodeViewModel` y `EditorViewModel`, se implementó el método `BringToFront(node)` con contador incremental para preservar la jerarquía relativa de capas.
+        3. En `NodeCardView.xaml` / `.xaml.cs`, se añadió `PreviewMouseDown` para traer al frente el nodo inmediatamente al hacer clic en cualquier parte de su tarjeta.
+      - **Validación**: 484 / 484 pruebas unitarias e integración superadas al 100%.
+  --15. **Gestión de Checkpoints (Reanudación / Reinicio Limpio) y Parámetro `SkipIfExists` en Nodos de IA**:
+      - **Problema**: Tras ejecuciones previas de un flujo, archivos `.checkpoint.json` residuales en disco causaban mensajes `[Checkpoint] Omitiendo archivo completado previamente` y saltaban archivos sin confirmación del usuario. Además, en flujos con múltiples ramas (ej. `Out` y `Mask` de `BackgroundRemoverNode`), cuando una rama terminaba, registraba el archivo en el checkpoint y la otra rama activa era abortada espuriamente por `WorkflowItemDispatcher`.
+      - **Solución**:
+        1. **Corrección de Ámbito en Despachador (`WorkflowItemDispatcher.cs`)**: La comprobación de `IsFileAlreadyCompleted` se restringió exclusivamente a los nodos de origen/inicio (`startNodeIds.Contains(sourceNodeId)`). Los nodos intermedios y ramas paralelas nunca se omiten en mitad de un flujo activo.
+        2. **Diálogo Interactivo al Ejecutar**: Al pulsar Run con un checkpoint pendiente, `ControlBarViewModel` consulta al usuario si desea **Reanudar** (Sí), **Reiniciar desde cero borrando el checkpoint** (No) o **Cancelar**.
+        3. **Control Global y Vaciado Manual**: En **⚙️ Ajustes** (*Rendimiento & Ejecución*), se añadió el interruptor para activar/desactivar Checkpointing y el botón *Vaciar Checkpoints* con confirmación y telemetría de archivos eliminados (`WorkflowCheckpointManager.ClearAllCheckpoints()`).
+        4. **Parámetro `SkipIfExists` en Nodos de IA**: Añadido parámetro booleano (`Toggle`) en `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `VoiceActivityDetectorNode`, `TextToSpeechNode` y `PiiAnonymizerNode` para reutilizar archivos existentes en destino y emitirlos instantáneamente sin inferencia neural.
+      - **Validación**: 483 / 483 pruebas unitarias e integración superadas al 100%.
   --14. **Reubicación de Ajustes en Menú Lateral y Limpieza de Pestaña de Modelos de IA**:
       - **Problema**: El botón *"Ajustes del Flujo"* sobrecargaba la barra superior de ejecución y su nombre no reflejaba adecuadamente los ajustes globales de la aplicación. Por otro lado, el botón *"Abrir Asistente de Descargas"* en el tab de Modelos de IA abría un diálogo redundante que replicaba la misma vista.
       - **Solución**:

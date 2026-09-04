@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -17,8 +18,66 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("SuperResolutionUpscalerNode_Name", "ImageVision", "SuperResolutionUpscalerNode_Desc", PipelineRole.Transform,
     "super resolucion", "escalar", "aumentar", "upscale", "4x", "realesrgan", "calidad", "nitidez")]
-public class SuperResolutionUpscalerNode : IFlowNode
+public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
 {
+    public event Action? ModelStatusChanged;
+
+    public SuperResolutionUpscalerNode()
+    {
+        OnnxSessionManager.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+    }
+
+    public bool IsModelLoaded
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.SuperResolution);
+            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
+        }
+    }
+
+    public string? ModelIdentifier
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.SuperResolution);
+        }
+    }
+
+    public bool IsGpuAccelerated
+    {
+        get
+        {
+            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.SuperResolution);
+            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
+        }
+    }
+
+    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.SuperResolution, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
+        {
+            OnnxSessionManager.GetOrCreateSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
+    public void UnloadModel()
+    {
+        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
+        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.SuperResolution);
+        if (!string.IsNullOrWhiteSpace(modelPath))
+        {
+            OnnxSessionManager.UnloadSession(modelPath);
+        }
+        ModelStatusChanged?.Invoke();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SuperResolutionUpscalerNode_Name", "Super-Resolución IA");
     public string Description => LocalizationManager.Instance.GetString("SuperResolutionUpscalerNode_Desc", "Escala y restaura imágenes o documentos de baja resolución con modelos Real-ESRGAN.");
@@ -41,7 +100,8 @@ public class SuperResolutionUpscalerNode : IFlowNode
         ["Model"] = "Auto",
         ["ScaleFactor"] = "4x",
         ["MaxInputDimension"] = 2048,
-        ["OutputDirectory"] = "{GlobalOutputDir}"
+        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["SkipIfExists"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
@@ -55,7 +115,9 @@ public class SuperResolutionUpscalerNode : IFlowNode
         new("MaxInputDimension", ParameterEditorType.Number, DefaultValue: 2048, Min: 256, Max: 8192,
             HelpText: "Límite máximo de ancho/alto original para prevenir consumo excesivo de RAM.", DisplayOrder: 3),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán las imágenes escaladas.", DisplayOrder: 4)
+            HelpText: "Carpeta de destino donde se guardarán las imágenes escaladas.", DisplayOrder: 4),
+        new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
+            HelpText: "Si el archivo resultante ya existe en destino, omite la inferencia neural y reutiliza el archivo.", DisplayOrder: 5)
     ];
 
     private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -86,6 +148,41 @@ public class SuperResolutionUpscalerNode : IFlowNode
             string scaleStr = Parameters.TryGetValue("ScaleFactor", out var sfVal) ? sfVal?.ToString() ?? "4x" : "4x";
             int maxDim = Parameters.TryGetValue("MaxInputDimension", out var mdVal) ? ParameterHelper.GetInt32(mdVal, 2048) : 2048;
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+
+            string targetDir;
+            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+            {
+                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
+                {
+                    targetDir = godVal.ToString()!;
+                }
+                else
+                {
+                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+                }
+            }
+            else
+            {
+                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
+            }
+
+            Directory.CreateDirectory(targetDir);
+
+            string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_upscaled{ext}";
+            string targetPath = Path.Combine(targetDir, targetFileName);
+
+            if (skipIfExists && File.Exists(targetPath))
+            {
+                context.Log($"[SuperResolution] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo inferencia.", LogLevel.Information, item);
+                var existingItem = item.DeepClone();
+                existingItem.CurrentPath = targetPath;
+                existingItem.PhysicalPath = targetPath;
+                existingItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                existingItem.Metadata["AI:SuperResolution"] = true;
+                await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
+                return;
+            }
 
             int requestedScale = scaleStr.Contains("2") ? 2 : 4;
 
@@ -123,15 +220,6 @@ public class SuperResolutionUpscalerNode : IFlowNode
 
             int newW = upscaledImage.Width;
             int newH = upscaledImage.Height;
-
-            string targetDir = ParameterHelper.ResolveOutputPath(
-                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
-                item);
-
-            Directory.CreateDirectory(targetDir);
-
-            string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_upscaled{ext}";
-            string targetPath = Path.Combine(targetDir, targetFileName);
 
             await upscaledImage.SaveAsync(targetPath, cancellationToken).ConfigureAwait(false);
 

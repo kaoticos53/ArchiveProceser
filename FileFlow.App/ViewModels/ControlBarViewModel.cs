@@ -254,6 +254,30 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     {
         if (IsRunning) return;
 
+        bool enableCheckpointing = UserPreferencesService.Instance.Preferences.EnableCheckpointing;
+        if (enableCheckpointing && !isWatchMode && !IsDryRun)
+        {
+            if (WorkflowCheckpointManager.Instance.HasPendingCheckpoint(WorkflowName, out var savedCp) && savedCp != null && savedCp.CompletedFileKeys.Count > 0)
+            {
+                string resumeTitle = LocalizationManager.Instance.GetString("Checkpoint_ResumeTitle", "Punto de Control Detectado");
+                string resumeMsg = string.Format(
+                    LocalizationManager.Instance.GetString("Checkpoint_ResumePrompt", "Se ha detectado una ejecución previa de '{0}' interrumpida con {1} archivo(s) ya completados.\n\n¿Deseas REANUDAR la ejecución previa (omitiendo archivos completados)?\n\n• Sí: Reanudar desde el último punto.\n• No: Reiniciar ejecución limpia desde cero.\n• Cancelar: Abortar ejecución."),
+                    WorkflowName, savedCp.CompletedFileKeys.Count);
+
+                var userChoice = MessageBox.Show(resumeMsg, resumeTitle, MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                if (userChoice == MessageBoxResult.Cancel)
+                {
+                    return;
+                }
+
+                if (userChoice == MessageBoxResult.No)
+                {
+                    WorkflowCheckpointManager.Instance.ClearCheckpoint(WorkflowName);
+                    _logViewModel.AddLog(LogLevel.Information, $"[Checkpoint] Punto de control de '{WorkflowName}' reiniciado. Iniciando ejecución limpia desde cero.");
+                }
+            }
+        }
+
         try
         {
             IsRunning = true;
@@ -271,7 +295,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
                 MaxParallelThreads: maxParallelThreads,
                 WorkflowName: WorkflowName,
                 IsWatchMode: isWatchMode,
-                WatcherService: watcherService
+                WatcherService: watcherService,
+                EnableCheckpointing: enableCheckpointing
             );
 
             var result = await _executionCoordinator.RunAsync(
@@ -581,6 +606,25 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             MessageBox.Show($"Error al abrir la ventana Acerca de: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    public void OpenMetricsDashboard()
+    {
+        IsMenuOpen = false;
+        try
+        {
+            var dashboardVm = new WorkflowMetricsDashboardViewModel(_editorViewModel);
+            var dashboardWindow = new Views.Components.WorkflowMetricsDashboardWindow(dashboardVm)
+            {
+                Owner = Application.Current?.MainWindow
+            };
+            dashboardWindow.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al abrir el panel de métricas: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

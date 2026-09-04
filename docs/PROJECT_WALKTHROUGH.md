@@ -2,6 +2,210 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-04] - Telemetría Reactiva de Drenaje de Cola de Tareas y Progreso en Vivo de Inferencia Final
+
+### 🎯 Objetivos y Alcance
+1. **Visibilidad y Progreso en Tiempo Real durante la Cola de Drenaje de Tareas (`DrainActiveTasksAsync`)**:
+   - Resolver la percepción de congelación o parón hacia el final del flujo cuando los últimos elementos se procesan secuencialmente a través de los modelos de inferencia GPU/DirectML.
+2. **Notificación Progresiva con `Task.WhenAny`**:
+   - Drenar tareas activas notificando a la interfaz de usuario en tiempo real cada vez que concluye un elemento (`⚡ Finalizando cola de tareas: N restante(s)`).
+3. **Retroalimentación en Tiempo Real por Nodo y Archivo en Ejecución**:
+   - Actualizar el estado dinámico en `WorkflowItemDispatcher` cuando los nodos intermedios comienzan el procesamiento de un archivo específico (`⚡ [Nombre Nodo]: [Nombre Archivo]`).
+
+### 🛠️ Ajustes Realizados
+1. **Monitor de Tareas (`FileFlow.Core/Engine/WorkflowTaskTracker.cs`)**:
+   - `DrainActiveTasksAsync` ahora recibe `Action<int>? progressCallback` y utiliza `Task.WhenAny(pending)` para reaccionar inmediatamente con el número decreciente de tareas pendientes conforme se van completando.
+2. **Ejecutor del Motor (`FileFlow.Core/Engine/WorkflowExecutor.cs`)**:
+   - Conectado el callback de progreso de `DrainActiveTasksAsync` con `NotifyProgress` para actualizar la barra de estado y el porcentaje general en tiempo real.
+3. **Despachador Concurrente (`FileFlow.Core/Engine/WorkflowItemDispatcher.cs`)**:
+   - Inyección de notificación de estado `_executor.NotifyProgress` al arrancar la ejecución de cualquier nodo sobre un archivo.
+4. **Toolbox (`FileFlow.App/ViewModels/ToolboxViewModel.cs`)**:
+   - Limpieza de advertencias MVVMTK0034 manteniendo 0 advertencias y 0 errores en compilación `--warnaserror`.
+5. **Pruebas y Verificación**:
+   - **498 / 498 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-04] - Corrección de Detección de GPU (DirectML) en Telemetría y Sincronización Reactiva de Modelos IA en Barra de Estado
+
+### 🎯 Objetivos y Alcance
+1. **Detección Fiable de Aceleración GPU en Telemetría y Profiling**:
+   - Garantizar que los nodos de inferencia con IA (ej. `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ObjectDetectorNode`, `SmartImageClassifierNode`, etc.) reflejen con precisión la aceleración DirectML en el badge `[🎮 GPU]`, tooltips y dashboard.
+2. **Sincronización Reactiva del Contador de Modelos en la Barra de Estado**:
+   - Monitorear reactivamente los modelos de IA cargados en los nodos del lienzo (`NodeViewModel.IsModelLoaded`), actualizando en tiempo real el contador `[🟢 N cargados]` y el botón rápido `[🧹 Liberar Memoria IA]`.
+
+### 🛠️ Ajustes Realizados
+1. **Contratos en SDK (`FileFlow.Sdk/IModelLifecycleNode.cs`)**:
+   - Añadida la propiedad `bool IsGpuAccelerated => false;` a la interfaz `IModelLifecycleNode`.
+2. **Nodos y Adaptadores de IA (`FileFlow.Plugin.AI`)**:
+   - Implementada la propiedad `IsGpuAccelerated` en `AiFlowNodeBase`, `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ObjectDetectorNode`, `SmartImageClassifierNode`, `PromptObjectDetectorNode` y `ContentModerationFilterNode`.
+   - Inyección explícita de `item.Metadata["AI:DirectMlAccelerated"] = true` y `item.Metadata["AI:Device"] = "GPU (DirectML)"` en los metadatos de los elementos procesados con DirectML.
+3. **Despachador del Motor (`FileFlow.Core/Engine/WorkflowItemDispatcher.cs`)**:
+   - Detección de GPU ampliada para comprobar metadatos del ítem (`AI:DirectMlAccelerated`, `AI:Device`) y la propiedad `targetNode is IModelLifecycleNode lifecycleNode && lifecycleNode.IsGpuAccelerated`.
+4. **Capa de Presentación y Barra de Estado (`FileFlow.App`)**:
+   - `StatusBarViewModel.cs`: Suscripción reactiva a `_editorViewModel.Nodes.CollectionChanged` y `NodeViewModel.PropertyChanged` para `IsModelLoaded`. Cálculo de total considerando sesiones ONNX y nodos activos en canvas.
+   - `NodeViewModel.cs`: Añadido método público `UnloadModel()` para descarga limpia y consistente de modelos.
+   - `ToolboxViewModel.cs`: Corregida la asignación de propiedad `SelectedCategoryFilter` en `OnSelectedCategoryItemChanged`.
+5. **Pruebas y Verificación**:
+   - **498 / 498 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-04] - Sistema Integral de Métricas, Profiling y Telemetría Granular por Nodo (Ventana Rodante N=8, Micro-HUD, Inspector y Dashboard Centralizado)
+
+### 🎯 Objetivos y Alcance
+1. **Telemetría Granular por Nodo de Ultra-Bajo Overhead (< 0.05%)**:
+   - Medir en cada ejecución de nodo: latencia real por ítem (`Stopwatch.GetTimestamp()`), memoria RAM asignada por ítem (`GC.GetAllocatedBytesForCurrentThread()`), estimación de CPU (%) y aceleración por hardware GPU (DirectML).
+2. **Ventana Rodante de Muestras (N=8) sin Presión de GC**:
+   - Estructura `NodeExecutionSample` como `readonly record struct` en `FileFlow.Sdk` y búfer circular concurrente de tamaño fijo (`RollingNodeMetricsTracker`) en `FileFlow.Core` con orden cronológico garantizado y cálculo $O(1)$ de medias móviles y picos.
+3. **Micro-HUD en Tarjetas del Canvas (`NodeCardView.xaml`)**:
+   - Badges visuales en el pie de cada nodo: latencia efectiva con código de calor (`[⚡ 120 ms]`), memoria RAM media por elemento (`[💾 14.2 MB]`) y aceleración DirectML (`[🎮 GPU]`), junto con un tooltip enriquecido al pasar el cursor (desglose de 8 muestras, rango min/max y detección de cuellos de botella).
+4. **Pestaña de Rendimiento en el Inspector Lateral (`NodeInspectorPanelView.xaml`)**:
+   - Nueva pestaña `[📊 Rendimiento]` con 4 tarjetas KPI (Latencia total vs rodante, RAM media vs pico, CPU y GPU, Procesados y Errores), historial detallado de las últimas 8 operaciones con timestamp y botón de restablecimiento de métricas.
+5. **Dashboard Centralizado de Métricas y Profiling (`WorkflowMetricsDashboardWindow.xaml`)**:
+   - Ventana modal independiente de diagnóstico con 6 tarjetas KPI globales, gráficos vectoriales de distribución de tiempo y RAM (%) por nodo, tabla comparativa interactiva y sortable en `DataGrid` y exportación de métricas a formatos CSV y JSON.
+
+### 🛠️ Ajustes Realizados
+1. **Contratos en SDK (`FileFlow.Sdk/Telemetry/`)**:
+   - `NodeExecutionSample.cs`: Definido `readonly record struct NodeExecutionSample(double DurationMs, long AllocatedBytes, double CpuPercentage, bool GpuAccelerated, DateTime Timestamp)`.
+   - `NodeTelemetryStats.cs`: Añadidos campos `RollingAvgDurationMs`, `RollingAvgAllocatedBytes`, `PeakAllocatedBytes`, `AvgCpuPercentage`, `IsGpuAccelerated` y `RecentSamples`.
+2. **Motor y Despachador en Core (`FileFlow.Core/Engine/`)**:
+   - `RollingNodeMetricsTracker.cs`: Implementado búfer circular seguro ante hilos (`NodeBuffer`) con $N=8$, cálculo de media rodante, pico y extracción de muestras en orden cronológico.
+   - `WorkflowTelemetryTracker.cs`: Integración de `RollingNodeMetricsTracker` en `RecordNodeExecution` y `GetNodeStats()`.
+   - `WorkflowItemDispatcher.cs`: Instrumentado `GC.GetAllocatedBytesForCurrentThread()` y `Stopwatch.GetTimestamp()` alrededor de `targetNode.ExecuteAsync`, detectando además tags de aceleración GPU (`AI:DirectMlAccelerated`).
+3. **Capa de Presentación y UI (`FileFlow.App`)**:
+   - `NodeViewModel.cs`: Propiedades `RollingRamText`, `IsGpuAccelerated`, `DetailedMetricsToolTip`, `CurrentStats` y método reactivo `UpdateTelemetryStats`.
+   - `NodeCardView.xaml`: Contenedor horizontal de micro-badges `[🎮 GPU]`, `[💾 RAM]` y `[⚡ ms]` con `DetailedMetricsToolTip`.
+   - `NodeInspectorViewModel.cs` & `NodeInspectorPanelView.xaml`: Pestaña `[📊 Rendimiento]` con KPIs, histórico de 8 muestras y comando `ResetNodeMetricsCommand`.
+   - `WorkflowMetricsDashboardViewModel.cs` & `WorkflowMetricsDashboardWindow.xaml`: Dashboard global con gráficos de distribución, KPIs, tabla comparativa sortable y exportación CSV/JSON.
+   - `MainWindow.xaml`: Añadido acceso directo en el Drawer (`📊 Métricas y Rendimiento`).
+   - `Strings.resx` y `Strings.es.resx`: Claves de localización dinámicas añadidas.
+4. **Pruebas Unitarias y Validación (`FileFlow.Tests`)**:
+   - `RollingNodeMetricsTrackerTests.cs`: 5 nuevas pruebas unitarias exhaustivas validando estado inicial, cálculo de medias móviles dentro de la ventana, desalojo FIFO ante desbordamiento (> 8 muestras), reinicio y agregación global en `WorkflowTelemetryTracker`.
+   - **498 / 498 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas, 0 advertencias)**.
+
+---
+
+## [2026-09-04] - Optimización Integral de Memoria RAM/VRAM, Purga de Pools y Recorte de Working Set en Flujos de IA
+
+### 🎯 Objetivos y Alcance
+1. **Recuperación Inmediata de Memoria Comprometida (Working Set) al Sistema Operativo**:
+   - Resolver la retención de memoria residual (hasta 4 GB) en el Administrador de Tareas tras procesar lotes de imágenes pesadas con modelos ONNX.
+2. **Reducción de Asignaciones en Large Object Heap (LOH)**:
+   - Eliminar asignaciones intermedias masivas (`new byte[origW * origH]`, `outTensor.ToArray()`, duplicación de bitmaps de alta resolución) en `BackgroundRemoverAdapters.cs` y `SuperResolutionAdapters.cs`.
+3. **Purga Determinista de Pools de Buffers (ImageSharp & ONNX)**:
+   - Liberar de forma segura los recursos retenidos en `SixLabors.ImageSharp.Configuration.Default.MemoryAllocator`.
+4. **Recorte de Working Set de Windows**:
+   - Devolver inmediatamente las páginas virtuales libres a la memoria RAM de Windows mediante `SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle, -1, -1)`.
+
+### 🛠️ Ajustes Realizados
+1. **Asistente de Recolección de Memoria (`FileFlow.Core/Utils/MemoryReclamationHelper.cs`)**:
+   - Implementado `MemoryReclamationHelper` con ejecución en 3 fases:
+     1. Disparo de callbacks registrados (ej. purga de pools de `ImageSharp`).
+     2. Recolección completa de Gen 2 con compactación forzada de LOH (`GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true); GC.WaitForPendingFinalizers(); GC.Collect(...)`).
+     3. Recorte de Working Set nativo con Win32 `SetProcessWorkingSetSize(hProcess, -1, -1)`.
+2. **Optimizaciones en Adaptadores de Inferencia (`FileFlow.Plugin.AI`)**:
+   - `BackgroundRemoverAdapters.cs`: Eliminada la asignación de arreglos de 24 MB en LOH (`byte[] maskBytes`). La aplicación de la máscara alfa y mezcla con color de fondo ahora se realiza en un solo paso mediante `finalMask.ProcessPixelRows(result, ...)` con acceso directo a spans.
+   - `SuperResolutionAdapters.cs`: Eliminada la copia masiva de `outTensor.ToArray()` (hasta ~192 MB) leyendo directamente desde `Memory<float>` (`dense.Buffer`).
+   - `OnnxSessionManager.cs` & `AiPluginInitializer.cs`: En `UnloadSession`, `ClearSessionCache` y `ClearAllSessions`, se invoca `SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources()`.
+3. **Integración en Ciclo de Vida y UI (`FileFlow.App`)**:
+   - `WorkflowExecutionCoordinator.cs`: En el bloque `finally` de `RunAsync`, se invoca siempre `MemoryReclamationHelper.ReclaimMemory(trimWorkingSet: true)` al concluir cualquier flujo (exitoso, cancelado o fallido).
+   - `StatusBarViewModel.cs` & `NodeViewModel.cs`: Al pulsar `[🧹 Liberar Memoria IA]` o descargar un modelo desde el micro-LED `[🟢 AI]`, se ejecuta la purga y el recorte de memoria.
+   - `StatusBarView.xaml`: Eliminado el botón redundante de zoom `[🔍 100%]` de la barra de estado inferior para recuperar espacio visual útil (la funcionalidad sigue accesible mediante `Ctrl+0`, el viewport y la barra dedicada de zoom).
+4. **Pruebas Unitarias y Validación (`FileFlow.Tests`)**:
+   - `MemoryReclamationTests.cs`: 3 nuevos tests unitarios validando ejecución segura, disparo de callbacks registrados y reducción comprobada de memoria tras asignaciones masivas.
+   - **493 / 493 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas, 0 advertencias)**.
+
+---
+
+## [2026-09-04] - Gestión de Memoria y Ciclo de Vida de Modelos de IA (Carga/Descarga Interactiva & Liberación de VRAM/RAM)
+
+### 🎯 Objetivos y Alcance
+1. **Control de Ciclo de Vida en Nodos de IA (`IModelLifecycleNode`)**:
+   - Dotar a todos los nodos de IA de una interfaz estándar (`IModelLifecycleNode`) en `FileFlow.Sdk` para consultar el estado de carga (`IsModelLoaded`), identificador del modelo (`ModelIdentifier`), precarga asíncrona (`PreloadModelAsync`), descarga determinista de memoria (`UnloadModel`) y notificación de eventos (`ModelStatusChanged`).
+2. **Micro-LED Interactivo en Tarjetas de Nodos del Canvas (`NodeCardView.xaml`)**:
+   - Incorporar un indicador visual tipo micro-LED (`[🟢/⚪ AI]`) en la barra inferior de las tarjetas de nodos con modelos de IA, permitiendo conocer su estado en tiempo real (verde brillante si está en RAM/VRAM, gris si no está cargado, animación de pulsación durante la carga) y hacer clic para cargar o descargar el modelo bajo demanda.
+3. **Indicador Consolidado y Liberación Global de Memoria IA en la Barra de Estado (`StatusBarView.xaml`)**:
+   - Mostrar un indicador reactivo en la barra de estado inferior (`[🟢 N activos]`) y un botón de acción rápida `[🧹 Liberar Memoria IA]` cuando haya modelos en memoria para descargar todas las sesiones ONNX y motores de audio inmediatamente.
+4. **Opción de Descarga Automática de Modelos al Finalizar el Flujo**:
+   - Añadir una opción configurable en `⚙️ Ajustes` -> `Rendimiento & Ejecución` (`AutoUnloadAiModelsOnCompletion`) para liberar automáticamente todos los modelos de IA tras concluir la ejecución del pipeline.
+
+### 🛠️ Ajustes Realizados
+1. **Contrato de SDK (`FileFlow.Sdk/IModelLifecycleNode.cs`)**:
+   - Definida la interfaz pura `IModelLifecycleNode` con propiedades `IsModelLoaded`, `ModelIdentifier`, métodos `PreloadModelAsync`, `UnloadModel` y evento `ModelStatusChanged`.
+2. **Gestores de Sesiones y Motores en Plugin AI (`FileFlow.Plugin.AI`)**:
+   - `OnnxSessionManager`: Añadidos métodos de inspección y descarga granular (`IsSessionLoaded(path)`, `UnloadSession(path)`, `GetLoadedSessionCount()`, `GetLoadedModelPaths()`) y evento estático reactivo `SessionStateChanged`.
+   - `AudioInferenceEngine`: Añadidos `IsSessionLoaded(path)`, `UnloadSession(path)` y evento `SessionStateChanged`.
+   - `AiModelManager`: Añadidos métodos síncronos y seguros `ResolveModelPathSync` y `GetModelDisplayName`; parametrizado `ResolveModelPathAsync` con contexto opcional.
+   - `AiFlowNodeBase`: Implementación base de `IModelLifecycleNode` e integración de eventos `ModelStatusChanged` en todos los nodos de IA (`BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ContentModerationFilterNode`, `ObjectDetectorNode`, `PromptObjectDetectorNode`, `FaceDetectorNode`, `SmartImageClassifierNode`, `VoiceActivityDetectorNode`, `TextToSpeechNode`, `LocalLlmProcessorNode`, `LocalAiTranslatorNode`, `PromptTransformerNode`, `PiiAnonymizerNode`).
+3. **Capa de Presentación y ViewModels (`FileFlow.App`)**:
+   - `NodeViewModel`: Propiedades observables `IsModelManaged`, `IsModelLoaded`, `IsModelLoading`, `ModelIdentifier`, `ModelStatusToolTip`, comando `ToggleModelLoadCommand` y subscripción a `ModelStatusChanged` y `LocalizationManager.Instance.LanguageChanged`.
+   - `NodeCardView.xaml`: Indicador micro-LED con `Border` redondeado, `DropShadowEffect` reactivo (glow esmeralda cuando activo) y botón interactivo.
+   - `StatusBarViewModel` & `StatusBarView.xaml`: Propiedades `LoadedAiModelsCount`, `HasLoadedAiModels`, `LoadedAiModelsText`, `LoadedAiModelsToolTip`, comando `ClearAllAiModelsCommand` y subscripción a eventos de `OnnxSessionManager` y `AudioInferenceEngine`.
+   - `UserPreferencesService` & `WorkflowSettingsWindow`: Añadida la preferencia persistente `AutoUnloadAiModelsOnCompletion` con checkbox en la pestaña de Rendimiento.
+   - `WorkflowExecutionCoordinator`: Liberación automática en el bloque `finally` de `RunAsync` si la preferencia está activada.
+4. **Localización e Internacionalización i18n (`Strings.resx` / `Strings.es.resx`)**:
+   - Claves añadidas: `Node_ModelLoaded_ToolTip`, `Node_ModelUnloaded_ToolTip`, `Node_ModelLoading_ToolTip`, `StatusBar_AiModelsLoaded`, `StatusBar_AiModelsLoadedCount`, `StatusBar_ClearAiMemory`, `StatusBar_ClearAiMemoryToolTip`, `Settings_AutoUnloadAiModels`, `Settings_AutoUnloadAiModels_Desc`.
+5. **Pruebas Unitarias y Validación (`FileFlow.Tests`)**:
+   - `ModelLifecycleAndMemoryTests.cs`: 6 nuevos tests unitarios que verifican la implementación de `IModelLifecycleNode` en todos los nodos de IA, ciclo de carga/descarga, emisión de eventos de estado, vaciado global de caché ONNX y persistencia de preferencias.
+   - **490 / 490 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas, 0 advertencias)**.
+
+---
+
+## [2026-09-04] - Prioridad de Primer Plano (Z-Index / BringToFront) en Nodos Seleccionados del Canvas
+
+### 🎯 Objetivos y Alcance
+Resolver el problema visual en el lienzo (`NodifyEditor`) donde un nodo manipulado o seleccionado quedaba cubierto o superpuesto por otros nodos no seleccionados debido al orden secuencial de renderizado de la colección `ItemsSource`.
+
+### 🛠️ Ajustes Realizados
+1. **Estilo del Contenedor de Nodos (`EditorView.xaml`)**:
+   - En `ItemContainerStyle`, se vinculó `Panel.ZIndex` a la propiedad `ZIndex` del `NodeViewModel`.
+   - Añadido un `Style.Trigger` sobre `IsSelected == True` que eleva inmediatamente `Panel.ZIndex` a `10000`, garantizando que cualquier nodo seleccionado se dibuje siempre en primer plano sobre los nodos no seleccionados.
+2. **Gestión de Prioridad en ViewModels (`NodeViewModel.cs`, `EditorViewModel.cs`)**:
+   - En `NodeViewModel`, se añadió la propiedad observable `ZIndex` y se conectó `OnIsSelectedChanged(bool value)` para invocar `ParentEditor.BringToFront(this)`.
+   - En `EditorViewModel`, se añadió el método `BringToFront(NodeViewModel node)` con un contador incremental `_maxZIndex` para mantener el orden relativo de apilamiento en deselecciones.
+3. **Interacción y Detección de Clic (`NodeCardView.xaml` / `.xaml.cs`)**:
+   - Añadido manejador `PreviewMouseDown="UserControl_PreviewMouseDown"` en `NodeCardView` que invoca `BringToFront(node)` inmediatamente al pulsar o interactuar con cualquier parte de la tarjeta del nodo (incluyendo arrastre y controles internos).
+4. **Pruebas Unitarias y Validación (`FileFlow.Tests`)**:
+   - `EditorViewModelTests.cs`: Añadido test `NodeViewModel_SelectionAndBringToFront_IncrementsZIndex`.
+   - **484 / 484 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-04] - Gestión de Checkpoints (Reanudación / Reinicio Limpio) y Parámetro `SkipIfExists` en Nodos de IA
+
+### 🎯 Objetivos y Alcance
+1. **Control Interactivo de Puntos de Control (Checkpoints)**:
+   - Evitar que ejecuciones previas incompletas o repetidas omitan automáticamente archivos debido a ficheros `.checkpoint.json` residuales en disco sin previo aviso al usuario.
+   - Ofrecer un cuadro de diálogo interactivo al iniciar un flujo con checkpoint pendiente para elegir entre **Reanudar desde el punto de control**, **Reiniciar desde cero (borrando el checkpoint)** o **Cancelar la ejecución**.
+2. **Ajustes Globales y Vaciado Manual de Checkpoints**:
+   - Incorporar un interruptor global de activación/desactivación de puntos de control y un botón de vaciado manual con confirmación y conteo de archivos eliminados en la sección *Rendimiento & Ejecución* de la ventana **⚙️ Ajustes**.
+3. **Parámetro `SkipIfExists` en Nodos Generadores de IA**:
+   - Dotar a los nodos de IA que generan archivos en disco (`BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `VoiceActivityDetectorNode`, `TextToSpeechNode`, `PiiAnonymizerNode`) de un parámetro booleano (`SkipIfExists`) que permite omitir la inferencia neural pesada si el archivo resultante ya existe físicamente en el destino.
+
+### 🛠️ Ajustes Realizados
+1. **Motor Core y Despachador de Ítems (`WorkflowItemDispatcher.cs`)**:
+   - **Corrección de ámbito para `IsFileAlreadyCompleted`**: Anteriormente, `IsFileAlreadyCompleted` se evaluaba indiscriminadamente en cada emisión de nodo (`DispatchItemAsync`). Cuando un nodo terminal o una rama rápida (ej. `Out`) registraba `item.OriginalPath` como completado en el checkpoint, cualquier otra rama paralela posterior (ej. `Mask` hacia `FileRelocatorNode` / `DestinationSinkNode`) interceptaba la condición y abortaba el ítem emitiendo falsamente `[Checkpoint] Omitiendo archivo completado previamente`.
+   - Se trasladó la comprobación `IsFileAlreadyCompleted` exclusivamente dentro de `if (startNodeIds.Contains(sourceNodeId))`, asegurando que la omisión por checkpoint solo se aplique a la ingesta en nodos de origen / inicio (`FolderSourceNode`), permitiendo que el flujo activo recorra todas las ramas del grafo sin interrupciones espurias.
+   - Añadido el método `ClearAllCheckpoints(): int` en `WorkflowCheckpointManager.cs` para eliminar de forma concurrente y segura todos los archivos `.checkpoint.json` almacenados en `%LocalAppData%/FileFlowStudio/checkpoints`.
+2. **Coordinador y Preferencias (`WorkflowExecutionCoordinator.cs`, `UserPreferencesService.cs`)**:
+   - Añadida la opción `EnableCheckpointing` a `WorkflowExecutionOptions` y `UserPreferencesData`, vinculándola directamente al `WorkflowExecutor` activo.
+3. **Diálogo Interactivo al Ejecutar (`ControlBarViewModel.cs`)**:
+   - En `RunWorkflowCoreAsync`, si existe un checkpoint pendiente y `EnableCheckpointing` está activo, se solicita confirmación al usuario (Sí = Reanudar, No = Limpiar Checkpoint e Inicio Limpio, Cancelar = Abortar).
+4. **Interfaz de Usuario (`WorkflowSettingsWindow.xaml` / `.xaml.cs`)**:
+   - Añadido el CheckBox `ChkEnableCheckpointing` y el botón `BtnClearCheckpoints` con telemetría visual (`MessageBox` informativo con conteo de checkpoints eliminados).
+5. **Nodos de IA con `SkipIfExists` (`FileFlow.Plugin.AI`)**:
+   - Incorporado parámetro `SkipIfExists` (`ParameterEditorType.Toggle`, valor por defecto: `false`) con resolución de ruta robusta y bypass de inferencia emitiendo directamente el ítem con el archivo preexistente en `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `VoiceActivityDetectorNode`, `TextToSpeechNode` y `PiiAnonymizerNode`.
+6. **Internacionalización i18n (`Strings.resx` / `Strings.es.resx`)**:
+   - Claves añadidas en `FileFlow.App`: `Settings_EnableCheckpointing`, `Settings_EnableCheckpointing_Desc`, `Settings_ClearCheckpoints`, `Settings_ClearCheckpoints_Success`, `ResumePrompt_Title`, `ResumePrompt_Message`.
+   - Claves añadidas en `FileFlow.Plugin.AI`: `Param_SkipIfExists`, `Param_SkipIfExists_Desc`.
+7. **Pruebas Unitarias y Validación (`FileFlow.Tests`)**:
+   - `WorkflowCheckpointTests.cs`: Tests `CheckpointManager_ClearAllCheckpoints_RemovesAllStoredCheckpoints` y `WorkflowExecutor_BranchingWorkflow_DoesNotTriggerSpuriousCheckpointSkipDuringExecution`.
+   - `VisionSuiteNodesTests.cs`: Test `BackgroundRemoverNode_ExecuteAsync_WhenOutputFileExistsAndSkipIfExistsTrue_ShouldBypassInferenceAndEmitOut`.
+   - **483 / 483 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-04] - Reubicación de Ajustes en Menú Lateral y Limpieza de Pestaña de Modelos de IA
 
 ### 🎯 Objetivos y Alcance

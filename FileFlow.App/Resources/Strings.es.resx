@@ -556,6 +556,13 @@
   <data name="Settings_LogLevelWarning" xml:space="preserve"><value>Warning (Solo advertencias y errores)</value></data>
   <data name="Settings_LogLevelError" xml:space="preserve"><value>Error (Exclusivamente fallos críticos)</value></data>
   <data name="Settings_LogLevelDebug" xml:space="preserve"><value>Debug (Detalle exhaustivo de depuración)</value></data>
+  <data name="Settings_CheckpointingTitle" xml:space="preserve"><value>🛡️ Puntos de Control y Reanudación (Checkpoints)</value></data>
+  <data name="Settings_CheckpointingDesc" xml:space="preserve"><value>Guarda el progreso del flujo en puntos de control atómicos para permitir reanudar ejecuciones interrumpidas sin reprocesar archivos ya completados.</value></data>
+  <data name="Settings_EnableCheckpointing" xml:space="preserve"><value>Habilitar puntos de control para reanudar flujos interrumpidos</value></data>
+  <data name="Settings_ClearCheckpointsBtn" xml:space="preserve"><value>🗑️ Limpiar Checkpoints</value></data>
+  <data name="Settings_CheckpointsClearedMsg" xml:space="preserve"><value>Se han eliminado {0} punto(s) de control almacenados en disco.</value></data>
+  <data name="Checkpoint_ResumeTitle" xml:space="preserve"><value>Punto de Control Detectado</value></data>
+  <data name="Checkpoint_ResumePrompt" xml:space="preserve"><value>Se ha detectado una ejecución previa de '{0}' interrumpida con {1} archivo(s) ya completados.&#x0a;&#x0a;¿Deseas REANUDAR la ejecución previa (omitiendo archivos completados)?&#x0a;&#x0a;• Sí: Reanudar desde el último punto.&#x0a;• No: Reiniciar ejecución limpia desde cero.&#x0a;• Cancelar: Abortar ejecución.</value></data>
   <data name="Settings_TabExternalTools" xml:space="preserve"><value>🛠️ Herramientas Externas</value></data>
   <data name="Settings_ExecutablesTitle" xml:space="preserve"><value>Rutas de Ejecutables del Sistema</value></data>
   <data name="Settings_AutoDetectBtn" xml:space="preserve"><value>🔍 Auto-Detectar Herramientas</value></data>
@@ -752,4 +759,22 @@
   <data name="TextEditor_EvaluatedPreview" xml:space="preserve"><value>⚡ Vista previa evaluada en tiempo real:</value></data>
   <data name="TextEditor_SaveBtn" xml:space="preserve"><value>✓ Guardar y Aplicar</value></data>
   <data name="TextEditor_CancelBtn" xml:space="preserve"><value>✕ Cancelar</value></data>
+
+  <!-- AI Model Lifecycle & Memory Management -->
+  <data name="Node_ModelLoaded_ToolTip" xml:space="preserve"><value>El modelo de IA está cargado en memoria (RAM/VRAM). Haz clic para descargarlo y liberar memoria.</value></data>
+  <data name="Node_ModelUnloaded_ToolTip" xml:space="preserve"><value>El modelo de IA no está cargado en memoria. Haz clic para precargarlo en memoria.</value></data>
+  <data name="Node_ModelLoading_ToolTip" xml:space="preserve"><value>Cargando modelo de IA...</value></data>
+  <data name="StatusBar_AiModelsLoaded" xml:space="preserve"><value>Modelos IA:</value></data>
+  <data name="StatusBar_AiModelsLoadedCount" xml:space="preserve"><value>{0} activos</value></data>
+  <data name="StatusBar_ClearAiMemory" xml:space="preserve"><value>🧹 Liberar Memoria IA</value></data>
+  <data name="StatusBar_ClearAiMemoryToolTip" xml:space="preserve"><value>Descarga todos los modelos ONNX/IA de la memoria RAM/VRAM y libera memoria.</value></data>
+  <data name="Settings_AutoUnloadAiModels" xml:space="preserve"><value>Descargar automáticamente modelos de IA al finalizar la ejecución del flujo</value></data>
+  <data name="Settings_AutoUnloadAiModels_Desc" xml:space="preserve"><value>Libera la memoria RAM y VRAM inmediatamente tras finalizar los flujos en lugar de mantener las sesiones de inferencia en memoria.</value></data>
+
+  <!-- Metrics & Profiling Dashboard -->
+  <data name="Drawer_MetricsDashboard" xml:space="preserve"><value>Métricas y Rendimiento</value></data>
+  <data name="Drawer_MetricsDashboardToolTip" xml:space="preserve"><value>Abrir panel centralizado de rendimiento y métricas del flujo</value></data>
+  <data name="MetricsDashboard_Title" xml:space="preserve"><value>Panel de Rendimiento y Profiling de Flujo</value></data>
+  <data name="Inspector_TabMetrics" xml:space="preserve"><value>📊 Rendimiento</value></data>
+  <data name="Metrics_ExportSuccess" xml:space="preserve"><value>Métricas exportadas exitosamente.</value></data>
 </root>
