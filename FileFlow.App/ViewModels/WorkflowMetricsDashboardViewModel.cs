@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Services;
 using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
@@ -16,6 +17,11 @@ public partial class NodeMetricsRowViewModel : ObservableObject
     public required string NodeId { get; init; }
     public required string Title { get; init; }
     public required string Category { get; init; }
+    public required string NodeIcon { get; init; }
+    public required string CategoryIcon { get; init; }
+    public required string CategoryBadgeBackground { get; init; }
+    public required string CategoryBadgeBorder { get; init; }
+    public required string CategoryBadgeForeground { get; init; }
     public required string AccentColor { get; init; }
     public required long ExecutionCount { get; init; }
     public required long ErrorCount { get; init; }
@@ -31,7 +37,10 @@ public partial class NodeMetricsRowViewModel : ObservableObject
     public required bool IsGpuAccelerated { get; init; }
     public required bool IsBottleneck { get; init; }
     public required double RelativeBottleneckRatio { get; init; }
-    public string BottleneckPercentageText => RelativeBottleneckRatio > 0 ? $"{RelativeBottleneckRatio * 100:F1}%" : "-";
+    public double BottleneckPercentage { get; set; }
+    public string BottleneckPercentageText { get; set; } = "-";
+    public string BottleneckBarBrush { get; set; } = "#38BDF8";
+    public required IReadOnlyList<double> RecentDurations { get; init; }
 }
 
 public partial class WorkflowMetricsDashboardViewModel : ObservableObject
@@ -68,9 +77,18 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
     [ObservableProperty]
     private int _bottleneckNodesCount;
 
+    [ObservableProperty]
+    private string _searchFilter = string.Empty;
+
     public ObservableCollection<NodeMetricsRowViewModel> NodeRows { get; } = [];
+    public ObservableCollection<NodeMetricsRowViewModel> FilteredNodeRows { get; } = [];
     public ObservableCollection<NodeDistributionBarViewModel> TimeDistributionBars { get; } = [];
     public ObservableCollection<NodeDistributionBarViewModel> RamDistributionBars { get; } = [];
+
+    partial void OnSearchFilterChanged(string value)
+    {
+        ApplyFilter();
+    }
 
     public WorkflowMetricsDashboardViewModel(EditorViewModel editorViewModel)
     {
@@ -78,10 +96,26 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
         RefreshMetrics();
     }
 
+    private void ApplyFilter()
+    {
+        FilteredNodeRows.Clear();
+        var q = SearchFilter?.Trim() ?? string.Empty;
+        var query = string.IsNullOrWhiteSpace(q)
+            ? NodeRows
+            : NodeRows.Where(r => r.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                                  r.Category.Contains(q, StringComparison.OrdinalIgnoreCase));
+
+        foreach (var r in query)
+        {
+            FilteredNodeRows.Add(r);
+        }
+    }
+
     [RelayCommand]
     public void RefreshMetrics()
     {
         NodeRows.Clear();
+        FilteredNodeRows.Clear();
         TimeDistributionBars.Clear();
         RamDistributionBars.Clear();
 
@@ -110,11 +144,18 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
             if (stats.IsGpuAccelerated) gpuOps++;
             if (stats.IsBottleneck) bottlenecks++;
 
+            var (badgeBg, badgeBorder, badgeFg) = GetCategoryBadgeColors(node.Category ?? "General");
+
             tempRows.Add(new NodeMetricsRowViewModel
             {
                 NodeId = node.Id ?? string.Empty,
                 Title = node.Title ?? "Node",
                 Category = node.Category ?? "General",
+                NodeIcon = NodeIconResolver.GetIconForNodeType(node.NodeTypeName ?? node.Title ?? string.Empty),
+                CategoryIcon = NodeIconResolver.GetIconForCategory(node.Category ?? "General"),
+                CategoryBadgeBackground = badgeBg,
+                CategoryBadgeBorder = badgeBorder,
+                CategoryBadgeForeground = badgeFg,
                 AccentColor = node.AccentColor ?? "#818CF8",
                 ExecutionCount = stats.ProcessedCount,
                 ErrorCount = 0,
@@ -129,7 +170,11 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
                 AvgCpuPercentage = stats.AvgCpuPercentage,
                 IsGpuAccelerated = stats.IsGpuAccelerated,
                 IsBottleneck = stats.IsBottleneck,
-                RelativeBottleneckRatio = stats.RelativeBottleneckRatio
+                RelativeBottleneckRatio = stats.RelativeBottleneckRatio,
+                BottleneckPercentage = Math.Clamp(stats.RelativeBottleneckRatio * 100.0, 0, 100),
+                BottleneckPercentageText = stats.RelativeBottleneckRatio > 0 ? $"{stats.RelativeBottleneckRatio * 100:F1}%" : "-",
+                BottleneckBarBrush = stats.RelativeBottleneckRatio >= 0.25 ? "#F43F5E" : (stats.RelativeBottleneckRatio >= 0.1 ? "#F59E0B" : "#38BDF8"),
+                RecentDurations = stats.RecentSamples?.Select(s => s.DurationMs).ToList() ?? []
             });
         }
 
@@ -147,6 +192,8 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
         {
             NodeRows.Add(row);
         }
+
+        ApplyFilter();
 
         // Distribución de Tiempo
         if (sumDuration > 0)
@@ -277,5 +324,24 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
         if (bytes >= 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
         if (bytes >= 1024) return $"{bytes / 1024.0:F0} KB";
         return $"{bytes} B";
+    }
+
+    public static (string bg, string border, string fg) GetCategoryBadgeColors(string category)
+    {
+        return (category?.Trim().ToLowerInvariant()) switch
+        {
+            "files" or "filesystem" or "archivos" => ("#064E3B", "#10B981", "#6EE7B7"),
+            "imagevision" or "images" or "imágenes" => ("#1E1B4B", "#6366F1", "#A5B4FC"),
+            "audiovoice" or "audio" or "voz" => ("#3B0764", "#A855F7", "#E9D5FF"),
+            "documents" or "documentos" or "pdf" => ("#0C4A6E", "#0284C7", "#7DD3FC"),
+            "data" or "datos" or "tables" => ("#451A03", "#F59E0B", "#FDE68A"),
+            "languageai" or "llm" or "lenguaje" => ("#4C0519", "#F43F5E", "#FECDD3"),
+            "security" or "seguridad" => ("#3F1D38", "#EC4899", "#FBCFE8"),
+            "logic" or "lógica" => ("#172554", "#3B82F6", "#93C5FD"),
+            "archives" or "compresión" => ("#134E4A", "#14B8A6", "#99F6E4"),
+            "network" or "red" => ("#1E3A8A", "#60A5FA", "#BFDBFE"),
+            "integrations" or "integraciones" => ("#312E81", "#818CF8", "#C7D2FE"),
+            _ => ("#1E293B", "#64748B", "#E2E8F0")
+        };
     }
 }

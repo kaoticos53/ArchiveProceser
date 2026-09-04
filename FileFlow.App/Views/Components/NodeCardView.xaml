@@ -37,6 +37,24 @@
             </Border.Effect>
         </Border>
 
+        <!-- Resplandor exterior de Ejecución Activa (Running Pulse) -->
+        <Border BorderBrush="#10B981" 
+                BorderThickness="2" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ExecutionStatus}" Value="{x:Static sdk:NodeExecutionStatus.Running}">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#10B981" Opacity="0.85" />
+            </Border.Effect>
+        </Border>
+
         <nodify:Node Style="{StaticResource BlenderNodeStyle}" 
                      Header="{Binding}" 
                      HorizontalAlignment="Stretch"
@@ -735,35 +753,35 @@
                                     Margin="4,0,16,0"
                                     ToolTip="{Binding DetailedMetricsToolTip}">
                             <!-- Badge de Aceleración GPU -->
-                            <Border Margin="0,0,3,0" 
-                                    Padding="4,1.5" 
+                            <Border Margin="0,0,4,0" 
+                                    Padding="5,1.5" 
                                     CornerRadius="4" 
-                                    Background="#083344" 
-                                    BorderBrush="#06B6D4" 
+                                    Background="#082F49" 
+                                    BorderBrush="#0284C7" 
                                     BorderThickness="1"
                                     Visibility="{Binding IsGpuAccelerated, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <TextBlock Text="🎮 GPU" Foreground="#22D3EE" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock Text="🎮 GPU" FontFamily="Consolas, Segoe UI" Foreground="#38BDF8" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
                             </Border>
 
                             <!-- Badge de Memoria RAM Rodante -->
-                            <Border Margin="0,0,3,0" 
-                                    Padding="4,1.5" 
+                            <Border Margin="0,0,4,0" 
+                                    Padding="5,1.5" 
                                     CornerRadius="4" 
                                     Background="#1E1B4B" 
                                     BorderBrush="#6366F1" 
                                     BorderThickness="1"
                                     Visibility="{Binding RollingRamText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
-                                <TextBlock Text="{Binding RollingRamText}" Foreground="#A5B4FC" FontSize="8.5" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding RollingRamText}" FontFamily="Consolas, Segoe UI" Foreground="#C7D2FE" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center" />
                             </Border>
 
                             <!-- Badge de Latencia y Cuello de Botella -->
-                            <Border Padding="5,1.5" 
+                            <Border Padding="6,1.5" 
                                     CornerRadius="4" 
                                     Visibility="{Binding LatencyText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}">
                                 <Border.Style>
                                     <Style TargetType="Border">
-                                        <Setter Property="Background" Value="#1E293B" />
-                                        <Setter Property="BorderBrush" Value="#475569" />
+                                        <Setter Property="Background" Value="#111827" />
+                                        <Setter Property="BorderBrush" Value="#374151" />
                                         <Setter Property="BorderThickness" Value="1" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Low}">
@@ -786,7 +804,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding LatencyText}" FontFamily="Consolas, Segoe UI" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
                             </Border>
                         </StackPanel>
                     </Grid>

@@ -2,6 +2,42 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-04] - Rediseño Visual Moderno (Glassmorphism): Dashboard de Métricas y Profiling, Tarjetas de Nodo con Resplandor Reactivo y Barra de Estado Modular
+
+### 🎯 Objetivos y Alcance
+1. **Rediseño Integral de la Ventana de Rendimiento y Estadísticas (`WorkflowMetricsDashboardWindow.xaml`)**:
+   - Estética Glassmorphism oscura con paleta premium (`#0B0F19`, `#111827`, `#1F2937`).
+   - Tarjetas KPI con bordes superiores luminosos multietapa (`#38BDF8` $\rightarrow$ `#6366F1`, `#10B981` $\rightarrow$ `#06B6D4`, `#A855F7` $\rightarrow$ `#EC4899`, `#0EA5E9` $\rightarrow$ `#38BDF8`).
+   - Barra de búsqueda en tiempo real con filtrado instantáneo de nodos (`SearchFilter`).
+   - Píldoras de categoría con colores semánticos, bordes e iconos temáticos (`Logic`, `AI`, `FileSystem`, `Hashing`, `Images`, etc.).
+   - Barras de progreso redondeadas con degradados personalizados para distribución de tiempo (`#38BDF8` $\rightarrow$ `#6366F1`) y memoria RAM (`#A855F7` $\rightarrow$ `#EC4899`).
+   - Barras horizontales de cuello de botella visuales en la tabla de nodos.
+2. **Mejoras Visuales en Tarjetas de Nodo del Canvas (`NodeCardView.xaml`)**:
+   - Resplandor exterior activo de ejecución (`DropShadowEffect Color="#10B981"` con `BlurRadius="12"`) cuando el nodo se encuentra en estado `Running`.
+   - Badges de telemetría en el pie de tarjeta (`[🎮 GPU]`, `[💾 RAM]`, `[⚡ ms]`) estilizados con tipografía monospace (`Consolas, Segoe UI`), fondos diferenciados y micro-bordes.
+3. **Barra de Estado Modular en Islas Flotantes (`StatusBarView.xaml`)**:
+   - Transformación de la barra de estado inferior en contenedores redondeados independientes tipo islas de cristal (`#111827`, borde `#1F2937`, `CornerRadius="5"`).
+   - Indicador de estado de motor con punto luminoso `#38BDF8`.
+   - Agrupación estilizada de telemetría de hardware (RAM, CPU, GPU) y modelos IA en memoria con botón de liberación inmediata.
+
+### 🛠️ Ajustes Realizados
+1. **ViewModel del Dashboard (`FileFlow.App/ViewModels/WorkflowMetricsDashboardViewModel.cs`)**:
+   - Propiedad `SearchFilter`, colección filtrada `FilteredNodeRows` y método `ApplyFilter()`.
+   - Metadatos visuales enriquecidos por fila: `NodeIcon`, `CategoryIcon`, `CategoryBadgeBackground`, `CategoryBadgeBorder`, `CategoryBadgeForeground`, `BottleneckPercentage`, `BottleneckBarBrush` y `RecentDurations`.
+2. **Vista del Dashboard (`FileFlow.App/Views/Components/WorkflowMetricsDashboardWindow.xaml`)**:
+   - Implementación completa del diseño Glassmorphism con KPIs con micro-acentos de 2px, DataGrid con badges por categoría y barras de progreso personalizadas.
+   - Configuración explícita de enlace `Mode=OneWay` en todos los `ProgressBar.Value` para prevenir la excepción de enlace TwoWay en propiedades de sólo lectura.
+3. **Tarjetas de Nodo (`FileFlow.App/Views/Components/NodeCardView.xaml`)**:
+   - Añadido borde de resplandor verde activo para `ExecutionStatus.Running`.
+   - Actualización tipográfica y de color en los badges de telemetría rodante.
+4. **Barra de Estado (`FileFlow.App/Views/StatusBarView.xaml`)**:
+   - Reestructuración en islas flotantes con diseño modular y métricas en monospace.
+5. **Pruebas y Verificación**:
+   - **Compilación estricta sin advertencias ni errores**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores).
+   - **498 / 498 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-04] - Telemetría Reactiva de Drenaje de Cola de Tareas y Progreso en Vivo de Inferencia Final
 
 ### 🎯 Objetivos y Alcance

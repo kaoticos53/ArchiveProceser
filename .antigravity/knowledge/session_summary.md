@@ -10,6 +10,13 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **498 / 498 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --22. **Rediseño Visual Moderno (Glassmorphism): Dashboard de Métricas, Tarjetas de Nodo con Resplandor Reactivo y Barra de Estado Modular**:
+      - **Objetivo**: Elevar el atractivo visual y la experiencia de usuario en la pantalla de estadísticas de rendimiento (`WorkflowMetricsDashboardWindow.xaml`), las tarjetas de nodo (`NodeCardView.xaml`) y la barra de estado (`StatusBarView.xaml`) con estética Glassmorphism, KPIs con micro-acentos de 2px, DataGrid interactivo con buscador instantáneo, píldoras de categoría semánticas, barras de progreso redondeadas con degradados personalizados y números en tipografía monospace.
+      - **Ajustes Realizados**:
+        1. **Dashboard (`WorkflowMetricsDashboardWindow.xaml` / `WorkflowMetricsDashboardViewModel.cs`)**: Paleta oscura Glassmorphism (`#0B0F19`), KPIs con bordes superiores luminosos multietapa, barra de búsqueda en tiempo real (`SearchFilter`), píldoras de categoría con colores e iconos de dominio, barras de progreso personalizadas para distribución de tiempo (`#38BDF8` $\rightarrow$ `#6366F1`) y RAM (`#A855F7` $\rightarrow$ `#EC4899`), visualización inline de cuellos de botella y enlaces `Mode=OneWay` para evitar excepciones en `ProgressBar.Value`.
+        2. **Tarjetas de Nodo (`NodeCardView.xaml`)**: Resplandor exterior verde (`#10B981` con `BlurRadius="12"`) cuando el nodo está en estado `Running`, y micro-badges de telemetría con tipografía monospace (`Consolas, Segoe UI`) y fondos refinados.
+        3. **Barra de Estado (`StatusBarView.xaml`)**: Islas flotantes independientes (`#111827`, borde `#1F2937`), telemetría de hardware agrupada y píldora de modelos IA con botón de purga rápida.
+      - **Validación**: 498 / 498 pruebas unitarias e integración superadas al 100% (0 errores, 0 advertencias con `--warnaserror`).
   --21. **Telemetría Reactiva de Drenaje de Cola de Tareas y Progreso en Vivo de Inferencia Final**:
       - **Problema**: Al finalizar la emisión de archivos desde el nodo de origen, el flujo parecía "congelado" durante los últimos 20-30 segundos mientras los últimos elementos de la cola se procesaban secuencialmente a través de los nodos de inferencia de IA sin actualizar la interfaz de usuario.
       - **Solución**:
