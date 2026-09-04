@@ -168,9 +168,7 @@ public partial class LogView : UserControl
         {
             if (item is FileFlow.Sdk.Telemetry.StructuredLogRecord rec)
             {
-                string node = !string.IsNullOrWhiteSpace(rec.NodeName) ? $"[{rec.NodeName}] " : "";
-                string file = !string.IsNullOrWhiteSpace(rec.FileName) ? $"[{rec.FileName}] " : "";
-                sb.AppendLine($"[{rec.Timestamp:HH:mm:ss.fff}] [{rec.Level}] {node}{file}{rec.Message}");
+                sb.AppendLine(rec.FormattedLine);
             }
             else if (item is LogEntry entry)
             {
@@ -180,14 +178,7 @@ public partial class LogView : UserControl
 
         if (sb.Length > 0)
         {
-            try
-            {
-                Clipboard.SetText(sb.ToString());
-            }
-            catch
-            {
-                // Manejo resiliente si el portapapeles de Windows está bloqueado temporalmente por otro proceso
-            }
+            LogViewModel.SafeSetClipboardText(sb.ToString());
         }
     }
 

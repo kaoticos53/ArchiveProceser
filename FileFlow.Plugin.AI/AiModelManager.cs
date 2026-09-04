@@ -209,7 +209,7 @@ public static class AiModelManager
         {
             var optimalModel = HardwareCapabilityDetector.GetOptimalModelForTask(taskType);
             targetModelId = optimalModel.Id;
-            context.Log($"[AiModelManager] ⚡ Modo Automático: seleccionado '{optimalModel.FriendlyName}' basado en el hardware del equipo ({HardwareCapabilityDetector.Specs.HardwareTier}, RAM: {HardwareCapabilityDetector.Specs.TotalRamGb:F1} GB, GPU DirectML: {HardwareCapabilityDetector.Specs.HasDirectMlGpu}).", LogLevel.Information, item);
+            context.Log($"[AiModelManager] ⚡ Modo Automático: seleccionado '{optimalModel.FriendlyName}' basado en el hardware del equipo ({HardwareCapabilityDetector.Specs.HardwareTier}, RAM: {HardwareCapabilityDetector.Specs.TotalRamGb:F1} GB, GPU DirectML: {HardwareCapabilityDetector.Specs.HasDirectMlGpu}).", LogLevel.Debug, item);
         }
         else
         {

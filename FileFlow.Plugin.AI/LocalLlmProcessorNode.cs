@@ -59,7 +59,7 @@ public class LocalLlmProcessorNode : IFlowNode
         new("TaskType", ParameterEditorType.Dropdown, DefaultValue: "Summarize",
             Options: ["Summarize", "ExtractStructuredData", "TranslateAndExplain", "CustomPrompt"], DisplayOrder: 3),
 
-        new("SystemPrompt", ParameterEditorType.Text, DefaultValue: "Eres un analista documental experto y conciso.", DisplayOrder: 4),
+        new("SystemPrompt", ParameterEditorType.MultiLineText, DefaultValue: "Eres un analista documental experto y conciso.", DisplayOrder: 4),
 
         new("UserPrompt", ParameterEditorType.MultiLineText, DefaultValue: "Resume el siguiente contenido: {Ocr:Text}", DisplayOrder: 5),
 

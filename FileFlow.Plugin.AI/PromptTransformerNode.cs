@@ -41,7 +41,7 @@ public class PromptTransformerNode : IFlowNode
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("PromptTemplate", ParameterEditorType.Text, DefaultValue: "{AI:Category}, gafas de sol, {UserTag}, coche rojo", DisplayOrder: 1),
+        new("PromptTemplate", ParameterEditorType.MultiLineText, DefaultValue: "{AI:Category}, gafas de sol, {UserTag}, coche rojo", DisplayOrder: 1),
         new("TargetLanguage", ParameterEditorType.Dropdown, DefaultValue: "English", Options: ["English", "Spanish", "French", "German"], DisplayOrder: 2),
         new("ExpandSynonyms", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3)
     ];

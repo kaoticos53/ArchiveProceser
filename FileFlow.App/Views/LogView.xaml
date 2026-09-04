@@ -283,45 +283,46 @@
                         <Setter Property="Background" Value="Transparent" />
                         <Setter Property="MinHeight" Value="26" />
                         <Setter Property="VerticalContentAlignment" Value="Center" />
+                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                         <EventSetter Event="MouseDoubleClick" Handler="OnDataGridRowMouseDoubleClick" />
                         <Setter Property="ContextMenu">
                             <Setter.Value>
                                 <ContextMenu Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}">
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyFullLine], FallbackValue='📄 Copiar Línea Completa de Log'}"
-                                              Command="{Binding DataContext.CopyFullLogLineCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}" />
+                                              Command="{Binding PlacementTarget.Tag.CopyFullLogLineCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyMessage], FallbackValue='💬 Copiar Mensaje'}"
-                                              Command="{Binding DataContext.CopyLogMessageCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}" />
+                                              Command="{Binding PlacementTarget.Tag.CopyLogMessageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyFilePath], FallbackValue='📁 Copiar Ruta del Archivo'}"
-                                              Command="{Binding DataContext.CopyLogFilePathCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}"
-                                              Visibility="{Binding FilePath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.CopyLogFilePathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.FilePath, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyFileName], FallbackValue='🏷️ Copiar Nombre de Archivo'}"
-                                              Command="{Binding DataContext.CopyLogFileNameCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}"
-                                              Visibility="{Binding FileName, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.CopyLogFileNameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.FileName, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyItemId], FallbackValue='🆔 Copiar ID de Flujo'}"
-                                              Command="{Binding DataContext.CopyLogItemIdCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}"
-                                              Visibility="{Binding ItemId, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.CopyLogItemIdCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.ItemId, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_CopyJson], FallbackValue='📦 Copiar Detalles / Metadatos JSON'}"
-                                              Command="{Binding DataContext.CopyLogDetailsJsonCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}"
-                                              Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.CopyLogDetailsJsonCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.HasDetails, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     <Separator />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_Preview], FallbackValue='👁️ Abrir Vista Previa'}"
-                                              Command="{Binding DataContext.PreviewLogFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding}"
-                                              Visibility="{Binding FilePath, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.PreviewLogFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.FilePath, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_FilterNode], FallbackValue='🎯 Filtrar solo este Nodo'}"
-                                              Command="{Binding DataContext.FilterByNodeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding NodeName}"
-                                              Visibility="{Binding NodeName, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.FilterByNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext.NodeName, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.NodeName, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_ContextMenu_FilterFile], FallbackValue='📄 Filtrar solo este Archivo'}"
-                                              Command="{Binding DataContext.FilterByFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                              CommandParameter="{Binding FileName}"
-                                              Visibility="{Binding FileName, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
+                                              Command="{Binding PlacementTarget.Tag.FilterByFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext.FileName, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              Visibility="{Binding PlacementTarget.DataContext.FileName, RelativeSource={RelativeSource AncestorType=ContextMenu}, Converter={StaticResource StringNotEmptyToVisibilityConverter}}" />
                                 </ContextMenu>
                             </Setter.Value>
                         </Setter>

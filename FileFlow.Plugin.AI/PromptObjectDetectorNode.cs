@@ -47,7 +47,7 @@ public class PromptObjectDetectorNode : IFlowNode
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("Prompt", ParameterEditorType.Text, DefaultValue: "perro, coche, persona, gafas de sol", DisplayOrder: 1),
+        new("Prompt", ParameterEditorType.MultiLineText, DefaultValue: "perro, coche, persona, gafas de sol", DisplayOrder: 1),
         new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.35, Min: 0.10, Max: 1.0, Step: 0.05, DisplayOrder: 2),
         new("AutoTranslateToEnglish", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
         new("MaxDetections", ParameterEditorType.Number, DefaultValue: 10, Min: 1, Max: 100, DisplayOrder: 4)

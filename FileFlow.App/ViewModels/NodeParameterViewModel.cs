@@ -31,6 +31,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsFolderPath))]
     [NotifyPropertyChangedFor(nameof(IsFilePath))]
     [NotifyPropertyChangedFor(nameof(HasBrowseButton))]
+    [NotifyPropertyChangedFor(nameof(IsMultiLine))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
     [NotifyPropertyChangedFor(nameof(IsSlider))]
     [NotifyPropertyChangedFor(nameof(IsToggle))]
@@ -55,6 +56,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsFolderPath))]
     [NotifyPropertyChangedFor(nameof(IsFilePath))]
     [NotifyPropertyChangedFor(nameof(HasBrowseButton))]
+    [NotifyPropertyChangedFor(nameof(IsMultiLine))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
     private ObservableCollection<string> _options = [];
@@ -86,11 +88,13 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public bool IsMediaPreset => EditorType == ParameterEditorType.MediaPreset || Key.Equals("Preset", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsMultiLine => EditorType == ParameterEditorType.MultiLineText || (!HasOptions && !HasBrowseButton && !IsBooleanAndNoOptions && !IsSlider && !IsPasswordList && !IsMediaPreset && DetectIsMultiLine(Key));
+
     public bool HasBrowseButton => IsFolderPath || IsFilePath;
 
     public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
 
-    public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode;
+    public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode && !IsMultiLine;
 
     private ParameterEditorType DetectEditorType()
     {
@@ -98,6 +102,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (DetectIsFilePath(Key)) return ParameterEditorType.FilePath;
         if (Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase)) return ParameterEditorType.PasswordList;
         if (Key.Equals("Preset", StringComparison.OrdinalIgnoreCase)) return ParameterEditorType.MediaPreset;
+        if (DetectIsMultiLine(Key)) return ParameterEditorType.MultiLineText;
         return ParameterEditorType.Text;
     }
 
@@ -392,6 +397,30 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     {
         var k = key.ToLowerInvariant();
         return k.Contains("file");
+    }
+
+    [RelayCommand]
+    public void OpenTextEditor(object? targetObject)
+    {
+        var owner = (targetObject is FrameworkElement fe ? Window.GetWindow(fe) : null) ?? Application.Current?.MainWindow;
+        var dialog = new Views.Components.TextEditorDialogWindow(this)
+        {
+            Owner = owner
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            Value = dialog.ResultText;
+        }
+    }
+
+    private static bool DetectIsMultiLine(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return false;
+        var k = key.ToLowerInvariant();
+        return k.Contains("prompt") || k.Contains("template") || k.Contains("query") || k.Contains("sql") ||
+               k.Contains("script") || k.Contains("instructions") || k.Contains("headers") || k.Contains("rules") ||
+               k.Contains("labels") || k.Contains("candidatelabels") || k.Contains("body") || k.Contains("message");
     }
 
     private static List<string> DetectOptionsForKey(string key)

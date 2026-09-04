@@ -73,7 +73,7 @@ public class FaceDetectorNode : AiFlowNodeBase
 
         try
         {
-            Log(context, $"Detectando rostros en {item.FileName}...", LogLevel.Information, item);
+            Log(context, $"Detectando rostros en {item.FileName}...", LogLevel.Debug, item);
 
             string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 

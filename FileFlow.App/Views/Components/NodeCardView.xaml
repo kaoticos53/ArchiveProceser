@@ -154,10 +154,10 @@
             <!-- Encabezado de la Tarjeta del Nodo -->
             <nodify:Node.HeaderTemplate>
                 <DataTemplate DataType="{x:Type vm:NodeViewModel}">
-                    <Border Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" CornerRadius="8,8,0,0" Margin="-12,-8" Padding="10,8">
+                    <Border Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" CornerRadius="8.5,8.5,0,0" Padding="10,8">
                         <StackPanel>
                             <!-- Barra de acento superior -->
-                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="2" Margin="-10,-8,-10,6" />
+                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="8.5,8.5,0,0" Margin="-10,-8,-10,6" />
 
                             <!-- Fila principal de cabecera -->
                             <Grid>
@@ -166,8 +166,6 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
@@ -254,51 +252,8 @@
                                 <!-- Título del Nodo -->
                                 <TextBlock Grid.Column="3" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                 
-                                <!-- Badge de Latencia y Cuello de Botella (Bottleneck Heatmap) -->
-                                <Border Grid.Column="4" Margin="6,0,0,0" Padding="6,2" CornerRadius="10"
-                                        Visibility="{Binding LatencyText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"
-                                        ToolTip="{Binding BottleneckRatioText}">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="#1E293B" />
-                                            <Setter Property="BorderBrush" Value="#475569" />
-                                            <Setter Property="BorderThickness" Value="1" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Low}">
-                                                    <Setter Property="Background" Value="#064E3B" />
-                                                    <Setter Property="BorderBrush" Value="#10B981" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Medium}">
-                                                    <Setter Property="Background" Value="#78350F" />
-                                                    <Setter Property="BorderBrush" Value="#F59E0B" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.High}">
-                                                    <Setter Property="Background" Value="#881337" />
-                                                    <Setter Property="BorderBrush" Value="#F43F5E" />
-                                                    <Setter Property="Effect">
-                                                        <Setter.Value>
-                                                            <DropShadowEffect Color="#F43F5E" BlurRadius="8" ShadowDepth="0" Opacity="0.8" />
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9.5" FontWeight="Bold" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Bottleneck], StringFormat=' {0}'}" 
-                                                   Foreground="#FECDD3" FontSize="9" FontWeight="Bold" Margin="4,0,0,0" VerticalAlignment="Center"
-                                                   Visibility="{Binding IsBottleneck, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Etiqueta de Categoría -->
-                                <Border Grid.Column="5" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="6,0,0,0">
-                                    <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="10" FontWeight="SemiBold" />
-                                </Border>
-                                
                                 <!-- Botón Expandir/Colapsar Parámetros -->
-                                <ToggleButton Grid.Column="6"
+                                <ToggleButton Grid.Column="4"
                                               IsChecked="{Binding IsExpanded, Mode=TwoWay}"
                                               Content="⚙"
                                               Foreground="{DynamicResource TextSecondaryBrush}"
@@ -339,9 +294,14 @@
                 </DataTemplate>
             </nodify:Node.HeaderTemplate>
 
-            <!-- Cuerpo del Nodo: Puertos y Parámetros -->
-            <Border Padding="0,4">
-                <StackPanel>
+            <!-- Cuerpo del Nodo: Puertos, Parámetros y Barra Inferior -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,4,0,4">
                     <!-- Fila de Puertos (Entradas y Salidas en borde exterior) -->
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -682,11 +642,76 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-
                         </StackPanel>
                     </Border>
                 </StackPanel>
-            </Border>
+
+                <!-- Barra Inferior del Nodo (Footer): Categoría y Latencia/Telemetría extendida hasta los bordes -->
+                <Border Grid.Row="1"
+                        Background="{DynamicResource BgHeaderBrush}" 
+                        BorderBrush="{DynamicResource BorderDarkBrush}" 
+                        BorderThickness="0,1,0,0" 
+                        CornerRadius="0,0,8.5,8.5" 
+                        Padding="8,4"
+                        VerticalAlignment="Bottom">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Etiqueta de Categoría (Izquierda) -->
+                        <Border Grid.Column="0" 
+                                Background="{DynamicResource BgSurfaceBrush}" 
+                                BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                BorderThickness="1" 
+                                CornerRadius="5" 
+                                Padding="6,1.5" 
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Category}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="9.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        </Border>
+
+                        <!-- Badge de Latencia y Cuello de Botella (Derecha, dejando espacio para el tirador de redimensión) -->
+                        <Border Grid.Column="1" 
+                                Margin="4,0,16,0" 
+                                Padding="5,1.5" 
+                                CornerRadius="5" 
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding LatencyText, Converter={StaticResource StringNotEmptyToVisibilityConverter}}"
+                                ToolTip="{Binding BottleneckRatioText}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#1E293B" />
+                                    <Setter Property="BorderBrush" Value="#475569" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Low}">
+                                            <Setter Property="Background" Value="#064E3B" />
+                                            <Setter Property="BorderBrush" Value="#10B981" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.Medium}">
+                                            <Setter Property="Background" Value="#78350F" />
+                                            <Setter Property="BorderBrush" Value="#F59E0B" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HeatLevel}" Value="{x:Static sdk:Telemetry.LatencyHeatLevel.High}">
+                                            <Setter Property="Background" Value="#881337" />
+                                            <Setter Property="BorderBrush" Value="#F43F5E" />
+                                            <Setter Property="Effect">
+                                                <Setter.Value>
+                                                    <DropShadowEffect Color="#F43F5E" BlurRadius="6" ShadowDepth="0" Opacity="0.8" />
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding LatencyText}" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
         </nodify:Node>
 
         <!-- Tirador interactivo de Redimensionamiento -->

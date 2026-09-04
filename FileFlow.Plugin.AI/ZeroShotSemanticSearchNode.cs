@@ -55,7 +55,7 @@ public class ZeroShotSemanticSearchNode : IFlowNode
             HelpText: "Ruta a un archivo .onnx de embeddings local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("SearchQuery", ParameterEditorType.Text, DefaultValue: "",
             HelpText: "Consulta o concepto clave en lenguaje natural para filtrar o buscar.", DisplayOrder: 3),
-        new("CandidateLabels", ParameterEditorType.Text, DefaultValue: "Factura, Contrato, Nómina, Presupuesto, Documento",
+        new("CandidateLabels", ParameterEditorType.MultiLineText, DefaultValue: "Factura, Contrato, Nómina, Presupuesto, Documento",
             HelpText: "Lista de categorías candidatas separadas por comas para clasificar el elemento.", DisplayOrder: 4),
         new("SimilarityThreshold", ParameterEditorType.Slider, DefaultValue: 0.55, Min: 0.1, Max: 0.95, Step: 0.05,
             HelpText: "Umbral mínimo de similitud de coseno para bifurcar hacia el puerto 'Matched'.", DisplayOrder: 5),

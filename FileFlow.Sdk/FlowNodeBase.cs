@@ -84,7 +84,7 @@ public abstract class FlowNodeBase : IFlowNode
         LogLevel level = LogLevel.Information,
         FileItemContext? item = null)
     {
-        context.Log($"[{Name}] {message}", level, item);
+        context.Log(message, level, item);
     }
 
     #endregion

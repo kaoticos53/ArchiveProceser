@@ -25,14 +25,10 @@
                             </Grid.RowDefinitions>
 
                             <!-- Node Header -->
-                            <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" CornerRadius="8,8,0,0" Padding="12,8" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" HorizontalAlignment="Stretch">
-                                <ContentPresenter ContentSource="Header" HorizontalAlignment="Stretch" />
-                            </Border>
+                            <ContentPresenter Grid.Row="0" ContentSource="Header" HorizontalAlignment="Stretch" />
 
                             <!-- Node Body -->
-                            <Border Grid.Row="1" Padding="0,8" HorizontalAlignment="Stretch">
-                                <ContentPresenter HorizontalAlignment="Stretch" />
-                            </Border>
+                            <ContentPresenter Grid.Row="1" HorizontalAlignment="Stretch" />
                         </Grid>
                     </Border>
                 </ControlTemplate>

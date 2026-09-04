@@ -740,4 +740,14 @@
   <data name="About_Description" xml:space="preserve"><value>Plataforma de ingeniería de flujos de trabajo basada en grafos dirigidos acíclicos (DAG) con arquitectura modular de plugins, procesamiento asíncrono de alto rendimiento, pipelines no destructivos y desacoplamiento reactivo por capas.</value></data>
   <data name="About_VisitRepo" xml:space="preserve"><value>Repositorio en GitHub</value></data>
   <data name="About_VisitRepoToolTip" xml:space="preserve"><value>Abrir el repositorio oficial del proyecto en tu navegador predeterminado</value></data>
+
+  <!-- Text & Prompt Editor Dialog -->
+  <data name="TextEditor_WindowTitle" xml:space="preserve"><value>Editor de Texto y Prompts</value></data>
+  <data name="TextEditor_Header" xml:space="preserve"><value>Editor de Texto y Prompts Expandido</value></data>
+  <data name="TextEditor_ExpandToolTip" xml:space="preserve"><value>Abrir en editor de texto ampliado (⤢)</value></data>
+  <data name="TextEditor_InsertVar" xml:space="preserve"><value>Insertar Variable ({x})</value></data>
+  <data name="TextEditor_Clear" xml:space="preserve"><value>Limpiar</value></data>
+  <data name="TextEditor_EvaluatedPreview" xml:space="preserve"><value>⚡ Vista previa evaluada en tiempo real:</value></data>
+  <data name="TextEditor_SaveBtn" xml:space="preserve"><value>✓ Guardar y Aplicar</value></data>
+  <data name="TextEditor_CancelBtn" xml:space="preserve"><value>✕ Cancelar</value></data>
 </root>

@@ -740,4 +740,14 @@
   <data name="About_Description" xml:space="preserve"><value>Directed Acyclic Graph (DAG) workflow engineering platform with extensible plugins, asynchronous high-performance processing, non-destructive file pipelines, and responsive layer decoupling.</value></data>
   <data name="About_VisitRepo" xml:space="preserve"><value>GitHub Repository</value></data>
   <data name="About_VisitRepoToolTip" xml:space="preserve"><value>Open official project repository in your default web browser</value></data>
+
+  <!-- Text & Prompt Editor Dialog -->
+  <data name="TextEditor_WindowTitle" xml:space="preserve"><value>Text &amp; Prompt Editor</value></data>
+  <data name="TextEditor_Header" xml:space="preserve"><value>Expanded Text &amp; Prompt Editor</value></data>
+  <data name="TextEditor_ExpandToolTip" xml:space="preserve"><value>Open expanded text editor (⤢)</value></data>
+  <data name="TextEditor_InsertVar" xml:space="preserve"><value>Insert Variable ({x})</value></data>
+  <data name="TextEditor_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="TextEditor_EvaluatedPreview" xml:space="preserve"><value>⚡ Real-Time Evaluated Preview:</value></data>
+  <data name="TextEditor_SaveBtn" xml:space="preserve"><value>✓ Save &amp; Apply</value></data>
+  <data name="TextEditor_CancelBtn" xml:space="preserve"><value>✕ Cancel</value></data>
 </root>

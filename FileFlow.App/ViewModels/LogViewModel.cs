@@ -114,7 +114,6 @@ public partial class LogViewModel : ObservableObject
     public void AddStructuredLog(StructuredLogRecord record)
     {
         _pendingLogs.Enqueue(record);
-        SqliteLogStore.Instance.EnqueueLog(record);
     }
 
     private void FlushPendingLogs()
@@ -377,16 +376,42 @@ public partial class LogViewModel : ObservableObject
         await LoadQueryResultsAsync();
     }
 
+    public static void SafeSetClipboardText(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+
+        void SetClipboard()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                try
+                {
+                    Clipboard.SetDataObject(text, true);
+                    return;
+                }
+                catch
+                {
+                    Thread.Sleep(25);
+                }
+            }
+        }
+
+        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(SetClipboard);
+        }
+        else
+        {
+            SetClipboard();
+        }
+    }
+
     [RelayCommand]
     public void CopyFullLogLine(StructuredLogRecord? log = null)
     {
         var target = log ?? SelectedLog;
         if (target == null) return;
-        try
-        {
-            Clipboard.SetText(target.FormattedLine);
-        }
-        catch { }
+        SafeSetClipboardText(target.FormattedLine);
     }
 
     [RelayCommand]
@@ -394,11 +419,7 @@ public partial class LogViewModel : ObservableObject
     {
         var target = log ?? SelectedLog;
         if (target == null || string.IsNullOrWhiteSpace(target.Message)) return;
-        try
-        {
-            Clipboard.SetText(target.Message);
-        }
-        catch { }
+        SafeSetClipboardText(target.Message);
     }
 
     [RelayCommand]
@@ -406,11 +427,7 @@ public partial class LogViewModel : ObservableObject
     {
         var target = log ?? SelectedLog;
         if (target == null || string.IsNullOrWhiteSpace(target.FilePath)) return;
-        try
-        {
-            Clipboard.SetText(target.FilePath);
-        }
-        catch { }
+        SafeSetClipboardText(target.FilePath);
     }
 
     [RelayCommand]
@@ -418,11 +435,7 @@ public partial class LogViewModel : ObservableObject
     {
         var target = log ?? SelectedLog;
         if (target == null || string.IsNullOrWhiteSpace(target.FileName)) return;
-        try
-        {
-            Clipboard.SetText(target.FileName);
-        }
-        catch { }
+        SafeSetClipboardText(target.FileName);
     }
 
     [RelayCommand]
@@ -430,11 +443,7 @@ public partial class LogViewModel : ObservableObject
     {
         var target = log ?? SelectedLog;
         if (target == null || string.IsNullOrWhiteSpace(target.ItemId)) return;
-        try
-        {
-            Clipboard.SetText(target.ItemId);
-        }
-        catch { }
+        SafeSetClipboardText(target.ItemId);
     }
 
     [RelayCommand]
@@ -442,11 +451,7 @@ public partial class LogViewModel : ObservableObject
     {
         var target = log ?? SelectedLog;
         if (target == null || string.IsNullOrWhiteSpace(target.DetailsJson)) return;
-        try
-        {
-            Clipboard.SetText(target.DetailsJson);
-        }
-        catch { }
+        SafeSetClipboardText(target.DetailsJson);
     }
 
     [RelayCommand]
@@ -467,22 +472,14 @@ public partial class LogViewModel : ObservableObject
     public void CopyDetailsJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return;
-        try
-        {
-            Clipboard.SetText(json);
-        }
-        catch { }
+        SafeSetClipboardText(json);
     }
 
     [RelayCommand]
     public void CopyText(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-        try
-        {
-            Clipboard.SetText(text);
-        }
-        catch { }
+        SafeSetClipboardText(text);
     }
 
     [RelayCommand]

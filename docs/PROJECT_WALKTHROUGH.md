@@ -2,6 +2,64 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-04] - Editor Enriquecido y Multilínea para Prompts, Consultas y Parámetros de Texto (Solución Híbrida Completa)
+
+### 🎯 Objetivos y Alcance
+Implementación integral de la **Opción 4 (Solución Híbrida Completa)** para mejorar drásticamente la ergonomía, visibilidad y comodidad al redactar o editar textos largos, prompts de IA, plantillas dinámicas, consultas SQL y expresiones regulares, tanto en el lienzo gráfico de nodos (`Nodify`) como en el panel Inspector lateral y en diálogos modales independientes.
+
+### 🛠️ Ajustes Realizados
+1. **Detección Inteligente y Soporte Multilínea en ViewModel (`NodeParameterViewModel.cs`)**:
+   - Incorporada la propiedad `IsMultiLine` y el método heurístico `DetectIsMultiLine(Key)` para detectar automáticamente parámetros con nombres clave comunes (`prompt`, `template`, `query`, `sql`, `script`, `instructions`, `headers`, `rules`, `labels`, `candidatelabels`, `body`, `message`) o con `ParameterEditorType.MultiLineText`.
+   - Incorporado el comando reactivo `OpenTextEditorCommand` que lanza el diálogo flotante de edición `TextEditorDialogWindow`.
+2. **Editor Modal Rápido y Enriquecido (`TextEditorDialogWindow.xaml` / `.xaml.cs`)**:
+   - Ventana flotante amplia, adaptable a la resolución y centrada sobre la ventana principal con `WindowThemeHelper`.
+   - **Estadísticas en Tiempo Real**: Contador reactivo de caracteres (`🔤 N car.`), palabras (`📝 N pal.`) y líneas (`📄 N lín.`).
+   - **Inserción Rápida de Variables (`{x}`)**: Menú contextual con acceso a las variables descubiertas del flujo (`VariableDiscoveryService`) y variables del sistema con inserción directa en la posición del cursor.
+   - **Previsualización Evaluada en Vivo**: Panel con borde cian que ejecuta `VariableTemplateResolver.Resolve` en tiempo real conforme el usuario escribe plantillas dinámicas (`{...}` / `<...>`).
+   - **Atajos de Teclado Productivos**: `Ctrl + Enter` para guardar y cerrar inmediatamente, `Esc` para cancelar.
+   - Botones para copiar texto al portapapeles y limpiar contenido.
+3. **Edición Adaptativa en Tarjetas de Nodo (`NodeParameterTemplates.xaml`)**:
+   - Plantilla visual multilínea `IsMultiLine` con `TextBox` adaptativo (`MinHeight="44"`, `MaxHeight="95"`, `AcceptsReturn="True"`, `TextWrapping="Wrap"` y scrollbar vertical automático) en tipografía monoespaciada legible (`Cascadia Code`, `Consolas`).
+   - Barra lateral compacta con botón de expansión modal rápido `⤢` y botón de inserción de variables `{x}`.
+   - Botón de expansión `⤢` también disponible en parámetros de texto estándar (`IsStandardInput`).
+4. **Edición Cómoda en el Inspector Lateral (`NodeInspectorPanelView.xaml`)**:
+   - Área de texto multilínea ampliada (`MinHeight="75"`, `MaxHeight="170"`) con barra inferior que integra botón `⤢ Editor` y `{x} Variables`.
+   - Soporte de apertura modal para parámetros estándar y multilínea.
+5. **Actualización de Descriptores en Nodos de IA (`FileFlow.Plugin.AI`)**:
+   - Asignado explícitamente `ParameterEditorType.MultiLineText` en los parámetros de prompt y plantillas en `PromptObjectDetectorNode.cs` (`Prompt`), `PromptTransformerNode.cs` (`PromptTemplate`), `LocalLlmProcessorNode.cs` (`SystemPrompt` y `UserPrompt`) y `ZeroShotSemanticSearchNode.cs` (`CandidateLabels`).
+6. **Internacionalización Completa (i18n)**:
+   - Añadidas claves bilingües en `Strings.resx` y `Strings.es.resx`: `TextEditor_WindowTitle`, `TextEditor_Header`, `TextEditor_ExpandToolTip`, `TextEditor_InsertVar`, `TextEditor_Clear`, `TextEditor_EvaluatedPreview`, `TextEditor_SaveBtn`, `TextEditor_CancelBtn`.
+7. **Validación y Suite de Pruebas**:
+   - **477 / 477 Pruebas Unitarias superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+### 🎯 Objetivos y Alcance
+Diagnóstico y eliminación de registros de log duplicados y redundantes durante la ejecución de nodos de detección facial (`FaceDetectorNode`), resolución automática de hardware en `AiModelManager` y desduplicación de inserciones en la base de datos de telemetría `SqliteLogStore`.
+
+### 🛠️ Ajustes Realizados
+1. **Desduplicación de Inserciones en SQLite (`LogViewModel.cs`)**:
+   - Eliminada la llamada redundante `SqliteLogStore.Instance.EnqueueLog(record)` en `LogViewModel.AddStructuredLog(record)`.
+   - Dado que `WorkflowExecutor.NotifyLog` y `MockFlowExecutionContext` ya persistían cada log en SQLite antes de despacharlo a la UI, la llamada adicional en `AddStructuredLog` insertaba cada registro dos veces en SQLite, duplicando todas las líneas al recargar o filtrar.
+2. **Eliminación de Prefijo Duplicado de Nombre de Nodo (`FlowNodeBase.cs`)**:
+   - Actualizado `FlowNodeBase.Log` para emitir el mensaje limpio `context.Log(message, level, item)` sin anteponer `$"[{Name}] "`.
+   - Como la consola de ejecución (`LogView.xaml`) ya cuenta con una columna específica de **Nodo** (`NodeName`), anteponer el nombre duplicaba la información visual en la columna de mensaje.
+3. **Optimización de Logs en Detección Facial e Inferencia IA (`FaceDetectorNode.cs` y `AiModelManager.cs`)**:
+   - Ajustado el mensaje inicial `Detectando rostros en {item.FileName}...` a `LogLevel.Debug` para que en la vista estándar de consola solo se presente el resultado final (`✅ N rostros detectados...` / `ℹ️ No se detectaron suficientes rostros...`).
+   - Ajustado el mensaje de selección automática de modelo según hardware en `AiModelManager.ResolveModelPathAsync` a `LogLevel.Debug`, evitando repetir el mismo log de especificaciones de hardware por cada fichero procesado en un lote.
+4. **Rediseño Geométrico y Ajuste al Ras de Cabecera y Barra Inferior de Tarjetas de Nodo (`NodeCardView.xaml` y `NodifyStyles.xaml`)**:
+   - **Barra Superior Descongestionada**: Eliminados el badge de categoría y el de latencia de la cabecera principal, dejando exclusivamente `[🔴 Breakpoint] [≡ Logging] [🟢 LED] [Título del Nodo] [⚙ Parámetros]`. El nombre del nodo ahora dispone de todo el ancho horizontal sin recortes.
+   - **Estructura en Grid de 2 Filas sin Desbordes**: Sustituido el `StackPanel` y `Border` interiores con márgenes negativos por un `Grid` estructurado (`Row 0: *` para puertos y parámetros, `Row 1: Auto` para el footer alineado a `VerticalAlignment="Bottom"`).
+   - **Ajuste Perfecto al Borde Inferior y Esquinas Redondeadas**:
+     - `NodifyStyles.xaml` simplificado con `ContentPresenter` limpios sin padding forzado.
+     - `HeaderTemplate` con `CornerRadius="8.5,8.5,0,0"` al ras superior.
+     - `Footer` con `CornerRadius="0,0,8.5,8.5"`, `BorderThickness="0,1,0,0"` y fondo idéntico a la cabecera (`BgHeaderBrush`), perfectamente anclado a la base de la tarjeta sin salirse por los laterales (`Margin="0"`).
+5. **Corrección de Acciones del Menú Contextual y Portapapeles en la Consola de Logs (`LogView.xaml` y `LogViewModel.cs`)**:
+   - **Enrutamiento Correcto de Comandos en Menú Contextual**: En WPF, los menús emergentes (`ContextMenu`) residen en su propio árbol visual (`PopupRoot`), por lo que `{RelativeSource AncestorType=DataGrid}` no alcanzaba el `DataContext` del ViewModel. Se configuró `Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}"` en el `DataGridRow` y se actualizaron los comandos y parámetros a través de `PlacementTarget.Tag` y `PlacementTarget.DataContext`.
+   - **Copiado al Portapapeles Resiliente (`SafeSetClipboardText`)**: Implementado un despachador thread-safe con reintentos y fallback ante bloqueos de acceso COM del portapapeles de Windows (`Clipboard.SetDataObject(text, true)`), asegurando que las opciones de copiado de línea completa, mensaje, ruta, nombre, ID de flujo y metadatos JSON funcionen de forma instantánea y garantizada.
+
+---
+
 ## [2026-09-03] - Estabilización de Sesiones ONNX y Aceleración Híbrida GPU DirectML
 
 ### 🎯 Objetivos y Alcance
