@@ -2,6 +2,28 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-04] - Reubicación de Ajustes en Menú Lateral y Limpieza de Pestaña de Modelos de IA
+
+### 🎯 Objetivos y Alcance
+1. **Reubicación de Ajustes**: Trasladar el acceso a la configuración general y del flujo desde la barra superior de ejecución (`ControlBarView.xaml`) hacia el menú lateral de navegación (*Side Drawer* en `MainWindow.xaml`) con el nombre canónico **"⚙️ Ajustes"** (`Drawer_Settings`), despejando los controles de ejecución y depuración.
+2. **Eliminación de Botón Redundante en Modelos de IA**: Suprimir el botón *"Abrir Asistente de Descarga"* de la cabecera de la pestaña *Modelos de IA* en `WorkflowSettingsWindow.xaml`, ya que la pestaña contiene nativamente toda la funcionalidad de gestión, descarga individual/masiva, estado de instalación, progreso y configuración de URLs.
+
+### 🛠️ Ajustes Realizados
+1. **Limpieza de Barra de Control (`ControlBarView.xaml`)**:
+   - Retirado el botón de la barra de control para optimizar el espacio horizontal dedicado a los botones de ejecución (`Run`, `Debug`, `Step`, `Continue`, `Pause`, `Stop`, `Rollback`, `Inspector`).
+2. **Opción en Menú Lateral (`MainWindow.xaml`)**:
+   - Incorporado el botón **"⚙️ Ajustes"** con estilo `DrawerMenuItemButton` en la sección *PANELES Y HERRAMIENTAS*, enlazado a `ControlBar.OpenWorkflowSettingsCommand`.
+3. **Cierre Automático del Drawer (`ControlBarViewModel.cs`)**:
+   - En `OpenWorkflowSettings()`, se establece `IsMenuOpen = false;` antes de abrir el diálogo modal.
+4. **Simplificación de Pestaña de Modelos de IA (`WorkflowSettingsWindow.xaml` / `.xaml.cs`)**:
+   - Retirado el botón `OpenAiModelDownloadDialog_Click` y su manejador en code-behind, dejando un encabezado limpio y minimalista.
+5. **Internacionalización i18n (`Strings.resx` / `Strings.es.resx`)**:
+   - Añadidas las claves bilingües `Drawer_Settings` y `Drawer_SettingsToolTip`.
+6. **Validación**:
+   - **480 / 480 pruebas unitarias e integración superadas al 100% (0 errores, 0 advertencias)**.
+
+---
+
 ## [2026-09-04] - Corrección de Archivo Origen en `DestinationSinkNode` y Sincronización de `PhysicalPath`
 
 ### 🎯 Objetivos y Alcance

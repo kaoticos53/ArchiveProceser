@@ -313,6 +313,8 @@
   <data name="Drawer_CustomizeThemeToolTip" xml:space="preserve"><value>Open Theme Customizer Studio</value></data>
   <data name="Drawer_PanelsTools" xml:space="preserve"><value>PANELS &amp; TOOLS</value></data>
   <data name="Drawer_DataInspector" xml:space="preserve"><value>Data Inspector</value></data>
+  <data name="Drawer_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Drawer_SettingsToolTip" xml:space="preserve"><value>Configure general settings, storage paths, performance and AI models</value></data>
   <data name="Drawer_HelpResources" xml:space="preserve"><value>HELP &amp; RESOURCES</value></data>
   <data name="Drawer_UserManual" xml:space="preserve"><value>User Manual</value></data>
   <data name="Drawer_UserManualToolTip" xml:space="preserve"><value>Open detailed User Manual (PDF)</value></data>

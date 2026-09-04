@@ -74,18 +74,6 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Workflow Settings Modal Button -->
-                <Button Command="{Binding OpenWorkflowSettingsCommand}" 
-                        Style="{DynamicResource SecondaryButton}" 
-                        Padding="8,5" 
-                        Margin="0,0,8,0" 
-                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_SettingsToolTip]}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⚙️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[WorkflowSettingsBtn]}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-
                 <!-- Run Normal -->
                 <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RunFlow]}" 
                         Command="{Binding ExecuteWorkflowCommand}" 

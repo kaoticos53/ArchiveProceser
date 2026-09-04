@@ -10,6 +10,13 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **480 / 480 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --14. **Reubicación de Ajustes en Menú Lateral y Limpieza de Pestaña de Modelos de IA**:
+      - **Problema**: El botón *"Ajustes del Flujo"* sobrecargaba la barra superior de ejecución y su nombre no reflejaba adecuadamente los ajustes globales de la aplicación. Por otro lado, el botón *"Abrir Asistente de Descargas"* en el tab de Modelos de IA abría un diálogo redundante que replicaba la misma vista.
+      - **Solución**:
+        1. Eliminado el botón de la barra de control (`ControlBarView.xaml`) y añadido **"⚙️ Ajustes"** (`Drawer_Settings`) en el menú lateral (*Drawer* en `MainWindow.xaml`), cerrando el drawer al pulsar (`IsMenuOpen = false;`).
+        2. Eliminado el botón `OpenAiModelDownloadDialog_Click` de la cabecera de la pestaña de IA en `WorkflowSettingsWindow.xaml`.
+        3. Añadidas claves bilingües en `Strings.resx` y `Strings.es.resx`.
+      - **Validación**: 480 / 480 pruebas unitarias e integración superadas al 100%.
   --13. **Corrección de Archivo Origen en `DestinationSinkNode` y Sincronización de `PhysicalPath`**:
       - **Problema**: `FileItemContext.GetExistingPhysicalPath()` priorizaba `PhysicalPath` sobre `CurrentPath`. Cuando un nodo transformaba una imagen (`BackgroundRemoverNode`), `PhysicalPath` retenía la ruta del archivo original, provocando que `DestinationSinkNode` copiara el archivo original en lugar del archivo realmente procesado.
       - **Solución**:

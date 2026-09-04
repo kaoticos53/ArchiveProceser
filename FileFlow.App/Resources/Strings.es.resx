@@ -313,6 +313,8 @@
   <data name="Drawer_CustomizeThemeToolTip" xml:space="preserve"><value>Abrir el Estudio Gráfico de Personalización Visual de Temas</value></data>
   <data name="Drawer_PanelsTools" xml:space="preserve"><value>PANELES Y HERRAMIENTAS</value></data>
   <data name="Drawer_DataInspector" xml:space="preserve"><value>Inspector de Datos</value></data>
+  <data name="Drawer_Settings" xml:space="preserve"><value>Ajustes</value></data>
+  <data name="Drawer_SettingsToolTip" xml:space="preserve"><value>Configurar ajustes generales, rutas de salida, rendimiento y modelos de IA</value></data>
   <data name="Drawer_HelpResources" xml:space="preserve"><value>AYUDA Y RECURSOS</value></data>
   <data name="Drawer_UserManual" xml:space="preserve"><value>Manual de Usuario</value></data>
   <data name="Drawer_UserManualToolTip" xml:space="preserve"><value>Abrir el Manual de Usuario detallado (PDF)</value></data>

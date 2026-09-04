@@ -270,6 +270,13 @@
                             </StackPanel>
                         </Button>
 
+                        <Button Command="{Binding ControlBar.OpenWorkflowSettingsCommand}" Style="{StaticResource DrawerMenuItemButton}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_SettingsToolTip]}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_Settings]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
                         <!-- Section: Help & Resources -->
                         <Separator Background="{DynamicResource BorderDarkBrush}" Margin="4,12,4,12" />
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_HelpResources]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />

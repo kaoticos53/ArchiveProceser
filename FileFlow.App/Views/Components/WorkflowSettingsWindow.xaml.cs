@@ -226,15 +226,6 @@ public partial class WorkflowSettingsWindow : Window
         PopulateThemesCombo(ThemeManager.Instance.CurrentThemeId);
     }
 
-    private void OpenAiModelDownloadDialog_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new AiModelDownloadDialog();
-        dlg.Owner = this;
-        dlg.ShowDialog();
-        _aiModelManagerVm.RefreshStatus();
-        TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
-    }
-
     private async void DownloadAllMissing_Click(object sender, RoutedEventArgs e)
     {
         BtnDownloadAllMissing.IsEnabled = false;
