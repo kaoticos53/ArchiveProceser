@@ -227,13 +227,15 @@ public static class ParameterHelper
             return resolved;
         }
 
-        // 1. Si hay GlobalOutputDir configurado, anclar bajo GlobalOutputDir
-        if (!string.IsNullOrWhiteSpace(effectiveGlobalOutputDir))
-        {
-            return Path.GetFullPath(Path.Combine(effectiveGlobalOutputDir, resolved));
-        }
+        // Comprobar si el patrón original solicitaba explícitamente una ruta relativa al directorio de origen
+        bool isExplicitlySourceRelative = targetPathPattern.Contains("{RelativeDir}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{RelativeDirectory}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{RelativePath}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{RelativeFilePath}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{SourceDir}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{OriginalDir}", StringComparison.OrdinalIgnoreCase);
 
-        // 2. Si no hay GlobalOutputDir, anclar bajo el directorio del archivo origen
+        // Directorio base de origen
         string? baseDir = null;
         if (context.Metadata.TryGetValue("SourceRootPath", out var srpVal) && srpVal != null && !string.IsNullOrWhiteSpace(srpVal.ToString()))
         {
@@ -252,6 +254,19 @@ public static class ParameterHelper
             }
         }
 
+        // 1. Si el patrón era explícitamente relativo al origen (ej. "{RelativeDir}\Output"), anclar bajo el directorio origen
+        if (isExplicitlySourceRelative && !string.IsNullOrWhiteSpace(baseDir))
+        {
+            return Path.GetFullPath(Path.Combine(baseDir, resolved));
+        }
+
+        // 2. Si hay GlobalOutputDir configurado, anclar bajo GlobalOutputDir
+        if (!string.IsNullOrWhiteSpace(effectiveGlobalOutputDir))
+        {
+            return Path.GetFullPath(Path.Combine(effectiveGlobalOutputDir, resolved));
+        }
+
+        // 3. Fallback: anclar bajo el directorio del archivo origen
         if (!string.IsNullOrWhiteSpace(baseDir))
         {
             return Path.GetFullPath(Path.Combine(baseDir, resolved));

@@ -101,6 +101,9 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 # Compilar y ejecutar la aplicación WPF
 .\run.ps1
 
+# Ejecutar la aplicación WPF directamente sin compilar
+.\run-fast.ps1   # o .\run.ps1 -NoBuild
+
 # Limpiar todos los artefactos de compilación, binarios y temporales
 .\clean.ps1
 ```

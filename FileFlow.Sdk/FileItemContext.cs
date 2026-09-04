@@ -44,13 +44,13 @@ public record FileItemContext
 
     public string GetExistingPhysicalPath()
     {
+        if (!string.IsNullOrWhiteSpace(CurrentPath) && (File.Exists(CurrentPath) || Directory.Exists(CurrentPath)))
+            return CurrentPath;
         if (!string.IsNullOrWhiteSpace(PhysicalPath) && (File.Exists(PhysicalPath) || Directory.Exists(PhysicalPath)))
             return PhysicalPath;
         if (!string.IsNullOrWhiteSpace(OriginalPath) && (File.Exists(OriginalPath) || Directory.Exists(OriginalPath)))
             return OriginalPath;
-        if (!string.IsNullOrWhiteSpace(CurrentPath) && (File.Exists(CurrentPath) || Directory.Exists(CurrentPath)))
-            return CurrentPath;
-        return !string.IsNullOrWhiteSpace(PhysicalPath) ? PhysicalPath : (!string.IsNullOrWhiteSpace(OriginalPath) ? OriginalPath : CurrentPath);
+        return !string.IsNullOrWhiteSpace(CurrentPath) ? CurrentPath : (!string.IsNullOrWhiteSpace(PhysicalPath) ? PhysicalPath : OriginalPath);
     }
 
     public FileItemContext() { }

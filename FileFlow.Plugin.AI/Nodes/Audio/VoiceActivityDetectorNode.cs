@@ -108,9 +108,9 @@ public class VoiceActivityDetectorNode : IFlowNode
             string? trimmedWavPath = null;
             if (string.Equals(mode, "TrimSilence", StringComparison.OrdinalIgnoreCase))
             {
-                string targetDir = string.IsNullOrWhiteSpace(outputDirRaw) || outputDirRaw.Contains("{GlobalOutputDir}")
-                    ? Path.Combine(Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory(), "Processed")
-                    : Path.GetFullPath(outputDirRaw);
+                string targetDir = ParameterHelper.ResolveOutputPath(
+                    string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
+                    item);
 
                 Directory.CreateDirectory(targetDir);
                 trimmedWavPath = Path.Combine(targetDir, $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_trimmed.wav");
@@ -138,6 +138,7 @@ public class VoiceActivityDetectorNode : IFlowNode
             {
                 var trimmedItem = item.DeepClone();
                 trimmedItem.CurrentPath = analysis.TrimmedAudioPath;
+                trimmedItem.PhysicalPath = analysis.TrimmedAudioPath;
                 trimmedItem.FileSizeBytes = new FileInfo(analysis.TrimmedAudioPath).Length;
                 trimmedItem.Metadata["AI:SilenceTrimmed"] = true;
                 emitItem = trimmedItem;

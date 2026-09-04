@@ -119,9 +119,9 @@ public class TextToSpeechNode : IFlowNode
 
             context.Log($"[PiperTTS] 🔊 Sintetizando audio para '{item.FileName}' ({textToSynthesize.Length} caracteres)...", LogLevel.Information, item);
 
-            string targetDir = string.IsNullOrWhiteSpace(outputDirRaw) || outputDirRaw.Contains("{GlobalOutputDir}")
-                ? Path.Combine(Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory(), "Processed")
-                : Path.GetFullPath(outputDirRaw);
+            string targetDir = ParameterHelper.ResolveOutputPath(
+                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
+                item);
 
             Directory.CreateDirectory(targetDir);
 
@@ -137,6 +137,7 @@ public class TextToSpeechNode : IFlowNode
 
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
+            newItem.PhysicalPath = targetPath;
             newItem.FileSizeBytes = new FileInfo(targetPath).Length;
             newItem.Metadata["AI:AudioGenerated"] = true;
             newItem.Metadata["AI:AudioDurationSeconds"] = audioDuration;

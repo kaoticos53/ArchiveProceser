@@ -32,6 +32,7 @@ public class BackgroundRemoverNode : IFlowNode
     public IReadOnlyList<NodePort> Outputs { get; } =
     [
         new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+        new NodePort("Bypass", typeof(FileItemContext), PortDirection.Output, "Bypass"),
         new NodePort("Mask", typeof(FileItemContext), PortDirection.Output, "Mask"),
         new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
     ];
@@ -76,7 +77,8 @@ public class BackgroundRemoverNode : IFlowNode
         if (!_supportedExtensions.Contains(ext))
         {
             context.Log($"[BackgroundRemover] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await context.EmitAsync("Bypass", item).ConfigureAwait(false);
+            await context.EmitAsync("Error", item).ConfigureAwait(false);
             return;
         }
 
@@ -96,8 +98,9 @@ public class BackgroundRemoverNode : IFlowNode
 
             if (modelPath == null)
             {
-                context.Log($"[BackgroundRemover] ⚠️ Modelo de eliminación de fondo no disponible. El archivo se emite sin modificar.", LogLevel.Warning, item);
-                await context.EmitAsync("Out", item).ConfigureAwait(false);
+                context.Log($"[BackgroundRemover] ⚠️ Modelo de eliminación de fondo no disponible. El archivo se emite por Bypass.", LogLevel.Warning, item);
+                await context.EmitAsync("Bypass", item).ConfigureAwait(false);
+                await context.EmitAsync("Error", item).ConfigureAwait(false);
                 return;
             }
 
@@ -125,35 +128,77 @@ public class BackgroundRemoverNode : IFlowNode
                 cancellationToken).ConfigureAwait(false);
 
             // Determinar directorio de salida no destructivo
-            string targetDir = string.IsNullOrWhiteSpace(outputDirRaw) || outputDirRaw.Contains("{GlobalOutputDir}")
-                ? Path.Combine(Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory(), "Processed")
-                : Path.GetFullPath(outputDirRaw);
+            string targetDir = ParameterHelper.ResolveOutputPath(
+                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
+                item);
 
             Directory.CreateDirectory(targetDir);
 
-            string fileSuffix = maskOnly ? "_mask.png" : "_nobg.png";
-            string targetFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + fileSuffix;
-            string targetPath = Path.Combine(targetDir, targetFileName);
-
-            await processedImage.SaveAsPngAsync(targetPath, cancellationToken).ConfigureAwait(false);
-
-            var newItem = item.DeepClone();
-            newItem.CurrentPath = targetPath;
-            newItem.FileSizeBytes = new FileInfo(targetPath).Length;
-            newItem.Metadata["AI:BackgroundRemoved"] = !maskOnly;
-            newItem.Metadata["AI:AlphaMaskGenerated"] = maskOnly;
-            newItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
-
-            context.Log($"[BackgroundRemover] ✅ Fondo procesado con éxito: '{targetFileName}'", LogLevel.Information, newItem);
-
             if (maskOnly)
             {
-                await context.EmitAsync("Mask", newItem).ConfigureAwait(false);
+                // Modo solo máscara
+                string maskFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png";
+                string maskPath = Path.Combine(targetDir, maskFileName);
+                await processedImage.SaveAsPngAsync(maskPath, cancellationToken).ConfigureAwait(false);
+
+                var maskItem = item.DeepClone();
+                maskItem.CurrentPath = maskPath;
+                maskItem.PhysicalPath = maskPath;
+                maskItem.FileSizeBytes = new FileInfo(maskPath).Length;
+                maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
+                maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
+
+                context.Log($"[BackgroundRemover] ✅ Máscara generada con éxito: '{maskFileName}'", LogLevel.Information, maskItem);
+                await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
             }
             else
             {
-                await context.EmitAsync("Out", newItem).ConfigureAwait(false);
+                // Modo imagen procesada (transparente o color)
+                string targetFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_nobg.png";
+                string targetPath = Path.Combine(targetDir, targetFileName);
+                await processedImage.SaveAsPngAsync(targetPath, cancellationToken).ConfigureAwait(false);
+
+                var outItem = item.DeepClone();
+                outItem.CurrentPath = targetPath;
+                outItem.PhysicalPath = targetPath;
+                outItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                outItem.Metadata["AI:BackgroundRemoved"] = true;
+                outItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
+
+                // Generar también la máscara aislada para el puerto Mask
+                string maskFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png";
+                string maskPath = Path.Combine(targetDir, maskFileName);
+
+                using var maskImage = new Image<L8>(processedImage.Width, processedImage.Height);
+                processedImage.ProcessPixelRows(maskImage, (srcAccessor, dstAccessor) =>
+                {
+                    for (int y = 0; y < srcAccessor.Height; y++)
+                    {
+                        var srcRow = srcAccessor.GetRowSpan(y);
+                        var dstRow = dstAccessor.GetRowSpan(y);
+                        for (int x = 0; x < srcRow.Length; x++)
+                        {
+                            dstRow[x] = new L8(srcRow[x].A);
+                        }
+                    }
+                });
+                await maskImage.SaveAsPngAsync(maskPath, cancellationToken).ConfigureAwait(false);
+
+                var maskItem = item.DeepClone();
+                maskItem.CurrentPath = maskPath;
+                maskItem.PhysicalPath = maskPath;
+                maskItem.FileSizeBytes = new FileInfo(maskPath).Length;
+                maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
+                maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
+
+                context.Log($"[BackgroundRemover] ✅ Fondo procesado con éxito: '{targetFileName}' y máscara '{maskFileName}'", LogLevel.Information, outItem);
+
+                await context.EmitAsync("Out", outItem).ConfigureAwait(false);
+                await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
             }
+
+            // Emitir siempre el archivo original tal cual por el puerto Bypass
+            await context.EmitAsync("Bypass", item).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

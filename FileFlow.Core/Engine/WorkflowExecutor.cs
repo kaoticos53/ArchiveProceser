@@ -143,6 +143,10 @@ public class WorkflowExecutor
 
     public async Task ExecuteAsync(WorkflowGraph graph, PluginLoader loader, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(GlobalOutputDir) && !string.IsNullOrWhiteSpace(graph.GlobalOutputDir))
+        {
+            GlobalOutputDir = graph.GlobalOutputDir;
+        }
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
         _outgoingEdges.Clear();
@@ -284,6 +288,10 @@ public class WorkflowExecutor
         FolderWatcherService watcherService,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(GlobalOutputDir) && !string.IsNullOrWhiteSpace(graph.GlobalOutputDir))
+        {
+            GlobalOutputDir = graph.GlobalOutputDir;
+        }
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
         _outgoingEdges.Clear();

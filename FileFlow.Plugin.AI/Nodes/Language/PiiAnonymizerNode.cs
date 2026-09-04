@@ -128,9 +128,9 @@ public class PiiAnonymizerNode : IFlowNode
 
             var result = await Task.Run(() => PiiDetectionEngine.AnonymizeText(rawText, options), cancellationToken).ConfigureAwait(false);
 
-            string targetDir = string.IsNullOrWhiteSpace(outputDirRaw) || outputDirRaw.Contains("{GlobalOutputDir}")
-                ? Path.Combine(Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory(), "Processed")
-                : Path.GetFullPath(outputDirRaw);
+            string targetDir = ParameterHelper.ResolveOutputPath(
+                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
+                item);
 
             Directory.CreateDirectory(targetDir);
 
@@ -141,6 +141,7 @@ public class PiiAnonymizerNode : IFlowNode
 
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
+            newItem.PhysicalPath = targetPath;
             newItem.FileSizeBytes = new FileInfo(targetPath).Length;
             newItem.Metadata["AI:PiiDetected"] = result.PiiDetected;
             newItem.Metadata["AI:PiiTotalCount"] = result.TotalCount;

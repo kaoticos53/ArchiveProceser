@@ -2,6 +2,119 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-04] - Corrección de Archivo Origen en `DestinationSinkNode` y Sincronización de `PhysicalPath`
+
+### 🎯 Objetivos y Alcance
+Resolver el fallo en el que `DestinationSinkNode` (nodo Carpeta Destino), al estar conectado a la salida `Out` o `Mask` de `BackgroundRemoverNode` (u otros transformadores de IA), copiaba el archivo original con el nombre cambiado a `_nobg.png` / `_mask.png` en lugar del archivo realmente procesado y generado por el nodo.
+
+### 🛠️ Ajustes Realizados
+1. **Priorización de `CurrentPath` en `FileItemContext.GetExistingPhysicalPath`**:
+   - `FileItemContext.GetExistingPhysicalPath()` priorizaba `PhysicalPath` sobre `CurrentPath`. Al transformar una imagen, `PhysicalPath` retenía la ruta del archivo original de entrada, provocando que `File.Copy` tomara la imagen original no transformada.
+   - Se ajustó el orden para consultar prioritariamente `CurrentPath` (si existe físicamente en disco), ya que representa la versión activa más reciente producida por el pipeline.
+2. **Sincronización Determinista de `PhysicalPath` en Nodos Generadores de Archivos**:
+   - `BackgroundRemoverNode`: `outItem.PhysicalPath = targetPath;` y `maskItem.PhysicalPath = maskPath;`.
+   - `SuperResolutionUpscalerNode`: `newItem.PhysicalPath = targetPath;`.
+   - `PiiAnonymizerNode`: `newItem.PhysicalPath = targetPath;`.
+   - `TextToSpeechNode`: `newItem.PhysicalPath = targetPath;`.
+   - `VoiceActivityDetectorNode`: `trimmedItem.PhysicalPath = analysis.TrimmedAudioPath;`.
+3. **Pruebas y Validación**:
+   - Añadido test en `DestinationSinkNodeTests.cs`: `ExecuteAsync_WhenItemWasTransformedByPriorNode_ShouldCopyTransformedFileNotOriginal`.
+   - **480 / 480 pruebas unitarias e integración superadas al 100% (0 errores)**.
+
+---
+
+## [2026-09-04] - Cuatro Puertos de Salida Especializados en Eliminador de Fondo IA (`BackgroundRemoverNode`)
+
+### 🎯 Objetivos y Alcance
+Ampliación de los puertos de salida del nodo **Eliminador de Fondo IA (`BackgroundRemoverNode`)** para desacoplar completamente las salidas de datos y permitir flujos paralelos flexibles:
+- **`Out`**: Imagen procesada resultante con fondo transparente (`_nobg.png`) o color de fondo configurado.
+- **`Bypass`**: Archivo de entrada original sin alterar.
+- **`Mask`**: Archivo de máscara alfa aislada en escala de grises (`_mask.png`).
+- **`Error`**: Archivos con fallos o no soportados.
+
+### 🛠️ Ajustes Realizados
+1. **Definición de Puertos (`BackgroundRemoverNode.cs`)**:
+   - `Outputs = [ new NodePort("Out", ...), new NodePort("Bypass", ...), new NodePort("Mask", ...), new NodePort("Error", ...) ]`.
+2. **Generación Simultánea de Salida y Máscara**:
+   - Cuando se procesa una imagen en modo normal (`TransparentPng` / `ColorBackground`), el nodo genera tanto `_nobg.png` para el puerto `Out` como la máscara `_mask.png` (extrayendo el canal alfa en 0 ms) para el puerto `Mask`.
+   - Se emite siempre el archivo original tal cual por el puerto `Bypass`.
+3. **Validación**:
+   - Actualizadas pruebas en `VisionSuiteNodesTests.cs` validando el catálogo de puertos.
+   - **479 / 479 pruebas unitarias e integración superadas al 100% (0 errores)**.
+
+---
+
+## [2026-09-04] - Corrección Exhaustiva de Rutas Relativas (`{RelativeDir}`) y Propagación de Ruta Global (`{GlobalOutputDir}`)
+
+### 🎯 Objetivos y Alcance
+Resolver las discrepancias en el cálculo de rutas de salida cuando se combinan `{RelativeDir}` (directorio relativo a la fuente) y `{GlobalOutputDir}` (directorio global configurado por el usuario):
+1. Cuando `DestinationSinkNode` tenía configurado `{RelativeDir}\Output`, se anclaba erróneamente bajo el directorio global de salida en lugar del directorio de origen (`SourceRootPath`).
+2. Cuando `BackgroundRemoverNode` tenía `{GlobalOutputDir}\procesado`, se resolvía a la ruta por defecto (`Documents\FileFlowStudio\Output`) en lugar del directorio global personalizado en los ajustes (`Downloads\-- Salida`).
+3. Cuando un nodo intermedio generaba un archivo y actualizaba `item.CurrentPath`, `{RelativeDir}` calculaba rutas relativas sobre el archivo intermedio en vez de sobre el archivo de origen original (`item.OriginalPath`).
+
+### 🛠️ Ajustes Realizados
+1. **Propagación de `GlobalOutputDir` en el Motor (`WorkflowExecutionCoordinator`, `WorkflowExecutor`, `FolderSourceNode`)**:
+   - `WorkflowExecutionCoordinator.RunAsync` inicializa `_activeExecutor.GlobalOutputDir` con la ruta global efectiva (`graph.GlobalOutputDir` o `_editorViewModel.GlobalOutputDir`).
+   - `WorkflowExecutor.ExecuteAsync` y `ExecuteWatchModeAsync` sincronizan `GlobalOutputDir` desde `graph.GlobalOutputDir`.
+   - `FolderSourceNode.ExecuteAsync` propaga `GlobalOutputDir`, `WorkflowExecutionId` y flags globales a los `FileItemContext` emitidos.
+2. **Cálculo Canónico de `{RelativeDir}` basado en Archivo Original (`SystemVariablesResolver`)**:
+   - `SystemVariablesResolver` calcula `RelativeDir`, `RelativePath` y `RelativeFilePath` utilizando `item.OriginalPath` (con fallback a `CurrentPath`) respecto a `SourceRootPath`.
+3. **Anclaje de Rutas Relativas al Origen (`ParameterHelper.ResolveOutputPath`)**:
+   - `ParameterHelper.ResolveOutputPath` detecta si el patrón contiene tokens explícitamente relativos a la fuente (`{RelativeDir}`, `{RelativeDirectory}`, `{RelativePath}`, `{RelativeFilePath}`, `{SourceDir}`, `{OriginalDir}`).
+   - Si es relativo al origen, se ancla bajo `SourceRootPath` / directorio original, **independientemente de si `GlobalOutputDir` está configurado**.
+   - Si el patrón es relativo genérico sin tokens de origen (ej. `Converted`), se ancla bajo `GlobalOutputDir`.
+4. **Validación**:
+   - Añadidas 3 nuevas pruebas unitarias en `GlobalOutputDirTests.cs`:
+     - `ResolveOutputPath_WithRelativeDirPattern_EvenWithGlobalOutputDir_AnchorsUnderSourceDirectory`
+     - `ResolveOutputPath_WithGlobalOutputDirPattern_ResolvesToGlobalOutputDir`
+     - `ResolveOutputPath_WithRelativeDir_AfterIntermediateNodeChangedCurrentPath_MaintainsSourceRootRelative`
+   - **479 / 479 pruebas unitarias e integración superadas al 100% (0 errores)**.
+
+---
+
+## [2026-09-04] - Corrección de Resolución de Directorio de Salida en Nodos de IA (`OutputDirectory`)
+
+### 🎯 Objetivos y Alcance
+Solucionar un problema en el nodo **Eliminador de Fondo IA (`BackgroundRemoverNode`)** y nodos afines de IA, donde el archivo generado se guardaba siempre en una subcarpeta hardcodeada `Processed` dentro del directorio origen, en lugar de respetar la ruta configurada en el parámetro `OutputDirectory`.
+
+### 🛠️ Ajustes Realizados
+1. **Unificación con `ParameterHelper.ResolveOutputPath`**:
+   - Se sustituyó la lógica condicional que evaluaba `outputDirRaw.Contains("{GlobalOutputDir}")` y forzaba la creación de subcarpetas `Processed` por el método estándar del framework: `ParameterHelper.ResolveOutputPath(string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw, item)`.
+   - Esto garantiza soporte total para:
+     - Rutas absolutas personalizadas (ej. `D:\MisFondos`, `C:\Output`).
+     - Rutas globales de salida (`{GlobalOutputDir}`).
+     - Variables y plantillas dinámicas de contexto (`{Year}`, `{Month}`, `{RelativeDir}`).
+2. **Nodos Corregidos (`FileFlow.Plugin.AI`)**:
+   - `BackgroundRemoverNode` (`Nodes/Vision/BackgroundRemoverNode.cs`)
+   - `SuperResolutionUpscalerNode` (`Nodes/Vision/SuperResolutionUpscalerNode.cs`)
+   - `VoiceActivityDetectorNode` (`Nodes/Audio/VoiceActivityDetectorNode.cs`)
+   - `TextToSpeechNode` (`Nodes/Audio/TextToSpeechNode.cs`)
+   - `PiiAnonymizerNode` (`Nodes/Language/PiiAnonymizerNode.cs`)
+3. **Pruebas y Validación**:
+   - Añadido test unitario en `VisionSuiteNodesTests.cs` verificando la resolución canónica de rutas configuradas.
+   - **475 / 475 pruebas unitarias e integración superadas al 100% (0 errores)**.
+
+---
+
+## [2026-09-04] - Scripts de Ejecución Rápida Directa sin Compilar (`run-fast.ps1`, `run-fast.bat`)
+
+### 🎯 Objetivos y Alcance
+Creación de scripts de inicio inmediato para ejecutar FileFlow Studio al instante sin pasar por el proceso de compilación `dotnet build`, optimizando los tiempos de prueba interactiva.
+
+### 🛠️ Ajustes Realizados
+1. **Script PowerShell Dedicado (`run-fast.ps1`)**:
+   - Localiza automáticamente el binario compilado en `Debug` o `Release` (`FileFlow.App.exe`).
+   - Lanza el proceso instantáneamente (`Start-Process`) reenviando argumentos CLI si se proporcionan (`$AppArgs`).
+   - Si la solución no ha sido compilada previamente, emite un mensaje descriptivo orientando al usuario.
+2. **Script Batch Dedicado (`run-fast.bat`)**:
+   - Permite doble clic o ejecución directa en CMD/PowerShell sin compilar.
+3. **Parámetro `-NoBuild` / `-Fast` en `run.ps1` y `run.bat`**:
+   - `run.ps1` y `run.bat` admiten ahora los flags `-NoBuild` / `-Fast` / `nobuild` para omitir la compilación cuando se desee.
+4. **Validación**:
+   - Comprobada la correcta resolución de rutas, paso de parámetros y compatibilidad de entornos.
+
+---
+
 ## [2026-09-04] - Reorganización Modular de Código en Subcarpetas (Plugins AI, FileSystem y Data)
 
 ### 🎯 Objetivos y Alcance

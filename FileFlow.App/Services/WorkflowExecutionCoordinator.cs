@@ -67,9 +67,13 @@ public sealed class WorkflowExecutionCoordinator
     {
         _editorViewModel.ClearDebugStates();
         var graph = _editorViewModel.ExportToGraphModel(options.WorkflowName);
+        string effectiveGlobalDir = !string.IsNullOrWhiteSpace(graph.GlobalOutputDir)
+            ? graph.GlobalOutputDir
+            : _editorViewModel.GlobalOutputDir;
 
         _activeExecutor = new WorkflowExecutor
         {
+            GlobalOutputDir = effectiveGlobalDir,
             IsDryRun = options.IsDryRun,
             MaxDegreeOfParallelism = options.IsDebug ? 1 : options.MaxParallelThreads
         };

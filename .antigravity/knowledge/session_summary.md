@@ -8,8 +8,43 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **475 / 475 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **480 / 480 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --13. **Corrección de Archivo Origen en `DestinationSinkNode` y Sincronización de `PhysicalPath`**:
+      - **Problema**: `FileItemContext.GetExistingPhysicalPath()` priorizaba `PhysicalPath` sobre `CurrentPath`. Cuando un nodo transformaba una imagen (`BackgroundRemoverNode`), `PhysicalPath` retenía la ruta del archivo original, provocando que `DestinationSinkNode` copiara el archivo original en lugar del archivo realmente procesado.
+      - **Solución**:
+        1. Priorización de `CurrentPath` (si existe físicamente en disco) en `FileItemContext.GetExistingPhysicalPath()`.
+        2. Sincronización explícita de `PhysicalPath = targetPath` en todos los nodos generadores de archivos (`BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `PiiAnonymizerNode`, `TextToSpeechNode`, `VoiceActivityDetectorNode`).
+      - **Validación**: 480 / 480 pruebas unitarias e integración superadas al 100%.
+  --12. **Cuatro Puertos de Salida Especializados en Eliminador de Fondo IA (`BackgroundRemoverNode`)**:
+      - **Objetivo**: Salidas dedicadas:
+        - `Out`: Imagen procesada con fondo removido/reemplazado (`_nobg.png`).
+        - `Bypass`: Archivo original de entrada tal cual.
+        - `Mask`: Máscara alfa aislada en escala de grises (`_mask.png`).
+        - `Error`: Archivos no procesables o con errores.
+      - **Validación**: 479 / 479 pruebas unitarias e integración superadas al 100%.
+  --11. **Corrección Exhaustiva de Rutas Relativas (`{RelativeDir}`) y Propagación de Ruta Global (`{GlobalOutputDir}`)**:
+      - **Problema**: 
+        1. Al configurar `{RelativeDir}\Output` en `DestinationSinkNode`, el sistema anclaba la ruta dentro de `GlobalOutputDir` en lugar del directorio de origen (`SourceRootPath`).
+        2. Al configurar `{GlobalOutputDir}\procesado` en nodos de IA, el valor personalizado en los ajustes de la aplicación no se propagaba a la ejecución del motor DAG, cayendo al fallback predeterminado de documentos (`Documents\FileFlowStudio\Output`).
+        3. Cuando un nodo intermedio modificaba `item.CurrentPath`, `{RelativeDir}` calculaba rutas relativas sobre la ruta intermedia en vez de sobre `item.OriginalPath`.
+      - **Solución**:
+        1. Inyección de `GlobalOutputDir` efectivo en `WorkflowExecutionCoordinator`, `WorkflowExecutor` y `FolderSourceNode`.
+        2. En `SystemVariablesResolver`, `{RelativeDir}` y `{RelativePath}` se calculan sobre `item.OriginalPath` respecto a `SourceRootPath`.
+        3. En `ParameterHelper.ResolveOutputPath`, si el patrón contiene tokens explícitos de origen (`{RelativeDir}`, `{RelativeDirectory}`, etc.), se ancla bajo `SourceRootPath` independientemente de que `GlobalOutputDir` esté configurado.
+      - **Validación**: 479 / 479 pruebas unitarias e integración superadas al 100%.
+  --10. **Corrección de Resolución de Directorio de Salida en Nodos de IA (`OutputDirectory`)**:
+      - **Problema**: `BackgroundRemoverNode` (y otros 4 nodos de IA) forzaban el guardado de archivos resultantes en una subcarpeta fija `Processed` dentro del directorio origen cuando el parámetro `OutputDirectory` contenía `{GlobalOutputDir}` o rutas absolutas/relativas, ignorando la configuración establecida por el usuario.
+      - **Solución**: Unificada la resolución de rutas mediante `ParameterHelper.ResolveOutputPath(string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw, item)` en:
+        - `BackgroundRemoverNode` (`Nodes/Vision/BackgroundRemoverNode.cs`)
+        - `SuperResolutionUpscalerNode` (`Nodes/Vision/SuperResolutionUpscalerNode.cs`)
+        - `VoiceActivityDetectorNode` (`Nodes/Audio/VoiceActivityDetectorNode.cs`)
+        - `TextToSpeechNode` (`Nodes/Audio/TextToSpeechNode.cs`)
+        - `PiiAnonymizerNode` (`Nodes/Language/PiiAnonymizerNode.cs`)
+      - **Validación**: 479 / 479 pruebas unitarias e integración superadas al 100%.
+  --9. **Scripts de Ejecución Rápida Directa sin Compilar (`run-fast.ps1`, `run-fast.bat`)**:
+     - Creados `run-fast.ps1` y `run-fast.bat` para iniciar instantáneamente `FileFlow.App.exe` sin invocar `dotnet build`.
+     - Actualizados `run.ps1` y `run.bat` para admitir flags `-NoBuild` / `-Fast` / `nobuild` y reenvío de argumentos.
   --8. **Reorganización Modular de Código en Subcarpetas (Plugins AI, FileSystem y Data)**:
      - **`FileFlow.Plugin.AI`**: Estructurados 32 archivos en `Nodes/` (`Vision/`, `Audio/`, `Language/`), `Engines/`, `Management/` y `Common/`.
      - **`FileFlow.Plugin.FileSystem`**: Estructurados 14 archivos en `Nodes/` (`Sources/`, `Actions/`, `Processing/`).

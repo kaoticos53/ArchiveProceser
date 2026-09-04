@@ -93,4 +93,50 @@ public class GlobalOutputDirTests
 
         Assert.Equal(FileFlow.Sdk.Storage.AppPaths.DefaultGlobalOutputDir, resolved);
     }
+
+    [Fact]
+    public void ResolveOutputPath_WithRelativeDirPattern_EvenWithGlobalOutputDir_AnchorsUnderSourceDirectory()
+    {
+        // Arrange - File from Downloads\Test images, GlobalOutputDir set to D:\Salida
+        var item = new FileItemContext(@"D:\Users\ricardo\Downloads\---- Test imagenes\foto.jpg");
+        item.Metadata["SourceRootPath"] = @"D:\Users\ricardo\Downloads\---- Test imagenes";
+        item.Metadata["GlobalOutputDir"] = @"D:\Users\ricardo\Downloads\-- Salida";
+
+        // Act - DestinationSink pattern with {RelativeDir}\Output
+        string resolved = ParameterHelper.ResolveOutputPath(@"{RelativeDir}\Output", item);
+
+        // Assert - MUST anchor under SourceRootPath (Downloads\Test imagenes\Output), NOT inside GlobalOutputDir
+        Assert.Equal(@"D:\Users\ricardo\Downloads\---- Test imagenes\Output", resolved);
+    }
+
+    [Fact]
+    public void ResolveOutputPath_WithGlobalOutputDirPattern_ResolvesToGlobalOutputDir()
+    {
+        // Arrange - File from Downloads\Test images, GlobalOutputDir set to D:\Salida
+        var item = new FileItemContext(@"D:\Users\ricardo\Downloads\---- Test imagenes\foto.jpg");
+        item.Metadata["SourceRootPath"] = @"D:\Users\ricardo\Downloads\---- Test imagenes";
+        item.Metadata["GlobalOutputDir"] = @"D:\Users\ricardo\Downloads\-- Salida";
+
+        // Act - BackgroundRemover pattern with {GlobalOutputDir}\procesado
+        string resolved = ParameterHelper.ResolveOutputPath(@"{GlobalOutputDir}\procesado", item);
+
+        // Assert - MUST resolve to D:\Users\ricardo\Downloads\-- Salida\procesado
+        Assert.Equal(@"D:\Users\ricardo\Downloads\-- Salida\procesado", resolved);
+    }
+
+    [Fact]
+    public void ResolveOutputPath_WithRelativeDir_AfterIntermediateNodeChangedCurrentPath_MaintainsSourceRootRelative()
+    {
+        // Arrange - Item whose CurrentPath changed after an AI node (e.g. BackgroundRemover placed it in GlobalOutputDir\procesado)
+        var item = new FileItemContext(@"D:\Users\ricardo\Downloads\-- Salida\procesado\foto_nobg.png");
+        item.OriginalPath = @"D:\Users\ricardo\Downloads\---- Test imagenes\SubFolder\foto.jpg";
+        item.Metadata["SourceRootPath"] = @"D:\Users\ricardo\Downloads\---- Test imagenes";
+        item.Metadata["GlobalOutputDir"] = @"D:\Users\ricardo\Downloads\-- Salida";
+
+        // Act - DestinationSink pattern with {RelativeDir}\Output
+        string resolved = ParameterHelper.ResolveOutputPath(@"{RelativeDir}\Output", item);
+
+        // Assert - MUST resolve relative to original SourceRootPath + SubFolder -> D:\Users\ricardo\Downloads\---- Test imagenes\SubFolder\Output
+        Assert.Equal(@"D:\Users\ricardo\Downloads\---- Test imagenes\SubFolder\Output", resolved);
+    }
 }

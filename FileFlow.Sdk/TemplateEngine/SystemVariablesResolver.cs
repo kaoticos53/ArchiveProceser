@@ -124,10 +124,12 @@ public static class SystemVariablesResolver
             case "relativepath":
             case "relativedir":
             case "relativedirectory":
-                return PathRelativeCalculator.CalculateRelativeDirectory(currentPath, effectiveRootPath);
+                string pathForRelDir = !string.IsNullOrWhiteSpace(originalPath) ? originalPath : currentPath;
+                return PathRelativeCalculator.CalculateRelativeDirectory(pathForRelDir, effectiveRootPath);
 
             case "relativefilepath":
-                return PathRelativeCalculator.CalculateRelativeFilePath(currentPath, effectiveRootPath);
+                string pathForRelFile = !string.IsNullOrWhiteSpace(originalPath) ? originalPath : currentPath;
+                return PathRelativeCalculator.CalculateRelativeFilePath(pathForRelFile, effectiveRootPath);
 
             case "datenow":
                 return DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

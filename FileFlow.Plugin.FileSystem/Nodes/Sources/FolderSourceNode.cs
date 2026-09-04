@@ -186,6 +186,19 @@ public class FolderSourceNode : IFlowNode
                     context.ReportProgress(0, $"⚡ Escaneando y emitiendo: {currentCount:N0} {unit} ({mb:F1} MB)...");
                 }
 
+                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && godVal != null)
+                {
+                    itemContext.Metadata["GlobalOutputDir"] = godVal;
+                }
+                if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdVal) && execIdVal != null)
+                {
+                    itemContext.Metadata["WorkflowExecutionId"] = execIdVal;
+                }
+                if (item.Metadata.TryGetValue("DryRun", out var dryVal) && dryVal != null)
+                {
+                    itemContext.Metadata["DryRun"] = dryVal;
+                }
+
                 itemContext.Metadata["SourceRootPath"] = sourcePath;
                 itemContext.Metadata["Counter"] = currentCount;
                 itemContext.Metadata["TotalEmittedBytes"] = totalBytesEmitted;

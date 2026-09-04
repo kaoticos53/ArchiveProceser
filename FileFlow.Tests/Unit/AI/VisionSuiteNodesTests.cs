@@ -37,7 +37,7 @@ public class VisionSuiteNodesTests : IDisposable
 
         // Assert
         node.Inputs.Should().ContainSingle(p => p.Name == "In");
-        node.Outputs.Select(p => p.Name).Should().Contain(["Out", "Mask", "Error"]);
+        node.Outputs.Select(p => p.Name).Should().Contain(["Out", "Bypass", "Mask", "Error"]);
 
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
@@ -188,5 +188,20 @@ public class VisionSuiteNodesTests : IDisposable
 
         // Assert
         mockContext.Verify(c => c.EmitAsync("Error", item), Times.Once);
+    }
+
+    [Fact]
+    public void ParameterHelper_ResolveOutputPath_WhenCustomDirectorySpecified_ShouldUseCustomDirectory()
+    {
+        // Arrange
+        string sourceFile = Path.Combine(_tempDir, "sample.png");
+        var item = new FileItemContext(sourceFile);
+        string customOutputDir = Path.Combine(_tempDir, "CustomOutputs");
+
+        // Act
+        string resolved = ParameterHelper.ResolveOutputPath(customOutputDir, item);
+
+        // Assert
+        resolved.Should().Be(customOutputDir);
     }
 }

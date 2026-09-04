@@ -124,9 +124,9 @@ public class SuperResolutionUpscalerNode : IFlowNode
             int newW = upscaledImage.Width;
             int newH = upscaledImage.Height;
 
-            string targetDir = string.IsNullOrWhiteSpace(outputDirRaw) || outputDirRaw.Contains("{GlobalOutputDir}")
-                ? Path.Combine(Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory(), "Processed")
-                : Path.GetFullPath(outputDirRaw);
+            string targetDir = ParameterHelper.ResolveOutputPath(
+                string.IsNullOrWhiteSpace(outputDirRaw) ? "{GlobalOutputDir}" : outputDirRaw,
+                item);
 
             Directory.CreateDirectory(targetDir);
 
@@ -137,6 +137,7 @@ public class SuperResolutionUpscalerNode : IFlowNode
 
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
+            newItem.PhysicalPath = targetPath;
             newItem.FileSizeBytes = new FileInfo(targetPath).Length;
             newItem.Metadata["AI:Upscaled"] = true;
             newItem.Metadata["AI:OriginalResolution"] = $"{origW}x{origH}";
