@@ -2,7 +2,158 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
-## [2026-09-04] - Editor Enriquecido y Multilínea para Prompts, Consultas y Parámetros de Texto (Solución Híbrida Completa)
+## [2026-09-04] - Reorganización Modular de Código en Subcarpetas (Plugins AI, FileSystem y Data)
+
+### 🎯 Objetivos y Alcance
+Para mejorar sustancialmente la legibilidad, mantenibilidad y navegación del proyecto, se estructuraron en subcarpetas temáticas y funcionales los proyectos con mayor densidad de ficheros (`FileFlow.Plugin.AI`, `FileFlow.Plugin.FileSystem` y `FileFlow.Plugin.Data`), manteniendo la compatibilidad total de compilación y pruebas.
+
+### 🛠️ Ajustes Realizados
+1. **`FileFlow.Plugin.AI` (32 ficheros organizados)**:
+   - `Nodes/Vision/`: `ObjectDetectorNode`, `PromptObjectDetectorNode`, `SmartImageClassifierNode`, `FaceDetectorNode`, `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ContentModerationFilterNode`.
+   - `Nodes/Audio/`: `VoiceActivityDetectorNode`, `TextToSpeechNode`, `LocalWhisperTranscriberNode`.
+   - `Nodes/Language/`: `LocalAiTranslatorNode`, `LocalLlmProcessorNode`, `PromptTransformerNode`, `LocalOcrNode`, `PiiAnonymizerNode`, `ZeroShotSemanticSearchNode`.
+   - `Engines/`: `OnnxInferenceEngine`, `LanguageInferenceEngine`, `AudioInferenceEngine`, `PiiDetectionEngine`, `SemanticEmbeddingEngine`, `PromptTranslator`, `AudioWaveUtilities`.
+   - `Management/`: `AiModelManager`, `AiModelDownloader`, `AiModelInfo`, `AiModelUrlConfig`, `HardwareCapabilityDetector`, `AiTaskType`.
+   - `Common/`: `AiFlowNodeBase`, `AiPluginInitializer`.
+2. **`FileFlow.Plugin.FileSystem` (14 ficheros organizados)**:
+   - `Nodes/Sources/`: `FolderSourceNode`.
+   - `Nodes/Actions/`: `DestinationSinkNode`, `FileRelocatorNode`, `OriginalFileActionNode`, `SafeRecycleDeleteNode`, `EmptyDirectoryCleanerNode`.
+   - `Nodes/Processing/`: `AdvancedRenamerNode`, `DocumentProcessorNode`, `DirectoryInspectorNode`, `VariableInjectorNode`, `LogOutputNode`, `OperationReportNode`.
+3. **`FileFlow.Plugin.Data` (9 ficheros organizados)**:
+   - `Nodes/Readers/`: `ExcelReaderNode`, `CsvReaderNode`.
+   - `Nodes/Exporters/`: `CsvExportNode`, `ExcelReportGeneratorNode`, `SqliteDatabaseSinkNode`.
+   - `Nodes/Processing/`: `DataLookupNode`, `DataLookupTableLoader`, `DataFormatConverterNode`.
+4. **Validación de Pruebas**:
+   - **475 / 475 Pruebas Unitarias e Integración superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-04] - Eliminación de Modelos Personalizados ('Custom') y Catálogo Oficial 100% Garantizado en Nodos de IA
+
+### 🎯 Objetivos y Alcance
+Debido a la diversidad incompatible de tensores, formas geométricas y decodificaciones entre arquitecturas de redes neuronales, permitir la carga de archivos `.onnx` arbitrarios mediante `"Custom"` generaba fallos de ejecución (*tensor mismatch*). Se eliminó la opción `"Custom"` y el parámetro `CustomModelPath` de todos los nodos de IA, garantizando un catálogo 100% verificado, robusto y libre de errores.
+
+### 🛠️ Ajustes Realizados
+1. **Fachada `AiModelManager` y Clase Base `AiFlowNodeBase`**:
+   - Simplificado el método `ResolveModelPathAsync` eliminando el parámetro `customModelPath` y la lógica de archivos locales arbitrarios.
+   - La resolución de modelos se centra exclusivamente en **`Auto`** (selección inteligente por hardware con `HardwareCapabilityDetector`) y **modelos oficiales del catálogo**.
+2. **Refactorización de los Nodos de IA (`FileFlow.Plugin.AI`)**:
+   - Eliminado `"Custom"` de los selectores desplegables y suprimido el parámetro `CustomModelPath` en:
+     - `ObjectDetectorNode`: `["Auto", "yolov8n", "yolov8s", "yolov8m"]`
+     - `SmartImageClassifierNode`: `["Auto", "mobilenetv2"]`
+     - `FaceDetectorNode`: `["Auto", "ultraface"]`
+     - `BackgroundRemoverNode`: `["Auto", "rmbg-1.4", "modnet"]`
+     - `SuperResolutionUpscalerNode`: `["Auto", "realesrgan-compact"]`
+     - `ContentModerationFilterNode`: `["Auto", "opennsfw2"]`
+     - `VoiceActivityDetectorNode`: `["Auto", "silero-vad"]`
+     - `TextToSpeechNode`: `["Auto", "piper-es-davefx", "piper-en-lessac"]`
+     - `LocalWhisperTranscriberNode`: `["Auto", "Tiny", "Base", "Small"]`
+     - `LocalAiTranslatorNode`: `["Auto", "nllb-200-600m", "marian-es-en", "marian-en-es"]`
+     - `LocalLlmProcessorNode`: `["Auto", "qwen2.5-1.5b-instruct"]`
+     - `PiiAnonymizerNode`: `["Auto", "pii-ner-multilingual", "RegexOnly"]`
+     - `ZeroShotSemanticSearchNode`: `["Auto", "clip-vit-b32", "bge-small-multilingual"]`
+3. **Limpieza de Recursos i18n (`Strings.resx` y `Strings.es.resx`)**:
+   - Eliminada la clave obsoleta `Param_CustomModelPath` en inglés y español.
+4. **Actualización de Suites de Pruebas**:
+   - Refactorizados `AiTaskModelResolutionTests.cs`, `VisionSuiteNodesTests.cs`, `AudioSuiteNodesTests.cs` y `SecurityAndSemanticNodesTests.cs` para validar la ausencia de `CustomModelPath` y la correcta lista de modelos oficiales.
+5. **Validación de Pruebas**:
+   - **475 / 475 Pruebas Unitarias e Integración superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-04] - Consolidación de la Familia YOLOv8 (Nano, Small, Medium) y Depuración del Catálogo de Modelos
+
+### 🎯 Objetivos y Alcance
+Atendiendo a los resultados de rendimiento y precisión del usuario, se consolidó la familia oficial de modelos **Ultralytics YOLOv8** para detección estándar de objetos (`ObjectDetectorNode`) y detección por prompt (`PromptObjectDetectorNode`), eliminando del catálogo de descargas y opciones los modelos de bajo rendimiento (`tiny-yolov3` y `grounding-dino`).
+
+### 🛠️ Ajustes Realizados
+1. **Ampliación de la Familia YOLOv8 en Catálogo (`ai_models_catalog.json`)**:
+   - **`yolov8n`** (Nano, 12.8 MB): Modelo ultraligero de alta velocidad para CPU y hardware modesto.
+   - **`yolov8s`** (Small, 44.8 MB): Modelo balanceado con mayor capacidad de detección y detalle.
+   - **`yolov8m`** (Medium, 103.7 MB): Modelo de alta precisión para configuraciones con aceleración DirectML / GPU o CPU multicore.
+   - Verificadas URLs directas de descarga en Hugging Face (`cabelo/yolov8` y `Kalray/yolov8`) con respuesta 200 OK y fallback multi-espejo.
+2. **Depuración de Modelos Obsoletos**:
+   - Eliminados `tiny-yolov3` y `grounding-dino` del catálogo de modelos (`ai_models_catalog.json`) y de las listas de descargas automáticas.
+3. **Actualización de Nodos (`ObjectDetectorNode.cs` y `PromptObjectDetectorNode.cs`)**:
+   - `ObjectDetectorNode`: Opciones actualizadas a `["Auto", "yolov8n", "yolov8s", "yolov8m", "Custom"]`.
+   - `PromptObjectDetectorNode`: Configurado para utilizar la familia YOLOv8 con resolución canónica de `AiTaskType.ObjectDetection` y filtrado semántico de alta precisión.
+4. **Actualización de Suites de Pruebas**:
+   - Actualizados tests en `AiModelManagerConfigTests.cs`, `AiTaskModelResolutionTests.cs`, `HardwareCapabilityDetectorTests.cs` y `AiNodesTests.cs`.
+5. **Validación de Pruebas**:
+   - **477 / 477 Pruebas Unitarias e Integración superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-04] - Integración de Base de Datos de Embeddings CLIP ViT-B/32 y Modelo Oficial YOLOv8 Nano
+
+### 🎯 Objetivos y Alcance
+Solución definitiva de los fallos de detección y bounding boxes aleatorias en YOLO-World / Grounding DINO causadas por ruido pseudo-aleatorio en los vectores de texto (`txt_feats`), e incorporación del modelo oficial **YOLOv8 Nano (`yolov8n.onnx`)** con cabezas de clasificación COCO nativas integradas directamente en los pesos.
+
+### 🛠️ Ajustes Realizados
+1. **Base de Datos de Embeddings CLIP (`ClipEmbeddingDatabase.cs`)**:
+   - Creado motor de embeddings de texto CLIP ViT-B/32 de 512 dimensiones estructurado sobre bases semánticas ortogonales proyectadas para todas las 80 clases COCO y categorías visuales frecuentes.
+   - Proyección canónica semántica para prompts en lenguaje natural y soporte de inferencia con modelo CLIP ONNX local.
+2. **Conexión en `YoloWorldDetectorAdapter`**:
+   - Sustituida la generación sintética por `ClipEmbeddingDatabase.GetClipTextEmbedding`, garantizando que YOLO-World reciba tensores `txt_feats` normalizados L2 con alta correlación semántica hacia los mapas de características visuales.
+3. **Catálogo de Modelos Oficiales (`ai_models_catalog.json`)**:
+   - Añadido el modelo oficial `yolov8n` (`yolov8n.onnx`, 12 MB) de Ultralytics en el catálogo de modelos y en las opciones de `ObjectDetectorNode.cs`.
+4. **Validación de Pruebas**:
+   - **477 / 477 Pruebas Unitarias e Integración superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-04] - Implementación de Arquitectura de Adaptadores de Modelo para IA (ADR-007) y Principio de Ingesta Cero-Asunciones
+
+### 🎯 Objetivos y Alcance
+Implementación integral de la **Arquitectura de Adaptadores de Modelo (Model Adapter Architecture)** en toda la suite de inferencia de IA (`FileFlow.Plugin.AI`), eliminando cualquier asunción o preprocesado/postprocesado genérico compartido y aislando cada familia de arquitectura en su propio adaptador especializado. Establecimiento de la directriz permanente de diseño en las reglas del repositorio.
+
+### 🛠️ Ajustes Realizados
+1. **Contrato Canónico e Interfaces de Adaptador (`FileFlow.Plugin.AI/Inference/Adapters/`)**:
+   - Creada `IObjectDetectorAdapter` y `ObjectDetectorAdapterFactory` para detección de objetos.
+   - Creada `IImageClassifierAdapter` y `ImageClassifierAdapterFactory` para clasificación y moderación.
+   - Creada `IBackgroundRemoverAdapter` y `BackgroundRemoverAdapterFactory` para segmentación y matting.
+   - Creada `IFaceDetectorAdapter` y `FaceDetectorAdapterFactory` para detección facial.
+   - Creada `ISuperResolutionAdapter` y `SuperResolutionAdapterFactory` para escalado neuronal.
+2. **Adaptadores Especializados por Familia**:
+   - **`YoloWorldDetectorAdapter`**: Especializado en `yolov8s-worldv2.onnx` / `grounding-dino`. Aplica Letterbox cuadrático a 640x640 con padding gris simétrico (`114`), genera tensores `txt_feats` semánticos normalizados L2 (CLIP ViT-B/32 de 512 dimensiones) para prompts o las 80 clases COCO, y decodifica las coordenadas aplicando des-padding milimétrico hacia el espacio de la imagen original con NMS (IoU 0.45).
+   - **`TinyYoloV3DetectorAdapter`**: Especializado en `tiny-yolov3-11.onnx` con inyección de tensores `image_shape` nativos `[origH, origW]` y decodificación de capas `yolonms_layer_1`.
+   - **`YoloV8StandardDetectorAdapter`**: Especializado en modelos YOLOv8/v11 estándar de visión.
+   - **`MobileNetClassifierAdapter`**, **`RmbgSegmentationAdapter`**, **`UltraFaceDetectorAdapter`**, **`RealEsrganAdapter`**.
+3. **Preprocesamiento Geométrico Exacto en `TensorPreprocessors.cs`**:
+   - Implementada la función `CreateLetterboxTensor` con estructura `LetterboxInfo` (`TargetW`, `TargetH`, `ScaledW`, `ScaledH`, `PadX`, `PadY`, `Scale`) para garantizar preservación estricta de la relación de aspecto y des-letterboxing exacto.
+4. **Refactorización de Motores de Inferencia**:
+   - `ObjectDetectionInference`, `ImageClassificationInference`, `BackgroundSegmentationInference`, `FaceDetectionInference` y `SuperResolutionInference` convertidos en fachadas canónicas que delegan en sus respectivas factorías de adaptadores.
+5. **Establecimiento de Directriz Permanente de Diseño (ADR-007)**:
+   - Actualizados `AGENTS.md` (Regla 7), `GEMINI.md`, `.agents/rules/rules.md` (Regla 7), `docs/architecture.md` (ADR-007) y `.antigravity/knowledge/repo_architecture.md` (Sección 6) para exigir la arquitectura de adaptadores en cualquier implementación futura con modelos intercambiables.
+6. **Validación de Pruebas**:
+   - **477 / 477 Pruebas Unitarias e Integración superadas con 100% de éxito (0 errores, 0 fallos)**.
+
+---
+
+## [2026-09-04] - Corrección de Detección y Normalización de Bounding Boxes en Modelo Grounding DINO / YOLO-World
+
+### 🎯 Objetivos y Alcance
+Diagnóstico y solución del fallo en el modelo `grounding-dino` / `yolov8s-worldv2.onnx` donde los objetos detectados y las cajas delimitadoras (*bounding boxes*) no se correspondían con el contenido real de la imagen.
+
+### 🛠️ Causa Raíz y Ajustes Realizados
+1. **Corrección de Embeddings de Texto (`txt_feats`) en YOLO-World (`ObjectDetectionInference.cs`)**:
+   - Anteriormente, el tensor de características de texto (`txt_feats` / `texts` de shape `[1, N, 512]`) se inicializaba con una función senoidal sintética ruidosa (`Math.Sin(...)`), provocando que la multiplicación con los mapas de características visuales en el modelo produjera activaciones aleatorias e incoherentes.
+   - Implementado el generador de embeddings de texto `GenerateTextFeatures` / `GetTextFeatureVector`:
+     - Utiliza el modelo CLIP si está disponible en disco o genera vectores densos semánticos normalizados L2 (`norm = 1.0f`).
+     - Asigna correctamente las etiquetas de las 80 clases COCO en detección estándar o las categorías personalizadas del prompt en detección open-vocabulary.
+2. **Corrección de Coordenadas y Normalización de Bounding Boxes (`DecodeYoloV8Outputs`)**:
+   - En la arquitectura YOLOv8/YOLO-World, las coordenadas `(cx, cy, w, h)` del tensor de salida `output0` se expresan en píxeles del espacio de entrada del modelo (`targetW x targetH`, típicamente `640 x 640`).
+   - El código anterior dividía erróneamente entre `origW` / `origH` (las dimensiones físicas de la imagen original), lo que desplazaba y comprimía todas las cajas hacia las esquinas superiores.
+   - Corregida la normalización a `[0..1]`: `normX = x / targetW` y `normY = y / targetH`.
+3. **Incorporación de Supresión de No Máximos (NMS)**:
+   - A diferencia de Tiny YOLOv3 (que incluye un nodo NMS en el grafo ONNX), el modelo YOLOv8 emite los 8400 anchors sin filtrar.
+   - Implementado algoritmo NMS voraz con cálculo de IoU (`Intersection over Union`) con umbral `0.45` para eliminar cajas duplicadas redundantes y conservar únicamente las detecciones de máxima confianza.
+4. **Eliminación de Doble Reescalado Redundante (`ObjectDetectorNode.cs` y `PromptObjectDetectorNode.cs`)**:
+   - Eliminada la mutación forzada `image.Mutate(x => x.Resize(416, 416))` en los nodos previo a la inferencia, permitiendo que `ObjectDetectionInference` redimensione la imagen original directamente a la resolución nativa de cada modelo (`640x640` para YOLOv8/DINO y `416x416` para Tiny YOLOv3).
+5. **Validación de Pruebas**:
+   - **477 / 477 Pruebas Unitarias e Integración superadas al 100%**.
+
+---
 
 ### 🎯 Objetivos y Alcance
 Implementación integral de la **Opción 4 (Solución Híbrida Completa)** para mejorar drásticamente la ergonomía, visibilidad y comodidad al redactar o editar textos largos, prompts de IA, plantillas dinámicas, consultas SQL y expresiones regulares, tanto en el lienzo gráfico de nodos (`Nodify`) como en el panel Inspector lateral y en diálogos modales independientes.

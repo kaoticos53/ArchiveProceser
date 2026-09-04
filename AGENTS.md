@@ -76,7 +76,13 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
    - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en `FileFlow.App`.
    - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar `FileFlow.App`**.
 
-7. **Optimización de Tokens para Agentes:**
+7. **Arquitectura de Adaptadores de Modelo para Nodos con IA Intercambiable (Model Adapter Pattern / Zero-Assumption Ingestion):**
+   - Los nodos y motores de inferencia (`FileFlow.Plugin.AI`) que admitan múltiples modelos intercambiables (ej. YOLO-World, TinyYOLO, YOLOv8, MobileNet, RMBG, UltraFace) **NUNCA deben asumir un preprocesado o decodificado monolítico/genérico** compartido para todos los modelos.
+   - Cada familia o arquitectura de modelo debe encapsularse en su propio adaptador especializado (`IObjectDetectorAdapter`, `IImageClassifierAdapter`, `IBackgroundRemoverAdapter`, `IFaceDetectorAdapter`, `ISuperResolutionAdapter`).
+   - El nodo proporciona un contrato canónico de entrada/salida (imagen pura sin deformar, umbrales estándar, prompts) y una factoría (`[Task]AdapterFactory`) inspecciona la metadata del grafo ONNX (`InputMetadata`, `OutputMetadata`, dimensiones de tensores) para seleccionar el adaptador óptimo con fallback seguro.
+   - Cada adaptador se encarga de su preprocesado geométrico exacto (Letterbox con padding y des-padding, normalización específica de canales, inyección de tensores secundarios como embeddings semánticos CLIP ViT-B/32 o formas de imagen) y su algoritmo de decodificación/NMS.
+
+8. **Optimización de Tokens para Agentes:**
    - **No leer archivos completos preventivamente.** Utilizar herramientas de búsqueda (`grep_search`, `find_symbol`) para inspeccionar líneas o funciones específicas.
 
 ---

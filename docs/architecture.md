@@ -186,3 +186,13 @@ Colección modular de 24 nodos de procesamiento organizados por dominio:
   - La integración de recursos es automática mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`.
 - **Consecuencias**: Desacoplamiento total (*Zero-Touch en FileFlow.App*). Para añadir, modificar o eliminar un plugin o nodo, únicamente se escribe código en la carpeta del plugin en cuestión, asegurando máxima modularidad y portabilidad.
 
+### ADR-007: Arquitectura de Adaptadores de Modelo para Nodos con IA Intercambiable (Model Adapter Pattern / Zero-Assumption Ingestion)
+- **Contexto**: En nodos con modelos de IA intercambiables (`FileFlow.Plugin.AI`, ej. `ObjectDetectorNode`, `PromptObjectDetectorNode`, `SmartImageClassifierNode`, `BackgroundRemoverNode`, `FaceDetectorNode`), cada arquitectura (YOLO-World / Grounding DINO, Tiny YOLOv3, YOLOv8, MobileNet, RMBG, UltraFace) posee requerimientos únicos de preprocesado (aspect ratio vs letterbox con padding, normalización de canales ImageNet vs [-1..1]), tensores de entrada auxiliares (embeddings semánticos CLIP ViT-B/32, vectores de forma de imagen) y algoritmos de decodificación/NMS. Intentar forzar un pipeline monolítico y genérico genera fallos de detección, desalineación de cajas y resultados inconsistentes.
+- **Decisión**:
+  1. Los nodos proporcionan un contrato canónico de entrada/salida (imagen original sin deformar, umbrales y prompts estándar en lenguaje natural).
+  2. La capa de inferencia desacopla cada familia de modelo en adaptadores especializados (`IObjectDetectorAdapter`, `IImageClassifierAdapter`, `IBackgroundRemoverAdapter`, `IFaceDetectorAdapter`, `ISuperResolutionAdapter`).
+  3. Factorías de auto-detección (`[Task]AdapterFactory`) examinan la metadata del grafo ONNX (`InputMetadata`, `OutputMetadata`) para enrutar la ejecución hacia el adaptador óptimo o un fallback de contingencia.
+  4. Cada adaptador gestiona de forma autónoma su preprocesamiento geométrico exacto (Letterbox y des-letterbox para no distorsionar la imagen), inyección de tensores secundarios y decodificación NMS.
+- **Consecuencias**: Soporte robusto y extensible para cualquier modelo de IA actual y futuro sin alterar la lógica de los nodos ni de la UI, garantizando precisión geométrica milimétrica en detecciones y segmentaciones.
+
+

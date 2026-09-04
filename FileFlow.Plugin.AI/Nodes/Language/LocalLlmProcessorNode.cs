@@ -37,7 +37,6 @@ public class LocalLlmProcessorNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["TaskType"] = "Summarize",
         ["SystemPrompt"] = "Eres un analista documental experto y conciso.",
         ["UserPrompt"] = "Resume el siguiente contenido: {Ocr:Text}",
@@ -50,27 +49,24 @@ public class LocalLlmProcessorNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "qwen2.5-1.5b-instruct", "Custom"],
+            Options: ["Auto", "qwen2.5-1.5b-instruct"],
             HelpText: "Modelo LLM local ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
 
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .gguf local si seleccionó 'Custom'.", DisplayOrder: 2),
-
         new("TaskType", ParameterEditorType.Dropdown, DefaultValue: "Summarize",
-            Options: ["Summarize", "ExtractStructuredData", "TranslateAndExplain", "CustomPrompt"], DisplayOrder: 3),
+            Options: ["Summarize", "ExtractStructuredData", "TranslateAndExplain", "CustomPrompt"], DisplayOrder: 2),
 
-        new("SystemPrompt", ParameterEditorType.MultiLineText, DefaultValue: "Eres un analista documental experto y conciso.", DisplayOrder: 4),
+        new("SystemPrompt", ParameterEditorType.MultiLineText, DefaultValue: "Eres un analista documental experto y conciso.", DisplayOrder: 3),
 
-        new("UserPrompt", ParameterEditorType.MultiLineText, DefaultValue: "Resume el siguiente contenido: {Ocr:Text}", DisplayOrder: 5),
+        new("UserPrompt", ParameterEditorType.MultiLineText, DefaultValue: "Resume el siguiente contenido: {Ocr:Text}", DisplayOrder: 4),
 
         new("OutputFormat", ParameterEditorType.Dropdown, DefaultValue: "Markdown",
-            Options: ["Markdown", "PlainText", "JSON"], DisplayOrder: 6),
+            Options: ["Markdown", "PlainText", "JSON"], DisplayOrder: 5),
 
-        new("SaveAsNewFile", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 7),
+        new("SaveAsNewFile", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6),
 
-        new("Temperature", ParameterEditorType.Slider, DefaultValue: 0.2, Min: 0.0, Max: 1.0, Step: 0.05, DisplayOrder: 8),
+        new("Temperature", ParameterEditorType.Slider, DefaultValue: 0.2, Min: 0.0, Max: 1.0, Step: 0.05, DisplayOrder: 7),
 
-        new("MaxTokens", ParameterEditorType.Number, DefaultValue: 1024, Min: 64, Max: 4096, DisplayOrder: 9)
+        new("MaxTokens", ParameterEditorType.Number, DefaultValue: 1024, Min: 64, Max: 4096, DisplayOrder: 8)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -78,7 +74,6 @@ public class LocalLlmProcessorNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             string taskType = Parameters.TryGetValue("TaskType", out var ttVal) ? ttVal?.ToString() ?? "Summarize" : "Summarize";
             string systemPrompt = Parameters.TryGetValue("SystemPrompt", out var spVal) ? spVal?.ToString() ?? string.Empty : string.Empty;
             string rawUserPrompt = Parameters.TryGetValue("UserPrompt", out var upVal) ? upVal?.ToString() ?? string.Empty : string.Empty;
@@ -123,7 +118,6 @@ public class LocalLlmProcessorNode : IFlowNode
 
             string? resolvedModelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.TextGenerationLlm,
                 context,
                 item,

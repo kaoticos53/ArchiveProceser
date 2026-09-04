@@ -39,7 +39,6 @@ public class ZeroShotSemanticSearchNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["SearchQuery"] = "",
         ["CandidateLabels"] = "Factura, Contrato, Nómina, Presupuesto, Documento",
         ["SimilarityThreshold"] = 0.55,
@@ -49,18 +48,16 @@ public class ZeroShotSemanticSearchNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "clip-vit-b32", "bge-small-multilingual", "Custom"],
+            Options: ["Auto", "clip-vit-b32", "bge-small-multilingual"],
             HelpText: "Modelo neural de embeddings semánticos ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx de embeddings local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("SearchQuery", ParameterEditorType.Text, DefaultValue: "",
-            HelpText: "Consulta o concepto clave en lenguaje natural para filtrar o buscar.", DisplayOrder: 3),
+            HelpText: "Consulta o concepto clave en lenguaje natural para filtrar o buscar.", DisplayOrder: 2),
         new("CandidateLabels", ParameterEditorType.MultiLineText, DefaultValue: "Factura, Contrato, Nómina, Presupuesto, Documento",
-            HelpText: "Lista de categorías candidatas separadas por comas para clasificar el elemento.", DisplayOrder: 4),
+            HelpText: "Lista de categorías candidatas separadas por comas para clasificar el elemento.", DisplayOrder: 3),
         new("SimilarityThreshold", ParameterEditorType.Slider, DefaultValue: 0.55, Min: 0.1, Max: 0.95, Step: 0.05,
-            HelpText: "Umbral mínimo de similitud de coseno para bifurcar hacia el puerto 'Matched'.", DisplayOrder: 5),
+            HelpText: "Umbral mínimo de similitud de coseno para bifurcar hacia el puerto 'Matched'.", DisplayOrder: 4),
         new("TopK", ParameterEditorType.Number, DefaultValue: 3, Min: 1, Max: 10,
-            HelpText: "Número de categorías principales a registrar en los metadatos.", DisplayOrder: 6)
+            HelpText: "Número de categorías principales a registrar en los metadatos.", DisplayOrder: 5)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -75,7 +72,6 @@ public class ZeroShotSemanticSearchNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             string searchQuery = Parameters.TryGetValue("SearchQuery", out var sqVal) ? sqVal?.ToString() ?? string.Empty : string.Empty;
             string candidateLabelsRaw = Parameters.TryGetValue("CandidateLabels", out var clVal) ? clVal?.ToString() ?? string.Empty : string.Empty;
             double threshold = Parameters.TryGetValue("SimilarityThreshold", out var stVal) ? ParameterHelper.GetDouble(stVal, 0.55) : 0.55;
@@ -86,7 +82,6 @@ public class ZeroShotSemanticSearchNode : IFlowNode
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.SemanticEmbeddings,
                 context,
                 item,

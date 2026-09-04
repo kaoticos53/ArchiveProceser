@@ -38,7 +38,6 @@ public class VoiceActivityDetectorNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["Mode"] = "DetectOnly",
         ["SensitivityThreshold"] = 0.5,
         ["MinSpeechDurationMs"] = 250,
@@ -49,21 +48,19 @@ public class VoiceActivityDetectorNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "silero-vad", "Custom"],
+            Options: ["Auto", "silero-vad"],
             HelpText: "Modelo neural de detección de actividad vocal ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx de VAD local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("Mode", ParameterEditorType.Dropdown, DefaultValue: "DetectOnly",
             Options: ["DetectOnly", "TrimSilence"],
-            HelpText: "Modo de operación: solo detectar y clasificar o recortar silencios generando nuevo audio.", DisplayOrder: 3),
+            HelpText: "Modo de operación: solo detectar y clasificar o recortar silencios generando nuevo audio.", DisplayOrder: 2),
         new("SensitivityThreshold", ParameterEditorType.Slider, DefaultValue: 0.5, Min: 0.1, Max: 0.9, Step: 0.05,
-            HelpText: "Umbral de probabilidad para considerar que un bloque de audio contiene voz.", DisplayOrder: 4),
+            HelpText: "Umbral de probabilidad para considerar que un bloque de audio contiene voz.", DisplayOrder: 3),
         new("MinSpeechDurationMs", ParameterEditorType.Number, DefaultValue: 250, Min: 50, Max: 2000,
-            HelpText: "Duración mínima en milisegundos de una intervención vocal para considerarse válida.", DisplayOrder: 5),
+            HelpText: "Duración mínima en milisegundos de una intervención vocal para considerarse válida.", DisplayOrder: 4),
         new("PaddingDurationMs", ParameterEditorType.Number, DefaultValue: 200, Min: 0, Max: 1000,
-            HelpText: "Margen de seguridad en milisegundos antes y después de cada tramo de voz.", DisplayOrder: 6),
+            HelpText: "Margen de seguridad en milisegundos antes y después de cada tramo de voz.", DisplayOrder: 5),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta donde se guardará el audio recortado si el modo es 'TrimSilence'.", DisplayOrder: 7)
+            HelpText: "Carpeta donde se guardará el audio recortado si el modo es 'TrimSilence'.", DisplayOrder: 6)
     ];
 
     private static readonly HashSet<string> _supportedAudioExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -93,7 +90,6 @@ public class VoiceActivityDetectorNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             string mode = Parameters.TryGetValue("Mode", out var modeVal) ? modeVal?.ToString() ?? "DetectOnly" : "DetectOnly";
             double threshold = Parameters.TryGetValue("SensitivityThreshold", out var stVal) ? ParameterHelper.GetDouble(stVal, 0.5) : 0.5;
             int minSpeechMs = Parameters.TryGetValue("MinSpeechDurationMs", out var msmVal) ? ParameterHelper.GetInt32(msmVal, 250) : 250;
@@ -102,7 +98,6 @@ public class VoiceActivityDetectorNode : IFlowNode
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.VoiceActivityDetection,
                 context,
                 item,

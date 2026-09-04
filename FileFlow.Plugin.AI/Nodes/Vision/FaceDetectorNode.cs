@@ -34,7 +34,6 @@ public class FaceDetectorNode : AiFlowNodeBase
         ];
 
         Parameters["Model"] = "Auto";
-        Parameters["CustomModelPath"] = "";
         Parameters["ConfidenceThreshold"] = 0.7;
         Parameters["MinimumFaces"] = 1;
     }
@@ -42,12 +41,10 @@ public class FaceDetectorNode : AiFlowNodeBase
     public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "ultraface", "Custom"],
+            Options: ["Auto", "ultraface"],
             HelpText: "Modelo para detección facial ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
-        new("ConfidenceThreshold", ParameterEditorType.Slider, DefaultValue: 0.7, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 3),
-        new("MinimumFaces", ParameterEditorType.Number, DefaultValue: 1, Min: 1, Max: 50, DisplayOrder: 4)
+        new("ConfidenceThreshold", ParameterEditorType.Slider, DefaultValue: 0.7, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 2),
+        new("MinimumFaces", ParameterEditorType.Number, DefaultValue: 1, Min: 1, Max: 50, DisplayOrder: 3)
     ];
 
     public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)

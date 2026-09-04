@@ -95,3 +95,13 @@ ArchiveProceser/
   - Todo el código, lógica de nodos, servicios de dominio, herramientas modales (`UI/`), configuraciones (`Config/`) y **recursos de cadenas de texto multilingües (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** pertenecientes a cada plugin/nodo **deben residir al 100% dentro del directorio del propio plugin (`FileFlow.Plugin.*`)**.
   - `FileFlow.App/Resources/` queda reservado de forma estricta y exclusiva para la interfaz anfitriona (menús globales, navegación, consola de logs y ajustes generales).
   - El motor de carga `PluginLoader` y los contratos `IPluginInitializer` registran de forma automática e instantánea los recursos del plugin en `LocalizationManager.Instance`, permitiendo extender la aplicación sin modificar el proyecto principal.
+
+---
+
+## 6. Principio de Adaptadores de Modelo para Nodos con IA Intercambiable (Model Adapter Architecture)
+
+- **Desacoplamiento Canónico e Ingesta Cero-Asunciones**:
+  - Los nodos de visión e inferencia de `FileFlow.Plugin.AI` (`ObjectDetectorNode`, `PromptObjectDetectorNode`, `SmartImageClassifierNode`, `BackgroundRemoverNode`, `FaceDetectorNode`, `SuperResolutionUpscalerNode`) alimentan las llamadas de inferencia mediante contratos canónicos puros (imagen original sin deformar, umbrales y prompts estándar).
+  - La inferencia reside en adaptadores especializados por familia (`IObjectDetectorAdapter`, `IImageClassifierAdapter`, `IBackgroundRemoverAdapter`, `IFaceDetectorAdapter`, `ISuperResolutionAdapter`) enrutados dinámicamente mediante factorías (`[Task]AdapterFactory`) tras inspeccionar la metadata del grafo ONNX (`InputMetadata`, `OutputMetadata`, tensores y capas).
+  - Cada adaptador gestiona su preprocesamiento geométrico exacto (Letterbox cuadrático con padding y des-letterboxing inverso, normalización de canales ImageNet vs escalado [0..1] o [-1..1]), inyección de tensores auxiliares (embeddings semánticos normalizados L2 CLIP ViT-B/32 para consultas libres en YOLO-World / Grounding DINO, tensores de forma) y decodificación NMS.
+

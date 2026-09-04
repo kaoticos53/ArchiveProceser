@@ -78,7 +78,9 @@ public class SecurityAndSemanticNodesTests : IDisposable
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "clip-vit-b32", "bge-small-multilingual", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "clip-vit-b32", "bge-small-multilingual"]);
+        modelDesc.Options.Should().NotContain("Custom");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
     }
 
     [Fact]

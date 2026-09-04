@@ -37,7 +37,6 @@ public class LocalAiTranslatorNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["SourceLanguage"] = "AutoDetect",
         ["TargetLanguage"] = "Spanish",
         ["InputSource"] = "FileContent",
@@ -50,29 +49,26 @@ public class LocalAiTranslatorNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "nllb-200-600m", "marian-es-en", "marian-en-es", "Custom"],
+            Options: ["Auto", "nllb-200-600m", "marian-es-en", "marian-en-es"],
             HelpText: "Modelo neuronal de traducción ('Auto' selecciona según el hardware y los idiomas).", DisplayOrder: 1),
 
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
-
         new("SourceLanguage", ParameterEditorType.Dropdown, DefaultValue: "AutoDetect",
-            Options: ["AutoDetect", "Spanish", "English", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Russian"], DisplayOrder: 3),
+            Options: ["AutoDetect", "Spanish", "English", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Russian"], DisplayOrder: 2),
 
         new("TargetLanguage", ParameterEditorType.Dropdown, DefaultValue: "Spanish",
-            Options: ["Spanish", "English", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Russian"], DisplayOrder: 4),
+            Options: ["Spanish", "English", "French", "German", "Italian", "Portuguese", "Chinese", "Japanese", "Russian"], DisplayOrder: 3),
 
         new("InputSource", ParameterEditorType.Dropdown, DefaultValue: "FileContent",
-            Options: ["FileContent", "MetadataKey"], DisplayOrder: 5),
+            Options: ["FileContent", "MetadataKey"], DisplayOrder: 4),
 
-        new("MetadataKeyName", ParameterEditorType.Text, DefaultValue: "Ocr:Text", DisplayOrder: 6),
+        new("MetadataKeyName", ParameterEditorType.Text, DefaultValue: "Ocr:Text", DisplayOrder: 5),
 
         new("OutputMode", ParameterEditorType.Dropdown, DefaultValue: "InjectMetadata",
-            Options: ["InjectMetadata", "CreateNewFile", "Both"], DisplayOrder: 7),
+            Options: ["InjectMetadata", "CreateNewFile", "Both"], DisplayOrder: 6),
 
-        new("TargetFileNamePattern", ParameterEditorType.Text, DefaultValue: "{FileNameWithoutExt}_{TargetLang}{Ext}", DisplayOrder: 8),
+        new("TargetFileNamePattern", ParameterEditorType.Text, DefaultValue: "{FileNameWithoutExt}_{TargetLang}{Ext}", DisplayOrder: 7),
 
-        new("TranslateSrtTimestamps", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 9)
+        new("TranslateSrtTimestamps", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 8)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -80,7 +76,6 @@ public class LocalAiTranslatorNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             string sourceLang = Parameters.TryGetValue("SourceLanguage", out var sVal) ? sVal?.ToString() ?? "AutoDetect" : "AutoDetect";
             string targetLang = Parameters.TryGetValue("TargetLanguage", out var tVal) ? tVal?.ToString() ?? "Spanish" : "Spanish";
             string inputSource = Parameters.TryGetValue("InputSource", out var isVal) ? isVal?.ToString() ?? "FileContent" : "FileContent";
@@ -130,7 +125,6 @@ public class LocalAiTranslatorNode : IFlowNode
 
             string? resolvedModelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.TextTranslation,
                 context,
                 item,

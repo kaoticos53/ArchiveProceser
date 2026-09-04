@@ -88,8 +88,8 @@ public class PromptObjectDetectorNode : IFlowNode
                 context.Log($"[PromptObjectDetector] 🎯 Evaluando prompt directo: '{prompt}'", LogLevel.Information, item);
             }
 
-            // Asegurar modelo de visión ONNX
-            string? modelPath = await AiModelManager.EnsureModelAsync("tiny-yolov3", context, item, cancellationToken).ConfigureAwait(false);
+            // Asegurar modelo de visión ONNX óptimo (YOLOv8)
+            string? modelPath = await AiModelManager.ResolveModelPathAsync("Auto", AiTaskType.ObjectDetection, context, item, cancellationToken).ConfigureAwait(false);
             if (modelPath == null)
             {
                 context.Log($"[PromptObjectDetector] ⚠️ Modelo de visión no disponible. Pasando por puerto NoObjects.", LogLevel.Warning, item);
@@ -100,7 +100,6 @@ public class PromptObjectDetectorNode : IFlowNode
             using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
             int origW = image.Width;
             int origH = image.Height;
-            image.Mutate(x => x.Resize(416, 416));
 
             var detected = await Task.Run(
                 () => OnnxInferenceEngine.DetectPromptObjects(modelPath, image, targetPrompt, threshold, origW, origH),
@@ -115,7 +114,7 @@ public class PromptObjectDetectorNode : IFlowNode
             item.Metadata["AI:TopPromptObject"] = detected.FirstOrDefault().Label ?? string.Empty;
             item.Metadata["AI:PromptObjectCount"] = detected.Count;
             item.Metadata["AI:HasPromptObjects"] = detected.Count > 0;
-            item.Metadata["AI:Model"] = "grounding-dino-openvocab";
+            item.Metadata["AI:Model"] = "yolov8-prompt-detector";
 
             if (detected.Count > 0)
             {

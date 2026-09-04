@@ -33,13 +33,13 @@
       "https://github.com/onnx/models/raw/main/validated/vision/body_analysis/ultraface/models/version-RFB-320.onnx"
     ]
   },
-  "tiny-yolov3": {
-    "Id": "tiny-yolov3",
-    "FileName": "tiny-yolov3-11.onnx",
-    "DownloadUrl": "https://github.com/onnx/models/raw/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx",
-    "MinSizeBytes": 30000000,
-    "Description": "Tiny YOLOv3 COCO - Detecci\u00F3n de 80 objetos comunes (34 MB)",
-    "FriendlyName": "Tiny YOLOv3 COCO",
+  "yolov8n": {
+    "Id": "yolov8n",
+    "FileName": "yolov8n.onnx",
+    "DownloadUrl": "https://huggingface.co/cabelo/yolov8/resolve/main/yolov8n.onnx",
+    "MinSizeBytes": 10000000,
+    "Description": "YOLOv8 Nano COCO - Detecci\u00F3n ultra-r\u00E1pida de 80 objetos comunes (12 MB)",
+    "FriendlyName": "YOLOv8 Nano (Ultralytics)",
     "Category": "Visi\u00F3n",
     "DefaultUrls": null,
     "TaskType": 0,
@@ -47,7 +47,44 @@
     "GpuRecommended": false,
     "HardwareTier": "Lightweight",
     "DownloadUrls": [
-      "https://github.com/onnx/models/raw/main/validated/vision/object_detection_segmentation/tiny-yolov3/model/tiny-yolov3-11.onnx"
+      "https://huggingface.co/cabelo/yolov8/resolve/main/yolov8n.onnx",
+      "https://huggingface.co/Kalray/yolov8/resolve/main/yolov8n.onnx"
+    ]
+  },
+  "yolov8s": {
+    "Id": "yolov8s",
+    "FileName": "yolov8s.onnx",
+    "DownloadUrl": "https://huggingface.co/cabelo/yolov8/resolve/main/yolov8s.onnx",
+    "MinSizeBytes": 40000000,
+    "Description": "YOLOv8 Small COCO - Detecci\u00F3n equilibrada de alta precisi\u00F3n (44 MB)",
+    "FriendlyName": "YOLOv8 Small (Ultralytics)",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 0,
+    "MinRamBytes": 2000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Balanced",
+    "DownloadUrls": [
+      "https://huggingface.co/cabelo/yolov8/resolve/main/yolov8s.onnx",
+      "https://huggingface.co/Kalray/yolov8/resolve/main/yolov8s.onnx"
+    ]
+  },
+  "yolov8m": {
+    "Id": "yolov8m",
+    "FileName": "yolov8m.onnx",
+    "DownloadUrl": "https://huggingface.co/cabelo/yolov8/resolve/main/yolov8m.onnx",
+    "MinSizeBytes": 95000000,
+    "Description": "YOLOv8 Medium COCO - Detecci\u00F3n de m\u00E1xima precisi\u00F3n y detalle (103 MB)",
+    "FriendlyName": "YOLOv8 Medium (Ultralytics)",
+    "Category": "Visi\u00F3n",
+    "DefaultUrls": null,
+    "TaskType": 0,
+    "MinRamBytes": 4000000000,
+    "GpuRecommended": true,
+    "HardwareTier": "Performance",
+    "DownloadUrls": [
+      "https://huggingface.co/cabelo/yolov8/resolve/main/yolov8m.onnx",
+      "https://huggingface.co/Kalray/yolov8/resolve/main/yolov8m.onnx"
     ]
   },
   "whisper-tiny": {
@@ -133,23 +170,6 @@
     "HardwareTier": "Lightweight",
     "DownloadUrls": [
       "https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata"
-    ]
-  },
-  "grounding-dino": {
-    "Id": "grounding-dino",
-    "FileName": "yolov8s-worldv2.onnx",
-    "DownloadUrl": "https://huggingface.co/Instemic/yolo-world-onnx/resolve/main/yolov8s-worldv2.onnx",
-    "MinSizeBytes": 35000000,
-    "Description": "Grounding DINO / YOLO-World - Detecci\u00F3n de objetos por prompt en texto libre (51 MB)",
-    "FriendlyName": "Grounding DINO / Open-Vocab",
-    "Category": "Visi\u00F3n",
-    "DefaultUrls": null,
-    "TaskType": 0,
-    "MinRamBytes": 2000000000,
-    "GpuRecommended": true,
-    "HardwareTier": "Balanced",
-    "DownloadUrls": [
-      "https://huggingface.co/Instemic/yolo-world-onnx/resolve/main/yolov8s-worldv2.onnx"
     ]
   },
   "marian-es-en": {

@@ -76,7 +76,6 @@
   <data name="Param_Language" xml:space="preserve"><value>Idioma</value></data>
   <data name="Param_EngineMode" xml:space="preserve"><value>Modo de Motor OCR</value></data>
   <data name="Param_Model" xml:space="preserve"><value>Modelo de IA</value></data>
-  <data name="Param_CustomModelPath" xml:space="preserve"><value>Ruta de Modelo Personalizado</value></data>
   <data name="BackgroundRemoverNode_Name" xml:space="preserve"><value>Eliminador de Fondo IA</value></data>
   <data name="BackgroundRemoverNode_Desc" xml:space="preserve"><value>Segmenta el sujeto y elimina el fondo de imágenes con redes neuronales RMBG y MODNet.</value></data>
   <data name="SuperResolutionUpscalerNode_Name" xml:space="preserve"><value>Super-Resolución IA</value></data>

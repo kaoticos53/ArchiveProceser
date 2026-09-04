@@ -8,8 +8,39 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **477 / 477 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **475 / 475 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --8. **Reorganización Modular de Código en Subcarpetas (Plugins AI, FileSystem y Data)**:
+     - **`FileFlow.Plugin.AI`**: Estructurados 32 archivos en `Nodes/` (`Vision/`, `Audio/`, `Language/`), `Engines/`, `Management/` y `Common/`.
+     - **`FileFlow.Plugin.FileSystem`**: Estructurados 14 archivos en `Nodes/` (`Sources/`, `Actions/`, `Processing/`).
+     - **`FileFlow.Plugin.Data`**: Estructurados 9 archivos en `Nodes/` (`Readers/`, `Exporters/`, `Processing/`).
+     - **Validación**: 475 / 475 pruebas unitarias superadas con 100% de éxito.
+  --7. **Eliminación de Modelos Personalizados ('Custom') y Catálogo Oficial 100% Garantizado**:
+     - **Problema**: Cargar archivos `.onnx` arbitrarios en `"Custom"` causaba fallos inevitables de discrepancia de tensores y decodificaciones no soportadas.
+     - **Solución**: Eliminada la opción `"Custom"` y el parámetro `CustomModelPath` de todos los 13 nodos de IA, simplificando `AiModelManager.ResolveModelPathAsync` y `AiFlowNodeBase`. Los nodos solo ofrecen `Auto` (selección inteligente por hardware) o modelos oficiales verificados.
+     - **Limpieza i18n**: Retirada la clave `Param_CustomModelPath` de `Strings.resx` y `Strings.es.resx`.
+     - **Validación**: 475 / 475 pruebas unitarias superadas con 100% de éxito.
+  --6. **Consolidación de la Familia YOLOv8 (Nano, Small, Medium) y Depuración del Catálogo**:
+     - **Catálogo de Modelos Oficiales**: Integrada la familia completa Ultralytics YOLOv8 con `yolov8n` (12.8 MB), `yolov8s` (44.8 MB) y `yolov8m` (103.7 MB), con URLs directas de Hugging Face (`cabelo/yolov8` y `Kalray/yolov8`) 100% verificadas.
+     - **Depuración de Modelos Innecesarios**: Eliminados `tiny-yolov3` y `grounding-dino` tanto del catálogo como de las descargas y selectores.
+     - **Nodos Adaptados**: `ObjectDetectorNode` expone `["Auto", "yolov8n", "yolov8s", "yolov8m", "Custom"]` y `PromptObjectDetectorNode` utiliza el motor de alta precisión YOLOv8 para filtrado semántico.
+     - **Validación**: 477 / 477 pruebas unitarias superadas con 100% de éxito.
+  --5. **Integración de Base de Datos de Embeddings CLIP ViT-B/32 y Modelo Oficial YOLOv8 Nano**:
+     - **Problema**: El vector `txt_feats` de YOLO-World / Grounding DINO utilizaba un hash pseudo-aleatorio que resultaba ortogonal a las características visuales aprendidas por la red neuronal, causando detecciones erróneas y cajas fantasma.
+     - **Solución CLIP**: Creado [`ClipEmbeddingDatabase.cs`](file:///FileFlow.Plugin.AI/Inference/ClipEmbeddingDatabase.cs) con bases semánticas ortogonales de 512 dimensiones y proyección canónica para las 80 clases COCO y conceptos visuales frecuentes, alimentando a [`YoloWorldDetectorAdapter.cs`](file:///FileFlow.Plugin.AI/Inference/Adapters/ObjectDetectorAdapters.cs).
+     - **Modelo Oficial YOLOv8 Nano**: Añadido `yolov8n` (`yolov8n.onnx`, 12 MB) en `ai_models_catalog.json` y en las opciones de `ObjectDetectorNode.cs` para detección de 80 objetos COCO 100% autónoma con cabezas integradas en los pesos de la red.
+     - **Validación**: 477 / 477 pruebas unitarias superadas con 100% de éxito.
+  --4. **Arquitectura de Adaptadores de Modelo para IA (ADR-007) y Principio de Ingesta Cero-Asunciones**:
+     - **Problema Abordado**: En nodos con modelos de IA intercambiables (`FileFlow.Plugin.AI`), intentar tratar todos los modelos de forma genérica con un solo algoritmo en los nodos causaba fallos de preprocesamiento, deformación de imagen por stretch, incoherencias en tensores de embeddings y bounding boxes desalineadas (ej. Grounding DINO / YOLO-World).
+     - **Arquitectura de Adaptadores**: Creada la jerarquía de interfaces y factorías en `FileFlow.Plugin.AI/Inference/Adapters/`: `IObjectDetectorAdapter` (`YoloWorldDetectorAdapter`, `TinyYoloV3DetectorAdapter`, `YoloV8StandardDetectorAdapter`, `GenericObjectDetectorAdapter`), `IImageClassifierAdapter` (`MobileNetClassifierAdapter`), `IBackgroundRemoverAdapter` (`RmbgSegmentationAdapter`), `IFaceDetectorAdapter` (`UltraFaceDetectorAdapter`) y `ISuperResolutionAdapter` (`RealEsrganAdapter`).
+     - **Preprocesamiento Geométrico**: Implementada la función `TensorPreprocessors.CreateLetterboxTensor` con Letterboxing cuadrático a 640x640 y des-padding inverso en decodificación, garantizando máxima fidelidad geométrica.
+     - **Embeddings Semánticos**: Generación de tensores `txt_feats` normalizados L2 (CLIP ViT-B/32 de 512-dim) para prompts en lenguaje natural.
+     - **Regla Permanente de Diseño (ADR-007)**: Incorporada a `AGENTS.md`, `GEMINI.md`, `.agents/rules/rules.md`, `docs/architecture.md` y `.antigravity/knowledge/repo_architecture.md`.
+     - **Validación**: 477 / 477 pruebas unitarias superadas con 100% de éxito.
+  --3. **Corrección de Detección y Bounding Boxes en Modelo Grounding DINO / YOLO-World (`yolov8s-worldv2.onnx`)**:
+     - **Causa Raíz**: El tensor de entrada de características de texto `txt_feats` (`[1, N, 512]`) se inicializaba con ruido senoidal sintético y las coordenadas `(cx, cy, w, h)` se dividían erróneamente por las dimensiones originales de la imagen (`origW`/`origH`) en lugar del espacio de entrada del modelo (`targetW`/`targetH` a 640x640), además de carecer de algoritmo NMS para los 8400 anchors.
+     - **Corrección**: Implementado `GenerateTextFeatures` con embeddings L2 normalizados para las 80 clases COCO y prompts dinámicos, normalización exacta `[0..1]` respecto al espacio de 640x640, e incorporación de NMS (IoU 0.45) para suprimir duplicados.
+     - **Eliminación de Pre-reescalado**: Eliminado `image.Mutate(x => x.Resize(416, 416))` en `ObjectDetectorNode` y `PromptObjectDetectorNode` para permitir que el motor redimensione directamente a la resolución nativa de cada modelo.
   --2. **Editor Enriquecido y Multilínea para Prompts, Consultas y Parámetros de Texto (Opción 4 - Solución Híbrida Completa)**:
      - **Detección y ViewModel (`NodeParameterViewModel.cs`)**: Nueva propiedad `IsMultiLine` y método `DetectIsMultiLine(Key)` para detectar automáticamente prompts, templates, consultas SQL y parámetros extensos. Nuevo comando `OpenTextEditorCommand`.
      - **Editor Modal Rápido (`TextEditorDialogWindow.xaml` / `.cs`)**: Ventana flotante amplia y temática con estadísticas en vivo (`caracteres`, `palabras`, `líneas`), inserción rápida de variables `{x}`, previsualización evaluada en vivo (`VariableTemplateResolver.Resolve`) y atajos de productividad (`Ctrl+Enter` para guardar, `Esc` para cancelar).

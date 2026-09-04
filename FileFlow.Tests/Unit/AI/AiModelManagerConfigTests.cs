@@ -20,22 +20,22 @@ public class AiModelManagerConfigTests
             defaultUrls[0].Should().StartWith("http", $"La URL por defecto de '{id}' debe ser HTTP/HTTPS");
         }
 
-        // Grounding DINO debe apuntar al repositorio funcional de Hugging Face
-        var dinoUrls = AiModelManager.GetDefaultUrls("grounding-dino");
-        dinoUrls.Should().Contain(u => u.Contains("Instemic/yolo-world-onnx"));
+        // YOLOv8 Nano debe apuntar al repositorio funcional de Hugging Face
+        var yoloUrls = AiModelManager.GetDefaultUrls("yolov8n");
+        yoloUrls.Should().Contain(u => u.Contains("yolov8n.onnx"));
     }
 
     [Fact]
     public void AiModelManager_SetCustomUrls_AndReset_ShouldPersistAndRevertProperly()
     {
-        string modelId = "tiny-yolov3";
+        string modelId = "yolov8n";
         AiModelManager.ResetCustomUrls(modelId);
 
         var originalUrls = AiModelManager.GetConfiguredUrls(modelId);
         var customList = new[]
         {
-            "https://mirror1.example.com/models/tiny-yolov3.onnx",
-            "https://mirror2.example.com/models/tiny-yolov3.onnx"
+            "https://mirror1.example.com/models/yolov8n.onnx",
+            "https://mirror2.example.com/models/yolov8n.onnx"
         };
 
         try

@@ -30,7 +30,6 @@ public class SmartImageClassifierNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["MinimumConfidence"] = 0.5,
         ["FallbackCategory"] = "Fotografía General"
     };
@@ -38,12 +37,10 @@ public class SmartImageClassifierNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "mobilenetv2", "Custom"],
+            Options: ["Auto", "mobilenetv2"],
             HelpText: "Modelo para clasificación visual ('Auto' selecciona según el hardware del equipo).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
-        new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.5, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 3),
-        new("FallbackCategory", ParameterEditorType.Text, DefaultValue: "Fotografía General", DisplayOrder: 4)
+        new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.5, Min: 0.1, Max: 1.0, Step: 0.05, DisplayOrder: 2),
+        new("FallbackCategory", ParameterEditorType.Text, DefaultValue: "Fotografía General", DisplayOrder: 3)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -68,11 +65,9 @@ public class SmartImageClassifierNode : IFlowNode
             context.Log($"[ImageClassifier] Clasificando: {item.FileName}...", LogLevel.Information, item);
 
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.ImageClassification,
                 context,
                 item,

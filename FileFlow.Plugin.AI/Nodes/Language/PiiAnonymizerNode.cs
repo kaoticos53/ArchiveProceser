@@ -39,7 +39,6 @@ public class PiiAnonymizerNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["AnonymizationMode"] = "TagReplacement",
         ["FilterDniNie"] = true,
         ["FilterIban"] = true,
@@ -54,29 +53,27 @@ public class PiiAnonymizerNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "pii-ner-multilingual", "RegexOnly", "Custom"],
+            Options: ["Auto", "pii-ner-multilingual", "RegexOnly"],
             HelpText: "Motor de análisis de entidades sensibles ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx de NER local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("AnonymizationMode", ParameterEditorType.Dropdown, DefaultValue: "TagReplacement",
             Options: ["TagReplacement", "Mask", "Hash", "Remove"],
-            HelpText: "Modo de reemplazo (etiquetas [DNI], máscara con asteriscos, hash SHA-256 o eliminación).", DisplayOrder: 3),
+            HelpText: "Modo de reemplazo (etiquetas [DNI], máscara con asteriscos, hash SHA-256 o eliminación).", DisplayOrder: 2),
         new("FilterDniNie", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar DNIs y NIEs españoles con validación de dígito de control.", DisplayOrder: 4),
+            HelpText: "Detectar y anonimizar DNIs y NIEs españoles con validación de dígito de control.", DisplayOrder: 3),
         new("FilterIban", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar cuentas bancarias IBAN con validación MOD-97.", DisplayOrder: 5),
+            HelpText: "Detectar y anonimizar cuentas bancarias IBAN con validación MOD-97.", DisplayOrder: 4),
         new("FilterCreditCards", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar números de tarjetas de crédito con algoritmo de Luhn.", DisplayOrder: 6),
+            HelpText: "Detectar y anonimizar números de tarjetas de crédito con algoritmo de Luhn.", DisplayOrder: 5),
         new("FilterEmails", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar direcciones de correo electrónico.", DisplayOrder: 7),
+            HelpText: "Detectar y anonimizar direcciones de correo electrónico.", DisplayOrder: 6),
         new("FilterPhones", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar números de teléfono nacionales e internacionales.", DisplayOrder: 8),
+            HelpText: "Detectar y anonimizar números de teléfono nacionales e internacionales.", DisplayOrder: 7),
         new("FilterIpAddresses", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar direcciones IP públicas y privadas.", DisplayOrder: 9),
+            HelpText: "Detectar y anonimizar direcciones IP públicas y privadas.", DisplayOrder: 8),
         new("FilterPersonNames", ParameterEditorType.Toggle, DefaultValue: true,
-            HelpText: "Detectar y anonimizar nombres propios de personas por contexto honorífico.", DisplayOrder: 10),
+            HelpText: "Detectar y anonimizar nombres propios de personas por contexto honorífico.", DisplayOrder: 9),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta donde se guardará el archivo sanitizado resultante.", DisplayOrder: 11)
+            HelpText: "Carpeta donde se guardará el archivo sanitizado resultante.", DisplayOrder: 10)
     ];
 
     private static readonly HashSet<string> _textExtensions = new(StringComparer.OrdinalIgnoreCase)

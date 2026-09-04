@@ -39,7 +39,6 @@ public class SuperResolutionUpscalerNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["ScaleFactor"] = "4x",
         ["MaxInputDimension"] = 2048,
         ["OutputDirectory"] = "{GlobalOutputDir}"
@@ -48,17 +47,15 @@ public class SuperResolutionUpscalerNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "realesrgan-compact", "Custom"],
+            Options: ["Auto", "realesrgan-compact"],
             HelpText: "Modelo neural de super-resolución ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("ScaleFactor", ParameterEditorType.Dropdown, DefaultValue: "4x",
             Options: ["2x", "4x"],
-            HelpText: "Factor de aumento de resolución.", DisplayOrder: 3),
+            HelpText: "Factor de aumento de resolución.", DisplayOrder: 2),
         new("MaxInputDimension", ParameterEditorType.Number, DefaultValue: 2048, Min: 256, Max: 8192,
-            HelpText: "Límite máximo de ancho/alto original para prevenir consumo excesivo de RAM.", DisplayOrder: 4),
+            HelpText: "Límite máximo de ancho/alto original para prevenir consumo excesivo de RAM.", DisplayOrder: 3),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán las imágenes escaladas.", DisplayOrder: 5)
+            HelpText: "Carpeta de destino donde se guardarán las imágenes escaladas.", DisplayOrder: 4)
     ];
 
     private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -86,7 +83,6 @@ public class SuperResolutionUpscalerNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             string scaleStr = Parameters.TryGetValue("ScaleFactor", out var sfVal) ? sfVal?.ToString() ?? "4x" : "4x";
             int maxDim = Parameters.TryGetValue("MaxInputDimension", out var mdVal) ? ParameterHelper.GetInt32(mdVal, 2048) : 2048;
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
@@ -107,7 +103,6 @@ public class SuperResolutionUpscalerNode : IFlowNode
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.SuperResolution,
                 context,
                 item,

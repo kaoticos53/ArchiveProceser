@@ -39,7 +39,6 @@ public class BackgroundRemoverNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["OutputMode"] = "TransparentPng",
         ["BackgroundColor"] = "#FFFFFF",
         ["OutputDirectory"] = "{GlobalOutputDir}"
@@ -48,17 +47,15 @@ public class BackgroundRemoverNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "rmbg-1.4", "modnet", "Custom"],
+            Options: ["Auto", "rmbg-1.4", "modnet"],
             HelpText: "Modelo neural para segmentación de fondo ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("OutputMode", ParameterEditorType.Dropdown, DefaultValue: "TransparentPng",
             Options: ["TransparentPng", "ColorBackground", "MaskOnly"],
-            HelpText: "Formato de salida (PNG con canal alfa transparente, color sólido o solo máscara).", DisplayOrder: 3),
+            HelpText: "Formato de salida (PNG con canal alfa transparente, color sólido o solo máscara).", DisplayOrder: 2),
         new("BackgroundColor", ParameterEditorType.Text, DefaultValue: "#FFFFFF",
-            HelpText: "Color de fondo hexadecimal (ej. #FFFFFF) si seleccionó 'ColorBackground'.", DisplayOrder: 4),
+            HelpText: "Color de fondo hexadecimal (ej. #FFFFFF) si seleccionó 'ColorBackground'.", DisplayOrder: 3),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán las imágenes procesadas.", DisplayOrder: 5)
+            HelpText: "Carpeta de destino donde se guardarán las imágenes procesadas.", DisplayOrder: 4)
     ];
 
     private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -86,14 +83,12 @@ public class BackgroundRemoverNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             string outputMode = Parameters.TryGetValue("OutputMode", out var omVal) ? omVal?.ToString() ?? "TransparentPng" : "TransparentPng";
             string bgColorHex = Parameters.TryGetValue("BackgroundColor", out var bgVal) ? bgVal?.ToString() ?? "#FFFFFF" : "#FFFFFF";
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.BackgroundRemoval,
                 context,
                 item,

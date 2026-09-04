@@ -41,7 +41,7 @@ public class VisionSuiteNodesTests : IDisposable
 
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
         node.Parameters.Should().ContainKey("OutputMode");
         node.Parameters["OutputMode"].Should().Be("TransparentPng");
         node.Parameters.Should().ContainKey("BackgroundColor");
@@ -49,7 +49,8 @@ public class VisionSuiteNodesTests : IDisposable
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "rmbg-1.4", "modnet", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "rmbg-1.4", "modnet"]);
+        modelDesc.Options.Should().NotContain("Custom");
 
         var modeDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "OutputMode");
         modeDesc.Should().NotBeNull();
@@ -68,6 +69,7 @@ public class VisionSuiteNodesTests : IDisposable
 
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
         node.Parameters.Should().ContainKey("ScaleFactor");
         node.Parameters["ScaleFactor"].Should().Be("4x");
         node.Parameters.Should().ContainKey("MaxInputDimension");
@@ -75,7 +77,8 @@ public class VisionSuiteNodesTests : IDisposable
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "realesrgan-compact", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "realesrgan-compact"]);
+        modelDesc.Options.Should().NotContain("Custom");
 
         var scaleDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "ScaleFactor");
         scaleDesc.Should().NotBeNull();
@@ -94,12 +97,14 @@ public class VisionSuiteNodesTests : IDisposable
 
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
         node.Parameters.Should().ContainKey("SensitivityThreshold");
         node.Parameters["SensitivityThreshold"].Should().Be(0.6);
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "opennsfw2", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "opennsfw2"]);
+        modelDesc.Options.Should().NotContain("Custom");
 
         var threshDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "SensitivityThreshold");
         threshDesc.Should().NotBeNull();

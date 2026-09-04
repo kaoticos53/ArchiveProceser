@@ -36,7 +36,12 @@ trigger: always_on
    - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en `FileFlow.App`.
    - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar `FileFlow.App`**.
 
-7. **Documentación, Memoria y Repositorio:**
+7. **Arquitectura de Adaptadores para Modelos de IA Intercambiables (Model Adapter Architecture):**
+   - Los nodos y motores de inferencia en `FileFlow.Plugin.AI` no deben asumir preprocesado ni decodificado genérico para modelos intercambiables.
+   - Toda arquitectura de modelo debe estructurarse mediante adaptadores especializados (`IObjectDetectorAdapter`, `IImageClassifierAdapter`, `IBackgroundRemoverAdapter`, `IFaceDetectorAdapter`, `ISuperResolutionAdapter`) y factorías de auto-descubrimiento basadas en la metadata de entrada y salida del grafo ONNX.
+   - El nodo suministra contratos canónicos (imágenes sin alterar, umbrales y prompts estándar) y el adaptador gestiona el Letterbox, des-padding, tensores auxiliares (embeddings CLIP ViT-B/32) y decodificación NMS.
+
+8. **Documentación, Memoria y Repositorio:**
    - Consultar **OBLIGATORIAMENTE** al inicio de cada sesión de chat `.antigravity/knowledge/session_summary.md`, `docs/PROJECT_WALKTHROUGH.md` y la arquitectura del repositorio para no empezar desde cero.
    - Mantener **SIEMPRE** al día los ficheros auxiliares de estado (`docs/PROJECT_WALKTHROUGH.md` por fechas, `session_summary.md`, artefactos de plan y la base de conocimiento `.antigravity/knowledge/`).
    - Mantener el repositorio Git limpio y sincronizado ante cualquier cambio importante en la arquitectura o lógica de nodos.

@@ -172,39 +172,18 @@ public static class AiModelManager
     #region Resolución de Modelos en Ejecución
 
     /// <summary>
-    /// Resuelve la ruta del modelo de IA a ejecutar según la elección del usuario (Auto, Catálogo Oficial o Archivo Local Personalizado).
+    /// Resuelve la ruta del modelo de IA a ejecutar según la elección del usuario (Auto o Modelo del Catálogo Oficial).
     /// </summary>
     public static async Task<string?> ResolveModelPathAsync(
         string? modelSelection,
-        string? customModelPath,
         AiTaskType taskType,
         IFlowExecutionContext context,
         FileItemContext? item = null,
         CancellationToken cancellationToken = default)
     {
-        // Caso 1: Archivo local personalizado ("Custom")
-        if (string.Equals(modelSelection, "Custom", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(customModelPath))
-            {
-                context.Log($"[AiModelManager] ⚠️ Se ha seleccionado modelo personalizado ('Custom') pero la ruta de archivo está vacía.", LogLevel.Error, item);
-                return null;
-            }
-
-            string fullPath = Path.GetFullPath(customModelPath);
-            if (!File.Exists(fullPath))
-            {
-                context.Log($"[AiModelManager] ❌ Archivo de modelo personalizado no encontrado: '{fullPath}'", LogLevel.Error, item);
-                return null;
-            }
-
-            context.Log($"[AiModelManager] 📦 Usando modelo personalizado: '{Path.GetFileName(fullPath)}' ({new FileInfo(fullPath).Length / (1024.0 * 1024.0):F1} MB)", LogLevel.Information, item);
-            return fullPath;
-        }
-
         string targetModelId;
 
-        // Caso 2: Modo Automático ("Auto" o no configurado) -> Selección por hardware
+        // Caso 1: Modo Automático ("Auto" o no configurado) -> Selección por hardware
         if (string.IsNullOrWhiteSpace(modelSelection) || string.Equals(modelSelection, "Auto", StringComparison.OrdinalIgnoreCase))
         {
             var optimalModel = HardwareCapabilityDetector.GetOptimalModelForTask(taskType);
@@ -216,7 +195,7 @@ public static class AiModelManager
             targetModelId = modelSelection.Trim();
         }
 
-        // Caso 3: Modelo del catálogo oficial (se asegura su descarga y existencia)
+        // Caso 2: Modelo del catálogo oficial (se asegura su descarga y existencia)
         return await EnsureModelAsync(targetModelId, context, item, cancellationToken).ConfigureAwait(false);
     }
 

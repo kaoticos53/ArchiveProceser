@@ -41,7 +41,7 @@ public class AudioSuiteNodesTests : IDisposable
 
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
         node.Parameters.Should().ContainKey("Mode");
         node.Parameters["Mode"].Should().Be("DetectOnly");
         node.Parameters.Should().ContainKey("SensitivityThreshold");
@@ -52,7 +52,8 @@ public class AudioSuiteNodesTests : IDisposable
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "silero-vad", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "silero-vad"]);
+        modelDesc.Options.Should().NotContain("Custom");
 
         var modeDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Mode");
         modeDesc.Should().NotBeNull();
@@ -71,6 +72,7 @@ public class AudioSuiteNodesTests : IDisposable
 
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
         node.Parameters.Should().ContainKey("InputSource");
         node.Parameters["InputSource"].Should().Be("FileContent");
         node.Parameters.Should().ContainKey("MetadataKeyName");
@@ -80,7 +82,8 @@ public class AudioSuiteNodesTests : IDisposable
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "piper-es-davefx", "piper-en-lessac", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "piper-es-davefx", "piper-en-lessac"]);
+        modelDesc.Options.Should().NotContain("Custom");
 
         var sourceDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "InputSource");
         sourceDesc.Should().NotBeNull();

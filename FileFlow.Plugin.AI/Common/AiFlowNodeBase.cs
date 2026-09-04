@@ -26,12 +26,6 @@ public abstract class AiFlowNodeBase : FlowNodeBase
         }
     }
 
-    public string CustomModelPath
-    {
-        get => GetParameter("CustomModelPath", string.Empty);
-        set => SetParameter("CustomModelPath", value);
-    }
-
     /// <summary>
     /// Resuelve la ruta física del modelo para la tarea actual, descargándolo si es necesario o resolviendo la ruta local.
     /// </summary>
@@ -42,7 +36,6 @@ public abstract class AiFlowNodeBase : FlowNodeBase
     {
         return await AiModelManager.ResolveModelPathAsync(
             ModelSelection,
-            CustomModelPath,
             TaskType,
             context,
             item,

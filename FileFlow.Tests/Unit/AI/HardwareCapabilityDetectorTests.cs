@@ -95,7 +95,7 @@ public class HardwareCapabilityDetectorTests
         // Assert
         objectDetectionModels.Should().NotBeEmpty();
         objectDetectionModels.Should().OnlyContain(m => m.TaskType == AiTaskType.ObjectDetection);
-        objectDetectionModels.Select(m => m.Id).Should().Contain(["tiny-yolov3", "grounding-dino"]);
+        objectDetectionModels.Select(m => m.Id).Should().Contain(["yolov8n", "yolov8s", "yolov8m"]);
 
         translationModels.Should().NotBeEmpty();
         translationModels.Should().OnlyContain(m => m.TaskType == AiTaskType.TextTranslation);

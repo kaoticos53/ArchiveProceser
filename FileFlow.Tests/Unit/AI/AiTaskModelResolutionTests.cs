@@ -29,52 +29,20 @@ public class AiTaskModelResolutionTests : IDisposable
     }
 
     [Fact]
-    public async Task ResolveModelPathAsync_WithCustomAndEmptyPath_ShouldReturnNull()
+    public async Task ResolveModelPathAsync_WithAuto_ShouldSelectOptimalModel()
     {
         // Arrange
         var mockContext = new Mock<IFlowExecutionContext>();
 
         // Act
-        var result = await AiModelManager.ResolveModelPathAsync("Custom", "", AiTaskType.ObjectDetection, mockContext.Object);
-
-        // Assert
-        result.Should().BeNull();
-        mockContext.Verify(c => c.Log(It.Is<string>(s => s.Contains("Custom") && s.Contains("vacía")), LogLevel.Error, (FileItemContext?)null, It.IsAny<double>(), It.IsAny<string?>()), Times.Once);
+        // Auto resuelve al óptimo según HardwareCapabilityDetector
+        var optimal = HardwareCapabilityDetector.GetOptimalModelForTask(AiTaskType.ObjectDetection);
+        optimal.Should().NotBeNull();
+        optimal.Id.Should().StartWith("yolov8");
     }
 
     [Fact]
-    public async Task ResolveModelPathAsync_WithCustomAndNonExistentFile_ShouldReturnNull()
-    {
-        // Arrange
-        var mockContext = new Mock<IFlowExecutionContext>();
-        string nonExistent = Path.Combine(_tempDir, "does_not_exist.onnx");
-
-        // Act
-        var result = await AiModelManager.ResolveModelPathAsync("Custom", nonExistent, AiTaskType.ObjectDetection, mockContext.Object);
-
-        // Assert
-        result.Should().BeNull();
-        mockContext.Verify(c => c.Log(It.Is<string>(s => s.Contains("no encontrado")), LogLevel.Error, (FileItemContext?)null, It.IsAny<double>(), It.IsAny<string?>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task ResolveModelPathAsync_WithCustomAndExistingFile_ShouldReturnFullPath()
-    {
-        // Arrange
-        var mockContext = new Mock<IFlowExecutionContext>();
-        string customFile = Path.Combine(_tempDir, "my_custom_model.onnx");
-        await File.WriteAllBytesAsync(customFile, new byte[1024]);
-
-        // Act
-        var result = await AiModelManager.ResolveModelPathAsync("Custom", customFile, AiTaskType.ObjectDetection, mockContext.Object);
-
-        // Assert
-        result.Should().Be(Path.GetFullPath(customFile));
-        mockContext.Verify(c => c.Log(It.Is<string>(s => s.Contains("Usando modelo personalizado")), LogLevel.Information, (FileItemContext?)null, It.IsAny<double>(), It.IsAny<string?>()), Times.Once);
-    }
-
-    [Fact]
-    public void ObjectDetectorNode_ParametersAndDescriptors_ShouldSupportModelAndCustomPath()
+    public void ObjectDetectorNode_ParametersAndDescriptors_ShouldSupportOfficialModels()
     {
         // Arrange & Act
         var node = new ObjectDetectorNode();
@@ -82,20 +50,17 @@ public class AiTaskModelResolutionTests : IDisposable
         // Assert
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
         modelDesc!.EditorType.Should().Be(ParameterEditorType.Dropdown);
-        modelDesc.Options.Should().Contain(["Auto", "tiny-yolov3", "grounding-dino", "Custom"]);
-
-        var pathDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "CustomModelPath");
-        pathDesc.Should().NotBeNull();
-        pathDesc!.EditorType.Should().Be(ParameterEditorType.FilePath);
+        modelDesc.Options.Should().Contain(["Auto", "yolov8n", "yolov8s", "yolov8m"]);
+        modelDesc.Options.Should().NotContain("Custom");
     }
 
     [Fact]
-    public void FaceDetectorNode_ParametersAndDescriptors_ShouldSupportModelAndCustomPath()
+    public void FaceDetectorNode_ParametersAndDescriptors_ShouldSupportOfficialModels()
     {
         // Arrange & Act
         var node = new FaceDetectorNode();
@@ -103,15 +68,16 @@ public class AiTaskModelResolutionTests : IDisposable
         // Assert
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "ultraface", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "ultraface"]);
+        modelDesc.Options.Should().NotContain("Custom");
     }
 
     [Fact]
-    public void SmartImageClassifierNode_ParametersAndDescriptors_ShouldSupportModelAndCustomPath()
+    public void SmartImageClassifierNode_ParametersAndDescriptors_ShouldSupportOfficialModels()
     {
         // Arrange & Act
         var node = new SmartImageClassifierNode();
@@ -119,15 +85,16 @@ public class AiTaskModelResolutionTests : IDisposable
         // Assert
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "mobilenetv2", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "mobilenetv2"]);
+        modelDesc.Options.Should().NotContain("Custom");
     }
 
     [Fact]
-    public void LocalAiTranslatorNode_ParametersAndDescriptors_ShouldSupportModelAndCustomPath()
+    public void LocalAiTranslatorNode_ParametersAndDescriptors_ShouldSupportOfficialModels()
     {
         // Arrange & Act
         var node = new LocalAiTranslatorNode();
@@ -135,15 +102,16 @@ public class AiTaskModelResolutionTests : IDisposable
         // Assert
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "nllb-200-600m", "marian-es-en", "marian-en-es", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "nllb-200-600m", "marian-es-en", "marian-en-es"]);
+        modelDesc.Options.Should().NotContain("Custom");
     }
 
     [Fact]
-    public void LocalLlmProcessorNode_ParametersAndDescriptors_ShouldSupportModelAndCustomPath()
+    public void LocalLlmProcessorNode_ParametersAndDescriptors_ShouldSupportOfficialModels()
     {
         // Arrange & Act
         var node = new LocalLlmProcessorNode();
@@ -151,15 +119,16 @@ public class AiTaskModelResolutionTests : IDisposable
         // Assert
         node.Parameters.Should().ContainKey("Model");
         node.Parameters["Model"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "Model");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "qwen2.5-1.5b-instruct", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "qwen2.5-1.5b-instruct"]);
+        modelDesc.Options.Should().NotContain("Custom");
     }
 
     [Fact]
-    public void LocalWhisperTranscriberNode_ParametersAndDescriptors_ShouldSupportAutoAndCustom()
+    public void LocalWhisperTranscriberNode_ParametersAndDescriptors_ShouldSupportOfficialModels()
     {
         // Arrange & Act
         var node = new LocalWhisperTranscriberNode();
@@ -167,10 +136,11 @@ public class AiTaskModelResolutionTests : IDisposable
         // Assert
         node.Parameters.Should().ContainKey("ModelSize");
         node.Parameters["ModelSize"].Should().Be("Auto");
-        node.Parameters.Should().ContainKey("CustomModelPath");
+        node.Parameters.Should().NotContainKey("CustomModelPath");
 
         var modelDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "ModelSize");
         modelDesc.Should().NotBeNull();
-        modelDesc!.Options.Should().Contain(["Auto", "Tiny", "Base", "Small", "Custom"]);
+        modelDesc!.Options.Should().Contain(["Auto", "Tiny", "Base", "Small"]);
+        modelDesc.Options.Should().NotContain("Custom");
     }
 }

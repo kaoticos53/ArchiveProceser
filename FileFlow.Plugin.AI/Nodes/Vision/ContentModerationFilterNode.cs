@@ -39,19 +39,16 @@ public class ContentModerationFilterNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["SensitivityThreshold"] = 0.6
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "opennsfw2", "Custom"],
+            Options: ["Auto", "opennsfw2"],
             HelpText: "Modelo neural de moderación de contenido ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("SensitivityThreshold", ParameterEditorType.Slider, DefaultValue: 0.6, Min: 0.1, Max: 0.95, Step: 0.05,
-            HelpText: "Umbral de probabilidad a partir del cual se bifurca a 'Sensitive'.", DisplayOrder: 3)
+            HelpText: "Umbral de probabilidad a partir del cual se bifurca a 'Sensitive'.", DisplayOrder: 2)
     ];
 
     private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -81,12 +78,10 @@ public class ContentModerationFilterNode : IFlowNode
         try
         {
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             double threshold = Parameters.TryGetValue("SensitivityThreshold", out var stVal) ? ParameterHelper.GetDouble(stVal, 0.6) : 0.6;
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.ContentModeration,
                 context,
                 item,

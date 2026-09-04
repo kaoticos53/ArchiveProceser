@@ -27,7 +27,9 @@ public class AiNodesTests : IDisposable
         // Verificar que el catálogo contiene todos los modelos reales
         AiModelManager.Catalog.Should().ContainKey("mobilenetv2");
         AiModelManager.Catalog.Should().ContainKey("ultraface");
-        AiModelManager.Catalog.Should().ContainKey("tiny-yolov3");
+        AiModelManager.Catalog.Should().ContainKey("yolov8n");
+        AiModelManager.Catalog.Should().ContainKey("yolov8s");
+        AiModelManager.Catalog.Should().ContainKey("yolov8m");
         AiModelManager.Catalog.Should().ContainKey("whisper-tiny");
         AiModelManager.Catalog.Should().ContainKey("whisper-base");
         AiModelManager.Catalog.Should().ContainKey("whisper-small");
@@ -141,7 +143,7 @@ public class AiNodesTests : IDisposable
             emittedItem.Metadata["AI:ObjectCount"].Should().NotBeNull();
             emittedItem.Metadata.Should().ContainKey("AI:DetectedObjects");
             emittedItem.Metadata.Should().ContainKey("AI:Model");
-            emittedItem.Metadata["AI:Model"]?.ToString().Should().BeOneOf("tiny-yolov3-11", "yolov8s-worldv2", "yolov8n", "grounding-dino");
+            emittedItem.Metadata["AI:Model"]?.ToString().Should().BeOneOf("yolov8n", "yolov8s", "yolov8m", "tiny-yolov3-11", "yolov8s-worldv2");
         }
     }
 

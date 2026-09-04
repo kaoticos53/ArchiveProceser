@@ -36,7 +36,6 @@ public class TextToSpeechNode : IFlowNode
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Model"] = "Auto",
-        ["CustomModelPath"] = "",
         ["InputSource"] = "FileContent",
         ["MetadataKeyName"] = "AI:Translation",
         ["CustomTextTemplate"] = "",
@@ -47,21 +46,19 @@ public class TextToSpeechNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
-            Options: ["Auto", "piper-es-davefx", "piper-en-lessac", "Custom"],
+            Options: ["Auto", "piper-es-davefx", "piper-en-lessac"],
             HelpText: "Voz y modelo neural de síntesis TTS ('Auto' selecciona según hardware).", DisplayOrder: 1),
-        new("CustomModelPath", ParameterEditorType.FilePath, DefaultValue: "",
-            HelpText: "Ruta a un archivo .onnx de Piper TTS local si seleccionó 'Custom'.", DisplayOrder: 2),
         new("InputSource", ParameterEditorType.Dropdown, DefaultValue: "FileContent",
             Options: ["FileContent", "MetadataKey", "CustomText"],
-            HelpText: "Origen del texto a locutar (archivo entrante, metadato de otro nodo o plantilla).", DisplayOrder: 3),
+            HelpText: "Origen del texto a locutar (archivo entrante, metadato de otro nodo o plantilla).", DisplayOrder: 2),
         new("MetadataKeyName", ParameterEditorType.Text, DefaultValue: "AI:Translation",
-            HelpText: "Nombre de la clave de metadatos si InputSource es 'MetadataKey'.", DisplayOrder: 4),
+            HelpText: "Nombre de la clave de metadatos si InputSource es 'MetadataKey'.", DisplayOrder: 3),
         new("CustomTextTemplate", ParameterEditorType.MultiLineText, DefaultValue: "",
-            HelpText: "Texto fijo o plantilla si InputSource es 'CustomText'.", DisplayOrder: 5),
+            HelpText: "Texto fijo o plantilla si InputSource es 'CustomText'.", DisplayOrder: 4),
         new("SpeechRate", ParameterEditorType.Slider, DefaultValue: 1.0, Min: 0.5, Max: 2.0, Step: 0.1,
-            HelpText: "Velocidad de locución de la voz (1.0 = velocidad normal).", DisplayOrder: 6),
+            HelpText: "Velocidad de locución de la voz (1.0 = velocidad normal).", DisplayOrder: 5),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán los archivos .wav generados.", DisplayOrder: 7)
+            HelpText: "Carpeta de destino donde se guardarán los archivos .wav generados.", DisplayOrder: 6)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -110,13 +107,11 @@ public class TextToSpeechNode : IFlowNode
             }
 
             string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? customPath = Parameters.TryGetValue("CustomModelPath", out var cpVal) ? cpVal?.ToString() : null;
             double speechRate = Parameters.TryGetValue("SpeechRate", out var srVal) ? ParameterHelper.GetDouble(srVal, 1.0) : 1.0;
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
                 modelChoice,
-                customPath,
                 AiTaskType.TextToSpeech,
                 context,
                 item,

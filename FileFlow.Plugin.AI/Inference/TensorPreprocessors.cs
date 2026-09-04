@@ -1,6 +1,7 @@
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace FileFlow.Plugin.AI.Inference;
 
@@ -9,7 +10,7 @@ namespace FileFlow.Plugin.AI.Inference;
 /// </summary>
 public static class TensorPreprocessors
 {
-    private static readonly string[] CocoLabels =
+    public static readonly string[] CocoLabels =
     [
         "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
         "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
@@ -22,6 +23,64 @@ public static class TensorPreprocessors
         "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
         "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
     ];
+
+    public record struct LetterboxInfo(int TargetW, int TargetH, int ScaledW, int ScaledH, float PadX, float PadY, float Scale);
+
+    public static (DenseTensor<float> Tensor, LetterboxInfo Info) CreateLetterboxTensor(
+        Image<Rgb24> image,
+        int targetWidth = 640,
+        int targetHeight = 640,
+        byte padColor = 114)
+    {
+        float scale = Math.Min((float)targetWidth / image.Width, (float)targetHeight / image.Height);
+        int scaledW = Math.Max(1, (int)Math.Round(image.Width * scale));
+        int scaledH = Math.Max(1, (int)Math.Round(image.Height * scale));
+        float padX = (targetWidth - scaledW) / 2.0f;
+        float padY = (targetHeight - scaledH) / 2.0f;
+
+        var info = new LetterboxInfo(targetWidth, targetHeight, scaledW, scaledH, padX, padY, scale);
+
+        using var resized = image.Clone(ctx => ctx.Resize(scaledW, scaledH));
+        var tensor = new DenseTensor<float>([1, 3, targetHeight, targetWidth]);
+
+        float padNorm = padColor / 255.0f;
+        for (int c = 0; c < 3; c++)
+        {
+            for (int y = 0; y < targetHeight; y++)
+            {
+                for (int x = 0; x < targetWidth; x++)
+                {
+                    tensor[0, c, y, x] = padNorm;
+                }
+            }
+        }
+
+        int startX = (int)Math.Round(padX);
+        int startY = (int)Math.Round(padY);
+
+        resized.ProcessPixelRows(pixelAccess =>
+        {
+            for (int y = 0; y < scaledH; y++)
+            {
+                var row = pixelAccess.GetRowSpan(y);
+                int destY = startY + y;
+                if (destY >= targetHeight) break;
+
+                for (int x = 0; x < scaledW; x++)
+                {
+                    int destX = startX + x;
+                    if (destX >= targetWidth) break;
+
+                    var px = row[x];
+                    tensor[0, 0, destY, destX] = px.R / 255.0f;
+                    tensor[0, 1, destY, destX] = px.G / 255.0f;
+                    tensor[0, 2, destY, destX] = px.B / 255.0f;
+                }
+            }
+        });
+
+        return (tensor, info);
+    }
 
     public static DenseTensor<float> CreateNchwTensor(
         Image<Rgb24> image, int width, int height,
