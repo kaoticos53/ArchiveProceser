@@ -128,7 +128,6 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             _isRefreshing = true;
             try
             {
-                CategoryGroups.Clear();
                 IsCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
 
                 var prefs = UserPreferencesService.Instance;
@@ -197,6 +196,8 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                 string favGroupName = LocalizationManager.Instance.GetString("Category_Favorites", "⭐ Favoritos");
                 string freqGroupName = LocalizationManager.Instance.GetString("Category_Frequent", "🔥 Más Usados");
 
+                var targetGroups = new List<ToolboxCategoryGroup>();
+
                 // 2. Dual Perspective: Group by Pipeline Role if selected
                 if (CurrentPerspective == ToolboxPerspective.ByPipelineRole)
                 {
@@ -243,9 +244,11 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                             {
                                 group.Items.Add(it);
                             }
-                            CategoryGroups.Add(group);
+                            targetGroups.Add(group);
                         }
                     }
+
+                    CommitGroups(targetGroups);
                     return;
                 }
 
@@ -260,8 +263,9 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     }
                     if (favGroup.Items.Count > 0)
                     {
-                        CategoryGroups.Add(favGroup);
+                        targetGroups.Add(favGroup);
                     }
+                    CommitGroups(targetGroups);
                     return;
                 }
 
@@ -276,8 +280,9 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     }
                     if (freqGroup.Items.Count > 0)
                     {
-                        CategoryGroups.Add(freqGroup);
+                        targetGroups.Add(freqGroup);
                     }
+                    CommitGroups(targetGroups);
                     return;
                 }
 
@@ -292,7 +297,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     {
                         var favGroup = new ToolboxCategoryGroup(favGroupName);
                         foreach (var f in favItems) favGroup.Items.Add(f);
-                        CategoryGroups.Add(favGroup);
+                        targetGroups.Add(favGroup);
                     }
 
                     var freqItems = allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10).ToList();
@@ -300,7 +305,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     {
                         var freqGroup = new ToolboxCategoryGroup(freqGroupName);
                         foreach (var f in freqItems) freqGroup.Items.Add(f);
-                        CategoryGroups.Add(freqGroup);
+                        targetGroups.Add(freqGroup);
                     }
                 }
 
@@ -319,16 +324,27 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     {
                         group = new ToolboxCategoryGroup(localizedCategoryName);
                         groupDict[item.Category] = group;
-                        CategoryGroups.Add(group);
+                        targetGroups.Add(group);
                     }
 
                     group.Items.Add(item);
                 }
+
+                CommitGroups(targetGroups);
             }
             finally
             {
                 _isRefreshing = false;
             }
+        }
+    }
+
+    private void CommitGroups(List<ToolboxCategoryGroup> newGroups)
+    {
+        CategoryGroups.Clear();
+        foreach (var group in newGroups)
+        {
+            CategoryGroups.Add(group);
         }
     }
 

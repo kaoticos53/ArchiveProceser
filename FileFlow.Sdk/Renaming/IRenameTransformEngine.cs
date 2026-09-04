@@ -17,5 +17,6 @@ public interface IRenameTransformEngine
         string currentFileName,
         FileItemContext item,
         IReadOnlyList<RenameMethodStep> steps,
-        RenameBatchContext batchContext);
+        RenameBatchContext batchContext,
+        bool recordTraces = true);
 }

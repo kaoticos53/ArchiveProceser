@@ -26,7 +26,8 @@ public sealed class RenameTransformEngine : IRenameTransformEngine
         string currentFileName,
         FileItemContext item,
         IReadOnlyList<RenameMethodStep> steps,
-        RenameBatchContext batchContext)
+        RenameBatchContext batchContext,
+        bool recordTraces = true)
     {
         if (string.IsNullOrEmpty(currentFileName))
         {
@@ -35,7 +36,7 @@ public sealed class RenameTransformEngine : IRenameTransformEngine
 
         string originalFileName = currentFileName;
         string workingFileName = currentFileName;
-        var traces = new List<RenameStepTrace>(steps.Count);
+        List<RenameStepTrace>? traces = recordTraces ? new List<RenameStepTrace>(steps.Count) : null;
 
         try
         {
@@ -49,25 +50,28 @@ public sealed class RenameTransformEngine : IRenameTransformEngine
                 string inputBeforeStep = workingFileName;
                 string outputAfterStep = ApplyStep(step, inputBeforeStep, item, batchContext);
 
-                bool modified = !string.Equals(inputBeforeStep, outputAfterStep, StringComparison.Ordinal);
-                traces.Add(new RenameStepTrace(
-                    step.Id,
-                    step.MethodType,
-                    inputBeforeStep,
-                    outputAfterStep,
-                    modified,
-                    step.Name
-                ));
+                if (recordTraces)
+                {
+                    bool modified = !string.Equals(inputBeforeStep, outputAfterStep, StringComparison.Ordinal);
+                    traces!.Add(new RenameStepTrace(
+                        step.Id,
+                        step.MethodType,
+                        inputBeforeStep,
+                        outputAfterStep,
+                        modified,
+                        step.Name
+                    ));
+                }
 
                 workingFileName = outputAfterStep;
             }
 
             bool hasChanges = !string.Equals(originalFileName, workingFileName, StringComparison.Ordinal);
-            return new RenameResult(originalFileName, workingFileName, traces, hasChanges);
+            return new RenameResult(originalFileName, workingFileName, (IReadOnlyList<RenameStepTrace>?)traces ?? Array.Empty<RenameStepTrace>(), hasChanges);
         }
         catch (Exception ex)
         {
-            return new RenameResult(originalFileName, workingFileName, traces, false, ex.Message);
+            return new RenameResult(originalFileName, workingFileName, (IReadOnlyList<RenameStepTrace>?)traces ?? Array.Empty<RenameStepTrace>(), false, ex.Message);
         }
     }
 

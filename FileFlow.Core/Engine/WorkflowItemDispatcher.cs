@@ -38,7 +38,7 @@ public sealed class WorkflowItemDispatcher
         string outputPortName,
         FileItemContext item,
         ConcurrentDictionary<string, IFlowNode> nodeInstances,
-        ConcurrentDictionary<string, List<WorkflowEdge>> outgoingEdges,
+        ConcurrentDictionary<string, WorkflowEdge[]> indexedPortEdges,
         HashSet<string> startNodeIds,
         string executionId,
         string globalOutputDir,
@@ -76,30 +76,22 @@ public sealed class WorkflowItemDispatcher
             }
         }
 
-        if (!outgoingEdges.TryGetValue(sourceNodeId, out var edges))
+        string edgeKey = $"{sourceNodeId}:{outputPortName}";
+        if (!indexedPortEdges.TryGetValue(edgeKey, out var matchingEdges) || matchingEdges.Length == 0)
         {
             long doneFiles = _telemetryTracker.IncrementCompletedFiles();
             _checkpointHandler.RecordCompletedFile(item.OriginalPath, doneFiles);
             return Task.CompletedTask;
         }
 
-        var matchingEdges = edges.Where(e => e.SourcePortName.Equals(outputPortName, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (matchingEdges.Count == 0)
-        {
-            long doneFiles = _telemetryTracker.IncrementCompletedFiles();
-            _checkpointHandler.RecordCompletedFile(item.OriginalPath, doneFiles);
-            return Task.CompletedTask;
-        }
-
-        _telemetryTracker.AddTotalItems(matchingEdges.Count);
+        _telemetryTracker.AddTotalItems(matchingEdges.Length);
         if (item.FileSizeBytes > 0)
         {
             _telemetryTracker.AddProcessedBytes(item.FileSizeBytes);
         }
 
-        bool isMultipleTargets = matchingEdges.Count > 1;
+        bool isMultipleTargets = matchingEdges.Length > 1;
 
-        string edgeKey = $"{sourceNodeId}:{outputPortName}";
         int newCount = _edgeCounts.AddOrUpdate(edgeKey, 1, (_, c) => c + 1);
         EdgeItemDispatched?.Invoke(sourceNodeId, outputPortName, newCount);
 

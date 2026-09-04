@@ -43,38 +43,37 @@ public static class TensorPreprocessors
         using var resized = image.Clone(ctx => ctx.Resize(scaledW, scaledH));
         var tensor = new DenseTensor<float>([1, 3, targetHeight, targetWidth]);
 
-        float padNorm = padColor / 255.0f;
-        for (int c = 0; c < 3; c++)
-        {
-            for (int y = 0; y < targetHeight; y++)
-            {
-                for (int x = 0; x < targetWidth; x++)
-                {
-                    tensor[0, c, y, x] = padNorm;
-                }
-            }
-        }
+        float padNorm = padColor * (1.0f / 255.0f);
+        tensor.Buffer.Span.Fill(padNorm);
 
         int startX = (int)Math.Round(padX);
         int startY = (int)Math.Round(padY);
+        int planeSize = targetWidth * targetHeight;
+        const float inv255 = 1.0f / 255.0f;
 
         resized.ProcessPixelRows(pixelAccess =>
         {
+            var span = tensor.Buffer.Span;
+            var channelR = span.Slice(0, planeSize);
+            var channelG = span.Slice(planeSize, planeSize);
+            var channelB = span.Slice(2 * planeSize, planeSize);
+
             for (int y = 0; y < scaledH; y++)
             {
                 var row = pixelAccess.GetRowSpan(y);
                 int destY = startY + y;
                 if (destY >= targetHeight) break;
+                int rowOffset = destY * targetWidth + startX;
 
                 for (int x = 0; x < scaledW; x++)
                 {
-                    int destX = startX + x;
-                    if (destX >= targetWidth) break;
+                    int destIdx = rowOffset + x;
+                    if (destIdx >= planeSize) break;
 
                     var px = row[x];
-                    tensor[0, 0, destY, destX] = px.R / 255.0f;
-                    tensor[0, 1, destY, destX] = px.G / 255.0f;
-                    tensor[0, 2, destY, destX] = px.B / 255.0f;
+                    channelR[destIdx] = px.R * inv255;
+                    channelG[destIdx] = px.G * inv255;
+                    channelB[destIdx] = px.B * inv255;
                 }
             }
         });
@@ -89,17 +88,29 @@ public static class TensorPreprocessors
         float scale = 1.0f / 255.0f)
     {
         var tensor = new DenseTensor<float>([1, 3, height, width]);
+        int planeSize = width * height;
+        float invStdR = 1.0f / stdR;
+        float invStdG = 1.0f / stdG;
+        float invStdB = 1.0f / stdB;
+
         image.ProcessPixelRows(pixelAccess =>
         {
+            var span = tensor.Buffer.Span;
+            var channelR = span.Slice(0, planeSize);
+            var channelG = span.Slice(planeSize, planeSize);
+            var channelB = span.Slice(2 * planeSize, planeSize);
+
             for (int y = 0; y < height; y++)
             {
                 var row = pixelAccess.GetRowSpan(y);
+                int rowOffset = y * width;
                 for (int x = 0; x < width; x++)
                 {
+                    int idx = rowOffset + x;
                     var px = row[x];
-                    tensor[0, 0, y, x] = (px.R * scale - meanR) / stdR;
-                    tensor[0, 1, y, x] = (px.G * scale - meanG) / stdG;
-                    tensor[0, 2, y, x] = (px.B * scale - meanB) / stdB;
+                    channelR[idx] = (px.R * scale - meanR) * invStdR;
+                    channelG[idx] = (px.G * scale - meanG) * invStdG;
+                    channelB[idx] = (px.B * scale - meanB) * invStdB;
                 }
             }
         });
@@ -110,17 +121,26 @@ public static class TensorPreprocessors
         Image<Rgb24> image, int width, int height, float scale, float shift)
     {
         var tensor = new DenseTensor<float>([1, 3, height, width]);
+        int planeSize = width * height;
+
         image.ProcessPixelRows(pixelAccess =>
         {
+            var span = tensor.Buffer.Span;
+            var channelR = span.Slice(0, planeSize);
+            var channelG = span.Slice(planeSize, planeSize);
+            var channelB = span.Slice(2 * planeSize, planeSize);
+
             for (int y = 0; y < height; y++)
             {
                 var row = pixelAccess.GetRowSpan(y);
+                int rowOffset = y * width;
                 for (int x = 0; x < width; x++)
                 {
+                    int idx = rowOffset + x;
                     var px = row[x];
-                    tensor[0, 0, y, x] = px.R * scale + shift;
-                    tensor[0, 1, y, x] = px.G * scale + shift;
-                    tensor[0, 2, y, x] = px.B * scale + shift;
+                    channelR[idx] = px.R * scale + shift;
+                    channelG[idx] = px.G * scale + shift;
+                    channelB[idx] = px.B * scale + shift;
                 }
             }
         });
@@ -129,10 +149,28 @@ public static class TensorPreprocessors
 
     public static float[] Softmax(float[] logits)
     {
-        float max = logits.Max();
-        float[] exp = logits.Select(x => MathF.Exp(x - max)).ToArray();
-        float sum = exp.Sum();
-        return exp.Select(x => x / sum).ToArray();
+        if (logits.Length == 0) return [];
+        float max = logits[0];
+        for (int i = 1; i < logits.Length; i++)
+        {
+            if (logits[i] > max) max = logits[i];
+        }
+
+        float[] result = new float[logits.Length];
+        float sum = 0.0f;
+        for (int i = 0; i < logits.Length; i++)
+        {
+            float exp = MathF.Exp(logits[i] - max);
+            result[i] = exp;
+            sum += exp;
+        }
+
+        float invSum = sum > 0f ? 1.0f / sum : 1.0f;
+        for (int i = 0; i < result.Length; i++)
+        {
+            result[i] *= invSum;
+        }
+        return result;
     }
 
     public static string GetCocoLabel(int classId)

@@ -99,7 +99,34 @@ public class DestinationSinkNode : IFlowNode
             {
                 if (hasPhysicalFile)
                 {
-                    File.Copy(sourcePath, targetPath, overwrite: true);
+                    const long asyncCopyThreshold = 256 * 1024; // 256 KB
+                    var fileInfo = new FileInfo(sourcePath);
+                    if (fileInfo.Exists && fileInfo.Length > asyncCopyThreshold)
+                    {
+                        var readOptions = new FileStreamOptions
+                        {
+                            Mode = FileMode.Open,
+                            Access = FileAccess.Read,
+                            Share = FileShare.Read,
+                            Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+                            BufferSize = 131072
+                        };
+                        var writeOptions = new FileStreamOptions
+                        {
+                            Mode = FileMode.Create,
+                            Access = FileAccess.Write,
+                            Share = FileShare.None,
+                            Options = FileOptions.Asynchronous,
+                            BufferSize = 131072
+                        };
+                        await using var sourceStream = new FileStream(sourcePath, readOptions);
+                        await using var destStream = new FileStream(targetPath, writeOptions);
+                        await sourceStream.CopyToAsync(destStream, 131072, cancellationToken);
+                    }
+                    else
+                    {
+                        File.Copy(sourcePath, targetPath, overwrite: true);
+                    }
                 }
                 else if (hasVirtualContent)
                 {

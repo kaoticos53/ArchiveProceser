@@ -10,6 +10,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+[Collection("Localization")]
 public class ModelLifecycleAndMemoryTests
 {
     [Fact]

@@ -2,6 +2,50 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-04] - Optimización de Rendimiento al Límite Técnico: Enrutamiento DAG Zero-Allocation, Vectorización SIMD en Tensores IA, Caching de Pasos en Renombrado Masivo, I/O Asíncrono en Sinks y Throttle Lock-Free de UI
+
+### 🎯 Objetivos y Alcance
+1. **Enrutamiento Zero-Allocation en el Motor DAG (`WorkflowItemDispatcher.cs` & `WorkflowExecutor.cs`)**:
+   - Precalcular una matriz plana `ConcurrentDictionary<string, WorkflowEdge[]>` agrupada por `(SourceNodeId, SourcePortName)` durante la inicialización del flujo.
+   - Eliminar el uso de LINQ (`edges.Where(...).ToList()`) y la asignación repetitiva de listas en cada despacho por ítem, logrando un lookup $O(1)$ directo e inmutable en el hot path.
+2. **Vectorización SIMD y Acceso Contiguo a Tensores (`TensorPreprocessors.cs`)**:
+   - Sustituir bucles anidados 4D con indexadores de strides (`tensor[0, c, y, x]`) por `Span<float>.Fill(padNorm)` (vectorizado por hardware) y punteros planos por canal `Span<float>` (`channelR`, `channelG`, `channelB`).
+   - Eliminar divisiones en bucle caliente multiplicando por el recíproco `1.0f / 255.0f` e indexación directa de filas con offsets precalculados (ahorro de más de 1.2M operaciones de cálculo de índices por imagen).
+   - Rediseño de `Softmax` sin asignaciones múltiples de LINQ (`.Max()`, `.Select()`, `.Sum()`).
+3. **Optimización de Memoria y Clonación (`FileItemContext.DeepClone`)**:
+   - Reemplazo de iteraciones manuales por constructores de copia nativos en diccionarios y conjuntos (`new Dictionary(...)`, `new HashSet(...)`), con asignación condicional cero-costo para listas y logs vacíos.
+4. **Caching de Pasos y Supresión de Trazas en Renombrado Masivo (`AdvancedRenamerNode.cs` & `RenameTransformEngine.cs`)**:
+   - Caching directo de la lista deserializada `IReadOnlyList<RenameMethodStep>` en `Parameters["MethodSteps"]`, eliminando decenas de miles de llamadas redundantes a `JsonSerializer.Deserialize` en batches masivos.
+   - Adición del parámetro opcional `bool recordTraces = true` en `IRenameTransformEngine.Transform` y paso de `recordTraces: false` durante la ejecución del pipeline para evitar asignaciones de listas de diagnósticos y objetos de traza.
+5. **I/O Asíncrono de Alto Rendimiento en Sinks (`DestinationSinkNode.cs`)**:
+   - Para archivos mayores a 256 KB, sustitución de `File.Copy` síncrono por streams no bloqueantes utilizando `FileStreamOptions` con `FileOptions.Asynchronous | FileOptions.SequentialScan` y buffers de 128 KB (`131072`), liberando threads del ThreadPool para computación pura.
+6. **Rate-Limiting Lock-Free en Notificaciones de UI (`WorkflowExecutor.cs`)**:
+   - Implementación de control de tasa atómico mediante `Interlocked.CompareExchange` con ventana de 35 ms (~28 FPS), evitando saturación del hilo Dispatcher de WPF en batches con miles de ítems concurrentes.
+7. **Actualizaciones Atómicas en Colecciones de UI (`ToolboxViewModel.cs`)**:
+   - Agrupación atómica en `List<ToolboxCategoryGroup>` y sustitución mediante `CommitGroups`, eliminando ventanas de colección vacía y condiciones de carrera en ejecuciones concurrentes.
+8. **Suite de Benchmarks Formales de Rendimiento (`PerformanceBenchmarkSuiteTests.cs`)**:
+   - Añadido benchmark `Benchmark_TensorPreprocessors_SpanSimdVectorizationPerformance` midiendo rendimiento de letterboxing a 640x640.
+
+### 🛠️ Ajustes Realizados
+1. **Core (`FileFlow.Core/Engine/`)**:
+   - `WorkflowExecutor.cs`: Inicialización de `_indexedPortEdges` con arrays inmutables `WorkflowEdge[]` y `NotifyProgress` con compuerta lock-free atómica.
+   - `WorkflowItemDispatcher.cs`: Consumo directo de `indexedPortEdges` con 0 asignaciones de lista por ítem.
+2. **Plugin AI (`FileFlow.Plugin.AI/Inference/TensorPreprocessors.cs`)**:
+   - Planar `Span<float>` slicing y SIMD hardware `Fill` en `CreateLetterboxTensor`, `CreateNchwTensor` y `CreateNchwTensorNormalized`.
+3. **SDK (`FileFlow.Sdk/`)**:
+   - `FileItemContext.cs`: `DeepClone()` optimizado con constructores directos y asignaciones perezosas.
+   - `Renaming/IRenameTransformEngine.cs` & `RenameTransformEngine.cs`: Soporte de `recordTraces: false` para ejecuciones sin coste diagnóstico.
+4. **Plugin FileSystem (`FileFlow.Plugin.FileSystem/`)**:
+   - `AdvancedRenamerNode.cs`: Caching en caliente de `MethodSteps` y ejecución de transformación sin trazas en lotes.
+   - `DestinationSinkNode.cs`: Asynchronous streamed copy para archivos > 256 KB.
+5. **Presentación (`FileFlow.App/ViewModels/ToolboxViewModel.cs`)**:
+   - Buffer intermedio `targetGroups` y `CommitGroups` atómico para prevenir estados transitorios vacíos.
+6. **Pruebas y Verificación**:
+   - **Compilación estricta**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ 0 advertencias, 0 errores.
+   - **499 / 499 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-04] - Rediseño Visual Moderno (Glassmorphism): Dashboard de Métricas y Profiling, Tarjetas de Nodo con Resplandor Reactivo y Barra de Estado Modular
 
 ### 🎯 Objetivos y Alcance

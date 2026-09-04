@@ -8,8 +8,20 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **498 / 498 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **499 / 499 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --23. **Optimización de Rendimiento al Límite Técnico: Enrutamiento DAG Zero-Allocation, Vectorización SIMD en Tensores IA, Caching de Pasos en Renombrador Masivo, I/O Asíncrono en Sinks y Throttle Lock-Free de UI**:
+      - **Objetivo**: Maximizar el throughput de procesamiento por segundo, paralelizar cargas de trabajo eficientemente sin contención y eliminar asignaciones de memoria redundantes en los hot paths críticos del motor.
+      - **Ajustes Realizados**:
+        1. **Enrutamiento DAG Zero-Allocation (`WorkflowExecutor.cs` / `WorkflowItemDispatcher.cs`)**: Precomputación de tabla de aristas indexadas `_indexedPortEdges` (`(NodeId, Port) -> WorkflowEdge[]`) que elimina las asignaciones de listas LINQ (`edges.Where(...).ToList()`) en cada emisión de archivo, convirtiendo el enrutamiento en un lookup $O(1)$ directo.
+        2. **Vectorización SIMD y Planar Slicing en Tensores IA (`TensorPreprocessors.cs`)**: Relleno de tensores mediante `Span<float>.Fill(padNorm)` en una sola instrucción vectorizada, acceso contiguo a canales de color (`channelR`, `channelG`, `channelB`) sin cálculo de strides 4D por píxel, y reescritura de `Softmax` eliminando asignaciones de LINQ.
+        3. **Clonado Optimizado de Contexto (`FileItemContext.DeepClone`)**: Uso de constructores de copia directos de diccionarios y conjuntos con inicialización perezosa condicional.
+        4. **Caching de Pasos y Transformación sin Trazas en Renombrador Masivo (`AdvancedRenamerNode.cs` / `RenameTransformEngine.cs`)**: Almacenamiento en caché de la lista deserializada de pasos en `Parameters["MethodSteps"]` para evitar miles de llamadas a `JsonSerializer.Deserialize` por ítem. Soporte del parámetro `recordTraces: false` en `IRenameTransformEngine.Transform` para suprimir la asignación de listas y trazas en lotes de alta producción.
+        5. **I/O Asíncrono no Bloqueante en Sink de Archivos (`DestinationSinkNode.cs`)**: Uso de `FileStreamOptions` con `FileOptions.Asynchronous | FileOptions.SequentialScan` y buffers de 128 KB en streams asíncronos para archivos mayores a 256 KB, liberando los hilos del ThreadPool de I/O síncrono bloqueante.
+        6. **Throttle Lock-Free Atómico en UI (`WorkflowExecutor.cs`)**: Notificaciones de progreso limitadas atómicamente a ~28 FPS mediante `Interlocked.CompareExchange` con ventana de 35 ms, previniendo la saturación del Dispatcher de UI.
+        7. **Actualizaciones Atómicas en Colecciones de Toolbox (`ToolboxViewModel.cs`)**: Buffer local de grupos `targetGroups` con confirmación atómica `CommitGroups`, previniendo estados de colección vacía transitorios y condiciones de carrera en ejecuciones paralelas de pruebas.
+        8. **Suite de Benchmarks Formales (`PerformanceBenchmarkSuiteTests.cs`)**: Nuevo benchmark `Benchmark_TensorPreprocessors_SpanSimdVectorizationPerformance`.
+      - **Validación**: 499 / 499 pruebas unitarias e integración superadas al 100% (0 errores, 0 advertencias con `--warnaserror`).
   --22. **Rediseño Visual Moderno (Glassmorphism): Dashboard de Métricas, Tarjetas de Nodo con Resplandor Reactivo y Barra de Estado Modular**:
       - **Objetivo**: Elevar el atractivo visual y la experiencia de usuario en la pantalla de estadísticas de rendimiento (`WorkflowMetricsDashboardWindow.xaml`), las tarjetas de nodo (`NodeCardView.xaml`) y la barra de estado (`StatusBarView.xaml`) con estética Glassmorphism, KPIs con micro-acentos de 2px, DataGrid interactivo con buscador instantáneo, píldoras de categoría semánticas, barras de progreso redondeadas con degradados personalizados y números en tipografía monospace.
       - **Ajustes Realizados**:

@@ -102,7 +102,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             string currentFileName = Path.GetFileName(item.CurrentPath);
             string currentDir = Path.GetDirectoryName(item.CurrentPath) ?? string.Empty;
 
-            var transformResult = _transformEngine.Transform(currentFileName, item, steps, _batchContext);
+            var transformResult = _transformEngine.Transform(currentFileName, item, steps, _batchContext, recordTraces: false);
 
             if (!string.IsNullOrEmpty(transformResult.ErrorMessage))
             {
@@ -268,6 +268,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
                     var parsed = JsonSerializer.Deserialize<List<RenameMethodStep>>(jsonStr, JsonOptions);
                     if (parsed != null && parsed.Count > 0)
                     {
+                        Parameters["MethodSteps"] = parsed;
                         return parsed;
                     }
                 }
@@ -330,7 +331,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             });
         }
 
-        Parameters["MethodSteps"] = RenamerPresetService.SerializeSteps(defaultSteps);
+        Parameters["MethodSteps"] = defaultSteps;
         return defaultSteps;
     }
 

@@ -15,6 +15,7 @@ public class WorkflowExecutor
     private readonly Lock _lock = new();
     private readonly ConcurrentDictionary<string, IFlowNode> _nodeInstances = new();
     private readonly ConcurrentDictionary<string, List<WorkflowEdge>> _outgoingEdges = new();
+    private readonly ConcurrentDictionary<string, WorkflowEdge[]> _indexedPortEdges = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _pauseSemaphore = new(1, 1);
     private readonly WorkflowTelemetryTracker _telemetryTracker = new();
     private readonly WorkflowTaskTracker _taskTracker = new();
@@ -150,6 +151,7 @@ public class WorkflowExecutor
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
         _outgoingEdges.Clear();
+        _indexedPortEdges.Clear();
         _disabledLoggingNodeIds.Clear();
         foreach (var disabledId in graph.DisabledLoggingNodeIds) _disabledLoggingNodeIds.Add(disabledId);
         foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
@@ -178,6 +180,12 @@ public class WorkflowExecutor
             {
                 _nodeInstances[node.Id] = node;
                 _outgoingEdges[node.Id] = graph.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
+            }
+
+            var portGroups = graph.Edges.GroupBy(e => $"{e.SourceNodeId}:{e.SourcePortName}", StringComparer.OrdinalIgnoreCase);
+            foreach (var g in portGroups)
+            {
+                _indexedPortEdges[g.Key] = g.ToArray();
             }
 
             _checkpointHandler.InitializeCheckpoint(graph.Name, _currentExecutionId, IsDryRun, (msg, lvl) => NotifyLog(msg, lvl));
@@ -321,10 +329,20 @@ public class WorkflowExecutor
             throw new InvalidOperationException($"Workflow validation failed with {validation.Errors.Count} errors.");
         }
 
+        _nodeInstances.Clear();
+        _outgoingEdges.Clear();
+        _indexedPortEdges.Clear();
+
         foreach (var node in validation.TopologicalOrder)
         {
             _nodeInstances[node.Id] = node;
             _outgoingEdges[node.Id] = graph.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
+        }
+
+        var portGroupsWatch = graph.Edges.GroupBy(e => $"{e.SourceNodeId}:{e.SourcePortName}", StringComparer.OrdinalIgnoreCase);
+        foreach (var g in portGroupsWatch)
+        {
+            _indexedPortEdges[g.Key] = g.ToArray();
         }
 
         HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
@@ -405,7 +423,7 @@ public class WorkflowExecutor
             outputPortName,
             item,
             _nodeInstances,
-            _outgoingEdges,
+            _indexedPortEdges,
             _startNodeIds,
             _currentExecutionId,
             GlobalOutputDir,
@@ -437,8 +455,27 @@ public class WorkflowExecutor
     internal void NotifyNodeProgress(string nodeId, double percentage, string statusMessage) =>
         NodeProgressChanged?.Invoke(nodeId, percentage, statusMessage);
 
-    internal void NotifyProgress(double percentage, string statusMessage) =>
-        ProgressChanged?.Invoke(percentage, statusMessage);
+    private long _lastProgressReportTicks = 0;
+
+    internal void NotifyProgress(double percentage, string statusMessage, bool force = false)
+    {
+        if (force || percentage >= 100.0 || percentage <= 0.0)
+        {
+            Volatile.Write(ref _lastProgressReportTicks, Environment.TickCount64);
+            ProgressChanged?.Invoke(percentage, statusMessage);
+            return;
+        }
+
+        long now = Environment.TickCount64;
+        long last = Volatile.Read(ref _lastProgressReportTicks);
+        if (now - last >= 35) // ~28 fps max for UI updates
+        {
+            if (Interlocked.CompareExchange(ref _lastProgressReportTicks, now, last) == last)
+            {
+                ProgressChanged?.Invoke(percentage, statusMessage);
+            }
+        }
+    }
 
     internal void NotifyLog(
         string? nodeId,
