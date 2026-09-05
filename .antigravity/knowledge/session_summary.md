@@ -8,8 +8,28 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **512 / 512 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **515 / 515 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --32. **Refactorización Integral hacia Clean Architecture, Inversión de Control (IoC) y Puertos & Adaptadores**:
+      - **Objetivo**: Elevar la arquitectura del proyecto hacia los más altos estándares de Clean Architecture y SOLID mediante Inversión de Dependencias (IoC), abstrayendo todos los servicios de infraestructura en contratos de puertos e inyectándolos desacoplados en los ViewModels.
+      - **Ajustes Realizados**:
+        1. **Puertos de Dominio y Core (`FileFlow.Sdk` / `FileFlow.Core`)**:
+           - `ILocalizationService`: Abstracción para internacionalización y recursos de cadenas multilingües.
+           - `ILogStore`: Abstracción para el almacenamiento e ingesta analítica de telemetría sobre SQLite.
+           - `IFileRecycler`: Abstracción para eliminación segura y envío a la Papelera de reciclaje de Windows.
+           - `IFolderWatcherService`: Abstracción para la supervisión reactiva de carpetas en tiempo real.
+        2. **Puertos y Adaptadores de UI / Presentación (`FileFlow.App`)**:
+           - `ISystemPerformanceMonitor`: Contrato para monitoreo en vivo de CPU, RAM y GPU.
+           - `IThemeService`: Abstracción para la gestión reactiva de temas.
+           - `IUserPreferencesService`: Abstracción para persistencia de configuraciones de usuario.
+           - `IDialogService` & `WpfDialogService`: Abstracción de cuadros de diálogo y alertas (`MessageBox.Show`).
+           - `IProcessLauncherService` & `ProcessLauncherService`: Abstracción para abrir rutas, carpetas y navegadores sin acoplamiento a `Process.Start`.
+        3. **Composición IoC (`Microsoft.Extensions.DependencyInjection`)**:
+           - Creado `ServiceCollectionExtensions.cs` registrando servicios Singleton y Transient para toda la aplicación.
+           - Configurado `App.Services` en `App.xaml.cs` para inicializar el contenedor y resolver `MainViewModel` y sus ViewModels hijos (`EditorViewModel`, `ControlBarViewModel`, `StatusBarViewModel`, `LogViewModel`, `ToolboxViewModel`, `NodeInspectorViewModel`).
+        4. **Pruebas Automatizadas de Arquitectura**:
+           - Creado `DependencyInjectionAndPortsTests.cs` validando el registro completo de dependencias y ejecución aislada de ViewModels con fakes.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y 515 / 515 pruebas superadas con éxito (100%).
   --31. **Blindaje de Cancelación Asíncrona (CancellationToken) y Manejo de Excepciones en Nodos**:
       - **Objetivo**: Asegurar que las cancelaciones voluntarias de ejecución (botón Detener / Stop) se propaguen de manera instantánea y limpia sin emitir falsos errores en los puertos de salida ni en el registro de telemetría.
       - **Ajustes Realizados**:

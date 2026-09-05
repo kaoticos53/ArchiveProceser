@@ -4,6 +4,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
+using FileFlow.App.Services;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.TemplateEngine;
@@ -14,6 +15,8 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 {
     private bool _disposed;
     private readonly EventHandler<CultureInfo> _languageChangedHandler;
+    private readonly ILocalizationService _loc;
+    private readonly IDialogService _dialogService;
     private FileItemContext? _activeEvaluationContext;
     private string? _sourceRootPath;
 
@@ -24,7 +27,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(DisplayName))]
     private string _key = string.Empty;
 
-    public string DisplayName => LocalizationManager.Instance.GetString($"Param_{Key}", GetDefaultDisplayName(Key));
+    public string DisplayName => _loc.GetString($"Param_{Key}", GetDefaultDisplayName(Key));
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBooleanAndNoOptions))]
@@ -118,9 +121,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            string msg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_OpenPresetsError", "Error al abrir el Gestor de Presets: {0}"), ex.Message);
-            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(_loc.GetString("Msg_OpenPresetsError", "Error al abrir el Gestor de Presets: {0}"), ex.Message);
+            string title = _loc.GetString("Error", "Error");
+            _dialogService.ShowError(msg, title);
         }
     }
 
@@ -145,9 +148,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            string msg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_OpenPasswordsError", "Error al abrir el Gestor de Contraseñas: {0}"), ex.Message);
-            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(_loc.GetString("Msg_OpenPasswordsError", "Error al abrir el Gestor de Contraseñas: {0}"), ex.Message);
+            string title = _loc.GetString("Error", "Error");
+            _dialogService.ShowError(msg, title);
         }
     }
 
@@ -219,14 +222,16 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
     }
 
-    public NodeParameterViewModel(NodeParameterDescriptor descriptor, object? value, NodeViewModel? nodeOwner = null)
-        : this(descriptor.Key, value, descriptor.Options, nodeOwner)
+    public NodeParameterViewModel(NodeParameterDescriptor descriptor, object? value, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null)
+        : this(descriptor.Key, value, descriptor.Options, nodeOwner, localizationService, dialogService)
     {
         Descriptor = descriptor;
     }
 
-    public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null)
+    public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null)
     {
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
         _key = key;
         _value = value;
         NodeOwner = nodeOwner;
@@ -277,7 +282,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             OnPropertyChanged(nameof(DisplayName));
         };
-        LocalizationManager.Instance.LanguageChanged += _languageChangedHandler;
+        _loc.LanguageChanged += _languageChangedHandler;
     }
 
     [RelayCommand]
@@ -370,7 +375,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        LocalizationManager.Instance.LanguageChanged -= _languageChangedHandler;
+        _loc.LanguageChanged -= _languageChangedHandler;
     }
 
     private static string GetDefaultDisplayName(string key)

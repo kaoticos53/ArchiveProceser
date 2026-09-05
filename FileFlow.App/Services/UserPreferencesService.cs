@@ -26,7 +26,7 @@ public class UserPreferencesData
     public bool AutoUnloadAiModelsOnCompletion { get; set; } = false;
 }
 
-public class UserPreferencesService
+public class UserPreferencesService : IUserPreferencesService
 {
     private static readonly Lazy<UserPreferencesService> _instance = new(() => new UserPreferencesService());
     public static UserPreferencesService Instance => _instance.Value;

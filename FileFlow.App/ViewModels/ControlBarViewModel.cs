@@ -21,6 +21,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     private readonly NodeInspectorViewModel _nodeInspectorViewModel;
     private readonly IFileDialogService _fileDialogService;
     private readonly IWorkflowStorageService _workflowStorageService;
+    private readonly IUserPreferencesService _userPreferencesService;
+    private readonly IThemeService _themeService;
+    private readonly ILocalizationService _loc;
+    private readonly IDialogService _dialogService;
+    private readonly IProcessLauncherService _processLauncher;
     private readonly WorkflowExecutionCoordinator _executionCoordinator;
 
     private CancellationTokenSource? _cts;
@@ -56,12 +61,12 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     partial void OnSelectedLanguageChanged(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return;
-        FileFlow.Sdk.Localization.LocalizationManager.Instance.SetCulture(value);
-        var prefs = UserPreferencesService.Instance.Preferences;
+        _loc.SetCulture(value);
+        var prefs = _userPreferencesService.Preferences;
         if (!string.Equals(prefs.Language, value, StringComparison.OrdinalIgnoreCase))
         {
             prefs.Language = value;
-            UserPreferencesService.Instance.Save();
+            _userPreferencesService.Save();
         }
     }
 
@@ -91,13 +96,13 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     partial void OnSelectedThemeChanged(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return;
-        ThemeManager.Instance.SetThemeById(value);
+        _themeService.SetThemeById(value);
 
-        var prefs = UserPreferencesService.Instance.Preferences;
+        var prefs = _userPreferencesService.Preferences;
         if (!string.Equals(prefs.ActiveTheme, value, StringComparison.OrdinalIgnoreCase))
         {
             prefs.ActiveTheme = value;
-            UserPreferencesService.Instance.Save();
+            _userPreferencesService.Save();
         }
     }
 
@@ -112,7 +117,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         win.ShowDialog();
 
         LoadAvailableThemes();
-        SelectedTheme = ThemeManager.Instance.CurrentThemeId;
+        SelectedTheme = _themeService.CurrentThemeId;
     }
 
     public ControlBarViewModel(
@@ -121,7 +126,12 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         LogViewModel logViewModel, 
         NodeInspectorViewModel nodeInspectorViewModel,
         IFileDialogService fileDialogService,
-        IWorkflowStorageService workflowStorageService)
+        IWorkflowStorageService workflowStorageService,
+        IUserPreferencesService? userPreferencesService = null,
+        IThemeService? themeService = null,
+        ILocalizationService? localizationService = null,
+        IDialogService? dialogService = null,
+        IProcessLauncherService? processLauncher = null)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
@@ -129,6 +139,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         _nodeInspectorViewModel = nodeInspectorViewModel;
         _fileDialogService = fileDialogService;
         _workflowStorageService = workflowStorageService;
+        _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
+        _themeService = themeService ?? ThemeManager.Instance;
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
+        _processLauncher = processLauncher ?? ProcessLauncherService.Instance;
 
         _executionCoordinator = new WorkflowExecutionCoordinator(
             editorViewModel,
@@ -138,13 +153,13 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         );
 
         SyncFromPreferences();
-        UserPreferencesService.Instance.PreferencesChanged += SyncFromPreferences;
+        _userPreferencesService.PreferencesChanged += SyncFromPreferences;
     }
 
     private void SyncFromPreferences()
     {
         LoadAvailableThemes();
-        var prefs = UserPreferencesService.Instance.Preferences;
+        var prefs = _userPreferencesService.Preferences;
         SelectedTheme = prefs.ActiveTheme;
         IsDryRun = prefs.DefaultDryRunState;
         if (!string.IsNullOrWhiteSpace(prefs.Language) && !string.Equals(SelectedLanguage, prefs.Language, StringComparison.OrdinalIgnoreCase))
@@ -226,9 +241,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
         if (watchFolders.Count == 0)
         {
-            string msg = LocalizationManager.Instance.GetString("Msg_WatchModeNoSource", "No se encontraron carpetas de origen configuradas.");
-            string title = LocalizationManager.Instance.GetString("WatchMode", "Modo Vigilante");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            string msg = _loc.GetString("Msg_WatchModeNoSource", "No se encontraron carpetas de origen configuradas.");
+            string title = _loc.GetString("WatchMode", "Modo Vigilante");
+            _dialogService.ShowInformation(msg, title);
             return;
         }
 
@@ -236,7 +251,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         watcher.Start(watchFolders, filter: "*.*", includeSubdirectories: true, debounceMs: 1000);
 
         IsWatching = true;
-        _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_WatchModeActive", "👁️ Modo Vigilante activado. Escuchando {0} carpetas: {1}", watchFolders.Count, string.Join(", ", watchFolders)));
+        _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_WatchModeActive", "👁️ Modo Vigilante activado. Escuchando {0} carpetas: {1}", watchFolders.Count, string.Join(", ", watchFolders)));
 
         try
         {
@@ -246,7 +261,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         {
             watcher.Stop();
             IsWatching = false;
-            _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetString("Log_WatchModeStopped", "👁️ Modo Vigilante detenido."));
+            _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_WatchModeStopped", "👁️ Modo Vigilante detenido."));
         }
     }
 
@@ -254,26 +269,26 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     {
         if (IsRunning) return;
 
-        bool enableCheckpointing = UserPreferencesService.Instance.Preferences.EnableCheckpointing;
+        bool enableCheckpointing = _userPreferencesService.Preferences.EnableCheckpointing;
         if (enableCheckpointing && !isWatchMode && !IsDryRun)
         {
             if (WorkflowCheckpointManager.Instance.HasPendingCheckpoint(WorkflowName, out var savedCp) && savedCp != null && savedCp.CompletedFileKeys.Count > 0)
             {
-                string resumeTitle = LocalizationManager.Instance.GetString("Checkpoint_ResumeTitle", "Punto de Control Detectado");
+                string resumeTitle = _loc.GetString("Checkpoint_ResumeTitle", "Punto de Control Detectado");
                 string resumeMsg = string.Format(
-                    LocalizationManager.Instance.GetString("Checkpoint_ResumePrompt", "Se ha detectado una ejecución previa de '{0}' interrumpida con {1} archivo(s) ya completados.\n\n¿Deseas REANUDAR la ejecución previa (omitiendo archivos completados)?\n\n• Sí: Reanudar desde el último punto.\n• No: Reiniciar ejecución limpia desde cero.\n• Cancelar: Abortar ejecución."),
+                    _loc.GetString("Checkpoint_ResumePrompt", "Se ha detectado una ejecución previa de '{0}' interrumpida con {1} archivo(s) ya completados.\n\n¿Deseas REANUDAR la ejecución previa (omitiendo archivos completados)?\n\n• Sí: Reanudar desde el último punto.\n• No: Reiniciar ejecución limpia desde cero.\n• Cancelar: Abortar ejecución."),
                     WorkflowName, savedCp.CompletedFileKeys.Count);
 
-                var userChoice = MessageBox.Show(resumeMsg, resumeTitle, MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-                if (userChoice == MessageBoxResult.Cancel)
+                var userChoice = _dialogService.ShowYesNoCancel(resumeMsg, resumeTitle);
+                if (userChoice == DialogResult.Cancel)
                 {
                     return;
                 }
 
-                if (userChoice == MessageBoxResult.No)
+                if (userChoice == DialogResult.No)
                 {
                     WorkflowCheckpointManager.Instance.ClearCheckpoint(WorkflowName);
-                    _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_CheckpointReset", "[Checkpoint] Punto de control de '{0}' reiniciado. Iniciando ejecución limpia desde cero.", WorkflowName));
+                    _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_CheckpointReset", "[Checkpoint] Punto de control de '{0}' reiniciado. Iniciando ejecución limpia desde cero.", WorkflowName));
                 }
             }
         }
@@ -286,7 +301,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             IsPausedAtBreakpointOrError = false;
             _cts = new CancellationTokenSource();
 
-            int maxParallelThreads = UserPreferencesService.Instance.Preferences.MaxParallelThreads;
+            int maxParallelThreads = _userPreferencesService.Preferences.MaxParallelThreads;
             if (maxParallelThreads <= 0) maxParallelThreads = Environment.ProcessorCount;
 
             var options = new WorkflowExecutionOptions(
@@ -312,27 +327,27 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
             if (result.Cancelled)
             {
-                _logViewModel.AddLog(LogLevel.Warning, FileFlow.Sdk.Localization.LocalizationManager.Instance["LogExecutionCancelled"]);
+                _logViewModel.AddLog(LogLevel.Warning, _loc["LogExecutionCancelled"]);
             }
             else if (!result.Succeeded && !string.IsNullOrEmpty(result.ErrorMessage))
             {
                 _logViewModel.AddLog(LogLevel.Error, $"Error: {result.ErrorMessage}");
                 if (!isDebug && !isWatchMode)
                 {
-                    string msg = string.Format(LocalizationManager.Instance.GetString("Msg_ExecutionError", "Error al ejecutar el flujo: {0}"), result.ErrorMessage);
-                    string title = LocalizationManager.Instance.GetString("Error", "Error");
-                    MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+                    string msg = string.Format(_loc.GetString("Msg_ExecutionError", "Error al ejecutar el flujo: {0}"), result.ErrorMessage);
+                    string title = _loc.GetString("Error", "Error");
+                    _dialogService.ShowError(msg, title);
                 }
             }
             else if (result.Succeeded)
             {
                 if (IsDryRun)
                 {
-                    _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_DryRunFinished", "[Dry Run] Simulación finalizada. {0} acciones planificadas registradas.", result.PlannedActionsCount));
+                    _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_DryRunFinished", "[Dry Run] Simulación finalizada. {0} acciones planificadas registradas.", result.PlannedActionsCount));
                 }
                 else if (!isWatchMode)
                 {
-                    _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance["LogExecutionFinished"]);
+                    _logViewModel.AddLog(LogLevel.Information, _loc["LogExecutionFinished"]);
                 }
             }
         }
@@ -366,22 +381,21 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     {
         if (_lastJournalService == null || _lastJournalService.Entries.Count == 0)
         {
-            string noEntriesMsg = LocalizationManager.Instance.GetString("Msg_RollbackNoEntries", "No hay operaciones registradas para revertir.");
-            string rollbackTitle = LocalizationManager.Instance.GetString("RollbackBtn", "Deshacer");
-            MessageBox.Show(noEntriesMsg, rollbackTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+            string noEntriesMsg = _loc.GetString("Msg_RollbackNoEntries", "No hay operaciones registradas para revertir.");
+            string rollbackTitle = _loc.GetString("RollbackBtn", "Deshacer");
+            _dialogService.ShowInformation(noEntriesMsg, rollbackTitle);
             return;
         }
 
-        string confirmMsg = string.Format(LocalizationManager.Instance.GetString("Msg_RollbackConfirm", "¿Deseas revertir {0} operaciones realizadas en la última ejecución?"), _lastJournalService.Entries.Count);
-        string confirmTitle = LocalizationManager.Instance.GetString("RollbackBtn", "Deshacer");
-        var result = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (result == MessageBoxResult.Yes)
+        string confirmMsg = string.Format(_loc.GetString("Msg_RollbackConfirm", "¿Deseas revertir {0} operaciones realizadas en la última ejecución?"), _lastJournalService.Entries.Count);
+        string confirmTitle = _loc.GetString("RollbackBtn", "Deshacer");
+        if (_dialogService.ShowConfirmation(confirmMsg, confirmTitle))
         {
-            _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetString("Log_RollbackStarting", "Iniciando Rollback de operaciones..."));
+            _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_RollbackStarting", "Iniciando Rollback de operaciones..."));
             int undone = await _lastJournalService.RollbackAsync();
-            _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_RollbackCompleted", "Rollback completado con éxito: {0} operaciones revertidas.", undone));
-            string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_RollbackSuccess", "Se han revertido {0} operaciones con éxito."), undone);
-            MessageBox.Show(successMsg, confirmTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+            _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_RollbackCompleted", "Rollback completado con éxito: {0} operaciones revertidas.", undone));
+            string successMsg = string.Format(_loc.GetString("Msg_RollbackSuccess", "Se han revertido {0} operaciones con éxito."), undone);
+            _dialogService.ShowInformation(successMsg, confirmTitle);
         }
     }
 
@@ -407,16 +421,19 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         {
             _executionCoordinator.ActiveExecutor?.Resume();
             IsPaused = false;
+            _logViewModel.AddLog(LogLevel.Information, _loc.GetString("LogExecutionResumed", "Flujo reanudado por el usuario."));
         }
     }
 
     [RelayCommand]
     public void PauseWorkflow()
     {
-        if (!IsRunning || IsPaused) return;
-
-        _executionCoordinator.ActiveExecutor?.Pause();
-        IsPaused = true;
+        if (IsRunning && !IsPaused)
+        {
+            _executionCoordinator.ActiveExecutor?.Pause();
+            IsPaused = true;
+            _logViewModel.AddLog(LogLevel.Warning, _loc.GetString("LogExecutionPaused", "Flujo pausado por el usuario."));
+        }
     }
 
     [RelayCommand]
@@ -426,7 +443,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         {
             _cts.Cancel();
             _executionCoordinator.ActiveDebugSession?.Continue();
-            _logViewModel.AddLog(LogLevel.Warning, LocalizationManager.Instance.GetString("LogCancellationRequested", "Cancelación solicitada..."));
+            _logViewModel.AddLog(LogLevel.Warning, _loc.GetString("LogCancellationRequested", "Cancelación solicitada..."));
         }
     }
 
@@ -436,10 +453,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IsMenuOpen = false;
         if (_editorViewModel.Nodes.Count > 0)
         {
-            string confirmMsg = LocalizationManager.Instance.GetString("Msg_NewWorkflowConfirm", "¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.");
-            string confirmTitle = LocalizationManager.Instance.GetString("NewWorkflowBtn", "Nuevo Flujo");
-            var result = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result != MessageBoxResult.Yes)
+            string confirmMsg = _loc.GetString("Msg_NewWorkflowConfirm", "¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.");
+            string confirmTitle = _loc.GetString("NewWorkflowBtn", "Nuevo Flujo");
+            if (!_dialogService.ShowConfirmation(confirmMsg, confirmTitle))
             {
                 return;
             }
@@ -447,14 +463,14 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
         _editorViewModel.ClearGraph();
         WorkflowName = "Flujo de Procesamiento de Archivos";
-        _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetString("Log_NewWorkflowCreated", "Nuevo flujo creado."));
+        _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_NewWorkflowCreated", "Nuevo flujo creado."));
     }
 
     [RelayCommand]
     public async Task SaveWorkflowAsync()
     {
         IsMenuOpen = false;
-        string saveTitle = LocalizationManager.Instance.GetString("SaveWorkflowBtn", "Guardar Flujo");
+        string saveTitle = _loc.GetString("SaveWorkflowBtn", "Guardar Flujo");
         var filePath = _fileDialogService.ShowSaveFileDialog(saveTitle, "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json", "flujo.json");
         if (!string.IsNullOrEmpty(filePath))
         {
@@ -462,13 +478,13 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             {
                 var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
                 await _workflowStorageService.SaveWorkflowAsync(filePath, graph);
-                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("LogSavedWorkflow", "Flujo guardado en {0}", filePath));
+                _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("LogSavedWorkflow", "Flujo guardado en {0}", filePath));
             }
             catch (Exception ex)
             {
-                string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_SaveError", "Error al guardar el flujo: {0}"), ex.Message);
-                string errorTitle = LocalizationManager.Instance.GetString("Error", "Error");
-                MessageBox.Show(errorMsg, errorTitle, MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(_loc.GetString("Msg_SaveError", "Error al guardar el flujo: {0}"), ex.Message);
+                string errorTitle = _loc.GetString("Error", "Error");
+                _dialogService.ShowError(errorMsg, errorTitle);
             }
         }
     }
@@ -477,7 +493,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     public async Task LoadWorkflowAsync()
     {
         IsMenuOpen = false;
-        string loadTitle = LocalizationManager.Instance.GetString("LoadWorkflowBtn", "Cargar Flujo");
+        string loadTitle = _loc.GetString("LoadWorkflowBtn", "Cargar Flujo");
         var filePath = _fileDialogService.ShowOpenFileDialog(loadTitle, "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json");
         if (!string.IsNullOrEmpty(filePath))
         {
@@ -486,13 +502,13 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
                 var graph = await _workflowStorageService.LoadWorkflowAsync(filePath);
                 _editorViewModel.LoadFromGraphModel(graph);
                 WorkflowName = graph.Name;
-                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("LogLoadedWorkflow", "Flujo cargado desde {0}", filePath));
+                _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("LogLoadedWorkflow", "Flujo cargado desde {0}", filePath));
             }
             catch (Exception ex)
             {
-                string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_LoadError", "Error al cargar el flujo: {0}"), ex.Message);
-                string errorTitle = LocalizationManager.Instance.GetString("Error", "Error");
-                MessageBox.Show(errorMsg, errorTitle, MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = string.Format(_loc.GetString("Msg_LoadError", "Error al cargar el flujo: {0}"), ex.Message);
+                string errorTitle = _loc.GetString("Error", "Error");
+                _dialogService.ShowError(errorMsg, errorTitle);
             }
         }
     }
@@ -503,7 +519,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IsMenuOpen = false;
         try
         {
-            bool isEnglish = LocalizationManager.Instance.CurrentLanguage.Equals("en", StringComparison.OrdinalIgnoreCase);
+            bool isEnglish = _loc.CurrentLanguage.Equals("en", StringComparison.OrdinalIgnoreCase);
 
             string? manualPath = null;
             if (isEnglish)
@@ -518,19 +534,19 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
             if (manualPath != null && File.Exists(manualPath) && AppResourceLocator.TryOpenPath(manualPath))
             {
-                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_OpenManual", "Abriendo manual de usuario: {0}", manualPath));
+                _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_OpenManual", "Abriendo manual de usuario: {0}", manualPath));
             }
             else
             {
-                string title = LocalizationManager.Instance.GetString("ControlBar_UserManual", "Manual de Usuario");
-                string notFoundMsg = LocalizationManager.Instance.GetString("ControlBar_ManualNotFound", "No se encontró el archivo del manual de usuario.");
-                MessageBox.Show(notFoundMsg, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                string title = _loc.GetString("ControlBar_UserManual", "Manual de Usuario");
+                string notFoundMsg = _loc.GetString("ControlBar_ManualNotFound", "No se encontró el archivo del manual de usuario.");
+                _dialogService.ShowWarning(notFoundMsg, title);
             }
         }
         catch (Exception ex)
         {
-            string title = LocalizationManager.Instance.GetString("ControlBar_UserManual", "Manual de Usuario");
-            MessageBox.Show($"Error: {ex.Message}", title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string title = _loc.GetString("ControlBar_UserManual", "Manual de Usuario");
+            _dialogService.ShowError($"Error: {ex.Message}", title);
         }
     }
 
@@ -543,20 +559,20 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             string? examplesPath = AppResourceLocator.FindDirectoryInAppOrRepo("Examples", "docs/examples");
             if (examplesPath != null && Directory.Exists(examplesPath) && AppResourceLocator.TryOpenPath(examplesPath))
             {
-                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_OpenExamples", "Abriendo carpeta de ejemplos: {0}", examplesPath));
+                _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_OpenExamples", "Abriendo carpeta de ejemplos: {0}", examplesPath));
             }
             else
             {
-                string notFoundMsg = LocalizationManager.Instance.GetString("Msg_ExamplesNotFound", "No se encontró la carpeta de ejemplos.");
-                string examplesTitle = LocalizationManager.Instance.GetString("ControlBar_ExamplesBtn", "Ejemplos de Flujos");
-                MessageBox.Show(notFoundMsg, examplesTitle, MessageBoxButton.OK, MessageBoxImage.Warning);
+                string notFoundMsg = _loc.GetString("Msg_ExamplesNotFound", "No se encontró la carpeta de ejemplos.");
+                string examplesTitle = _loc.GetString("ControlBar_ExamplesBtn", "Ejemplos de Flujos");
+                _dialogService.ShowWarning(notFoundMsg, examplesTitle);
             }
         }
         catch (Exception ex)
         {
-            string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ExamplesOpenError", "Error al abrir la carpeta de ejemplos: {0}"), ex.Message);
-            string examplesTitle = LocalizationManager.Instance.GetString("ControlBar_ExamplesBtn", "Ejemplos de Flujos");
-            MessageBox.Show(errorMsg, examplesTitle, MessageBoxButton.OK, MessageBoxImage.Error);
+            string errorMsg = string.Format(_loc.GetString("Msg_ExamplesOpenError", "Error al abrir la carpeta de ejemplos: {0}"), ex.Message);
+            string examplesTitle = _loc.GetString("ControlBar_ExamplesBtn", "Ejemplos de Flujos");
+            _dialogService.ShowError(errorMsg, examplesTitle);
         }
     }
 
@@ -574,9 +590,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            string msg = string.Format(LocalizationManager.Instance.GetString("Msg_OpenAboutError", "Error al abrir la ventana Acerca de: {0}"), ex.Message);
-            string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(_loc.GetString("Msg_OpenAboutError", "Error al abrir la ventana Acerca de: {0}"), ex.Message);
+            string title = _loc.GetString("App_Name", "FileFlow Studio");
+            _dialogService.ShowError(msg, title);
         }
     }
 
@@ -595,9 +611,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            string msg = string.Format(LocalizationManager.Instance.GetString("Msg_OpenMetricsError", "Error al abrir el panel de métricas: {0}"), ex.Message);
-            string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(_loc.GetString("Msg_OpenMetricsError", "Error al abrir el panel de métricas: {0}"), ex.Message);
+            string title = _loc.GetString("App_Name", "FileFlow Studio");
+            _dialogService.ShowError(msg, title);
         }
     }
 
@@ -605,7 +621,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        UserPreferencesService.Instance.PreferencesChanged -= SyncFromPreferences;
+        _userPreferencesService.PreferencesChanged -= SyncFromPreferences;
         GC.SuppressFinalize(this);
     }
 }

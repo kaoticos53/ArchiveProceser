@@ -17,7 +17,7 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
     public const int PageSize = 100;
     private const int MaxCachedPages = 30; // 3.000 registros en RAM activos
 
-    private readonly SqliteLogStore _store;
+    private readonly ILogStore _store;
     private readonly Lock _lock = new();
     private readonly Dictionary<int, (DateTime LastAccess, StructuredLogRecord[] Page)> _pageCache = [];
     private readonly HashSet<int> _fetchingPages = [];
@@ -27,7 +27,7 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public AsyncVirtualizingList(SqliteLogStore? store = null)
+    public AsyncVirtualizingList(ILogStore? store = null)
     {
         _store = store ?? SqliteLogStore.Instance;
     }

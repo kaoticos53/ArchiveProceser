@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace FileFlow.Sdk.Localization;
 
-public class LocalizationManager : INotifyPropertyChanged
+public class LocalizationManager : ILocalizationService
 {
     private static readonly Lazy<LocalizationManager> _instance = new(() => new LocalizationManager());
     public static LocalizationManager Instance => _instance.Value;

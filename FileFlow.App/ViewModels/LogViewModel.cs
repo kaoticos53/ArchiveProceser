@@ -28,6 +28,10 @@ public partial class LogViewModel : ObservableObject
     private const int MaxLiveBufferSize = 2000;
     public FastObservableRingBuffer<StructuredLogRecord> Logs { get; } = new(MaxLiveBufferSize);
 
+    private readonly ILogStore _logStore;
+    private readonly ILocalizationService _loc;
+    private readonly IDialogService _dialogService;
+
     [ObservableProperty]
     private double _progressPercentage;
 
@@ -83,14 +87,21 @@ public partial class LogViewModel : ObservableObject
 
     private volatile bool _isClearingLogs;
 
-    public LogViewModel()
+    public LogViewModel(
+        ILogStore? logStore = null,
+        ILocalizationService? localizationService = null,
+        IDialogService? dialogService = null)
     {
-        _statusMessage = LocalizationManager.Instance["StatusReady"];
-        LocalizationManager.Instance.LanguageChanged += (_, _) =>
+        _logStore = logStore ?? SqliteLogStore.Instance;
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
+
+        _statusMessage = _loc["StatusReady"];
+        _loc.LanguageChanged += (_, _) =>
         {
             if (ProgressPercentage == 0)
             {
-                StatusMessage = LocalizationManager.Instance["StatusReady"];
+                StatusMessage = _loc["StatusReady"];
             }
         };
 
@@ -110,7 +121,7 @@ public partial class LogViewModel : ObservableObject
             message: message
         );
         _pendingLogs.Enqueue(record);
-        SqliteLogStore.Instance.EnqueueLog(record);
+        _logStore.EnqueueLog(record);
     }
 
     public void AddStructuredLog(StructuredLogRecord record)
@@ -249,12 +260,12 @@ public partial class LogViewModel : ObservableObject
         try
         {
             FlushAllPendingLogs();
-            await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+            await _logStore.FlushPendingLogsAsync().ConfigureAwait(false);
             if (_isClearingLogs) return;
 
-            int total = await SqliteLogStore.Instance.GetTotalCountAsync().ConfigureAwait(false);
+            int total = await _logStore.GetTotalCountAsync().ConfigureAwait(false);
             int offset = Math.Max(0, total - MaxLiveBufferSize);
-            var results = await SqliteLogStore.Instance.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
+            var results = await _logStore.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
 
             if (_isClearingLogs) return;
 
@@ -282,21 +293,21 @@ public partial class LogViewModel : ObservableObject
         try
         {
             FlushAllPendingLogs();
-            await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+            await _logStore.FlushPendingLogsAsync().ConfigureAwait(false);
             if (_isClearingLogs) return;
 
             IReadOnlyList<StructuredLogRecord> queryResults;
 
             if (ActiveFilter == LogFilterLevel.All && string.IsNullOrWhiteSpace(SearchFilter) && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
             {
-                int total = await SqliteLogStore.Instance.GetTotalCountAsync().ConfigureAwait(false);
+                int total = await _logStore.GetTotalCountAsync().ConfigureAwait(false);
                 int offset = Math.Max(0, total - MaxLiveBufferSize);
-                queryResults = await SqliteLogStore.Instance.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
+                queryResults = await _logStore.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
             }
             else
             {
                 var filter = BuildCurrentFilter();
-                queryResults = await SqliteLogStore.Instance.GetLogsWindowAsync(0, MaxLiveBufferSize, filter).ConfigureAwait(false);
+                queryResults = await _logStore.GetLogsWindowAsync(0, MaxLiveBufferSize, filter).ConfigureAwait(false);
             }
 
             if (_isClearingLogs) return;
@@ -548,9 +559,9 @@ public partial class LogViewModel : ObservableObject
         string? filePath = targetLog.FilePath;
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            string noFileMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Preview_NoAssociatedFile", "No se encontró ningún archivo físico asociado a esta línea de log para previsualizar.");
-            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Node_PreviewButton", "Vista Previa");
-            MessageBox.Show(noFileMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            string noFileMsg = _loc.GetString("Preview_NoAssociatedFile", "No se encontró ningún archivo físico asociado a esta línea de log para previsualizar.");
+            string title = _loc.GetString("Node_PreviewButton", "Vista Previa");
+            _dialogService.ShowInformation(noFileMsg, title);
             return;
         }
 

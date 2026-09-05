@@ -4,11 +4,14 @@ using System.Windows;
 using FileFlow.App.Services;
 using FileFlow.App.Views;
 using FileFlow.Sdk.Localization;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FileFlow.App;
 
 public partial class App : Application
 {
+    public static IServiceProvider Services { get; private set; } = null!;
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
@@ -66,27 +69,37 @@ public partial class App : Application
             var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
             LocalizationManager.Instance.RegisterResourceManager(resourceManager);
 
-            splash.UpdateStatus("Cargando preferencias de usuario y temas...", 35);
+            splash.UpdateStatus("Configurando contenedor de Inversión de Control (IoC)...", 30);
             await Task.Delay(40);
 
-            UserPreferencesService.Instance.Load();
-            string savedLang = UserPreferencesService.Instance.Preferences.Language;
+            var serviceCollection = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+            serviceCollection.AddFileFlowServices();
+            Services = serviceCollection.BuildServiceProvider();
+
+            splash.UpdateStatus("Cargando preferencias de usuario y temas...", 50);
+            await Task.Delay(40);
+
+            var prefsService = Services.GetRequiredService<IUserPreferencesService>();
+            prefsService.Load();
+            string savedLang = prefsService.Preferences.Language;
             LocalizationManager.Instance.SetCulture(!string.IsNullOrWhiteSpace(savedLang) ? savedLang : "es-ES");
             _ = ExternalToolsService.Instance.Config;
 
-            string savedTheme = UserPreferencesService.Instance.Preferences.ActiveTheme;
+            var themeService = Services.GetRequiredService<IThemeService>();
+            string savedTheme = prefsService.Preferences.ActiveTheme;
             if (Enum.TryParse<AppTheme>(savedTheme, out var themeEnum))
             {
-                ThemeManager.Instance.SetTheme(themeEnum);
+                themeService.SetTheme(themeEnum);
             }
 
-            splash.UpdateStatus("Cargando plugins y motor de nodos...", 60);
+            splash.UpdateStatus("Cargando plugins y motor de nodos...", 70);
             await Task.Delay(40);
 
             splash.UpdateStatus("Construyendo espacio de trabajo y lienzo Nodify...", 85);
             await Task.Delay(40);
 
-            var mainWindow = new MainWindow();
+            var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
+            var mainWindow = new MainWindow(mainVm);
 
             splash.UpdateStatus("¡Listo! Iniciando FileFlow Studio...", 100);
             await Task.Delay(180);

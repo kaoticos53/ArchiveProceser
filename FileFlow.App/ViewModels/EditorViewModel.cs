@@ -6,6 +6,7 @@ using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
@@ -17,6 +18,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly PluginLoader _pluginLoader;
     private readonly Services.IVariableDiscoveryService _variableDiscoveryService;
     private readonly Services.INodeClipboardService _clipboardService;
+    private readonly IUserPreferencesService _userPreferencesService;
+    private readonly ILocalizationService _loc;
+    private readonly IDialogService _dialogService;
     private readonly Action _preferencesChangedHandler;
 
     public Services.INodeClipboardService ClipboardService => _clipboardService;
@@ -77,17 +81,23 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public EditorViewModel(
         PluginLoader pluginLoader,
         Services.IVariableDiscoveryService? variableDiscoveryService = null,
-        Services.INodeClipboardService? clipboardService = null)
+        Services.INodeClipboardService? clipboardService = null,
+        IUserPreferencesService? userPreferencesService = null,
+        ILocalizationService? localizationService = null,
+        IDialogService? dialogService = null)
     {
         _pluginLoader = pluginLoader;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
         _clipboardService = clipboardService ?? new Services.NodeClipboardService(_pluginLoader);
-        _globalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
+        _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
+        _globalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
         _preferencesChangedHandler = () =>
         {
-            GlobalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
+            GlobalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
         };
-        UserPreferencesService.Instance.PreferencesChanged += _preferencesChangedHandler;
+        _userPreferencesService.PreferencesChanged += _preferencesChangedHandler;
         Connections.CollectionChanged += (s, e) =>
         {
             RebuildConnectionLookup();
@@ -466,9 +476,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            string msg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_OpenSettingsError", "Error al abrir la Configuración del Flujo: {0}"), ex.Message);
-            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(_loc.GetString("Msg_OpenSettingsError", "Error al abrir la Configuración del Flujo: {0}"), ex.Message);
+            string title = _loc.GetString("Error", "Error");
+            _dialogService.ShowError(msg, title);
         }
     }
 
@@ -599,7 +609,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        UserPreferencesService.Instance.PreferencesChanged -= _preferencesChangedHandler;
+        _userPreferencesService.PreferencesChanged -= _preferencesChangedHandler;
         GC.SuppressFinalize(this);
     }
 }

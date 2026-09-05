@@ -10,7 +10,7 @@ namespace FileFlow.Core.Engine;
 /// anti-colisión para garantizar que los archivos hayan finalizado su escritura en disco antes de procesarlos.
 /// Soporta múltiples carpetas de origen simultáneas.
 /// </summary>
-public class FolderWatcherService : IDisposable
+public class FolderWatcherService : IFolderWatcherService
 {
     private readonly List<FileSystemWatcher> _watchers = [];
     private readonly ConcurrentDictionary<string, DateTime> _pendingFiles = new(StringComparer.OrdinalIgnoreCase);

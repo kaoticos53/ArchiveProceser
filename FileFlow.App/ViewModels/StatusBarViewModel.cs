@@ -12,7 +12,10 @@ public partial class StatusBarViewModel : ObservableObject
 {
     private readonly EditorViewModel _editorViewModel;
     private readonly ControlBarViewModel _controlBarViewModel;
-    private readonly SystemPerformanceMonitor _performanceMonitor;
+    private readonly ISystemPerformanceMonitor _performanceMonitor;
+    private readonly ILocalizationService _loc;
+    private readonly IDialogService _dialogService;
+    private readonly IProcessLauncherService _processLauncher;
 
     [ObservableProperty]
     private int _nodeCount;
@@ -58,13 +61,19 @@ public partial class StatusBarViewModel : ObservableObject
     public StatusBarViewModel(
         EditorViewModel editorViewModel, 
         ControlBarViewModel controlBarViewModel, 
-        SystemPerformanceMonitor performanceMonitor,
-        LogViewModel logViewModel)
+        ISystemPerformanceMonitor performanceMonitor,
+        LogViewModel logViewModel,
+        ILocalizationService? localizationService = null,
+        IDialogService? dialogService = null,
+        IProcessLauncherService? processLauncher = null)
     {
         _editorViewModel = editorViewModel;
         _controlBarViewModel = controlBarViewModel;
         _performanceMonitor = performanceMonitor;
         _logViewModel = logViewModel;
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
+        _processLauncher = processLauncher ?? ProcessLauncherService.Instance;
 
         // Subscripciones a eventos de EditorViewModel
         _editorViewModel.PropertyChanged += (s, e) =>
@@ -183,7 +192,7 @@ public partial class StatusBarViewModel : ObservableObject
         {
             Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
         };
-        LocalizationManager.Instance.LanguageChanged += (s, e) =>
+        _loc.LanguageChanged += (s, e) =>
         {
             Application.Current?.Dispatcher.InvokeAsync(() =>
             {
@@ -195,11 +204,11 @@ public partial class StatusBarViewModel : ObservableObject
                 }
                 else if (_controlBarViewModel.IsPaused)
                 {
-                    StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Paused", "⏸️ Flujo pausado");
+                    StatusMessage = _loc.GetString("StatusBar_Paused", "⏸️ Flujo pausado");
                 }
                 else
                 {
-                    StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Ready", "🟢 Listo");
+                    StatusMessage = _loc.GetString("StatusBar_Ready", "🟢 Listo");
                 }
             });
         };
@@ -224,9 +233,9 @@ public partial class StatusBarViewModel : ObservableObject
         LoadedAiModelsCount = total;
         HasLoadedAiModels = total > 0;
         LoadedAiModelsText = string.Format(
-            LocalizationManager.Instance.GetString("StatusBar_AiModelsLoadedCount", "{0} loaded"),
+            _loc.GetString("StatusBar_AiModelsLoadedCount", "{0} loaded"),
             total);
-        LoadedAiModelsToolTip = LocalizationManager.Instance.GetString("StatusBar_ClearAiMemoryToolTip", "Descarga todos los modelos ONNX/IA de la memoria RAM/VRAM y libera memoria.");
+        LoadedAiModelsToolTip = _loc.GetString("StatusBar_ClearAiMemoryToolTip", "Descarga todos los modelos ONNX/IA de la memoria RAM/VRAM y libera memoria.");
     }
 
     [RelayCommand]
@@ -246,9 +255,9 @@ public partial class StatusBarViewModel : ObservableObject
 
     private void UpdateActiveStatusMessage(string? rawMessage)
     {
-        if (string.IsNullOrWhiteSpace(rawMessage) || rawMessage == "Listo" || rawMessage == "Ready" || rawMessage == FileFlow.Sdk.Localization.LocalizationManager.Instance["StatusReady"])
+        if (string.IsNullOrWhiteSpace(rawMessage) || rawMessage == "Listo" || rawMessage == "Ready" || rawMessage == _loc["StatusReady"])
         {
-            StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Running", "⚡ Ejecutando flujo de trabajo...");
+            StatusMessage = _loc.GetString("StatusBar_Running", "⚡ Ejecutando flujo de trabajo...");
             return;
         }
 
@@ -271,7 +280,7 @@ public partial class StatusBarViewModel : ObservableObject
         var sel = _editorViewModel.SelectedNode;
         SelectedNodeName = sel != null 
             ? $"{sel.Title} ({sel.NodeTypeName})" 
-            : LocalizationManager.Instance.GetString("Common_None", "Ninguno");
+            : _loc.GetString("Common_None", "Ninguno");
     }
 
     [RelayCommand]
@@ -280,22 +289,18 @@ public partial class StatusBarViewModel : ObservableObject
         try
         {
             string folder = string.IsNullOrWhiteSpace(GlobalOutputDir) ? @"C:\FileFlowOutput" : GlobalOutputDir;
-            if (!Directory.Exists(folder))
+            if (!_processLauncher.OpenFolder(folder))
             {
-                Directory.CreateDirectory(folder);
+                string errorMsg = string.Format(_loc.GetString("Msg_GlobalOutputFolderError", "No se pudo abrir la carpeta de salida global: {0}"), folder);
+                string title = _loc.GetString("Error", "Error");
+                _dialogService.ShowError(errorMsg, title);
             }
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = folder,
-                UseShellExecute = true,
-                Verb = "open"
-            });
         }
         catch (Exception ex)
         {
-            string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_GlobalOutputFolderError", "No se pudo abrir la carpeta de salida global: {0}"), ex.Message);
-            string title = LocalizationManager.Instance.GetString("Error", "Error");
-            MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            string errorMsg = string.Format(_loc.GetString("Msg_GlobalOutputFolderError", "No se pudo abrir la carpeta de salida global: {0}"), ex.Message);
+            string title = _loc.GetString("Error", "Error");
+            _dialogService.ShowError(errorMsg, title);
         }
     }
 

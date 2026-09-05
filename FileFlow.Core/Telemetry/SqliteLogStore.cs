@@ -33,7 +33,7 @@ public record NodeExecutionMetrics(
 /// <summary>
 /// Motor analítico y almacén de logs estructurados en memoria de ultra-alto rendimiento basado en SQLite.
 /// </summary>
-public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
+public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
 {
     private static readonly Lazy<SqliteLogStore> _instance = new(() => new SqliteLogStore());
     public static SqliteLogStore Instance => _instance.Value;

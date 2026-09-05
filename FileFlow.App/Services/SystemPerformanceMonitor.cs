@@ -22,7 +22,7 @@ public class PerformanceMetrics
     public string GpuFormatted => $"{GpuPercentage:F0}%";
 }
 
-public class SystemPerformanceMonitor : IDisposable
+public class SystemPerformanceMonitor : ISystemPerformanceMonitor
 {
     private readonly DispatcherTimer _timer;
     private readonly Process _currentProcess;

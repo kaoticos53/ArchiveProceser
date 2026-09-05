@@ -2,6 +2,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FileFlow.App.Services;
 using FileFlow.Core.Plugins;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
@@ -14,11 +15,51 @@ public partial class MainViewModel : ObservableObject
     public ControlBarViewModel ControlBar { get; }
     public LogViewModel LogConsole { get; }
     public StatusBarViewModel StatusBar { get; }
-    public SystemPerformanceMonitor PerformanceMonitor { get; }
+    public ISystemPerformanceMonitor PerformanceMonitor { get; }
     public IFileDialogService FileDialogService { get; }
     public IWorkflowStorageService WorkflowStorageService { get; }
+    public ILocalizationService LocalizationService { get; }
     public string AppVersionDisplay => FileFlow.Sdk.AppVersionInfo.DisplayVersion;
 
+    public MainViewModel(
+        PluginLoader pluginLoader,
+        EditorViewModel editor,
+        ToolboxViewModel toolbox,
+        NodeInspectorViewModel nodeInspector,
+        ControlBarViewModel controlBar,
+        LogViewModel logConsole,
+        StatusBarViewModel statusBar,
+        ISystemPerformanceMonitor performanceMonitor,
+        IFileDialogService fileDialogService,
+        IWorkflowStorageService workflowStorageService,
+        ILocalizationService? localizationService = null)
+    {
+        PluginLoader = pluginLoader;
+        Editor = editor;
+        Toolbox = toolbox;
+        NodeInspector = nodeInspector;
+        ControlBar = controlBar;
+        LogConsole = logConsole;
+        StatusBar = statusBar;
+        PerformanceMonitor = performanceMonitor;
+        FileDialogService = fileDialogService;
+        WorkflowStorageService = workflowStorageService;
+        LocalizationService = localizationService ?? FileFlow.Sdk.Localization.LocalizationManager.Instance;
+
+        LogConsole.LogSelectionChanged += log =>
+        {
+            if (log != null)
+            {
+                NodeInspector.InspectLogRecord(log);
+            }
+        };
+
+        LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()));
+    }
+
+    /// <summary>
+    /// Constructor por defecto para compatibilidad con diseñadores XAML o inicializaciones sin contenedor directo.
+    /// </summary>
     public MainViewModel()
     {
         PluginLoader = new PluginLoader();
@@ -56,6 +97,7 @@ public partial class MainViewModel : ObservableObject
         NodeInspector = new NodeInspectorViewModel(Editor, FileDialogService, LogConsole);
         ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector, FileDialogService, WorkflowStorageService);
         StatusBar = new StatusBarViewModel(Editor, ControlBar, PerformanceMonitor, LogConsole);
+        LocalizationService = FileFlow.Sdk.Localization.LocalizationManager.Instance;
 
         LogConsole.LogSelectionChanged += log =>
         {
@@ -65,6 +107,6 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
-        LogConsole.AddLog(Sdk.LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()));
+        LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()));
     }
 }

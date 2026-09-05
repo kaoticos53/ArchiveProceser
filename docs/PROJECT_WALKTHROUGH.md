@@ -2,6 +2,31 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-05] - Refactorización Integral hacia Clean Architecture, Inversión de Control (IoC) y Puertos & Adaptadores
+
+### 🎯 Objetivos y Alcance
+1. **Desacoplamiento Estricto por Capas (Clean Architecture / Hexagonal)**:
+   - **Abstracción de Puertos en Dominio y Core**:
+     - `ILocalizationService`: Abstracción de internacionalización para eliminar acoplamientos rígidos con `LocalizationManager.Instance`.
+     - `ILogStore`: Abstracción de ingesta y consulta analítica de telemetría sobre SQLite (`SqliteLogStore`).
+     - `IFileRecycler`: Abstracción de operaciones nativas del sistema operativo sobre la papelera de reciclaje (`WindowsShellFileRecycler`).
+     - `IFolderWatcherService`: Abstracción reactiva del servicio de supervisión de carpetas en tiempo real (`FolderWatcherService`).
+   - **Abstracción de Puertos en Capa de Presentación / UI**:
+     - `ISystemPerformanceMonitor`: Contrato para muestreo de CPU, RAM y GPU (`SystemPerformanceMonitor`).
+     - `IThemeService`: Abstracción para el gestor reactivo de temas (`ThemeManager`).
+     - `IUserPreferencesService`: Abstracción para persistencia y métricas de preferencias de usuario (`UserPreferencesService`).
+     - `IDialogService` & `WpfDialogService`: Desacoplamiento de ventanas y alertas (`MessageBox.Show`) para permitir ejecución headless y pruebas unitarias aisladas.
+     - `IProcessLauncherService` & `ProcessLauncherService`: Desacoplamiento de llamadas al sistema operativo (`Process.Start` / Explorador de Windows).
+2. **Inyección de Dependencias (IoC) con `Microsoft.Extensions.DependencyInjection`**:
+   - Creado `ServiceCollectionExtensions.cs` registrando servicios singleton/transient para todos los puertos, motor de plugins (`PluginLoader`), almacenamiento, telemetría y ViewModels.
+   - Configurado `App.Services` en `App.xaml.cs` para resolver el árbol de dependencias (`MainViewModel`, `EditorViewModel`, `ControlBarViewModel`, `StatusBarViewModel`, `LogViewModel`, `ToolboxViewModel`, `NodeInspectorViewModel`).
+   - Los ViewModels ahora reciben sus dependencias vía constructor manteniendo constructores fallback para soporte en tiempo de diseño.
+3. **Pruebas Unitarias de Arquitectura e IoC**:
+   - Creado `DependencyInjectionAndPortsTests.cs` validando el registro y resolución completa de todos los puertos y ViewModels, así como tests aislados con fakes de `IDialogService` e `IProcessLauncherService`.
+4. **Validación y Métricas**:
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `dotnet test FileFlow.Tests/FileFlow.Tests.csproj`: **515 / 515 pruebas superadas al 100%**.
+
 ## [2026-09-05] - Blindaje de Cancelación Asíncrona (CancellationToken) y Manejo de Excepciones en Nodos
 
 ### 🎯 Objetivos y Alcance

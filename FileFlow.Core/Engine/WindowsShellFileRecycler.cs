@@ -5,8 +5,13 @@ namespace FileFlow.Core.Engine;
 /// <summary>
 /// Proporciona eliminación segura enviando archivos y carpetas a la Papelera de reciclaje de Windows mediante la API Win32 SHFileOperation.
 /// </summary>
-public static class WindowsShellFileRecycler
+public class WindowsShellFileRecycler : IFileRecycler
 {
+    private static readonly Lazy<WindowsShellFileRecycler> _instance = new(() => new WindowsShellFileRecycler());
+    public static WindowsShellFileRecycler Instance => _instance.Value;
+
+    /// <inheritdoc />
+    public bool Recycle(string path) => SendToRecycleBin(path);
     private const int FO_DELETE = 0x0003;
     private const ushort FOF_ALLOWUNDO = 0x0040;
     private const ushort FOF_NOCONFIRMATION = 0x0010;
