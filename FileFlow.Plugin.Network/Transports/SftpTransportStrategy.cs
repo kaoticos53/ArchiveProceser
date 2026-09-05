@@ -89,7 +89,7 @@ public sealed class SftpTransportStrategy : INetworkTransportStrategy
             var result = CreateDownloadResult(item, localFilePath, remoteUrl, remotePath, info.Length);
             await context.EmitAsync("Out", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en descarga SFTP desde {host}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
@@ -162,7 +162,7 @@ public sealed class SftpTransportStrategy : INetworkTransportStrategy
             EnrichUploadMetadata(item, remoteUrl, remoteDir, item.FileSizeBytes);
             await context.EmitAsync("Out", item);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en subida SFTP hacia {host}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);

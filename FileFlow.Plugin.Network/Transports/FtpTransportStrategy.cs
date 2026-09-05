@@ -82,7 +82,7 @@ public sealed class FtpTransportStrategy : INetworkTransportStrategy
                 await context.EmitAsync("Error", item);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en descarga FTP desde {host}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
@@ -158,7 +158,7 @@ public sealed class FtpTransportStrategy : INetworkTransportStrategy
                 await context.EmitAsync("Error", item);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en subida FTP hacia {host}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);

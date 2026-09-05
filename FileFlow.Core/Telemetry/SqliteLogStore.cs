@@ -87,7 +87,7 @@ public sealed class SqliteLogStore : IAsyncDisposable, IDisposable
             {
                 if (await _ingestionChannel.Reader.WaitToReadAsync(_cts.Token).ConfigureAwait(false))
                 {
-                    await Task.Delay(20, _cts.Token).ConfigureAwait(false);
+                    await Task.Yield();
 
                     while (batch.Count < 2000 && _ingestionChannel.Reader.TryRead(out var item))
                     {

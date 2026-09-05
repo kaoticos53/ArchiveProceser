@@ -57,6 +57,61 @@ public class DocumentsTests
     }
 
     [Fact]
+    public async Task PdfMergeNode_ExecuteAsync_And_OnWorkflowCompletedAsync_MergesAndEmitsConsolidatedPdf()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlowPdfMergeHookTest_" + Guid.NewGuid());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            string pdf1 = Path.Combine(tempDir, "doc1.pdf");
+            string pdf2 = Path.Combine(tempDir, "doc2.pdf");
+            string outDir = Path.Combine(tempDir, "MergedOutput");
+
+            CreateSamplePdf(pdf1, "Document One", pages: 1);
+            CreateSamplePdf(pdf2, "Document Two", pages: 2);
+
+            var node = new PdfMergeNode();
+            node.Parameters["OutputDirectory"] = outDir;
+            node.Parameters["OutputFileName"] = "Consolidated.pdf";
+
+            var item1 = new FileItemContext(pdf1);
+            var item2 = new FileItemContext(pdf2);
+
+            var passThroughItems = new List<FileItemContext>();
+            FileItemContext? finalMergedItem = null;
+
+            var mockContext = new Mock<FileFlow.Sdk.IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync("PassThrough", It.IsAny<FileItemContext>()))
+                .Callback<string, FileItemContext>((port, itm) => passThroughItems.Add(itm))
+                .Returns(Task.CompletedTask);
+
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+                .Callback<string, FileItemContext>((port, itm) => finalMergedItem = itm)
+                .Returns(Task.CompletedTask);
+
+            await node.ExecuteAsync("In", item1, mockContext.Object);
+            await node.ExecuteAsync("In", item2, mockContext.Object);
+
+            Assert.Equal(2, passThroughItems.Count);
+            Assert.Null(finalMergedItem);
+
+            await node.OnWorkflowCompletedAsync(mockContext.Object, CancellationToken.None);
+
+            Assert.NotNull(finalMergedItem);
+            Assert.True(File.Exists(finalMergedItem.CurrentPath));
+            Assert.Equal("Consolidated.pdf", Path.GetFileName(finalMergedItem.CurrentPath));
+
+            using var mergedDoc = PdfSharp.Pdf.IO.PdfReader.Open(finalMergedItem.CurrentPath, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+            Assert.Equal(3, mergedDoc.PageCount);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
     public async Task PdfSplitNode_SplitsMultiplePagePdf()
     {
         string tempDir = Path.Combine(Path.GetTempPath(), "FileFlowPdfSplitTest_" + Guid.NewGuid());

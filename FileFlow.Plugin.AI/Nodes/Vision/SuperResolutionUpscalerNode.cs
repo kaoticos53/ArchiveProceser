@@ -236,7 +236,7 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             context.Log($"[SuperResolution] ✅ Escalado a {newW}x{newH} completado: '{targetFileName}'", LogLevel.Information, newItem);
             await context.EmitAsync("Out", newItem).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[SuperResolution] ❌ Error escalando {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

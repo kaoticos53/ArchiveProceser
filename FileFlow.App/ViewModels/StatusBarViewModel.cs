@@ -48,7 +48,7 @@ public partial class StatusBarViewModel : ObservableObject
     private string _globalOutputDir = @"C:\FileFlowOutput";
 
     [ObservableProperty]
-    private string _statusMessage = "🟢 Listo para ejecutar";
+    private string _statusMessage = LocalizationManager.Instance.GetString("StatusBar_ReadyToExecute", "🟢 Listo para ejecutar");
 
     [ObservableProperty]
     private double _zoomPercentage = 100;
@@ -132,14 +132,14 @@ public partial class StatusBarViewModel : ObservableObject
                 }
                 else
                 {
-                    StatusMessage = "🟢 Listo";
+                    StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Ready", "🟢 Listo");
                 }
             }
             else if (e.PropertyName == nameof(ControlBarViewModel.IsPaused))
             {
                 if (_controlBarViewModel.IsPaused)
                 {
-                    StatusMessage = "⏸️ Flujo pausado";
+                    StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Paused", "⏸️ Flujo pausado");
                 }
             }
         };
@@ -157,7 +157,7 @@ public partial class StatusBarViewModel : ObservableObject
                     }
                     else
                     {
-                        StatusMessage = "🟢 Listo";
+                        StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Ready", "🟢 Listo");
                     }
                 });
             }
@@ -185,7 +185,23 @@ public partial class StatusBarViewModel : ObservableObject
         };
         LocalizationManager.Instance.LanguageChanged += (s, e) =>
         {
-            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+            Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                UpdateAiModelCount();
+                UpdateSelectedNodeInfo();
+                if (_controlBarViewModel.IsRunning)
+                {
+                    UpdateActiveStatusMessage(_logViewModel.StatusMessage);
+                }
+                else if (_controlBarViewModel.IsPaused)
+                {
+                    StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Paused", "⏸️ Flujo pausado");
+                }
+                else
+                {
+                    StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Ready", "🟢 Listo");
+                }
+            });
         };
         UpdateAiModelCount();
     }
@@ -232,7 +248,7 @@ public partial class StatusBarViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(rawMessage) || rawMessage == "Listo" || rawMessage == "Ready" || rawMessage == FileFlow.Sdk.Localization.LocalizationManager.Instance["StatusReady"])
         {
-            StatusMessage = "⚡ Ejecutando flujo de trabajo...";
+            StatusMessage = LocalizationManager.Instance.GetString("StatusBar_Running", "⚡ Ejecutando flujo de trabajo...");
             return;
         }
 

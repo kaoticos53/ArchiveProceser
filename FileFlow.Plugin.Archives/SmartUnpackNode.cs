@@ -171,7 +171,7 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
                 await context.EmitAsync("Out", outputItem);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"archive\": \"{archivePath.Replace("\\", "\\\\")}\"}}";

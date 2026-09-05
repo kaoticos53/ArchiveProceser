@@ -68,7 +68,7 @@ public class HashCalculatorNode : IFlowNode
 
             await context.EmitAsync("Out", item);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
@@ -80,7 +80,7 @@ public class HashCalculatorNode : IFlowNode
 
     private static async Task<string> ComputeHashAsync(string filePath, string algorithm, CancellationToken ct)
     {
-        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 131072, useAsync: true);
+        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 131072, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
         byte[] hashBytes = algorithm.ToUpperInvariant() switch
         {

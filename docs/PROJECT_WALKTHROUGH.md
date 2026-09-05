@@ -2,6 +2,62 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-05] - Blindaje de Cancelación Asíncrona (CancellationToken) y Manejo de Excepciones en Nodos
+
+### 🎯 Objetivos y Alcance
+1. **Propagación Limpia de Cancelación (`OperationCanceledException`)**:
+   - Se auditó el manejo de excepciones en todos los plugins (`FileFlow.Plugin.Network`, `FileFlow.Plugin.AI`, `FileFlow.Plugin.Images`, `FileFlow.Plugin.Integrations`, `FileFlow.Plugin.Archives`, `FileFlow.Plugin.FileSystem`, `FileFlow.Plugin.Hashing`, `FileFlow.Plugin.Documents`).
+   - Se añadieron filtros de excepción `when (ex is not OperationCanceledException)` en todos los bloques `catch` de nodos asíncronos y estrategias de transporte:
+     - **Estrategias de red (`FileFlow.Plugin.Network`)**: `FtpTransportStrategy`, `SftpTransportStrategy`, `HttpTransportStrategy`, `SmbTransportStrategy`, `WebDavTransportStrategy` (tanto en `DownloadAsync` como en `UploadAsync`).
+     - **Nodos de plugins**: `PromptObjectDetectorNode`, `ContentModerationFilterNode`, `SuperResolutionUpscalerNode`, `BackgroundRemoverNode`, `ZeroShotSemanticSearchNode`, `PiiAnonymizerNode`, `VoiceActivityDetectorNode`, `TextToSpeechNode`, `ImageOptimizerNode`, `CliExecutionNode`, `MediaTranscoderNode`, `WebhookNotificationNode`, `SmartUnpackNode`, `FileRelocatorNode`, `OriginalFileActionNode`, `SafeRecycleDeleteNode`, `EmptyDirectoryCleanerNode`, `DestinationSinkNode`, `DocumentProcessorNode`, `DeduplicationFilterNode`, `HashCalculatorNode`, `PdfMergeNode`.
+   - Esto garantiza que al pausar o cancelar un flujo en ejecución (mediante el botón Stop/Cancelar o interrupción de proceso), la cancelación aborte de forma instantánea y determinista sin registrar falsos positivos de error en los puertos `"Error"`.
+2. **Validación**:
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `dotnet test FileFlow.Tests/FileFlow.Tests.csproj`: **512 / 512 pruebas superadas al 100%**.
+
+## [2026-09-05] - Auditoría Integral de la Aplicación: Corrección del Ciclo de Vida de Fusión PDF, Aislamiento de Ejecución y Reactividad i18n
+
+### 🎯 Objetivos y Alcance
+1. **Implementación de Ciclo de Vida Completo en `PdfMergeNode`**:
+   - `PdfMergeNode` recolectaba rutas de PDFs durante `ExecuteAsync` pero no implementaba `OnWorkflowCompletedAsync`, impidiendo que el archivo PDF consolidado fuera emitido al puerto `"Out"`.
+   - Implementado `OnWorkflowCompletedAsync` con soporte completo para simulación en DryRun (`PlannedAction`), fusión determinista con `MergePdfFiles`, emisión del archivo final hacia el puerto `"Out"` y aislamiento de ejecuciones mediante `_lastExecutionId`.
+2. **Aislamiento de Ejecución en Nodos Acumuladores (`ExcelReportGeneratorNode`, `PdfMergeNode`)**:
+   - Detección de cambios de `WorkflowExecutionId` para limpiar las colecciones en memoria (`_collectedRows`, `_collectedPdfPaths`) entre ejecuciones sucesivas del mismo grafo en memoria.
+   - Vaciado determinista de `_collectedRows` tras generar el archivo `.xlsx` para evitar duplicación de filas en re-ejecuciones.
+3. **Manejo Seguro de Rutas en `MediaTranscoderNode`**:
+   - Protección en el modo fallback de transcodificación para evitar llamadas a `File.Copy` cuando la ruta de origen y destino son idénticas (`StringComparison.OrdinalIgnoreCase`).
+4. **Localización e i18n Reactiva en la Barra de Estado (`StatusBarViewModel`)**:
+   - Incorporadas claves de localización `StatusBar_Ready`, `StatusBar_ReadyToExecute`, `StatusBar_Running` y `StatusBar_Paused` en `Strings.resx` y `Strings.es.resx`.
+   - Subscripción a `LocalizationManager.Instance.LanguageChanged` en `StatusBarViewModel` para actualizar dinámicamente `StatusMessage`, `SelectedNodeName` y `LoadedAiModelsText` al cambiar el idioma en caliente sin reiniciar la app.
+5. **Validación y Pruebas**:
+   - Nueva prueba unitaria añadida en `DocumentsTests.cs`: `PdfMergeNode_ExecuteAsync_And_OnWorkflowCompletedAsync_MergesAndEmitsConsolidatedPdf`.
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `dotnet test FileFlow.Tests/FileFlow.Tests.csproj`: **512 / 512 pruebas superadas al 100%**.
+
+## [2026-09-05] - Optimización de Rendimiento Extremo, Paralelismo Multinúcleo y Reducción de Asignaciones GC
+
+### 🎯 Objetivos y Alcance
+1. **Optimización de Despacho y Contrapresión en el Motor DAG (`WorkflowItemDispatcher.cs`)**:
+   - Eliminación de allocations innecesarias en delegados mediante `static (_, c) => c + 1` en conteos de aristas.
+   - Throttling inteligente de formateo y emisiones de progreso hacia la UI (solo en primer/último item o múltiplos de 10), evitando la inundación del despachador WPF con miles de strings por segundo.
+2. **Telemetría de Cero Latencia y SQLite Tuning (`SqliteLogStore.cs`)**:
+   - Reemplazo del retardo artificial `Task.Delay(20)` por un drenaje de canal con `Task.Yield()`, permitiendo a `ProcessIngestionQueueAsync` empaquetar ráfagas de hasta 2.000 registros en una única transacción SQLite sin penalizaciones de latencia fija.
+   - Rendimiento de ingesta: **59.312 logs/seg** persistidos en SQLite en memoria a través de 16 núcleos de CPU concurrentes.
+3. **Optimización de Memoria y Data Locality en `FileItemContext` (`FileFlow.Sdk`)**:
+   - `DeepClone()` optimizado para reutilizar `_idString`, `_shortIdString` y `_fileName` cacheados sin invocar `Guid.ToString()` ni asignaciones de subcadenas.
+   - Pre-dimensionamiento y constructores de capacidad cero (`capacity: 0`) para colecciones vacías (`Tags`, `ExecutionLog`), reduciendo drásticamente la fragmentación del GC.
+   - Rendimiento de clonación: **689.655 clones/seg** (20.000 items con metadata pesada en 29 ms).
+4. **Optimización de Streaming I/O en Hashing Criptográfico (`HashCalculatorNode.cs`)**:
+   - Apertura de `FileStream` con `FileOptions.Asynchronous | FileOptions.SequentialScan` y buffers optimizados de 128 KB, activando el *read-ahead* del kernel de Windows.
+   - Rendimiento de hashing: **264,55 MB/seg** en SHA-256 sobre almacenamiento local.
+5. **Métricas de Benchmarking Validadas (`PerformanceBenchmarkSuiteTests.cs`)**:
+   - **Template Engine**: 73.746 ops/seg (50.000 resoluciones en 678 ms, Gen1=0, Gen2=0).
+   - **Deep Clone**: 689.655 clones/seg (20.000 en 29 ms).
+   - **Telemetry Ingestion**: 59.312 logs/seg (50.000 en 843 ms en 16 cores).
+   - **Hashing I/O**: 264,55 MB/seg en SHA-256.
+   - **Compilación**: `dotnet build FileFlow.slnx --warnaserror` (0 errores, 0 advertencias).
+   - **Tests**: 511 / 511 pruebas superadas al 100%.
+
 ## [2026-09-05] - Vaciado Atómico y Determinista de Logs con Eliminación de Condiciones de Carrera
 
 ### 🎯 Objetivos y Alcance

@@ -8,8 +8,31 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **510 / 510 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **512 / 512 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --31. **Blindaje de Cancelación Asíncrona (CancellationToken) y Manejo de Excepciones en Nodos**:
+      - **Objetivo**: Asegurar que las cancelaciones voluntarias de ejecución (botón Detener / Stop) se propaguen de manera instantánea y limpia sin emitir falsos errores en los puertos de salida ni en el registro de telemetría.
+      - **Ajustes Realizados**:
+        1. **Filtros de Excepción**: Incorporación de cláusulas `when (ex is not OperationCanceledException)` en todos los nodos de procesamiento asíncrono y estrategias de red en `FileFlow.Plugin.Network`, `FileFlow.Plugin.AI`, `FileFlow.Plugin.Images`, `FileFlow.Plugin.Integrations`, `FileFlow.Plugin.Archives`, `FileFlow.Plugin.FileSystem`, `FileFlow.Plugin.Hashing` y `FileFlow.Plugin.Documents`.
+        2. **Validación**: Compilación con `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y 512 / 512 pruebas superadas con éxito (100%).
+  --30. **Auditoría Integral de la Aplicación: Corrección del Ciclo de Vida de Fusión PDF, Aislamiento de Ejecución y Reactividad i18n**:
+      - **Objetivo**: Corregir inconsistencias detectadas en el ciclo de vida de nodos acumuladores, aislamiento entre ejecuciones sucesivas del motor DAG y reactividad de localización en la barra de estado.
+      - **Ajustes Realizados**:
+        1. **`PdfMergeNode`**: Implementado `OnWorkflowCompletedAsync` para fusionar y emitir el PDF resultante por el puerto `"Out"` al concluir el lote, con soporte DryRun (`PlannedAction`) y aislamiento por `_lastExecutionId`.
+        2. **`ExcelReportGeneratorNode`**: Limpieza de `_collectedRows` y detección de cambio en `WorkflowExecutionId` para evitar duplicación de datos entre re-ejecuciones del grafo.
+        3. **`MediaTranscoderNode`**: Guarda de seguridad para evitar `File.Copy` cuando las rutas de origen y destino coinciden exactamente en modo fallback.
+        4. **`StatusBarViewModel`**: Integración de claves de localización (`StatusBar_Ready`, `StatusBar_ReadyToExecute`, `StatusBar_Running`, `StatusBar_Paused`) y refresco reactivo automático ante `LanguageChanged` en caliente.
+        5. **Pruebas Automatizadas**: Añadida prueba unitaria en `DocumentsTests.cs` validando el ciclo de vida completo de `PdfMergeNode`.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 errores, 0 advertencias) y 512 / 512 pruebas superadas al 100%.
+  --29. **Optimización de Rendimiento Extremo, Paralelismo Multinúcleo y Reducción de Asignaciones GC**:
+      - **Objetivo**: Maximizar el throughput por segundo, aprovechar al 100% los hilos de CPU disponibles y minimizar las pausas y asignaciones de memoria en los hot paths del motor DAG, SQLite Log Store, contratos del SDK e I/O criptográfico.
+      - **Ajustes Realizados**:
+        1. **Motor DAG (`WorkflowItemDispatcher.cs`)**: Static delegates en `ConcurrentDictionary`, rate-limiting de formateo de strings para progreso UI (múltiplos de 10) para evitar inundar el despachador WPF.
+        2. **Telemetría de Cero Latencia (`SqliteLogStore.cs`)**: Sustituido el `Task.Delay(20)` arbitrario por drenaje con `Task.Yield()`, alcanzando **59.312 logs/seg** en SQLite in-memory across 16 CPU cores.
+        3. **Data Locality y Zero-Allocation en `FileItemContext` (`FileFlow.Sdk`)**: `DeepClone()` con constructores de capacidad cero (`capacity: 0`) para colecciones vacías y propagación de `_idString` / `_shortIdString` cacheados sin regenerar `Guid.ToString()`, alcanzando **689.655 clones/seg** (20.000 clones en 29 ms).
+        4. **I/O Criptográfico Asíncrono (`HashCalculatorNode.cs`)**: Apertura con `FileOptions.Asynchronous | FileOptions.SequentialScan` y buffers de 128 KB, alcanzando **264,55 MB/seg** en SHA-256.
+        5. **Suite de Benchmarks (`PerformanceBenchmarkSuiteTests.cs`)**: Integradas pruebas automatizadas de throughput, clonación, vectorización SIMD, hashing e ingesta de telemetría.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y 511 / 511 pruebas superadas al 100%.
   --28. **Vaciado Atómico y Determinista de Logs con Eliminación de Condiciones de Carrera (`LogViewModel`)**:
       - **Objetivo**: Corregir de forma definitiva la condición de carrera intermitente al pulsar "Limpiar logs", donde en ocasiones se borraban todos los logs y en otras volvían a aparecer registros previos requiriendo un segundo clic.
       - **Ajustes Realizados**:

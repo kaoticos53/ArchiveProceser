@@ -219,7 +219,7 @@ public class TextToSpeechNode : IFlowNode, IModelLifecycleNode
             context.Log($"[PiperTTS] ✅ Audio sintetizado con éxito: '{targetFileName}' ({audioDuration:F1}s).", LogLevel.Information, newItem);
             await context.EmitAsync("Out", newItem).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[PiperTTS] ❌ Error generando audio para {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

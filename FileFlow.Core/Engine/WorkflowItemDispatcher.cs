@@ -93,7 +93,7 @@ public sealed class WorkflowItemDispatcher
 
         bool isMultipleTargets = matchingEdges.Length > 1;
 
-        int newCount = _edgeCounts.AddOrUpdate(edgeKey, 1, (_, c) => c + 1);
+        int newCount = _edgeCounts.AddOrUpdate(edgeKey, 1, static (_, c) => c + 1);
         EdgeItemDispatched?.Invoke(sourceNodeId, outputPortName, newCount);
 
         foreach (var edge in matchingEdges)
@@ -117,12 +117,12 @@ public sealed class WorkflowItemDispatcher
                         }
 
                         _executor.NotifyNodeStatus(targetNode.Id, NodeExecutionStatus.Running);
-                        if (!string.IsNullOrWhiteSpace(targetItem.FileName))
+                        long currentCompleted = _telemetryTracker.CompletedFilesCount;
+                        if (!string.IsNullOrWhiteSpace(targetItem.FileName) && (currentCompleted <= 1 || currentCompleted % 10 == 0))
                         {
-                            long doneFiles = _telemetryTracker.CompletedFilesCount;
                             long totalFiles = _telemetryTracker.ExpectedTotalItems;
-                            long effective = Math.Max(totalFiles, doneFiles);
-                            double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 0.0;
+                            long effective = Math.Max(totalFiles, currentCompleted);
+                            double pct = effective > 0 ? (double)currentCompleted / effective * 100.0 : 0.0;
                             if (_executor.IsRunning && pct >= 100.0) pct = 99.0;
                             _executor.NotifyProgress(pct, $"⚡ {targetNode.Name}: {targetItem.FileName}");
                         }
@@ -169,7 +169,11 @@ public sealed class WorkflowItemDispatcher
                             double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 0.0;
                             if (_executor.IsRunning && pct >= 100.0) pct = 99.0;
                             else if (pct > 100.0) pct = 100.0;
-                            _executor.NotifyProgress(pct, LocalizationManager.Instance.GetFormattedString("Log_ProcessingItemsProgress", "⚡ Processing: {0:N0}/{1:N0} items ({2:F0}%)", doneFiles, effective, pct));
+
+                            if (doneFiles == 1 || doneFiles == effective || doneFiles % 10 == 0)
+                            {
+                                _executor.NotifyProgress(pct, LocalizationManager.Instance.GetFormattedString("Log_ProcessingItemsProgress", "⚡ Processing: {0:N0}/{1:N0} items ({2:F0}%)", doneFiles, effective, pct));
+                            }
 
                             _checkpointHandler.RecordCompletedFile(targetItem.OriginalPath, doneFiles);
                         }

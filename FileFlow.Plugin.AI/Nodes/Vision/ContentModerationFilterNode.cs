@@ -185,7 +185,7 @@ public class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
                 await context.EmitAsync("Safe", item).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[ContentModeration] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

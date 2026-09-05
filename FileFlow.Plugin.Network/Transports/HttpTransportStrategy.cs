@@ -70,7 +70,7 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
             var result = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, info.Length);
             await context.EmitAsync("Out", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en descarga HTTP desde {targetUrl}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
@@ -131,7 +131,7 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
             EnrichUploadMetadata(item, targetUrl, uri.AbsolutePath, item.FileSizeBytes);
             await context.EmitAsync("Out", item);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en subida HTTP hacia {targetUrl}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);

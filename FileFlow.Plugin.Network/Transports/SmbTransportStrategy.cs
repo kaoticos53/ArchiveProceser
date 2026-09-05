@@ -69,7 +69,7 @@ public sealed class SmbTransportStrategy : INetworkTransportStrategy
             var result = CreateDownloadResult(item, localFilePath, resolvedUncPath, resolvedUncPath, info.Length);
             await context.EmitAsync("Out", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en acceso SMB a {resolvedUncPath}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
@@ -115,7 +115,7 @@ public sealed class SmbTransportStrategy : INetworkTransportStrategy
             EnrichUploadMetadata(item, targetFilePath, resolvedUncDir, item.FileSizeBytes);
             await context.EmitAsync("Out", item);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en subida SMB hacia {targetFilePath}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);

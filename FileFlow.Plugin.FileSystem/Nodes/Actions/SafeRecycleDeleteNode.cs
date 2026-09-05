@@ -93,7 +93,7 @@ public class SafeRecycleDeleteNode : IFlowNode
                 throw new IOException($"Windows Shell API failed to recycle '{targetPath}'.");
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\"}}";

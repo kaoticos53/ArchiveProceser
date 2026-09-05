@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.IO;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Telemetry;
 using FileFlow.Sdk.TemplateEngine;
 using FluentAssertions;
+using Moq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -186,5 +188,43 @@ public class PerformanceBenchmarkSuiteTests
         _output.WriteLine($"Average Time Per Image: {msPerImage:F2} ms");
 
         msPerImage.Should().BeLessThan(100.0, "Vectorized letterboxing on 720p should process fast in under 100 ms per image in test suite runner");
+    }
+
+    [Fact]
+    public async Task Benchmark_HashCalculator_HighThroughput_StreamAsync()
+    {
+        string tempFile = Path.Combine(Path.GetTempPath(), $"BenchHash_{Guid.NewGuid():N}.bin");
+        byte[] dummyData = new byte[1024 * 1024]; // 1 MB
+        new Random(42).NextBytes(dummyData);
+        await File.WriteAllBytesAsync(tempFile, dummyData);
+
+        try
+        {
+            var node = new FileFlow.Plugin.Hashing.HashCalculatorNode();
+            var item = new FileItemContext(tempFile);
+            var mockContext = new Mock<IFlowExecutionContext>().Object;
+            const int iterations = 100; // 100 MB total
+
+            var sw = Stopwatch.StartNew();
+            for (int i = 0; i < iterations; i++)
+            {
+                await node.ExecuteAsync("In", item, mockContext, CancellationToken.None);
+            }
+            sw.Stop();
+
+            double totalMb = iterations * 1.0;
+            double mbPerSec = (totalMb / sw.ElapsedMilliseconds) * 1000.0;
+
+            _output.WriteLine($"=== HASH STREAMING I/O BENCHMARK ===");
+            _output.WriteLine($"Total Data Hashed: {totalMb:N0} MB across {iterations} iterations");
+            _output.WriteLine($"Total Time: {sw.ElapsedMilliseconds} ms");
+            _output.WriteLine($"Throughput: {mbPerSec:F2} MB/sec");
+
+            mbPerSec.Should().BeGreaterThan(50.0, "SHA256 streaming with SequentialScan should exceed 50 MB/sec in local benchmarks");
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
     }
 }

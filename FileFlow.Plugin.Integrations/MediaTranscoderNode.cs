@@ -159,7 +159,7 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
                     context.Log($"[Transcodificador] FFmpeg no detectado en el sistema ('{ffmpegExe}'). Copiando archivo en modo fallback.", LogLevel.Warning, item);
                 }
 
-                if (!File.Exists(targetPath))
+                if (!string.Equals(Path.GetFullPath(filePath), Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase))
                 {
                     File.Copy(filePath, targetPath, overwrite: true);
                 }
@@ -180,7 +180,7 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
             await context.EmitAsync("Out", outputItem);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";

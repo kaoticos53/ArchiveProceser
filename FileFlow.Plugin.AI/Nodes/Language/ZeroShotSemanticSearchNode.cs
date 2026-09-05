@@ -113,7 +113,7 @@ public class ZeroShotSemanticSearchNode : IFlowNode
 
             await context.EmitAsync("Out", item).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[SemanticSearch] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

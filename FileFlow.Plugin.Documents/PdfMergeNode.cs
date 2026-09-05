@@ -40,6 +40,7 @@ public class PdfMergeNode : IFlowNode
 
     private readonly List<string> _collectedPdfPaths = [];
     private readonly Lock _lock = new();
+    private string? _lastExecutionId;
 
     public async Task ExecuteAsync(
         string inputPortName,
@@ -56,13 +57,80 @@ public class PdfMergeNode : IFlowNode
         string ext = Path.GetExtension(item.CurrentPath);
         if (ext.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
         {
+            string executionId = item.Metadata.TryGetValue("WorkflowExecutionId", out var idObj) ? idObj?.ToString() ?? string.Empty : string.Empty;
             lock (_lock)
             {
+                if (!string.IsNullOrEmpty(executionId) && _lastExecutionId != executionId)
+                {
+                    _lastExecutionId = executionId;
+                    _collectedPdfPaths.Clear();
+                }
                 _collectedPdfPaths.Add(item.CurrentPath);
             }
         }
 
         await context.EmitAsync("PassThrough", item);
+    }
+
+    public Task OnWorkflowCompletedAsync(
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        List<string> pdfsToMerge;
+        lock (_lock)
+        {
+            if (_collectedPdfPaths.Count == 0) return Task.CompletedTask;
+            pdfsToMerge = new List<string>(_collectedPdfPaths);
+            _collectedPdfPaths.Clear();
+        }
+
+        string outDir = Parameters.TryGetValue("OutputDirectory", out var dVal) ? ParameterHelper.GetString(dVal, "{GlobalOutputDir}") : "{GlobalOutputDir}";
+        string outFileName = Parameters.TryGetValue("OutputFileName", out var fVal) ? ParameterHelper.GetString(fVal, "Merged_Document.pdf") : "Merged_Document.pdf";
+
+        var dummyItem = new FileItemContext(string.Empty);
+        string resolvedDir = ParameterHelper.ResolveOutputPath(outDir, dummyItem);
+        string resolvedName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(outFileName, dummyItem);
+        string destinationPath = Path.Combine(resolvedDir, resolvedName);
+
+        if (context.IsDryRun)
+        {
+            context.RegisterPlannedAction(new PlannedAction(
+                Guid.NewGuid(),
+                Id,
+                Name,
+                PlannedOperationType.Custom,
+                string.Join(", ", pdfsToMerge),
+                destinationPath,
+                $"[DryRun] Unir {pdfsToMerge.Count} archivos PDF en '{destinationPath}'"
+            ));
+            var dryItem = new FileItemContext(destinationPath) { FileSizeBytes = 0 };
+            dryItem.Metadata["MergedPdfCount"] = pdfsToMerge.Count;
+            dryItem.AddLog($"[DryRun] Planned PDF Merge: {destinationPath} ({pdfsToMerge.Count} files)");
+            return context.EmitAsync("Out", dryItem);
+        }
+
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            MergePdfFiles(pdfsToMerge, destinationPath);
+            sw.Stop();
+
+            long outSize = File.Exists(destinationPath) ? new FileInfo(destinationPath).Length : 0;
+            var mergedItem = new FileItemContext(destinationPath)
+            {
+                FileSizeBytes = outSize
+            };
+            mergedItem.Metadata["MergedPdfCount"] = pdfsToMerge.Count;
+            mergedItem.AddLog($"PDFs combinados exitosamente ({pdfsToMerge.Count} archivos) en '{destinationPath}'");
+
+            context.Log($"[PDF Merge] {pdfsToMerge.Count} PDFs unidos exitosamente en '{destinationPath}' ({outSize} bytes)", LogLevel.Information, mergedItem, durationMs: sw.Elapsed.TotalMilliseconds);
+            return context.EmitAsync("Out", mergedItem);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            context.Log($"[PDF Merge] Error al unir PDFs: {ex.Message}", LogLevel.Error);
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>

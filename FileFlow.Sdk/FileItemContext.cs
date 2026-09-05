@@ -97,7 +97,7 @@ public record FileItemContext
 
     public FileItemContext DeepClone()
     {
-        return new FileItemContext
+        var clone = new FileItemContext
         {
             Id = Id,
             CurrentPath = CurrentPath,
@@ -105,9 +105,13 @@ public record FileItemContext
             PhysicalPath = PhysicalPath,
             IsDirectory = IsDirectory,
             FileSizeBytes = FileSizeBytes,
-            Metadata = Metadata.Count > 0 ? new Dictionary<string, object?>(Metadata, StringComparer.OrdinalIgnoreCase) : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase),
-            Tags = Tags.Count > 0 ? new HashSet<string>(Tags, StringComparer.OrdinalIgnoreCase) : new HashSet<string>(StringComparer.OrdinalIgnoreCase),
-            ExecutionLog = ExecutionLog.Count > 0 ? new List<string>(ExecutionLog) : []
+            Metadata = Metadata.Count > 0 ? new Dictionary<string, object?>(Metadata, StringComparer.OrdinalIgnoreCase) : new Dictionary<string, object?>(0, StringComparer.OrdinalIgnoreCase),
+            Tags = Tags.Count > 0 ? new HashSet<string>(Tags, StringComparer.OrdinalIgnoreCase) : new HashSet<string>(0, StringComparer.OrdinalIgnoreCase),
+            ExecutionLog = ExecutionLog.Count > 0 ? new List<string>(ExecutionLog) : new List<string>(0)
         };
+        clone._idString = _idString;
+        clone._shortIdString = _shortIdString;
+        clone._fileName = _fileName;
+        return clone;
     }
 }

@@ -79,7 +79,7 @@ public sealed class WebDavTransportStrategy : INetworkTransportStrategy
             var result = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, info.Length);
             await context.EmitAsync("Out", result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en descarga WebDAV desde {targetUrl}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
@@ -134,7 +134,7 @@ public sealed class WebDavTransportStrategy : INetworkTransportStrategy
             EnrichUploadMetadata(item, targetFileUrl, targetUrl, item.FileSizeBytes);
             await context.EmitAsync("Out", item);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"Error en subida WebDAV hacia {targetFileUrl}: {ex.Message}", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);

@@ -234,7 +234,7 @@ public class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
 
             await context.EmitAsync("Out", emitItem).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[SileroVAD] ❌ Error procesando {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

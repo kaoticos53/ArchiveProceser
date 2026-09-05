@@ -153,7 +153,7 @@ public class DestinationSinkNode : IFlowNode
             item.AddLog($"DestinationSinkNode output saved to {targetPath}");
             await context.EmitAsync("Done", item);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             string errDetails = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"destinationRoot\": \"{destRoot.Replace("\\", "\\\\")}\"}}";

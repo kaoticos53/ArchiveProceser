@@ -644,6 +644,10 @@
   <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Current CPU usage of the application process</value></data>
   <data name="StatusBar_GpuToolTip" xml:space="preserve"><value>Current GPU usage of the application process / DirectML</value></data>
   <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Click to fit the workflow graph to the visible canvas area. Current zoom level.</value></data>
+  <data name="StatusBar_Ready" xml:space="preserve"><value>🟢 Ready</value></data>
+  <data name="StatusBar_ReadyToExecute" xml:space="preserve"><value>🟢 Ready to execute</value></data>
+  <data name="StatusBar_Running" xml:space="preserve"><value>⚡ Running workflow...</value></data>
+  <data name="StatusBar_Paused" xml:space="preserve"><value>⏸️ Workflow paused</value></data>
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Evaluated Value:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copy evaluated value to clipboard</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contains dynamic expression / variables</value></data>

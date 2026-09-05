@@ -644,6 +644,10 @@
   <data name="StatusBar_CpuToolTip" xml:space="preserve"><value>Uso actual de CPU del proceso de la aplicación</value></data>
   <data name="StatusBar_GpuToolTip" xml:space="preserve"><value>Uso actual de GPU del proceso de la aplicación / DirectML</value></data>
   <data name="StatusBar_FitScreenToolTip" xml:space="preserve"><value>Clic para ajustar el grafo al área visible del lienzo. Nivel de zoom actual.</value></data>
+  <data name="StatusBar_Ready" xml:space="preserve"><value>🟢 Listo</value></data>
+  <data name="StatusBar_ReadyToExecute" xml:space="preserve"><value>🟢 Listo para ejecutar</value></data>
+  <data name="StatusBar_Running" xml:space="preserve"><value>⚡ Ejecutando flujo de trabajo...</value></data>
+  <data name="StatusBar_Paused" xml:space="preserve"><value>⏸️ Flujo pausado</value></data>
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Valor Evaluado:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copiar valor evaluado al portapapeles</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contiene expresión dinámica / variables</value></data>

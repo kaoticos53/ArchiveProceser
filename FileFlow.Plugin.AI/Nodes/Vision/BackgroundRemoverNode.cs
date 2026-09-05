@@ -327,7 +327,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
             // Emitir siempre el archivo original tal cual por el puerto Bypass
             await context.EmitAsync("Bypass", item).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[BackgroundRemover] ❌ Error procesando {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

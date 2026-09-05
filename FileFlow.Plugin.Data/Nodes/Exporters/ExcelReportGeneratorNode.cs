@@ -12,6 +12,7 @@ public class ExcelReportGeneratorNode : IFlowNode
 {
     private readonly ConcurrentBag<Dictionary<string, object?>> _collectedRows = [];
     private readonly Lock _lock = new();
+    private string? _lastExecutionId;
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Name", "Generador de Reportes Excel (.xlsx)");
@@ -82,7 +83,16 @@ public class ExcelReportGeneratorNode : IFlowNode
             }
         }
 
-        _collectedRows.Add(row);
+        string executionId = item.Metadata.TryGetValue("WorkflowExecutionId", out var idObj) ? idObj?.ToString() ?? string.Empty : string.Empty;
+        lock (_lock)
+        {
+            if (!string.IsNullOrEmpty(executionId) && _lastExecutionId != executionId)
+            {
+                _lastExecutionId = executionId;
+                _collectedRows.Clear();
+            }
+            _collectedRows.Add(row);
+        }
 
         // Emitir el ítem downstream sin bloquear
         await context.EmitAsync("Out", item).ConfigureAwait(false);
@@ -126,6 +136,7 @@ public class ExcelReportGeneratorNode : IFlowNode
         context.Log($"[ExcelReport] Generando reporte Excel con {_collectedRows.Count} registros: {reportPath}", LogLevel.Information);
 
         var rowsList = _collectedRows.ToList();
+        _collectedRows.Clear();
         await MiniExcel.SaveAsAsync(reportPath, rowsList, overwriteFile: true, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var reportItem = new FileItemContext(reportPath)

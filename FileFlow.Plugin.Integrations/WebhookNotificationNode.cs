@@ -120,7 +120,7 @@ public class WebhookNotificationNode : IFlowNode
                 await context.EmitAsync("Failed", item);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"url\": \"{url.Replace("\"", "\\\"")}\"}}";
             context.Log($"[Webhook] Error al enviar notificación HTTP: {ex.Message}", LogLevel.Error, item, durationMs: 0.0, detailsJson: errJson);

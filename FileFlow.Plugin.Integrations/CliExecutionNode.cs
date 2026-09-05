@@ -153,7 +153,7 @@ public class CliExecutionNode : IFlowNode
                 await context.EmitAsync("Failed", item);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"executable\": \"{resolvedExe.Replace("\\", "\\\\")}\"}}";
             context.Log($"[Ejecutor CLI] Error al ejecutar comando: {ex.Message}", LogLevel.Error, item, durationMs: 0.0, detailsJson: errJson);

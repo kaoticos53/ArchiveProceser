@@ -186,7 +186,7 @@ public class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
                 await context.EmitAsync("NoObjects", item).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[PromptObjectDetector] Error procesando imagen {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
