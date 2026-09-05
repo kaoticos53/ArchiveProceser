@@ -491,7 +491,9 @@ public partial class LogViewModel : ObservableObject
         string? filePath = targetLog.FilePath;
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            MessageBox.Show("No se encontró ningún archivo físico asociado a esta línea de log para previsualizar.", "Vista Previa", MessageBoxButton.OK, MessageBoxImage.Information);
+            string noFileMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Preview_NoAssociatedFile", "No se encontró ningún archivo físico asociado a esta línea de log para previsualizar.");
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Node_PreviewButton", "Vista Previa");
+            MessageBox.Show(noFileMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 

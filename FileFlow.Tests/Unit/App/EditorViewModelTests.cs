@@ -165,5 +165,113 @@ public class EditorViewModelTests
         editor.BringToFront(node1);
         node1.ZIndex.Should().BeGreaterThan(node2.ZIndex);
     }
+
+    [Fact]
+    public void NodeViewModel_BatchChangeColor_WhenMultipleNodesSelected_AffectsAllSelectedNodes()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        var editor = new EditorViewModel(loader);
+
+        var node1 = new NodeViewModel(new FolderSourceNode(), new Point(0, 0)) { ParentEditor = editor, IsSelected = true };
+        var node2 = new NodeViewModel(new DestinationSinkNode(), new Point(100, 100)) { ParentEditor = editor, IsSelected = true };
+        var node3 = new NodeViewModel(new ImageOptimizerNode(), new Point(200, 200)) { ParentEditor = editor, IsSelected = false };
+
+        editor.Nodes.Add(node1);
+        editor.Nodes.Add(node2);
+        editor.Nodes.Add(node3);
+
+        // Act
+        node1.ChangeColor("#EF4444");
+
+        // Assert
+        node1.AccentColor.Should().Be("#EF4444");
+        node2.AccentColor.Should().Be("#EF4444");
+        node3.AccentColor.Should().NotBe("#EF4444");
+    }
+
+    [Fact]
+    public void NodeViewModel_BatchToggleBreakpoint_WhenMultipleNodesSelected_AffectsAllSelectedNodes()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        var editor = new EditorViewModel(loader);
+
+        var node1 = new NodeViewModel(new FolderSourceNode(), new Point(0, 0)) { ParentEditor = editor, IsSelected = true, HasBreakpoint = false };
+        var node2 = new NodeViewModel(new DestinationSinkNode(), new Point(100, 100)) { ParentEditor = editor, IsSelected = true, HasBreakpoint = false };
+        var node3 = new NodeViewModel(new ImageOptimizerNode(), new Point(200, 200)) { ParentEditor = editor, IsSelected = false, HasBreakpoint = false };
+
+        editor.Nodes.Add(node1);
+        editor.Nodes.Add(node2);
+        editor.Nodes.Add(node3);
+
+        // Act: Toggle on node1
+        node1.ToggleBreakpoint();
+
+        // Assert
+        node1.HasBreakpoint.Should().BeTrue();
+        node2.HasBreakpoint.Should().BeTrue();
+        node3.HasBreakpoint.Should().BeFalse();
+
+        // Act: Toggle again on node2
+        node2.ToggleBreakpoint();
+
+        // Assert
+        node1.HasBreakpoint.Should().BeFalse();
+        node2.HasBreakpoint.Should().BeFalse();
+        node3.HasBreakpoint.Should().BeFalse();
+    }
+
+    [Fact]
+    public void NodeViewModel_BatchToggleLogging_WhenMultipleNodesSelected_AffectsAllSelectedNodes()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        var editor = new EditorViewModel(loader);
+
+        var node1 = new NodeViewModel(new FolderSourceNode(), new Point(0, 0)) { ParentEditor = editor, IsSelected = true, IsLoggingEnabled = true };
+        var node2 = new NodeViewModel(new DestinationSinkNode(), new Point(100, 100)) { ParentEditor = editor, IsSelected = true, IsLoggingEnabled = true };
+        var node3 = new NodeViewModel(new ImageOptimizerNode(), new Point(200, 200)) { ParentEditor = editor, IsSelected = false, IsLoggingEnabled = true };
+
+        editor.Nodes.Add(node1);
+        editor.Nodes.Add(node2);
+        editor.Nodes.Add(node3);
+
+        // Act
+        node1.ToggleLogging();
+
+        // Assert
+        node1.IsLoggingEnabled.Should().BeFalse();
+        node2.IsLoggingEnabled.Should().BeFalse();
+        node3.IsLoggingEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public void NodeViewModel_BatchActions_WhenOnlyOneNodeSelected_AffectsOnlyTargetNode()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        var editor = new EditorViewModel(loader);
+
+        var node1 = new NodeViewModel(new FolderSourceNode(), new Point(0, 0)) { ParentEditor = editor, IsSelected = true };
+        var node2 = new NodeViewModel(new DestinationSinkNode(), new Point(100, 100)) { ParentEditor = editor, IsSelected = false };
+
+        editor.Nodes.Add(node1);
+        editor.Nodes.Add(node2);
+
+        // Act
+        node1.ChangeColor("#10B981");
+        node1.ToggleBreakpoint();
+        node1.ToggleLogging();
+
+        // Assert
+        node1.AccentColor.Should().Be("#10B981");
+        node1.HasBreakpoint.Should().BeTrue();
+        node1.IsLoggingEnabled.Should().BeFalse();
+
+        node2.AccentColor.Should().NotBe("#10B981");
+        node2.HasBreakpoint.Should().BeFalse();
+        node2.IsLoggingEnabled.Should().BeTrue();
+    }
 }
 

@@ -18,11 +18,10 @@
     <Window.Resources>
         <ResourceDictionary>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-
             <!-- Estilo de Barra de Progreso Moderna con Esquinas Redondeadas -->
             <Style x:Key="ModernRoundedProgressBar" TargetType="ProgressBar">
                 <Setter Property="Height" Value="6" />
-                <Setter Property="Background" Value="#0F172A" />
+                <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -54,8 +53,8 @@
 
     <!-- Fondo Principal y Marco Estilizado con Sombra Suave -->
     <Border CornerRadius="14"
-            Background="#0B0F19"
-            BorderBrush="#2A3854"
+            Background="{DynamicResource BgDarkBrush}"
+            BorderBrush="{DynamicResource BorderDarkBrush}"
             BorderThickness="1"
             Margin="10">
         <Border.Effect>
@@ -71,7 +70,7 @@
             </Grid.RowDefinitions>
 
             <!-- 1. Cabecera Personalizada Glassmorphism -->
-            <Border Grid.Row="0" Background="#131D31" CornerRadius="14,14,0,0" Padding="18,12" MouseLeftButtonDown="Header_MouseLeftButtonDown" BorderBrush="#1E293B" BorderThickness="0,0,0,1">
+            <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" CornerRadius="14,14,0,0" Padding="18,12" MouseLeftButtonDown="Header_MouseLeftButtonDown" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -79,13 +78,17 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="32" Height="32" CornerRadius="8" Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1" Margin="0,0,10,0">
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1" Margin="0,0,10,0">
                             <TextBlock Text="📊" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MetricsDashboard_Title], FallbackValue='Panel de Rendimiento y Profiling de Flujo'}"
-                                   FontWeight="Bold" FontSize="15" Foreground="#F8FAFC" VerticalAlignment="Center" />
-                        <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="10" Background="#1E293B" BorderBrush="#334155" BorderThickness="1">
-                            <TextBlock Text="{Binding TotalNodesCount, StringFormat='{}{0} Nodos en Canvas'}" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
+                                   FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                        <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="10" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding TotalNodesCount}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text=" " FontSize="11" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_NodesInCanvas], FallbackValue='Nodos en Canvas'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
                         </Border>
                     </StackPanel>
 
@@ -97,14 +100,14 @@
                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Refresh], FallbackValue='Actualizar'}" FontSize="11" />
                             </StackPanel>
                         </Button>
-                        <Button Click="CloseButton_Click" Style="{StaticResource SecondaryButton}" Padding="9,5" ToolTip="Cerrar">
-                            <TextBlock Text="✕" FontSize="12" FontWeight="Bold" Foreground="#94A3B8" />
+                        <Button Click="CloseButton_Click" Style="{StaticResource SecondaryButton}" Padding="9,5" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close], FallbackValue='Cerrar'}">
+                            <TextBlock Text="✕" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Button>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- 2. KPIs Globales con Acento Superior y Fondo Gradiente -->
+            <!-- 2. KPIs Globales con Acento Superior -->
             <Grid Grid.Row="1" Margin="16,14,16,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -116,98 +119,70 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- KPI 1: Invocaciones Totales -->
-                <Border Grid.Column="0" CornerRadius="8" Padding="12,10" Margin="0,0,6,0" BorderBrush="#334155" BorderThickness="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#1E293B" Offset="0" />
-                            <GradientStop Color="#111827" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Grid.Column="0" CornerRadius="8" Padding="12,10" Margin="0,0,6,0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
                     <StackPanel>
-                        <Border Height="2" Background="#64748B" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
-                        <TextBlock Text="📦 Invocaciones" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
-                        <TextBlock Text="{Binding TotalInvocations, StringFormat='{}{0:N0}'}" FontSize="18" FontWeight="Bold" Foreground="#F8FAFC" Margin="0,4,0,0" />
-                        <TextBlock Text="Ejecuciones totales" FontSize="9.5" Foreground="#64748B" />
+                        <Border Height="2" Background="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalInvocations], FallbackValue='📦 Invocaciones'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding TotalInvocations, StringFormat='{}{0:N0}'}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_Executions], FallbackValue='Ejecuciones totales'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- KPI 2: Tiempo Acumulado -->
-                <Border Grid.Column="1" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#1E3A8A" BorderThickness="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#1E293B" Offset="0" />
-                            <GradientStop Color="#0F172A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Grid.Column="1" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
                     <StackPanel>
-                        <Border Height="2" Background="#38BDF8" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
-                        <TextBlock Text="⏱️ Tiempo Total" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
-                        <TextBlock Text="{Binding FormattedTotalDuration}" FontSize="18" FontWeight="Bold" Foreground="#38BDF8" Margin="0,4,0,0" />
-                        <TextBlock Text="Tiempo flujo acumulado" FontSize="9.5" Foreground="#64748B" />
+                        <Border Height="2" Background="{DynamicResource AccentCyanBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalTime], FallbackValue='⏱️ Tiempo Total'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedTotalDuration}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_AccumulatedDuration], FallbackValue='Tiempo flujo acumulado'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- KPI 3: Latencia Media -->
-                <Border Grid.Column="2" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#064E3B" BorderThickness="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#1E293B" Offset="0" />
-                            <GradientStop Color="#0F172A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Grid.Column="2" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
                     <StackPanel>
-                        <Border Height="2" Background="#10B981" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
-                        <TextBlock Text="⚡ Latencia Media" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
-                        <TextBlock Text="{Binding FormattedAvgLatency}" FontSize="18" FontWeight="Bold" Foreground="#34D399" Margin="0,4,0,0" />
-                        <TextBlock Text="Por elemento / nodo" FontSize="9.5" Foreground="#64748B" />
+                        <Border Height="2" Background="{DynamicResource AccentSuccessBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_AvgLatency], FallbackValue='⚡ Latencia Media'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedAvgLatency}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_PerItemNode], FallbackValue='Por elemento / nodo'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- KPI 4: RAM Asignada -->
-                <Border Grid.Column="3" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#581C87" BorderThickness="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#1E293B" Offset="0" />
-                            <GradientStop Color="#0F172A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Grid.Column="3" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
                     <StackPanel>
-                        <Border Height="2" Background="#A855F7" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
-                        <TextBlock Text="💾 RAM Estimada" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
-                        <TextBlock Text="{Binding FormattedTotalRam}" FontSize="18" FontWeight="Bold" Foreground="#C084FC" Margin="0,4,0,0" />
-                        <TextBlock Text="Total asignaciones" FontSize="9.5" Foreground="#64748B" />
+                        <Border Height="2" Background="{DynamicResource AccentPurpleBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_EstimatedRam], FallbackValue='💾 RAM Estimada'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedTotalRam}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalAllocations], FallbackValue='Total asignaciones'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- KPI 5: GPU DirectML -->
-                <Border Grid.Column="4" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" BorderBrush="#083344" BorderThickness="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#1E293B" Offset="0" />
-                            <GradientStop Color="#0F172A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Grid.Column="4" CornerRadius="8" Padding="12,10" Margin="3,0,3,0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
                     <StackPanel>
-                        <Border Height="2" Background="#06B6D4" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
-                        <TextBlock Text="🎮 Ops GPU" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
-                        <TextBlock Text="{Binding GpuAcceleratedOpsCount, StringFormat='{}{0} nodos'}" FontSize="18" FontWeight="Bold" Foreground="#22D3EE" Margin="0,4,0,0" />
-                        <TextBlock Text="Aceleración DirectML" FontSize="9.5" Foreground="#64748B" />
+                        <Border Height="2" Background="{DynamicResource AccentCyanBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_GpuOps], FallbackValue='🎮 Ops GPU'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding GpuAcceleratedOpsCount}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
+                            <TextBlock Text=" " FontSize="18" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_NodesCountSuffix], FallbackValue='nodos'}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" VerticalAlignment="Bottom" Margin="0,0,0,2" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_DirectMlAcc], FallbackValue='Aceleración DirectML'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
 
                 <!-- KPI 6: Cuellos de Botella -->
-                <Border Grid.Column="5" CornerRadius="8" Padding="12,10" Margin="6,0,0,0" BorderBrush="#4C0519" BorderThickness="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#1E293B" Offset="0" />
-                            <GradientStop Color="#0F172A" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
+                <Border Grid.Column="5" CornerRadius="8" Padding="12,10" Margin="6,0,0,0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
                     <StackPanel>
-                        <Border Height="2" Background="#F43F5E" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
-                        <TextBlock Text="⚠️ Cuellos Botella" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" />
-                        <TextBlock Text="{Binding BottleneckNodesCount, StringFormat='{}{0} nodos'}" FontSize="18" FontWeight="Bold" Foreground="#FB7185" Margin="0,4,0,0" />
-                        <TextBlock Text="&gt; 25% tiempo flujo" FontSize="9.5" Foreground="#64748B" />
+                        <Border Height="2" Background="{DynamicResource AccentErrorBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,6" CornerRadius="1" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_Bottlenecks], FallbackValue='⚠️ Cuellos Botella'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding BottleneckNodesCount}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" />
+                            <TextBlock Text=" " FontSize="18" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_NodesCountSuffix], FallbackValue='nodos'}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentErrorBrush}" VerticalAlignment="Bottom" Margin="0,0,0,2" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_BottleneckThreshold], FallbackValue='> 25% tiempo flujo'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -223,13 +198,13 @@
                 <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
                     <StackPanel>
                         <!-- Distribución de Tiempo por Nodo -->
-                        <Border Background="#131D31" CornerRadius="10" BorderBrush="#243048" BorderThickness="1" Padding="14" Margin="0,0,0,10">
+                        <Border Background="{DynamicResource BgCardBrush}" CornerRadius="10" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Padding="14" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock Text="⏱️ Distribución de Tiempo (%)" FontWeight="Bold" FontSize="12" Foreground="#F8FAFC" Margin="0,0,0,10" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TimeDistribution], FallbackValue='⏱️ Distribución de Tiempo (%)'}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10" />
                                 <ItemsControl ItemsSource="{Binding TimeDistributionBars}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Margin="0,4">
+                                             <Grid Margin="0,4">
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
@@ -239,8 +214,8 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#E2E8F0" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding FormattedValue}" FontSize="10.5" FontWeight="SemiBold" Foreground="#38BDF8" />
+                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FormattedValue}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" />
                                                 </Grid>
                                                 <ProgressBar Grid.Row="1" Value="{Binding Percentage, Mode=OneWay}" Maximum="100" Style="{StaticResource ModernRoundedProgressBar}" Foreground="{StaticResource TimeBarGradient}" Margin="0,4,0,0" />
                                             </Grid>
@@ -251,9 +226,9 @@
                         </Border>
 
                         <!-- Distribución de Memoria RAM por Nodo -->
-                        <Border Background="#131D31" CornerRadius="10" BorderBrush="#243048" BorderThickness="1" Padding="14">
+                        <Border Background="{DynamicResource BgCardBrush}" CornerRadius="10" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Padding="14">
                             <StackPanel>
-                                <TextBlock Text="💾 Asignación de RAM (%)" FontWeight="Bold" FontSize="12" Foreground="#F8FAFC" Margin="0,0,0,10" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_RamDistribution], FallbackValue='💾 Asignación de RAM (%)'}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10" />
                                 <ItemsControl ItemsSource="{Binding RamDistributionBars}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -267,8 +242,8 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="#E2E8F0" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding FormattedValue}" FontSize="10.5" FontWeight="SemiBold" Foreground="#C084FC" />
+                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FormattedValue}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPurpleBrush}" />
                                                 </Grid>
                                                 <ProgressBar Grid.Row="1" Value="{Binding Percentage, Mode=OneWay}" Maximum="100" Style="{StaticResource ModernRoundedProgressBar}" Foreground="{StaticResource RamBarGradient}" Margin="0,4,0,0" />
                                             </Grid>
@@ -281,7 +256,7 @@
                 </ScrollViewer>
 
                 <!-- Columna Derecha: Ranking Detallado en DataGrid -->
-                <Border Grid.Column="1" Background="#131D31" CornerRadius="10" BorderBrush="#243048" BorderThickness="1" Padding="10">
+                <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" CornerRadius="10" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Padding="10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -296,18 +271,22 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="📋 Ranking Comparativo de Rendimiento" FontWeight="Bold" FontSize="12.5" Foreground="#F8FAFC" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding FilteredNodeRows.Count, StringFormat='{} ({0} filtrados)'}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_PerformanceRanking], FallbackValue='📋 Ranking Comparativo de Rendimiento'}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text=" (" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                <TextBlock Text="{Binding FilteredNodeRows.Count}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text=" " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_FilteredCount], FallbackValue='filtrados'}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text=")" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             </StackPanel>
 
-                            <Border Grid.Column="1" Background="#0F172A" CornerRadius="6" BorderBrush="#334155" BorderThickness="1" Padding="6,2">
+                            <Border Grid.Column="1" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="6" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Padding="6,2">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="🔍" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#64748B" />
-                                    <TextBox Grid.Column="1" Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" Foreground="#F8FAFC" BorderThickness="0" FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="0" Text="🔍" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Grid.Column="1" Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" FontSize="11" VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
                         </Grid>
@@ -322,20 +301,20 @@
                                   IsReadOnly="True"
                                   Background="Transparent"
                                   BorderThickness="0"
-                                  RowBackground="#0D1322"
-                                  AlternatingRowBackground="#121A2C"
-                                  Foreground="#F8FAFC"
+                                  RowBackground="{DynamicResource BgDarkBrush}"
+                                  AlternatingRowBackground="{DynamicResource BgSurfaceBrush}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}"
                                   GridLinesVisibility="Horizontal"
-                                  HorizontalGridLinesBrush="#1E293B"
+                                  HorizontalGridLinesBrush="{DynamicResource BorderDarkBrush}"
                                   HeadersVisibility="Column"
                                   FontSize="11.5">
                             <DataGrid.Resources>
                                 <Style TargetType="DataGridColumnHeader">
-                                    <Setter Property="Background" Value="#172238" />
-                                    <Setter Property="Foreground" Value="#94A3B8" />
+                                    <Setter Property="Background" Value="{DynamicResource BgHeaderBrush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
                                     <Setter Property="Padding" Value="8,7" />
-                                    <Setter Property="BorderBrush" Value="#243048" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
                                     <Setter Property="BorderThickness" Value="0,0,1,1" />
                                 </Style>
                                 <Style TargetType="DataGridCell">
@@ -356,19 +335,19 @@
 
                             <DataGrid.Columns>
                                 <!-- Columna: Nodo (Icono + Título) -->
-                                <DataGridTemplateColumn Header="Nodo" Width="170" SortMemberPath="Title">
+                                <DataGridTemplateColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColNode], FallbackValue='Nodo'}" Width="170" SortMemberPath="Title">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding NodeIcon}" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#F8FAFC" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
                                 <!-- Columna: Categoría (Pill Badge) -->
-                                <DataGridTemplateColumn Header="Categoría" Width="120" SortMemberPath="Category">
+                                <DataGridTemplateColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColCategory], FallbackValue='Categoría'}" Width="120" SortMemberPath="Category">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Padding="6,2" CornerRadius="8" Background="{Binding CategoryBadgeBackground}" BorderBrush="{Binding CategoryBadgeBorder}" BorderThickness="1" HorizontalAlignment="Left">
@@ -381,14 +360,14 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="Invocac." Binding="{Binding ExecutionCount}" Width="65" />
-                                <DataGridTextColumn Header="Lat. Total" Binding="{Binding FormattedAvgDuration}" Width="85" />
-                                <DataGridTextColumn Header="Lat. (8 ops)" Binding="{Binding FormattedRollingDuration}" Width="95" FontWeight="Bold" Foreground="#38BDF8" />
-                                <DataGridTextColumn Header="RAM Media" Binding="{Binding FormattedAvgRam}" Width="85" />
-                                <DataGridTextColumn Header="RAM Pico" Binding="{Binding FormattedPeakRam}" Width="85" Foreground="#C084FC" />
+                                <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColInvocations], FallbackValue='Invocac.'}" Binding="{Binding ExecutionCount}" Width="65" />
+                                <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColTotalLatency], FallbackValue='Lat. Total'}" Binding="{Binding FormattedAvgDuration}" Width="85" />
+                                <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColRollingLatency], FallbackValue='Lat. (8 ops)'}" Binding="{Binding FormattedRollingDuration}" Width="95" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
+                                <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColAvgRam], FallbackValue='RAM Media'}" Binding="{Binding FormattedAvgRam}" Width="85" />
+                                <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColPeakRam], FallbackValue='RAM Pico'}" Binding="{Binding FormattedPeakRam}" Width="85" Foreground="{DynamicResource AccentPurpleBrush}" />
 
                                 <!-- Columna: GPU Badge -->
-                                <DataGridTemplateColumn Header="GPU" Width="50">
+                                <DataGridTemplateColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColGpu], FallbackValue='GPU'}" Width="50">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Border Padding="4,1" CornerRadius="4" Background="#083344" BorderBrush="#06B6D4" BorderThickness="1"
@@ -401,7 +380,7 @@
                                 </DataGridTemplateColumn>
 
                                 <!-- Columna: Cuello de Botella Visual -->
-                                <DataGridTemplateColumn Header="Cuello Botella" Width="100" SortMemberPath="RelativeBottleneckRatio">
+                                <DataGridTemplateColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColBottleneck], FallbackValue='Cuello Botella'}" Width="100" SortMemberPath="RelativeBottleneckRatio">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid VerticalAlignment="Center">
@@ -422,7 +401,7 @@
             </Grid>
 
             <!-- 4. Barra Inferior de Acciones Glassmorphism -->
-            <Border Grid.Row="3" Background="#131D31" CornerRadius="0,0,14,14" Padding="18,12" BorderBrush="#1E293B" BorderThickness="0,1,0,0">
+            <Border Grid.Row="3" Background="{DynamicResource BgHeaderBrush}" CornerRadius="0,0,14,14" Padding="18,12" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -433,19 +412,19 @@
                         <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource SecondaryButton}" Padding="12,6" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📄 " FontSize="11" />
-                                <TextBlock Text="Exportar CSV" FontSize="11" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportCsv], FallbackValue='Exportar CSV'}" FontSize="11" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ExportJsonCommand}" Style="{StaticResource SecondaryButton}" Padding="12,6" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{}{ } " FontSize="11" />
-                                <TextBlock Text="Exportar JSON" FontSize="11" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportJson], FallbackValue='Exportar JSON'}" FontSize="11" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding ResetAllMetricsCommand}" Style="{StaticResource SecondaryButton}" Padding="12,6">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🔄 " FontSize="11" />
-                                <TextBlock Text="Restablecer Todo" FontSize="11" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ResetAll], FallbackValue='Restablecer Todo'}" FontSize="11" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

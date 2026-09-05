@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DataContext="{d:DesignInstance Type=vm:AnnotationViewModel}"
              Width="{Binding Width, Mode=TwoWay}"
@@ -89,17 +90,17 @@
                     <!-- Paleta de Colores Rápidos -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
                         <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#FEF08A"
-                                Command="{Binding ChangeColorCommand}" CommandParameter="#FEF08A" ToolTip="Amarillo" />
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#FEF08A" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_ColorYellow], FallbackValue='Amarillo'}" />
                         <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#BAE6FD"
-                                Command="{Binding ChangeColorCommand}" CommandParameter="#BAE6FD" ToolTip="Azul" />
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#BAE6FD" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_ColorBlue], FallbackValue='Azul'}" />
                         <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#BBF7D0"
-                                Command="{Binding ChangeColorCommand}" CommandParameter="#BBF7D0" ToolTip="Verde" />
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#BBF7D0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_ColorGreen], FallbackValue='Verde'}" />
                         <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#DDD6FE"
-                                Command="{Binding ChangeColorCommand}" CommandParameter="#DDD6FE" ToolTip="Morado" />
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#DDD6FE" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_ColorPurple], FallbackValue='Morado'}" />
                         <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#FECDD3"
-                                Command="{Binding ChangeColorCommand}" CommandParameter="#FECDD3" ToolTip="Rosa" />
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#FECDD3" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_ColorPink], FallbackValue='Rosa'}" />
                         <Button Style="{StaticResource ColorCircleButtonStyle}" Background="#E2E8F0"
-                                Command="{Binding ChangeColorCommand}" CommandParameter="#E2E8F0" ToolTip="Gris" />
+                                Command="{Binding ChangeColorCommand}" CommandParameter="#E2E8F0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_ColorGray], FallbackValue='Gris'}" />
                     </StackPanel>
 
                     <!-- Botón de Eliminar Nota -->
@@ -113,7 +114,7 @@
                             FontWeight="Bold"
                             Padding="4,0"
                             Cursor="Hand"
-                            ToolTip="Eliminar Nota"
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Annotation_DeleteToolTip], FallbackValue='Eliminar Nota'}"
                             VerticalAlignment="Center" />
                     </Grid>
                 </Grid>

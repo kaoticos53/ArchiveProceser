@@ -42,7 +42,7 @@
                             Margin="4,0,0,0"
                             FontSize="9.5"
                             Cursor="Hand"
-                            ToolTip="Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)" />
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_OpenPresetManager], FallbackValue='Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)'}" />
                 </Grid>
 
                 <!-- Slider for Numeric Range Parameters (e.g. Quality) -->
@@ -129,7 +129,7 @@
                             FontSize="10" 
                             FontWeight="Bold" 
                             Cursor="Hand"
-                            ToolTip="Insertar variable dinámicamente ({x})">
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
                         <Button.Resources>
                             <Style TargetType="Border">
                                 <Setter Property="CornerRadius" Value="0,4,4,0" />
@@ -197,7 +197,7 @@
                                 FontSize="10" 
                                 FontWeight="Bold" 
                                 Cursor="Hand"
-                                ToolTip="Insertar variable dinámicamente ({x})">
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
                             <Button.Resources>
                                 <Style TargetType="Border">
                                     <Setter Property="CornerRadius" Value="0,0,4,0" />
@@ -240,7 +240,7 @@
                             Padding="6,2" 
                             FontSize="10" 
                             Cursor="Hand"
-                            ToolTip="Gestionar lista de contraseñas (Importar / Exportar / Editar)">
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_OpenPasswordManager], FallbackValue='Gestionar lista de contraseñas (Importar / Exportar / Editar)'}">
                         <Button.Resources>
                             <Style TargetType="Border">
                                 <Setter Property="CornerRadius" Value="0" />
@@ -279,7 +279,7 @@
                             FontSize="10" 
                             FontWeight="Bold" 
                             Cursor="Hand"
-                            ToolTip="Insertar variable dinámicamente ({x})">
+                            ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
                         <Button.Resources>
                             <Style TargetType="Border">
                                 <Setter Property="CornerRadius" Value="0,4,4,0" />
@@ -304,7 +304,7 @@
                          Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource AccentPrimaryBrush}" 
                          BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,3"
                          Margin="0,0,4,0" FontWeight="SemiBold"
-                         ToolTip="Nombre de la variable">
+                         ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_VariableNameToolTip], FallbackValue='Nombre de la variable'}">
                     <TextBox.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="4" />
@@ -338,7 +338,7 @@
                         FontSize="10" 
                         FontWeight="Bold" 
                         Cursor="Hand"
-                        ToolTip="Insertar variable ({x})">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable ({x})'}">
                     <Button.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="0" />
@@ -353,7 +353,7 @@
                         Content="🗑"
                         Background="{DynamicResource BgHoverBrush}" Foreground="{DynamicResource AccentErrorBrush}" 
                         BorderThickness="0" Padding="6,2" FontSize="10" Cursor="Hand"
-                        ToolTip="Eliminar variable">
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_DeleteVariableToolTip], FallbackValue='Eliminar variable'}">
                     <Button.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="0,4,4,0" />

@@ -2,6 +2,53 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-05] - Soporte Dinámico de Temas y Localización Completa (i18n) en el Panel de Métricas y Profiling de Flujo
+
+### 🎯 Objetivos y Alcance
+1. **Soporte Dinámico de Temas en el Panel Centralizado de Rendimiento (`WorkflowMetricsDashboardWindow.xaml`)**:
+   - Eliminación de colores hexadecimales oscuros fijos (`#0B0F19`, `#131D31`, `#1E293B`, `#243048`, `#0D1322`, `#121A2C`, `#172238`, `#F8FAFC`, `#94A3B8`, `#64748B`, etc.).
+   - Migración completa a pinceles dinámicos (`{DynamicResource BgDarkBrush}`, `BgHeaderBrush`, `BgCardBrush`, `BgSurfaceBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `TextSecondaryBrush`, `AccentPrimaryBrush`, `AccentCyanBrush`, `AccentPurpleBrush`, `AccentSuccessBrush`, `AccentErrorBrush`).
+   - El panel ahora reacciona y se adapta inmediatamente a cualquier cambio de tema visual (`ThemeManager.Instance`) o personalización sin requerir reinicio de la aplicación.
+2. **Localización e Internacionalización Completa (i18n)**:
+   - **`WorkflowMetricsDashboardWindow.xaml`**: Vinculación de títulos, tooltips, etiquetas de KPIs ("📦 Invocaciones", "⏱️ Tiempo Total", "⚡ Latencia Media", "💾 RAM Estimada", "🎮 Ops GPU", "⚠️ Cuellos Botella", etc.), cabeceras de distribución ("⏱️ Distribución de Tiempo (%)", "💾 Asignación de RAM (%)"), ranking comparativo, buscador y columnas del DataGrid a `LocalizationManager.Instance`.
+   - **`NodeInspectorPanelView.xaml` (Pestaña 6 - Métricas)**: Vinculación completa de métricas de tarjeta ("⚡ Latencia Media", "💾 RAM / Item", "🖥️ CPU & Hardware", "📦 Elementos", alerta de cuello de botella, historial rodante y botón de restablecimiento).
+   - Incorporación de todas las cadenas en `FileFlow.App/Resources/Strings.resx` y `Strings.es.resx`.
+3. **Pruebas y Verificación**:
+   - **510 / 510 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+   - Compilación limpia con 0 advertencias y 0 errores (`--warnaserror`).
+
+---
+
+## [2026-09-05] - Acciones Masivas en Selección Múltiple de Nodos (Color, Breakpoints, Logs, Copiar, Cortar, Duplicar y Borrar) y Portapapeles DAG con Parámetros
+
+### 🎯 Objetivos y Alcance
+1. **Acciones en Lote para Selecciones Múltiples en el Lienzo DAG (`NodeViewModel.cs` & `EditorViewModel.cs`)**:
+   - Al seleccionar múltiples nodos y ejecutar cualquier acción desde el menú contextual o cabecera de tarjeta, la operación se aplica de forma uniforme a todos los nodos seleccionados:
+     - **Cambiar color de acento (`ChangeColor` / `ChooseCustomColor`)**: Aplica el nuevo color de encabezado y acento visual a todas las tarjetas seleccionadas.
+     - **Alternar Punto de Interrupción (`ToggleBreakpoint`)**: Activa o desactiva los breakpoints de forma sincronizada en todos los nodos seleccionados.
+     - **Alternar Registro de Logs (`ToggleLogging`)**: Habilita o deshabilita la emisión de logs en el lote seleccionado.
+     - **Copiar, Cortar, Duplicar y Eliminar (`CopySelectedNodes`, `CutSelectedNodes`, `DuplicateSelectedNodes`, `DeleteSelectedNodes`)**: Unificación mediante el resolvedor `ResolveTargetNodes` para procesar la selección completa incluso si se invoca desde el menú contextual de un nodo particular.
+2. **Servicio Centralizado de Portapapeles de Nodos (`INodeClipboardService` & `NodeClipboardService`)**:
+   - Soporte para copiar (`Ctrl+C`), cortar (`Ctrl+X`), pegar (`Ctrl+V`) y duplicar (`Ctrl+D`) nodos de forma individual o múltiple en el lienzo visual DAG.
+   - Serialización de nodos y aristas internas a formato JSON estructurado (`NodeClipboardPackage`) e interoperabilidad con el portapapeles del sistema operativo (`Clipboard.SetText` / `Clipboard.GetText`), además de una caché en memoria de alta velocidad como fallback seguro para entornos con restricciones de portapapeles.
+   - Preservación íntegra de todos los parámetros de configuración de los nodos: tipos primitivos, variables dinámicas (`VariablesDictionary`), reglas de enrutamiento (`CasesJson`), configuración de pasos de renombrado (`MethodSteps`), selectores de IA y parámetros polimórficos mediante `UnwrapJsonValue`.
+   - Regeneración determinista de identificadores únicos (`Guid`) para los nodos y puertos pegados/duplicados, manteniendo intactas todas las conexiones y aristas internas entre los nodos seleccionados.
+   - Desplazamiento geométrico relativo (+40, +40) o posicionamiento en las coordenadas del cursor al hacer clic derecho.
+3. **Integración MVVM en el Editor de Flujos (`EditorViewModel.cs`)**:
+   - Nuevos comandos RelayCommand: `CopySelectedNodesCommand`, `CutSelectedNodesCommand`, `PasteNodesCommand`, `DuplicateSelectedNodesCommand`.
+   - Soporte de pegado en coordenadas explícitas (`Point? targetLocation`) para contextualización visual desde el menú contextual del lienzo.
+4. **Capa de Presentación y Atajos de Teclado (`NodeCardView.xaml`, `EditorView.xaml`, `MainWindow.xaml`)**:
+   - Menú contextual enriquecido en tarjetas de nodo (`NodeCardView.xaml`): Copiar, Cortar, Duplicar y Eliminar con iconos y atajos visibles.
+   - Menú contextual global en el lienzo (`EditorView.xaml`): Pegar nodos, Crear anotación, Crear grupo y Ajustar vista al contenido (`Fit to Content`).
+   - Atajos de teclado globales en ventana y canvas (`MainWindow.xaml` y `EditorView.xaml.cs` KeyDown) para `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `Ctrl+D` y `Delete`.
+5. **Localización e Internacionalización (i18n)**:
+   - Nuevas claves multilingües en `FileFlow.App/Resources/Strings.resx` y `Strings.es.resx`: `CopyNode`, `CutNode`, `DuplicateNode`, `PasteNode`, `PasteNodes`.
+6. **Suite de Pruebas Unitarias (`NodeClipboardServiceTests.cs` & `EditorViewModelTests.cs`)**:
+   - 7 pruebas unitarias de portapapeles y 4 pruebas unitarias de acciones en lote (`BatchChangeColor`, `BatchToggleBreakpoint`, `BatchToggleLogging`, `BatchActions_SingleNode`).
+   - **510 / 510 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-04] - Optimización de Rendimiento al Límite Técnico: Enrutamiento DAG Zero-Allocation, Vectorización SIMD en Tensores IA, Caching de Pasos en Renombrado Masivo, I/O Asíncrono en Sinks y Throttle Lock-Free de UI
 
 ### 🎯 Objetivos y Alcance
@@ -3058,6 +3105,49 @@ La barra de estado inferior de la aplicación mostraba las claves de localizaci�
 2. **Compilación a Documento PDF ([`docs/manual_usuario_principiantes.pdf`](file:///docs/manual_usuario_principiantes.pdf))**:
    - Compilado automáticamente mediante Edge/Chromium Headless con diseño tipográfico A4 a color (1053.1 KB).
    - Actualizado `installer/build-pdf-manual.ps1` y `installer/build-portable.ps1` para incluir los 3 manuales PDF en la distribución de la aplicación.
+
+---
+
+## 📅 2026-09-05 — Localización Completa de Interfaz (i18n) y Erradicación de Cadenas Hardcodeadas
+
+### 🎯 Objetivo
+Auditar, extraer y conectar todas las cadenas de texto visibles al usuario (XAML y C# ViewModels) al sistema de internacionalización dinámico `LocalizationManager.Instance` mediante diccionarios de recursos (`Strings.resx` y `Strings.es.resx`), garantizando paridad 100% entre Español (`es-ES`) e Inglés (`en-US`), cumpliendo estrictamente con la **Regla 5** (i18n reactivo en UI) y la **Regla 6** (co-ubicación de recursos en plugins).
+
+### 🛠️ Cambios Implementados
+
+1. **Diccionarios de Recursos (`FileFlow.App/Resources/Strings.resx` y `Strings.es.resx`):**
+   - Agregadas más de 45 nuevas claves de localización para:
+     - **Métricas y Telemetría:** `Metrics_Col*`, `Hardware_RamLabel`, `Hardware_CpuLabel`, `Hardware_GpuLabel`.
+     - **Personalizador de Temas:** `Theme_PreviewActions`, `Theme_SampleText`, `Theme_SampleTableCol*`.
+     - **Editor de Texto y Vista Previa:** `TextEditor_*`, `Preview_WindowTitle`, `Preview_Of`, `Preview_PreviousFileToolTip`, `Preview_NextFileToolTip`, `Preview_BadgeOriginal`, `Preview_BadgeProcessed`, `Preview_InspectFileBtn`, `Preview_InspectFileToolTip`, `Preview_NoAssociatedFile`.
+     - **Inspector de Nodos:** `Inspector_AssociatedMetadata`, `Inspector_Tags`, `Inspector_Folder`.
+     - **Barra de Control y Ajustes:** `ControlBar_Watcher`, `Settings_AiModels_Downloading`, `Settings_AiModels_DirLabel`, `Settings_CustomUrlsActiveToolTip`, `Settings_ConfigureUrlsToolTip`.
+     - **Notas Adhesivas y Parámetros:** `Annotation_DeleteToolTip`, `Annotation_Color*`, `Node_Param_OpenPresetManager`, `Node_Param_OpenPasswordManager`, `Node_Param_InsertVariableToolTip`, `Node_Param_VariableNameToolTip`, `Node_Param_DeleteVariableToolTip`.
+     - **Mensajes de Diálogo y Errores:** `Common_None`, `Msg_OpenPresetsError`, `Msg_OpenPasswordsError`, `Msg_OpenSettingsError`, `Msg_OpenAboutError`, `Msg_OpenMetricsError`, `Msg_ExportCsvError`, `Msg_ExportJsonError`.
+
+2. **Vistas XAML de `FileFlow.App` Localizadas:**
+   - [`WorkflowMetricsDashboardWindow.xaml`](file:///FileFlow.App/Views/Components/WorkflowMetricsDashboardWindow.xaml): Subtítulos de KPI, cabeceras de columnas del DataGrid, botones de exportación CSV/JSON y reset de métricas.
+   - [`ThemeCustomizerWindow.xaml`](file:///FileFlow.App/Views/Components/ThemeCustomizerWindow.xaml): Acciones de previsualización, texto de muestra y tabla de ejemplo.
+   - [`TextEditorDialogWindow.xaml`](file:///FileFlow.App/Views/Components/TextEditorDialogWindow.xaml): Título, subtítulo, tooltips de copiado/limpieza y footer con atajos de teclado.
+   - [`FilePreviewerWindow.xaml`](file:///FileFlow.App/Preview/Views/FilePreviewerWindow.xaml): Título de ventana, tooltips de navegación anterior/siguiente y contador de archivos ("X de Y").
+   - [`ImageCompareSliderControl.xaml`](file:///FileFlow.App/Preview/Controls/ImageCompareSliderControl.xaml): Badges flotantes "Original" y "Procesado".
+   - [`StatusBarView.xaml`](file:///FileFlow.App/Views/StatusBarView.xaml): Etiquetas de telemetría de hardware "RAM: ", "CPU: ", "GPU: ".
+   - [`ControlBarView.xaml`](file:///FileFlow.App/Views/ControlBarView.xaml): Texto del botón "Vigilante" (Watchdog).
+   - [`AnnotationCardView.xaml`](file:///FileFlow.App/Views/Components/AnnotationCardView.xaml): Tooltips de paleta de colores y botón de eliminar nota adhesiva.
+   - [`AiModelDownloadDialog.xaml`](file:///FileFlow.App/Views/Components/AiModelDownloadDialog.xaml): Indicadores de estado de descarga, tooltips de URLs y ruta de carpeta de modelos.
+   - [`NodeParameterTemplates.xaml`](file:///FileFlow.App/Themes/Templates/NodeParameterTemplates.xaml): Tooltips de gestor de presets, gestor de contraseñas, inserción y eliminación de variables dinámicas.
+   - [`InspectorTemplates.xaml`](file:///FileFlow.App/Themes/Templates/InspectorTemplates.xaml): Etiquetas del panel expandible de snapshots (Ruta Original, Tamaño, Carpeta, Metadatos Asociados, Etiquetas).
+
+3. **Plugins Autónomos (Co-ubicación de Recursos - Regla 6):**
+   - [`FileFlow.Plugin.FileSystem/UI/Views/AdvancedRenamerEditorWindow.xaml`](file:///FileFlow.Plugin.FileSystem/UI/Views/AdvancedRenamerEditorWindow.xaml): Conexión de tooltips y mensaje de estado vacío a `FileFlow.Plugin.FileSystem/Resources/Strings.resx` y `Strings.es.resx`.
+
+4. **ViewModels C# y Cuadros de Diálogo:**
+   - [`LogViewModel.cs`](file:///FileFlow.App/ViewModels/LogViewModel.cs), [`StatusBarViewModel.cs`](file:///FileFlow.App/ViewModels/StatusBarViewModel.cs), [`NodeParameterViewModel.cs`](file:///FileFlow.App/ViewModels/NodeParameterViewModel.cs), [`EditorViewModel.cs`](file:///FileFlow.App/ViewModels/EditorViewModel.cs), [`ControlBarViewModel.cs`](file:///FileFlow.App/ViewModels/ControlBarViewModel.cs), [`WorkflowMetricsDashboardViewModel.cs`](file:///FileFlow.App/ViewModels/WorkflowMetricsDashboardViewModel.cs): Sustitución de cadenas hardcodeadas en mensajes de diálogo y alertas por llamadas a `LocalizationManager.Instance.GetString(...)`.
+
+### 🧪 Verificación y Pruebas
+- **Compilación de la Solución:** `dotnet build FileFlow.slnx --warnaserror` → **0 advertencias, 0 errores**.
+- **Ejecución de Pruebas Unitarias:** `dotnet test FileFlow.Tests/FileFlow.Tests.csproj` → **510 tests ejecutados, 510 superados (100%)**.
+
 
 
 

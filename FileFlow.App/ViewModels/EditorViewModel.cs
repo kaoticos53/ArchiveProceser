@@ -16,7 +16,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private bool _disposed;
     private readonly PluginLoader _pluginLoader;
     private readonly Services.IVariableDiscoveryService _variableDiscoveryService;
+    private readonly Services.INodeClipboardService _clipboardService;
     private readonly Action _preferencesChangedHandler;
+
+    public Services.INodeClipboardService ClipboardService => _clipboardService;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
@@ -71,10 +74,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     private readonly Dictionary<string, List<ConnectionViewModel>> _connectionLookup = new(StringComparer.OrdinalIgnoreCase);
 
-    public EditorViewModel(PluginLoader pluginLoader, Services.IVariableDiscoveryService? variableDiscoveryService = null)
+    public EditorViewModel(
+        PluginLoader pluginLoader,
+        Services.IVariableDiscoveryService? variableDiscoveryService = null,
+        Services.INodeClipboardService? clipboardService = null)
     {
         _pluginLoader = pluginLoader;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
+        _clipboardService = clipboardService ?? new Services.NodeClipboardService(_pluginLoader);
         _globalOutputDir = UserPreferencesService.Instance.Preferences.DefaultGlobalOutputDir;
         _preferencesChangedHandler = () =>
         {
@@ -239,13 +246,90 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Nodes.Remove(node);
     }
 
-    [RelayCommand]
-    public void DeleteSelectedNodes()
+    private List<NodeViewModel> ResolveTargetNodes(object? parameter)
     {
-        var selectedNodes = Nodes.Where(n => n.IsSelected).ToList();
-        foreach (var node in selectedNodes)
+        if (parameter is NodeViewModel singleNode)
+        {
+            if (singleNode.IsSelected)
+            {
+                var selected = Nodes.Where(n => n.IsSelected).ToList();
+                if (selected.Count > 1 && selected.Contains(singleNode))
+                {
+                    return selected;
+                }
+            }
+            return [singleNode];
+        }
+
+        var targets = Nodes.Where(n => n.IsSelected).ToList();
+        if (targets.Count == 0 && SelectedNode != null)
+        {
+            targets.Add(SelectedNode);
+        }
+        return targets;
+    }
+
+    [RelayCommand]
+    public void DeleteSelectedNodes(object? parameter = null)
+    {
+        var targets = ResolveTargetNodes(parameter);
+        foreach (var node in targets)
         {
             RemoveNodeWithConnections(node);
+        }
+    }
+
+    [RelayCommand]
+    public void CopySelectedNodes(object? parameter = null)
+    {
+        var targets = ResolveTargetNodes(parameter);
+        if (targets.Count > 0)
+        {
+            _clipboardService.Copy(targets, Connections);
+        }
+    }
+
+    [RelayCommand]
+    public void CutSelectedNodes(object? parameter = null)
+    {
+        var targets = ResolveTargetNodes(parameter);
+        if (targets.Count > 0)
+        {
+            _clipboardService.Copy(targets, Connections);
+            foreach (var node in targets)
+            {
+                RemoveNodeWithConnections(node);
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void PasteNodes(object? positionParam = null)
+    {
+        Point? targetPoint = null;
+        if (positionParam is Point pt)
+        {
+            targetPoint = pt;
+        }
+
+        var newNodes = _clipboardService.Paste(this, targetPoint);
+        if (newNodes.Count > 0)
+        {
+            SelectedNode = newNodes.Last();
+        }
+    }
+
+    [RelayCommand]
+    public void DuplicateSelectedNodes(object? parameter = null)
+    {
+        var targets = ResolveTargetNodes(parameter);
+        if (targets.Count > 0)
+        {
+            var newNodes = _clipboardService.Duplicate(targets, Connections, this);
+            if (newNodes.Count > 0)
+            {
+                SelectedNode = newNodes.Last();
+            }
         }
     }
 
@@ -382,7 +466,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir la Configuración del Flujo: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_OpenSettingsError", "Error al abrir la Configuración del Flujo: {0}"), ex.Message);
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

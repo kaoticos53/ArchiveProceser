@@ -130,7 +130,7 @@
                         <!-- Consumo RAM -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_RamToolTip]}">
                             <TextBlock Text="🧠 " FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="RAM: " FontSize="10.5" Foreground="#94A3B8" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Hardware_RamLabel], FallbackValue='RAM: '}" FontSize="10.5" Foreground="#94A3B8" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding RamText}" FontFamily="Consolas, Segoe UI" FontSize="11" FontWeight="Bold" Foreground="#A5B4FC" VerticalAlignment="Center" />
                         </StackPanel>
 
@@ -140,7 +140,7 @@
                         <!-- Consumo CPU -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_CpuToolTip]}">
                             <TextBlock Text="💻 " FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="CPU: " FontSize="10.5" Foreground="#94A3B8" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Hardware_CpuLabel], FallbackValue='CPU: '}" FontSize="10.5" Foreground="#94A3B8" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding CpuText}" FontFamily="Consolas, Segoe UI" FontSize="11" FontWeight="Bold" Foreground="#67E8F9" VerticalAlignment="Center" />
                         </StackPanel>
 
@@ -150,7 +150,7 @@
                         <!-- Consumo GPU -->
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[StatusBar_GpuToolTip]}">
                             <TextBlock Text="🎮 " FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="GPU: " FontSize="10.5" Foreground="#94A3B8" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Hardware_GpuLabel], FallbackValue='GPU: '}" FontSize="10.5" Foreground="#94A3B8" VerticalAlignment="Center" />
                             <TextBlock Text="{Binding GpuText}" FontFamily="Consolas, Segoe UI" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>

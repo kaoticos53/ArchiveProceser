@@ -90,8 +90,41 @@
 
                     <Separator />
 
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CopyNode]}"
+                              InputGestureText="Ctrl+C"
+                              Command="{Binding PlacementTarget.Tag.CopySelectedNodesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📋" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CutNode]}"
+                              InputGestureText="Ctrl+X"
+                              Command="{Binding PlacementTarget.Tag.CutSelectedNodesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✂" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DuplicateNode]}"
+                              InputGestureText="Ctrl+D"
+                              Command="{Binding PlacementTarget.Tag.DuplicateSelectedNodesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📑" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <Separator />
+
                     <!-- Paleta de colores rápidos -->
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ChangeColor]}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🎨" FontSize="12" />
+                        </MenuItem.Icon>
+
                         <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorEmerald]}"
                                   Command="{Binding PlacementTarget.DataContext.ChangeColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="#10B981">
@@ -159,14 +192,23 @@
                         <Separator />
 
                         <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CustomColor]}"
-                                  Command="{Binding PlacementTarget.DataContext.ChooseCustomColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                  Command="{Binding PlacementTarget.DataContext.ChooseCustomColorCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                            <MenuItem.Icon>
+                                <TextBlock Text="✨" FontSize="12" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                     </MenuItem>
 
                     <Separator />
 
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteNode]}"
-                              Command="{Binding PlacementTarget.Tag.DeleteNodeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                              InputGestureText="Del"
+                              Command="{Binding PlacementTarget.Tag.DeleteSelectedNodesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🗑" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
                 </ContextMenu>
             </nodify:Node.ContextMenu>
 

@@ -102,17 +102,41 @@
   </data>
 
   <!-- Context Menu -->
+  <data name="CopyNode" xml:space="preserve">
+    <value>Copy Node</value>
+  </data>
+  <data name="CutNode" xml:space="preserve">
+    <value>Cut Node</value>
+  </data>
+  <data name="DuplicateNode" xml:space="preserve">
+    <value>Duplicate Node</value>
+  </data>
+  <data name="PasteNode" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="PasteNodes" xml:space="preserve">
+    <value>Paste Nodes</value>
+  </data>
+  <data name="AddAnnotation" xml:space="preserve">
+    <value>Add Sticky Note</value>
+  </data>
+  <data name="AddGroup" xml:space="preserve">
+    <value>Add Group Box</value>
+  </data>
+  <data name="ZoomFit" xml:space="preserve">
+    <value>Fit to Canvas</value>
+  </data>
   <data name="ChangeColor" xml:space="preserve">
-    <value>🎨 Change Node Color</value>
+    <value>Change Node Color</value>
   </data>
   <data name="CustomColor" xml:space="preserve">
-    <value>🎨 Custom Color...</value>
+    <value>Custom Color...</value>
   </data>
   <data name="DeleteNode" xml:space="preserve">
-    <value>🗑 Delete Node</value>
+    <value>Delete Node</value>
   </data>
   <data name="DeleteConnection" xml:space="preserve">
-    <value>🗑 Delete Connection</value>
+    <value>Delete Connection</value>
   </data>
 
   <!-- Colors -->
@@ -777,4 +801,116 @@
   <data name="MetricsDashboard_Title" xml:space="preserve"><value>Flow Profiler &amp; Performance Dashboard</value></data>
   <data name="Inspector_TabMetrics" xml:space="preserve"><value>📊 Performance</value></data>
   <data name="Metrics_ExportSuccess" xml:space="preserve"><value>Metrics exported successfully.</value></data>
+  <data name="Metrics_Executions" xml:space="preserve"><value>Total Executions</value></data>
+  <data name="Metrics_AccumulatedDuration" xml:space="preserve"><value>Accumulated Flow Time</value></data>
+  <data name="Metrics_PerItemNode" xml:space="preserve"><value>Per Item / Node</value></data>
+  <data name="Metrics_TotalAllocations" xml:space="preserve"><value>Total Allocations</value></data>
+  <data name="Metrics_DirectMlAcc" xml:space="preserve"><value>DirectML Acceleration</value></data>
+  <data name="Metrics_ColNode" xml:space="preserve"><value>Node</value></data>
+  <data name="Metrics_ColCategory" xml:space="preserve"><value>Category</value></data>
+  <data name="Metrics_ColInvocations" xml:space="preserve"><value>Invocations</value></data>
+  <data name="Metrics_ColTotalLatency" xml:space="preserve"><value>Total Lat.</value></data>
+  <data name="Metrics_ColRollingLatency" xml:space="preserve"><value>Lat. (8 ops)</value></data>
+  <data name="Metrics_ColAvgRam" xml:space="preserve"><value>Avg RAM</value></data>
+  <data name="Metrics_ColPeakRam" xml:space="preserve"><value>Peak RAM</value></data>
+  <data name="Metrics_ColGpu" xml:space="preserve"><value>GPU</value></data>
+  <data name="Metrics_ColBottleneck" xml:space="preserve"><value>Bottleneck</value></data>
+  <data name="Metrics_ExportCsv" xml:space="preserve"><value>Export CSV</value></data>
+  <data name="Metrics_ExportJson" xml:space="preserve"><value>Export JSON</value></data>
+  <data name="Metrics_ResetAll" xml:space="preserve"><value>Reset All</value></data>
+  <data name="Metrics_ResetNodeMetrics" xml:space="preserve"><value>Reset Node Metrics</value></data>
+
+  <!-- Theme Customizer -->
+  <data name="Theme_PreviewActions" xml:space="preserve"><value>Action Buttons:</value></data>
+  <data name="Theme_PreviewInputs" xml:space="preserve"><value>Text &amp; Code Fields:</value></data>
+  <data name="Theme_PreviewDataTable" xml:space="preserve"><value>Sample Data Table:</value></data>
+  <data name="Theme_ColFile" xml:space="preserve"><value>File</value></data>
+  <data name="Theme_ColResult" xml:space="preserve"><value>Result</value></data>
+  <data name="Theme_BtnPrimary" xml:space="preserve"><value>Primary</value></data>
+  <data name="Theme_BtnSuccess" xml:space="preserve"><value>Success</value></data>
+  <data name="Theme_BtnWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="Theme_BtnDanger" xml:space="preserve"><value>Danger</value></data>
+  <data name="Theme_StandardTextSample" xml:space="preserve"><value>Standard interface text</value></data>
+  <data name="Theme_ExportTitle" xml:space="preserve"><value>Export Visual Theme</value></data>
+  <data name="Theme_ImportTitle" xml:space="preserve"><value>Import Visual Theme</value></data>
+
+  <!-- Text & Prompt Editor Dialog -->
+  <data name="TextEditor_Title" xml:space="preserve"><value>Text &amp; Prompt Editor</value></data>
+  <data name="TextEditor_Subtitle" xml:space="preserve"><value>Configurable parameter</value></data>
+  <data name="TextEditor_CopyFullTextToolTip" xml:space="preserve"><value>Copy full text to clipboard</value></data>
+  <data name="TextEditor_ClearContentToolTip" xml:space="preserve"><value>Clear all content</value></data>
+  <data name="TextEditor_ShortcutFooter" xml:space="preserve"><value>Shortcut: Ctrl + Enter to Save • Esc to Cancel</value></data>
+
+  <!-- File Previewer & Slider -->
+  <data name="Preview_WindowTitle" xml:space="preserve"><value>File Preview — FileFlow Studio</value></data>
+  <data name="Preview_Of" xml:space="preserve"><value>of</value></data>
+  <data name="Preview_PreviousFileToolTip" xml:space="preserve"><value>Previous File (Left Arrow)</value></data>
+  <data name="Preview_NextFileToolTip" xml:space="preserve"><value>Next File (Right Arrow)</value></data>
+  <data name="Preview_BadgeOriginal" xml:space="preserve"><value>Original</value></data>
+  <data name="Preview_BadgeProcessed" xml:space="preserve"><value>Processed</value></data>
+  <data name="Preview_InspectFileToolTip" xml:space="preserve"><value>Preview this file</value></data>
+  <data name="Preview_NoAssociatedFile" xml:space="preserve"><value>No physical file associated with this log line was found for preview.</value></data>
+
+  <!-- Hardware Telemetry -->
+  <data name="Hardware_RamLabel" xml:space="preserve"><value>RAM: </value></data>
+  <data name="Hardware_CpuLabel" xml:space="preserve"><value>CPU: </value></data>
+  <data name="Hardware_GpuLabel" xml:space="preserve"><value>GPU: </value></data>
+
+  <!-- ControlBar & Settings -->
+  <data name="ControlBar_Watcher" xml:space="preserve"><value>Watchdog</value></data>
+  <data name="ControlBar_GlobalOutputTitle" xml:space="preserve"><value>Select Global Output Directory</value></data>
+  <data name="Settings_CustomUrlsActiveToolTip" xml:space="preserve"><value>Custom download URLs active</value></data>
+  <data name="Settings_ConfigureUrlsToolTip" xml:space="preserve"><value>Configure download URLs and alternative mirrors</value></data>
+  <data name="Settings_DeleteModelToolTip" xml:space="preserve"><value>Delete model from disk</value></data>
+
+  <!-- Annotations & Node Parameters -->
+  <data name="Annotation_DeleteToolTip" xml:space="preserve"><value>Delete Sticky Note</value></data>
+  <data name="Annotation_ColorYellow" xml:space="preserve"><value>Yellow</value></data>
+  <data name="Annotation_ColorBlue" xml:space="preserve"><value>Blue</value></data>
+  <data name="Annotation_ColorGreen" xml:space="preserve"><value>Green</value></data>
+  <data name="Annotation_ColorPurple" xml:space="preserve"><value>Purple</value></data>
+  <data name="Annotation_ColorPink" xml:space="preserve"><value>Pink</value></data>
+  <data name="Annotation_ColorGray" xml:space="preserve"><value>Gray</value></data>
+  <data name="Node_Param_OpenPresetManager" xml:space="preserve"><value>Open Preset Manager (Create, Edit, Delete Presets)</value></data>
+  <data name="Node_Param_OpenPasswordManager" xml:space="preserve"><value>Manage password list (Import / Export / Edit)</value></data>
+  <data name="Node_Param_VariableNameToolTip" xml:space="preserve"><value>Variable name</value></data>
+  <data name="Node_Param_InsertVariableToolTip" xml:space="preserve"><value>Insert variable dynamically ({x})</value></data>
+  <data name="Node_Param_DeleteVariableToolTip" xml:space="preserve"><value>Delete variable</value></data>
+  <data name="Inspector_AssociatedMetadata" xml:space="preserve"><value>Associated Metadata:</value></data>
+  <data name="Inspector_Tags" xml:space="preserve"><value>Tags:</value></data>
+  <data name="Inspector_Folder" xml:space="preserve"><value>Directory: </value></data>
+  <data name="Preview_InspectFileBtn" xml:space="preserve"><value>View</value></data>
+  <data name="Settings_AiModels_Downloading" xml:space="preserve"><value>⏳ Downloading models...</value></data>
+  <data name="Settings_AiModels_DirLabel" xml:space="preserve"><value>📁 Models folder: </value></data>
+  <data name="Common_None" xml:space="preserve"><value>None</value></data>
+  <data name="Msg_OpenPresetsError" xml:space="preserve"><value>Error opening Preset Manager: {0}</value></data>
+  <data name="Msg_OpenPasswordsError" xml:space="preserve"><value>Error opening Password Manager: {0}</value></data>
+  <data name="Msg_OpenSettingsError" xml:space="preserve"><value>Error opening Workflow Settings: {0}</value></data>
+  <data name="Msg_OpenAboutError" xml:space="preserve"><value>Error opening About dialog: {0}</value></data>
+  <data name="Msg_OpenMetricsError" xml:space="preserve"><value>Error opening Metrics panel: {0}</value></data>
+  <data name="Msg_ExportCsvError" xml:space="preserve"><value>Error exporting CSV: {0}</value></data>
+  <data name="Msg_ExportJsonError" xml:space="preserve"><value>Error exporting JSON: {0}</value></data>
+  <data name="Metrics_NodesInCanvas" xml:space="preserve"><value>Canvas Nodes</value></data>
+  <data name="Metrics_NodesCountSuffix" xml:space="preserve"><value>nodes</value></data>
+  <data name="Metrics_TotalInvocations" xml:space="preserve"><value>📦 Invocations</value></data>
+  <data name="Metrics_TotalTime" xml:space="preserve"><value>⏱️ Total Time</value></data>
+  <data name="Metrics_AvgLatency" xml:space="preserve"><value>⚡ Avg Latency</value></data>
+  <data name="Metrics_EstimatedRam" xml:space="preserve"><value>💾 Estimated RAM</value></data>
+  <data name="Metrics_GpuOps" xml:space="preserve"><value>🎮 GPU Operations</value></data>
+  <data name="Metrics_Bottlenecks" xml:space="preserve"><value>⚠️ Bottlenecks</value></data>
+  <data name="Metrics_BottleneckThreshold" xml:space="preserve"><value>&gt; 25% flow time</value></data>
+  <data name="Metrics_TimeDistribution" xml:space="preserve"><value>⏱️ Time Distribution (%)</value></data>
+  <data name="Metrics_RamDistribution" xml:space="preserve"><value>💾 RAM Allocation (%)</value></data>
+  <data name="Metrics_PerformanceRanking" xml:space="preserve"><value>📋 Comparative Performance Ranking</value></data>
+  <data name="Metrics_FilteredCount" xml:space="preserve"><value>filtered</value></data>
+  <data name="Metrics_SearchPlaceholder" xml:space="preserve"><value>Search node or category...</value></data>
+  <data name="Metrics_RamPerItem" xml:space="preserve"><value>💾 RAM / Item</value></data>
+  <data name="Metrics_CpuHardware" xml:space="preserve"><value>🖥️ CPU &amp; Hardware</value></data>
+  <data name="Metrics_ItemsProcessed" xml:space="preserve"><value>📦 Items</value></data>
+  <data name="Metrics_TotalLabel" xml:space="preserve"><value>Total: </value></data>
+  <data name="Metrics_PeakLabel" xml:space="preserve"><value>Peak: </value></data>
+  <data name="Metrics_ErrorsLabel" xml:space="preserve"><value>Errors: </value></data>
+  <data name="Metrics_BottleneckAlert" xml:space="preserve"><value>Workflow bottleneck ({0})</value></data>
+  <data name="Metrics_RollingHistory" xml:space="preserve"><value>📈 Rolling History (Last 8 operations)</value></data>
+  <data name="Metrics_ResetNode" xml:space="preserve"><value>Reset Node Metrics</value></data>
 </root>

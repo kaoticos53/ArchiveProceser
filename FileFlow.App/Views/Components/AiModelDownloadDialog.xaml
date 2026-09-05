@@ -86,7 +86,7 @@
                     <!-- Indicador de descarga global -->
                     <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" 
                                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                               Text="⏳ Descargando modelos..." FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Downloading], FallbackValue='⏳ Descargando modelos...'}" FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
                 </Grid>
             </Border>
 
@@ -145,7 +145,7 @@
                                             <!-- Badge URLs personalizadas -->
                                             <Border Background="#2B2412" BorderBrush="#D97706" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" VerticalAlignment="Center"
                                                     Visibility="{Binding HasCustomUrls, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                    ToolTip="URLs de descarga personalizadas activas">
+                                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CustomUrlsActiveToolTip], FallbackValue='URLs de descarga personalizadas activas'}">
                                                 <TextBlock Text="🔧 URLs" FontSize="9" FontWeight="Bold" Foreground="#FBBF24" />
                                             </Border>
                                         </StackPanel>
@@ -190,10 +190,10 @@
                                                 CommandParameter="{Binding}"
                                                 Style="{DynamicResource SecondaryButton}"
                                                 Padding="7,4" Margin="0,0,6,0" FontSize="10" Cursor="Hand"
-                                                ToolTip="Configurar URLs de descarga y espejos alternativos" />
+                                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelUrls_BtnTooltip], FallbackValue='Configurar URLs de descarga y espejos alternativos'}" />
 
                                         <!-- Botón Descargar (visible si NO descargado o durante descarga) -->
-                                        <Button Content="⬇️ Descargar"
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_BtnDownload], FallbackValue='⬇️ Descargar'}"
                                                 Command="{Binding DataContext.DownloadModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}"
                                                 IsEnabled="{Binding CanDownload}"
@@ -202,7 +202,7 @@
                                                 Padding="10,5" FontSize="10.5" Cursor="Hand" />
 
                                         <!-- Botón Eliminar (visible si YA descargado) -->
-                                        <Button Content="🗑️ Eliminar"
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_BtnDelete], FallbackValue='🗑️ Eliminar'}"
                                                 Command="{Binding DataContext.DeleteModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                 CommandParameter="{Binding}"
                                                 Visibility="{Binding IsDownloaded, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -226,7 +226,7 @@
 
             <!-- Ruta de la carpeta -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="📁 Carpeta de modelos: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DirLabel], FallbackValue='📁 Carpeta de modelos: '}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBlock Text="{Binding ModelsDirectory}" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" />
             </StackPanel>
 

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="600"
              ClipToBounds="True" Background="#111318">
@@ -33,11 +34,11 @@
 
         <!-- Badges informativos flotantes -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Background="#CC000000" CornerRadius="6" Padding="8,4">
-            <TextBlock x:Name="OriginalBadgeText" Text="Original" Foreground="#AAAAAA" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock x:Name="OriginalBadgeText" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_BadgeOriginal], FallbackValue='Original'}" Foreground="#AAAAAA" FontSize="11" FontWeight="SemiBold" />
         </Border>
 
         <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16" Background="#CC005577" CornerRadius="6" Padding="8,4">
-            <TextBlock x:Name="ProcessedBadgeText" Text="Procesado" Foreground="#00E5FF" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock x:Name="ProcessedBadgeText" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_BadgeProcessed], FallbackValue='Procesado'}" Foreground="#00E5FF" FontSize="11" FontWeight="SemiBold" />
         </Border>
     </Grid>
 </UserControl>

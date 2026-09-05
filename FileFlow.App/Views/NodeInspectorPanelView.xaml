@@ -581,25 +581,31 @@
                                     <!-- Tarjeta 1: Latencia Media -->
                                     <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,4,6">
                                         <StackPanel>
-                                            <TextBlock Text="⚡ Latencia Media" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_AvgLatency], FallbackValue='⚡ Latencia Media'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding InspectedNode.LatencyText}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,2,0,0" />
-                                            <TextBlock Text="{Binding InspectedNode.CurrentStats.AverageTimeMs, StringFormat='Total: {0:F1} ms'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalLabel], FallbackValue='Total: '}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.AverageTimeMs, StringFormat='{}{0:F1} ms'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
 
                                     <!-- Tarjeta 2: RAM por Item -->
                                     <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="4,0,0,6">
                                         <StackPanel>
-                                            <TextBlock Text="💾 RAM / Item" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_RamPerItem], FallbackValue='💾 RAM / Item'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding InspectedNode.RollingRamText, FallbackValue='0 KB'}" FontSize="14" FontWeight="Bold" Foreground="#A5B4FC" Margin="0,2,0,0" />
-                                            <TextBlock Text="{Binding InspectedNode.CurrentStats.PeakAllocatedBytes, StringFormat='Pico: {0:N0} B'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_PeakLabel], FallbackValue='Pico: '}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.PeakAllocatedBytes, StringFormat='{}{0:N0} B'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
 
                                     <!-- Tarjeta 3: Carga CPU / GPU -->
                                     <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,4,0">
                                         <StackPanel>
-                                            <TextBlock Text="🖥️ CPU &amp; Hardware" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_CpuHardware], FallbackValue='🖥️ CPU &amp; Hardware'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                                 <TextBlock Text="{Binding InspectedNode.CurrentStats.AvgCpuPercentage, StringFormat='{}{0:F1}% CPU'}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                                 <Border Margin="6,0,0,0" Padding="4,1" CornerRadius="3" Background="#083344" BorderBrush="#06B6D4" BorderThickness="1"
@@ -613,9 +619,12 @@
                                     <!-- Tarjeta 4: Procesados / Tasa Éxito -->
                                     <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="4,0,0,0">
                                         <StackPanel>
-                                            <TextBlock Text="📦 Elementos" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ItemsProcessed], FallbackValue='📦 Elementos'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding InspectedNode.CurrentStats.ProcessedCount, StringFormat='{}{0} items'}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,2,0,0" />
-                                            <TextBlock Text="{Binding InspectedNode.CurrentStats.ErrorCount, StringFormat='Errores: {0}'}" FontSize="9.5" Foreground="{DynamicResource AccentErrorBrush}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ErrorsLabel], FallbackValue='Errores: '}" FontSize="9.5" Foreground="{DynamicResource AccentErrorBrush}" />
+                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.ErrorCount}" FontSize="9.5" Foreground="{DynamicResource AccentErrorBrush}" />
+                                            </StackPanel>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
@@ -632,7 +641,7 @@
                                 <!-- Historial de Muestras Rodantes (últimas 8 ops) -->
                                 <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,10">
                                     <StackPanel>
-                                        <TextBlock Text="📈 Historial Rodante (Últimas 8 operaciones)" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_RollingHistory], FallbackValue='📈 Historial Rodante (Últimas 8 operaciones)'}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
                                         <ItemsControl ItemsSource="{Binding InspectedNode.CurrentStats.RecentSamples}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -663,7 +672,7 @@
                                 <Button Command="{Binding ResetNodeMetricsCommand}" Style="{StaticResource SecondaryButton}" Padding="10,6" HorizontalAlignment="Right">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="🔄 " FontSize="11" />
-                                        <TextBlock Text="Restablecer Métricas del Nodo" FontSize="11" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ResetNode], FallbackValue='Restablecer Métricas del Nodo'}" FontSize="11" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>

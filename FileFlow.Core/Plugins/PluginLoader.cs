@@ -162,6 +162,8 @@ public class PluginLoader
 
     public IFlowNode? CreateNodeInstance(string typeName)
     {
+        if (string.IsNullOrWhiteSpace(typeName)) return null;
+
         if (_discoveredNodeTypes.TryGetValue(typeName, out Type? type))
         {
             return (IFlowNode?)Activator.CreateInstance(type);
@@ -172,6 +174,37 @@ public class PluginLoader
         if (kvp.Value != null)
         {
             return (IFlowNode?)Activator.CreateInstance(kvp.Value);
+        }
+
+        // Fallback: search AppDomain loaded types
+        try
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var matchedType = asm.GetType(typeName, throwOnError: false, ignoreCase: true);
+                if (matchedType == null)
+                {
+                    try
+                    {
+                        matchedType = asm.GetTypes().FirstOrDefault(t => t.Name.Equals(typeName, StringComparison.OrdinalIgnoreCase) && typeof(IFlowNode).IsAssignableFrom(t));
+                    }
+                    catch
+                    {
+                        // Ignore reflection type load exceptions for non-relevant assemblies
+                    }
+                }
+
+                if (matchedType != null && typeof(IFlowNode).IsAssignableFrom(matchedType) && !matchedType.IsAbstract && !matchedType.IsInterface)
+                {
+                    _discoveredNodeTypes[typeName] = matchedType;
+                    _discoveredNodeTypes[matchedType.Name] = matchedType;
+                    return (IFlowNode?)Activator.CreateInstance(matchedType);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginLoader] Fallback type resolution error for '{typeName}': {ex.Message}");
         }
 
         return null;

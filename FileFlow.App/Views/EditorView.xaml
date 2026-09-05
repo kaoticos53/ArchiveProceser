@@ -13,7 +13,8 @@
 
     <Grid Background="{DynamicResource BgEditorBrush}">
         <!-- Lienzo del Editor de Nodos Modularizado -->
-        <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
+        <nodify:NodifyEditor x:Name="NodifyCanvas"
+                             ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              Decorators="{Binding CanvasDecorators}"
                              PendingConnection="{Binding PendingConnection}"
@@ -25,7 +26,41 @@
                              MaxViewportZoom="2.5"
                              AllowDrop="True"
                              Drop="Editor_Drop"
+                             PreviewMouseRightButtonDown="NodifyEditor_PreviewMouseRightButtonDown"
                              Background="Transparent">
+
+            <!-- Menú contextual en el área vacía del lienzo -->
+            <nodify:NodifyEditor.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PasteNodes]}"
+                              InputGestureText="Ctrl+V"
+                              Command="{Binding PasteNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📋" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddAnnotation], FallbackValue='✨ Añadir Nota'}"
+                              Command="{Binding AddNewAnnotationCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✨" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddGroup], FallbackValue='📦 Añadir Grupo'}"
+                              Command="{Binding AddNewGroupCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📦" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomFit], FallbackValue='🔍 Ajustar al Lienzo'}"
+                              Command="{Binding FitToScreenCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🔍" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </nodify:NodifyEditor.ContextMenu>
 
             <!-- Contenedor transparente de cada Nodo -->
             <nodify:NodifyEditor.ItemContainerStyle>
@@ -116,7 +151,11 @@
                             <ContextMenu>
                                 <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
                                           Command="{Binding PlacementTarget.Tag.DeleteConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="🗑" FontSize="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
                             </ContextMenu>
                         </nodify:Connection.ContextMenu>
                     </nodify:Connection>

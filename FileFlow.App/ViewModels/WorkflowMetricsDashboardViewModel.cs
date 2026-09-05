@@ -267,7 +267,9 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al exportar CSV: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(LocalizationManager.Instance.GetString("Msg_ExportCsvError", "Error al exportar CSV: {0}"), ex.Message);
+            string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -307,7 +309,9 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al exportar JSON: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(LocalizationManager.Instance.GetString("Msg_ExportJsonError", "Error al exportar JSON: {0}"), ex.Message);
+            string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

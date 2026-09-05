@@ -1,7 +1,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sdk="clr-namespace:FileFlow.Sdk;assembly=FileFlow.Sdk"
-                    xmlns:conv="clr-namespace:FileFlow.App.Converters">
+                    xmlns:conv="clr-namespace:FileFlow.App.Converters"
+                    xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk">
 
     <conv:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
     <conv:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
@@ -41,10 +42,10 @@
                                 CommandParameter="{Binding}"
                                 Style="{StaticResource SecondaryButton}"
                                 Padding="8,4" Margin="8,0,4,0" VerticalAlignment="Center"
-                                ToolTip="Previsualizar este archivo">
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_InspectFileToolTip], FallbackValue='Previsualizar este archivo'}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="👁️" FontSize="11" Foreground="#00E5FF" Margin="0,0,4,0" />
-                                <TextBlock Text="Ver" FontSize="10.5" FontWeight="SemiBold" Foreground="#00E5FF" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_InspectFileBtn], FallbackValue='Ver'}" FontSize="10.5" FontWeight="SemiBold" Foreground="#00E5FF" />
                             </StackPanel>
                         </Button>
                     </Grid>
@@ -57,21 +58,21 @@
                         Margin="-4,6,-4,-4">
                     <StackPanel>
                         <!-- Original Path -->
-                        <TextBlock Text="Ruta Original:" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_OriginalPath], FallbackValue='Ruta Original:'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <TextBox Text="{Binding ItemSnapshot.OriginalPath, Mode=OneWay}" 
                                  IsReadOnly="True" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,1,0,6" />
 
                         <!-- File Size & IsDirectory -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                            <TextBlock Text="Tamaño: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_SizeLabel], FallbackValue='Tamaño: '}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                             <TextBlock Text="{Binding ItemSnapshot.FileSizeBytes}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock Text=" bytes" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0" />
-                            <TextBlock Text="Carpeta: " FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_BytesLabel], FallbackValue=' bytes'}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_Folder], FallbackValue='Carpeta: '}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                             <TextBlock Text="{Binding ItemSnapshot.IsDirectory}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                         </StackPanel>
 
                         <!-- Metadata Dictionary -->
-                        <TextBlock Text="Metadatos Asociados:" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,4" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_AssociatedMetadata], FallbackValue='Metadatos Asociados:'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,4" />
                         <ItemsControl ItemsSource="{Binding ItemSnapshot.Metadata}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -90,7 +91,7 @@
                         </ItemsControl>
 
                         <!-- Tags -->
-                        <TextBlock Text="Etiquetas (Tags):" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,3" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_Tags], FallbackValue='Etiquetas (Tags):'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,6,0,3" />
                         <ItemsControl ItemsSource="{Binding ItemSnapshot.Tags}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

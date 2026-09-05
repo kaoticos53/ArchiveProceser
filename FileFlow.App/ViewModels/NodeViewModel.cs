@@ -526,11 +526,28 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         Cleanup();
     }
 
+    private List<NodeViewModel> GetTargetNodesForBatchAction()
+    {
+        if (IsSelected && ParentEditor != null)
+        {
+            var selected = ParentEditor.Nodes.Where(n => n.IsSelected).ToList();
+            if (selected.Count > 1 && selected.Contains(this))
+            {
+                return selected;
+            }
+        }
+        return [this];
+    }
+
     [RelayCommand]
     public void ChangeColor(string colorHex)
     {
-        HeaderColor = NodeCategoryStyling.GetHeaderColorFromAccent(colorHex);
-        AccentColor = colorHex;
+        var targets = GetTargetNodesForBatchAction();
+        foreach (var node in targets)
+        {
+            node.HeaderColor = NodeCategoryStyling.GetHeaderColorFromAccent(colorHex);
+            node.AccentColor = colorHex;
+        }
     }
 
     [RelayCommand]
@@ -587,13 +604,23 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void ToggleBreakpoint()
     {
-        HasBreakpoint = !HasBreakpoint;
+        bool targetState = !HasBreakpoint;
+        var targets = GetTargetNodesForBatchAction();
+        foreach (var node in targets)
+        {
+            node.HasBreakpoint = targetState;
+        }
     }
 
     [RelayCommand]
     public void ToggleLogging()
     {
-        IsLoggingEnabled = !IsLoggingEnabled;
+        bool targetState = !IsLoggingEnabled;
+        var targets = GetTargetNodesForBatchAction();
+        foreach (var node in targets)
+        {
+            node.IsLoggingEnabled = targetState;
+        }
     }
 
     public const int MaxRecordedSnapshots = 500;

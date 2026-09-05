@@ -253,7 +253,9 @@ public partial class StatusBarViewModel : ObservableObject
     private void UpdateSelectedNodeInfo()
     {
         var sel = _editorViewModel.SelectedNode;
-        SelectedNodeName = sel != null ? $"{sel.Title} ({sel.NodeTypeName})" : "Ninguno";
+        SelectedNodeName = sel != null 
+            ? $"{sel.Title} ({sel.NodeTypeName})" 
+            : LocalizationManager.Instance.GetString("Common_None", "Ninguno");
     }
 
     [RelayCommand]

@@ -26,6 +26,11 @@
         <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding ControlBar.SaveWorkflowCommand}" />
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{Binding ControlBar.LoadWorkflowCommand}" />
         <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding ControlBar.NewWorkflowCommand}" />
+        <KeyBinding Key="C" Modifiers="Ctrl" Command="{Binding Editor.CopySelectedNodesCommand}" />
+        <KeyBinding Key="V" Modifiers="Ctrl" Command="{Binding Editor.PasteNodesCommand}" />
+        <KeyBinding Key="X" Modifiers="Ctrl" Command="{Binding Editor.CutSelectedNodesCommand}" />
+        <KeyBinding Key="D" Modifiers="Ctrl" Command="{Binding Editor.DuplicateSelectedNodesCommand}" />
+        <KeyBinding Key="Delete" Command="{Binding Editor.DeleteSelectedNodesCommand}" />
         <KeyBinding Key="OemPlus" Modifiers="Ctrl" Command="{Binding Editor.ZoomInCommand}" />
         <KeyBinding Key="Add" Modifiers="Ctrl" Command="{Binding Editor.ZoomInCommand}" />
         <KeyBinding Key="OemMinus" Modifiers="Ctrl" Command="{Binding Editor.ZoomOutCommand}" />

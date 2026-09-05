@@ -605,7 +605,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir la ventana Acerca de: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(LocalizationManager.Instance.GetString("Msg_OpenAboutError", "Error al abrir la ventana Acerca de: {0}"), ex.Message);
+            string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -624,7 +626,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir el panel de métricas: {ex.Message}", "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(LocalizationManager.Instance.GetString("Msg_OpenMetricsError", "Error al abrir el panel de métricas: {0}"), ex.Message);
+            string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

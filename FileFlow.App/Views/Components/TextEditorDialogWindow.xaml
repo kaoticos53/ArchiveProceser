@@ -30,8 +30,8 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock x:Name="TxtTitle" Text="Editor de Texto / Prompt" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
-                <TextBlock x:Name="TxtSubtitle" Text="Parámetro configurable" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                <TextBlock x:Name="TxtTitle" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Title], FallbackValue='Editor de Texto / Prompt'}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock x:Name="TxtSubtitle" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Subtitle], FallbackValue='Parámetro configurable'}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
             </StackPanel>
 
             <!-- Badges de Estadísticas -->
@@ -66,7 +66,7 @@
                         </StackPanel>
                     </Button>
 
-                    <Button x:Name="BtnCopy" Click="BtnCopy_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" ToolTip="Copiar texto completo al portapapeles">
+                    <Button x:Name="BtnCopy" Click="BtnCopy_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_CopyFullTextToolTip], FallbackValue='Copiar texto completo al portapapeles'}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="📋 " />
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Copy]}" FontSize="11" />
@@ -75,7 +75,7 @@
                 </StackPanel>
 
                 <!-- Botón Limpiar -->
-                <Button Grid.Column="2" x:Name="BtnClear" Click="BtnClear_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="Borrar todo el contenido">
+                <Button Grid.Column="2" x:Name="BtnClear" Click="BtnClear_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ClearContentToolTip], FallbackValue='Borrar todo el contenido'}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🗑️ " />
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Clear]}" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
@@ -132,7 +132,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" Text="Atajo: Ctrl + Enter para Guardar • Esc para Cancelar" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10.5" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ShortcutFooter], FallbackValue='Atajo: Ctrl + Enter para Guardar • Esc para Cancelar'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10.5" VerticalAlignment="Center" />
 
             <Button Grid.Column="1" Click="BtnCancel_Click" Style="{StaticResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" IsCancel="True" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_CancelBtn]}" />
             

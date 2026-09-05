@@ -51,7 +51,7 @@
                                  FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}"
                                  CaretBrush="{DynamicResource AccentPrimaryBrush}"
                                  Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1"
-                                 Padding="8,3" MinWidth="220" ToolTip="Nombre descriptivo de este pipeline de renombrado" />
+                                 Padding="8,3" MinWidth="220" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_NameToolTip], FallbackValue='Nombre descriptivo de este pipeline de renombrado'}" />
                         <Border Background="{DynamicResource AccentSuccessBrush}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsBadge]}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
                         </Border>
@@ -69,11 +69,11 @@
                               SelectionChanged="PresetComboBox_SelectionChanged"
                               Padding="8,5" Margin="0,0,6,0" />
 
-                    <Button Command="{Binding SaveCurrentAsPresetCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,5" Margin="0,0,4,0" ToolTip="Guardar pipeline actual como preset">
+                    <Button Command="{Binding SaveCurrentAsPresetCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,5" Margin="0,0,4,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SavePresetToolTip], FallbackValue='Guardar pipeline actual como preset'}">
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveBtn]}" FontSize="11" />
                     </Button>
 
-                    <Button Command="{Binding LoadPresetFromFileCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,5" Margin="0,0,10,0" ToolTip="Cargar archivo .ffren o .json">
+                    <Button Command="{Binding LoadPresetFromFileCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,5" Margin="0,0,10,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_OpenPresetToolTip], FallbackValue='Cargar archivo .ffren o .json'}">
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_OpenBtn]}" FontSize="11" />
                     </Button>
 
@@ -184,7 +184,7 @@
             <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
                 <Grid>
                     <!-- Empty State: No step selected -->
-                    <TextBlock Text="Selecciona o añade un método del panel izquierdo para configurar sus propiedades."
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_EmptyStateStep], FallbackValue='Selecciona o añade un método del panel izquierdo para configurar sus propiedades.'}"
                                Visibility="{Binding SelectedStep, Converter={StaticResource InverseNullToVisibilityConverter}}"
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
 

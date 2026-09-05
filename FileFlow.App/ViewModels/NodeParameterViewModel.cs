@@ -118,7 +118,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir el Gestor de Presets: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_OpenPresetsError", "Error al abrir el Gestor de Presets: {0}"), ex.Message);
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -143,7 +145,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al abrir el Gestor de Contraseñas: {ex.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            string msg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_OpenPasswordsError", "Error al abrir el Gestor de Contraseñas: {0}"), ex.Message);
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
+            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

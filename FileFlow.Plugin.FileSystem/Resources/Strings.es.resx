@@ -93,4 +93,8 @@
   <data name="Renamer_Col_Replace" xml:space="preserve"><value>Reemplazar Con (o Variable)</value></data>
   <data name="Msg_PresetSavedSuccess" xml:space="preserve"><value>Preset guardado exitosamente.</value></data>
   <data name="Msg_PresetLoadError" xml:space="preserve"><value>Error al cargar preset: {0}</value></data>
+  <data name="AdvancedRenamer_NameToolTip" xml:space="preserve"><value>Nombre descriptivo de este pipeline de renombrado</value></data>
+  <data name="AdvancedRenamer_SavePresetToolTip" xml:space="preserve"><value>Guardar pipeline actual como preset</value></data>
+  <data name="AdvancedRenamer_OpenPresetToolTip" xml:space="preserve"><value>Cargar archivo .ffren o .json</value></data>
+  <data name="AdvancedRenamer_EmptyStateStep" xml:space="preserve"><value>Selecciona o añade un método del panel izquierdo para configurar sus propiedades.</value></data>
 </root>

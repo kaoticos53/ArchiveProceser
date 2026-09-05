@@ -344,27 +344,27 @@
 
                                     <!-- Action Buttons & Inputs -->
                                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                        <TextBlock Text="Botones de Acción:" FontSize="11" FontWeight="SemiBold" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_PreviewActions], FallbackValue='Botones de Acción:'}" FontSize="11" FontWeight="SemiBold" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                         <WrapPanel Margin="0,0,0,8">
-                                            <Button Content="Primario" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontWeight="SemiBold" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
-                                            <Button Content="Éxito" Background="{DynamicResource AccentSuccessBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
-                                            <Button Content="Advertencia" Background="{DynamicResource AccentWarningBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
-                                            <Button Content="Peligro" Background="{DynamicResource AccentErrorBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
+                                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnPrimary], FallbackValue='Primario'}" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontWeight="SemiBold" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
+                                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnSuccess], FallbackValue='Éxito'}" Background="{DynamicResource AccentSuccessBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
+                                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnWarning], FallbackValue='Advertencia'}" Background="{DynamicResource AccentWarningBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
+                                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnDanger], FallbackValue='Peligro'}" Background="{DynamicResource AccentErrorBrush}" Foreground="#FFFFFF" Padding="8,4" Margin="0,0,4,4" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" />
                                         </WrapPanel>
 
-                                        <TextBlock Text="Campos de Texto y Código:" FontSize="11" FontWeight="SemiBold" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="Texto estándar de interfaz" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" Margin="0,0,0,4" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_PreviewInputs], FallbackValue='Campos de Texto y Código:'}" FontSize="11" FontWeight="SemiBold" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_StandardTextSample], FallbackValue='Texto estándar de interfaz'}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" FontFamily="{DynamicResource AppFontFamily}" Margin="0,0,0,4" />
                                         <TextBox Text="SELECT * FROM [Files] WHERE Ext = 'jpg'" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource AccentPurpleBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="10.5" FontFamily="{DynamicResource CodeFontFamily}" />
                                     </StackPanel>
 
                                     <!-- Mock Data Table -->
                                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                        <TextBlock Text="Tabla de Datos de Ejemplo:" FontSize="11" FontWeight="SemiBold" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_PreviewDataTable], FallbackValue='Tabla de Datos de Ejemplo:'}" FontSize="11" FontWeight="SemiBold" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                         <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="6">
                                             <StackPanel>
                                                 <Grid Margin="0,0,0,4">
-                                                    <TextBlock Text="Fichero" FontWeight="Bold" FontSize="10.5" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                    <TextBlock Text="Resultado" FontWeight="Bold" FontSize="10.5" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_ColFile], FallbackValue='Fichero'}" FontWeight="Bold" FontSize="10.5" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_ColResult], FallbackValue='Resultado'}" FontWeight="Bold" FontSize="10.5" FontFamily="{DynamicResource AppFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right" />
                                                 </Grid>
                                                 <Separator Background="{DynamicResource BorderSubtleBrush}" Margin="0,2,0,4" />
                                                 <Grid Margin="0,2">

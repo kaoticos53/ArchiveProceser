@@ -70,7 +70,7 @@
                     </Button.Style>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="👁️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Vigilante" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_Watcher], FallbackValue='Vigilante'}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
 

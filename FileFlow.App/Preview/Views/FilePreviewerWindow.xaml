@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:FileFlow.App.Preview.Views"
         xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         mc:Ignorable="d"
-        Title="Vista Previa de Archivo — FileFlow Studio" 
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_WindowTitle], FallbackValue='Vista Previa de Archivo — FileFlow Studio'}" 
         Height="700" Width="1050" MinWidth="600" MinHeight="450"
         WindowStartupLocation="CenterOwner"
         Background="#0B0D14" Foreground="#E1E4EA"
@@ -29,13 +29,13 @@
                 <!-- Navegación Anterior / Siguiente -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
                     <Button Content="◀" Command="{Binding NavigatePreviousCommand}" IsEnabled="{Binding CanNavigatePrevious}"
-                            Width="30" Height="28" Margin="0,0,4,0" ToolTip="Archivo Anterior (Flecha Izquierda)" Cursor="Hand" />
+                            Width="30" Height="28" Margin="0,0,4,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_PreviousFileToolTip], FallbackValue='Archivo Anterior (Flecha Izquierda)'}" Cursor="Hand" />
                     <Button Content="▶" Command="{Binding NavigateNextCommand}" IsEnabled="{Binding CanNavigateNext}"
-                            Width="30" Height="28" Margin="0,0,12,0" ToolTip="Archivo Siguiente (Flecha Derecha)" Cursor="Hand" />
+                            Width="30" Height="28" Margin="0,0,12,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_NextFileToolTip], FallbackValue='Archivo Siguiente (Flecha Derecha)'}" Cursor="Hand" />
                     
                     <TextBlock Foreground="#8F95A3" VerticalAlignment="Center" FontSize="12">
                         <Run Text="{Binding CurrentIndex, Converter={StaticResource AddOneConverter}, Mode=OneWay}" />
-                        <Run Text="de" />
+                        <Run Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_Of], FallbackValue='de'}" />
                         <Run Text="{Binding TotalItemsCount, Mode=OneWay}" />
                     </TextBlock>
                 </StackPanel>

@@ -8,8 +8,35 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **499 / 499 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **510 / 510 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --26. **Soporte Dinámico de Temas y Localización Completa (i18n) en el Panel Centralizado de Métricas y Pestaña de Rendimiento del Inspector**:
+      - **Objetivo**: Garantizar que la ventana de métricas y profiling de flujo (`WorkflowMetricsDashboardWindow.xaml`) y la pestaña 6 del inspector de nodos (`NodeInspectorPanelView.xaml`) se adapten dinámicamente al tema visual activo de la aplicación (`ThemeManager.Instance`) y traduzcan todos sus textos de manera reactiva según el idioma seleccionado (`LocalizationManager.Instance`), erradicando colores oscuros hexadecimales hardcodeados y cadenas literales fijas.
+      - **Ajustes Realizados**:
+        1. **Migración a Pinceles Dinámicos (`DynamicResource`) en `WorkflowMetricsDashboardWindow.xaml`**: Sustitución de colores hexadecimales fijos (`#0B0F19`, `#131D31`, `#1E293B`, `#243048`, `#0D1322`, `#121A2C`, `#172238`, `#F8FAFC`, `#94A3B8`, `#64748B`, etc.) por `{DynamicResource BgDarkBrush}`, `BgHeaderBrush`, `BgCardBrush`, `BgSurfaceBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `TextSecondaryBrush`, `AccentCyanBrush`, `AccentPurpleBrush`, `AccentSuccessBrush` y `AccentErrorBrush`.
+        2. **Localización e Internacionalización Completa (i18n)**:
+           - Conexión de títulos, tooltips, etiquetas de KPIs ("📦 Invocaciones", "⏱️ Tiempo Total", "⚡ Latencia Media", "💾 RAM Estimada", "🎮 Ops GPU", "⚠️ Cuellos Botella", "> 25% tiempo flujo"), cabeceras de distribución ("⏱️ Distribución de Tiempo (%)", "💾 Asignación de RAM (%)"), ranking comparativo, buscador y columnas de datos del DataGrid a `LocalizationManager.Instance`.
+           - Conexión de todas las métricas en la Pestaña 6 del inspector (`NodeInspectorPanelView.xaml`): latencia media, RAM/item, CPU & Hardware, elementos procesados, errores, alerta de cuello de botella, historial rodante y botón de restablecimiento de métricas.
+           - Adición y sincronización de recursos bilingües en `FileFlow.App/Resources/Strings.resx` y `Strings.es.resx`.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y 510 / 510 pruebas superadas al 100%.
+  --25. **Localización Completa de Interfaz (i18n) y Erradicación de Cadenas Hardcodeadas**:
+      - **Objetivo**: Conectar el 100% de los textos de la interfaz gráfica y cuadros de diálogo al sistema dinámico de localización (`LocalizationManager.Instance`), soportando Español (`es-ES`) e Inglés (`en-US`) sin reiniciar la aplicación, cumpliendo estrictamente con la **Regla 5** (i18n reactivo en UI) y la **Regla 6** (co-ubicación de recursos en plugins).
+      - **Ajustes Realizados**:
+        1. **Diccionarios de Recursos (`Strings.resx` / `Strings.es.resx`)**: Incorporadas más de 45 nuevas claves para métricas, telemetría de hardware (RAM/CPU/GPU), personalizador de temas, editor de texto modal, previsualizador de archivos y comparador de imágenes, inspector de nodos y mensajes de error en ViewModels.
+        2. **Vistas XAML de Host (`FileFlow.App`)**: Localizadas todas las etiquetas, títulos, botones y tooltips en `WorkflowMetricsDashboardWindow`, `ThemeCustomizerWindow`, `TextEditorDialogWindow`, `FilePreviewerWindow`, `ImageCompareSliderControl`, `StatusBarView`, `ControlBarView`, `AnnotationCardView`, `AiModelDownloadDialog`, `NodeParameterTemplates` e `InspectorTemplates`.
+        3. **Plugins Autónomos (`FileFlow.Plugin.FileSystem`)**: Conexión de recursos propios en `AdvancedRenamerEditorWindow.xaml` con co-ubicación en `FileFlow.Plugin.FileSystem/Resources/Strings.resx` y `Strings.es.resx`.
+        4. **C# ViewModels**: Localizados los cuadros de diálogo `MessageBox.Show` en `LogViewModel`, `StatusBarViewModel`, `NodeParameterViewModel`, `EditorViewModel`, `ControlBarViewModel` y `WorkflowMetricsDashboardViewModel`.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y 510 / 510 pruebas superadas al 100%.
+  --24. **Acciones Masivas en Selección Múltiple de Nodos (Color, Breakpoints, Logs, Copiar, Cortar, Duplicar y Borrar) y Portapapeles DAG con Parámetros**:
+      - **Objetivo**: Permitir que al seleccionar múltiples nodos y usar el menú contextual o las acciones rápidas, el cambio de color, activación/desactivación de puntos de interrupción (`Breakpoint`) y alternancia de logs afecten de manera uniforme y sincronizada a todos los nodos seleccionados, además de soportar copiar, cortar, pegar y duplicar con conservación de parámetros.
+      - **Ajustes Realizados**:
+        1. **Acciones Masivas Reactivas (`NodeViewModel.cs`)**: `GetTargetNodesForBatchAction()` detecta si el nodo pertenece a una selección múltiple activa. `ChangeColor`, `ChooseCustomColor`, `ToggleBreakpoint` y `ToggleLogging` se aplican en lote a todos los nodos seleccionados.
+        2. **Servicio Centralizado (`INodeClipboardService` / `NodeClipboardService`)**: Serialización en `NodeClipboardPackage`, soporte de portapapeles del sistema operativo (`Clipboard.SetText` / `Clipboard.GetText`) con caché en memoria como fallback de alta fiabilidad, deserialización polimórfica con `UnwrapJsonValue`, regeneración de IDs (`Guid`) y remapeo de aristas internas.
+        3. **Editor MVVM (`EditorViewModel.cs`)**: Helper `ResolveTargetNodes` unificado para `DeleteSelectedNodesCommand`, `CopySelectedNodesCommand`, `CutSelectedNodesCommand` y `DuplicateSelectedNodesCommand`. Soporte de pegado en coordenadas explícitas (`targetLocation`).
+        4. **Vistas e Interfaz (`NodeCardView.xaml`, `EditorView.xaml`, `MainWindow.xaml`)**: Menús contextuales en tarjeta de nodo y en lienzo, atajos de teclado globales y en canvas para `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, `Ctrl+D` y `Delete`.
+        5. **Localización e Internacionalización (i18n)**: Claves multilingües añadidas en `Strings.resx` y `Strings.es.resx`.
+        6. **Suite de Pruebas (`NodeClipboardServiceTests.cs` & `EditorViewModelTests.cs`)**: 11 pruebas unitarias nuevas probando copia de parámetros, duplicación con offsets, regeneración de GUIDs, preservación de aristas internas y acciones masivas de color, breakpoint y logs.
+      - **Validación**: 510 / 510 pruebas unitarias e integración superadas al 100%.
   --23. **Optimización de Rendimiento al Límite Técnico: Enrutamiento DAG Zero-Allocation, Vectorización SIMD en Tensores IA, Caching de Pasos en Renombrador Masivo, I/O Asíncrono en Sinks y Throttle Lock-Free de UI**:
       - **Objetivo**: Maximizar el throughput de procesamiento por segundo, paralelizar cargas de trabajo eficientemente sin contención y eliminar asignaciones de memoria redundantes en los hot paths críticos del motor.
       - **Ajustes Realizados**:
