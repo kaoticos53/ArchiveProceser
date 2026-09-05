@@ -62,7 +62,7 @@ public class FolderSourceNode : IFlowNode
 
         if (string.IsNullOrWhiteSpace(sourcePath) || !Directory.Exists(sourcePath))
         {
-            context.Log($"Source directory '{sourcePath}' does not exist or is invalid.", LogLevel.Warning);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_FolderSource_DirNotExist", "Source directory '{0}' does not exist or is invalid.", sourcePath), LogLevel.Warning);
             return;
         }
 
@@ -91,7 +91,7 @@ public class FolderSourceNode : IFlowNode
         }
 
         string filterDesc = filterSet.Count > 0 ? $"ExtensionFilter=[{string.Join(", ", filterSet)}]" : "ExtensionFilter=*";
-        context.Log($"Scanning directory: {sourcePath} (EmitMode={emitMode}, {filterDesc}, MaxDepth={maxDepth}, Recursive={recursive})", LogLevel.Information);
+        context.Log(LocalizationManager.Instance.GetFormattedString("Log_FolderSource_Scanning", "Scanning directory: {0} (EmitMode={1}, {2}, MaxDepth={3}, Recursive={4})", sourcePath, emitMode, filterDesc, maxDepth, recursive), LogLevel.Information);
 
         // Pre-conteo ultrarrápido nativo Win32 (0-15 ms) para que el total exacto esté disponible desde el milisegundo 0
         long fastTotal = FastCountSourceFiles(sourcePath, recursive, maxDepth, emitFiles, emitDirectories, filterSet);
@@ -235,9 +235,13 @@ public class FolderSourceNode : IFlowNode
         await consumerTask.ConfigureAwait(false);
 
         double totalMB = totalBytesEmitted / (1024.0 * 1024.0);
-        string finalUnit = emitFiles && emitDirectories ? "elementos" : (emitDirectories ? "carpetas" : "archivos");
+        string finalUnit = emitFiles && emitDirectories 
+            ? LocalizationManager.Instance.GetString("Unit_Items", "items") 
+            : (emitDirectories 
+                ? LocalizationManager.Instance.GetString("Unit_Folders", "folders") 
+                : LocalizationManager.Instance.GetString("Unit_Files", "files"));
         string detailsJson = $"{{\"sourcePath\": \"{sourcePath.Replace("\\", "\\\\")}\", \"emittedCount\": {emittedCount}, \"totalSizeBytes\": {totalBytesEmitted}, \"totalMB\": {totalMB.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, \"unit\": \"{finalUnit}\"}}";
-        context.Log($"[Origen Carpeta] Finalizado escaneo y emisión: {emittedCount:N0} {finalUnit} ({totalMB:F1} MB)", LogLevel.Information, null, durationMs: 0.0, detailsJson: detailsJson);
+        context.Log(LocalizationManager.Instance.GetFormattedString("Log_FolderSource_Finished", "[Folder Source] Scan and emission finished: {0:N0} {1} ({2:F1} MB)", emittedCount, finalUnit, totalMB), LogLevel.Information, null, durationMs: 0.0, detailsJson: detailsJson);
     }
 
     public static HashSet<string> ParseExtensionFilter(string? filter)
@@ -285,27 +289,22 @@ public class FolderSourceNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (emitFiles)
         {
             try
             {
-                int fileCounter = 0;
+                int localFileCount = 0;
                 foreach (FileInfo file in currentDir.EnumerateFiles())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (filterSet.Count > 0 && !filterSet.Contains(file.Extension))
+                    if (filterSet.Count == 0 || filterSet.Contains(file.Extension))
                     {
-                        continue;
+                        var fileContext = new FileItemContext(file);
+                        await writer.WriteAsync(fileContext, cancellationToken).ConfigureAwait(false);
                     }
 
-                    var itemContext = new FileItemContext(file);
-                    await writer.WriteAsync(itemContext, cancellationToken).ConfigureAwait(false);
-
-                    fileCounter++;
-                    if (fileCounter % 100 == 0)
+                    if (++localFileCount % 500 == 0)
                     {
                         await Task.Yield();
                     }
@@ -313,7 +312,7 @@ public class FolderSourceNode : IFlowNode
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException || ex is IOException)
             {
-                context.Log($"Skipping files in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_FolderSource_SkippingFiles", "Skipping files in '{0}': {1}", currentDir.FullName, ex.Message), LogLevel.Warning);
             }
         }
 
@@ -337,7 +336,7 @@ public class FolderSourceNode : IFlowNode
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException || ex is DirectoryNotFoundException || ex is IOException)
         {
-            context.Log($"Skipping directories in '{currentDir.FullName}': {ex.Message}", LogLevel.Warning);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_FolderSource_SkippingDirs", "Skipping directories in '{0}': {1}", currentDir.FullName, ex.Message), LogLevel.Warning);
         }
     }
 

@@ -50,7 +50,7 @@ public class OriginalFileActionNode : IFlowNode
         string targetFilePath = item.OriginalPath;
         if (string.IsNullOrWhiteSpace(targetFilePath) || (!File.Exists(targetFilePath) && !Directory.Exists(targetFilePath)))
         {
-            context.Log($"[Acción Archivo Origen] Archivo original no encontrado: '{targetFilePath}'", LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_SourceNotFound", "[Original File Action] Original file not found: '{0}'", targetFilePath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -60,12 +60,12 @@ public class OriginalFileActionNode : IFlowNode
             switch (actionType.ToUpperInvariant())
             {
                 case "KEEP":
-                    context.Log($"[Acción Archivo Origen] Conservando archivo original intacto: '{targetFilePath}'", LogLevel.Information, item);
+                    context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_Keep", "[Original File Action] Keeping original file intact: '{0}'", targetFilePath), LogLevel.Information, item);
                     break;
 
                 case "MOVETORECYCLEBIN":
                     string detailsRecycle = $"{{\"action\": \"MoveToRecycleBin\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
-                    context.Log($"[Acción Archivo Origen] Enviando original a la Papelera de Reciclaje: '{targetFilePath}' (DryRun={isDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsRecycle);
+                    context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_Recycle", "[Original File Action] Sending original to Recycle Bin: '{0}' (DryRun={1})", targetFilePath, isDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsRecycle);
                     if (!isDryRun)
                     {
                         bool recycled = SendToWindowsRecycleBin(targetFilePath);
@@ -83,7 +83,7 @@ public class OriginalFileActionNode : IFlowNode
                     }
                     string destPath = Path.Combine(quarantinePath, Path.GetFileName(targetFilePath));
                     string detailsMove = $"{{\"action\": \"MoveToQuarantine\", \"quarantinePath\": \"{destPath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
-                    context.Log($"[Acción Archivo Origen] Moviendo original a cuarentena: '{destPath}' (DryRun={isDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsMove);
+                    context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_Quarantine", "[Original File Action] Moving original to quarantine: '{0}' (DryRun={1})", destPath, isDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsMove);
                     if (!isDryRun)
                     {
                         if (item.IsDirectory)
@@ -99,7 +99,7 @@ public class OriginalFileActionNode : IFlowNode
 
                 case "PERMANENTDELETE":
                     string detailsDelete = $"{{\"action\": \"PermanentDelete\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
-                    context.Log($"[Acción Archivo Origen] Eliminando permanentemente original: '{targetFilePath}' (DryRun={isDryRun})", LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsDelete);
+                    context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_PermanentDelete", "[Original File Action] Permanently deleting original: '{0}' (DryRun={1})", targetFilePath, isDryRun), LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsDelete);
                     if (!isDryRun)
                     {
                         if (item.IsDirectory)
@@ -114,7 +114,7 @@ public class OriginalFileActionNode : IFlowNode
                     break;
 
                 default:
-                    context.Log($"[Acción Archivo Origen] Política de acción desconocida: '{actionType}', reteniendo archivo.", LogLevel.Warning, item);
+                    context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_UnknownPolicy", "[Original File Action] Unknown action policy: '{0}', retaining file.", actionType), LogLevel.Warning, item);
                     break;
             }
 
@@ -126,7 +126,7 @@ public class OriginalFileActionNode : IFlowNode
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\"}}";
-            context.Log($"[Acción Archivo Origen] Error al aplicar política: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_Error", "[Original File Action] Error applying policy: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"OriginalFileActionNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

@@ -81,6 +81,8 @@ public partial class LogViewModel : ObservableObject
     private readonly ConcurrentQueue<StructuredLogRecord> _pendingLogs = new();
     private readonly DispatcherTimer _flushTimer;
 
+    private volatile bool _isClearingLogs;
+
     public LogViewModel()
     {
         _statusMessage = LocalizationManager.Instance["StatusReady"];
@@ -118,7 +120,7 @@ public partial class LogViewModel : ObservableObject
 
     private void FlushPendingLogs()
     {
-        if (_pendingLogs.IsEmpty) return;
+        if (_isClearingLogs || _pendingLogs.IsEmpty) return;
 
         int count = _pendingLogs.Count;
         var batch = new List<StructuredLogRecord>(count);
@@ -133,7 +135,7 @@ public partial class LogViewModel : ObservableObject
             else if (entry.Level == LogLevel.Debug) dbgs++;
         }
 
-        if (batch.Count > 0)
+        if (batch.Count > 0 && !_isClearingLogs)
         {
             ErrorCount += errs;
             WarningCount += warns;
@@ -151,6 +153,8 @@ public partial class LogViewModel : ObservableObject
 
     public void FlushAllPendingLogs()
     {
+        if (_isClearingLogs) return;
+
         if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
         {
             Application.Current.Dispatcher.Invoke(FlushPendingLogs);
@@ -194,6 +198,8 @@ public partial class LogViewModel : ObservableObject
 
     async partial void OnActiveFilterChanged(LogFilterLevel value)
     {
+        if (_isClearingLogs) return;
+
         if (value == LogFilterLevel.All && string.IsNullOrWhiteSpace(SearchFilter) && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
         {
             IsLiveMode = true;
@@ -208,6 +214,8 @@ public partial class LogViewModel : ObservableObject
 
     async partial void OnSearchFilterChanged(string value)
     {
+        if (_isClearingLogs) return;
+
         if (string.IsNullOrWhiteSpace(value) && ActiveFilter == LogFilterLevel.All && (string.IsNullOrEmpty(SortColumn) || SortColumn == "Id") && IsSortAscending)
         {
             IsLiveMode = true;
@@ -222,6 +230,8 @@ public partial class LogViewModel : ObservableObject
 
     async partial void OnIsLiveModeChanged(bool value)
     {
+        if (_isClearingLogs) return;
+
         if (value)
         {
             ActiveFilter = LogFilterLevel.All;
@@ -234,16 +244,23 @@ public partial class LogViewModel : ObservableObject
 
     private async Task LoadRecentLiveLogsAsync()
     {
+        if (_isClearingLogs) return;
+
         try
         {
             FlushAllPendingLogs();
             await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+            if (_isClearingLogs) return;
+
             int total = await SqliteLogStore.Instance.GetTotalCountAsync().ConfigureAwait(false);
             int offset = Math.Max(0, total - MaxLiveBufferSize);
             var results = await SqliteLogStore.Instance.GetLogsWindowAsync(offset, MaxLiveBufferSize, newestFirst: false).ConfigureAwait(false);
 
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            if (_isClearingLogs) return;
+
+            await RunOnUiAsync(() =>
             {
+                if (_isClearingLogs) return;
                 Logs.Clear();
                 foreach (var item in results)
                 {
@@ -260,10 +277,13 @@ public partial class LogViewModel : ObservableObject
 
     public async Task LoadQueryResultsAsync()
     {
+        if (_isClearingLogs) return;
+
         try
         {
             FlushAllPendingLogs();
             await SqliteLogStore.Instance.FlushPendingLogsAsync().ConfigureAwait(false);
+            if (_isClearingLogs) return;
 
             IReadOnlyList<StructuredLogRecord> queryResults;
 
@@ -279,8 +299,11 @@ public partial class LogViewModel : ObservableObject
                 queryResults = await SqliteLogStore.Instance.GetLogsWindowAsync(0, MaxLiveBufferSize, filter).ConfigureAwait(false);
             }
 
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            if (_isClearingLogs) return;
+
+            await RunOnUiAsync(() =>
             {
+                if (_isClearingLogs) return;
                 Logs.Clear();
                 foreach (var item in queryResults)
                 {
@@ -295,9 +318,23 @@ public partial class LogViewModel : ObservableObject
         }
     }
 
+    private async Task RunOnUiAsync(Action action)
+    {
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            await Application.Current.Dispatcher.InvokeAsync(action);
+        }
+        else
+        {
+            action();
+        }
+    }
+
     [RelayCommand]
     public async Task SortBy(string columnName)
     {
+        if (_isClearingLogs) return;
+
         IsLiveMode = false;
         if (SortColumn.Equals(columnName, StringComparison.OrdinalIgnoreCase))
         {
@@ -328,6 +365,8 @@ public partial class LogViewModel : ObservableObject
     [RelayCommand]
     public void SetFilter(string filterName)
     {
+        if (_isClearingLogs) return;
+
         ActiveFilter = filterName.ToLowerInvariant() switch
         {
             "errors" => LogFilterLevel.ErrorsOnly,
@@ -341,36 +380,54 @@ public partial class LogViewModel : ObservableObject
     [RelayCommand]
     public void ClearSearchFilter()
     {
+        if (_isClearingLogs) return;
         SearchFilter = string.Empty;
     }
 
     [RelayCommand]
     public async Task ClearLogs()
     {
-        while (_pendingLogs.TryDequeue(out _)) { }
-        Logs.Clear();
-        ErrorCount = 0;
-        WarningCount = 0;
-        InfoCount = 0;
-        DebugCount = 0;
-        TotalLogsCount = 0;
-        ProgressPercentage = 0;
-        StatusMessage = LocalizationManager.Instance["StatusReady"];
-        IsLiveMode = true;
-        ActiveFilter = LogFilterLevel.All;
-        SearchFilter = string.Empty;
-        SortColumn = "Id";
-        IsSortAscending = true;
+        _isClearingLogs = true;
+        try
+        {
+            // 1. Descartar cualquier log en la cola en memoria
+            while (_pendingLogs.TryDequeue(out _)) { }
 
-        await SqliteLogStore.Instance.ClearAsync().ConfigureAwait(false);
+            // 2. Limpiar la base de datos SQLite en memoria primero
+            await SqliteLogStore.Instance.ClearAsync().ConfigureAwait(false);
 
-        OnLogsCleared?.Invoke();
+            // 3. Limpiar y resetear el estado en el hilo de UI
+            await RunOnUiAsync(() =>
+            {
+                while (_pendingLogs.TryDequeue(out _)) { }
+                Logs.Clear();
+                SelectedLog = null;
+                ErrorCount = 0;
+                WarningCount = 0;
+                InfoCount = 0;
+                DebugCount = 0;
+                TotalLogsCount = 0;
+                ProgressPercentage = 0;
+                StatusMessage = LocalizationManager.Instance["StatusReady"];
+                IsLiveMode = true;
+                ActiveFilter = LogFilterLevel.All;
+                SearchFilter = string.Empty;
+                SortColumn = "Id";
+                IsSortAscending = true;
+            });
+
+            OnLogsCleared?.Invoke();
+        }
+        finally
+        {
+            _isClearingLogs = false;
+        }
     }
 
     [RelayCommand]
     public async Task FilterByItem(string? itemId)
     {
-        if (string.IsNullOrWhiteSpace(itemId)) return;
+        if (string.IsNullOrWhiteSpace(itemId) || _isClearingLogs) return;
         IsLiveMode = false;
         SearchFilter = itemId.Trim();
         await LoadQueryResultsAsync();
@@ -543,7 +600,7 @@ public partial class LogViewModel : ObservableObject
         string? exportedPath = await LogExportService.ExportLogsWithDialogAsync();
         if (!string.IsNullOrEmpty(exportedPath))
         {
-            AddLog(LogLevel.Information, $"Log exportado exitosamente en: {exportedPath}");
+            AddLog(LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_ExportSuccess", "Log exportado exitosamente en: {0}", exportedPath));
         }
     }
 }

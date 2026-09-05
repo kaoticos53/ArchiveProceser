@@ -913,4 +913,28 @@
   <data name="Metrics_BottleneckAlert" xml:space="preserve"><value>Workflow bottleneck ({0})</value></data>
   <data name="Metrics_RollingHistory" xml:space="preserve"><value>📈 Rolling History (Last 8 operations)</value></data>
   <data name="Metrics_ResetNode" xml:space="preserve"><value>Reset Node Metrics</value></data>
+
+  <!-- Execution & Workflow Logs -->
+  <data name="Log_WatchModeStarting" xml:space="preserve"><value>👁️ Starting Watch Mode (Directory Observer)...</value></data>
+  <data name="Log_DebugStarting" xml:space="preserve"><value>🐞 Starting Debug Session (Step-by-step with breakpoints enabled)...</value></data>
+  <data name="Log_DryRunStarting" xml:space="preserve"><value>🧪 Starting Dry-Run Simulation (No destructive changes)...</value></data>
+  <data name="Log_StartingExecution" xml:space="preserve"><value>🚀 Starting execution with ID: {0}</value></data>
+  <data name="Log_WatchModeActive" xml:space="preserve"><value>👁️ Real-time Directory Observer is ACTIVE</value></data>
+  <data name="Log_WatchModeStopped" xml:space="preserve"><value>🛑 Watch Mode STOPPED</value></data>
+  <data name="Log_CheckpointReset" xml:space="preserve"><value>🔄 Checkpoint status reset: previous memory cleared</value></data>
+  <data name="Log_DryRunFinished" xml:space="preserve"><value>[Dry-Run] Simulation completed: 0 physical changes performed</value></data>
+  <data name="Log_RollbackStarting" xml:space="preserve"><value>🔄 Rolling back completed operations...</value></data>
+  <data name="Log_RollbackCompleted" xml:space="preserve"><value>✓ Rollback completed: all operations reversed successfully</value></data>
+  <data name="Log_NewWorkflowCreated" xml:space="preserve"><value>📄 New workflow created</value></data>
+  <data name="Log_OpenManual" xml:space="preserve"><value>📖 Opening user manual...</value></data>
+  <data name="Log_OpenExamples" xml:space="preserve"><value>📁 Opening examples folder...</value></data>
+  <data name="Log_AppInitialized" xml:space="preserve"><value>✓ FileFlow Studio initialized successfully with reactive telemetry and hot-reloading.</value></data>
+  <data name="Log_ExportSuccess" xml:space="preserve"><value>Logs exported successfully to: {0}</value></data>
+  <data name="Log_ExecutionCompletedSuccessfully" xml:space="preserve"><value>Execution completed successfully. Elapsed: {0:F2}s</value></data>
+  <data name="Log_DrainTaskQueueProgress" xml:space="preserve"><value>Draining task queue ({0} remaining)...</value></data>
+  <data name="Log_DrainPostWorkflowProgress" xml:space="preserve"><value>Draining post-workflow operations ({0} remaining)...</value></data>
+  <data name="Log_WorkflowCompletedProgress" xml:space="preserve"><value>Workflow execution completed in {0:F2}s</value></data>
+  <data name="Log_CheckpointSkippingFile" xml:space="preserve"><value>[Checkpoint] Skipping previously completed file: {0}</value></data>
+  <data name="Log_ProcessingItemsProgress" xml:space="preserve"><value>⚡ Processing: {0:N0}/{1:N0} items ({2:F0}%)</value></data>
+  <data name="Log_ExecutionErrorsOccurred" xml:space="preserve"><value>Execution completed with errors: {0}</value></data>
 </root>

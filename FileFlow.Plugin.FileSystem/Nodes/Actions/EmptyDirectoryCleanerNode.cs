@@ -9,10 +9,9 @@ namespace FileFlow.Plugin.FileSystem;
 public class EmptyDirectoryCleanerNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Name", "Limpiador de Carpetas Vacías");
+    public string Name => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Name", "Empty Directory Cleaner");
     public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Desc", "Recorre recursivamente un directorio objetivo tras procesar un lote y elimina todas las subcarpetas que hayan quedado completamente vacías (ignorando opcionalmente archivos de sistema como Thumbs.db y .DS_Store).");
-
+    public string Description => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Desc", "Recursively scans a target directory after batch processing and removes all empty subdirectories.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -50,7 +49,7 @@ public class EmptyDirectoryCleanerNode : IFlowNode
 
             if (string.IsNullOrWhiteSpace(targetDir) || !Directory.Exists(targetDir))
             {
-                context.Log($"[Limpiador Carpetas] Directorio no encontrado: '{targetDir}'", LogLevel.Warning, item);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_EmptyCleaner_NotFound", "[Empty Directory Cleaner] Directory not found: '{0}'", targetDir), LogLevel.Warning, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
@@ -59,7 +58,7 @@ public class EmptyDirectoryCleanerNode : IFlowNode
             sw.Stop();
 
             string detailsJson = $"{{\"targetDirectory\": \"{targetDir.Replace("\\", "\\\\")}\", \"deletedCount\": {deletedCount}, \"recursive\": {recursive.ToString().ToLowerInvariant()}, \"isDryRun\": {context.IsDryRun.ToString().ToLowerInvariant()}}}";
-            context.Log($"[Limpiador Carpetas] Eliminadas {deletedCount:N0} carpetas vacías en '{targetDir}' (DryRun={context.IsDryRun})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_EmptyCleaner_Deleted", "[Empty Directory Cleaner] Deleted {0:N0} empty folders in '{1}' (DryRun={2})", deletedCount, targetDir, context.IsDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             item.AddLog($"Cleaned {deletedCount} empty directories in {targetDir}");
             await context.EmitAsync("Out", item);
@@ -68,7 +67,7 @@ public class EmptyDirectoryCleanerNode : IFlowNode
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\"}}";
-            context.Log($"[Limpiador Carpetas] Error al limpiar carpetas vacías: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_EmptyCleaner_Error", "[Empty Directory Cleaner] Error cleaning empty folders: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Empty directory cleaner failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

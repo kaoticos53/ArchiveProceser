@@ -181,11 +181,11 @@ public sealed class WorkflowExecutionCoordinator
         };
 
         string startMsg = options.IsWatchMode
-            ? "👁️ Iniciando Modo Vigilante en tiempo real..."
+            ? FileFlow.Sdk.Localization.LocalizationManager.Instance["Log_WatchModeStarting"]
             : (options.IsDebug
-                ? "Iniciando depuración del flujo..."
+                ? FileFlow.Sdk.Localization.LocalizationManager.Instance["Log_DebugStarting"]
                 : (options.IsDryRun
-                    ? "[Dry Run] Iniciando simulación virtual..."
+                    ? FileFlow.Sdk.Localization.LocalizationManager.Instance["Log_DryRunStarting"]
                     : FileFlow.Sdk.Localization.LocalizationManager.Instance["LogStartingExecution"]));
         _logViewModel.AddLog(LogLevel.Information, startMsg);
 

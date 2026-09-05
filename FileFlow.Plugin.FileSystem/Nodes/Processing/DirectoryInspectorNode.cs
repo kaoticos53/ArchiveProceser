@@ -42,7 +42,7 @@ public class DirectoryInspectorNode : IFlowNode
 
         if (!Directory.Exists(dirPath))
         {
-            context.Log($"[Inspector Directorio] Ruta no existe: '{dirPath}' -> Clasificado como 'MixedContent'", LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_DirInspector_NotFound", "[Directory Inspector] Path does not exist: '{0}' -> Classified as 'MixedContent'", dirPath), LogLevel.Warning, item);
             await context.EmitAsync("MixedContent", item);
             return;
         }
@@ -53,7 +53,7 @@ public class DirectoryInspectorNode : IFlowNode
 
         if (files.Length == 0 && subdirs.Length > 0)
         {
-            context.Log($"[Inspector Directorio] Clasificado como 'DirectoriesOnly' ({subdirs.Length} subdirectorios, 0 archivos)", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_DirInspector_DirectoriesOnly", "[Directory Inspector] Classified as 'DirectoriesOnly' ({0} subdirectories, 0 files)", subdirs.Length), LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
             item.AddLog("DirectoryInspectorNode classified as DirectoriesOnly");
             await context.EmitAsync("DirectoriesOnly", item);
             return;
@@ -64,14 +64,14 @@ public class DirectoryInspectorNode : IFlowNode
             string ext = Path.GetExtension(files[0]);
             if (ArchiveExtensions.Contains(ext))
             {
-                context.Log($"[Inspector Directorio] Clasificado como 'SingleArchive' ({Path.GetFileName(files[0])})", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_DirInspector_SingleArchive", "[Directory Inspector] Classified as 'SingleArchive' ({0})", Path.GetFileName(files[0])), LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
                 item.AddLog($"DirectoryInspectorNode classified as SingleArchive ({files[0]})");
                 await context.EmitAsync("SingleArchive", item);
                 return;
             }
         }
 
-        context.Log($"[Inspector Directorio] Clasificado como 'MixedContent' ({files.Length} archivos, {subdirs.Length} subdirectorios)", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
+        context.Log(LocalizationManager.Instance.GetFormattedString("Log_DirInspector_MixedContent", "[Directory Inspector] Classified as 'MixedContent' ({0} files, {1} subdirectories)", files.Length, subdirs.Length), LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
         item.AddLog("DirectoryInspectorNode classified as MixedContent");
         await context.EmitAsync("MixedContent", item);
     }

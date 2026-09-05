@@ -2,6 +2,55 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-05] - Vaciado Atómico y Determinista de Logs con Eliminación de Condiciones de Carrera
+
+### 🎯 Objetivos y Alcance
+1. **Eliminación de Condiciones de Carrera al Limpiar Logs (`ClearLogs`)**:
+   - Corrección integral del bug intermitente reportado donde al pulsar "Limpiar logs", en ocasiones los logs se vaciaban y en otras volvían a aparecer o requerían un segundo clic.
+   - **Causa Raíz Diagnosticada**: Al llamar a `ClearLogs()`, se reseteaban propiedades como `IsLiveMode = true`, `ActiveFilter = LogFilterLevel.All` y `SearchFilter = string.Empty`. El cambio reactivo de estas propiedades disparaba sus respectivos manejadores asíncronos (`OnActiveFilterChanged`, `OnSearchFilterChanged`, `OnIsLiveModeChanged`), los cuales ejecutaban en paralelo consultas `GetLogsWindowAsync(...)` contra SQLite antes de que `SqliteLogStore.Instance.ClearAsync()` terminase de purgar la base de datos en memoria. La consulta asíncrona re-poblaba la colección observable de la UI con los registros antiguos.
+2. **Implementación de Barrera de Sincronización Atómica (`_isClearingLogs`)**:
+   - Incorporación del flag `private volatile bool _isClearingLogs` en `LogViewModel.cs`.
+   - Protección con guarda inmediata `if (_isClearingLogs) return;` en todos los disparadores de recarga asíncrona y filtrado:
+     - `OnActiveFilterChanged`, `OnSearchFilterChanged`, `OnIsLiveModeChanged`
+     - `LoadRecentLiveLogsAsync`, `LoadQueryResultsAsync`, `FlushPendingLogs`
+     - `SortBy`, `SetFilter`, `ClearSearchFilter`, `FilterByItem`
+3. **Flujo de Vaciado Secuencial y Determinista**:
+   - En `ClearLogs()`:
+     1. Activación de la barrera `_isClearingLogs = true`.
+     2. Drenado de la cola en memoria `_pendingLogs.Clear()`.
+     3. Espera asíncrona estricta de `await SqliteLogStore.Instance.ClearAsync().ConfigureAwait(false)` garantizando el vaciado previo de SQLite.
+     4. Reseteo de la UI en el hilo de interfaz (`RunOnUiAsync`): `Logs.Clear()`, contadores a cero (`TotalLogsCount`, `ErrorCount`, `WarningCount`), selección nula (`SelectedLog = null`), filtros y paginación restablecidos.
+     5. Restauración segura en bloque `finally`: `_isClearingLogs = false`.
+4. **Validación**:
+   - Compilación con `dotnet build FileFlow.slnx --warnaserror` (0 errores, 0 advertencias).
+   - Ejecución de la suite completa de pruebas unitarias (`FileFlow.Tests.csproj`): 510 / 510 pruebas superadas (100% de éxito).
+
+## [2026-09-05] - Internacionalización Dinámica de Mensajes de Log y Telemetría de Ejecución con Propagación de Cultura
+
+### 🎯 Objetivos y Alcance
+1. **Generación Dinámica de Logs en el Idioma Configurado (`es-ES` / `en-US`)**:
+   - Corrección integral para garantizar que todos los mensajes de log de ejecución producidos por la interfaz de usuario, el orquestador (`WorkflowExecutionCoordinator`), el motor de ejecución (`WorkflowExecutor`, `WorkflowItemDispatcher`), los viewmodels y los nodos/plugins se emitan en el idioma configurado dinámicamente en la aplicación.
+2. **Propagación Automática de Cultura a Hilos de Fondo (`Thread Pool Workers`)**:
+   - Actualización en `LocalizationManager` para configurar de manera reactiva `CultureInfo.DefaultThreadCurrentCulture` y `CultureInfo.DefaultThreadCurrentUICulture` ante cualquier cambio de idioma en tiempo de ejecución.
+   - Esto asegura que todas las tareas asíncronas (`Task.Run`, pipelines `Channels`, background workers) adopten inmediatamente la cultura activa sin desfases.
+3. **Helpers de Localización Formateada en el SDK (`FileFlow.Sdk`)**:
+   - Incorporación de `LocalizationManager.GetFormattedString(key, fallbackTemplate, params args)` para formateo seguro de cadenas con variables y soporte de fallback canónico.
+   - Incorporación de `FlowNodeBase.GetLocalizedString` y `FlowNodeBase.GetLocalizedFormat`.
+4. **Localización de Componentes Clave**:
+   - **`WorkflowExecutionCoordinator.cs`**: Logs de arranque en modo normal, depuración, watch mode y simulación dry run (`Log_WatchModeStarting`, `Log_DebugStarting`, `Log_DryRunStarting`, `LogStartingExecution`).
+   - **`ControlBarViewModel.cs`**: Logs de control de flujo (modo vigilancia, reseteo de checkpoints, rollback, simulación, cancelación, nuevo flujo, guardado/carga de plantillas y ejemplos).
+   - **`WorkflowExecutor.cs` & `WorkflowItemDispatcher.cs`**: Progreso de drenaje de colas, resumen de items completados/fallidos, duración total, salto de checkpoints y métricas de despacho.
+   - **`MainViewModel.cs` & `LogViewModel.cs`**: Inicialización del sistema y confirmación de exportación de telemetría a disco.
+   - **Nodos de `FileFlow.Plugin.FileSystem`**: `FolderSourceNode`, `DestinationSinkNode`, `AdvancedRenamerNode`, `FileRelocatorNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`, `DirectoryInspectorNode`, `EmptyDirectoryCleanerNode`, `DocumentProcessorNode`, `VariableInjectorNode`, `OperationReportNode`.
+5. **Autonomía y Co-ubicación de Recursos Multilingües (Regla 6)**:
+   - Cadenas del anfitrión incorporadas en `FileFlow.App/Resources/Strings.resx` y `Strings.es.resx`.
+   - Cadenas específicas de plugins incorporadas en `FileFlow.Plugin.FileSystem/Resources/Strings.resx` y `Strings.es.resx`.
+6. **Validación**:
+   - **510 / 510 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos)**.
+   - Compilación limpia con 0 advertencias y 0 errores (`--warnaserror`).
+
+---
+
 ## [2026-09-05] - Soporte Dinámico de Temas y Localización Completa (i18n) en el Panel de Métricas y Profiling de Flujo
 
 ### 🎯 Objetivos y Alcance

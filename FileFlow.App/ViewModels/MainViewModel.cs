@@ -65,6 +65,6 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
-        LogConsole.AddLog(Sdk.LogLevel.Information, $"FileFlow Studio initialized with {PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()} active plugin nodes.");
+        LogConsole.AddLog(Sdk.LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()));
     }
 }

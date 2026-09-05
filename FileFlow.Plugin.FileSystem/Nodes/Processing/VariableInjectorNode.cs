@@ -9,9 +9,9 @@ namespace FileFlow.Plugin.FileSystem;
 public class VariableInjectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Inyector de Variables");
+    public string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Variable Injector");
     public string Category => "Integrations";
-    public string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calcula e inyecta variables personalizadas dinámicas en los metadatos del elemento para nodos posteriores.");
+    public string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calculates and injects dynamic custom variables into item metadata for downstream nodes.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -58,14 +58,14 @@ public class VariableInjectorNode : IFlowNode
             item.Metadata[cleanKey] = resolvedValue;
             injectedMap[cleanKey] = resolvedValue;
 
-            context.Log($"[Inyector de Variables] Variable '{cleanKey}' = '{resolvedValue}'", LogLevel.Debug, item);
-            item.AddLog($"VariableInjectorNode inyectó {cleanKey}={resolvedValue}");
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_VarInjector_Var", "[Variable Injector] Variable '{0}' = '{1}'", cleanKey, resolvedValue), LogLevel.Debug, item);
+            item.AddLog($"VariableInjectorNode injected {cleanKey}={resolvedValue}");
         }
 
         if (injectedMap.Count > 0)
         {
             string detailsJson = System.Text.Json.JsonSerializer.Serialize(injectedMap);
-            context.Log($"[Inyector de Variables] Inyectadas {injectedMap.Count} variables en metadatos", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_VarInjector_Injected", "[Variable Injector] Injected {0} variables into metadata", injectedMap.Count), LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
         }
 
         await context.EmitAsync("Out", item);

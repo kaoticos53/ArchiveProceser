@@ -87,7 +87,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
         if (string.IsNullOrWhiteSpace(existingSource) || (!File.Exists(existingSource) && !Directory.Exists(existingSource)))
         {
-            context.Log($"[Renombrador] Archivo o carpeta de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_SourceNotFound", "[Renamer] Source file or folder not found: '{0}'", item.CurrentPath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -125,7 +125,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
             if (string.Equals(item.CurrentPath, targetPath, StringComparison.Ordinal))
             {
-                context.Log($"[Renombrador] Nombre idéntico al actual, sin cambios necesarios: '{resolvedName}'", LogLevel.Debug, item);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_NoChange", "[Renamer] Name is identical to current, no changes needed: '{0}'", resolvedName), LogLevel.Debug, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
@@ -152,12 +152,12 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
                         case "AUTOINCREMENT":
                             targetPath = GetAutoIncrementPath(currentDir, resolvedName);
-                            context.Log($"[Renombrador] Resuelta colisión con autoincremento: '{Path.GetFileName(targetPath)}'", LogLevel.Debug, item);
+                            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_AutoIncrementCollision", "[Renamer] Auto-increment collision resolved: '{0}'", Path.GetFileName(targetPath)), LogLevel.Debug, item);
                             break;
 
                         case "OVERWRITE":
                         default:
-                            context.Log($"[Renombrador] Sobrescribiendo archivo existente por política 'Overwrite': '{targetPath}'", LogLevel.Debug, item);
+                            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_OverwriteCollision", "[Renamer] Overwriting existing file per 'Overwrite' policy: '{0}'", targetPath), LogLevel.Debug, item);
                             break;
                     }
                 }
@@ -171,7 +171,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             if (shouldSkip)
             {
                 sw.Stop();
-                context.Log($"[Renombrador] Destino ya existente, omitiendo según estrategia 'Skip': '{targetPath}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_SkipExisting", "[Renamer] Target already exists, skipping per 'Skip' strategy: '{0}'", targetPath), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds);
                 await context.EmitAsync("Skipped", item);
                 return;
             }
@@ -202,7 +202,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
                 item.CurrentPath = targetPath;
 
                 string detailsJson = $"{{\"originalName\": \"{prevName.Replace("\"", "\\\"")}\", \"newName\": \"{Path.GetFileName(targetPath).Replace("\"", "\\\"")}\", \"renameMode\": \"{(isVirtual ? "Virtual" : "DryRun")}\", \"collisionStrategy\": \"{collisionStrategy}\", \"stepsCount\": {steps.Count}}}";
-                context.Log($"[Renombrador] Nombre transformado (Modo Virtual): '{prevName}' -> '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_VirtualTransformed", "[Renamer] Name transformed (Virtual Mode): '{0}' -> '{1}'", prevName, Path.GetFileName(targetPath)), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
                 await context.EmitAsync("Out", item);
                 return;
@@ -234,7 +234,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             item.AddLog($"Renamed (DirectInPlace): {targetPath}");
 
             string detailsJsonInPlace = $"{{\"originalName\": \"{Path.GetFileName(originalCurrent).Replace("\"", "\\\"")}\", \"newName\": \"{Path.GetFileName(targetPath).Replace("\"", "\\\"")}\", \"renameMode\": \"DirectInPlace\", \"collisionStrategy\": \"{collisionStrategy}\", \"stepsCount\": {steps.Count}}}";
-            context.Log($"[Renombrador] Renombrado físico con éxito (In-Place): '{Path.GetFileName(originalCurrent)}' -> '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJsonInPlace);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_PhysicalRenamed", "[Renamer] Physical rename successful (In-Place): '{0}' -> '{1}'", Path.GetFileName(originalCurrent), Path.GetFileName(targetPath)), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJsonInPlace);
 
             await context.EmitAsync("Out", item);
         }
@@ -242,7 +242,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"source\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
-            context.Log($"[Renombrador] Error en renombramiento: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_Error", "[Renamer] Rename error: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Rename failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

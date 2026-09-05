@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Core.Engine;
 
@@ -70,7 +71,7 @@ public sealed class WorkflowItemDispatcher
 
             if (_checkpointHandler.IsFileAlreadyCompleted(item.OriginalPath))
             {
-                _executor.NotifyLog($"[Checkpoint] Omitiendo archivo completado previamente: {item.FileName}", LogLevel.Debug);
+                _executor.NotifyLog(LocalizationManager.Instance.GetFormattedString("Log_CheckpointSkippingFile", "[Checkpoint] Skipping previously completed file: {0}", item.FileName), LogLevel.Debug);
                 _telemetryTracker.IncrementCompletedFiles();
                 return Task.CompletedTask;
             }
@@ -168,7 +169,7 @@ public sealed class WorkflowItemDispatcher
                             double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 0.0;
                             if (_executor.IsRunning && pct >= 100.0) pct = 99.0;
                             else if (pct > 100.0) pct = 100.0;
-                            _executor.NotifyProgress(pct, $"⚡ Procesando: {doneFiles:N0}/{effective:N0} elementos ({pct:F0}%)");
+                            _executor.NotifyProgress(pct, LocalizationManager.Instance.GetFormattedString("Log_ProcessingItemsProgress", "⚡ Processing: {0:N0}/{1:N0} items ({2:F0}%)", doneFiles, effective, pct));
 
                             _checkpointHandler.RecordCompletedFile(targetItem.OriginalPath, doneFiles);
                         }

@@ -10,10 +10,9 @@ namespace FileFlow.Plugin.FileSystem;
 public class FileRelocatorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("FileRelocatorNode_Name", "Reubicador y Copiador de Archivos");
+    public string Name => LocalizationManager.Instance.GetString("FileRelocatorNode_Name", "File Relocator and Copier");
     public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("FileRelocatorNode_Desc", "Mueve o copia archivos hacia árboles de directorios destino construidos dinámicamente con tokens, verificando la integridad binaria de los datos mediante cálculo de hash SHA-256.");
-
+    public string Description => LocalizationManager.Instance.GetString("FileRelocatorNode_Desc", "Moves or copies files to dynamically token-built destination trees, verifying binary integrity via SHA-256 hash calculation.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -52,14 +51,15 @@ public class FileRelocatorNode : IFlowNode
 
         if (string.IsNullOrWhiteSpace(sourcePath) || (!File.Exists(sourcePath) && !Directory.Exists(sourcePath)))
         {
-            context.Log($"[Reubicador] Archivo de origen no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Relocator_NotFound", "[Relocator] Source file not found: '{0}'", item.CurrentPath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
 
+        string operation = "Move";
         try
         {
-            string operation = Parameters.TryGetValue("Operation", out var opVal) ? ParameterHelper.GetString(opVal, "Move") : "Move";
+            operation = Parameters.TryGetValue("Operation", out var opVal) ? ParameterHelper.GetString(opVal, "Move") : "Move";
             string destDirTemplate = Parameters.TryGetValue("DestinationDirectory", out var dirVal) ? ParameterHelper.GetString(dirVal, @"{CurrentDir}") : @"{CurrentDir}";
             bool verifyIntegrity = Parameters.TryGetValue("VerifyIntegrity", out var vVal) && ParameterHelper.GetBoolean(vVal, true);
             bool createDirs = Parameters.TryGetValue("CreateDirectories", out var crVal) && ParameterHelper.GetBoolean(crVal, true);
@@ -93,7 +93,7 @@ public class FileRelocatorNode : IFlowNode
 
             if (isSamePath)
             {
-                context.Log($"[Reubicador] Origen y destino son idénticos. Omitiendo operación física: '{targetPath}'", LogLevel.Debug, item);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Relocator_SamePath", "[Relocator] Source and target are identical. Skipping physical operation: '{0}'", targetPath), LogLevel.Debug, item);
                 await context.EmitAsync("Out", item);
                 return;
             }
@@ -170,7 +170,7 @@ public class FileRelocatorNode : IFlowNode
             item.AddLog($"{operation} completed -> {targetPath}");
 
             string detailsJson = $"{{\"operation\": \"{operation}\", \"sourcePath\": \"{originalCurrent.Replace("\\", "\\\\")}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"integrityVerified\": {verifyIntegrity.ToString().ToLowerInvariant()}, \"sha256\": \"{sourceHash}\"}}";
-            context.Log($"[Reubicador] Operación {operation.ToUpperInvariant()} completada con éxito: '{Path.GetFileName(originalCurrent)}' -> '{targetPath}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Relocator_Success", "[Relocator] Operation {0} completed successfully: '{1}' -> '{2}'", operation.ToUpperInvariant(), Path.GetFileName(originalCurrent), targetPath), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
             
             await context.EmitAsync("Out", item);
         }
@@ -178,7 +178,7 @@ public class FileRelocatorNode : IFlowNode
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"source\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
-            context.Log($"[Reubicador] Error en reubicación: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Relocator_Error", "[Relocator] Error during operation {0}: {1}", operation, ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Relocation failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

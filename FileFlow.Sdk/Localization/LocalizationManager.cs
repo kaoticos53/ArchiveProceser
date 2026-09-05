@@ -14,6 +14,12 @@ public class LocalizationManager : INotifyPropertyChanged
     private readonly Lock _lock = new();
     private CultureInfo _currentCulture = new("es-ES");
 
+    public LocalizationManager()
+    {
+        CultureInfo.DefaultThreadCurrentCulture = _currentCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = _currentCulture;
+    }
+
     public CultureInfo CurrentCulture
     {
         get => _currentCulture;
@@ -23,6 +29,8 @@ public class LocalizationManager : INotifyPropertyChanged
             _currentCulture = value;
             CultureInfo.CurrentCulture = value;
             CultureInfo.CurrentUICulture = value;
+            CultureInfo.DefaultThreadCurrentCulture = value;
+            CultureInfo.DefaultThreadCurrentUICulture = value;
             OnPropertyChanged(string.Empty);
             OnPropertyChanged("Item[]");
             OnPropertyChanged("Item");
@@ -73,6 +81,22 @@ public class LocalizationManager : INotifyPropertyChanged
             }
         }
         return string.IsNullOrEmpty(fallback) ? key : fallback;
+    }
+
+    /// <summary>
+    /// Obtiene una plantilla localizada y formatea los argumentos con la cultura activa.
+    /// </summary>
+    public string GetFormattedString(string key, string fallback, params object?[] args)
+    {
+        string template = GetString(key, fallback);
+        try
+        {
+            return string.Format(_currentCulture, template, args);
+        }
+        catch
+        {
+            return template;
+        }
     }
 
     public void SetCulture(string cultureCode)

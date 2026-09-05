@@ -913,4 +913,28 @@
   <data name="Metrics_BottleneckAlert" xml:space="preserve"><value>Cuello de botella en el flujo ({0})</value></data>
   <data name="Metrics_RollingHistory" xml:space="preserve"><value>📈 Historial Rodante (Últimas 8 operaciones)</value></data>
   <data name="Metrics_ResetNode" xml:space="preserve"><value>Restablecer Métricas del Nodo</value></data>
+
+  <!-- Execution & Workflow Logs -->
+  <data name="Log_WatchModeStarting" xml:space="preserve"><value>👁️ Iniciando Modo Observador (Watch Mode)...</value></data>
+  <data name="Log_DebugStarting" xml:space="preserve"><value>🐞 Iniciando Sesión de Depuración (Paso a paso con breakpoints activos)...</value></data>
+  <data name="Log_DryRunStarting" xml:space="preserve"><value>🧪 Iniciando Simulación Dry-Run (Sin cambios destructivos)...</value></data>
+  <data name="Log_StartingExecution" xml:space="preserve"><value>🚀 Iniciando ejecución con ID: {0}</value></data>
+  <data name="Log_WatchModeActive" xml:space="preserve"><value>👁️ Observador de Directorios en tiempo real ACTIVO</value></data>
+  <data name="Log_WatchModeStopped" xml:space="preserve"><value>🛑 Modo Observador DETENIDO</value></data>
+  <data name="Log_CheckpointReset" xml:space="preserve"><value>🔄 Estado de Checkpoint restablecido: memoria previa borrada</value></data>
+  <data name="Log_DryRunFinished" xml:space="preserve"><value>[Dry-Run] Simulación finalizada: 0 cambios físicos realizados</value></data>
+  <data name="Log_RollbackStarting" xml:space="preserve"><value>🔄 Revirtiendo operaciones completadas...</value></data>
+  <data name="Log_RollbackCompleted" xml:space="preserve"><value>✓ Reversión completada: todas las operaciones fueron deshechas con éxito</value></data>
+  <data name="Log_NewWorkflowCreated" xml:space="preserve"><value>📄 Nuevo flujo creado</value></data>
+  <data name="Log_OpenManual" xml:space="preserve"><value>📖 Abriendo manual de usuario...</value></data>
+  <data name="Log_OpenExamples" xml:space="preserve"><value>📁 Abriendo carpeta de ejemplos...</value></data>
+  <data name="Log_AppInitialized" xml:space="preserve"><value>✓ FileFlow Studio inicializado con éxito con telemetría reactiva y recarga en caliente.</value></data>
+  <data name="Log_ExportSuccess" xml:space="preserve"><value>Logs exportados con éxito a: {0}</value></data>
+  <data name="Log_ExecutionCompletedSuccessfully" xml:space="preserve"><value>Ejecución finalizada con éxito. Tiempo: {0:F2}s</value></data>
+  <data name="Log_DrainTaskQueueProgress" xml:space="preserve"><value>Drenando cola de tareas ({0} restantes)...</value></data>
+  <data name="Log_DrainPostWorkflowProgress" xml:space="preserve"><value>Drenando operaciones post-flujo ({0} restantes)...</value></data>
+  <data name="Log_WorkflowCompletedProgress" xml:space="preserve"><value>Flujo de trabajo completado en {0:F2}s</value></data>
+  <data name="Log_CheckpointSkippingFile" xml:space="preserve"><value>[Checkpoint] Omitiendo archivo completado previamente: {0}</value></data>
+  <data name="Log_ProcessingItemsProgress" xml:space="preserve"><value>⚡ Procesando: {0:N0}/{1:N0} elementos ({2:F0}%)</value></data>
+  <data name="Log_ExecutionErrorsOccurred" xml:space="preserve"><value>Ejecución completada con errores: {0}</value></data>
 </root>

@@ -255,7 +255,7 @@ public class WorkflowExecutor
                 long effective = Math.Max(totalFiles, doneFiles + remaining);
                 double pct = effective > 0 ? (double)doneFiles / effective * 100.0 : 95.0;
                 if (pct >= 100.0) pct = 99.0;
-                NotifyProgress(pct, $"⚡ Finalizando cola de tareas: {remaining} restante(s) ({doneFiles:N0}/{effective:N0})...");
+                NotifyProgress(pct, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_DrainTaskQueueProgress", "⚡ Finalizando cola de tareas: {0} restante(s) ({1}/{2})...", remaining, doneFiles.ToString("N0"), effective.ToString("N0")));
             }).ConfigureAwait(false);
 
             var completionDummy = new FileItemContext(string.Empty);
@@ -278,12 +278,12 @@ public class WorkflowExecutor
 
             await _taskTracker.DrainActiveTasksAsync(executionErrors, remaining =>
             {
-                NotifyProgress(99.0, $"⚡ Finalizando operaciones de post-flujo ({remaining} pendiente(s))...");
+                NotifyProgress(99.0, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_DrainPostWorkflowProgress", "⚡ Finalizando operaciones de post-flujo ({0} pendiente(s))...", remaining));
             }).ConfigureAwait(false);
 
             if (executionErrors.Count > 0)
             {
-                throw new AggregateException("Se produjeron errores durante la ejecución de los nodos del flujo.", executionErrors);
+                throw new AggregateException(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Log_ExecutionErrorsOccurred", "Se produjeron errores durante la ejecución de los nodos del flujo."), executionErrors);
             }
 
             _checkpointHandler.ClearCheckpoint(graph.Name, IsDryRun);
@@ -292,8 +292,8 @@ public class WorkflowExecutor
             long finalFiles = _telemetryTracker.CompletedFilesCount;
             if (finalFiles == 0) finalFiles = _telemetryTracker.SourceItemsEmitted;
             if (finalFiles == 0) finalFiles = _telemetryTracker.ProcessedItemsCount;
-            NotifyProgress(100.0, $"🟢 Completado: {finalFiles:N0}/{finalFiles:N0} elementos (100%)");
-            NotifyLog("Workflow execution completed successfully.", LogLevel.Information);
+            NotifyProgress(100.0, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_WorkflowCompletedProgress", "🟢 Completado: {0}/{1} elementos (100%)", finalFiles.ToString("N0"), finalFiles.ToString("N0")));
+            NotifyLog(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Log_ExecutionCompletedSuccessfully", "Workflow execution completed successfully."), LogLevel.Information);
         }
         finally
         {

@@ -10,7 +10,7 @@ public class DocumentProcessorNode : IFlowNode
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DocumentProcessorNode_Name", "Document & PDF Processor");
     public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("DocumentProcessorNode_Desc", "Inspecciona documentos y archivos PDF, contando páginas y extrayendo metadatos clave.");
+    public string Description => LocalizationManager.Instance.GetString("DocumentProcessorNode_Desc", "Inspects documents and PDF files, counting pages and extracting key metadata.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -41,7 +41,7 @@ public class DocumentProcessorNode : IFlowNode
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            context.Log($"[Procesador Docs] Archivo no encontrado: '{filePath}'", LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_DocProcessor_NotFound", "[Document Processor] File not found: '{0}'", filePath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -71,7 +71,7 @@ public class DocumentProcessorNode : IFlowNode
 
             sw.Stop();
             string detailsJson = $"{{\"documentType\": \"{docType}\", \"estimatedPages\": {estimatedPageCount}, \"lineCount\": {lineCount}, \"fileSizeBytes\": {item.FileSizeBytes}}}";
-            context.Log($"[Procesador Docs] Documento analizado ({docType}): ~{estimatedPageCount} págs, {lineCount:N0} líneas", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_DocProcessor_Analyzed", "[Document Processor] Document analyzed ({0}): ~{1} pages, {2:N0} lines", docType, estimatedPageCount, lineCount), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             await context.EmitAsync("Out", item);
         }
@@ -79,7 +79,7 @@ public class DocumentProcessorNode : IFlowNode
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";
-            context.Log($"[Procesador Docs] Error al procesar documento: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_DocProcessor_Error", "[Document Processor] Error processing document: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"DocumentProcessorNode error: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

@@ -87,5 +87,21 @@ public abstract class FlowNodeBase : IFlowNode
         context.Log(message, level, item);
     }
 
+    /// <summary>
+    /// Obtiene una cadena localizada por clave desde LocalizationManager.
+    /// </summary>
+    protected string GetLocalizedString(string key, string fallback = "")
+    {
+        return Localization.LocalizationManager.Instance.GetString(key, fallback);
+    }
+
+    /// <summary>
+    /// Obtiene una cadena formateada con localización desde LocalizationManager.
+    /// </summary>
+    protected string GetLocalizedFormat(string key, string fallbackTemplate, params object?[] args)
+    {
+        return Localization.LocalizationManager.Instance.GetFormattedString(key, fallbackTemplate, args);
+    }
+
     #endregion
 }

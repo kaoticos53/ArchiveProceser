@@ -236,7 +236,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         watcher.Start(watchFolders, filter: "*.*", includeSubdirectories: true, debounceMs: 1000);
 
         IsWatching = true;
-        _logViewModel.AddLog(LogLevel.Information, $"👁️ Modo Vigilante activado. Escuchando {watchFolders.Count} carpetas: {string.Join(", ", watchFolders)}");
+        _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_WatchModeActive", "👁️ Modo Vigilante activado. Escuchando {0} carpetas: {1}", watchFolders.Count, string.Join(", ", watchFolders)));
 
         try
         {
@@ -246,7 +246,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         {
             watcher.Stop();
             IsWatching = false;
-            _logViewModel.AddLog(LogLevel.Information, "👁️ Modo Vigilante detenido.");
+            _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetString("Log_WatchModeStopped", "👁️ Modo Vigilante detenido."));
         }
     }
 
@@ -273,7 +273,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
                 if (userChoice == MessageBoxResult.No)
                 {
                     WorkflowCheckpointManager.Instance.ClearCheckpoint(WorkflowName);
-                    _logViewModel.AddLog(LogLevel.Information, $"[Checkpoint] Punto de control de '{WorkflowName}' reiniciado. Iniciando ejecución limpia desde cero.");
+                    _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_CheckpointReset", "[Checkpoint] Punto de control de '{0}' reiniciado. Iniciando ejecución limpia desde cero.", WorkflowName));
                 }
             }
         }
@@ -328,11 +328,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             {
                 if (IsDryRun)
                 {
-                    _logViewModel.AddLog(LogLevel.Information, $"[Dry Run] Simulación finalizada. {result.PlannedActionsCount} acciones planificadas registradas.");
+                    _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_DryRunFinished", "[Dry Run] Simulación finalizada. {0} acciones planificadas registradas.", result.PlannedActionsCount));
                 }
                 else if (!isWatchMode)
                 {
-                    _logViewModel.AddLog(LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance["LogExecutionFinished"]);
+                    _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance["LogExecutionFinished"]);
                 }
             }
         }
@@ -377,9 +377,9 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         var result = MessageBox.Show(confirmMsg, confirmTitle, MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result == MessageBoxResult.Yes)
         {
-            _logViewModel.AddLog(LogLevel.Information, "Iniciando Rollback de operaciones...");
+            _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetString("Log_RollbackStarting", "Iniciando Rollback de operaciones..."));
             int undone = await _lastJournalService.RollbackAsync();
-            _logViewModel.AddLog(LogLevel.Information, $"Rollback completado con éxito: {undone} operaciones revertidas.");
+            _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_RollbackCompleted", "Rollback completado con éxito: {0} operaciones revertidas.", undone));
             string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_RollbackSuccess", "Se han revertido {0} operaciones con éxito."), undone);
             MessageBox.Show(successMsg, confirmTitle, MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -388,65 +388,34 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void StepNext()
     {
-        var debugSession = _executionCoordinator.ActiveDebugSession;
-        if (debugSession != null)
+        if (_executionCoordinator.ActiveDebugSession != null && _executionCoordinator.ActiveDebugSession.IsPaused)
         {
-            if (debugSession.IsPaused)
-            {
-                debugSession.StepNext();
-            }
-            else
-            {
-                debugSession.IsStepMode = true;
-            }
-            _executionCoordinator.ActiveExecutor?.Resume();
-            IsPaused = false;
-        }
-    }
-
-    [RelayCommand]
-    public void ContinueWorkflow()
-    {
-        var debugSession = _executionCoordinator.ActiveDebugSession;
-        if (debugSession != null)
-        {
-            debugSession.Continue();
-            _executionCoordinator.ActiveExecutor?.Resume();
-            IsPaused = false;
+            _executionCoordinator.ActiveDebugSession.StepNext();
             IsPausedAtBreakpointOrError = false;
         }
-        else if (_executionCoordinator.ActiveExecutor != null && IsPaused)
+    }
+
+    [RelayCommand]
+    public void ResumeWorkflow()
+    {
+        if (_executionCoordinator.ActiveDebugSession != null && _executionCoordinator.ActiveDebugSession.IsPaused)
         {
-            _executionCoordinator.ActiveExecutor.Resume();
+            _executionCoordinator.ActiveDebugSession.Continue();
+            IsPausedAtBreakpointOrError = false;
+        }
+        else if (IsPaused)
+        {
+            _executionCoordinator.ActiveExecutor?.Resume();
             IsPaused = false;
         }
     }
 
     [RelayCommand]
-    public void TogglePause()
+    public void PauseWorkflow()
     {
-        var executor = _executionCoordinator.ActiveExecutor;
-        if (!IsRunning || executor == null) return;
+        if (!IsRunning || IsPaused) return;
 
-        if (IsPaused || IsPausedAtBreakpointOrError)
-        {
-            ContinueWorkflow();
-        }
-        else
-        {
-            _executionCoordinator.ActiveDebugSession?.Pause();
-            executor.Pause();
-            IsPaused = true;
-        }
-    }
-
-    [RelayCommand]
-    public void PauseDebug()
-    {
-        var executor = _executionCoordinator.ActiveExecutor;
-        if (!IsRunning || executor == null) return;
-        _executionCoordinator.ActiveDebugSession?.Pause();
-        executor.Pause();
+        _executionCoordinator.ActiveExecutor?.Pause();
         IsPaused = true;
     }
 
@@ -457,7 +426,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         {
             _cts.Cancel();
             _executionCoordinator.ActiveDebugSession?.Continue();
-            _logViewModel.AddLog(LogLevel.Warning, "Cancelación solicitada...");
+            _logViewModel.AddLog(LogLevel.Warning, LocalizationManager.Instance.GetString("LogCancellationRequested", "Cancelación solicitada..."));
         }
     }
 
@@ -478,7 +447,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
         _editorViewModel.ClearGraph();
         WorkflowName = "Flujo de Procesamiento de Archivos";
-        _logViewModel.AddLog(LogLevel.Information, "Nuevo flujo creado.");
+        _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetString("Log_NewWorkflowCreated", "Nuevo flujo creado."));
     }
 
     [RelayCommand]
@@ -493,7 +462,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             {
                 var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
                 await _workflowStorageService.SaveWorkflowAsync(filePath, graph);
-                _logViewModel.AddLog(LogLevel.Information, $"Flujo guardado en {filePath}");
+                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("LogSavedWorkflow", "Flujo guardado en {0}", filePath));
             }
             catch (Exception ex)
             {
@@ -517,7 +486,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
                 var graph = await _workflowStorageService.LoadWorkflowAsync(filePath);
                 _editorViewModel.LoadFromGraphModel(graph);
                 WorkflowName = graph.Name;
-                _logViewModel.AddLog(LogLevel.Information, $"Flujo cargado desde {filePath}");
+                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("LogLoadedWorkflow", "Flujo cargado desde {0}", filePath));
             }
             catch (Exception ex)
             {
@@ -549,7 +518,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
             if (manualPath != null && File.Exists(manualPath) && AppResourceLocator.TryOpenPath(manualPath))
             {
-                _logViewModel.AddLog(LogLevel.Information, $"Abriendo manual de usuario: {manualPath}");
+                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_OpenManual", "Abriendo manual de usuario: {0}", manualPath));
             }
             else
             {
@@ -574,7 +543,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             string? examplesPath = AppResourceLocator.FindDirectoryInAppOrRepo("Examples", "docs/examples");
             if (examplesPath != null && Directory.Exists(examplesPath) && AppResourceLocator.TryOpenPath(examplesPath))
             {
-                _logViewModel.AddLog(LogLevel.Information, $"Abriendo carpeta de ejemplos: {examplesPath}");
+                _logViewModel.AddLog(LogLevel.Information, LocalizationManager.Instance.GetFormattedString("Log_OpenExamples", "Abriendo carpeta de ejemplos: {0}", examplesPath));
             }
             else
             {

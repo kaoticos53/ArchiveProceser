@@ -97,4 +97,58 @@
   <data name="AdvancedRenamer_SavePresetToolTip" xml:space="preserve"><value>Save current pipeline as preset</value></data>
   <data name="AdvancedRenamer_OpenPresetToolTip" xml:space="preserve"><value>Load .ffren or .json preset file</value></data>
   <data name="AdvancedRenamer_EmptyStateStep" xml:space="preserve"><value>Select or add a method from the left panel to configure its properties.</value></data>
+
+  <!-- Node Log Messages -->
+  <data name="Log_FolderSource_DirNotExist" xml:space="preserve"><value>Source directory '{0}' does not exist or is invalid.</value></data>
+  <data name="Log_FolderSource_Scanning" xml:space="preserve"><value>Scanning directory: {0} (EmitMode={1}, {2}, MaxDepth={3}, Recursive={4})</value></data>
+  <data name="Log_FolderSource_Finished" xml:space="preserve"><value>[Folder Source] Scan and emission finished: {0:N0} {1} ({2:F1} MB)</value></data>
+  <data name="Log_FolderSource_SkippingFiles" xml:space="preserve"><value>Skipping files in '{0}': {1}</value></data>
+  <data name="Log_FolderSource_SkippingDirs" xml:space="preserve"><value>Skipping directories in '{0}': {1}</value></data>
+  <data name="Unit_Items" xml:space="preserve"><value>items</value></data>
+  <data name="Unit_Folders" xml:space="preserve"><value>folders</value></data>
+  <data name="Unit_Files" xml:space="preserve"><value>files</value></data>
+  <data name="Log_Renamer_SourceNotFound" xml:space="preserve"><value>[Renamer] Source file or folder not found: '{0}'</value></data>
+  <data name="Log_Renamer_NoChange" xml:space="preserve"><value>[Renamer] Name is identical to current, no changes needed: '{0}'</value></data>
+  <data name="Log_Renamer_AutoIncrementCollision" xml:space="preserve"><value>[Renamer] Auto-increment collision resolved: '{0}'</value></data>
+  <data name="Log_Renamer_OverwriteCollision" xml:space="preserve"><value>[Renamer] Overwriting existing file per 'Overwrite' policy: '{0}'</value></data>
+  <data name="Log_Renamer_SkipExisting" xml:space="preserve"><value>[Renamer] Target already exists, skipping per 'Skip' strategy: '{0}'</value></data>
+  <data name="Log_Renamer_VirtualTransformed" xml:space="preserve"><value>[Renamer] Name transformed (Virtual Mode): '{0}' -&gt; '{1}'</value></data>
+  <data name="Log_Renamer_PhysicalRenamed" xml:space="preserve"><value>[Renamer] Physical rename successful (In-Place): '{0}' -&gt; '{1}'</value></data>
+  <data name="Log_Renamer_Error" xml:space="preserve"><value>[Renamer] Rename error: {0}</value></data>
+  <data name="Log_Sink_NoFileFound" xml:space="preserve"><value>[Destination Sink] Input file not found: '{0}'</value></data>
+  <data name="Log_Sink_SkipCollision" xml:space="preserve"><value>[Destination Sink] Skipped due to existing collision (Strategy: Skip): '{0}'</value></data>
+  <data name="Log_Sink_IncrementalRename" xml:space="preserve"><value>[Destination Sink] Incremental rename to avoid collision: '{0}'</value></data>
+  <data name="Log_Sink_OverwriteExisting" xml:space="preserve"><value>[Destination Sink] Overwriting existing target file: '{0}'</value></data>
+  <data name="Log_Sink_SavedSuccess" xml:space="preserve"><value>[Destination Sink] Successfully saved to '{0}' (Strategy: {1}, DryRun={2})</value></data>
+  <data name="Log_Sink_SaveError" xml:space="preserve"><value>[Destination Sink] Error saving file: {0}</value></data>
+  <data name="Log_OriginalAction_SourceNotFound" xml:space="preserve"><value>[Original File Action] Original file not found: '{0}'</value></data>
+  <data name="Log_OriginalAction_Keep" xml:space="preserve"><value>[Original File Action] Keeping original file intact: '{0}'</value></data>
+  <data name="Log_OriginalAction_Recycle" xml:space="preserve"><value>[Original File Action] Sending original to Recycle Bin: '{0}' (DryRun={1})</value></data>
+  <data name="Log_OriginalAction_Quarantine" xml:space="preserve"><value>[Original File Action] Moving original to quarantine: '{0}' (DryRun={1})</value></data>
+  <data name="Log_OriginalAction_PermanentDelete" xml:space="preserve"><value>[Original File Action] Permanently deleting original: '{0}' (DryRun={1})</value></data>
+  <data name="Log_OriginalAction_UnknownPolicy" xml:space="preserve"><value>[Original File Action] Unknown action policy: '{0}', retaining file.</value></data>
+  <data name="Log_OriginalAction_Error" xml:space="preserve"><value>[Original File Action] Error applying policy: {0}</value></data>
+  <data name="Log_SafeRecycle_NotFound" xml:space="preserve"><value>[Safe Recycle] File or folder not found: '{0}'</value></data>
+  <data name="Log_SafeRecycle_DryRun" xml:space="preserve"><value>[Safe Recycle] [DryRun] Planned sending to Recycle Bin: '{0}'</value></data>
+  <data name="Log_SafeRecycle_Success" xml:space="preserve"><value>[Safe Recycle] Item successfully sent to Recycle Bin: '{0}'</value></data>
+  <data name="Log_SafeRecycle_Error" xml:space="preserve"><value>[Safe Recycle] Error sending to Recycle Bin: {0}</value></data>
+  <data name="Log_Relocator_NotFound" xml:space="preserve"><value>[Relocator] Source file not found: '{0}'</value></data>
+  <data name="Log_Relocator_SamePath" xml:space="preserve"><value>[Relocator] Source and target are identical. Skipping physical operation: '{0}'</value></data>
+  <data name="Log_Relocator_Success" xml:space="preserve"><value>[Relocator] Operation {0} completed successfully: '{1}' -&gt; '{2}'</value></data>
+  <data name="Log_Relocator_Error" xml:space="preserve"><value>[Relocator] Error during operation {0}: {1}</value></data>
+  <data name="Log_EmptyCleaner_NotFound" xml:space="preserve"><value>[Empty Directory Cleaner] Directory not found: '{0}'</value></data>
+  <data name="Log_EmptyCleaner_Deleted" xml:space="preserve"><value>[Empty Directory Cleaner] Deleted {0:N0} empty folders in '{1}' (DryRun={2})</value></data>
+  <data name="Log_EmptyCleaner_Error" xml:space="preserve"><value>[Empty Directory Cleaner] Error cleaning empty folders: {0}</value></data>
+  <data name="Log_DirInspector_NotFound" xml:space="preserve"><value>[Directory Inspector] Path does not exist: '{0}' -&gt; Classified as 'MixedContent'</value></data>
+  <data name="Log_DirInspector_DirectoriesOnly" xml:space="preserve"><value>[Directory Inspector] Classified as 'DirectoriesOnly' ({0} subdirectories, 0 files)</value></data>
+  <data name="Log_DirInspector_SingleArchive" xml:space="preserve"><value>[Directory Inspector] Classified as 'SingleArchive' ({0})</value></data>
+  <data name="Log_DirInspector_MixedContent" xml:space="preserve"><value>[Directory Inspector] Classified as 'MixedContent' ({0} files, {1} subdirectories)</value></data>
+  <data name="Log_DocProcessor_NotFound" xml:space="preserve"><value>[Document Processor] File not found: '{0}'</value></data>
+  <data name="Log_DocProcessor_Analyzed" xml:space="preserve"><value>[Document Processor] Document analyzed ({0}): ~{1} pages, {2:N0} lines</value></data>
+  <data name="Log_DocProcessor_Error" xml:space="preserve"><value>[Document Processor] Error processing document: {0}</value></data>
+  <data name="Log_VarInjector_Var" xml:space="preserve"><value>[Variable Injector] Variable '{0}' = '{1}'</value></data>
+  <data name="Log_VarInjector_Injected" xml:space="preserve"><value>[Variable Injector] Injected {0} variables into metadata</value></data>
+  <data name="Log_Report_Updated" xml:space="preserve"><value>[Operation Report] Report updated in memory (Format: {0}, Scope: {1})</value></data>
+  <data name="Log_Report_Error" xml:space="preserve"><value>[Operation Report] Error generating report: {0}</value></data>
+  <data name="Log_Report_Consolidated" xml:space="preserve"><value>[Operation Report] Consolidated report generated in memory ({0} files)</value></data>
 </root>

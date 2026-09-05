@@ -2,6 +2,7 @@ using System.Diagnostics;
 using FileFlow.Plugin.FileSystem.Reporting;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
 
@@ -45,9 +46,9 @@ public class OperationReportNode : IFlowNode
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("ReportFormat", ParameterEditorType.Dropdown, DefaultValue: "HTML", DisplayOrder: 1, Options: ["HTML", "Markdown", "Text", "JSON", "CSV"]),
         new("ReportScope", ParameterEditorType.Dropdown, DefaultValue: "Consolidated", DisplayOrder: 2, Options: ["Consolidated", "PerFile", "Both"]),
-        new("GroupBy", ParameterEditorType.Dropdown, DefaultValue: "Directory", DisplayOrder: 3, Options: ["Directory", "Flat", "Extension", "Status"]),
+        new("GroupBy", ParameterEditorType.Dropdown, DefaultValue: "Directory", DisplayOrder: 3, Options: ["Directory", "Extension", "Status", "Flat"]),
         new("ReportFileName", ParameterEditorType.Text, DefaultValue: "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}", DisplayOrder: 4),
-        new("Theme", ParameterEditorType.Dropdown, DefaultValue: "ModernDark", DisplayOrder: 5, Options: ["ModernDark", "CleanLight", "Cyberpunk", "Nordic", "Executive", "HighContrast"]),
+        new("Theme", ParameterEditorType.Dropdown, DefaultValue: "ModernDark", DisplayOrder: 5, Options: ["ModernDark", "CleanLight", "Executive"]),
         new("AutoOpenReport", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6),
         new("IncludeMetadata", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 7)
     ];
@@ -61,78 +62,79 @@ public class OperationReportNode : IFlowNode
         var sw = Stopwatch.StartNew();
 
         string format = Parameters.TryGetValue("ReportFormat", out var fVal) ? ParameterHelper.GetString(fVal, "HTML") : "HTML";
-        string scope = Parameters.TryGetValue("ReportScope", out var sVal) ? ParameterHelper.GetString(sVal, "Consolidated") : "Consolidated";
-        string theme = Parameters.TryGetValue("Theme", out var tVal) ? ParameterHelper.GetString(tVal, "ModernDark") : "ModernDark";
+        string scope = Parameters.TryGetValue("ReportScope", out var scVal) ? ParameterHelper.GetString(scVal, "Consolidated") : "Consolidated";
+        string groupBy = Parameters.TryGetValue("GroupBy", out var gbVal) ? ParameterHelper.GetString(gbVal, "Directory") : "Directory";
+        string theme = Parameters.TryGetValue("Theme", out var thVal) ? ParameterHelper.GetString(thVal, "ModernDark") : "ModernDark";
         bool autoOpen = Parameters.TryGetValue("AutoOpenReport", out var aoVal) && ParameterHelper.GetBoolean(aoVal, false);
-        bool includeMetadata = !Parameters.TryGetValue("IncludeMetadata", out var imVal) || ParameterHelper.GetBoolean(imVal, true);
-        bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
+        bool includeMeta = Parameters.TryGetValue("IncludeMetadata", out var imVal) && ParameterHelper.GetBoolean(imVal, true);
+        string nameTemplate = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
+        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
-        IReportRenderer renderer = GetRenderer(format);
+        string executionId = item.Metadata.TryGetValue("WorkflowExecutionId", out var execId) ? execId?.ToString() ?? "Unknown" : "Unknown";
 
-        // Convert current item to ReportItemData
         var reportItem = new ReportItemData
         {
             Id = item.IdString,
             FileName = item.FileName,
-            OriginalPath = string.IsNullOrWhiteSpace(item.OriginalPath) ? item.CurrentPath : item.OriginalPath,
+            OriginalPath = item.OriginalPath,
             FinalPath = item.CurrentPath,
             FileSizeBytes = item.FileSizeBytes,
             FormattedSize = FormatBytes(item.FileSizeBytes),
-            Steps = item.ExecutionLog.ToList(),
-            Metadata = new Dictionary<string, object?>(item.Metadata, StringComparer.OrdinalIgnoreCase),
-            Tags = new HashSet<string>(item.Tags, StringComparer.OrdinalIgnoreCase),
-            IsSuccess = !item.Metadata.ContainsKey("Error") && !item.Metadata.ContainsKey("Faulted"),
-            ErrorMessage = item.Metadata.TryGetValue("Error", out var err) ? err?.ToString() : null,
+            Steps = [.. item.ExecutionLog],
+            Metadata = includeMeta ? new Dictionary<string, object?>(item.Metadata) : new Dictionary<string, object?>(),
+            Tags = item.Tags.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            IsSuccess = true,
+            ErrorMessage = null,
             ProcessedAt = DateTime.UtcNow
         };
 
-        try
+        lock (_lock)
         {
-            lock (_lock)
+            if (_lastExecutionId != executionId)
             {
-                // Detect reset across different workflow executions
-                if (item.Metadata.TryGetValue("WorkflowExecutionId", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)
-                {
-                    _lastExecutionId = execId;
-                    _accumulatedItems.Clear();
-                    _reportEmitted = false;
-                }
-
-                _accumulatedItems.Add(reportItem);
+                _lastExecutionId = executionId;
+                _accumulatedItems.Clear();
+                _reportEmitted = false;
             }
 
-            // 1. Per-file report handling (only if scope is PerFile or Both)
+            _accumulatedItems.Add(reportItem);
+        }
+
+        try
+        {
             if (scope.Equals("PerFile", StringComparison.OrdinalIgnoreCase) || scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
             {
-                string perFileName = $"{Path.GetFileNameWithoutExtension(item.FileName)}_Report.{renderer.FileExtension}";
-
-                var singleSummary = new ReportSummaryData
+                var perFileSummary = new ReportSummaryData
                 {
-                    Title = $"Reporte de Operaciones - {item.FileName}",
+                    Title = "Reporte de Ejecución - " + item.FileName,
                     GeneratedAt = DateTime.UtcNow,
                     TotalFiles = 1,
-                    SuccessCount = reportItem.IsSuccess ? 1 : 0,
-                    ErrorCount = reportItem.IsSuccess ? 0 : 1,
+                    SuccessCount = 1,
+                    ErrorCount = 0,
                     TotalBytes = item.FileSizeBytes,
                     FormattedTotalBytes = FormatBytes(item.FileSizeBytes),
                     Items = [reportItem],
                     GroupBy = "Flat",
-                    Groups = ReportSummaryData.CreateGroups([reportItem], "Flat", b => FormatBytes(b))
+                    Groups = ReportSummaryData.CreateGroups([reportItem], "Flat", FormatBytes)
                 };
 
-                string perFileContent = renderer.Render(singleSummary, theme, includeMetadata);
+                var renderer = GetRenderer(format);
+                string perFileContent = renderer.Render(perFileSummary, theme, includeMeta);
+                string extension = renderer.FileExtension.TrimStart('.');
 
-                var reportContext = new FileItemContext(perFileName)
+                string perFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_Report.{extension}";
+
+                var reportContext = new FileItemContext(perFileName, isDirectory: false)
                 {
-                    OriginalPath = perFileName,
+                    CurrentPath = perFileName,
                     PhysicalPath = string.Empty,
-                    FileSizeBytes = System.Text.Encoding.UTF8.GetByteCount(perFileContent)
+                    OriginalPath = perFileName
                 };
                 reportContext.Metadata["VirtualContent"] = perFileContent;
                 reportContext.Metadata["ReportContent"] = perFileContent;
-                reportContext.Metadata["ReportFormat"] = format;
-                reportContext.Metadata["ReportScope"] = "PerFile";
-                reportContext.Metadata["SourceItemFileName"] = item.FileName;
+                reportContext.Metadata["DocumentType"] = format.ToUpperInvariant();
+                reportContext.Metadata["IsReport"] = true;
+                reportContext.Metadata["WorkflowExecutionId"] = executionId;
                 reportContext.AddLog($"Individual in-memory report generated: {perFileName}");
 
                 if (isDryRun)
@@ -159,7 +161,7 @@ public class OperationReportNode : IFlowNode
             item.AddLog($"OperationReportNode processed file in memory. Format: {format}, Scope: {scope}");
 
             string detailsJson = $"{{\"format\": \"{format}\", \"scope\": \"{scope}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
-            context.Log($"[Reporte] Reporte actualizado en memoria (Formato: {format}, Ámbito: {scope})", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Report_Updated", "[Operation Report] Report updated in memory (Format: {0}, Scope: {1})", format, scope), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
             // Forward original item to Out
             await context.EmitAsync("Out", item);
@@ -167,7 +169,7 @@ public class OperationReportNode : IFlowNode
         catch (Exception ex)
         {
             sw.Stop();
-            context.Log($"[Reporte] Error al generar reporte: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Report_Error", "[Operation Report] Error generating report: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds);
             item.AddLog($"OperationReportNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }
@@ -178,77 +180,66 @@ public class OperationReportNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string format = Parameters.TryGetValue("ReportFormat", out var fVal) ? ParameterHelper.GetString(fVal, "HTML") : "HTML";
-        string scope = Parameters.TryGetValue("ReportScope", out var sVal) ? ParameterHelper.GetString(sVal, "Consolidated") : "Consolidated";
+        string scope = Parameters.TryGetValue("ReportScope", out var scVal) ? ParameterHelper.GetString(scVal, "Consolidated") : "Consolidated";
         string groupBy = Parameters.TryGetValue("GroupBy", out var gbVal) ? ParameterHelper.GetString(gbVal, "Directory") : "Directory";
-        string fileNamePattern = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
-        string theme = Parameters.TryGetValue("Theme", out var tVal) ? ParameterHelper.GetString(tVal, "ModernDark") : "ModernDark";
+        string theme = Parameters.TryGetValue("Theme", out var thVal) ? ParameterHelper.GetString(thVal, "ModernDark") : "ModernDark";
         bool autoOpen = Parameters.TryGetValue("AutoOpenReport", out var aoVal) && ParameterHelper.GetBoolean(aoVal, false);
-        bool includeMetadata = !Parameters.TryGetValue("IncludeMetadata", out var imVal) || ParameterHelper.GetBoolean(imVal, true);
-        bool isDryRun = context.IsDryRun;
+        bool includeMeta = Parameters.TryGetValue("IncludeMetadata", out var imVal) && ParameterHelper.GetBoolean(imVal, true);
+        string nameTemplate = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
 
-        if (!scope.Equals("Consolidated", StringComparison.OrdinalIgnoreCase) && !scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
+        if (scope.Equals("PerFile", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
-        ReportSummaryData consolidatedSummary;
+        List<ReportItemData> itemsSnapshot;
+        string executionId;
         lock (_lock)
         {
-            if (_reportEmitted || _accumulatedItems.Count == 0)
-            {
-                return;
-            }
+            if (_reportEmitted || _accumulatedItems.Count == 0) return;
             _reportEmitted = true;
-
-            long totalBytes = _accumulatedItems.Sum(i => i.FileSizeBytes);
-            int success = _accumulatedItems.Count(i => i.IsSuccess);
-            int errors = _accumulatedItems.Count - success;
-            var itemsSnapshot = _accumulatedItems.ToList();
-            var groups = ReportSummaryData.CreateGroups(itemsSnapshot, groupBy, b => FormatBytes(b));
-
-            consolidatedSummary = new ReportSummaryData
-            {
-                Title = "Reporte Consolidado de Operaciones",
-                GeneratedAt = DateTime.UtcNow,
-                TotalFiles = _accumulatedItems.Count,
-                SuccessCount = success,
-                ErrorCount = errors,
-                TotalBytes = totalBytes,
-                FormattedTotalBytes = FormatBytes(totalBytes),
-                Items = itemsSnapshot,
-                GroupBy = groupBy,
-                Groups = groups
-            };
+            itemsSnapshot = [.. _accumulatedItems];
+            executionId = _lastExecutionId ?? "Batch";
         }
 
-        IReportRenderer renderer = GetRenderer(format);
-        string consolidatedContent = renderer.Render(consolidatedSummary, theme, includeMetadata);
+        long totalBytes = itemsSnapshot.Sum(i => i.FileSizeBytes);
+        int successCount = itemsSnapshot.Count(i => i.IsSuccess);
+        int errorCount = itemsSnapshot.Count - successCount;
+        bool isDryRun = context.IsDryRun;
 
-        var dummy = new FileItemContext(string.Empty);
-        string resolvedFileName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(fileNamePattern, dummy);
-        if (string.IsNullOrWhiteSpace(resolvedFileName))
+        var consolidatedSummary = new ReportSummaryData
         {
-            resolvedFileName = $"Reporte_Ejecucion_{DateTime.Now:yyyyMMdd_HHmmss}";
-        }
-        if (!resolvedFileName.EndsWith($".{renderer.FileExtension}", StringComparison.OrdinalIgnoreCase))
-        {
-            resolvedFileName += $".{renderer.FileExtension}";
-        }
-        string virtualFileName = Path.GetFileName(resolvedFileName);
+            Title = "Reporte Consolidado de Operaciones",
+            GeneratedAt = DateTime.UtcNow,
+            TotalFiles = itemsSnapshot.Count,
+            SuccessCount = successCount,
+            ErrorCount = errorCount,
+            TotalBytes = totalBytes,
+            FormattedTotalBytes = FormatBytes(totalBytes),
+            Items = itemsSnapshot,
+            GroupBy = groupBy,
+            Groups = ReportSummaryData.CreateGroups(itemsSnapshot, groupBy, FormatBytes)
+        };
 
-        var reportContext = new FileItemContext(virtualFileName)
+        var renderer = GetRenderer(format);
+        string consolidatedContent = renderer.Render(consolidatedSummary, theme, includeMeta);
+        string extension = renderer.FileExtension.TrimStart('.');
+
+        var dummyItem = new FileItemContext("BatchReport", false);
+        string resolvedName = VariableTemplateResolver.Resolve(nameTemplate, dummyItem);
+        string virtualFileName = resolvedName.EndsWith($".{extension}", StringComparison.OrdinalIgnoreCase) ? resolvedName : $"{resolvedName}.{extension}";
+
+        var reportContext = new FileItemContext(virtualFileName, isDirectory: false)
         {
-            OriginalPath = virtualFileName,
+            CurrentPath = virtualFileName,
             PhysicalPath = string.Empty,
-            FileSizeBytes = System.Text.Encoding.UTF8.GetByteCount(consolidatedContent)
+            OriginalPath = virtualFileName
         };
         reportContext.Metadata["VirtualContent"] = consolidatedContent;
         reportContext.Metadata["ReportContent"] = consolidatedContent;
-        reportContext.Metadata["ReportFormat"] = format;
-        reportContext.Metadata["ReportScope"] = "Consolidated";
-        reportContext.Metadata["TotalFiles"] = consolidatedSummary.TotalFiles;
-        reportContext.Metadata["SuccessCount"] = consolidatedSummary.SuccessCount;
-        reportContext.Metadata["ErrorCount"] = consolidatedSummary.ErrorCount;
+        reportContext.Metadata["DocumentType"] = format.ToUpperInvariant();
+        reportContext.Metadata["IsReport"] = true;
+        reportContext.Metadata["WorkflowExecutionId"] = executionId;
         reportContext.AddLog($"Consolidated in-memory report generated ({consolidatedSummary.TotalFiles} files): {virtualFileName}");
 
         if (isDryRun)
@@ -268,7 +259,7 @@ public class OperationReportNode : IFlowNode
             TryOpenTemporaryReport(virtualFileName, consolidatedContent);
         }
 
-        context.Log($"[Reporte] Reporte consolidado generado en memoria ({consolidatedSummary.TotalFiles} archivos)", LogLevel.Information, reportContext);
+        context.Log(LocalizationManager.Instance.GetFormattedString("Log_Report_Consolidated", "[Operation Report] Consolidated report generated in memory ({0} files)", consolidatedSummary.TotalFiles), LogLevel.Information, reportContext);
         await context.EmitAsync("Report", reportContext);
     }
 

@@ -9,10 +9,9 @@ namespace FileFlow.Plugin.FileSystem;
 public class SafeRecycleDeleteNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Name", "Borrado Seguro a Papelera");
+    public string Name => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Name", "Safe Recycle Delete");
     public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Desc", "Envía archivos o carpetas a la Papelera de reciclaje de Windows mediante la API nativa del Shell, garantizando que sean recuperables y permitiendo deshacer la operación (Rollback).");
-
+    public string Description => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Desc", "Sends files or folders to Windows Recycle Bin using native Shell API, ensuring they are recoverable and supporting rollback.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -44,7 +43,7 @@ public class SafeRecycleDeleteNode : IFlowNode
 
         if (string.IsNullOrWhiteSpace(targetPath) || (!File.Exists(targetPath) && !Directory.Exists(targetPath)))
         {
-            context.Log($"[Papelera Segura] Archivo o carpeta no encontrado: '{targetPath}'", LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_SafeRecycle_NotFound", "[Safe Recycle] File or folder not found: '{0}'", targetPath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -62,7 +61,7 @@ public class SafeRecycleDeleteNode : IFlowNode
                 item.FileSizeBytes
             ));
             item.AddLog($"[DryRun] Planned Safe Recycle Delete: {targetPath}");
-            context.Log($"[Papelera Segura] [DryRun] Planificado envío a papelera de reciclaje: '{targetPath}'", LogLevel.Information, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_SafeRecycle_DryRun", "[Safe Recycle] [DryRun] Planned sending to Recycle Bin: '{0}'", targetPath), LogLevel.Information, item);
             await context.EmitAsync("Deleted", item);
             return;
         }
@@ -84,7 +83,7 @@ public class SafeRecycleDeleteNode : IFlowNode
                 ));
 
                 string detailsJson = $"{{\"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"fileSizeBytes\": {item.FileSizeBytes}, \"deleteOriginal\": {deleteOriginal.ToString().ToLowerInvariant()}}}";
-                context.Log($"[Papelera Segura] Elemento enviado exitosamente a la Papelera de Reciclaje: '{Path.GetFileName(targetPath)}'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_SafeRecycle_Success", "[Safe Recycle] Item successfully sent to Recycle Bin: '{0}'", Path.GetFileName(targetPath)), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
                 item.AddLog($"Sent to Windows Recycle Bin: {targetPath}");
                 await context.EmitAsync("Deleted", item);
@@ -98,7 +97,7 @@ public class SafeRecycleDeleteNode : IFlowNode
         {
             sw.Stop();
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\"}}";
-            context.Log($"[Papelera Segura] Error al enviar a la papelera: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_SafeRecycle_Error", "[Safe Recycle] Error sending to Recycle Bin: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Recycle failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }

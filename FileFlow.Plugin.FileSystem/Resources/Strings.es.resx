@@ -97,4 +97,58 @@
   <data name="AdvancedRenamer_SavePresetToolTip" xml:space="preserve"><value>Guardar pipeline actual como preset</value></data>
   <data name="AdvancedRenamer_OpenPresetToolTip" xml:space="preserve"><value>Cargar archivo .ffren o .json</value></data>
   <data name="AdvancedRenamer_EmptyStateStep" xml:space="preserve"><value>Selecciona o añade un método del panel izquierdo para configurar sus propiedades.</value></data>
+
+  <!-- Node Log Messages -->
+  <data name="Log_FolderSource_DirNotExist" xml:space="preserve"><value>El directorio de origen '{0}' no existe o no es válido.</value></data>
+  <data name="Log_FolderSource_Scanning" xml:space="preserve"><value>Escaneando directorio: {0} (EmitMode={1}, {2}, MaxDepth={3}, Recursive={4})</value></data>
+  <data name="Log_FolderSource_Finished" xml:space="preserve"><value>[Origen Carpeta] Finalizado escaneo y emisión: {0:N0} {1} ({2:F1} MB)</value></data>
+  <data name="Log_FolderSource_SkippingFiles" xml:space="preserve"><value>Omitiendo archivos en '{0}': {1}</value></data>
+  <data name="Log_FolderSource_SkippingDirs" xml:space="preserve"><value>Omitiendo directorios en '{0}': {1}</value></data>
+  <data name="Unit_Items" xml:space="preserve"><value>elementos</value></data>
+  <data name="Unit_Folders" xml:space="preserve"><value>carpetas</value></data>
+  <data name="Unit_Files" xml:space="preserve"><value>archivos</value></data>
+  <data name="Log_Renamer_SourceNotFound" xml:space="preserve"><value>[Renombrador] Archivo o carpeta de origen no encontrado: '{0}'</value></data>
+  <data name="Log_Renamer_NoChange" xml:space="preserve"><value>[Renombrador] Nombre idéntico al actual, sin cambios necesarios: '{0}'</value></data>
+  <data name="Log_Renamer_AutoIncrementCollision" xml:space="preserve"><value>[Renombrador] Resuelta colisión con autoincremento: '{0}'</value></data>
+  <data name="Log_Renamer_OverwriteCollision" xml:space="preserve"><value>[Renombrador] Sobrescribiendo archivo existente por política 'Overwrite': '{0}'</value></data>
+  <data name="Log_Renamer_SkipExisting" xml:space="preserve"><value>[Renombrador] Destino ya existente, omitiendo según estrategia 'Skip': '{0}'</value></data>
+  <data name="Log_Renamer_VirtualTransformed" xml:space="preserve"><value>[Renombrador] Nombre transformado (Modo Virtual): '{0}' -&gt; '{1}'</value></data>
+  <data name="Log_Renamer_PhysicalRenamed" xml:space="preserve"><value>[Renombrador] Renombrado físico con éxito (In-Place): '{0}' -&gt; '{1}'</value></data>
+  <data name="Log_Renamer_Error" xml:space="preserve"><value>[Renombrador] Error en renombramiento: {0}</value></data>
+  <data name="Log_Sink_NoFileFound" xml:space="preserve"><value>[Destino Final] Archivo de entrada no encontrado: '{0}'</value></data>
+  <data name="Log_Sink_SkipCollision" xml:space="preserve"><value>[Destino Final] Omitido por colisión existente (Estrategia: Skip): '{0}'</value></data>
+  <data name="Log_Sink_IncrementalRename" xml:space="preserve"><value>[Destino Final] Renombrado incremental para evitar colisión: '{0}'</value></data>
+  <data name="Log_Sink_OverwriteExisting" xml:space="preserve"><value>[Destino Final] Sobrescribiendo archivo destino existente: '{0}'</value></data>
+  <data name="Log_Sink_SavedSuccess" xml:space="preserve"><value>[Destino Final] Guardado con éxito en '{0}' (Estrategia: {1}, DryRun={2})</value></data>
+  <data name="Log_Sink_SaveError" xml:space="preserve"><value>[Destino Final] Error al guardar archivo: {0}</value></data>
+  <data name="Log_OriginalAction_SourceNotFound" xml:space="preserve"><value>[Acción Archivo Origen] Archivo original no encontrado: '{0}'</value></data>
+  <data name="Log_OriginalAction_Keep" xml:space="preserve"><value>[Acción Archivo Origen] Conservando archivo original intacto: '{0}'</value></data>
+  <data name="Log_OriginalAction_Recycle" xml:space="preserve"><value>[Acción Archivo Origen] Enviando original a la Papelera de Reciclaje: '{0}' (DryRun={1})</value></data>
+  <data name="Log_OriginalAction_Quarantine" xml:space="preserve"><value>[Acción Archivo Origen] Moviendo original a cuarentena: '{0}' (DryRun={1})</value></data>
+  <data name="Log_OriginalAction_PermanentDelete" xml:space="preserve"><value>[Acción Archivo Origen] Eliminando permanentemente original: '{0}' (DryRun={1})</value></data>
+  <data name="Log_OriginalAction_UnknownPolicy" xml:space="preserve"><value>[Acción Archivo Origen] Política de acción desconocida: '{0}', reteniendo archivo.</value></data>
+  <data name="Log_OriginalAction_Error" xml:space="preserve"><value>[Acción Archivo Origen] Error al aplicar política: {0}</value></data>
+  <data name="Log_SafeRecycle_NotFound" xml:space="preserve"><value>[Papelera Segura] Archivo o carpeta no encontrado: '{0}'</value></data>
+  <data name="Log_SafeRecycle_DryRun" xml:space="preserve"><value>[Papelera Segura] [DryRun] Planificado envío a papelera de reciclaje: '{0}'</value></data>
+  <data name="Log_SafeRecycle_Success" xml:space="preserve"><value>[Papelera Segura] Elemento enviado exitosamente a la Papelera de Reciclaje: '{0}'</value></data>
+  <data name="Log_SafeRecycle_Error" xml:space="preserve"><value>[Papelera Segura] Error al enviar a la papelera: {0}</value></data>
+  <data name="Log_Relocator_NotFound" xml:space="preserve"><value>[Reubicador] Archivo de origen no encontrado: '{0}'</value></data>
+  <data name="Log_Relocator_SamePath" xml:space="preserve"><value>[Reubicador] Origen y destino son idénticos. Omitiendo operación física: '{0}'</value></data>
+  <data name="Log_Relocator_Success" xml:space="preserve"><value>[Reubicador] Operación {0} completada con éxito: '{1}' -&gt; '{2}'</value></data>
+  <data name="Log_Relocator_Error" xml:space="preserve"><value>[Reubicador] Error al reubicar archivo: {0}</value></data>
+  <data name="Log_EmptyCleaner_NotFound" xml:space="preserve"><value>[Limpiador Carpetas] Directorio no encontrado: '{0}'</value></data>
+  <data name="Log_EmptyCleaner_Deleted" xml:space="preserve"><value>[Limpiador Carpetas] Eliminadas {0:N0} carpetas vacías en '{1}' (DryRun={2})</value></data>
+  <data name="Log_EmptyCleaner_Error" xml:space="preserve"><value>[Limpiador Carpetas] Error al limpiar carpetas vacías: {0}</value></data>
+  <data name="Log_DirInspector_NotFound" xml:space="preserve"><value>[Inspector Directorio] Ruta no existe: '{0}' -&gt; Clasificado como 'MixedContent'</value></data>
+  <data name="Log_DirInspector_DirectoriesOnly" xml:space="preserve"><value>[Inspector Directorio] Clasificado como 'DirectoriesOnly' ({0} subdirectorios, 0 archivos)</value></data>
+  <data name="Log_DirInspector_SingleArchive" xml:space="preserve"><value>[Inspector Directorio] Clasificado como 'SingleArchive' ({0})</value></data>
+  <data name="Log_DirInspector_MixedContent" xml:space="preserve"><value>[Inspector Directorio] Clasificado como 'MixedContent' ({0} archivos, {1} subdirectorios)</value></data>
+  <data name="Log_DocProcessor_NotFound" xml:space="preserve"><value>[Procesador Docs] Archivo no encontrado: '{0}'</value></data>
+  <data name="Log_DocProcessor_Analyzed" xml:space="preserve"><value>[Procesador Docs] Documento analizado ({0}): ~{1} págs, {2:N0} líneas</value></data>
+  <data name="Log_DocProcessor_Error" xml:space="preserve"><value>[Procesador Docs] Error al procesar documento: {0}</value></data>
+  <data name="Log_VarInjector_Var" xml:space="preserve"><value>[Inyector de Variables] Variable '{0}' = '{1}'</value></data>
+  <data name="Log_VarInjector_Injected" xml:space="preserve"><value>[Inyector de Variables] Inyectadas {0} variables en metadatos</value></data>
+  <data name="Log_Report_Updated" xml:space="preserve"><value>[Reporte] Reporte actualizado en memoria (Formato: {0}, Ámbito: {1})</value></data>
+  <data name="Log_Report_Error" xml:space="preserve"><value>[Reporte] Error al generar reporte: {0}</value></data>
+  <data name="Log_Report_Consolidated" xml:space="preserve"><value>[Reporte] Reporte consolidado generado en memoria ({0} archivos)</value></data>
 </root>
