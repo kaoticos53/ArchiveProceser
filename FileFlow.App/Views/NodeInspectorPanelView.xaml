@@ -18,6 +18,8 @@
             <conv:DiffChangeTypeToBrushConverter x:Key="DiffChangeTypeToBrushConverter" />
             <conv:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
             <conv:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
+            <conv:DurationMsToTextConverter x:Key="DurationMsToTextConverter" />
+            <conv:BytesToTextConverter x:Key="BytesToTextConverter" />
 
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Themes/Templates/InspectorTemplates.xaml" />
@@ -542,9 +544,7 @@
                                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_SizeLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text=": " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                            <TextBlock Text="{Binding SelectedSnapshot.ItemSnapshot.FileSizeBytes}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                            <TextBlock Text=" " FontSize="11" />
-                                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_BytesLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding SelectedSnapshot.ItemSnapshot.FileSizeBytes, Converter={StaticResource BytesToTextConverter}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>
@@ -585,7 +585,7 @@
                                             <TextBlock Text="{Binding InspectedNode.LatencyText}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,2,0,0" />
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalLabel], FallbackValue='Total: '}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.AverageTimeMs, StringFormat='{}{0:F1} ms'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.AverageTimeMs, Converter={StaticResource DurationMsToTextConverter}}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -597,7 +597,7 @@
                                             <TextBlock Text="{Binding InspectedNode.RollingRamText, FallbackValue='0 KB'}" FontSize="14" FontWeight="Bold" Foreground="#A5B4FC" Margin="0,2,0,0" />
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_PeakLabel], FallbackValue='Pico: '}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.PeakAllocatedBytes, StringFormat='{}{0:N0} B'}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                <TextBlock Text="{Binding InspectedNode.CurrentStats.PeakAllocatedBytes, Converter={StaticResource BytesToTextConverter}}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -653,8 +653,8 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0" Text="{Binding DurationMs, StringFormat='⚡ {0:F1} ms'}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" />
-                                                            <TextBlock Grid.Column="1" Text="{Binding AllocatedBytes, StringFormat='  | 💾 {0:N0} B'}" FontSize="10.5" Foreground="#A5B4FC" Margin="4,0,0,0" />
+                                                            <TextBlock Grid.Column="0" Text="{Binding DurationMs, Converter={StaticResource DurationMsToTextConverter}, ConverterParameter='⚡ '}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding AllocatedBytes, Converter={StaticResource BytesToTextConverter}, ConverterParameter='  | 💾 '}" FontSize="10.5" Foreground="#A5B4FC" Margin="4,0,0,0" />
                                                             <Border Grid.Column="2" Margin="4,0" Padding="3,0" CornerRadius="3" Background="#083344" BorderBrush="#06B6D4" BorderThickness="1"
                                                                     Visibility="{Binding GpuAccelerated, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                 <TextBlock Text="GPU" FontSize="8" FontWeight="Bold" Foreground="#22D3EE" />

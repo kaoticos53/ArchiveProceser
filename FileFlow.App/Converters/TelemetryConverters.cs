@@ -127,3 +127,75 @@ public class LoggingToTooltipConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
 }
+
+/// <summary>
+/// Converts a numeric duration value (in milliseconds, as double or long) to a
+/// human-readable string with automatic unit scaling: µs → ms → s → min.
+/// An optional ConverterParameter string is prepended as a prefix (e.g. "⚡ ").
+/// </summary>
+public class DurationMsToTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        double ms = value switch
+        {
+            double d => d,
+            float f  => f,
+            long l   => l,
+            int i    => i,
+            _        => -1
+        };
+
+        if (ms < 0) return string.Empty;
+
+        string prefix = parameter is string p ? p : string.Empty;
+
+        string formatted = ms switch
+        {
+            < 1.0     => $"{ms * 1000:F0} µs",
+            < 1_000.0 => $"{ms:F1} ms",
+            < 60_000.0 => $"{ms / 1000.0:F2} s",
+            _         => $"{ms / 60_000.0:F1} min"
+        };
+
+        return prefix + formatted;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => DependencyProperty.UnsetValue;
+}
+
+/// <summary>
+/// Converts a byte count (long or int) to a human-readable size string with
+/// automatic unit scaling: B → KB → MB → GB.
+/// An optional ConverterParameter string is prepended as a prefix (e.g. "💾 ").
+/// </summary>
+public class BytesToTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        long bytes = value switch
+        {
+            long l => l,
+            int i  => i,
+            _      => -1
+        };
+
+        if (bytes < 0) return string.Empty;
+
+        string prefix = parameter is string p ? p : string.Empty;
+
+        string formatted = bytes switch
+        {
+            >= 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
+            >= 1024L * 1024        => $"{bytes / (1024.0 * 1024):F1} MB",
+            >= 1024L               => $"{bytes / 1024.0:F0} KB",
+            _                      => $"{bytes} B"
+        };
+
+        return prefix + formatted;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => DependencyProperty.UnsetValue;
+}

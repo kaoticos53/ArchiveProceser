@@ -35,7 +35,7 @@
                     
                     <TextBlock Foreground="#8F95A3" VerticalAlignment="Center" FontSize="12">
                         <Run Text="{Binding CurrentIndex, Converter={StaticResource AddOneConverter}, Mode=OneWay}" />
-                        <Run Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_Of], FallbackValue='de'}" />
+                        <Run Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_Of], FallbackValue='de', Mode=OneWay}" />
                         <Run Text="{Binding TotalItemsCount, Mode=OneWay}" />
                     </TextBlock>
                 </StackPanel>
