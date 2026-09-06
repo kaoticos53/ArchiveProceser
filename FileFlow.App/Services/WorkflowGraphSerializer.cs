@@ -67,6 +67,7 @@ public static class WorkflowGraphSerializer
             {
                 Id = n.Id,
                 NodeTypeName = n.NodeTypeName,
+                CustomTitle = n.CustomTitle,
                 X = n.Location.X,
                 Y = n.Location.Y,
                 HasBreakpoint = n.HasBreakpoint,
@@ -185,6 +186,8 @@ public static class WorkflowGraphSerializer
             var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y))
             {
                 ParentEditor = editor,
+                CustomTitle = nodeDto.CustomTitle,
+                Title = !string.IsNullOrWhiteSpace(nodeDto.CustomTitle) ? nodeDto.CustomTitle : instance.Name,
                 HasBreakpoint = nodeDto.HasBreakpoint || graph.BreakpointNodeIds.Contains(nodeDto.Id),
                 IsLoggingEnabled = nodeDto.IsLoggingEnabled && !graph.DisabledLoggingNodeIds.Contains(nodeDto.Id)
             };

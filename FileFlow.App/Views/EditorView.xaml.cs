@@ -67,6 +67,15 @@ public partial class EditorView : UserControl
             vm.DeleteSelectedNodesCommand.Execute(null);
             e.Handled = true;
         }
+        else if (e.Key == Key.F2)
+        {
+            var selected = vm.Nodes.FirstOrDefault(n => n.IsSelected);
+            if (selected != null)
+            {
+                selected.StartRenaming();
+                e.Handled = true;
+            }
+        }
     }
 }
 

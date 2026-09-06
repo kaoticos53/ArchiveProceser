@@ -36,4 +36,40 @@ public partial class NodeCardView : UserControl
             e.Handled = true;
         }
     }
+
+
+
+    private void TitleEditBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is TextBox tb && tb.Visibility == Visibility.Visible)
+        {
+            tb.Focus();
+            tb.SelectAll();
+        }
+    }
+
+    private void TitleEditBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (DataContext is NodeViewModel node)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                node.CommitTitleRename();
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape)
+            {
+                node.CancelTitleRename();
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void TitleEditBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is NodeViewModel node && node.IsEditingTitle)
+        {
+            node.CommitTitleRename();
+        }
+    }
 }

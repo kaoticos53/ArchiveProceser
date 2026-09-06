@@ -14,6 +14,7 @@ public sealed class NodeClipboardItem
     public string OriginalId { get; set; } = string.Empty;
     public string NodeTypeName { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
+    public string? CustomTitle { get; set; }
     public double X { get; set; }
     public double Y { get; set; }
     public double Width { get; set; } = 200;
@@ -80,6 +81,7 @@ public sealed class NodeClipboardService : INodeClipboardService
                 OriginalId = node.Id,
                 NodeTypeName = node.NodeTypeName,
                 Title = node.Title,
+                CustomTitle = node.CustomTitle,
                 X = node.Location.X,
                 Y = node.Location.Y,
                 Width = node.Width,
@@ -263,10 +265,15 @@ public sealed class NodeClipboardService : INodeClipboardService
                 newLocation = new Point(item.X + offset, item.Y + offset);
             }
 
+            string effectiveTitle = !string.IsNullOrWhiteSpace(item.CustomTitle)
+                ? item.CustomTitle
+                : (!string.IsNullOrWhiteSpace(item.Title) ? item.Title : instance.Name);
+
             var nodeVm = new NodeViewModel(instance, newLocation)
             {
                 ParentEditor = editor,
-                Title = item.Title,
+                Title = effectiveTitle,
+                CustomTitle = !string.IsNullOrWhiteSpace(item.CustomTitle) ? item.CustomTitle : (effectiveTitle != instance.Name ? effectiveTitle : null),
                 HasBreakpoint = item.HasBreakpoint,
                 IsLoggingEnabled = item.IsLoggingEnabled,
                 Width = item.Width > 0 ? item.Width : 200,

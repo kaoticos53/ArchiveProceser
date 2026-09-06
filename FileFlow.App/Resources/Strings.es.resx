@@ -102,6 +102,15 @@
   </data>
 
   <!-- Context Menu -->
+  <data name="RenameNode" xml:space="preserve">
+    <value>Renombrar nodo</value>
+  </data>
+  <data name="DoubleClickToRenameToolTip" xml:space="preserve">
+    <value>Doble clic para renombrar el nodo (F2)</value>
+  </data>
+  <data name="ResetTitleToDefault" xml:space="preserve">
+    <value>Restablecer nombre por defecto</value>
+  </data>
   <data name="CopyNode" xml:space="preserve">
     <value>Copiar nodo</value>
   </data>

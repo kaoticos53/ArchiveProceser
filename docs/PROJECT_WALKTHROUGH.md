@@ -2,6 +2,31 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-06] - Personalización de Título de Nodos en el Flujo y Trazabilidad en Logs y Telemetría
+
+### 🎯 Objetivos y Alcance
+1. **Modificación de Título de Cada Nodo**:
+   - Soporte para editar el título de cualquier nodo directamente en el lienzo visual mediante el menú contextual ("Renombrar nodo...") o pulsando la tecla `F2` teniendo el nodo seleccionado.
+   - Se descartó la doble pulsación sobre el título para no solapar ni interferir con la apertura del inspector de nodos (`InspectNode`), que se activa de forma uniforme al hacer doble clic sobre cualquier punto de la tarjeta.
+   - El editor en línea (`TextBox`) se superpone al `TextBlock` en la cabecera del nodo, con foco y selección total automática de texto.
+   - Confirmación mediante `Enter` o pérdida de foco (`LostFocus`), y cancelación mediante `Escape`.
+   - Restablecimiento automático al valor por defecto (`_nodeInstance.Name`) si el usuario introduce espacios en blanco o el nombre original.
+2. **Reflejo en Logs y Telemetría**:
+   - En [`WorkflowExecutor.NotifyLog`](file:///FileFlow.Core/Engine/WorkflowExecutor.cs), `StructuredLogRecord.NodeName` utiliza prioritariamente el título personalizado del nodo (o el original por defecto si no ha sido editado).
+   - La consola de ejecución (`LogView.xaml`) y el almacenamiento de telemetría SQLite (`SqliteLogStore`) muestran y filtran el nodo utilizando su título personalizado.
+3. **Persistencia y Portapapeles**:
+   - Añadida la propiedad `CustomTitle` en [`WorkflowNode`](file:///FileFlow.Core/Engine/WorkflowGraph.cs), serializada en el JSON del flujo mediante [`WorkflowGraphSerializer`](file:///FileFlow.App/Services/WorkflowGraphSerializer.cs).
+   - Preservación de `CustomTitle` en operaciones de copiar, cortar, pegar y duplicar en [`NodeClipboardService`](file:///FileFlow.App/Services/NodeClipboardService.cs).
+4. **Internacionalización (i18n)**:
+   - Nuevas claves multilingües en `FileFlow.App/Resources/Strings.resx` y `Strings.es.resx`: `RenameNode`, `DoubleClickToRenameToolTip`, `ResetTitleToDefault`.
+   - Si un nodo no tiene título personalizado, su título se actualiza dinámicamente al cambiar de idioma. Si tiene un título personalizado, se preserva el texto definido por el usuario.
+5. **Pruebas y Verificación**:
+   - Creada la suite [`NodeTitleCustomizationTests.cs`](file:///FileFlow.Tests/Unit/App/NodeTitleCustomizationTests.cs) con 7 pruebas unitarias (edición, reset, cancelación, serialización, portapapeles y logs).
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `dotnet test`: **523 / 523 pruebas superadas al 100%**.
+
+---
+
 ## [2026-09-06] - Corrección de Visualización y Cálculo Intermitente de Métricas de Telemetría en el Flujo de Ejecución
 
 ### 🎯 Objetivos y Diagnóstico Causa Raíz

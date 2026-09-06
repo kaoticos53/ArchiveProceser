@@ -7,6 +7,7 @@ public class WorkflowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string NodeTypeName { get; set; } = string.Empty;
+    public string? CustomTitle { get; set; }
     public double X { get; set; }
     public double Y { get; set; }
     public bool HasBreakpoint { get; set; }

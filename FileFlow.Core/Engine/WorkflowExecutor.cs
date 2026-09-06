@@ -14,6 +14,7 @@ public class WorkflowExecutor
 {
     private readonly Lock _lock = new();
     private readonly ConcurrentDictionary<string, IFlowNode> _nodeInstances = new();
+    private readonly ConcurrentDictionary<string, string> _nodeDisplayNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, List<WorkflowEdge>> _outgoingEdges = new();
     private readonly ConcurrentDictionary<string, WorkflowEdge[]> _indexedPortEdges = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _pauseSemaphore = new(1, 1);
@@ -150,6 +151,14 @@ public class WorkflowExecutor
         }
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
+        _nodeDisplayNames.Clear();
+        foreach (var nodeDto in graph.Nodes)
+        {
+            if (!string.IsNullOrWhiteSpace(nodeDto.CustomTitle))
+            {
+                _nodeDisplayNames[nodeDto.Id] = nodeDto.CustomTitle;
+            }
+        }
         _outgoingEdges.Clear();
         _indexedPortEdges.Clear();
         _disabledLoggingNodeIds.Clear();
@@ -319,6 +328,14 @@ public class WorkflowExecutor
         }
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
+        _nodeDisplayNames.Clear();
+        foreach (var nodeDto in graph.Nodes)
+        {
+            if (!string.IsNullOrWhiteSpace(nodeDto.CustomTitle))
+            {
+                _nodeDisplayNames[nodeDto.Id] = nodeDto.CustomTitle;
+            }
+        }
         _outgoingEdges.Clear();
         _disabledLoggingNodeIds.Clear();
         foreach (var disabledId in graph.DisabledLoggingNodeIds) _disabledLoggingNodeIds.Add(disabledId);
@@ -503,9 +520,16 @@ public class WorkflowExecutor
         if (IsLoggingDisabledForNode(nodeId)) return;
 
         string? nodeName = null;
-        if (!string.IsNullOrWhiteSpace(nodeId) && _nodeInstances.TryGetValue(nodeId, out var node))
+        if (!string.IsNullOrWhiteSpace(nodeId))
         {
-            nodeName = node.Name;
+            if (_nodeDisplayNames.TryGetValue(nodeId, out var customTitle) && !string.IsNullOrWhiteSpace(customTitle))
+            {
+                nodeName = customTitle;
+            }
+            else if (_nodeInstances.TryGetValue(nodeId, out var node))
+            {
+                nodeName = node.Name;
+            }
         }
 
         var record = StructuredLogRecord.Create(

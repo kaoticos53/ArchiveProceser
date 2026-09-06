@@ -72,6 +72,14 @@
                         </MenuItem.Icon>
                     </MenuItem>
 
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RenameNode]}"
+                              InputGestureText="F2"
+                              Command="{Binding PlacementTarget.DataContext.StartRenamingCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✏️" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}"
                               Command="{Binding PlacementTarget.DataContext.ToggleBreakpointCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                         <MenuItem.Icon>
@@ -310,8 +318,53 @@
                                     </Border.Style>
                                 </Border>
 
-                                <!-- Título del Nodo -->
-                                <TextBlock Grid.Column="3" Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <!-- Título del Nodo / Editor de Título Inline -->
+                                <Grid Grid.Column="3" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" 
+                                               FontWeight="Bold" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                               FontSize="13" 
+                                               VerticalAlignment="Center" 
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBox x:Name="TitleEditBox"
+                                             Text="{Binding EditingTitleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             FontWeight="Bold"
+                                             FontSize="12"
+                                             Background="{DynamicResource BgSurfaceBrush}"
+                                             Foreground="{DynamicResource TextPrimaryBrush}"
+                                             CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                             BorderBrush="{DynamicResource AccentPrimaryBrush}"
+                                             BorderThickness="1"
+                                             Padding="2,1"
+                                             Margin="-2,0,0,0"
+                                             VerticalAlignment="Center"
+                                             IsVisibleChanged="TitleEditBox_IsVisibleChanged"
+                                             KeyDown="TitleEditBox_KeyDown"
+                                             LostFocus="TitleEditBox_LostFocus">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </Grid>
                                 
                                 <!-- Botón Expandir/Colapsar Parámetros -->
                                 <ToggleButton Grid.Column="4"

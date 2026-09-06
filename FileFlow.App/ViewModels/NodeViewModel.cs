@@ -25,6 +25,30 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _title = "Node";
 
+    partial void OnTitleChanged(string value)
+    {
+        if (_nodeInstance != null)
+        {
+            if (string.Equals(value, _nodeInstance.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                CustomTitle = null;
+            }
+            else
+            {
+                CustomTitle = value;
+            }
+        }
+    }
+
+    [ObservableProperty]
+    private string? _customTitle;
+
+    [ObservableProperty]
+    private bool _isEditingTitle;
+
+    [ObservableProperty]
+    private string _editingTitleText = string.Empty;
+
     [ObservableProperty]
     private string _category = "General";
 
@@ -56,6 +80,40 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     {
         IsSelected = true;
         WeakReferenceMessenger.Default.Send(new NodeSelectedMessage(this, autoOpenInspector: true));
+    }
+
+    [RelayCommand]
+    public void StartRenaming()
+    {
+        EditingTitleText = Title;
+        IsEditingTitle = true;
+    }
+
+    [RelayCommand]
+    public void CommitTitleRename()
+    {
+        if (!IsEditingTitle) return;
+
+        string trimmed = EditingTitleText?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmed) || string.Equals(trimmed, _nodeInstance.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            CustomTitle = null;
+            Title = _nodeInstance.Name;
+        }
+        else
+        {
+            CustomTitle = trimmed;
+            Title = trimmed;
+        }
+
+        IsEditingTitle = false;
+    }
+
+    [RelayCommand]
+    public void CancelTitleRename()
+    {
+        EditingTitleText = Title;
+        IsEditingTitle = false;
     }
 
     [ObservableProperty]
@@ -501,7 +559,10 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     private void OnLanguageChanged(object? sender, CultureInfo culture)
     {
-        Title = _nodeInstance.Name;
+        if (string.IsNullOrWhiteSpace(CustomTitle))
+        {
+            Title = _nodeInstance.Name;
+        }
         Description = _nodeInstance.Description;
         Category = _nodeInstance.Category;
         UpdateModelStatus();

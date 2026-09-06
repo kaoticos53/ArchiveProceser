@@ -8,8 +8,18 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **516 / 516 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **523 / 523 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --35. **Personalización de Título de Nodos en el Flujo y Trazabilidad en Logs y Telemetría**:
+      - **Objetivo**: Permitir modificar el título de cada nodo dentro del flujo mediante menú contextual ("Renombrar nodo..." / atajo `F2`), restableciendo al nombre por defecto ante textos vacíos y asegurando que en el log y telemetría aparezca como nombre del nodo el título activo (original o modificado), eliminando la doble pulsación sobre el título para no interferir con la apertura del inspector de nodos.
+      - **Ajustes Realizados**:
+        1. *Modelo DAG y Persistencia (`WorkflowGraph.cs` & `WorkflowGraphSerializer.cs`)*: Añadida la propiedad `CustomTitle` a `WorkflowNode`, con serialización/deserialización en JSON e importación/exportación en el serializador de grafo.
+        2. *Motor de Ejecución y Telemetría (`WorkflowExecutor.cs`)*: Mapeo de `_nodeDisplayNames` al iniciar la ejecución. En `NotifyLog`, `StructuredLogRecord.NodeName` resuelve el título personalizado con fallback al nombre del descriptor, reflejándose en SQLite (`SqliteLogStore`) y la consola de logs.
+        3. *Tarjetas de Nodo y Edición Inline (`NodeViewModel.cs`, `NodeCardView.xaml`, `NodeCardView.xaml.cs`)*: Implementado editor en línea (`TextBox`) con `Enter` para confirmar, `Escape` para cancelar y `LostFocus` para commit automático. La doble pulsación sobre cualquier punto del nodo se preserva exclusivamente para abrir el inspector (`InspectNode`), y el renombrado se dispara por menú contextual o tecla `F2`. Sincronización automática entre `Title` y `CustomTitle`.
+        4. *Atajos y Portapapeles (`EditorView.xaml.cs`, `NodeClipboardService.cs`)*: Soporte de `F2` para renombrar el nodo seleccionado y preservación de `CustomTitle` en copia, corte, duplicado y pegado.
+        5. *Internacionalización (i18n)*: Claves `RenameNode`, `DoubleClickToRenameToolTip` y `ResetTitleToDefault` en `Strings.resx` y `Strings.es.resx`. Preservación del título personalizado ante cambios de idioma en caliente, y fallback al nombre traducido del descriptor cuando el título no está personalizado.
+        6. *Suite de Pruebas*: Creada `NodeTitleCustomizationTests.cs` con 7 pruebas unitarias completas.
+      - **Validación**: 523 / 523 pruebas superadas al 100% y compilación sin advertencias bajo `--warnaserror`.
   --34. **Corrección de Visualización y Cálculo Intermitente de Métricas de Telemetría en el Flujo de Ejecución**:
       - **Objetivo**: Resolver de raíz el problema por el cual las métricas de rendimiento y telemetría de los nodos (latencia, RAM asignada, aceleración GPU, porcentaje de tiempo y cuellos de botella) a veces se mostraban y a veces no al ejecutar un flujo.
       - **Causa Raíz Identificada**:
