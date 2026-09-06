@@ -101,7 +101,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
         ["Model"] = "Auto",
         ["OutputMode"] = "TransparentPng",
         ["BackgroundColor"] = "#FFFFFF",
-        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["OutputDirectory"] = "",
         ["SkipIfExists"] = false
     };
 
@@ -115,8 +115,8 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
             HelpText: "Formato de salida (PNG con canal alfa transparente, color sólido o solo máscara).", DisplayOrder: 2),
         new("BackgroundColor", ParameterEditorType.Text, DefaultValue: "#FFFFFF",
             HelpText: "Color de fondo hexadecimal (ej. #FFFFFF) si seleccionó 'ColorBackground'.", DisplayOrder: 3),
-        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán las imágenes procesadas.", DisplayOrder: 4),
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "",
+            HelpText: "Carpeta de destino donde se guardarán las imágenes procesadas. Si se deja vacía, usa el directorio temporal con subcarpeta aleatoria anti-colisiones.", DisplayOrder: 4),
         new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
             HelpText: "Si el archivo resultante ya existe en destino, omite la inferencia neural y reutiliza el archivo.", DisplayOrder: 5)
     ];
@@ -152,23 +152,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
             bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
 
-            string targetDir;
-            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-            {
-                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
-                {
-                    targetDir = godVal.ToString()!;
-                }
-                else
-                {
-                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
-                }
-            }
-            else
-            {
-                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
-            }
-
+            string targetDir = ParameterHelper.ResolveIntermediateOutputDir(outputDirRaw, item, context);
             Directory.CreateDirectory(targetDir);
 
             bool maskOnly = string.Equals(outputMode, "MaskOnly", StringComparison.OrdinalIgnoreCase);
@@ -288,7 +272,16 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                 var outItem = item.DeepClone();
                 outItem.CurrentPath = targetPath;
                 outItem.PhysicalPath = targetPath;
-                outItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(item.CurrentPath) ? new FileInfo(item.CurrentPath).Length : 0);
+                long newSizeBytes = new FileInfo(targetPath).Length;
+                outItem.FileSizeBytes = newSizeBytes;
+                outItem.Metadata["OriginalFileSize"] = origSizeBytes;
+                outItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
+                outItem.Metadata["OutputFileSize"] = newSizeBytes;
+                outItem.Metadata["OutputFileSizeBytes"] = newSizeBytes;
+                outItem.Metadata["SavedBytes"] = origSizeBytes - newSizeBytes;
+                outItem.Metadata["SavedPercent"] = origSizeBytes > 0 ? Math.Round((1.0 - ((double)newSizeBytes / origSizeBytes)) * 100.0, 2) : 0.0;
+                outItem.Metadata["CompressionRatio"] = origSizeBytes > 0 ? Math.Round((double)newSizeBytes / origSizeBytes, 4) : 1.0;
                 outItem.Metadata["AI:BackgroundRemoved"] = true;
                 outItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
 

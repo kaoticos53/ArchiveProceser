@@ -73,9 +73,14 @@ public sealed class WorkflowExecutionCoordinator
             ? graph.GlobalOutputDir
             : _editorViewModel.GlobalOutputDir;
 
+        string effectiveTempDir = !string.IsNullOrWhiteSpace(graph.TemporaryDirectory)
+            ? graph.TemporaryDirectory
+            : UserPreferencesService.Instance.Preferences.TemporaryDirectory;
+
         _activeExecutor = new WorkflowExecutor
         {
             GlobalOutputDir = effectiveGlobalDir,
+            TemporaryDirectory = effectiveTempDir,
             IsDryRun = options.IsDryRun,
             MaxDegreeOfParallelism = options.IsDebug ? 1 : options.MaxParallelThreads,
             EnableCheckpointing = options.EnableCheckpointing

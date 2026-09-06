@@ -285,41 +285,107 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         _loc.LanguageChanged += _languageChangedHandler;
     }
 
+    private EditorViewModel? ResolveEditor(FrameworkElement? element)
+    {
+        if (element?.Tag is EditorViewModel evm)
+        {
+            return evm;
+        }
+        if (element?.Tag is NodeInspectorViewModel nivm)
+        {
+            return nivm.Editor;
+        }
+        if (Application.Current?.MainWindow?.DataContext is MainViewModel mainVm)
+        {
+            return mainVm.Editor;
+        }
+        return null;
+    }
+
     [RelayCommand]
     public void OpenVariablePicker(object? targetObject)
     {
-        if (targetObject is FrameworkElement element && element.Tag is EditorViewModel editor && NodeOwner != null)
+        var element = targetObject as FrameworkElement;
+        var editor = ResolveEditor(element);
+
+        if (NodeOwner != null && editor != null)
         {
             RefreshAvailableVariables(editor);
+        }
 
-            var cm = new System.Windows.Controls.ContextMenu();
-            foreach (var group in AvailableVariables)
+        var cm = new System.Windows.Controls.ContextMenu
+        {
+            MaxHeight = 500
+        };
+        System.Windows.Controls.ScrollViewer.SetVerticalScrollBarVisibility(cm, System.Windows.Controls.ScrollBarVisibility.Auto);
+
+        // 1. Catálogo completo como primera opción destacada
+        var miFullCatalog = new System.Windows.Controls.MenuItem
+        {
+            Header = _loc.GetString("VarPicker_OpenFullCatalog", "🔍 Abrir Catálogo Completo de Variables..."),
+            FontWeight = FontWeights.Bold,
+            Command = OpenVariableCatalogCommand,
+            CommandParameter = element
+        };
+        cm.Items.Add(miFullCatalog);
+        cm.Items.Add(new System.Windows.Controls.Separator());
+
+        // 2. Grupos organizados en submenús para que la lista no se corte por abajo
+        foreach (var group in AvailableVariables)
+        {
+            if (group.Variables.Count == 0) continue;
+
+            var subMenu = new System.Windows.Controls.MenuItem
             {
-                var groupHeader = new System.Windows.Controls.MenuItem
+                Header = $"{group.GroupName} ({group.Variables.Count})",
+                FontWeight = group.IsUpstream ? FontWeights.SemiBold : FontWeights.Normal,
+                MaxHeight = 360
+            };
+            System.Windows.Controls.ScrollViewer.SetVerticalScrollBarVisibility(subMenu, System.Windows.Controls.ScrollBarVisibility.Auto);
+
+            foreach (var v in group.Variables)
+            {
+                var mi = new System.Windows.Controls.MenuItem
                 {
-                    Header = group.GroupName,
-                    IsEnabled = false,
-                    FontWeight = FontWeights.Bold,
-                    Foreground = System.Windows.Media.Brushes.DimGray
+                    Header = $"{v.Token}  —  {v.Description}",
+                    Command = InsertVariableTokenCommand,
+                    CommandParameter = v.Token,
+                    ToolTip = !string.IsNullOrEmpty(v.SampleValue) ? $"Ejemplo: {v.SampleValue}" : null
                 };
-                cm.Items.Add(groupHeader);
-
-                foreach (var v in group.Variables)
-                {
-                    var mi = new System.Windows.Controls.MenuItem
-                    {
-                        Header = $"{v.Token}  —  {v.Description}",
-                        Command = InsertVariableTokenCommand,
-                        CommandParameter = v.Token
-                    };
-                    cm.Items.Add(mi);
-                }
-
-                cm.Items.Add(new System.Windows.Controls.Separator());
+                subMenu.Items.Add(mi);
             }
 
+            cm.Items.Add(subMenu);
+        }
+
+        if (element != null)
+        {
             cm.PlacementTarget = element;
-            cm.IsOpen = true;
+        }
+        cm.IsOpen = true;
+    }
+
+    [RelayCommand]
+    public void OpenVariableCatalog(object? targetObject)
+    {
+        var element = targetObject as FrameworkElement;
+        var editor = ResolveEditor(element);
+
+        if (NodeOwner != null && editor != null)
+        {
+            RefreshAvailableVariables(editor);
+        }
+
+        var previewContext = (editor?.VariableDiscoveryService ?? Services.VariableDiscoveryService.Instance).CreatePreviewItem(NodeOwner);
+        var owner = (element != null ? Window.GetWindow(element) : null) ?? Application.Current?.MainWindow;
+        var dialog = new Views.Components.VariablePickerWindow(AvailableVariables, NodeOwner, previewContext, _loc)
+        {
+            Owner = owner
+        };
+
+        if (dialog.ShowDialog() == true && !string.IsNullOrEmpty(dialog.SelectedToken))
+        {
+            InsertVariableToken(dialog.SelectedToken);
         }
     }
 

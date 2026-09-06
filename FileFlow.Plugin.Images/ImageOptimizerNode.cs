@@ -35,7 +35,7 @@ public class ImageOptimizerNode : IFlowNode
         ["TargetFormat"] = "WebP",
         ["Quality"] = 80,
         ["OnlyDownscale"] = true,
-        ["OutputDirectory"] = @"{RelativeDir}\OptimizedImages"
+        ["OutputDirectory"] = ""
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
@@ -44,7 +44,7 @@ public class ImageOptimizerNode : IFlowNode
         new("TargetFormat", ParameterEditorType.Dropdown, DefaultValue: "WebP", DisplayOrder: 3, Options: ["WebP", "JPEG", "PNG", "GIF"]),
         new("Quality", ParameterEditorType.Slider, DefaultValue: 80, DisplayOrder: 4, Min: 1, Max: 100, Step: 1),
         new("OnlyDownscale", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
-        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\OptimizedImages", DisplayOrder: 6)
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 6, HelpText: "Output folder. If left empty, uses the temporary working directory with a unique subfolder.")
     ];
 
     public static (int Pixels, double? Percentage) ParseDimensionSpec(object? value)
@@ -205,8 +205,8 @@ public class ImageOptimizerNode : IFlowNode
 
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
-        string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, @"{RelativeDir}\OptimizedImages") : @"{RelativeDir}\OptimizedImages";
-        string outputDir = ParameterHelper.ResolveOutputPath(outputPattern, item);
+        string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, string.Empty) : string.Empty;
+        string outputDir = ParameterHelper.ResolveIntermediateOutputDir(outputPattern, item, context);
         bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -294,8 +294,9 @@ public class ImageOptimizerNode : IFlowNode
             }
 
             sw.Stop();
-            long newSizeBytes = (!isDryRun && File.Exists(outputPath)) ? new FileInfo(outputPath).Length : item.FileSizeBytes;
-            double savedPct = item.FileSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / item.FileSizeBytes)) * 100.0 : 0.0;
+            long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(filePath) ? new FileInfo(filePath).Length : 0);
+            long newSizeBytes = (!isDryRun && File.Exists(outputPath)) ? new FileInfo(outputPath).Length : origSizeBytes;
+            double savedPct = origSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / origSizeBytes)) * 100.0 : 0.0;
 
             outputItem = new FileItemContext(outputPath, isDirectory: false)
             {
@@ -306,6 +307,13 @@ public class ImageOptimizerNode : IFlowNode
             {
                 outputItem.Metadata[kvp.Key] = kvp.Value;
             }
+            outputItem.Metadata["OriginalFileSize"] = origSizeBytes;
+            outputItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
+            outputItem.Metadata["OutputFileSize"] = newSizeBytes;
+            outputItem.Metadata["OutputFileSizeBytes"] = newSizeBytes;
+            outputItem.Metadata["SavedBytes"] = origSizeBytes - newSizeBytes;
+            outputItem.Metadata["SavedPercent"] = Math.Round(savedPct, 2);
+            outputItem.Metadata["CompressionRatio"] = origSizeBytes > 0 ? Math.Round((double)newSizeBytes / origSizeBytes, 4) : 1.0;
             outputItem.Metadata["OptimizedFormat"] = formatStr;
             outputItem.Metadata["OptimizedWidth"] = newWidth;
             outputItem.Metadata["OptimizedHeight"] = newHeight;

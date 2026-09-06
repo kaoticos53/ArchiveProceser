@@ -40,11 +40,16 @@ public record NodeToolboxItem(
 public record VariableItem(
     string Name,
     string Token,
-    string Description
+    string Description,
+    string Category = "General",
+    string SampleValue = "",
+    bool IsUpstream = false,
+    string SourceNodeTitle = ""
 );
 
-public class VariableGroupItem(string groupName)
+public class VariableGroupItem(string groupName, bool isUpstream = false)
 {
     public string GroupName { get; set; } = groupName;
+    public bool IsUpstream { get; set; } = isUpstream;
     public List<VariableItem> Variables { get; } = [];
 }

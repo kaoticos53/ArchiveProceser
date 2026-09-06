@@ -274,4 +274,36 @@ public static class ParameterHelper
 
         return resolved;
     }
+
+    /// <summary>
+    /// Resuelve el directorio de salida para un nodo que genera archivos intermedios.
+    /// Si outputPattern no está especificado o está en blanco, genera automáticamente una subcarpeta aleatoria
+    /// dentro del directorio temporal de trabajo (context.TemporaryDirectory) para prevenir colisiones entre nodos.
+    /// </summary>
+    public static string ResolveIntermediateOutputDir(string? outputPattern, FileItemContext item, IFlowExecutionContext context)
+    {
+        if (!string.IsNullOrWhiteSpace(outputPattern))
+        {
+            return ResolveOutputPath(outputPattern, item);
+        }
+
+        string tempBase = !string.IsNullOrWhiteSpace(context.TemporaryDirectory)
+            ? context.TemporaryDirectory
+            : (item.Metadata.TryGetValue("TemporaryDirectory", out var tdVal) && tdVal != null && !string.IsNullOrWhiteSpace(tdVal.ToString())
+                ? tdVal.ToString()!
+                : Storage.AppPaths.DefaultTempDirectory);
+
+        string randomSubdir = Guid.NewGuid().ToString("N")[..8];
+        string resolvedDir = Path.Combine(tempBase, randomSubdir);
+        try
+        {
+            Directory.CreateDirectory(resolvedDir);
+        }
+        catch
+        {
+            // Resistencia ante permisos o entornos restringidos
+        }
+
+        return resolvedDir;
+    }
 }

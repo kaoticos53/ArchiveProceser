@@ -43,7 +43,9 @@ public class ExpressionFilterNode : IFlowNode
     {
         string prop = Parameters.TryGetValue("Property", out var pVal) ? ParameterHelper.GetString(pVal, "SizeMB") : "SizeMB";
         string op = Parameters.TryGetValue("Operator", out var oVal) ? ParameterHelper.GetString(oVal, ">") : ">";
-        string compVal = Parameters.TryGetValue("ComparisonValue", out var cVal) ? ParameterHelper.GetString(cVal, "10") : "10";
+        string compVal = Parameters.TryGetValue("ComparisonValue", out var cVal)
+            ? ParameterHelper.GetString(cVal, "10")
+            : (Parameters.TryGetValue("Value", out var vVal) ? ParameterHelper.GetString(vVal, "10") : "10");
 
         string actualValue = VariableTemplateResolver.GetVariableValue(prop, item, null);
         bool result = EvaluateCondition(prop, op, compVal, item);
@@ -68,10 +70,24 @@ public class ExpressionFilterNode : IFlowNode
     {
         string actualValue = VariableTemplateResolver.GetVariableValue(prop, item, null);
 
+        string effectiveCompVal = compVal;
+        if (effectiveCompVal.Contains('{') || effectiveCompVal.Contains('$'))
+        {
+            effectiveCompVal = VariableTemplateResolver.Resolve(effectiveCompVal, item);
+        }
+        else
+        {
+            string fromVar = VariableTemplateResolver.GetVariableValue(effectiveCompVal, item, null);
+            if (!string.IsNullOrWhiteSpace(fromVar))
+            {
+                effectiveCompVal = fromVar;
+            }
+        }
+
         if (op is ">" or ">=" or "<" or "<=" or "==" or "=" or "!=")
         {
             if (TryParseSmartNumeric(actualValue, out double numActual) &&
-                TryParseSmartNumeric(compVal, out double numComp))
+                TryParseSmartNumeric(effectiveCompVal, out double numComp))
             {
                 return op switch
                 {
@@ -88,9 +104,9 @@ public class ExpressionFilterNode : IFlowNode
 
         return op switch
         {
-            "==" or "=" => actualValue.Equals(compVal, StringComparison.OrdinalIgnoreCase),
-            "!=" => !actualValue.Equals(compVal, StringComparison.OrdinalIgnoreCase),
-            "Contains" => actualValue.Contains(compVal, StringComparison.OrdinalIgnoreCase),
+            "==" or "=" => actualValue.Equals(effectiveCompVal, StringComparison.OrdinalIgnoreCase),
+            "!=" => !actualValue.Equals(effectiveCompVal, StringComparison.OrdinalIgnoreCase),
+            "Contains" => actualValue.Contains(effectiveCompVal, StringComparison.OrdinalIgnoreCase),
             _ => false
         };
     }

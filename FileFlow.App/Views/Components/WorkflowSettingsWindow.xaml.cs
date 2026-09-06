@@ -27,6 +27,7 @@ public partial class WorkflowSettingsWindow : Window
 
         // Tab 1: Storage & Paths
         TxtGlobalOutputDir.Text = !string.IsNullOrWhiteSpace(currentGlobalOutputDirOrDefault(prefs)) ? currentGlobalOutputDirOrDefault(prefs) : prefs.DefaultGlobalOutputDir;
+        TxtTempWorkingDir.Text = !string.IsNullOrWhiteSpace(prefs.TemporaryDirectory) ? prefs.TemporaryDirectory : FileFlow.Sdk.Storage.AppPaths.DefaultTempDirectory;
         SelectComboBoxByTag(CmbConflictStrategy, prefs.DefaultConflictStrategy);
         ChkEnableAutoSave.IsChecked = prefs.EnableAutoSave;
         TxtAutoSaveInterval.Text = prefs.AutoSaveIntervalMinutes.ToString();
@@ -152,6 +153,20 @@ public partial class WorkflowSettingsWindow : Window
         }
     }
 
+    private void BrowseTempWorkingDir_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = LocalizationManager.Instance.GetString("Settings_SelectTempWorkingDirTitle", "Seleccionar Directorio de Trabajo Temporal"),
+            InitialDirectory = TxtTempWorkingDir.Text
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            TxtTempWorkingDir.Text = dialog.FolderName;
+        }
+    }
+
     private void BrowseFfmpeg_Click(object sender, RoutedEventArgs e) => BrowseExecutable("Seleccionar ejecutable FFmpeg", TxtFfmpeg);
     private void BrowseFfprobe_Click(object sender, RoutedEventArgs e) => BrowseExecutable("Seleccionar ejecutable FFprobe", TxtFfprobe);
     private void BrowseSevenZip_Click(object sender, RoutedEventArgs e) => BrowseExecutable("Seleccionar ejecutable 7-Zip", TxtSevenZip);
@@ -180,6 +195,7 @@ public partial class WorkflowSettingsWindow : Window
         UserPreferencesService.Instance.UpdatePreferences(prefs =>
         {
             prefs.DefaultGlobalOutputDir = GlobalOutputDir;
+            prefs.TemporaryDirectory = TxtTempWorkingDir.Text.Trim();
             prefs.DefaultConflictStrategy = (CmbConflictStrategy.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "RenameIncremental";
             prefs.EnableAutoSave = ChkEnableAutoSave.IsChecked == true;
             if (int.TryParse(TxtAutoSaveInterval.Text, out int interval) && interval > 0)

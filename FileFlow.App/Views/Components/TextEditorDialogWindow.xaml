@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_WindowTitle]}"
-        Width="740" Height="520"
-        MinWidth="520" MinHeight="400"
+        Width="860" Height="560"
+        MinWidth="600" MinHeight="420"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BgAppBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
@@ -57,16 +57,25 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Botón Insertar Variable -->
+                <!-- Botones de Acción de Variables -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BtnInsertVar" Click="BtnInsertVar_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0">
+                    <!-- Botón Insertar Variable -->
+                    <Button x:Name="BtnInsertVar" Click="BtnInsertVar_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{}{x} " FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" />
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_InsertVar]}" FontSize="11" />
                         </StackPanel>
                     </Button>
 
-                    <Button x:Name="BtnCopy" Click="BtnCopy_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_CopyFullTextToolTip], FallbackValue='Copiar texto completo al portapapeles'}">
+                    <!-- Botón Alternar Panel Lateral de Variables -->
+                    <Button x:Name="BtnToggleSidePanel" Click="BtnToggleSidePanel_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ToggleSidePanel]}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📑 " FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_SidePanelTitle]}" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="BtnCopy" Click="BtnCopy_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_CopyFullTextToolTip], FallbackValue='Copiar texto completo al portapapeles'}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="📋 " />
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Copy]}" FontSize="11" />
@@ -74,8 +83,11 @@
                     </Button>
                 </StackPanel>
 
+                <!-- Hint de IntelliSense en centro -->
+                <TextBlock Grid.Column="1" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_IntelliSenseHint]}" Foreground="{DynamicResource TextTertiaryBrush}" FontSize="10.5" VerticalAlignment="Center" HorizontalAlignment="Center" />
+
                 <!-- Botón Limpiar -->
-                <Button Grid.Column="2" x:Name="BtnClear" Click="BtnClear_Click" Style="{StaticResource SecondaryButton}" Padding="8,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ClearContentToolTip], FallbackValue='Borrar todo el contenido'}">
+                <Button Grid.Column="2" x:Name="BtnClear" Click="BtnClear_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ClearContentToolTip], FallbackValue='Borrar todo el contenido'}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🗑️ " />
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Clear]}" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
@@ -84,31 +96,168 @@
             </Grid>
         </Border>
 
-        <!-- Área de Edición Multilínea Principal -->
-        <TextBox Grid.Row="2"
-                 x:Name="TxtEditor"
-                 TextChanged="TxtEditor_TextChanged"
-                 PreviewKeyDown="TxtEditor_PreviewKeyDown"
-                 AcceptsReturn="True"
-                 AcceptsTab="True"
-                 TextWrapping="Wrap"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Cascadia Code, Consolas, Segoe UI, monospace"
-                 FontSize="12.5"
-                 Padding="10,8"
-                 Background="{DynamicResource BgCardBrush}"
-                 Foreground="{DynamicResource TextPrimaryBrush}"
-                 BorderBrush="{DynamicResource BorderDarkBrush}"
-                 BorderThickness="1"
-                 HorizontalAlignment="Stretch"
-                 VerticalAlignment="Stretch">
-            <TextBox.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="6" />
-                </Style>
-            </TextBox.Resources>
-        </TextBox>
+        <!-- Área de Edición Multilínea Principal + Panel Lateral de Variables -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="ColSidePanel" Width="260" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Columna Izquierda: Editor de Texto con Autocompletado Inteligente -->
+            <Grid Grid.Column="0">
+                <TextBox x:Name="TxtEditor"
+                         TextChanged="TxtEditor_TextChanged"
+                         PreviewKeyDown="TxtEditor_PreviewKeyDown"
+                         AcceptsReturn="True"
+                         AcceptsTab="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Cascadia Code, Consolas, Segoe UI, monospace"
+                         FontSize="12.5"
+                         Padding="10,8"
+                         Background="{DynamicResource BgCardBrush}"
+                         Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderBrush="{DynamicResource BorderDarkBrush}"
+                         BorderThickness="1"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Stretch">
+                    <TextBox.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6" />
+                        </Style>
+                    </TextBox.Resources>
+                </TextBox>
+
+                <!-- Popup de IntelliSense Flotante -->
+                <Popup x:Name="PopupIntelliSense"
+                       StaysOpen="False"
+                       Placement="Bottom"
+                       PlacementTarget="{Binding ElementName=TxtEditor}"
+                       AllowsTransparency="True">
+                    <Border Background="{DynamicResource BgCardBrush}"
+                            BorderBrush="{DynamicResource AccentPrimaryBrush}"
+                            BorderThickness="1.5"
+                            CornerRadius="6"
+                            Padding="4"
+                            Width="340"
+                            MaxHeight="220">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.Row="0" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="4" Padding="6,3" Margin="0,0,0,3">
+                                <TextBlock Text="Sugerencias de Variables (Enter/Tab)" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" />
+                            </Border>
+
+                            <ListBox Grid.Row="1"
+                                     x:Name="ListIntelliSense"
+                                     MouseLeftButtonUp="ListIntelliSense_MouseLeftButtonUp"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Token}" FontFamily="Cascadia Code, Consolas, monospace" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentCyanBrush}" />
+                                                <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding SampleValue}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="9.5" Foreground="{DynamicResource TextTertiaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </Popup>
+            </Grid>
+
+            <!-- Columna Derecha: Panel Lateral Plegable de Variables -->
+            <Border Grid.Column="1" x:Name="BorderSidePanel"
+                    Background="{DynamicResource BgSurfaceBrush}"
+                    BorderBrush="{DynamicResource BorderDarkBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="8"
+                    Margin="8,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Cabecera del Panel Lateral -->
+                    <Grid Grid.Row="0" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_SidePanelTitle]}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Click="BtnCloseSidePanel_Click" Style="{DynamicResource SecondaryButton}" Padding="4,1" ToolTip="Cerrar panel">
+                            <TextBlock Text="✖" FontSize="9" />
+                        </Button>
+                    </Grid>
+
+                    <!-- Búsqueda rápida en Panel Lateral -->
+                    <TextBox Grid.Row="1" x:Name="TxtSideSearch"
+                             TextChanged="TxtSideSearch_TextChanged"
+                             Background="{DynamicResource BgCardBrush}"
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             BorderBrush="{DynamicResource BorderDarkBrush}"
+                             Padding="6,4"
+                             FontSize="11"
+                             Margin="0,0,0,6" />
+
+                    <!-- Lista de variables del Panel Lateral -->
+                    <ListBox Grid.Row="2"
+                             x:Name="ListSideVariables"
+                             MouseDoubleClick="ListSideVariables_MouseDoubleClick"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="4,3" />
+                                <Setter Property="Margin" Value="0,1" />
+                                <Setter Property="Cursor" Value="Hand" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,4">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Token}" FontFamily="Cascadia Code, Consolas, monospace" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="1" Visibility="{Binding IsUpstream, Converter={StaticResource BooleanToVisibilityConverter}}" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" CornerRadius="3" Padding="3,1">
+                                                <TextBlock Text="🔗" FontSize="8" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Grid.Row="1" Text="{Binding Description}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Panel de Vista Previa Resuelta en Tiempo Real (si contiene variables {x}) -->
         <Border Grid.Row="3" x:Name="BorderLivePreview" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,8,0,0" MaxHeight="100" Visibility="Collapsed">
@@ -134,9 +283,9 @@
 
             <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ShortcutFooter], FallbackValue='Atajo: Ctrl + Enter para Guardar • Esc para Cancelar'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10.5" VerticalAlignment="Center" />
 
-            <Button Grid.Column="1" Click="BtnCancel_Click" Style="{StaticResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" IsCancel="True" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_CancelBtn]}" />
+            <Button Grid.Column="1" Click="BtnCancel_Click" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" IsCancel="True" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_CancelBtn]}" />
             
-            <Button Grid.Column="2" Click="BtnSave_Click" Style="{StaticResource PrimaryButton}" Padding="16,6" IsDefault="True" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_SaveBtn]}" />
+            <Button Grid.Column="2" Click="BtnSave_Click" Style="{DynamicResource PrimaryButton}" Padding="16,6" IsDefault="True" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_SaveBtn]}" />
         </Grid>
     </Grid>
 </Window>

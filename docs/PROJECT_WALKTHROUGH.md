@@ -2,6 +2,59 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-06] - Catálogo Visual de Variables, Autocompletado IntelliSense y Filtrado Upstream Dinámico en el DAG
+
+### 🎯 Objetivos y Alcance
+1. **Nuevo Catálogo Visual de Variables (`VariablePickerWindow`)**:
+   - Ventana modal dedicada con buscador en tiempo real, selector de filtros por categoría (Todas, Nodos Anteriores, Sistema, Fechas, Tamaños, Funciones) con chips interactivos redondeados.
+   - Listado de tarjetas enriquecidas con resaltado de sintaxis, badge de nodo de procedencia (`🔗 De: [Nombre Nodo]`), badge de categoría y valores de muestra calculados.
+   - Panel lateral de detalle con visualización completa del token, descripción, categoría, procedencia, valor evaluado en tiempo real y botón de inserción directa.
+   - Inserción ágil mediante doble clic sobre la lista o pulsando `Enter`, y cancelación con `Esc`.
+2. **Menú Contextual Reorganizado y Sin Desbordamientos Verticales**:
+   - Solución al problema de desbordamiento en pantallas pequeñas mediante submenús temáticos organizados por categoría y `ScrollViewer` vertical con altura máxima restringida.
+   - Primer elemento destacado: *"🔍 Abrir Catálogo Completo de Variables..."*, permitiendo acceder a la experiencia visual completa desde cualquier parámetro del inspector de nodos o lienzo.
+3. **Editor de Texto Ampliado con Autocompletado IntelliSense y Panel Lateral Plegable**:
+   - **IntelliSense Flotante**: Al escribir `{` en el editor multilínea, se despliega automáticamente un popup contextual con sugerencias de variables coincidentes, navegación mediante flechas arriba/abajo, selección con `Enter` o `Tab` y cierre con `Esc`.
+   - **Panel Lateral Plegable**: Panel derecho accesible mediante botón en barra de herramientas con buscador integrado y lista de variables para doble clic de inserción.
+   - **Vista Previa Evaluada en Tiempo Real**: Visualización inmediata del texto resuelto usando `CreatePreviewItem` con datos enriquecidos y coherentes de muestra.
+4. **Descubrimiento y Previsualización Dinámica de Variables Upstream en el Grafo DAG**:
+   - `VariableDiscoveryService.GetAvailableVariables`: Recorrido topológico inverso ascendente a través de las conexiones entrantes del nodo inspeccionado para detectar qué variables están efectivamente disponibles en función de los nodos precedentes.
+   - Identificación de metadatos especializados producidos por nodos como `ImageOptimizerNode`, `BackgroundRemoverNode`, `SuperResolutionUpscalerNode`, `ExifMetadataExtractorNode`, `FileHasherNode`, etc.
+   - `CreatePreviewItem`: Método generador de un contexto `FileItemContext` de simulación con propiedades reales (tamaños, dimensiones, rutas temporales, hashes) para previsualizar expresiones antes de ejecutar el flujo.
+5. **Pruebas y Verificación**:
+   - Creada la suite [`VariablePickerAndIntelliSenseTests.cs`](file:///FileFlow.Tests/Unit/App/VariablePickerAndIntelliSenseTests.cs) (recorrido encadenado upstream multi-nodo, resolución de plantillas y filtrado de categorías).
+   - Actualizada la suite [`VariableDiscoveryServiceTests.cs`](file:///FileFlow.Tests/Unit/App/VariableDiscoveryServiceTests.cs) (cobertura total de 5 pruebas).
+   - Suite completa de pruebas: **536 / 536 pruebas superadas al 100% (0 errores, 0 advertencias, 0 omitidas)**.
+
+---
+
+## [2026-09-06] - Directorio de Trabajo Temporal en Ajustes, Nodos Intermedios Anti-Colisión y Comparación de Tamaños de Archivos
+
+### 🎯 Objetivos y Alcance
+1. **Directorio de Trabajo Temporal en Ajustes**:
+   - Soporte para configurar una ruta de trabajo temporal persistente en los ajustes (`UserPreferencesData.TemporaryDirectory` y `UserPreferencesService`).
+   - Ruta por defecto definida en `AppPaths.DefaultTempDirectory` (`%TEMP%\FileFlowStudio\Temp` o `data\temp` en modo portable), creada automáticamente en `AppPaths.EnsureDirectories()`.
+   - Interfaz en `WorkflowSettingsWindow.xaml` (pestaña Almacenamiento & Rutas) con campo `TxtTempWorkingDir` y selector de carpeta interactivo.
+   - Textos localizados en español e inglés (`Settings_TempWorkingDirTitle`, `Settings_TempWorkingDirDesc`, `Settings_SelectTempWorkingDirTitle`).
+2. **Propagación en el Motor DAG**:
+   - `IFlowExecutionContext.TemporaryDirectory` expone la ruta con fallback a `AppPaths.DefaultTempDirectory`.
+   - `WorkflowGraph.TemporaryDirectory`, `WorkflowExecutor.TemporaryDirectory` y `WorkflowExecutionCoordinator` propagan la ruta.
+   - `WorkflowItemDispatcher` inyecta automáticamente `item.Metadata["TemporaryDirectory"]`.
+3. **Nodos Intermedios con Parámetro Vacío por Defecto y Prevención de Colisiones**:
+   - Nodos `ImageOptimizerNode`, `BackgroundRemoverNode` y `SuperResolutionUpscalerNode` tienen ahora `OutputDirectory` vacío por defecto (`""`).
+   - Helper centralizado `ParameterHelper.ResolveIntermediateOutputDir(outputPattern, item, context)`: si `outputPattern` está en blanco, crea una subcarpeta aleatoria anti-colisiones (`{TempDir}\{randomId}\`). Si se especifica una ruta manual, la respeta íntegramente.
+4. **Variables de Plantilla del Sistema**:
+   - Tokens de sistema en `SystemVariablesResolver`: `{TempDir}`, `{TemporaryDir}`, `{TempWorkingDir}`, `{RandomId}`, `{Guid}`.
+   - Variables de tamaño y compresión: `{OriginalFileSize}`, `{OriginalFileSizeBytes}`, `{OriginalFileSizeKB}`, `{OriginalFileSizeMB}`, `{OutputFileSize}`, `{OutputFileSizeBytes}`, `{OutputFileSizeKB}`, `{OutputFileSizeMB}`, `{SavedBytes}`, `{SavedPercent}`, `{CompressionRatio}` (todas formateadas en `CultureInfo.InvariantCulture`).
+5. **Evaluación de Expresiones Condicionales en `ExpressionFilterNode`**:
+   - Se habilitó la resolución de variables en `ComparisonValue` mediante `VariableTemplateResolver`.
+   - Soporte para comparar variables en tiempo de ejecución (ej. `{OutputFileSize} > {OriginalFileSize}`) para bifurcar el flujo al puerto `True` o `False` y descartar la versión procesada si es mayor que la original.
+6. **Pruebas y Verificación**:
+   - Creada la suite `TemporaryDirectoryAndSizeVariablesTests.cs` (resolución de tokens, fallback temporal anti-colisiones, emisión de metadatos de tamaño y evaluación condicional).
+   - Suite completa de pruebas: `.\test.ps1 -Mode all` $\rightarrow$ **530 / 530 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-06] - Personalización de Título de Nodos en el Flujo y Trazabilidad en Logs y Telemetría
 
 ### 🎯 Objetivos y Alcance

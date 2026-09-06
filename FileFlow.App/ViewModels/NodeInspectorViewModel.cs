@@ -21,6 +21,8 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
     private readonly IFileDialogService _fileDialogService;
     private readonly LogViewModel? _logViewModel;
 
+    public EditorViewModel Editor => _editorViewModel;
+
     [ObservableProperty]
     private NodeViewModel? _inspectedNode;
 

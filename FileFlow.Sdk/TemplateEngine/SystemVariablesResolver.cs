@@ -171,6 +171,106 @@ public static class SystemVariablesResolver
                 }
                 return AppPaths.DefaultGlobalOutputDir;
 
+            case "tempdir":
+            case "temporarydir":
+            case "tempworkingdir":
+            case "temp":
+            case "tmp":
+                if (item.Metadata.TryGetValue("TemporaryDirectory", out var tdVal) && tdVal != null && !string.IsNullOrWhiteSpace(tdVal.ToString()))
+                {
+                    return tdVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("TempDir", out var td2Val) && td2Val != null && !string.IsNullOrWhiteSpace(td2Val.ToString()))
+                {
+                    return td2Val.ToString()!;
+                }
+                return AppPaths.DefaultTempDirectory;
+
+            case "randomid":
+            case "random":
+                return Guid.NewGuid().ToString("N")[..8];
+
+            case "guid":
+            case "uuid":
+                return Guid.NewGuid().ToString("D");
+
+            case "originalfilesize":
+            case "originalfilesizebytes":
+            case "originalsize":
+            case "originalsizebytes":
+                if (TryGetFileSize(item, "OriginalFileSizeBytes", "OriginalFileSize", out long origBytes))
+                {
+                    return origBytes.ToString(CultureInfo.InvariantCulture);
+                }
+                return item.FileSizeBytes.ToString(CultureInfo.InvariantCulture);
+
+            case "originalfilesizekb":
+            case "originalsizekb":
+                TryGetFileSize(item, "OriginalFileSizeBytes", "OriginalFileSize", out long origKbBytes);
+                return (origKbBytes / 1024.0).ToString("F1", CultureInfo.InvariantCulture);
+
+            case "originalfilesizemb":
+            case "originalsizemb":
+                TryGetFileSize(item, "OriginalFileSizeBytes", "OriginalFileSize", out long origMbBytes);
+                return (origMbBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
+
+            case "outputfilesize":
+            case "outputfilesizebytes":
+            case "outputsize":
+            case "outputsizebytes":
+                if (TryGetFileSize(item, "OutputFileSizeBytes", "OutputFileSize", out long outBytes))
+                {
+                    return outBytes.ToString(CultureInfo.InvariantCulture);
+                }
+                return item.FileSizeBytes.ToString(CultureInfo.InvariantCulture);
+
+            case "outputfilesizekb":
+            case "outputsizekb":
+                TryGetFileSize(item, "OutputFileSizeBytes", "OutputFileSize", out long outKbBytes);
+                if (outKbBytes == 0) outKbBytes = item.FileSizeBytes;
+                return (outKbBytes / 1024.0).ToString("F1", CultureInfo.InvariantCulture);
+
+            case "outputfilesizemb":
+            case "outputsizemb":
+                TryGetFileSize(item, "OutputFileSizeBytes", "OutputFileSize", out long outMbBytes);
+                if (outMbBytes == 0) outMbBytes = item.FileSizeBytes;
+                return (outMbBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
+
+            case "savedbytes":
+                if (item.Metadata.TryGetValue("SavedBytes", out var sbVal) && sbVal != null && long.TryParse(sbVal.ToString(), out long sBytes))
+                {
+                    return sBytes.ToString(CultureInfo.InvariantCulture);
+                }
+                if (TryGetFileSize(item, "OriginalFileSizeBytes", "OriginalFileSize", out long oBytes) &&
+                    TryGetFileSize(item, "OutputFileSizeBytes", "OutputFileSize", out long resBytes))
+                {
+                    return (oBytes - resBytes).ToString(CultureInfo.InvariantCulture);
+                }
+                return "0";
+
+            case "savedpercent":
+            case "savedpct":
+                if (item.Metadata.TryGetValue("SavedPercent", out var spVal) && spVal != null)
+                {
+                    if (spVal is IFormattable formattableSp)
+                    {
+                        return formattableSp.ToString(null, CultureInfo.InvariantCulture);
+                    }
+                    return Convert.ToString(spVal, CultureInfo.InvariantCulture) ?? "0.0";
+                }
+                return "0.0";
+
+            case "compressionratio":
+                if (item.Metadata.TryGetValue("CompressionRatio", out var crVal) && crVal != null)
+                {
+                    if (crVal is IFormattable formattableCr)
+                    {
+                        return formattableCr.ToString(null, CultureInfo.InvariantCulture);
+                    }
+                    return Convert.ToString(crVal, CultureInfo.InvariantCulture) ?? "1.0";
+                }
+                return "1.0";
+
             case "sizemb":
                 return (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
 
@@ -207,5 +307,19 @@ public static class SystemVariablesResolver
     public static string CalculateRelativeFilePath(string fullPath, string? rootPath)
     {
         return PathRelativeCalculator.CalculateRelativeFilePath(fullPath, rootPath);
+    }
+
+    private static bool TryGetFileSize(FileItemContext item, string primaryKey, string secondaryKey, out long size)
+    {
+        size = 0;
+        if (item.Metadata.TryGetValue(primaryKey, out var val) && val != null && long.TryParse(val.ToString(), out size))
+        {
+            return true;
+        }
+        if (item.Metadata.TryGetValue(secondaryKey, out var val2) && val2 != null && long.TryParse(val2.ToString(), out size))
+        {
+            return true;
+        }
+        return false;
     }
 }

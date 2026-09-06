@@ -3,6 +3,7 @@ using System.Diagnostics;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.Core.Engine;
@@ -98,6 +99,7 @@ public class WorkflowExecutor
     }
 
     public string GlobalOutputDir { get; set; } = string.Empty;
+    public string TemporaryDirectory { get; set; } = string.Empty;
     public bool IsDryRun { get => _isDryRun; set => _isDryRun = value; }
     public bool IsPaused => _isPaused;
 
@@ -148,6 +150,10 @@ public class WorkflowExecutor
         if (string.IsNullOrWhiteSpace(GlobalOutputDir) && !string.IsNullOrWhiteSpace(graph.GlobalOutputDir))
         {
             GlobalOutputDir = graph.GlobalOutputDir;
+        }
+        if (string.IsNullOrWhiteSpace(TemporaryDirectory) && !string.IsNullOrWhiteSpace(graph.TemporaryDirectory))
+        {
+            TemporaryDirectory = graph.TemporaryDirectory;
         }
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
@@ -220,6 +226,8 @@ public class WorkflowExecutor
                     var dummyItem = new FileItemContext(string.Empty);
                     dummyItem.Metadata["WorkflowExecutionId"] = _currentExecutionId;
                     if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) dummyItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                    string effectiveTemp = !string.IsNullOrWhiteSpace(TemporaryDirectory) ? TemporaryDirectory : AppPaths.DefaultTempDirectory;
+                    dummyItem.Metadata["TemporaryDirectory"] = effectiveTemp;
                     if (IsDryRun) dummyItem.Metadata["DryRun"] = true;
 
                     var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, dummyItem);
@@ -276,6 +284,8 @@ public class WorkflowExecutor
             var completionDummy = new FileItemContext(string.Empty);
             completionDummy.Metadata["WorkflowExecutionId"] = _currentExecutionId;
             if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) completionDummy.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+            string effectiveTempCompletion = !string.IsNullOrWhiteSpace(TemporaryDirectory) ? TemporaryDirectory : AppPaths.DefaultTempDirectory;
+            completionDummy.Metadata["TemporaryDirectory"] = effectiveTempCompletion;
             if (IsDryRun) completionDummy.Metadata["DryRun"] = true;
 
             foreach (var node in _nodeInstances.Values)
@@ -325,6 +335,10 @@ public class WorkflowExecutor
         if (string.IsNullOrWhiteSpace(GlobalOutputDir) && !string.IsNullOrWhiteSpace(graph.GlobalOutputDir))
         {
             GlobalOutputDir = graph.GlobalOutputDir;
+        }
+        if (string.IsNullOrWhiteSpace(TemporaryDirectory) && !string.IsNullOrWhiteSpace(graph.TemporaryDirectory))
+        {
+            TemporaryDirectory = graph.TemporaryDirectory;
         }
         _currentExecutionId = Guid.NewGuid().ToString("N");
         _nodeInstances.Clear();
@@ -391,6 +405,8 @@ public class WorkflowExecutor
                     var itemClone = item.DeepClone();
                     itemClone.Metadata["WorkflowExecutionId"] = _currentExecutionId;
                     if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) itemClone.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                    string effectiveTempWatch = !string.IsNullOrWhiteSpace(TemporaryDirectory) ? TemporaryDirectory : AppPaths.DefaultTempDirectory;
+                    itemClone.Metadata["TemporaryDirectory"] = effectiveTempWatch;
                     if (IsDryRun) itemClone.Metadata["DryRun"] = true;
 
                     var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, itemClone);
@@ -460,7 +476,8 @@ public class WorkflowExecutor
             DebugSession,
             _concurrencyThrottle,
             WaitIfPausedAsync,
-            cancellationToken);
+            cancellationToken,
+            !string.IsNullOrWhiteSpace(TemporaryDirectory) ? TemporaryDirectory : AppPaths.DefaultTempDirectory);
     }
 
     private async Task WaitIfPausedAsync(CancellationToken cancellationToken)

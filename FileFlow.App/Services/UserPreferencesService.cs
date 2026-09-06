@@ -11,6 +11,7 @@ public class UserPreferencesData
 
     // Persistent Application Settings
     public string DefaultGlobalOutputDir { get; set; } = AppPaths.DefaultGlobalOutputDir;
+    public string TemporaryDirectory { get; set; } = AppPaths.DefaultTempDirectory;
     public string ActiveTheme { get; set; } = "Dark";
     public string Language { get; set; } = "es-ES";
     public bool IsCompactToolbox { get; set; } = false;

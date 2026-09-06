@@ -47,12 +47,18 @@ public sealed class WorkflowItemDispatcher
         WorkflowDebugSession? debugSession,
         SemaphoreSlim concurrencyThrottle,
         Func<CancellationToken, Task> waitIfPausedAsync,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string temporaryDirectory = "")
     {
         item.Metadata["WorkflowExecutionId"] = executionId;
         if (!string.IsNullOrWhiteSpace(globalOutputDir))
         {
             item.Metadata["GlobalOutputDir"] = globalOutputDir;
+        }
+
+        if (!string.IsNullOrWhiteSpace(temporaryDirectory))
+        {
+            item.Metadata["TemporaryDirectory"] = temporaryDirectory;
         }
 
         if (isDryRun)

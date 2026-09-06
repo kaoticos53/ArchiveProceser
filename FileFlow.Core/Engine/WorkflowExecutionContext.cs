@@ -28,6 +28,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
     }
 
     public bool IsDryRun => _executor.IsDryRun;
+    public string TemporaryDirectory => !string.IsNullOrWhiteSpace(_executor.TemporaryDirectory) ? _executor.TemporaryDirectory : FileFlow.Sdk.Storage.AppPaths.DefaultTempDirectory;
 
     public async Task EmitAsync(string outputPortName, FileItemContext item)
     {

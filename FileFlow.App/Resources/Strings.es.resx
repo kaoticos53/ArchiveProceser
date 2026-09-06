@@ -562,6 +562,9 @@
   <data name="Settings_TabStorage" xml:space="preserve"><value>📂 Almacenamiento &amp; Rutas</value></data>
   <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>📁 Ruta de Salida Global por Defecto</value></data>
   <data name="Settings_GlobalOutputDirDesc" xml:space="preserve"><value>Carpeta de destino predeterminada persistente al ejecutar flujos y guardar archivos convertidos.</value></data>
+  <data name="Settings_TempWorkingDirTitle" xml:space="preserve"><value>📁 Directorio de Trabajo Temporal</value></data>
+  <data name="Settings_TempWorkingDirDesc" xml:space="preserve"><value>Directorio predeterminado donde los nodos intermedios (optimización, eliminación de fondo, etc.) almacenan archivos temporales cuando su ruta de salida no está definida.</value></data>
+  <data name="Settings_SelectTempWorkingDirTitle" xml:space="preserve"><value>Seleccionar Directorio de Trabajo Temporal</value></data>
   <data name="Settings_BrowseBtn" xml:space="preserve"><value>📁 Examinar</value></data>
   <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>⚡ Estrategia de Colisión de Archivos por Defecto</value></data>
   <data name="Settings_ConflictRename" xml:space="preserve"><value>RenameIncremental (Renombrar Incremental ej: foto_1.jpg)</value></data>
@@ -950,4 +953,33 @@
   <data name="Log_CheckpointSkippingFile" xml:space="preserve"><value>[Checkpoint] Omitiendo archivo completado previamente: {0}</value></data>
   <data name="Log_ProcessingItemsProgress" xml:space="preserve"><value>⚡ Procesando: {0:N0}/{1:N0} elementos ({2:F0}%)</value></data>
   <data name="Log_ExecutionErrorsOccurred" xml:space="preserve"><value>Ejecución completada con errores: {0}</value></data>
+
+  <!-- Variable Picker & Catalog -->
+  <data name="VarPicker_WindowTitle" xml:space="preserve"><value>Catálogo de Variables y Expresiones</value></data>
+  <data name="VarPicker_HeaderTitle" xml:space="preserve"><value>Catálogo de Variables</value></data>
+  <data name="VarPicker_HeaderSubtitle" xml:space="preserve"><value>Explora, busca e inserta variables dinámicas disponibles para este parámetro</value></data>
+  <data name="VarPicker_SearchPlaceholder" xml:space="preserve"><value>Buscar por nombre de variable, descripción o categoría...</value></data>
+  <data name="VarPicker_CategoryAll" xml:space="preserve"><value>Todas</value></data>
+  <data name="VarPicker_CategoryUpstream" xml:space="preserve"><value>🔗 Nodos Anteriores</value></data>
+  <data name="VarPicker_CategorySystem" xml:space="preserve"><value>🌐 Archivo y Sistema</value></data>
+  <data name="VarPicker_CategoryDates" xml:space="preserve"><value>📅 Fechas y Tiempos</value></data>
+  <data name="VarPicker_CategorySizes" xml:space="preserve"><value>📐 Tamaños y Métricas</value></data>
+  <data name="VarPicker_CategoryFunctions" xml:space="preserve"><value>🔤 Funciones y Texto</value></data>
+  <data name="VarPicker_DetailTitle" xml:space="preserve"><value>Detalle de la Variable</value></data>
+  <data name="VarPicker_TokenLabel" xml:space="preserve"><value>Token / Sintaxis:</value></data>
+  <data name="VarPicker_CategoryLabel" xml:space="preserve"><value>Categoría:</value></data>
+  <data name="VarPicker_SourceLabel" xml:space="preserve"><value>Origen del Nodo:</value></data>
+  <data name="VarPicker_SamplePreviewLabel" xml:space="preserve"><value>Vista Previa Evaluada (Ejemplo):</value></data>
+  <data name="VarPicker_InsertBtn" xml:space="preserve"><value>Insertar Variable</value></data>
+  <data name="VarPicker_CancelBtn" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="VarPicker_CountFormat" xml:space="preserve"><value>Mostrando {0} de {1} variables</value></data>
+  <data name="VarPicker_NoResults" xml:space="preserve"><value>No se encontraron variables coincidentes</value></data>
+  <data name="VarPicker_OpenFullCatalog" xml:space="preserve"><value>🔍 Abrir Catálogo Completo de Variables...</value></data>
+  <data name="VarPicker_UpstreamCountBadge" xml:space="preserve"><value>🔗 {0} nodo(s) anterior(es)</value></data>
+  <data name="VarPicker_SystemBadge" xml:space="preserve"><value>🌐 Global</value></data>
+  <data name="VarPicker_SelectVariableHint" xml:space="preserve"><value>Selecciona una variable de la lista para ver su descripción y vista previa</value></data>
+  <data name="VarPicker_CopyToken" xml:space="preserve"><value>Copiar Token</value></data>
+  <data name="TextEditor_SidePanelTitle" xml:space="preserve"><value>Variables Disponibles</value></data>
+  <data name="TextEditor_ToggleSidePanel" xml:space="preserve"><value>Alternar panel de variables</value></data>
+  <data name="TextEditor_IntelliSenseHint" xml:space="preserve"><value>Escribe '{' para activar autocompletado inteligente</value></data>
 </root>

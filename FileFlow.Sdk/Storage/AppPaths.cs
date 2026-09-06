@@ -96,6 +96,22 @@ public static class AppPaths
         }
     }
 
+    /// <summary>
+    /// Ruta de trabajo temporal por defecto para archivos intermedios generados por los nodos.
+    /// (Modo Portable: AppBaseDir/data/temp, Modo Instalado: %TEMP%/FileFlowStudio/Temp).
+    /// </summary>
+    public static string DefaultTempDirectory
+    {
+        get
+        {
+            if (IsPortableMode)
+            {
+                return Path.Combine(RootDirectory, "temp");
+            }
+            return Path.Combine(Path.GetTempPath(), "FileFlowStudio", "Temp");
+        }
+    }
+
     // Ficheros estándar de configuración del usuario
     public static string UserPreferencesFile => Path.Combine(ConfigDirectory, "user_preferences.json");
     public static string ExternalToolsFile => Path.Combine(ConfigDirectory, "external_tools.json");
@@ -133,6 +149,7 @@ public static class AppPaths
             Directory.CreateDirectory(SamplesDirectory);
             Directory.CreateDirectory(ScriptsDirectory);
             Directory.CreateDirectory(LogsDirectory);
+            Directory.CreateDirectory(DefaultTempDirectory);
 
             if (!IsPortableMode)
             {

@@ -100,7 +100,7 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
         ["Model"] = "Auto",
         ["ScaleFactor"] = "4x",
         ["MaxInputDimension"] = 2048,
-        ["OutputDirectory"] = "{GlobalOutputDir}",
+        ["OutputDirectory"] = "",
         ["SkipIfExists"] = false
     };
 
@@ -114,8 +114,8 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             HelpText: "Factor de aumento de resolución.", DisplayOrder: 2),
         new("MaxInputDimension", ParameterEditorType.Number, DefaultValue: 2048, Min: 256, Max: 8192,
             HelpText: "Límite máximo de ancho/alto original para prevenir consumo excesivo de RAM.", DisplayOrder: 3),
-        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}",
-            HelpText: "Carpeta de destino donde se guardarán las imágenes escaladas.", DisplayOrder: 4),
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "",
+            HelpText: "Carpeta de destino donde se guardarán las imágenes escaladas. Si se deja vacía, usa el directorio temporal con subcarpeta aleatoria anti-colisiones.", DisplayOrder: 4),
         new("SkipIfExists", ParameterEditorType.Toggle, DefaultValue: false,
             HelpText: "Si el archivo resultante ya existe en destino, omite la inferencia neural y reutiliza el archivo.", DisplayOrder: 5)
     ];
@@ -150,23 +150,7 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
             bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
 
-            string targetDir;
-            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-            {
-                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
-                {
-                    targetDir = godVal.ToString()!;
-                }
-                else
-                {
-                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
-                }
-            }
-            else
-            {
-                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
-            }
-
+            string targetDir = ParameterHelper.ResolveIntermediateOutputDir(outputDirRaw, item, context);
             Directory.CreateDirectory(targetDir);
 
             string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_upscaled{ext}";
@@ -226,7 +210,16 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
             newItem.PhysicalPath = targetPath;
-            newItem.FileSizeBytes = new FileInfo(targetPath).Length;
+            long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(item.CurrentPath) ? new FileInfo(item.CurrentPath).Length : 0);
+            long newSizeBytes = new FileInfo(targetPath).Length;
+            newItem.FileSizeBytes = newSizeBytes;
+            newItem.Metadata["OriginalFileSize"] = origSizeBytes;
+            newItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
+            newItem.Metadata["OutputFileSize"] = newSizeBytes;
+            newItem.Metadata["OutputFileSizeBytes"] = newSizeBytes;
+            newItem.Metadata["SavedBytes"] = origSizeBytes - newSizeBytes;
+            newItem.Metadata["SavedPercent"] = origSizeBytes > 0 ? Math.Round((1.0 - ((double)newSizeBytes / origSizeBytes)) * 100.0, 2) : 0.0;
+            newItem.Metadata["CompressionRatio"] = origSizeBytes > 0 ? Math.Round((double)newSizeBytes / origSizeBytes, 4) : 1.0;
             newItem.Metadata["AI:Upscaled"] = true;
             newItem.Metadata["AI:OriginalResolution"] = $"{origW}x{origH}";
             newItem.Metadata["AI:NewResolution"] = $"{newW}x{newH}";

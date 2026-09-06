@@ -169,6 +169,7 @@ public class VisionSuiteNodesTests : IDisposable
         await File.WriteAllTextAsync(expectedOutputFile, "pre-existing output content");
 
         var node = new BackgroundRemoverNode();
+        node.Parameters["OutputDirectory"] = _tempDir;
         node.Parameters["SkipIfExists"] = true;
 
         var item = new FileItemContext(sourceFile);

@@ -24,6 +24,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly Action _preferencesChangedHandler;
 
     public Services.INodeClipboardService ClipboardService => _clipboardService;
+    public Services.IVariableDiscoveryService VariableDiscoveryService => _variableDiscoveryService;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];

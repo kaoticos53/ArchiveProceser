@@ -562,6 +562,9 @@
   <data name="Settings_TabStorage" xml:space="preserve"><value>📂 Storage &amp; Paths</value></data>
   <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>📁 Default Global Output Path</value></data>
   <data name="Settings_GlobalOutputDirDesc" xml:space="preserve"><value>Persistent destination folder when executing workflows and saving converted files.</value></data>
+  <data name="Settings_TempWorkingDirTitle" xml:space="preserve"><value>📁 Temporary Working Directory</value></data>
+  <data name="Settings_TempWorkingDirDesc" xml:space="preserve"><value>Default directory where intermediate processing nodes (image optimizer, background remover, etc.) save temporary files when their output path is not set.</value></data>
+  <data name="Settings_SelectTempWorkingDirTitle" xml:space="preserve"><value>Select Temporary Working Directory</value></data>
   <data name="Settings_BrowseBtn" xml:space="preserve"><value>📁 Browse</value></data>
   <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>⚡ Default File Conflict Strategy</value></data>
   <data name="Settings_ConflictRename" xml:space="preserve"><value>RenameIncremental (Incremental rename e.g. photo_1.jpg)</value></data>
@@ -950,4 +953,33 @@
   <data name="Log_CheckpointSkippingFile" xml:space="preserve"><value>[Checkpoint] Skipping previously completed file: {0}</value></data>
   <data name="Log_ProcessingItemsProgress" xml:space="preserve"><value>⚡ Processing: {0:N0}/{1:N0} items ({2:F0}%)</value></data>
   <data name="Log_ExecutionErrorsOccurred" xml:space="preserve"><value>Execution completed with errors: {0}</value></data>
+
+  <!-- Variable Picker & Catalog -->
+  <data name="VarPicker_WindowTitle" xml:space="preserve"><value>Variable &amp; Expression Catalog</value></data>
+  <data name="VarPicker_HeaderTitle" xml:space="preserve"><value>Variable Catalog</value></data>
+  <data name="VarPicker_HeaderSubtitle" xml:space="preserve"><value>Explore, search, and insert dynamic variables available for this parameter</value></data>
+  <data name="VarPicker_SearchPlaceholder" xml:space="preserve"><value>Search by variable name, description, or category...</value></data>
+  <data name="VarPicker_CategoryAll" xml:space="preserve"><value>All</value></data>
+  <data name="VarPicker_CategoryUpstream" xml:space="preserve"><value>🔗 Upstream Nodes</value></data>
+  <data name="VarPicker_CategorySystem" xml:space="preserve"><value>🌐 File &amp; System</value></data>
+  <data name="VarPicker_CategoryDates" xml:space="preserve"><value>📅 Dates &amp; Time</value></data>
+  <data name="VarPicker_CategorySizes" xml:space="preserve"><value>📐 Sizes &amp; Metrics</value></data>
+  <data name="VarPicker_CategoryFunctions" xml:space="preserve"><value>🔤 Functions &amp; Text</value></data>
+  <data name="VarPicker_DetailTitle" xml:space="preserve"><value>Variable Details</value></data>
+  <data name="VarPicker_TokenLabel" xml:space="preserve"><value>Token / Syntax:</value></data>
+  <data name="VarPicker_CategoryLabel" xml:space="preserve"><value>Category:</value></data>
+  <data name="VarPicker_SourceLabel" xml:space="preserve"><value>Node Source:</value></data>
+  <data name="VarPicker_SamplePreviewLabel" xml:space="preserve"><value>Evaluated Preview (Sample):</value></data>
+  <data name="VarPicker_InsertBtn" xml:space="preserve"><value>Insert Variable</value></data>
+  <data name="VarPicker_CancelBtn" xml:space="preserve"><value>Cancel</value></data>
+  <data name="VarPicker_CountFormat" xml:space="preserve"><value>Showing {0} of {1} variables</value></data>
+  <data name="VarPicker_NoResults" xml:space="preserve"><value>No matching variables found</value></data>
+  <data name="VarPicker_OpenFullCatalog" xml:space="preserve"><value>🔍 Open Full Variable Catalog...</value></data>
+  <data name="VarPicker_UpstreamCountBadge" xml:space="preserve"><value>🔗 {0} upstream node(s)</value></data>
+  <data name="VarPicker_SystemBadge" xml:space="preserve"><value>🌐 Global</value></data>
+  <data name="VarPicker_SelectVariableHint" xml:space="preserve"><value>Select a variable from the list to view its description and preview</value></data>
+  <data name="VarPicker_CopyToken" xml:space="preserve"><value>Copy Token</value></data>
+  <data name="TextEditor_SidePanelTitle" xml:space="preserve"><value>Available Variables</value></data>
+  <data name="TextEditor_ToggleSidePanel" xml:space="preserve"><value>Toggle variables panel</value></data>
+  <data name="TextEditor_IntelliSenseHint" xml:space="preserve"><value>Type '{' to trigger smart autocomplete</value></data>
 </root>

@@ -3,6 +3,7 @@ namespace FileFlow.Sdk;
 public interface IFlowExecutionContext
 {
     bool IsDryRun { get; }
+    string TemporaryDirectory => Storage.AppPaths.DefaultTempDirectory;
     Task EmitAsync(string outputPortName, FileItemContext item);
     void ReportProgress(double percentage, string statusMessage);
     void SetTotalExpectedItems(long totalExpectedItems) { }
