@@ -8,8 +8,31 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **515 / 515 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **516 / 516 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --34. **Corrección de Visualización y Cálculo Intermitente de Métricas de Telemetría en el Flujo de Ejecución**:
+      - **Objetivo**: Resolver de raíz el problema por el cual las métricas de rendimiento y telemetría de los nodos (latencia, RAM asignada, aceleración GPU, porcentaje de tiempo y cuellos de botella) a veces se mostraban y a veces no al ejecutar un flujo.
+      - **Causa Raíz Identificada**:
+        1. *Race condition en el temporizador visual*: `WorkflowExecutionCoordinator` refrescaba las métricas cada 33 ms con un `DispatcherTimer`. En flujos rápidos (ejecución < 33 ms o completados entre ticks), la ejecución terminaba y en el `finally` se detenía el timer y se ponía `_activeExecutor = null` sin realizar un volcado final síncrono de `_activeExecutor.GetNodeTelemetryStats()`.
+        2. *Borrado involuntario de métricas en Idle*: En `NodeViewModel.cs`, el manejador `OnExecutionStatusChanged` limpiaba `LatencyText`, `RollingRamText` y `DetailedMetricsToolTip` cuando el estado volvía a `Idle`, borrando las métricas calculadas.
+        3. *Falta de reset explícito al iniciar*: No había un método determinista para reiniciar métricas de ejecuciones anteriores antes de comenzar una nueva ejecución.
+        4. *Falta de telemetría de memoria/hardware en nodos de inicio*: En `WorkflowExecutor.cs`, la ejecución de `startNode` solo registraba tiempo transcurrido, pasando 0 en bytes y false en GPU.
+        5. *Concurrencia en SqliteLogStore*: `SingleReader = true` causaba condición de carrera entre el worker de fondo y llamadas de `FlushPendingLogsAsync` o `ClearAsync`.
+      - **Ajustes Realizados**:
+        1. En `WorkflowExecutionCoordinator.cs`: Añadido reset explícito inicial `_editorViewModel.ResetAllNodeMetrics()` y volcado final síncrono de telemetría en el bloque `finally` antes de liberar `_activeExecutor`.
+        2. En `NodeViewModel.cs`: Modificado `OnExecutionStatusChanged` para preservar `LatencyText` y `RollingRamText` al pasar a `Idle` (solo se resetea la barra de progreso y badges transitorios), y asegurada la ejecución en el dispatcher en `UpdateTelemetryStats`.
+        3. En `EditorViewModel.cs`: Implementado `ResetAllNodeMetrics()` para limpiar explícitamente las métricas de todos los nodos al inicio de cada ejecución.
+        4. En `WorkflowExecutor.cs`: Instrumentada la medición de memoria GC (`GC.GetAllocatedBytesForCurrentThread()`) y detección de GPU en la ejecución de los nodos raíz de inicio tanto en modo batch normal como en watch mode.
+        5. En `SqliteLogStore.cs`: Cambiado `SingleReader = false` y serializado el consumo del canal y la inserción SQLite bajo `_flushLock`.
+      - **Validación**: 516 / 516 pruebas unitarias e integración superadas al 100%.
+  --33. **Corrección de Emisión en ImageOptimizerNode: Exclusividad Mutua entre Puertos Out y Error**:
+      - **Objetivo**: Garantizar que ante fallos en la optimización o archivos que no pueden ser procesados/corruptos, el archivo solo sea emitido por el puerto `"Error"` y nunca por `"Out"`.
+      - **Ajustes Realizados**:
+        1. Refactorizado el flujo de `ImageOptimizerNode.ExecuteAsync` separando la ejecución del bloque `try-catch` de la emisión por el puerto `"Out"`.
+        2. Ante cualquier fallo en ImageSharp o el sistema de archivos, el `catch` emite exclusivamente a `"Error"` y termina la ejecución con `return`.
+        3. Preservada la inmutabilidad y linaje del archivo original asignando `OriginalPath = item.OriginalPath` en el ítem de salida.
+        4. Agregadas pruebas de regresión en `ImageOptimizerNodeTests` comprobando que `EmitAsync("Out", ...)` jamás sea invocado cuando ocurre un fallo.
+      - **Validación**: 516 / 516 pruebas superadas al 100%.
   --32. **Refactorización Integral hacia Clean Architecture, Inversión de Control (IoC) y Puertos & Adaptadores**:
       - **Objetivo**: Elevar la arquitectura del proyecto hacia los más altos estándares de Clean Architecture y SOLID mediante Inversión de Dependencias (IoC), abstrayendo todos los servicios de infraestructura en contratos de puertos e inyectándolos desacoplados en los ViewModels.
       - **Ajustes Realizados**:

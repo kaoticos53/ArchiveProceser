@@ -16,24 +16,58 @@ namespace FileFlow.Tests.Unit.Plugins;
 public class ImageOptimizerNodeTests
 {
     [Fact]
-    public async Task ExecuteAsync_ShouldEmitError_WhenInputFileDoesNotExist()
+    public async Task ExecuteAsync_ShouldEmitErrorAndNeverOut_WhenInputFileDoesNotExist()
     {
         // Arrange
         string nonExistentFile = @"C:\FakeImage_" + Guid.NewGuid() + ".jpg";
         var node = new ImageOptimizerNode();
         var item = new FileItemContext(nonExistentFile, isDirectory: false);
 
-        var emittedErrors = new List<FileItemContext>();
         var mockContext = new Mock<IFlowExecutionContext>();
-        mockContext.Setup(c => c.EmitAsync("Error", It.IsAny<FileItemContext>()))
-                   .Callback<string, FileItemContext>((port, emItem) => emittedErrors.Add(emItem))
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
                    .Returns(Task.CompletedTask);
 
         // Act
         await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
 
         // Assert
-        emittedErrors.Should().HaveCount(1);
+        mockContext.Verify(c => c.EmitAsync("Error", item), Times.Once);
+        mockContext.Verify(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldEmitErrorAndNeverOut_WhenImageFileIsInvalidOrCorrupt()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_CorruptImg_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string corruptFile = Path.Combine(tempDir, "corrupted.jpg");
+        await File.WriteAllTextAsync(corruptFile, "This is not an image file content.");
+
+        try
+        {
+            var node = new ImageOptimizerNode();
+            node.Parameters["OutputDirectory"] = Path.Combine(tempDir, "Out");
+            var item = new FileItemContext(corruptFile, isDirectory: false);
+
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+                       .Returns(Task.CompletedTask);
+
+            // Act
+            await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+            // Assert: Must emit Error once and NEVER emit Out
+            mockContext.Verify(c => c.EmitAsync("Error", item), Times.Once);
+            mockContext.Verify(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()), Times.Never);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
     }
 
     [Fact]

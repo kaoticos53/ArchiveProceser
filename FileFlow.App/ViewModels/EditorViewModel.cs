@@ -459,6 +459,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    public void ResetAllNodeMetrics()
+    {
+        foreach (var node in Nodes)
+        {
+            node.UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats.Empty(node.Id));
+        }
+    }
+
     [RelayCommand]
     public void OpenWorkflowSettings()
     {

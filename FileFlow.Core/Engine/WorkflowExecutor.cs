@@ -223,18 +223,24 @@ public class WorkflowExecutor
 
                     NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
 
+                    long startAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
                     long startTicks = Stopwatch.GetTimestamp();
                     try
                     {
                         await startNode.ExecuteAsync(string.Empty, dummyItem, ctx, cancellationToken);
                         double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                        _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
+                        long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+                        long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
+                        bool isGpu = (startNode is IModelLifecycleNode lifecycleNode && lifecycleNode.IsGpuAccelerated);
+                        _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs, allocatedBytes, 0.0, isGpu);
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Completed);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
                         double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                        _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
+                        long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+                        long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
+                        _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs, allocatedBytes, 0.0, false);
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Faulted);
                         if (DebugSession != null)
                         {
@@ -375,6 +381,7 @@ public class WorkflowExecutor
                     _taskTracker.TrackTask(Task.Run(async () =>
                     {
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
+                        long startAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
                         long startTicks = Stopwatch.GetTimestamp();
                         try
                         {
@@ -392,13 +399,18 @@ public class WorkflowExecutor
                             }
 
                             double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                            _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
+                            long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+                            long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
+                            bool isGpu = (startNode is IModelLifecycleNode lifecycleNode && lifecycleNode.IsGpuAccelerated);
+                            _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs, allocatedBytes, 0.0, isGpu);
                             NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Completed);
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
                         {
                             double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
-                            _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs);
+                            long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+                            long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
+                            _telemetryTracker.RecordNodeExecution(startNode.Id, elapsedMs, allocatedBytes, 0.0, false);
                             NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Faulted);
                             NotifyLog(startNode.Id, $"Error en nodo inicial {startNode.Name} para {itemClone.FileName}: {ex.Message}", LogLevel.Error, itemClone.CurrentPath);
                         }

@@ -2,6 +2,58 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-06] - Corrección de Visualización y Cálculo Intermitente de Métricas de Telemetría en el Flujo de Ejecución
+
+### 🎯 Objetivos y Diagnóstico Causa Raíz
+1. **Carrera Temporal en el Temporizador Visual de Métricas (`WorkflowExecutionCoordinator.cs`)**:
+   - `visualFlushTimer` muestreaba y propagaba `_activeExecutor.GetNodeTelemetryStats()` a las tarjetas de nodo cada 33 ms (~30 FPS).
+   - En flujos rápidos (ejecución menor a 33 ms o completados entre ticks del temporizador), el flujo finalizaba, se detenía el timer y se fijaba `_activeExecutor = null` en el bloque `finally` sin haber ejecutado un volcado final sincronizado. Esto provocaba que las métricas finales (latencia, RAM, GPU, ejecuciones) no se transfirieran a las tarjetas de nodo (`NodeViewModel`).
+2. **Eliminación Involuntaria de Métricas al Transicionar a `NodeExecutionStatus.Idle` (`NodeViewModel.cs`)**:
+   - `OnExecutionStatusChanged` limpiaba `LatencyText`, `RollingRamText`, `IsGpuAccelerated` y `DetailedMetricsToolTip` al volver al estado `Idle` tras finalizar la ejecución, borrando las métricas calculadas.
+3. **Ausencia de Reset Determinista de Métricas al Iniciar Ejecución (`EditorViewModel.cs`)**:
+   - No existía un método centralizado para reiniciar métricas de ejecuciones anteriores antes de comenzar una nueva ejecución.
+4. **Falta de Muestreo de Asignación de Memoria y Detección de Hardware en Nodos Raíz (`WorkflowExecutor.cs`)**:
+   - En `startNode.ExecuteAsync`, `_telemetryTracker.RecordNodeExecution` registraba `allocatedBytes: 0` y `isGpu: false`, perdiendo la huella de memoria y hardware del nodo de inicio.
+5. **Concurrencia en SQLite Log Ingestion (`SqliteLogStore.cs`)**:
+   - El canal de ingestión estaba configurado con `SingleReader = true` a pesar de que `FlushPendingLogsAsync` y el worker consumían del mismo canal. Se serializó el drenaje y la inserción transaccional bajo `_flushLock`.
+
+### 🛠️ Ajustes Realizados
+1. **Capa de Aplicación y Coordinación (`WorkflowExecutionCoordinator.cs`)**:
+   - Invocación de `_editorViewModel.ResetAllNodeMetrics()` al inicio de `RunAsync`.
+   - Volcado final y síncrono de telemetría (`_activeExecutor.GetNodeTelemetryStats()`) en el bloque `finally` antes de limpiar `_activeExecutor`, garantizando que tanto en flujos ultrarrápidos como de larga duración las métricas siempre se reflejen en la UI.
+2. **Tarjetas de Nodo (`NodeViewModel.cs` & `EditorViewModel.cs`)**:
+   - Refactorizado `OnExecutionStatusChanged` para no borrar `LatencyText`, `RollingRamText` ni `DetailedMetricsToolTip` en estado `Idle` (solo se resetea la barra de progreso y badges transitorios de error/éxito).
+   - Añadido `ResetAllNodeMetrics()` en `EditorViewModel` para reiniciar los datos de métricas de forma atómica y explícita al arrancar una nueva ejecución.
+   - Verificación de seguridad de hilo (`Application.Current?.Dispatcher`) en `UpdateTelemetryStats`.
+3. **Motor Core (`WorkflowExecutor.cs` & `SqliteLogStore.cs`)**:
+   - Muestreo de `GC.GetAllocatedBytesForCurrentThread()` y detección de GPU en la ejecución de nodos raíz de inicio.
+   - Refactorización de `SqliteLogStore` con `SingleReader = false` y adquisición de `_flushLock` durante la lectura y commit transaccional para garantizar consistencia total en `FlushPendingLogsAsync` y `ClearAsync`.
+4. **Validación**:
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `dotnet test`: **516 / 516 pruebas unitarias e integración superadas al 100%**.
+
+---
+
+## [2026-09-06] - Corrección de Emisión en ImageOptimizerNode: Exclusividad Mutua entre Puertos Out y Error
+
+### 🎯 Objetivos y Alcance
+1. **Exclusividad Mutua Estricta de Puertos (`Out` vs `Error`)**:
+   - En [`ImageOptimizerNode`](file:///FileFlow.Plugin.Images/ImageOptimizerNode.cs), la llamada `context.EmitAsync("Out", outputItem)` se encontraba ubicada dentro del bloque principal `try`. Ante excepciones posteriores o fallos de lectura/conversión, el control pasaba al bloque `catch`, provocando que un archivo con error o fallo de optimización se emitiera concurrentemente por el puerto `"Out"` y por el puerto `"Error"`.
+   - Se refactorizó [`ImageOptimizerNode.ExecuteAsync`](file:///FileFlow.Plugin.Images/ImageOptimizerNode.cs) para desacoplar el procesamiento del flujo de emisión:
+     - El bloque `try-catch` ahora gestiona de manera aislada la decodificación con ImageSharp, cálculo de dimensiones, mutación y codificación en disco.
+     - En caso de error o archivo corrupto/inválido, el bloque `catch` registra el log de error, añade el detalle al ítem, emite exclusivamente por el puerto `"Error"` (`await context.EmitAsync("Error", item)`) y finaliza la ejecución con `return`.
+     - La emisión por `"Out"` (`await context.EmitAsync("Out", outputItem)`) se realiza única y estrictamente si el procesamiento concluyó de forma exitosa y `outputItem != null`.
+2. **Preservación del Archivo de Origen (`OriginalPath`)**:
+   - Se preservó explícitamente `OriginalPath = item.OriginalPath` en la creación de `outputItem` para cumplir con la regla de inmutabilidad y rastreabilidad del archivo original en el pipeline.
+3. **Pruebas Unitarias y de Regresión**:
+   - Actualizado [`ImageOptimizerNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs) con pruebas de verificación estricta:
+     - `ExecuteAsync_ShouldEmitErrorAndNeverOut_WhenInputFileDoesNotExist`: Verifica que si el archivo no existe se emite `"Error"` exactamente 1 vez y `"Out"` 0 veces (`Times.Never`).
+     - `ExecuteAsync_ShouldEmitErrorAndNeverOut_WhenImageFileIsInvalidOrCorrupt`: Verifica que con archivos dañados o texto no interpretable como imagen se emita exclusivamente `"Error"` y `"Out"` nunca sea invocado.
+4. **Validación**:
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `dotnet test`: **516 / 516 pruebas superadas al 100%**.
+
+
 ## [2026-09-05] - Refactorización Integral hacia Clean Architecture, Inversión de Control (IoC) y Puertos & Adaptadores
 
 ### 🎯 Objetivos y Alcance

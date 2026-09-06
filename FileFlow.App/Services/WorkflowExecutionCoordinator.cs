@@ -67,6 +67,7 @@ public sealed class WorkflowExecutionCoordinator
         CancellationToken cancellationToken)
     {
         _editorViewModel.ClearDebugStates();
+        _editorViewModel.ResetAllNodeMetrics();
         var graph = _editorViewModel.ExportToGraphModel(options.WorkflowName);
         string effectiveGlobalDir = !string.IsNullOrWhiteSpace(graph.GlobalOutputDir)
             ? graph.GlobalOutputDir
@@ -240,6 +241,18 @@ public sealed class WorkflowExecutionCoordinator
                 var finalSnapshot = _activeExecutor.GetTelemetrySnapshot();
                 _logViewModel.ProgressPercentage = finalSnapshot.Percentage;
                 _logViewModel.StatusMessage = finalSnapshot.StatusMessage;
+
+                var finalNodeStats = _activeExecutor.GetNodeTelemetryStats();
+                if (finalNodeStats.Count > 0)
+                {
+                    foreach (var node in _editorViewModel.Nodes)
+                    {
+                        if (finalNodeStats.TryGetValue(node.Id, out var stats))
+                        {
+                            node.UpdateTelemetryStats(stats);
+                        }
+                    }
+                }
             }
 
             FlushPendingUiUpdates(pendingEdgeUpdates, pendingStatusUpdates, pendingNodeProgressUpdates);

@@ -218,6 +218,7 @@ public class ImageOptimizerNode : IFlowNode
             return;
         }
 
+        FileItemContext? outputItem = null;
         try
         {
             string ext = formatStr.ToLowerInvariant() switch
@@ -296,12 +297,15 @@ public class ImageOptimizerNode : IFlowNode
             long newSizeBytes = (!isDryRun && File.Exists(outputPath)) ? new FileInfo(outputPath).Length : item.FileSizeBytes;
             double savedPct = item.FileSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / item.FileSizeBytes)) * 100.0 : 0.0;
 
-            var outputItem = new FileItemContext(outputPath, isDirectory: false);
+            outputItem = new FileItemContext(outputPath, isDirectory: false)
+            {
+                OriginalPath = item.OriginalPath,
+                FileSizeBytes = newSizeBytes
+            };
             foreach (var kvp in item.Metadata)
             {
                 outputItem.Metadata[kvp.Key] = kvp.Value;
             }
-            outputItem.FileSizeBytes = newSizeBytes;
             outputItem.Metadata["OptimizedFormat"] = formatStr;
             outputItem.Metadata["OptimizedWidth"] = newWidth;
             outputItem.Metadata["OptimizedHeight"] = newHeight;
@@ -309,8 +313,6 @@ public class ImageOptimizerNode : IFlowNode
 
             string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"width\": \"{widthSpec}\", \"height\": \"{heightSpec}\", \"onlyDownscale\": {onlyDownscale.ToString().ToLowerInvariant()}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
             context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality} {newWidth}x{newHeight}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
-
-            await context.EmitAsync("Out", outputItem);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -319,6 +321,12 @@ public class ImageOptimizerNode : IFlowNode
             context.Log($"[Optimizador Imágenes] Error al optimizar imagen: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"ImageOptimizerNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
+            return;
+        }
+
+        if (outputItem != null)
+        {
+            await context.EmitAsync("Out", outputItem);
         }
     }
 }

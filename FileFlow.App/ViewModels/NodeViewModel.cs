@@ -210,6 +210,13 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public void UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
     {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
+        {
+            dispatcher.InvokeAsync(() => UpdateTelemetryStats(stats));
+            return;
+        }
+
         CurrentStats = stats;
         if (stats.ProcessedCount > 0)
         {
@@ -329,13 +336,6 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             IsProgressActive = false;
             ProgressPercentage = 0;
             ProgressMessage = string.Empty;
-            LatencyText = string.Empty;
-            RollingRamText = string.Empty;
-            IsGpuAccelerated = false;
-            IsBottleneck = false;
-            HeatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
-            BottleneckRatioText = string.Empty;
-            DetailedMetricsToolTip = string.Empty;
         }
         else if (value == NodeExecutionStatus.Completed)
         {

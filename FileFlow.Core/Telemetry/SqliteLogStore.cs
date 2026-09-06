@@ -58,7 +58,7 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = false,
-            SingleReader = true
+            SingleReader = false
         });
 
         _workerTask = Task.Run(ProcessIngestionQueueAsync);
@@ -87,17 +87,23 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
             {
                 if (await _ingestionChannel.Reader.WaitToReadAsync(_cts.Token).ConfigureAwait(false))
                 {
-                    await Task.Yield();
-
-                    while (batch.Count < 2000 && _ingestionChannel.Reader.TryRead(out var item))
+                    await _flushLock.WaitAsync(_cts.Token).ConfigureAwait(false);
+                    try
                     {
-                        batch.Add(item);
+                        while (batch.Count < 2000 && _ingestionChannel.Reader.TryRead(out var item))
+                        {
+                            batch.Add(item);
+                        }
+
+                        if (batch.Count > 0)
+                        {
+                            await InsertBatchInternalAsync(batch).ConfigureAwait(false);
+                            batch.Clear();
+                        }
                     }
-
-                    if (batch.Count > 0)
+                    finally
                     {
-                        await InsertBatchAsync(batch).ConfigureAwait(false);
-                        batch.Clear();
+                        _flushLock.Release();
                     }
                 }
             }
@@ -111,64 +117,17 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
             }
         }
 
-        while (_ingestionChannel.Reader.TryRead(out var remaining))
-        {
-            batch.Add(remaining);
-        }
-        if (batch.Count > 0)
-        {
-            await InsertBatchAsync(batch).ConfigureAwait(false);
-        }
-    }
-
-    private async Task InsertBatchAsync(List<StructuredLogRecord> records)
-    {
-        if (records.Count == 0) return;
-
         await _flushLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            await using var transaction = await _keepAliveConnection.BeginTransactionAsync().ConfigureAwait(false);
-
-            await using var cmd = _keepAliveConnection.CreateCommand();
-            cmd.Transaction = (SqliteTransaction)transaction;
-            cmd.CommandText = """
-                INSERT INTO ExecutionLogs (ExecutionId, Timestamp, Level, NodeId, NodeName, ItemId, FilePath, FileName, FileSizeBytes, DurationMs, Message, DetailsJson)
-                VALUES (@ExecutionId, @Timestamp, @Level, @NodeId, @NodeName, @ItemId, @FilePath, @FileName, @FileSizeBytes, @DurationMs, @Message, @DetailsJson);
-            """;
-
-            var pExec = cmd.Parameters.Add("@ExecutionId", SqliteType.Text);
-            var pTime = cmd.Parameters.Add("@Timestamp", SqliteType.Integer);
-            var pLevel = cmd.Parameters.Add("@Level", SqliteType.Integer);
-            var pNodeId = cmd.Parameters.Add("@NodeId", SqliteType.Text);
-            var pNodeName = cmd.Parameters.Add("@NodeName", SqliteType.Text);
-            var pItemId = cmd.Parameters.Add("@ItemId", SqliteType.Text);
-            var pFilePath = cmd.Parameters.Add("@FilePath", SqliteType.Text);
-            var pFileName = cmd.Parameters.Add("@FileName", SqliteType.Text);
-            var pFileSize = cmd.Parameters.Add("@FileSizeBytes", SqliteType.Integer);
-            var pDuration = cmd.Parameters.Add("@DurationMs", SqliteType.Real);
-            var pMessage = cmd.Parameters.Add("@Message", SqliteType.Text);
-            var pDetails = cmd.Parameters.Add("@DetailsJson", SqliteType.Text);
-
-            foreach (var r in records)
+            while (_ingestionChannel.Reader.TryRead(out var remaining))
             {
-                pExec.Value = r.ExecutionId ?? string.Empty;
-                pTime.Value = new DateTimeOffset(r.Timestamp).ToUnixTimeMilliseconds();
-                pLevel.Value = (int)r.Level;
-                pNodeId.Value = (object?)r.NodeId ?? DBNull.Value;
-                pNodeName.Value = (object?)r.NodeName ?? DBNull.Value;
-                pItemId.Value = (object?)r.ItemId ?? DBNull.Value;
-                pFilePath.Value = (object?)r.FilePath ?? DBNull.Value;
-                pFileName.Value = (object?)r.FileName ?? DBNull.Value;
-                pFileSize.Value = r.FileSizeBytes;
-                pDuration.Value = r.DurationMs;
-                pMessage.Value = r.Message ?? string.Empty;
-                pDetails.Value = (object?)r.DetailsJson ?? DBNull.Value;
-
-                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                batch.Add(remaining);
             }
-
-            await transaction.CommitAsync().ConfigureAwait(false);
+            if (batch.Count > 0)
+            {
+                await InsertBatchInternalAsync(batch).ConfigureAwait(false);
+            }
         }
         finally
         {
@@ -176,22 +135,73 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
         }
     }
 
+    private async Task InsertBatchInternalAsync(List<StructuredLogRecord> records)
+    {
+        if (records.Count == 0) return;
+
+        await using var transaction = await _keepAliveConnection.BeginTransactionAsync().ConfigureAwait(false);
+
+        await using var cmd = _keepAliveConnection.CreateCommand();
+        cmd.Transaction = (SqliteTransaction)transaction;
+        cmd.CommandText = """
+            INSERT INTO ExecutionLogs (ExecutionId, Timestamp, Level, NodeId, NodeName, ItemId, FilePath, FileName, FileSizeBytes, DurationMs, Message, DetailsJson)
+            VALUES (@ExecutionId, @Timestamp, @Level, @NodeId, @NodeName, @ItemId, @FilePath, @FileName, @FileSizeBytes, @DurationMs, @Message, @DetailsJson);
+        """;
+
+        var pExec = cmd.Parameters.Add("@ExecutionId", SqliteType.Text);
+        var pTime = cmd.Parameters.Add("@Timestamp", SqliteType.Integer);
+        var pLevel = cmd.Parameters.Add("@Level", SqliteType.Integer);
+        var pNodeId = cmd.Parameters.Add("@NodeId", SqliteType.Text);
+        var pNodeName = cmd.Parameters.Add("@NodeName", SqliteType.Text);
+        var pItemId = cmd.Parameters.Add("@ItemId", SqliteType.Text);
+        var pFilePath = cmd.Parameters.Add("@FilePath", SqliteType.Text);
+        var pFileName = cmd.Parameters.Add("@FileName", SqliteType.Text);
+        var pFileSize = cmd.Parameters.Add("@FileSizeBytes", SqliteType.Integer);
+        var pDuration = cmd.Parameters.Add("@DurationMs", SqliteType.Real);
+        var pMessage = cmd.Parameters.Add("@Message", SqliteType.Text);
+        var pDetails = cmd.Parameters.Add("@DetailsJson", SqliteType.Text);
+
+        foreach (var r in records)
+        {
+            pExec.Value = r.ExecutionId ?? string.Empty;
+            pTime.Value = new DateTimeOffset(r.Timestamp).ToUnixTimeMilliseconds();
+            pLevel.Value = (int)r.Level;
+            pNodeId.Value = (object?)r.NodeId ?? DBNull.Value;
+            pNodeName.Value = (object?)r.NodeName ?? DBNull.Value;
+            pItemId.Value = (object?)r.ItemId ?? DBNull.Value;
+            pFilePath.Value = (object?)r.FilePath ?? DBNull.Value;
+            pFileName.Value = (object?)r.FileName ?? DBNull.Value;
+            pFileSize.Value = r.FileSizeBytes;
+            pDuration.Value = r.DurationMs;
+            pMessage.Value = r.Message ?? string.Empty;
+            pDetails.Value = (object?)r.DetailsJson ?? DBNull.Value;
+
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync().ConfigureAwait(false);
+    }
+
     public async Task FlushPendingLogsAsync()
     {
-        var batch = new List<StructuredLogRecord>();
-        while (_ingestionChannel.Reader.TryRead(out var item))
-        {
-            batch.Add(item);
-        }
-
-        if (batch.Count > 0)
-        {
-            await InsertBatchAsync(batch).ConfigureAwait(false);
-        }
-
-        // Asegurar que cualquier escritura del worker concurrente haya terminado
         await _flushLock.WaitAsync().ConfigureAwait(false);
-        _flushLock.Release();
+        try
+        {
+            var batch = new List<StructuredLogRecord>();
+            while (_ingestionChannel.Reader.TryRead(out var item))
+            {
+                batch.Add(item);
+            }
+
+            if (batch.Count > 0)
+            {
+                await InsertBatchInternalAsync(batch).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _flushLock.Release();
+        }
     }
 
     public async Task<IReadOnlyList<StructuredLogRecord>> GetLogsWindowAsync(
@@ -333,11 +343,11 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
 
     public async Task ClearAsync()
     {
-        while (_ingestionChannel.Reader.TryRead(out _)) { }
-
         await _flushLock.WaitAsync().ConfigureAwait(false);
         try
         {
+            while (_ingestionChannel.Reader.TryRead(out _)) { }
+
             await using var conn = new SqliteConnection(_connectionString);
             await conn.OpenAsync().ConfigureAwait(false);
 
