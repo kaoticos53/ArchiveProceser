@@ -147,3 +147,28 @@ public class EnumToBooleanConverter : IValueConverter
         return Binding.DoNothing;
     }
 }
+
+public class StringEqualsToBooleanConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        string? valStr = value?.ToString();
+        string? paramStr = parameter?.ToString();
+        return string.Equals(valStr, paramStr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+}
+
+public class StringsEqualMultiConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values == null || values.Length < 2) return false;
+        string? first = values[0]?.ToString();
+        string? second = values[1]?.ToString();
+        return string.Equals(first, second, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) => [];
+}

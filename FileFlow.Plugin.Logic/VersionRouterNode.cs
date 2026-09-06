@@ -37,6 +37,15 @@ public class VersionRouterNode : IFlowNode
         ["PurgeUnselectedTemps"] = true
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("Property", ParameterEditorType.Text, DefaultValue: "FileSize:Optimized", DisplayOrder: 1, HelpText: "Propiedad o variable a evaluar"),
+        new("Operator", ParameterEditorType.Dropdown, DefaultValue: "<", DisplayOrder: 2, Options: ["<", "<=", ">", ">=", "==", "!=", "Contains", "StartsWith", "EndsWith"], HelpText: "Operador de comparación"),
+        new("ComparisonValue", ParameterEditorType.Text, DefaultValue: "{FileSize:Original}", DisplayOrder: 3, HelpText: "Valor objetivo o variable con la que comparar"),
+        new("TrueFile", ParameterEditorType.FileVersionSelector, DefaultValue: "{CurrentPath}", DisplayOrder: 4, HelpText: "Versión del archivo a activar si la condición es Verdadera (True)"),
+        new("FalseFile", ParameterEditorType.FileVersionSelector, DefaultValue: "{OriginalPath}", DisplayOrder: 5, HelpText: "Versión del archivo a activar si la condición es Falsa (False)"),
+        new("PurgeUnselectedTemps", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 6, HelpText: "Autopurga el archivo intermedio de la rama descartada si no es el archivo original")
+    ];
+
     private static readonly Regex NumericRegex = new(@"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.Compiled);
 
     public async Task ExecuteAsync(

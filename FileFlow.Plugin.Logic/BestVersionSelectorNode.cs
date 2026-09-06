@@ -36,6 +36,15 @@ public class BestVersionSelectorNode : IFlowNode
         ["SetWinnerAsCurrent"] = true
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("CandidateA", ParameterEditorType.FileVersionSelector, DefaultValue: "{CurrentPath}", DisplayOrder: 1, HelpText: "Primer archivo o versión candidato a comparar (por defecto la versión activa actual)"),
+        new("CandidateB", ParameterEditorType.FileVersionSelector, DefaultValue: "{OriginalPath}", DisplayOrder: 2, HelpText: "Segundo archivo o versión candidato a comparar (por defecto el archivo original)"),
+        new("Criterion", ParameterEditorType.Dropdown, DefaultValue: "SmallestSize", DisplayOrder: 3, Options: ["SmallestSize", "LargestSize", "SavedPercentThreshold", "CandidateA", "CandidateB"], HelpText: "Criterio de selección para determinar el ganador"),
+        new("Threshold", ParameterEditorType.Number, DefaultValue: 0.0, DisplayOrder: 4, HelpText: "Umbral requerido (ej. porcentaje de ahorro para SavedPercentThreshold)", DependsOnKey: "Criterion", DependsOnValues: ["SavedPercentThreshold"]),
+        new("DiscardLoser", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5, HelpText: "Autopurga el archivo intermedio perdedor del disco si no es el archivo original"),
+        new("SetWinnerAsCurrent", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 6, HelpText: "Establece el archivo ganador como archivo activo del contexto para los siguientes nodos")
+    ];
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,

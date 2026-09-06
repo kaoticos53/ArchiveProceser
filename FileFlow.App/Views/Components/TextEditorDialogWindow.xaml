@@ -17,6 +17,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -96,8 +97,29 @@
             </Grid>
         </Border>
 
+        <!-- Barra de Acceso Rápido a Versiones de Archivo Upstream -->
+        <Border x:Name="BorderVersionChips" Grid.Row="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,0,8" Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="🏷️ Versiones:" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <ItemsControl x:Name="ItemsVersionChips">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Click="BtnVersionChip_Click" Tag="{Binding Token}" Style="{DynamicResource SecondaryButton}" Padding="7,2" Margin="0,0,5,0" Cursor="Hand" ToolTip="{Binding Description}">
+                                <TextBlock Text="{Binding ChipLabel}" FontSize="11" />
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
         <!-- Área de Edición Multilínea Principal + Panel Lateral de Variables -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition x:Name="ColSidePanel" Width="260" />
@@ -260,7 +282,7 @@
         </Grid>
 
         <!-- Panel de Vista Previa Resuelta en Tiempo Real (si contiene variables {x}) -->
-        <Border Grid.Row="3" x:Name="BorderLivePreview" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,8,0,0" MaxHeight="100" Visibility="Collapsed">
+        <Border Grid.Row="4" x:Name="BorderLivePreview" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,8,0,0" MaxHeight="100" Visibility="Collapsed">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -274,7 +296,7 @@
         </Border>
 
         <!-- Pie de Botones: Guardar y Cancelar -->
-        <Grid Grid.Row="4" Margin="0,12,0,0">
+        <Grid Grid.Row="5" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

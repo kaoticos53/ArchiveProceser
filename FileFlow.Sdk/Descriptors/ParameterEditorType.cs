@@ -53,5 +53,10 @@ public enum ParameterEditorType
     /// <summary>
     /// Selector de preset multimedia con acceso al gestor de presets.
     /// </summary>
-    MediaPreset
+    MediaPreset,
+
+    /// <summary>
+    /// Selector híbrido de versiones de archivo (chips visuales para Original/Actual/Versiones upstream + desplegable y expresión libre).
+    /// </summary>
+    FileVersionSelector
 }

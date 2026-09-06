@@ -260,6 +260,143 @@
                                                         </StackPanel>
                                                     </Grid>
 
+                                                    <!-- Editor Selector Híbrido de Versión de Archivo (Chips + Modo Expresión) -->
+                                                    <Grid Visibility="{Binding IsFileVersionSelector, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
+                                                        
+                                                        <!-- Modo 1: Chips interactivos de versión rápida -->
+                                                        <Grid Visibility="{Binding IsCustomExpressionMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding AvailableVersionOptions}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <WrapPanel Orientation="Horizontal" />
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate>
+                                                                        <Button Command="{Binding DataContext.SelectVersionOptionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                                CommandParameter="{Binding}"
+                                                                                Margin="0,0,5,4"
+                                                                                Padding="8,3"
+                                                                                FontSize="11"
+                                                                                Cursor="Hand"
+                                                                                ToolTip="{Binding Description}">
+                                                                            <Button.Style>
+                                                                                <Style TargetType="Button">
+                                                                                    <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+                                                                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+                                                                                    <Setter Property="BorderThickness" Value="1" />
+                                                                                    <Setter Property="Template">
+                                                                                        <Setter.Value>
+                                                                                            <ControlTemplate TargetType="Button">
+                                                                                                <Border Background="{TemplateBinding Background}"
+                                                                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                                                                        CornerRadius="4"
+                                                                                                        Padding="{TemplateBinding Padding}">
+                                                                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                                                </Border>
+                                                                                            </ControlTemplate>
+                                                                                        </Setter.Value>
+                                                                                    </Setter>
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Value="True">
+                                                                                            <DataTrigger.Binding>
+                                                                                                <MultiBinding Converter="{StaticResource StringsEqualMultiConverter}">
+                                                                                                    <Binding Path="Tag" />
+                                                                                                    <Binding Path="DataContext.ActiveVersionTag" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                                                                                </MultiBinding>
+                                                                                            </DataTrigger.Binding>
+                                                                                            <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+                                                                                            <Setter Property="Foreground" Value="#FFFFFF" />
+                                                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                                                                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                                                                        </DataTrigger>
+                                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                                                                                        </Trigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Button.Style>
+                                                                            <TextBlock Text="{Binding ChipLabel}" />
+                                                                        </Button>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+
+                                                            <!-- Botón Conmutar a Modo Expresión / Avanzado (✏️) -->
+                                                            <Button Grid.Column="1"
+                                                                    Command="{Binding ToggleCustomExpressionModeCommand}"
+                                                                    Style="{StaticResource SecondaryButton}"
+                                                                    Padding="6,3"
+                                                                    Margin="2,0,0,4"
+                                                                    VerticalAlignment="Top"
+                                                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Version_CustomExpressionToolTip], FallbackValue='Escribir expresión manual o insertar variable'}">
+                                                                <TextBlock Text="✏️" FontSize="11" />
+                                                            </Button>
+                                                        </Grid>
+
+                                                        <!-- Modo 2: Expresión libre / manual con herramientas avanzadas -->
+                                                        <Grid Visibility="{Binding IsCustomExpressionMode, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                                     Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace" />
+                                                            
+                                                            <!-- Botón Volver a Chips (🏷️) -->
+                                                            <Button Grid.Column="1" Command="{Binding ToggleCustomExpressionModeCommand}"
+                                                                    Content="🏷️" 
+                                                                    Background="{DynamicResource BgHoverBrush}" 
+                                                                    Foreground="{DynamicResource AccentCyanBrush}" 
+                                                                    BorderThickness="0" 
+                                                                    Padding="7,4" 
+                                                                    FontSize="11" 
+                                                                    Cursor="Hand" 
+                                                                    Margin="4,0,0,0"
+                                                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Version_BackToChipsToolTip], FallbackValue='Volver a selección por chips'}" />
+
+                                                            <!-- Botón Expandir a Editor Modal (⤢) -->
+                                                            <Button Grid.Column="2" Command="{Binding OpenTextEditorCommand}"
+                                                                    CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                                                    Content="⤢" 
+                                                                    Background="{DynamicResource BgHoverBrush}" 
+                                                                    Foreground="{DynamicResource AccentCyanBrush}" 
+                                                                    BorderThickness="0" 
+                                                                    Padding="7,4" 
+                                                                    FontSize="11" 
+                                                                    FontWeight="Bold" 
+                                                                    Cursor="Hand" 
+                                                                    Margin="2,0,0,0"
+                                                                    ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip], FallbackValue='Abrir editor ampliado (⤢)'}" />
+
+                                                            <!-- Botón Insertar Variable ({x}) -->
+                                                            <Button Grid.Column="3" 
+                                                                    Command="{Binding OpenVariablePickerCommand}"
+                                                                    CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    Content="{}{x}" 
+                                                                    Background="{DynamicResource BgHoverBrush}" 
+                                                                    Foreground="{DynamicResource AccentGlowBrush}" 
+                                                                    BorderThickness="0" 
+                                                                    Padding="7,4" 
+                                                                    FontSize="10.5" 
+                                                                    FontWeight="Bold" 
+                                                                    Cursor="Hand" 
+                                                                    Margin="2,0,0,0"
+                                                                    ToolTip="Insertar variable dinámicamente ({x})" />
+                                                        </Grid>
+                                                    </Grid>
+
                                                     <!-- TextBox para parámetros de texto estándar -->
                                                     <Grid Visibility="{Binding IsStandardInput, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
                                                         <Grid.ColumnDefinitions>

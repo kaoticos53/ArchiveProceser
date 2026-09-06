@@ -103,8 +103,13 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             RebuildConnectionLookup();
             UpdatePortConnectionStates();
+            RefreshAllNodeFileVersions();
         };
-        Nodes.CollectionChanged += (s, e) => UpdatePortConnectionStates();
+        Nodes.CollectionChanged += (s, e) =>
+        {
+            UpdatePortConnectionStates();
+            RefreshAllNodeFileVersions();
+        };
     }
 
     private void RebuildConnectionLookup()
@@ -544,6 +549,22 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 CanvasDecorators.Insert(0, groupVm);
             }
         );
+
+        RefreshAllNodeFileVersions();
+    }
+
+    public void RefreshAllNodeFileVersions()
+    {
+        foreach (var node in Nodes)
+        {
+            foreach (var param in node.Parameters)
+            {
+                if (param.IsFileVersionSelector)
+                {
+                    param.RefreshAvailableVersions();
+                }
+            }
+        }
     }
 
     public List<FileFlow.App.Models.VariableGroupItem> GetUpstreamAvailableVariables(NodeViewModel targetNode)

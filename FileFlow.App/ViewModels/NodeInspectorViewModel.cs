@@ -83,6 +83,15 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
             IsOpen = true;
         }
 
+        // Refrescar opciones de versiones de archivo aguas arriba para este nodo
+        foreach (var p in node.Parameters)
+        {
+            if (p.IsFileVersionSelector)
+            {
+                p.RefreshAvailableVersions();
+            }
+        }
+
         // Seleccionar el último snapshot si existe
         SelectedSnapshot = node.OutputSnapshots.LastOrDefault() ?? node.InputSnapshots.LastOrDefault();
         UpdateMetadataDiff();

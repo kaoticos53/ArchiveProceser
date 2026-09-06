@@ -54,8 +54,53 @@ public partial class TextEditorDialogWindow : Window
 
         LoadVariables();
 
+        if (_parameter != null)
+        {
+            if (_parameter.IsFileVersionSelector)
+            {
+                _parameter.RefreshAvailableVersions();
+            }
+
+            var versions = _parameter.AvailableVersionOptions;
+            if (versions != null && versions.Count > 0)
+            {
+                ItemsVersionChips.ItemsSource = versions;
+                BorderVersionChips.Visibility = Visibility.Visible;
+            }
+        }
+
         UpdateStats();
         UpdateLivePreview();
+    }
+
+    private void BtnVersionChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string token && !string.IsNullOrEmpty(token))
+        {
+            if (_parameter?.IsFileVersionSelector == true && (string.IsNullOrWhiteSpace(TxtEditor.Text) || (TxtEditor.Text.StartsWith("{") && TxtEditor.Text.EndsWith("}"))))
+            {
+                TxtEditor.Text = token;
+                TxtEditor.CaretIndex = token.Length;
+                TxtEditor.Focus();
+            }
+            else
+            {
+                InsertVariableAtCaret(token);
+            }
+        }
+    }
+
+    public void InsertVariableAtCaret(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return;
+        int caret = TxtEditor.CaretIndex;
+        string text = TxtEditor.Text ?? string.Empty;
+        if (caret < 0 || caret > text.Length) caret = text.Length;
+
+        string newText = text.Insert(caret, token);
+        TxtEditor.Text = newText;
+        TxtEditor.CaretIndex = caret + token.Length;
+        TxtEditor.Focus();
     }
 
     private void LoadVariables()

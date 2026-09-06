@@ -37,8 +37,8 @@
   <data name="VersionRouterNode_Desc" xml:space="preserve"><value>Evalúa una condición entre versiones o variables (ej. tamaño optimizado &lt; tamaño original) y desvía el flujo por True o False activando el archivo deseado y autopurgando el descarte.</value></data>
   <data name="SwitchActiveFileNode_Name" xml:space="preserve"><value>Cambiar Archivo Activo</value></data>
   <data name="SwitchActiveFileNode_Desc" xml:space="preserve"><value>Cambia el archivo activo del contexto (CurrentPath) por el archivo original o una versión registrada, con opción de eliminar el archivo intermedio actual.</value></data>
-  <data name="FileForkNode_Name" xml:space="preserve"><value>Bifurcador de Versiones de Archivo</value></data>
-  <data name="FileForkNode_Desc" xml:space="preserve"><value>Clona el contexto en ramas paralelas independientes: una para el archivo original, otra para la versión actual y otra para versiones intermedias registradas.</value></data>
+  <data name="FileForkNode_Name" xml:space="preserve"><value>Bifurcador de Flujo (Original vs Actual)</value></data>
+  <data name="FileForkNode_Desc" xml:space="preserve"><value>Clona el contexto en ramas paralelas independientes para procesar simultáneamente el archivo original y la versión actual procesada (ej. archivar original en NAS y publicar versión optimizada).</value></data>
   <data name="IntermediateCleanupNode_Name" xml:space="preserve"><value>Limpieza de Archivos Intermedios</value></data>
   <data name="IntermediateCleanupNode_Desc" xml:space="preserve"><value>Elimina del disco los archivos temporales e intermedios generados por transformadores previos, preservando siempre el archivo original y opcionalmente el archivo activo actual.</value></data>
   <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Filtro por Condición Lógica</value></data>

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Plugin.Logic;
 using FileFlow.Sdk;
@@ -284,5 +285,63 @@ public class FileVersionAndSelectionTests : IDisposable
         File.Exists(temp1).Should().BeFalse();
         File.Exists(temp2).Should().BeFalse();
         File.Exists(origFile).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParameterDescriptors_ForVersionNodes_SpecifyFileVersionSelector()
+    {
+        var switchNode = new SwitchActiveFileNode();
+        switchNode.ParameterDescriptors.Should().Contain(d => d.Key == "TargetFile" && d.EditorType == ParameterEditorType.FileVersionSelector);
+
+        var bestNode = new BestVersionSelectorNode();
+        bestNode.ParameterDescriptors.Should().Contain(d => d.Key == "CandidateA" && d.EditorType == ParameterEditorType.FileVersionSelector);
+        bestNode.ParameterDescriptors.Should().Contain(d => d.Key == "CandidateB" && d.EditorType == ParameterEditorType.FileVersionSelector);
+
+        var routerNode = new VersionRouterNode();
+        routerNode.ParameterDescriptors.Should().Contain(d => d.Key == "TrueFile" && d.EditorType == ParameterEditorType.FileVersionSelector);
+        routerNode.ParameterDescriptors.Should().Contain(d => d.Key == "FalseFile" && d.EditorType == ParameterEditorType.FileVersionSelector);
+
+        var relocatorNode = new FileRelocatorNode();
+        relocatorNode.ParameterDescriptors.Should().Contain(d => d.Key == "SourcePath" && d.EditorType == ParameterEditorType.FileVersionSelector);
+    }
+
+    [Fact]
+    public void FileForkNode_ReclassifiedToAdvancedCategory_AndHasParameterDescriptors()
+    {
+        var forkNode = new FileForkNode();
+        forkNode.Category.Should().Be("Logic");
+        var defAttr = typeof(FileForkNode).GetCustomAttribute<NodeDefinitionAttribute>();
+        defAttr.Should().NotBeNull();
+        defAttr!.SubCategory.Should().Be("Advanced");
+        forkNode.ParameterDescriptors.Should().HaveCount(3);
+        forkNode.ParameterDescriptors.Should().Contain(d => d.Key == "ForkOriginal");
+        forkNode.ParameterDescriptors.Should().Contain(d => d.Key == "ForkCurrent");
+        forkNode.ParameterDescriptors.Should().Contain(d => d.Key == "ForkAllVersions");
+    }
+
+    [Fact]
+    public async Task FileRelocatorNode_ResolvesVersionTagDirectly_WithoutTokenBrackets()
+    {
+        string origFile = Path.Combine(_testDir, "reloc_orig.jpg");
+        string optFile = Path.Combine(_testDir, "reloc_opt.webp");
+        string destDir = Path.Combine(_testDir, "RelocOut");
+
+        File.WriteAllBytes(origFile, new byte[1000]);
+        File.WriteAllBytes(optFile, new byte[400]);
+
+        var item = new FileItemContext(origFile);
+        item.CurrentPath = optFile;
+        item.RegisterVersion("Optimized", optFile);
+
+        var relocator = new FileRelocatorNode();
+        relocator.Parameters["SourcePath"] = "Optimized"; // Raw tag without brackets
+        relocator.Parameters["Operation"] = "Copy";
+        relocator.Parameters["DestinationDirectory"] = destDir;
+
+        var contextMock = new Mock<IFlowExecutionContext>();
+        await relocator.ExecuteAsync("In", item, contextMock.Object, CancellationToken.None);
+
+        string expectedDest = Path.Combine(destDir, "reloc_opt.webp");
+        File.Exists(expectedDest).Should().BeTrue();
     }
 }

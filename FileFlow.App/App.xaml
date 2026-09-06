@@ -19,6 +19,8 @@
             <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter" />
             <converters:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
             <converters:LogLevelToBadgeConverter x:Key="LogLevelToBadgeConverter" />
+            <converters:StringsEqualMultiConverter x:Key="StringsEqualMultiConverter" />
+            <converters:StringEqualsToBooleanConverter x:Key="StringEqualsToBooleanConverter" />
             
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/DarkTheme.xaml" />
