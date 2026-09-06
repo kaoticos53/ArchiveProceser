@@ -27,17 +27,21 @@ public class FileRelocatorNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["SourcePath"] = "{CurrentPath}",
         ["Operation"] = "Copy", // Copy, Move
         ["DestinationDirectory"] = @"{SourceDir}\{Year}\{Month}",
         ["VerifyIntegrity"] = true,
-        ["CreateDirectories"] = true
+        ["CreateDirectories"] = true,
+        ["CleanupSource"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
-        new("Operation", ParameterEditorType.Dropdown, DefaultValue: "Copy", DisplayOrder: 1, Options: ["Copy", "Move"]),
-        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{SourceDir}\{Year}\{Month}", DisplayOrder: 2),
-        new("VerifyIntegrity", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
-        new("CreateDirectories", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
+        new("SourcePath", ParameterEditorType.Text, DefaultValue: "{CurrentPath}", DisplayOrder: 1),
+        new("Operation", ParameterEditorType.Dropdown, DefaultValue: "Copy", DisplayOrder: 2, Options: ["Copy", "Move"]),
+        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{SourceDir}\{Year}\{Month}", DisplayOrder: 3),
+        new("VerifyIntegrity", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4),
+        new("CreateDirectories", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
+        new("CleanupSource", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6)
     ];
 
     public async Task ExecuteAsync(
@@ -47,11 +51,14 @@ public class FileRelocatorNode : IFlowNode
         CancellationToken cancellationToken)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        string sourcePath = item.GetExistingPhysicalPath();
+
+        string sourcePathPattern = Parameters.TryGetValue("SourcePath", out var spVal) ? ParameterHelper.GetString(spVal, "{CurrentPath}") : "{CurrentPath}";
+        string resolvedSource = VariableTemplateResolver.Resolve(sourcePathPattern, item);
+        string sourcePath = !string.IsNullOrWhiteSpace(resolvedSource) ? resolvedSource : item.GetExistingPhysicalPath();
 
         if (string.IsNullOrWhiteSpace(sourcePath) || (!File.Exists(sourcePath) && !Directory.Exists(sourcePath)))
         {
-            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Relocator_NotFound", "[Relocator] Source file not found: '{0}'", item.CurrentPath), LogLevel.Warning, item);
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Relocator_NotFound", "[Relocator] Source file not found: '{0}'", sourcePath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -60,12 +67,15 @@ public class FileRelocatorNode : IFlowNode
         try
         {
             operation = Parameters.TryGetValue("Operation", out var opVal) ? ParameterHelper.GetString(opVal, "Move") : "Move";
-            string destDirTemplate = Parameters.TryGetValue("DestinationDirectory", out var dirVal) ? ParameterHelper.GetString(dirVal, @"{CurrentDir}") : @"{CurrentDir}";
+            string destDirTemplate = Parameters.TryGetValue("DestinationDirectory", out var dirVal)
+                ? ParameterHelper.GetString(dirVal, @"{CurrentDir}")
+                : (Parameters.TryGetValue("DestinationFolder", out var dfVal) ? ParameterHelper.GetString(dfVal, @"{CurrentDir}") : @"{CurrentDir}");
             bool verifyIntegrity = Parameters.TryGetValue("VerifyIntegrity", out var vVal) && ParameterHelper.GetBoolean(vVal, true);
             bool createDirs = Parameters.TryGetValue("CreateDirectories", out var crVal) && ParameterHelper.GetBoolean(crVal, true);
+            bool cleanupSource = Parameters.TryGetValue("CleanupSource", out var csVal) && ParameterHelper.GetBoolean(csVal, false);
 
             string targetDir = VariableTemplateResolver.Resolve(destDirTemplate, item);
-            string fileName = Path.GetFileName(item.CurrentPath);
+            string fileName = Path.GetFileName(sourcePath);
             string targetPath = Path.Combine(targetDir, fileName);
 
             string fullSource = Path.GetFullPath(sourcePath);
@@ -134,6 +144,22 @@ public class FileRelocatorNode : IFlowNode
                 ));
 
                 item.PhysicalPath = targetPath;
+
+                if (cleanupSource && !string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(item.OriginalPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        if (File.Exists(sourcePath))
+                        {
+                            File.Delete(sourcePath);
+                            context.Log($"[Relocator] Cleaned up intermediate source file: '{sourcePath}'", LogLevel.Debug, item);
+                        }
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        context.Log($"[Relocator] Could not clean up intermediate source file '{sourcePath}': {cleanupEx.Message}", LogLevel.Warning, item);
+                    }
+                }
             }
             else
             {

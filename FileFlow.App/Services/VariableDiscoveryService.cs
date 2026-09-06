@@ -74,6 +74,10 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                     }
                     else if (typeName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase))
                     {
+                        AddUpstreamVar("File:Optimized", "{File:Optimized}", "Ruta absoluta al archivo optimizado");
+                        AddUpstreamVar("FileSize:Optimized", "{FileSize:Optimized}", "Tamaño del archivo optimizado en bytes");
+                        AddUpstreamVar("FileSizeKB:Optimized", "{FileSizeKB:Optimized}", "Tamaño optimizado en Kilobytes");
+                        AddUpstreamVar("FileSizeMB:Optimized", "{FileSizeMB:Optimized}", "Tamaño optimizado en Megabytes");
                         AddUpstreamVar("OutputFileSize", "{OutputFileSize}", "Tamaño del archivo optimizado en bytes");
                         AddUpstreamVar("OutputFileSizeKB", "{OutputFileSizeKB}", "Tamaño optimizado en Kilobytes");
                         AddUpstreamVar("OutputFileSizeMB", "{OutputFileSizeMB}", "Tamaño optimizado en Megabytes");
@@ -87,6 +91,8 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                     }
                     else if (typeName.Contains("BackgroundRemoverNode", StringComparison.OrdinalIgnoreCase))
                     {
+                        AddUpstreamVar("File:NoBackground", "{File:NoBackground}", "Ruta absoluta al archivo sin fondo");
+                        AddUpstreamVar("FileSize:NoBackground", "{FileSize:NoBackground}", "Tamaño de la imagen sin fondo en bytes");
                         AddUpstreamVar("OutputFileSize", "{OutputFileSize}", "Tamaño de imagen sin fondo");
                         AddUpstreamVar("OriginalFileSize", "{OriginalFileSize}", "Tamaño original previo a eliminar fondo");
                         AddUpstreamVar("SavedBytes", "{SavedBytes}", "Diferencia de tamaño en bytes");
@@ -96,6 +102,8 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                     }
                     else if (typeName.Contains("SuperResolutionUpscalerNode", StringComparison.OrdinalIgnoreCase))
                     {
+                        AddUpstreamVar("File:SuperResolution", "{File:SuperResolution}", "Ruta absoluta a la imagen reescalada");
+                        AddUpstreamVar("FileSize:SuperResolution", "{FileSize:SuperResolution}", "Tamaño de la imagen reescalada en bytes");
                         AddUpstreamVar("OutputFileSize", "{OutputFileSize}", "Tamaño de imagen escalada");
                         AddUpstreamVar("OriginalFileSize", "{OriginalFileSize}", "Tamaño antes de escalar");
                         AddUpstreamVar("AI:Upscaled", "{AI:Upscaled}", "Verdadero si la super-resolución fue aplicada");
@@ -199,6 +207,8 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         AddSysVar("Extension", "{Extension}", "Extensión del fichero sin punto (ej. jpg)");
         AddSysVar("CurrentPath", "{CurrentPath}", "Ruta absoluta actual del elemento");
         AddSysVar("OriginalPath", "{OriginalPath}", "Ruta de origen inicial inmutable");
+        AddSysVar("File:Original", "{File:Original}", "Ruta absoluta al archivo original inmutable");
+        AddSysVar("File:Current", "{File:Current}", "Ruta absoluta al archivo activo actual");
         AddSysVar("RelativePath", "{RelativePath}", "Ruta relativa desde el directorio raíz");
         AddSysVar("DateNow", "{DateNow}", "Fecha y hora actual ISO");
         AddSysVar("TempDir", "{TempDir}", "Directorio de trabajo temporal configurado en Ajustes");
@@ -241,6 +251,10 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         AddSizeVar("SizeMB", "{SizeMB}", "Tamaño del archivo en Megabytes (ej. 3.00 MB)");
         AddSizeVar("SizeKB", "{SizeKB}", "Tamaño del archivo en Kilobytes");
         AddSizeVar("SizeBytes", "{SizeBytes}", "Tamaño exacto del archivo en bytes");
+        AddSizeVar("FileSize:Original", "{FileSize:Original}", "Tamaño del archivo original en bytes");
+        AddSizeVar("FileSizeKB:Original", "{FileSizeKB:Original}", "Tamaño del archivo original en KB");
+        AddSizeVar("FileSizeMB:Original", "{FileSizeMB:Original}", "Tamaño del archivo original en MB");
+        AddSizeVar("FileSize:Current", "{FileSize:Current}", "Tamaño del archivo activo actual en bytes");
         AddSizeVar("OriginalFileSize", "{OriginalFileSize}", "Tamaño original del archivo en bytes");
         AddSizeVar("OutputFileSize", "{OutputFileSize}", "Tamaño del archivo resultante en bytes");
         AddSizeVar("SavedBytes", "{SavedBytes}", "Bytes ahorrados/reducidos");
@@ -309,6 +323,10 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         item.Metadata["OptimizedFormat"] = "WebP";
         item.Metadata["OptimizedWidth"] = 1920;
         item.Metadata["OptimizedHeight"] = 1080;
+        item.RegisterVersion("Optimized", @"C:\FileFlow\Samples\sample_photo_optimized.webp");
+        item.Metadata["FileSize:Optimized"] = 1_048_576L;
+        item.Metadata["FileSizeKB:Optimized"] = 1024L;
+        item.Metadata["FileSizeMB:Optimized"] = 1.0;
 
         // Metadatos de IA
         item.Metadata["AI:TopLabel"] = "Landscape";

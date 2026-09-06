@@ -1,0 +1,91 @@
+using System.IO;
+using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
+
+namespace FileFlow.Plugin.Logic;
+
+[NodeDefinition("FileForkNode_Name", "Logic", "FileForkNode_Desc", PipelineRole.Filter,
+    "fork", "duplicar", "clonar", "bifurcar", "versiones", "original", "paralelo")]
+public class FileForkNode : IFlowNode
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name => LocalizationManager.Instance.GetString("FileForkNode_Name", "Bifurcador de Versiones de Archivo");
+    public string Category => "Logic";
+    public string Description => LocalizationManager.Instance.GetString("FileForkNode_Desc", "Clona el contexto en ramas paralelas independientes: una para el archivo original, otra para la versión actual y otra para versiones intermedias registradas.");
+
+    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    {
+        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+    };
+
+    public IReadOnlyList<NodePort> Outputs { get; } = new[]
+    {
+        new NodePort("Original", typeof(FileItemContext), PortDirection.Output, "Original"),
+        new NodePort("Current", typeof(FileItemContext), PortDirection.Output, "Current"),
+        new NodePort("Version", typeof(FileItemContext), PortDirection.Output, "Version")
+    };
+
+    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ForkOriginal"] = true,
+        ["ForkCurrent"] = true,
+        ["ForkAllVersions"] = false
+    };
+
+    public async Task ExecuteAsync(
+        string inputPortName,
+        FileItemContext item,
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        bool forkOriginal = Parameters.TryGetValue("ForkOriginal", out var fo) ? ParameterHelper.GetBoolean(fo, true) : true;
+        bool forkCurrent = Parameters.TryGetValue("ForkCurrent", out var fc) ? ParameterHelper.GetBoolean(fc, true) : true;
+        bool forkAllVersions = Parameters.TryGetValue("ForkAllVersions", out var fa) ? ParameterHelper.GetBoolean(fa, false) : false;
+
+        if (forkOriginal)
+        {
+            var origClone = item.DeepClone();
+            origClone.CurrentPath = item.OriginalPath;
+            origClone.PhysicalPath = item.OriginalPath;
+            if (File.Exists(item.OriginalPath))
+            {
+                origClone.FileSizeBytes = new FileInfo(item.OriginalPath).Length;
+            }
+            origClone.Metadata["ForkBranch"] = "Original";
+            origClone.AddLog("[FileForkNode] Emitted clone on 'Original' port");
+            await context.EmitAsync("Original", origClone).ConfigureAwait(false);
+        }
+
+        if (forkCurrent)
+        {
+            var currClone = item.DeepClone();
+            currClone.Metadata["ForkBranch"] = "Current";
+            currClone.AddLog("[FileForkNode] Emitted clone on 'Current' port");
+            await context.EmitAsync("Current", currClone).ConfigureAwait(false);
+        }
+
+        if (forkAllVersions)
+        {
+            foreach (var kvp in item.FileVersions)
+            {
+                if (string.Equals(kvp.Key, "Original", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var verClone = item.DeepClone();
+                verClone.CurrentPath = kvp.Value;
+                verClone.PhysicalPath = kvp.Value;
+                if (File.Exists(kvp.Value))
+                {
+                    verClone.FileSizeBytes = new FileInfo(kvp.Value).Length;
+                }
+                verClone.Metadata["ForkBranch"] = kvp.Key;
+                verClone.AddLog($"[FileForkNode] Emitted clone on 'Version' port for version tag '{kvp.Key}'");
+                await context.EmitAsync("Version", verClone).ConfigureAwait(false);
+            }
+        }
+
+        context.Log($"[FileForkNode] Dispatched parallel forks (Original: {forkOriginal}, Current: {forkCurrent}, AllVersions: {forkAllVersions})", LogLevel.Information, item);
+    }
+}

@@ -3408,6 +3408,59 @@ Auditar, extraer y conectar todas las cadenas de texto visibles al usuario (XAML
 - **Compilación de la Solución:** `dotnet build FileFlow.slnx --warnaserror` → **0 advertencias, 0 errores**.
 - **Ejecución de Pruebas Unitarias:** `dotnet test FileFlow.Tests/FileFlow.Tests.csproj` → **510 tests ejecutados, 510 superados (100%)**.
 
+---
+
+## [2026-09-06] - Soporte Multiversión de Archivos en Pipeline, Auto-Purga de Temporales y Nodos de Decisión Inteligente
+
+### 🎯 Problema y Necesidad
+En pipelines donde se procesan imágenes u otros ficheros generando versiones intermedias (como `ImageOptimizerNode`, `BackgroundRemoverNode` o `SuperResolutionUpscalerNode`), si el fichero resultante empeoraba el tamaño respecto al original (o ante cualquier otra condición), resultaba imposible comparar directamente los ficheros, seleccionar la versión original o autopurgar de forma segura los ficheros intermedios descartados. Además, `FileRelocatorNode` operaba siempre sobre `item.CurrentPath` sin permitir elegir qué versión (Original, optimizada, etc.) debía ser trasladada/copiada al destino.
+
+### 🛠️ Arquitectura y Componentes Implementados
+
+1. **Historial Multiversión en el Contexto (`FileFlow.Sdk`):**
+   - **`FileItemContext.FileVersions`**: Diccionario `Dictionary<string, string>` con clave insensible a mayúsculas que registra todas las rutas generadas en el flujo.
+   - **`RegisterVersion(string tag, string filePath)`**: Registra la ruta en `FileVersions` y, para versiones personalizadas (no Original), auto-puebla `Metadata["File:Tag"]`, `Metadata["FileSize:Tag"]`, `Metadata["FileSizeKB:Tag"]` y `Metadata["FileSizeMB:Tag"]`.
+   - **`GetVersionPath(string tag)`**: Resuelve de forma transparente `"Original"`, `"Current"` o cualquier etiqueta registrada.
+   - **Resolución de Variables de Sistema (`SystemVariablesResolver`)**:
+     - Soporte para dominios `{File:Tag}` (ej. `{File:Original}`, `{File:Optimized}`, `{File:NoBackground}`).
+     - Soporte para dominios métricos en caliente `{FileSize:Tag}`, `{FileSizeBytes:Tag}`, `{FileSizeKB:Tag}`, `{FileSizeMB:Tag}` leyendo directamente las dimensiones del fichero en disco si existe o mediante metadatos en memoria.
+
+2. **Acción de Traslado con Selección de Origen (`FileRelocatorNode`):**
+   - Nuevo parámetro `SourcePath` con valor predeterminado `"{CurrentPath}"` (soporta `{OriginalPath}`, `{File:Optimized}`, o cualquier plantilla).
+   - Nuevo parámetro `CleanupSource` (`bool`, default `false`): elimina el fichero de origen tras copiarlo con éxito si es un archivo intermedio.
+   - **Garantía Estricta de Inmutabilidad del Original**: `CleanupSource` jamás elimina `item.OriginalPath`, protegiendo la regla fundamental de no destrucción del archivo fuente.
+
+3. **Nuevos Nodos de Decisión y Selección Inteligente (`FileFlow.Plugin.Logic`):**
+   - **`BestVersionSelectorNode`**:
+     - Compara automáticamente Candidato A (`{CurrentPath}`) vs Candidato B (`{OriginalPath}`) bajo criterios como `SmallestSize` (por defecto), `LargestSize`, `SavedPercentThreshold`, etc.
+     - Establece el ganador como `CurrentPath` y emite por puertos `Out`, `WonA` y `WonB`.
+     - **Autopurga por Defecto (`DiscardLoser = true`)**: Elimina físicamente del disco el archivo intermedio perdedor para evitar fugas de almacenamiento, preservando siempre el archivo original.
+   - **`VersionRouterNode`**:
+     - Enrutador condicional que evalúa condiciones entre versiones (ej. `FileSize:Optimized < {FileSize:Original}`).
+     - Desvía el flujo por `True` o `False`, activando el fichero configurado para cada rama (`TrueFile`, `FalseFile`).
+     - **Autopurga por Defecto (`PurgeUnselectedTemps = true`)**: Purga automáticamente del disco el archivo de la rama descartada.
+
+4. **Nodos de Control y Ciclo de Vida (`FileFlow.Plugin.Logic`):**
+   - **`SwitchActiveFileNode`**: Permite cambiar `CurrentPath` hacia cualquier versión o archivo original, con opción de eliminar el intermedio previo (`DeleteCurrentFileFirst`).
+   - **`FileForkNode`**: Clona el contexto en ramas paralelas independientes para `Original`, `Current` o todas las versiones registradas.
+   - **`IntermediateCleanupNode`**: Recolector de basura en pipeline que purga los archivos intermedios generados por transformadores previos, manteniendo el original inmutable.
+
+5. **Auto-Registro de Versiones en Transformadores:**
+   - `ImageOptimizerNode`: registra `item.RegisterVersion("Optimized", outputPath)`.
+   - `BackgroundRemoverNode`: registra `item.RegisterVersion("NoBackground", targetPath)`.
+   - `SuperResolutionUpscalerNode`: registra `item.RegisterVersion("SuperResolution", targetPath)`.
+
+6. **Catálogo de Variables e i18n:**
+   - `VariableDiscoveryService`: expone upstream y en el catálogo general `{File:Original}`, `{File:Current}`, `{File:Optimized}`, `{FileSize:Optimized}`, etc.
+   - Recursos multilingües `Strings.resx` y `Strings.es.resx` creados en `FileFlow.Plugin.Logic` con nombres y descripciones localizadas.
+   - Iconos añadidos en `NodeIconResolver`.
+
+### 🧪 Verificación y Suite de Tests
+- **Nuevas Pruebas Unitarias:** `FileVersionAndSelectionTests.cs` (8 pruebas completas cubriendo registro de versiones, resolución de plantillas, autopurga de candidatos perdedores, inmutabilidad del original, y relocalización de fuentes intermedias).
+- **Compilación de la Solución:** **0 advertencias, 0 errores**.
+- **Suite Completa de Pruebas:** `.\test.ps1 -Mode all` $\rightarrow$ **544 / 544 pruebas unitarias, integración y rendimiento superadas al 100%**.
+
+
 
 
 

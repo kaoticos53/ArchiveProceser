@@ -210,6 +210,7 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
             newItem.PhysicalPath = targetPath;
+            newItem.RegisterVersion("SuperResolution", targetPath);
             long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(item.CurrentPath) ? new FileInfo(item.CurrentPath).Length : 0);
             long newSizeBytes = new FileInfo(targetPath).Length;
             newItem.FileSizeBytes = newSizeBytes;

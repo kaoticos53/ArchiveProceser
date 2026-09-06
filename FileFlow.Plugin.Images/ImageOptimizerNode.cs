@@ -307,6 +307,11 @@ public class ImageOptimizerNode : IFlowNode
             {
                 outputItem.Metadata[kvp.Key] = kvp.Value;
             }
+            foreach (var kvp in item.FileVersions)
+            {
+                outputItem.FileVersions[kvp.Key] = kvp.Value;
+            }
+            outputItem.RegisterVersion("Optimized", outputPath);
             outputItem.Metadata["OriginalFileSize"] = origSizeBytes;
             outputItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
             outputItem.Metadata["OutputFileSize"] = newSizeBytes;

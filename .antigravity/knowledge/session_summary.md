@@ -8,8 +8,21 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **536 / 536 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **544 / 544 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --38. **Soporte Multiversión de Archivos en Pipeline, Auto-Purga de Temporales, Selector de Mejor Versión y Enrutador de Decisiones**:
+      - **Objetivo**: Permitir en pipelines complejos donde se encadenan transformadores intermedios comparar versiones (ej. imagen optimizada vs original), seleccionar automáticamente o mediante condiciones cuál guardar, autopurgar los archivos temporales perdedores/descartados sin tocar el archivo original inmutable, y permitir a `FileRelocatorNode` trasladar versiones específicas (`SourcePath`) con limpieza opcional.
+      - **Ajustes Realizados**:
+        1. *Historial de Versiones en Contexto (`FileItemContext.cs`)*: Añadido `FileVersions` (`Dictionary<string, string>`), `RegisterVersion(tag, path)` con auto-poblado de metadatos (`File:Tag`, `FileSize:Tag`, `FileSizeKB:Tag`, `FileSizeMB:Tag`), y `GetVersionPath(tag)` transparente para `"Original"`, `"Current"` y etiquetas personalizadas.
+        2. *Resolución de Plantillas Dinámicas (`SystemVariablesResolver.cs`)*: Soporte para `{File:Tag}`, `{FileSize:Tag}`, `{FileSizeBytes:Tag}`, `{FileSizeKB:Tag}`, `{FileSizeMB:Tag}` leyendo directamente en disco o mediante metadatos en memoria.
+        3. *Traslado con Selección de Origen (`FileRelocatorNode.cs`)*: Parámetro `SourcePath` (default `"{CurrentPath}"`, soporta `{OriginalPath}`, `{File:Optimized}`, etc.) y `CleanupSource` (default `false`) con garantía estricta de nunca eliminar `OriginalPath`.
+        4. *Selector de Mejor Versión con Autopurga (`BestVersionSelectorNode.cs`)*: Compara Candidato A vs Candidato B por menor tamaño (`SmallestSize`), mayor tamaño, umbral de ahorro (`SavedPercentThreshold`), o selección forzada. Emite por `Out`, `WonA` y `WonB`. Autopurga por defecto (`DiscardLoser = true`) del archivo intermedio perdedor.
+        5. *Enrutador de Versiones con Autopurga (`VersionRouterNode.cs`)*: Enruta por `True` o `False` según condiciones numéricas o textuales entre versiones, activando el archivo de la rama ganadora y autopurgando por defecto (`PurgeUnselectedTemps = true`) el archivo descartado.
+        6. *Nodos de Control y Ciclo de Vida (`SwitchActiveFileNode.cs`, `FileForkNode.cs`, `IntermediateCleanupNode.cs`)*: Cambio de archivo activo, clonación en ramas paralelas independientes, y recolección de basura de archivos temporales.
+        7. *Auto-Registro en Transformadores (`ImageOptimizerNode.cs`, `BackgroundRemoverNode.cs`, `SuperResolutionUpscalerNode.cs`)*: Auto-registro de `"Optimized"`, `"NoBackground"`, `"SuperResolution"`.
+        8. *Catálogo de Variables e i18n*: Exposición de variables en `VariableDiscoveryService.cs`, recursos multilingües `Strings.resx` y `Strings.es.resx` en `FileFlow.Plugin.Logic`, e iconos en `NodeIconResolver.cs`.
+        9. *Suite de Pruebas*: Creada `FileVersionAndSelectionTests.cs` con 8 pruebas unitarias exhaustivas.
+      - **Validación**: 544 / 544 pruebas superadas al 100% (0 errores, 0 omitidas).
   --37. **Catálogo Visual de Variables, Autocompletado IntelliSense y Filtrado Upstream Dinámico en el DAG**:
       - **Objetivo**: Resolver los problemas de usabilidad con las variables: sobrecarga y corte vertical del menú contextual por falta de scroll, ausencia de categorización y búsqueda rápida, falta de autocompletado en el editor ampliado, ambigüedad sobre qué variables existen realmente según los nodos precedentes y ausencia de una vista previa evaluada realista.
       - **Ajustes Realizados**:

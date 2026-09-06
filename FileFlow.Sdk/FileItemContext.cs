@@ -39,8 +39,38 @@ public record FileItemContext
     public bool IsDirectory { get; set; }
     public long FileSizeBytes { get; set; }
     public Dictionary<string, object?> Metadata { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> FileVersions { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> Tags { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> ExecutionLog { get; init; } = [];
+
+    public void RegisterVersion(string tag, string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(tag) || string.IsNullOrWhiteSpace(filePath)) return;
+        FileVersions[tag] = filePath;
+
+        if (!string.Equals(tag, "Original", StringComparison.OrdinalIgnoreCase))
+        {
+            Metadata[$"File:{tag}"] = filePath;
+            if (File.Exists(filePath))
+            {
+                long length = new FileInfo(filePath).Length;
+                Metadata[$"FileSize:{tag}"] = length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                Metadata[$"FileSizeBytes:{tag}"] = length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                Metadata[$"FileSizeKB:{tag}"] = (length / 1024.0).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                Metadata[$"FileSizeMB:{tag}"] = (length / (1024.0 * 1024.0)).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
+    public string? GetVersionPath(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag)) return null;
+        if (string.Equals(tag, "Original", StringComparison.OrdinalIgnoreCase)) return OriginalPath;
+        if (string.Equals(tag, "Current", StringComparison.OrdinalIgnoreCase)) return CurrentPath;
+        if (FileVersions.TryGetValue(tag, out var path)) return path;
+        if (Metadata.TryGetValue($"File:{tag}", out var mPath) && mPath is string sPath) return sPath;
+        return null;
+    }
 
     public string GetExistingPhysicalPath()
     {
@@ -69,6 +99,10 @@ public record FileItemContext
         {
             FileSizeBytes = 0;
         }
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            FileVersions["Original"] = path;
+        }
     }
 
     public FileItemContext(FileInfo fileInfo)
@@ -78,6 +112,7 @@ public record FileItemContext
         PhysicalPath = fileInfo.FullName;
         IsDirectory = false;
         FileSizeBytes = fileInfo.Length;
+        FileVersions["Original"] = fileInfo.FullName;
     }
 
     public FileItemContext(DirectoryInfo dirInfo)
@@ -87,6 +122,7 @@ public record FileItemContext
         PhysicalPath = dirInfo.FullName;
         IsDirectory = true;
         FileSizeBytes = 0;
+        FileVersions["Original"] = dirInfo.FullName;
     }
 
     public void AddLog(string message)
@@ -106,6 +142,7 @@ public record FileItemContext
             IsDirectory = IsDirectory,
             FileSizeBytes = FileSizeBytes,
             Metadata = Metadata.Count > 0 ? new Dictionary<string, object?>(Metadata, StringComparer.OrdinalIgnoreCase) : new Dictionary<string, object?>(0, StringComparer.OrdinalIgnoreCase),
+            FileVersions = FileVersions.Count > 0 ? new Dictionary<string, string>(FileVersions, StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(0, StringComparer.OrdinalIgnoreCase),
             Tags = Tags.Count > 0 ? new HashSet<string>(Tags, StringComparer.OrdinalIgnoreCase) : new HashSet<string>(0, StringComparer.OrdinalIgnoreCase),
             ExecutionLog = ExecutionLog.Count > 0 ? new List<string>(ExecutionLog) : new List<string>(0)
         };

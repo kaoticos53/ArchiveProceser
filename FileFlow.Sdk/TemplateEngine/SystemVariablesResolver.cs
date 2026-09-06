@@ -46,6 +46,55 @@ public static class SystemVariablesResolver
             string key = parts.Length > 1 ? parts[1].Trim() : string.Empty;
             string? modifier = parts.Length > 2 ? parts[2].Trim() : null;
 
+            // Soporte para versiones de archivo {File:Tag}
+            if (string.Equals(domain, "File", StringComparison.OrdinalIgnoreCase))
+            {
+                string? versionPath = item.GetVersionPath(key);
+                if (!string.IsNullOrEmpty(versionPath))
+                {
+                    return versionPath;
+                }
+            }
+
+            // Soporte para tamaños de versiones {FileSize:Tag}, {FileSizeKB:Tag}, {FileSizeMB:Tag}
+            if (string.Equals(domain, "FileSize", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(domain, "FileSizeBytes", StringComparison.OrdinalIgnoreCase))
+            {
+                string? versionPath = item.GetVersionPath(key);
+                if (!string.IsNullOrEmpty(versionPath) && File.Exists(versionPath))
+                {
+                    return new FileInfo(versionPath).Length.ToString(CultureInfo.InvariantCulture);
+                }
+                if (item.Metadata.TryGetValue($"FileSize:{key}", out var fSize) && fSize != null)
+                {
+                    return fSize.ToString()!;
+                }
+            }
+            if (string.Equals(domain, "FileSizeKB", StringComparison.OrdinalIgnoreCase))
+            {
+                string? versionPath = item.GetVersionPath(key);
+                if (!string.IsNullOrEmpty(versionPath) && File.Exists(versionPath))
+                {
+                    return (new FileInfo(versionPath).Length / 1024.0).ToString("F1", CultureInfo.InvariantCulture);
+                }
+                if (item.Metadata.TryGetValue($"FileSizeKB:{key}", out var fSize) && fSize != null)
+                {
+                    return fSize.ToString()!;
+                }
+            }
+            if (string.Equals(domain, "FileSizeMB", StringComparison.OrdinalIgnoreCase))
+            {
+                string? versionPath = item.GetVersionPath(key);
+                if (!string.IsNullOrEmpty(versionPath) && File.Exists(versionPath))
+                {
+                    return (new FileInfo(versionPath).Length / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
+                }
+                if (item.Metadata.TryGetValue($"FileSizeMB:{key}", out var fSize) && fSize != null)
+                {
+                    return fSize.ToString()!;
+                }
+            }
+
             if (DomainVariableResolver.TryResolve(domain, key, modifier, item, currentPath, out string domainResult))
             {
                 return domainResult;

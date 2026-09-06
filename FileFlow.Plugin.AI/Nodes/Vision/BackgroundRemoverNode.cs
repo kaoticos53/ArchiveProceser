@@ -272,6 +272,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                 var outItem = item.DeepClone();
                 outItem.CurrentPath = targetPath;
                 outItem.PhysicalPath = targetPath;
+                outItem.RegisterVersion("NoBackground", targetPath);
                 long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(item.CurrentPath) ? new FileInfo(item.CurrentPath).Length : 0);
                 long newSizeBytes = new FileInfo(targetPath).Length;
                 outItem.FileSizeBytes = newSizeBytes;

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="BestVersionSelectorNode_Name" xml:space="preserve"><value>Selector de Mejor Versión</value></data>
+  <data name="BestVersionSelectorNode_Desc" xml:space="preserve"><value>Compara dos candidatos de archivo (ej. versión optimizada vs original) según criterios como menor tamaño o porcentaje de ahorro, establece el ganador como archivo activo y puede autopurgar el archivo intermedio perdedor.</value></data>
+  <data name="VersionRouterNode_Name" xml:space="preserve"><value>Enrutador de Versiones</value></data>
+  <data name="VersionRouterNode_Desc" xml:space="preserve"><value>Evalúa una condición entre versiones o variables (ej. tamaño optimizado &lt; tamaño original) y desvía el flujo por True o False activando el archivo deseado y autopurgando el descarte.</value></data>
+  <data name="SwitchActiveFileNode_Name" xml:space="preserve"><value>Cambiar Archivo Activo</value></data>
+  <data name="SwitchActiveFileNode_Desc" xml:space="preserve"><value>Cambia el archivo activo del contexto (CurrentPath) por el archivo original o una versión registrada, con opción de eliminar el archivo intermedio actual.</value></data>
+  <data name="FileForkNode_Name" xml:space="preserve"><value>Bifurcador de Versiones de Archivo</value></data>
+  <data name="FileForkNode_Desc" xml:space="preserve"><value>Clona el contexto en ramas paralelas independientes: una para el archivo original, otra para la versión actual y otra para versiones intermedias registradas.</value></data>
+  <data name="IntermediateCleanupNode_Name" xml:space="preserve"><value>Limpieza de Archivos Intermedios</value></data>
+  <data name="IntermediateCleanupNode_Desc" xml:space="preserve"><value>Elimina del disco los archivos temporales e intermedios generados por transformadores previos, preservando siempre el archivo original y opcionalmente el archivo activo actual.</value></data>
+  <data name="ExpressionFilterNode_Name" xml:space="preserve"><value>Filtro por Condición Lógica</value></data>
+  <data name="ExpressionFilterNode_Desc" xml:space="preserve"><value>Evalúa condiciones numéricas o de texto sobre propiedades del archivo (ej. tamaño en MB, extensión, fecha, tags) y desvía el flujo por los puertos True o False.</value></data>
+  <data name="SwitchCaseNode_Name" xml:space="preserve"><value>Conmutador de Casos Múltiples</value></data>
+  <data name="SwitchCaseNode_Desc" xml:space="preserve"><value>Evalúa una propiedad o expresión y enruta el archivo a través de la salida cuyo valor coincida.</value></data>
+  <data name="BatchBufferNode_Name" xml:space="preserve"><value>Búfer de Lotes</value></data>
+  <data name="BatchBufferNode_Desc" xml:space="preserve"><value>Acumula archivos entrantes en lotes antes de emitirlos.</value></data>
+  <data name="ThrottleDelayNode_Name" xml:space="preserve"><value>Retardo de Procesamiento</value></data>
+  <data name="ThrottleDelayNode_Desc" xml:space="preserve"><value>Introduce una pausa controlada entre el procesamiento de elementos.</value></data>
+  <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Barrera de Sincronización Fork/Join</value></data>
+  <data name="ForkJoinBarrierNode_Desc" xml:space="preserve"><value>Sincroniza y une ramas de ejecución paralelas divergentes.</value></data>
+</root>
