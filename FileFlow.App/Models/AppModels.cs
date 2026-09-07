@@ -53,3 +53,16 @@ public class VariableGroupItem(string groupName, bool isUpstream = false)
     public bool IsUpstream { get; set; } = isUpstream;
     public List<VariableItem> Variables { get; } = [];
 }
+
+public record FileVersionOption(
+    string Tag,
+    string Token,
+    string DisplayName,
+    string Icon = "📄",
+    string Description = "",
+    bool IsUpstream = false,
+    string SourceNodeTitle = ""
+)
+{
+    public string ChipLabel => $"{Icon} {DisplayName}";
+}

@@ -36,7 +36,7 @@ public class FileRelocatorNode : IFlowNode
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
-        new("SourcePath", ParameterEditorType.Text, DefaultValue: "{CurrentPath}", DisplayOrder: 1),
+        new("SourcePath", ParameterEditorType.FileVersionSelector, DefaultValue: "{CurrentPath}", DisplayOrder: 1, HelpText: "Versión del archivo a copiar o mover (ej. Actual, Original o versiones intermedias registradas)"),
         new("Operation", ParameterEditorType.Dropdown, DefaultValue: "Copy", DisplayOrder: 2, Options: ["Copy", "Move"]),
         new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{SourceDir}\{Year}\{Month}", DisplayOrder: 3),
         new("VerifyIntegrity", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4),
@@ -54,6 +54,14 @@ public class FileRelocatorNode : IFlowNode
 
         string sourcePathPattern = Parameters.TryGetValue("SourcePath", out var spVal) ? ParameterHelper.GetString(spVal, "{CurrentPath}") : "{CurrentPath}";
         string resolvedSource = VariableTemplateResolver.Resolve(sourcePathPattern, item);
+        if (!File.Exists(resolvedSource) && !Directory.Exists(resolvedSource))
+        {
+            string? versionPath = item.GetVersionPath(sourcePathPattern);
+            if (!string.IsNullOrWhiteSpace(versionPath) && (File.Exists(versionPath) || Directory.Exists(versionPath)))
+            {
+                resolvedSource = versionPath;
+            }
+        }
         string sourcePath = !string.IsNullOrWhiteSpace(resolvedSource) ? resolvedSource : item.GetExistingPhysicalPath();
 
         if (string.IsNullOrWhiteSpace(sourcePath) || (!File.Exists(sourcePath) && !Directory.Exists(sourcePath)))

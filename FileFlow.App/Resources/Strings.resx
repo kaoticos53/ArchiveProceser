@@ -982,4 +982,18 @@
   <data name="TextEditor_SidePanelTitle" xml:space="preserve"><value>Available Variables</value></data>
   <data name="TextEditor_ToggleSidePanel" xml:space="preserve"><value>Toggle variables panel</value></data>
   <data name="TextEditor_IntelliSenseHint" xml:space="preserve"><value>Type '{' to trigger smart autocomplete</value></data>
+
+  <!-- File Versions & Selector -->
+  <data name="Version_Original" xml:space="preserve"><value>Original</value></data>
+  <data name="Version_Original_Desc" xml:space="preserve"><value>Immutable original input file</value></data>
+  <data name="Version_Current" xml:space="preserve"><value>Current</value></data>
+  <data name="Version_Current_Desc" xml:space="preserve"><value>Active version processed up to this node</value></data>
+  <data name="Version_Optimized" xml:space="preserve"><value>Optimized</value></data>
+  <data name="Version_Optimized_Desc" xml:space="preserve"><value>Optimized version from ImageOptimizerNode</value></data>
+  <data name="Version_NoBackground" xml:space="preserve"><value>No Background</value></data>
+  <data name="Version_NoBackground_Desc" xml:space="preserve"><value>Background-removed version segmented by AI</value></data>
+  <data name="Version_SuperResolution" xml:space="preserve"><value>Super-Resolution</value></data>
+  <data name="Version_SuperResolution_Desc" xml:space="preserve"><value>Image upscaled using neural network</value></data>
+  <data name="Version_CustomExpressionToolTip" xml:space="preserve"><value>Write custom expression or insert variable</value></data>
+  <data name="Version_BackToChipsToolTip" xml:space="preserve"><value>Switch back to chip selection</value></data>
 </root>

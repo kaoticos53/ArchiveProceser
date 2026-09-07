@@ -4,14 +4,15 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Logic;
 
-[NodeDefinition("FileForkNode_Name", "Logic", "FileForkNode_Desc", PipelineRole.Filter,
-    "fork", "duplicar", "clonar", "bifurcar", "versiones", "original", "paralelo")]
+[NodeDefinition("FileForkNode_Name", "Logic", "FileForkNode_Desc", PipelineRole.Control,
+    tags: ["fork", "duplicar", "clonar", "bifurcar", "versiones", "original", "paralelo", "avanzado"],
+    SubCategory = "Advanced")]
 public class FileForkNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("FileForkNode_Name", "Bifurcador de Versiones de Archivo");
+    public string Name => LocalizationManager.Instance.GetString("FileForkNode_Name", "Bifurcador de Flujo (Original vs Actual)");
     public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("FileForkNode_Desc", "Clona el contexto en ramas paralelas independientes: una para el archivo original, otra para la versión actual y otra para versiones intermedias registradas.");
+    public string Description => LocalizationManager.Instance.GetString("FileForkNode_Desc", "Clona el contexto en ramas paralelas independientes para procesar simultáneamente el archivo original y la versión actual procesada (ej. archivar original en NAS y publicar versión optimizada).");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -31,6 +32,12 @@ public class FileForkNode : IFlowNode
         ["ForkCurrent"] = true,
         ["ForkAllVersions"] = false
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("ForkOriginal", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 1, HelpText: "Emite una copia independiente por el puerto 'Original' restableciendo el archivo activo al original intacto"),
+        new("ForkCurrent", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 2, HelpText: "Emite una copia independiente por el puerto 'Current' con el archivo procesado actual"),
+        new("ForkAllVersions", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3, HelpText: "Emite copias adicionales por el puerto 'Version' para cada versión intermedia registrada en el flujo")
+    ];
 
     public async Task ExecuteAsync(
         string inputPortName,

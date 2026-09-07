@@ -30,6 +30,11 @@ public class SwitchActiveFileNode : IFlowNode
         ["DeleteCurrentFileFirst"] = false
     };
 
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("TargetFile", ParameterEditorType.FileVersionSelector, DefaultValue: "{OriginalPath}", DisplayOrder: 1, HelpText: "Versión del archivo a establecer como activa (ej. Original, Actual o versiones intermedias upstream)"),
+        new("DeleteCurrentFileFirst", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 2, HelpText: "Elimina el archivo intermedio actual antes de cambiar (nunca elimina el archivo original inmutable)")
+    ];
+
     public async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,

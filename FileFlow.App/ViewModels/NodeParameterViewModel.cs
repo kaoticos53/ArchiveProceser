@@ -39,6 +39,8 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsSlider))]
     [NotifyPropertyChangedFor(nameof(IsToggle))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
+    [NotifyPropertyChangedFor(nameof(IsFileVersionSelector))]
+    [NotifyPropertyChangedFor(nameof(ActiveVersionTag))]
     private object? _value;
 
     [ObservableProperty]
@@ -54,6 +56,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     private bool _isCopied;
 
     [ObservableProperty]
+    private bool _isCustomExpressionMode;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasOptions))]
     [NotifyPropertyChangedFor(nameof(IsBooleanAndNoOptions))]
     [NotifyPropertyChangedFor(nameof(IsFolderPath))]
@@ -67,6 +72,19 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private List<VariableGroupItem> _availableVariables = [];
 
+    private readonly ObservableCollection<FileVersionOption> _availableVersionOptions = [];
+    public ObservableCollection<FileVersionOption> AvailableVersionOptions
+    {
+        get
+        {
+            if (_availableVersionOptions.Count <= 2 && IsFileVersionSelector)
+            {
+                RefreshAvailableVersions();
+            }
+            return _availableVersionOptions;
+        }
+    }
+
     public ParameterEditorType EditorType => Descriptor?.EditorType ?? DetectEditorType();
 
     public double SliderMin => Descriptor?.Min ?? 0;
@@ -79,28 +97,116 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public bool IsToggle => EditorType == ParameterEditorType.Toggle;
 
-    public bool IsDropdown => EditorType == ParameterEditorType.Dropdown || HasOptions;
+    public bool IsDropdown => (EditorType == ParameterEditorType.Dropdown || HasOptions) && !IsFileVersionSelector;
 
-    public bool IsBooleanAndNoOptions => !IsSlider && !IsDropdown && (IsToggle || (!HasOptions && (Value is bool || (Value != null && bool.TryParse(Value.ToString(), out _)))));
+    public bool IsFileVersionSelector => EditorType == ParameterEditorType.FileVersionSelector;
 
-    public bool IsFolderPath => EditorType == ParameterEditorType.FolderPath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFolderPath(Key));
+    public bool IsBooleanAndNoOptions => !IsSlider && !IsDropdown && !IsFileVersionSelector && (IsToggle || (!HasOptions && (Value is bool || (Value != null && bool.TryParse(Value.ToString(), out _)))));
 
-    public bool IsFilePath => EditorType == ParameterEditorType.FilePath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFilePath(Key));
+    public bool IsFolderPath => (EditorType == ParameterEditorType.FolderPath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFolderPath(Key))) && !IsFileVersionSelector;
+
+    public bool IsFilePath => (EditorType == ParameterEditorType.FilePath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFilePath(Key))) && !IsFileVersionSelector;
 
     public bool IsPasswordList => EditorType == ParameterEditorType.PasswordList || Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase);
 
     public bool IsMediaPreset => EditorType == ParameterEditorType.MediaPreset || Key.Equals("Preset", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsMultiLine => EditorType == ParameterEditorType.MultiLineText || (!HasOptions && !HasBrowseButton && !IsBooleanAndNoOptions && !IsSlider && !IsPasswordList && !IsMediaPreset && DetectIsMultiLine(Key));
+    public bool IsMultiLine => (EditorType == ParameterEditorType.MultiLineText || (!HasOptions && !HasBrowseButton && !IsBooleanAndNoOptions && !IsSlider && !IsPasswordList && !IsMediaPreset && DetectIsMultiLine(Key))) && !IsFileVersionSelector;
 
-    public bool HasBrowseButton => IsFolderPath || IsFilePath;
+    public bool HasBrowseButton => (IsFolderPath || IsFilePath) && !IsFileVersionSelector;
 
     public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
 
-    public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode && !IsMultiLine;
+    public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode && !IsMultiLine && !IsFileVersionSelector;
+
+    public string ActiveVersionTag
+    {
+        get
+        {
+            string valStr = Value?.ToString()?.Trim() ?? string.Empty;
+            foreach (var opt in _availableVersionOptions)
+            {
+                if (string.Equals(valStr, opt.Token, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(valStr, opt.Tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    return opt.Tag;
+                }
+            }
+
+            if (string.Equals(valStr, "{OriginalPath}", StringComparison.OrdinalIgnoreCase) || string.Equals(valStr, "Original", StringComparison.OrdinalIgnoreCase))
+                return "Original";
+            if (string.Equals(valStr, "{CurrentPath}", StringComparison.OrdinalIgnoreCase) || string.Equals(valStr, "Current", StringComparison.OrdinalIgnoreCase))
+                return "Current";
+            if (string.Equals(valStr, "{File:Optimized}", StringComparison.OrdinalIgnoreCase) || string.Equals(valStr, "Optimized", StringComparison.OrdinalIgnoreCase))
+                return "Optimized";
+            if (string.Equals(valStr, "{File:NoBackground}", StringComparison.OrdinalIgnoreCase) || string.Equals(valStr, "NoBackground", StringComparison.OrdinalIgnoreCase))
+                return "NoBackground";
+            if (string.Equals(valStr, "{File:SuperResolution}", StringComparison.OrdinalIgnoreCase) || string.Equals(valStr, "SuperResolution", StringComparison.OrdinalIgnoreCase))
+                return "SuperResolution";
+
+            return string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    public void SelectVersionOption(FileVersionOption? option)
+    {
+        if (option == null) return;
+        Value = option.Token;
+        IsCustomExpressionMode = false;
+        OnPropertyChanged(nameof(ActiveVersionTag));
+    }
+
+    [RelayCommand]
+    public void ToggleCustomExpressionMode()
+    {
+        IsCustomExpressionMode = !IsCustomExpressionMode;
+    }
+
+    public void RefreshAvailableVersions()
+    {
+        if (!IsFileVersionSelector || NodeOwner == null) return;
+
+        var editor = ResolveEditor();
+        var conns = editor?.Connections ?? Enumerable.Empty<ConnectionViewModel>();
+        var versions = (editor?.VariableDiscoveryService ?? VariableDiscoveryService.Instance).GetAvailableFileVersions(NodeOwner, conns);
+
+        void UpdateList()
+        {
+            _availableVersionOptions.Clear();
+            foreach (var v in versions)
+            {
+                _availableVersionOptions.Add(v);
+            }
+
+            string valStr = Value?.ToString()?.Trim() ?? string.Empty;
+            bool matchesChip = _availableVersionOptions.Any(o =>
+                string.Equals(valStr, o.Token, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(valStr, o.Tag, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(valStr) && !matchesChip)
+            {
+                IsCustomExpressionMode = true;
+            }
+
+            OnPropertyChanged(nameof(AvailableVersionOptions));
+            OnPropertyChanged(nameof(ActiveVersionTag));
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
+        {
+            dispatcher.InvokeAsync(UpdateList);
+        }
+        else
+        {
+            UpdateList();
+        }
+    }
 
     private ParameterEditorType DetectEditorType()
     {
+        if (DetectIsFileVersion(Key)) return ParameterEditorType.FileVersionSelector;
         if (DetectIsFolderPath(Key)) return ParameterEditorType.FolderPath;
         if (DetectIsFilePath(Key)) return ParameterEditorType.FilePath;
         if (Key.Equals("PasswordList", StringComparison.OrdinalIgnoreCase)) return ParameterEditorType.PasswordList;
@@ -108,6 +214,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (DetectIsMultiLine(Key)) return ParameterEditorType.MultiLineText;
         return ParameterEditorType.Text;
     }
+
+    private static bool DetectIsFileVersion(string key) =>
+        key.Equals("TargetFile", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("CandidateA", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("CandidateB", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("TrueFile", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("FalseFile", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("SourcePath", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("FileVersion", StringComparison.OrdinalIgnoreCase);
 
     [RelayCommand]
     public void OpenMediaPresetManager()
@@ -285,7 +400,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         _loc.LanguageChanged += _languageChangedHandler;
     }
 
-    private EditorViewModel? ResolveEditor(FrameworkElement? element)
+    private EditorViewModel? ResolveEditor(FrameworkElement? element = null)
     {
         if (element?.Tag is EditorViewModel evm)
         {
@@ -294,6 +409,10 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (element?.Tag is NodeInspectorViewModel nivm)
         {
             return nivm.Editor;
+        }
+        if (NodeOwner?.ParentEditor != null)
+        {
+            return NodeOwner.ParentEditor;
         }
         if (Application.Current?.MainWindow?.DataContext is MainViewModel mainVm)
         {

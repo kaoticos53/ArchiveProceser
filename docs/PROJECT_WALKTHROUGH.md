@@ -2,6 +2,43 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-06] - Selector Visual e Inteligente de Versiones de Archivo (Chips + Autodescubrimiento Upstream) y Reclasificación de FileForkNode
+
+### 🎯 Objetivos y Alcance
+1. **Selector Visual de Versiones de Archivo (`ParameterEditorType.FileVersionSelector`)**:
+   - Resuelve la ambigüedad de expresiones crudas como `{OriginalPath}` o `{CurrentPath}` en nodos donde se seleccionan archivos o versiones físicas (`SwitchActiveFileNode`, `BestVersionSelectorNode`, `VersionRouterNode`, `FileRelocatorNode`).
+   - Introducido el tipo de editor `ParameterEditorType.FileVersionSelector` en `FileFlow.Sdk`.
+   - **UI Híbrida de 1 Clic (Chips / Badges)**:
+     - Chips interactivos con selección visual activa (`Original`, `Actual`, y versiones transformadas detectadas aguas arriba como `Optimizada`, `Sin Fondo`, `SuperResolución`).
+     - Badge con icono, etiqueta descriptiva y tooltip con la ruta/token subyacente.
+     - Botón de conmutación `{x}` para alternar fluidamente a modo expresión personalizada / avanzada y botón de expansión al editor multilínea.
+2. **Autodescubrimiento Topológico de Versiones Aguas Arriba (`VariableDiscoveryService.GetAvailableFileVersions`)**:
+   - Recorre el grafo DAG en sentido inverso desde las conexiones entrantes del nodo inspeccionado.
+   - Identifica nodos generadores de versiones físicas secundarias en `item.History` o tags conocidos (`ImageOptimizerNode` $\rightarrow$ `Optimized`, `BackgroundRemoverNode` $\rightarrow$ `NoBackground`, `SuperResolutionUpscalerNode` $\rightarrow$ `SuperResolution`).
+   - Genera opciones tipadas `FileVersionOption` con soporte reactivo en el inspector lateral y en las tarjetas del lienzo visual.
+3. **Barra Rápida de Inserción de Versiones en el Editor Ampliado (`TextEditorDialogWindow`)**:
+   - Añadida una barra superior con chips de versiones de archivo para insertar tokens (`{OriginalPath}`, `{CurrentPath}`, `{File:Tag}`) directamente en la posición actual del cursor en el editor multilínea con un solo clic.
+4. **Reclasificación y Documentación de `FileForkNode` (Opción 3B)**:
+   - Reclasificado en la macrocategoría `Logic` con `SubCategory = "Advanced"`.
+   - Documentación y descripción clarificada: bifurca el flujo DAG clonando el elemento virtualmente o físicamente en disco según el modo configurado (`Virtual` vs `DiskClone`).
+   - Añadidos descriptores de parámetros con etiquetas y tooltips explicativos para `ForkMode` y `TargetSubfolder`.
+5. **Corrección de Reactividad en Grafo y Autodescubrimiento Multi-Nodo Upstream**:
+   - **Causa Raíz**: `AvailableVersionOptions` evaluaba las versiones de forma lazy una sola vez (`Count == 0`). Si el nodo se creaba o inspeccionaba antes de conectar nodos aguas arriba (o al importar el grafo antes de insertar todas las aristas), `_availableVersionOptions` guardaba el estado inicial y nunca más se actualizaba al conectar nuevos nodos precedentes (ej. intercalar `BackgroundRemoverNode` antes de `ImageOptimizerNode`).
+   - **Solución Implementada**:
+     1. `EditorViewModel.RefreshAllNodeFileVersions()`: Añadido refresco global automático en los eventos `Connections.CollectionChanged` y `Nodes.CollectionChanged`, y al concluir la deserialización en `LoadFromGraphModel()`.
+     2. `NodeInspectorViewModel.InspectNode()`: Forzado el refresco inmediato de todas las opciones de parámetros `IsFileVersionSelector` al seleccionar o inspeccionar cualquier nodo en el panel lateral.
+     3. `TextEditorDialogWindow`: Forzado el refresco antes de instanciar la barra superior de chips de versiones.
+     4. `VariableDiscoveryService`: Traversal BFS robusto comparando `NodeOwner.Id` y múltiples nombres de tipo (`NodeTypeName`, `GetType().Name`, `GetType().FullName`) para garantizar detección infalible de transformadores multi-nodo encadenados en cualquier topología de grafo.
+6. **Pruebas y Verificación**:
+   - Actualizado `VariableDiscoveryServiceTests.cs` con pruebas exhaustivas:
+     - `GetAvailableFileVersions_ShouldDiscoverAllUpstreamVersionsInChain` (cadena de 3 nodos).
+     - `LoadFromGraphModel_WithUserGraph_ShouldExposeBothOptimizedAndNoBackgroundVersions` (grafo JSON exacto del usuario).
+     - `ConnectingUpstreamNodeLater_ShouldUpdateAvailableVersionsReactively` (conexión tardía e intercalado reactivo de nodos).
+   - Verificación de compilación: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Errores, 0 Advertencias**.
+   - Suite de pruebas completa: `dotnet test` $\rightarrow$ **551 / 551 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-06] - Catálogo Visual de Variables, Autocompletado IntelliSense y Filtrado Upstream Dinámico en el DAG
 
 ### 🎯 Objetivos y Alcance

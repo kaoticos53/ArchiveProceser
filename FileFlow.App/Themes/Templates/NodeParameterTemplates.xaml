@@ -287,6 +287,175 @@
                         </Button.Resources>
                     </Button>
                 </Grid>
+
+                <!-- File Version Selector (Chips + Mode Switch to Free Expression) -->
+                <Grid Grid.Column="1"
+                      Visibility="{Binding IsFileVersionSelector, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      HorizontalAlignment="Stretch">
+                    
+                    <!-- Modo 1: Chips interactivos de versión rápida -->
+                    <Grid Visibility="{Binding IsCustomExpressionMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <ItemsControl Grid.Column="0" ItemsSource="{Binding AvailableVersionOptions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.SelectVersionOptionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"
+                                            Margin="0,0,4,2"
+                                            Padding="5,2"
+                                            FontSize="9"
+                                            Cursor="Hand"
+                                            ToolTip="{Binding Description}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+                                                <Setter Property="BorderThickness" Value="1" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="3"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Value="True">
+                                                        <DataTrigger.Binding>
+                                                            <MultiBinding Converter="{StaticResource StringsEqualMultiConverter}">
+                                                                <Binding Path="Tag" />
+                                                                <Binding Path="DataContext.ActiveVersionTag" RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                                            </MultiBinding>
+                                                        </DataTrigger.Binding>
+                                                        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+                                                        <Setter Property="Foreground" Value="#FFFFFF" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <TextBlock Text="{Binding ChipLabel}" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Botón Conmutar a Modo Expresión / Avanzado (✏️) -->
+                        <Button Grid.Column="1"
+                                Command="{Binding ToggleCustomExpressionModeCommand}"
+                                Content="✏️"
+                                Background="{DynamicResource BgHoverBrush}"
+                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                BorderBrush="{DynamicResource BorderDarkBrush}"
+                                BorderThickness="1"
+                                Padding="4,2"
+                                Margin="2,0,0,2"
+                                FontSize="9"
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Version_CustomExpressionToolTip], FallbackValue='Escribir expresión manual o insertar variable'}" />
+                    </Grid>
+
+                    <!-- Modo 2: Expresión libre / manual -->
+                    <Grid Visibility="{Binding IsCustomExpressionMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                 BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="5,3"
+                                 FontFamily="Cascadia Code, Consolas, monospace"
+                                 HorizontalAlignment="Stretch">
+                            <TextBox.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="4,0,0,4" />
+                                </Style>
+                            </TextBox.Resources>
+                        </TextBox>
+
+                        <!-- Botón volver a selección por Chips (🏷️) -->
+                        <Button Grid.Column="1"
+                                Command="{Binding ToggleCustomExpressionModeCommand}"
+                                Content="🏷️"
+                                Background="{DynamicResource BgHoverBrush}"
+                                Foreground="{DynamicResource AccentCyanBrush}"
+                                BorderThickness="0"
+                                Padding="5,2"
+                                FontSize="9.5"
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Version_BackToChipsToolTip], FallbackValue='Volver a selección por chips'}">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="0" />
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+
+                        <!-- Botón Expandir a Editor Modal (⤢) -->
+                        <Button Grid.Column="2" 
+                                Command="{Binding OpenTextEditorCommand}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                Content="⤢" 
+                                Background="{DynamicResource BgHoverBrush}" 
+                                Foreground="{DynamicResource AccentCyanBrush}" 
+                                BorderThickness="0" 
+                                Padding="5,2" 
+                                FontSize="10.5" 
+                                FontWeight="Bold" 
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip], FallbackValue='Abrir editor ampliado (⤢)'}">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="0" />
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+
+                        <!-- Botón Insertar Variable ({x}) -->
+                        <Button Grid.Column="3" 
+                                Command="{Binding OpenVariablePickerCommand}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                Content="{}{x}" 
+                                Background="{DynamicResource AccentPrimaryBrush}" 
+                                Foreground="White" 
+                                BorderThickness="0" 
+                                Padding="5,2" 
+                                FontSize="10" 
+                                FontWeight="Bold" 
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="0,4,4,0" />
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </Grid>
+                </Grid>
             </Grid>
 
             <!-- Dynamic Variable Row for VariableInjectorNode -->

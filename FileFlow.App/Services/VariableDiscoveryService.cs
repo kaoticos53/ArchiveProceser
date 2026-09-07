@@ -23,7 +23,12 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         var previewItem = CreatePreviewItem(targetNode);
 
         // 1. Upstream Traversal (Variables que realmente existen según los nodos anteriores en el grafo DAG)
-        var visitedNodes = new HashSet<NodeViewModel>();
+        var visitedNodeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(targetNode.Id))
+        {
+            visitedNodeIds.Add(targetNode.Id);
+        }
+
         var queue = new Queue<NodeViewModel>();
         queue.Enqueue(targetNode);
 
@@ -33,12 +38,14 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
-            var incomingConns = connectionsList.Where(c => c.Target.NodeOwner == current).ToList();
+            var incomingConns = connectionsList.Where(c => 
+                c.Target.NodeOwner == current || 
+                (c.Target.NodeOwner != null && !string.IsNullOrEmpty(current.Id) && string.Equals(c.Target.NodeOwner.Id, current.Id, StringComparison.OrdinalIgnoreCase))).ToList();
 
             foreach (var conn in incomingConns)
             {
                 var upstreamNode = conn.Source.NodeOwner;
-                if (visitedNodes.Add(upstreamNode))
+                if (upstreamNode != null && visitedNodeIds.Add(upstreamNode.Id))
                 {
                     queue.Enqueue(upstreamNode);
 
@@ -364,5 +371,98 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         item.Metadata["Cli:ExitCode"] = 0;
 
         return item;
+    }
+
+    public List<FileVersionOption> GetAvailableFileVersions(NodeViewModel targetNode, IEnumerable<ConnectionViewModel> connections)
+    {
+        var versions = new List<FileVersionOption>
+        {
+            new("Original", "{OriginalPath}", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Original", "Original"), "📄", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Original_Desc", "Archivo original inmutable")),
+            new("Current", "{CurrentPath}", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Current", "Actual"), "⚡", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Current_Desc", "Versión activa procesada hasta este nodo"))
+        };
+
+        if (targetNode == null || connections == null)
+        {
+            return versions;
+        }
+
+        var visitedNodeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(targetNode.Id))
+        {
+            visitedNodeIds.Add(targetNode.Id);
+        }
+
+        var queue = new Queue<NodeViewModel>();
+        queue.Enqueue(targetNode);
+        var connectionsList = connections.ToList();
+        var addedTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Original", "Current" };
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var incomingConns = connectionsList.Where(c => 
+                c.Target.NodeOwner == current || 
+                (c.Target.NodeOwner != null && !string.IsNullOrEmpty(current.Id) && string.Equals(c.Target.NodeOwner.Id, current.Id, StringComparison.OrdinalIgnoreCase))).ToList();
+
+            foreach (var conn in incomingConns)
+            {
+                var upstreamNode = conn.Source.NodeOwner;
+                if (upstreamNode != null && visitedNodeIds.Add(upstreamNode.Id))
+                {
+                    queue.Enqueue(upstreamNode);
+                    string typeName = upstreamNode.NodeTypeName ?? string.Empty;
+                    string instName = upstreamNode.NodeInstance?.GetType().Name ?? string.Empty;
+                    string instFullName = upstreamNode.NodeInstance?.GetType().FullName ?? string.Empty;
+
+                    bool isOptimizer = typeName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase)
+                                       || instName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase)
+                                       || instFullName.Contains("ImageOptimizerNode", StringComparison.OrdinalIgnoreCase);
+
+                    bool isBgRemover = typeName.Contains("BackgroundRemoverNode", StringComparison.OrdinalIgnoreCase)
+                                       || instName.Contains("BackgroundRemoverNode", StringComparison.OrdinalIgnoreCase)
+                                       || instFullName.Contains("BackgroundRemoverNode", StringComparison.OrdinalIgnoreCase);
+
+                    bool isSuperRes = typeName.Contains("SuperResolutionUpscalerNode", StringComparison.OrdinalIgnoreCase)
+                                      || instName.Contains("SuperResolutionUpscalerNode", StringComparison.OrdinalIgnoreCase)
+                                      || instFullName.Contains("SuperResolutionUpscalerNode", StringComparison.OrdinalIgnoreCase);
+
+                    if (isOptimizer && addedTags.Add("Optimized"))
+                    {
+                        versions.Add(new FileVersionOption(
+                            "Optimized",
+                            "{File:Optimized}",
+                            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Optimized", "Optimizada"),
+                            "🖼️",
+                            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Optimized_Desc", "Versión optimizada por ImageOptimizerNode"),
+                            IsUpstream: true,
+                            SourceNodeTitle: upstreamNode.Title));
+                    }
+                    else if (isBgRemover && addedTags.Add("NoBackground"))
+                    {
+                        versions.Add(new FileVersionOption(
+                            "NoBackground",
+                            "{File:NoBackground}",
+                            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_NoBackground", "Sin Fondo"),
+                            "✂️",
+                            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_NoBackground_Desc", "Versión sin fondo segmentada por IA"),
+                            IsUpstream: true,
+                            SourceNodeTitle: upstreamNode.Title));
+                    }
+                    else if (isSuperRes && addedTags.Add("SuperResolution"))
+                    {
+                        versions.Add(new FileVersionOption(
+                            "SuperResolution",
+                            "{File:SuperResolution}",
+                            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_SuperResolution", "Super-Resolución"),
+                            "🔍",
+                            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_SuperResolution_Desc", "Imagen escalada con red neural"),
+                            IsUpstream: true,
+                            SourceNodeTitle: upstreamNode.Title));
+                    }
+                }
+            }
+        }
+
+        return versions;
     }
 }
