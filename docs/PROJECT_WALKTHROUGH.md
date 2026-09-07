@@ -2,6 +2,140 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-07] - Metadata Enriquecida para Datos Sintéticos y Nuevas Categorías Especializadas (Música, Fotos y Documentos)
+
+### 🎯 Objetivos y Alcance
+1. **Metadata Enriquecida Integral en el Banco de Pruebas Sintético (`renamer_samples.json`)**:
+   - Ampliación del banco de datos a **200 items sintéticos hiperrealistas** equipados con un conjunto exhaustivo de etiquetas de metadatos estandarizadas compatibles con el catálogo de etiquetas (`RenamerTagCatalogService.cs`) y el motor de variables (`RenameTransformEngine.cs`).
+2. **Nuevos Conjuntos Especializados con Metadatos de Dominio**:
+   - **Música (40 items)**:
+     - Metadatos ID3 completos: `Audio:Artist`, `Audio:Album`, `Audio:Title`, `Audio:Track`, `Audio:Year`, `Audio:Genre`, `Audio:Bitrate`, `Audio:SampleRate`, `Audio:Duration`, `Hash:SHA256`.
+     - Casos de prueba con formatos lossy y lossless (`.mp3`, `.flac`, `.m4a`, `.wav`, `.aac`, `.dsf`, `.zip`), artistas reconocidos (Daft Punk, Queen, Taylor Swift, Billie Eilish, Hans Zimmer, etc.) y bitrates variados.
+   - **Fotos (20 items - Nueva Categoría `Fotos`)**:
+     - Metadatos EXIF fotográficos reales: `Exif:CameraMake`, `Exif:CameraModel` (Sony ILCE-7RM4, Canon EOS R5, Nikon Z9, Fujifilm X-T5, Leica M11, Hasselblad X2D, Apple iPhone 15 Pro Max, etc.), `Exif:LensModel`, `Exif:DateTaken`, `Date Taken`, `Exif:ISO`, `Exif:FNumber`, `Exif:ExposureTime`, `Exif:FocalLength`, dimensiones geométricas (`Img:Width`, `Img:Height`, `Orientation`, `AspectRatio`, `Megapixels`), geolocalización (`Exif:GPSCity`, `Exif:GPSCountry`) y hashes.
+     - Extensiones fotográficas y RAW: `.jpg`, `.jpeg`, `.png`, `.cr3`, `.nef`, `.arw`, `.dng`, `.heic`.
+   - **Documentos (20 items)**:
+     - Metadatos documentales y ofimáticos: `Doc:Author`, `Doc:Title`, `Doc:PageCount`, `Doc:WordCount`, `Doc:CreationDate`, etiquetas empresariales y fiscales (`FiscalYear`, `Department`, `Doc:Currency`, `Doc:TotalAmount`, `CustomCategory` como Facturas, Nóminas, Informes, Contratos, Balances).
+     - Extensiones: `.pdf`, `.docx`, `.xlsx`, `.pptx`, `.md`, `.txt`, `.csv`.
+   - **Películas (40 items)**, **Series (40 items)** y **Cómics y Manga (40 items)**:
+     - Metadatos de vídeo y resolución: `Video:Resolution`, `Video:Width`, `Video:Height`, `Video:Codec`, `Video:Duration`, `Audio:Codec`, `ReleaseGroup`, `Hash:SHA256`, `Hash:MD5`.
+     - Para series: `Series:Show`, `Series:Season`, `Series:Episode`, `Series:EpisodeTitle`, `Platform`.
+     - Para cómics: `Comic:Series`, `Comic:Publisher`, `Comic:Issue`, `Comic:Year`, `Doc:PageCount`.
+3. **Actualización de Componentes y Vistas**:
+   - `RenamerSampleDataProvider.cs`: Incorporada la categoría `"Fotos"` en `AvailableCategories` y fallback de muestras con metadatos reales de audio, fotos y facturas.
+   - `SyntheticDataSourceNode.cs`: Parámetro `Category` actualizado con las opciones: `["Todas", "Películas", "Series", "Cómics y Manga", "Música", "Fotos", "Documentos", "Personalizada"]`.
+   - `AdvancedRenamerEditorWindow`: Desplegable de categorías expone instantáneamente `"Fotos"`, permitiendo filtrar y previsualizar resolviendo variables como `<Exif:CameraModel>`, `<Audio:Artist>`, `<Doc:Title>`, `<Img Width>`.
+4. **Validación Automatizada**:
+   - Nuevos tests en [`SyntheticDataSourceNodeTests.cs`](file:///d:/Users/Ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/Plugins/SyntheticDataSourceNodeTests.cs) verificando emisión con metadatos de `Música`, `Fotos` y `Documentos`.
+   - Nuevas aserciones en [`AdvancedRenamerEditorViewModelTests.cs`](file:///d:/Users/Ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/App/AdvancedRenamerEditorViewModelTests.cs) validando el filtrado por categoría y la consistencia de metadatos.
+   - `dotnet test`: **573 / 573 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-07] - Nodo Generador de Datos de Prueba (SyntheticDataSourceNode), Banco de Pruebas Categorizado y Entrada Manual en Estudio de Renombrado
+
+### 🎯 Objetivos y Alcance
+1. **Nuevo Nodo de Entrada/Origen `SyntheticDataSourceNode` (Test Bench / Generador de Pruebas)**:
+   - Permite depurar, verificar y medir pipelines complejos completos en el lienzo visual (DAG) de forma instantánea y segura sin requerir archivos pesados reales en disco.
+   - **Categorías soportadas**: `Películas` (40), `Series` (40), `Cómics y Manga` (40), `Música` (40), `Documentos` (5), `Personalizada` o `Todas` (165+ items).
+   - **Modos de Emisión**:
+     - `Virtual`: Emite `FileItemContext` ligeros en memoria con metadatos simulados (ideal para renombrado, filtros, enrutadores de versiones y lógica).
+     - `PhysicalMock`: Crea archivos mock temporales reales en disco (`%TEMP%/FileFlow_MockData/` o ruta configurable) para nodos que requieran `File.Exists(path)` o lectura I/O física.
+   - **Parámetros configurables**: `Category`, `EmissionMode`, `MaxItems`, `EmissionDelayMs`, `CustomItems` (multilínea) y `OutputFolder`.
+2. **Banco de Pruebas Categorizado en el Estudio de Renombrado (`AdvancedRenamerEditorWindow`)**:
+   - Integración de los 160 nombres reales de releases multimedia proporcionados por el usuario clasificados en 4 categorías temáticas.
+   - **Selector de Categorías en UI**: Desplegable integrado en la barra de herramientas de la tabla de previsualización para alternar instantáneamente entre `Películas`, `Series`, `Cómics y Manga`, `Música`, `Documentos`, `Personalizada` o `Todas`.
+   - **Entrada Manual al Vuelo (Scratchpad / Quick Test)**: Campo `TextBox` con botón `➕ Probar` para añadir uno o múltiples nombres de prueba (separados por línea o punto y coma) que se incorporan inmediatamente al banco de pruebas en tiempo real, junto con botón `🗑️` para limpiar muestras personalizadas.
+3. **Ampliación de `RenamerSampleDataProvider` y `renamer_samples.json`**:
+   - 165 muestras estructuradas con metadatos contextuales (`Category`, `MediaType`, `VirtualSample`).
+   - Gestión en memoria de muestras manuales del usuario con sincronización instantánea al motor de previsualización en vivo (`RenamerLivePreviewService`).
+4. **Validación Exhaustiva**:
+   - Creada suite [`SyntheticDataSourceNodeTests.cs`](file:///d:/Users/Ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/Plugins/SyntheticDataSourceNodeTests.cs) (5 pruebas cubriendo emisión virtual por categoría, límites, listas personalizadas y modo físico mock).
+   - `dotnet test`: **570 / 570 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-07] - Presets de Limpieza Multimedia para AdvancedRenamer (Pipeline de 6 Fases y Catálogo Regex)
+
+### 🎯 Objetivos y Alcance
+1. **Pipeline Completo de 6 Fases para Limpieza de Releases y Multimedia ("🧹 Limpiar Nombre")**:
+   - Incorporado el preset maestro `"🧹 Limpiar Nombre"` (categoría `"Limpieza"`) y `"🎬 Pipeline Limpieza Multimedia (Scene, Rips, Códecs y URLs)"` (categoría `"Multimedia"`) en `RenamerPresetService.cs` y en `Config/renamer_presets.json`.
+   - Agrupa en un solo pipeline secuencial todos los métodos desde la fase 1 a la fase 6, ejecutando sobre el nombre base (conservando intacta la extensión de archivo) 10 pasos estructurados:
+     - **Fase 1 (URLs/Dominios Publicitarios)**: `(?i)(?:https?:\/\/)?(?:www\.)?[\w-]+\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\b(?:\.[\w-]+)?(?:\s*-\s*)?`
+     - **Fase 2 (Calidad, Códecs y Formatos)**: `(?i)\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\.?264|H\.?265|10bit|DTS(?:-HD(?:\.MA)?)?|TrueHD|Atmos|DDPlus\d*\.?\d*|DDP\d*\.?\d*|DD\d*\.?\d*|AC3(?:\.5\.1)?|AAC(?:\d*\.?\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\d+kHz)?|SACD-DSD\d*)\b`
+     - **Fase 3 (Fuentes y Plataformas)**: `(?i)\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\.Music|Weekly\.Shonen|MangaPlus|ComiXology)\b`
+     - **Fase 4 (Idiomas y Subtítulos)**: `(?i)\b(?:Dual(?:\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\b`
+     - **Fase 5 (Grupos Scene/P2P y Corchetes Residuales)**: Grupos con `(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\w+)\b` y corchetes `\[[^\]]*\]`.
+     - **Fase 6 (Normalización de Separadores y Espacios)**: Separadores `[._]+` a espacio `" "`, normalización de guiones `\s+-\s+(?:\s+-)*` a `" - "`, recorte de extremos `^\s*-\s*|\s*-\s*$|^\s+|\s+$` y limpieza final `TrimClean` (colapso de espacios dobles y sanitización de caracteres inválidos de SO).
+2. **Presets Modulares por Fase Individual**:
+   - Creados 6 presets individuales correspondientes a cada una de las fases para aplicación selectiva en el editor de pipeline.
+3. **Catálogo de Expresiones Regulares en Regex Helper (`RegexLibraryService`)**:
+   - Incorporadas las 9 expresiones regulares bajo la categoría `"Releases y Multimedia"` tanto en código C# como en `FileFlow.Plugin.FileSystem/Config/regex_patterns.json`.
+4. **Resolución Directa de Presets en `AdvancedRenamerNode`**:
+   - Si `MethodSteps` está vacío pero el usuario especifica `PipelineName` coincidente con un preset incorporado (ej. `"Limpiar Nombre"` o `"🧹 Limpiar Nombre"`), el nodo resuelve y ejecuta automáticamente los pasos del preset sin requerir JSON previo.
+5. **Garantía de Persistencia y Carga de Presets Oficiales**:
+   - Corregido `RenamerPresetService.GetBuiltinPresets()` y `RegexLibraryService.GetBuiltInPatterns()` para que comiencen cargando la lista base en memoria y luego fusionen los archivos de configuración y AppData del usuario, garantizando que los presets oficiales nunca se oculten por la presencia de archivos locales.
+6. **Validación Exhaustiva**:
+   - Suite de pruebas unitarias [`MultimediaReleaseCleaningPresetsTests.cs`](file:///d:/Users/Ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Tests/Unit/Plugins/MultimediaReleaseCleaningPresetsTests.cs) con 9 tests cubriendo existencia de presets, ejecución directa por nombre y verificación de limpieza profunda.
+   - `dotnet test`: **565 / 565 pruebas superadas al 100% (0 fallos, 0 omitidas)**.
+
+---
+
+## [2026-09-07] - Corrección de Error XAML/UI en AdvancedRenamerEditorWindow (Resolución de Pack URIs y Evitación de Recarga ALC)
+
+### 🎯 Problema Detectado y Diagnóstico
+- **Síntoma**: Al pulsar el botón "🏷️ Pipeline de Métodos..." del nodo de renombrado avanzado (`AdvancedRenamerNode`), la aplicación lanzaba un cuadro de error de interfaz (XAML/UI):
+  `El componente "FileFlow.Plugin.FileSystem.UI.Views.AdvancedRenamerEditorWindow" no tiene ningún recurso identificado por el URI "/FileFlow.Plugin.FileSystem;V1.0.0.1578;component/ui/views/advancedrenamereditorwindow.xaml".`
+- **Causa Raíz Dual**:
+  1. **Versión de Ensamblado Volátil en URIs BAML de WPF**: En `Directory.Build.props`, `<AssemblyVersion>` se generaba con el número de build incremental (`$(BuildNumber)`), derivando en versiones como `1.0.0.1578`. El compilador XAML de WPF incrustaba esa versión volátil en las URIs generadas en el código fuente parcial (`.g.cs` / BAML).
+  2. **Recarga Duplicada en ALC Aislado por `PluginLoader`**: La aplicación anfitriona `FileFlow.App` ya referencia directamente los plugins integrados (`FileFlow.Plugin.*`), teniéndolos cargados en el `AssemblyLoadContext` por defecto. Sin embargo, el destino de compilación `CopyPlugins` copiaba los binarios a `bin/.../Plugins/`, y `PluginLoader.LoadPluginDirectory` los cargaba de nuevo en un `PluginAssemblyLoadContext` aislado, sobrescribiendo el diccionario `_discoveredNodeTypes`. Al instanciar `AdvancedRenamerEditorWindow` desde un ALC aislado, el cargador de recursos Pack URI de WPF no podía enlazar el recurso BAML.
+
+### 🛠️ Solución Implementada
+1. **Fijación de `AssemblyVersion` Estable en `Directory.Build.props`**:
+   - Se estableció `<AssemblyVersion>$(VersionMajor).$(VersionMinor).0.0</AssemblyVersion>` de manera que WPF genere URIs de recursos canónicos y estables. El número de compilación variable `$(BuildNumber)` se preserva en `<FileVersion>` e `<InformationalVersion>` para control de versiones y diagnóstico.
+2. **Evitación de Recarga de Ensamblados Nativos en `PluginLoader.cs`**:
+   - En `PluginLoader.LoadPluginAssembly`, se verifica si un ensamblado con ese nombre ya se encuentra cargado en `AppDomain.CurrentDomain.GetAssemblies()`. De ser así, se reutiliza directamente el ensamblado del contexto por defecto en lugar de crear un ALC aislado, garantizando compatibilidad 100% con WPF y evitando duplicación innecesaria de tipos en memoria.
+3. **Carga Defensiva Segura con Fallback en Ventanas Modales de Plugins (`UI/Views/`)**:
+   - Implementado `InitializeComponentSafe()` en `AdvancedRenamerEditorWindow.xaml.cs` y `RegexHelperWindow.xaml.cs`, garantizando que ante cualquier eventual fallo de localización BAML se realice un fallback programático a `Application.LoadComponent(this, uri)`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+- `dotnet test --no-build`: **556 / 556 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-07] - Catálogo de Nodos: Modo Acordeón, Colapso por Defecto y Preservación de Estado ante la Inserción de Nodos
+
+### 🎯 Objetivos y Alcance
+1. **Comportamiento Acordeón Exclusivo en el Catálogo de Nodos (`NodeToolboxView`)**:
+   - Al expandir una categoría en el catálogo de herramientas lateral, las demás categorías abiertas se colapsan automáticamente, manteniendo una vista limpia, compacta y focalizada.
+   - Si el usuario colapsa manualmente la categoría abierta, se permite el colapso total de todas las categorías.
+2. **Colapso por Defecto con Apertura de "🔥 Más Usados"**:
+   - Al cargar el catálogo o restablecer la vista, todas las categorías permanecen colapsadas por defecto con la única excepción del grupo de más usados (`Frequent` / "🔥 Más Usados"), que se presenta abierto para acceso directo a los nodos más frecuentes del usuario.
+   - En vistas filtradas por un grupo específico (mediante chips de categoría o desplegable), la categoría seleccionada se muestra expandida para acceso inmediato.
+3. **Preservación Fiel del Estado ante la Colocación de Nodos en el Lienzo**:
+   - Resuelve el problema por el cual, al soltar o añadir cualquier nodo al lienzo visual, `UserPreferencesService.Instance.IncrementNodeUsage` disparaba `PreferencesChanged` y `ToolboxViewModel.RefreshToolbox()`, recreando todos los expansores con `IsExpanded="True"` estático y descolapsando todo.
+   - Ahora `RefreshToolbox()` detecta la categoría que el usuario tenía expandida previamente y la preserva intacta tras el refresco, evitando parpadeos o reaperturas indeseadas de categorías.
+4. **Búsqueda Reactiva Inteligente**:
+   - Al escribir en el cuadro de búsqueda (`SearchText`), todas las categorías que contengan coincidencias se expanden automáticamente para permitir la visualización directa de los resultados encontrados. Al limpiar la búsqueda, se restaura el modo acordeón.
+5. **Corrección de Crash Inmediato al Insertar BestVersionSelectorNode (StackOverflowException en UI)**:
+   - **Diagnóstico**: Al insertar `BestVersionSelectorNode` (que posee dos parámetros `FileVersionSelector`: `CandidateA` y `CandidateB`), el getter de `AvailableVersionOptions` evaluaba `Count <= 2`. Como inicialmente solo existen 2 opciones (`Original` y `Current`), ejecutaba `RefreshAvailableVersions()`, el cual disparaba síncronamente `OnPropertyChanged(nameof(AvailableVersionOptions))`. WPF re-evaluaba el binding llamando de nuevo al getter, desencadenando una recursión infinita en el Dispatcher y terminando el proceso abruptamente por `StackOverflowException`.
+   - **Solución**:
+     1. Introducida bandera anti-recursión `_isRefreshingVersions` y carga lazy unificada `_hasLoadedVersions`.
+     2. Eliminado `OnPropertyChanged(nameof(AvailableVersionOptions))` innecesario (las mutaciones de la `ObservableCollection` ya notifican de forma autónoma).
+     3. Comparación de versiones idénticas (`isSame`) para evitar reconstrucción y parpadeos en pantalla.
+6. **Ajustes Realizados**:
+   - `ToolboxCategoryGroup`: Añadida propiedad observable `IsExpanded`, clave `CategoryKey` y callback `_onExpanded` reactivo.
+   - `ToolboxViewModel`: Implementado `HandleGroupExpanded`, cálculo dinámico de expansión en `DetermineInitialExpanded` y preservación de `previouslyExpandedKey`.
+   - `NodeToolboxView.xaml`: Vinculado el `Expander` mediante `IsExpanded="{Binding IsExpanded, Mode=TwoWay}"`.
+   - `NodeParameterViewModel.cs`: Blindado el getter `AvailableVersionOptions` y `RefreshAvailableVersions()` contra recursiones infinitas.
+   - `ToolboxViewModelTests.cs` y `VariableDiscoveryServiceTests.cs`: 5 nuevas pruebas unitarias cubriendo acordeón, colapso por defecto, inserción no destructiva y adición segura de `BestVersionSelectorNode`.
+7. **Validación**:
+   - `dotnet build FileFlow.slnx --warnaserror`: **0 Errores, 0 Advertencias**.
+   - `.\test.ps1`: **556 / 556 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-06] - Selector Visual e Inteligente de Versiones de Archivo (Chips + Autodescubrimiento Upstream) y Reclasificación de FileForkNode
 
 ### 🎯 Objetivos y Alcance

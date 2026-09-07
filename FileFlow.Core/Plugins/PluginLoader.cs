@@ -45,6 +45,18 @@ public class PluginLoader
             return;
         }
 
+        // If the assembly is already loaded in the default AppDomain (e.g. referenced by the host app),
+        // use the existing assembly rather than creating an isolated AssemblyLoadContext.
+        // This avoids duplicating types and prevents WPF pack URI / BAML resolution errors.
+        string asmSimpleName = Path.GetFileNameWithoutExtension(dllPath);
+        Assembly? existing = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => string.Equals(a.GetName().Name, asmSimpleName, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            RegisterNodeTypesFromAssembly(existing);
+            return;
+        }
+
         try
         {
             var alc = new PluginAssemblyLoadContext(dllPath);

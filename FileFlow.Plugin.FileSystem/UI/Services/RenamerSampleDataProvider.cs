@@ -11,6 +11,7 @@ namespace FileFlow.Plugin.FileSystem.UI.Services;
 /// </summary>
 public sealed class SyntheticSampleItemDto
 {
+    public string Category { get; set; } = "General";
     public string Directory { get; set; } = @"C:\Muestras";
     public string FileName { get; set; } = "archivo.dat";
     public long FileSizeBytes { get; set; } = 1024;
@@ -31,7 +32,117 @@ public static class RenamerSampleDataProvider
         AllowTrailingCommas = true
     };
 
+    private static readonly List<string> _inMemoryCustomSamples = [];
+    private static readonly Lock _customSamplesLock = new();
+
+    public static IReadOnlyList<string> AvailableCategories =>
+    [
+        "Todas",
+        "Películas",
+        "Series",
+        "Cómics y Manga",
+        "Música",
+        "Fotos",
+        "Documentos",
+        "Personalizada"
+    ];
+
+    public static void AddCustomSample(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName)) return;
+        lock (_customSamplesLock)
+        {
+            if (!_inMemoryCustomSamples.Contains(fileName, StringComparer.OrdinalIgnoreCase))
+            {
+                _inMemoryCustomSamples.Insert(0, fileName.Trim());
+            }
+        }
+    }
+
+    public static void ClearCustomSamples()
+    {
+        lock (_customSamplesLock)
+        {
+            _inMemoryCustomSamples.Clear();
+        }
+    }
+
+    public static IReadOnlyList<string> GetCustomSamples()
+    {
+        lock (_customSamplesLock)
+        {
+            return _inMemoryCustomSamples.ToList();
+        }
+    }
+
     public static List<FileItemContext> GetSampleItems(out string sourceDescription)
+    {
+        return GetSampleItemsByCategory("Todas", out sourceDescription);
+    }
+
+    public static List<FileItemContext> GetSampleItemsByCategory(string? category, out string sourceDescription)
+    {
+        var allItems = LoadAllBaseItems(out var baseDesc);
+
+        // Si se solicita expresamente 'Personalizada' o 'Manuales'
+        if (string.Equals(category, "Personalizada", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(category, "Manuales", StringComparison.OrdinalIgnoreCase))
+        {
+            var customList = GetCustomSamples();
+            var customItems = new List<FileItemContext>(customList.Count);
+            foreach (var fn in customList)
+            {
+                var it = CreateSyntheticItem(@"C:\Muestras\Personalizadas", fn, 1024, false, new Dictionary<string, object?>
+                {
+                    ["Category"] = "Personalizada",
+                    ["VirtualSample"] = true,
+                    ["IsManualSample"] = true
+                });
+                customItems.Add(it);
+            }
+
+            sourceDescription = $"({customItems.Count} Muestras manuales personalizadas)";
+            return customItems;
+        }
+
+        // Si se solicita una categoría específica
+        if (!string.IsNullOrWhiteSpace(category) && !string.Equals(category, "Todas", StringComparison.OrdinalIgnoreCase))
+        {
+            var filtered = allItems.Where(i =>
+            {
+                if (i.Metadata.TryGetValue("Category", out var cVal) && cVal is string catStr)
+                {
+                    return string.Equals(catStr, category, StringComparison.OrdinalIgnoreCase);
+                }
+                return false;
+            }).ToList();
+
+            sourceDescription = $"({filtered.Count} Muestras de la categoría '{category}')";
+            return filtered;
+        }
+
+        // Si se solicitan 'Todas', incluir también las muestras manuales al principio
+        var combined = new List<FileItemContext>();
+        var manuals = GetCustomSamples();
+        foreach (var m in manuals)
+        {
+            combined.Add(CreateSyntheticItem(@"C:\Muestras\Personalizadas", m, 1024, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Personalizada",
+                ["VirtualSample"] = true,
+                ["IsManualSample"] = true
+            }));
+        }
+        combined.AddRange(allItems);
+
+        sourceDescription = manuals.Count > 0
+            ? $"({combined.Count} Muestras: {allItems.Count} de catálogo + {manuals.Count} manuales)"
+            : baseDesc;
+
+        return combined;
+    }
+
+    private static List<FileItemContext> LoadAllBaseItems(out string sourceDescription)
     {
         // 1. Intentar cargar desde el fichero de usuario en %AppData%/FileFlow/samples/renamer_samples.json
         AppPaths.EnsureDirectories();
@@ -41,7 +152,7 @@ public static class RenamerSampleDataProvider
             var userSamples = TryLoadFromFile(appDataFile);
             if (userSamples != null && userSamples.Count > 0)
             {
-                sourceDescription = $"({userSamples.Count} Muestras sintéticas cargadas desde {appDataFile})";
+                sourceDescription = $"({userSamples.Count} Muestras cargadas desde {appDataFile})";
                 return userSamples;
             }
         }
@@ -52,7 +163,9 @@ public static class RenamerSampleDataProvider
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "renamer_samples.json"),
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins", "Config", "renamer_samples.json"),
             Path.Combine(Directory.GetCurrentDirectory(), "Config", "renamer_samples.json"),
-            Path.Combine(AppContext.BaseDirectory, "Config", "renamer_samples.json")
+            Path.Combine(AppContext.BaseDirectory, "Config", "renamer_samples.json"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "Config", "renamer_samples.json"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "FileFlow.Plugin.FileSystem", "Config", "renamer_samples.json")
         ];
 
         foreach (var path in candidatePaths.Distinct())
@@ -69,7 +182,7 @@ public static class RenamerSampleDataProvider
         }
 
         // 3. Fallback en memoria garantizado ante ausencia de archivos en entornos de prueba
-        sourceDescription = "(18 Muestras sintéticas predefinidas en memoria)";
+        sourceDescription = "(Muestras sintéticas categorizadas predefinidas en memoria)";
         return GetFallbackItems();
     }
 
@@ -89,6 +202,11 @@ public static class RenamerSampleDataProvider
                 {
                     FileSizeBytes = dto.FileSizeBytes
                 };
+
+                if (!string.IsNullOrWhiteSpace(dto.Category))
+                {
+                    item.Metadata["Category"] = dto.Category;
+                }
 
                 if (dto.Metadata != null)
                 {
@@ -129,125 +247,139 @@ public static class RenamerSampleDataProvider
     {
         return
         [
-            CreateSyntheticItem(@"C:\Muestras\Fotografia", "DSC_0042.JPG", 4_194_304, false, new Dictionary<string, object?>
+            // Películas
+            CreateSyntheticItem(@"C:\Muestras\Peliculas", "[ Torrent9.sh ] Gladiator.II.2024.1080p.WEBRip.x264.Dual.Latino-Castellano-YIFY.mp4", 2_147_483_648, false, new Dictionary<string, object?>
             {
-                ["Exif:CameraModel"] = "Nikon D850",
-                ["Exif:CameraMake"] = "Nikon",
-                ["Exif:DateTaken"] = "2026:08:15 14:32:05",
-                ["Img:Width"] = 8256,
-                ["Img:Height"] = 5504,
+                ["Category"] = "Películas",
+                ["MediaType"] = "Movie",
+                ["VirtualSample"] = true
+            }),
+            CreateSyntheticItem(@"C:\Muestras\Peliculas", "Dune.Part.Two.2024.2160p.UHD.HDR.DV.TrueHD.7.1.Atmos-SWTYBLZ_[rarbg.to].mkv", 4_294_967_296, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Películas",
+                ["MediaType"] = "Movie",
+                ["VirtualSample"] = true
+            }),
+            CreateSyntheticItem(@"C:\Muestras\Peliculas", "Oppenheimer (2023) [720p] [BluRay] [YTS.MX] [English].mp4", 1_073_741_824, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Películas",
+                ["MediaType"] = "Movie",
+                ["VirtualSample"] = true
+            }),
+
+            // Series
+            CreateSyntheticItem(@"C:\Muestras\Series", "Breaking.Bad.S05E16.Felina.1080p.BluRay.x264-ROVERS[rarbg.to].mkv", 1_572_864_000, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Series",
+                ["MediaType"] = "Series",
+                ["VirtualSample"] = true
+            }),
+            CreateSyntheticItem(@"C:\Muestras\Series", "Stranger.Things.S04E09.Chapter.Nine.1080p.NF.WEB-DL.DDP5.1.Atmos.x264-FLUX.mkv", 1_872_864_000, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Series",
+                ["MediaType"] = "Series",
+                ["VirtualSample"] = true
+            }),
+            CreateSyntheticItem(@"C:\Muestras\Series", "The.Bear.S02E06.Fishes.720p.HULU.WEBRip.DDP5.1.Atmos.x264-PHOENiX.mkv", 800_000_000, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Series",
+                ["MediaType"] = "Series",
+                ["VirtualSample"] = true
+            }),
+
+            // Cómics y Manga
+            CreateSyntheticItem(@"C:\Muestras\Comics", "Batman - The Killing Joke (1988) (Digital) (Zone-Empire) [GetComics.INFO].cbr", 52_428_800, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Cómics y Manga",
+                ["MediaType"] = "Comic",
+                ["VirtualSample"] = true
+            }),
+            CreateSyntheticItem(@"C:\Muestras\Comics", "Berserk v41 (2022) (Digital) (danke-Empire) [Manga-Download.org].cbz", 73_400_320, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Cómics y Manga",
+                ["MediaType"] = "Comic",
+                ["VirtualSample"] = true
+            }),
+
+            // Música
+            CreateSyntheticItem(@"C:\Muestras\Musica", "01. Daft Punk - Get Lucky (feat. Pharrell Williams).mp3", 9_437_184, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Música",
+                ["MediaType"] = "Music",
+                ["VirtualSample"] = true,
+                ["Audio:Artist"] = "Daft Punk",
+                ["Audio:Album"] = "Random Access Memories",
+                ["Audio:Title"] = "Get Lucky",
+                ["Audio:Track"] = 1,
+                ["Audio:Year"] = 2013,
+                ["Audio:Genre"] = "Disco / Funk",
+                ["Audio:Bitrate"] = "320 kbps",
+                ["Audio:Duration"] = "00:04:08"
+            }),
+            CreateSyntheticItem(@"C:\Muestras\Musica", "Queen - Bohemian Rhapsody (2011 Remaster).flac", 42_548_224, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Música",
+                ["MediaType"] = "Music",
+                ["VirtualSample"] = true,
+                ["Audio:Artist"] = "Queen",
+                ["Audio:Album"] = "A Night at the Opera",
+                ["Audio:Title"] = "Bohemian Rhapsody",
+                ["Audio:Track"] = 11,
+                ["Audio:Year"] = 1975,
+                ["Audio:Genre"] = "Classic Rock",
+                ["Audio:Bitrate"] = "942 kbps",
+                ["Audio:Duration"] = "00:05:55"
+            }),
+
+            // Fotos
+            CreateSyntheticItem(@"C:\Muestras\Fotografia", "DSC_0042.JPG", 14_194_304, false, new Dictionary<string, object?>
+            {
+                ["Category"] = "Fotos",
+                ["MediaType"] = "Photo",
+                ["VirtualSample"] = true,
+                ["Exif:CameraMake"] = "Sony",
+                ["Exif:CameraModel"] = "ILCE-7RM4",
+                ["Exif:LensModel"] = "FE 24-70mm F2.8 GM",
+                ["Exif:DateTaken"] = "2026-05-18 14:32:10",
+                ["Date Taken"] = "2026-05-18 14:32:10",
+                ["Exif:ISO"] = 100,
+                ["Exif:FNumber"] = 2.8,
+                ["Exif:ExposureTime"] = "1/500s",
+                ["Exif:FocalLength"] = "50mm",
+                ["Img:Width"] = 9504,
+                ["Img:Height"] = 6336,
                 ["Orientation"] = "Landscape",
                 ["AspectRatio"] = "3:2",
-                ["Megapixels"] = "45.4",
-                ["Hash:SHA256"] = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                ["Megapixels"] = 61.0,
+                ["Exif:GPSCity"] = "Barcelona",
+                ["Exif:GPSCountry"] = "Spain"
             }),
-            CreateSyntheticItem(@"C:\Muestras\Fotografia", "IMG_20260901_120000.png", 1_048_576, false, new Dictionary<string, object?>
+
+            // Documentos
+            CreateSyntheticItem(@"C:\Muestras\Facturas", "FAC-2026-08-00124_ClienteACME.pdf", 524_288, false, new Dictionary<string, object?>
             {
-                ["Exif:CameraModel"] = "iPhone 15 Pro",
-                ["Exif:CameraMake"] = "Apple",
-                ["Exif:DateTaken"] = "2026:09:01 12:00:00",
-                ["Img:Width"] = 4032,
-                ["Img:Height"] = 3024,
-                ["Orientation"] = "Landscape",
-                ["AspectRatio"] = "4:3",
-                ["Megapixels"] = "12.2"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Fotografia", "_MG_9843.CR3", 35_651_584, false, new Dictionary<string, object?>
-            {
-                ["Exif:CameraModel"] = "Canon EOS R5",
-                ["Exif:CameraMake"] = "Canon",
-                ["Exif:DateTaken"] = "2026:07:20 18:45:10",
-                ["Img:Width"] = 8192,
-                ["Img:Height"] = 5464,
-                ["Orientation"] = "Landscape",
-                ["Megapixels"] = "44.8"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Video", "GOPR0125.MP4", 450_887_680, false, new Dictionary<string, object?>
-            {
-                ["Exif:CameraModel"] = "GoPro HERO12",
-                ["Exif:DateTaken"] = "2026:08:10 10:15:00",
-                ["Video:Width"] = 5312,
-                ["Video:Height"] = 2988,
-                ["Video:Duration"] = "00:04:15",
-                ["AspectRatio"] = "16:9"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Series", "Breaking.Bad.S01E03.1080p.BluRay.x264-FLIX.mkv", 1_572_864_000, false, new Dictionary<string, object?>
-            {
-                ["Video:Width"] = 1920,
-                ["Video:Height"] = 1080,
-                ["Video:Duration"] = "00:48:12",
-                ["AspectRatio"] = "16:9"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Series", "Stranger.Things.2x04.720p.HDTV.mp4", 629_145_600, false, new Dictionary<string, object?>
-            {
-                ["Video:Width"] = 1280,
-                ["Video:Height"] = 720,
-                ["Video:Duration"] = "00:52:40",
-                ["AspectRatio"] = "16:9"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Video", "video_tutorial_parte_1_4k.mp4", 104_857_600, false, new Dictionary<string, object?>
-            {
-                ["Video:Width"] = 3840,
-                ["Video:Height"] = 2160,
-                ["Video:Duration"] = "00:15:30",
-                ["AspectRatio"] = "16:9"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Musica", "01 - Bohemian Rhapsody.mp3", 8_388_608, false, new Dictionary<string, object?>
-            {
-                ["Audio:Artist"] = "Queen",
-                ["Audio:Title"] = "Bohemian Rhapsody",
-                ["Audio:Album"] = "A Night at the Opera",
-                ["Audio:Year"] = 1975,
-                ["Audio:Track"] = 1,
-                ["Audio:Genre"] = "Rock"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Musica", "pink_floyd_-_06_-_money_(remastered).flac", 41_943_040, false, new Dictionary<string, object?>
-            {
-                ["Audio:Artist"] = "Pink Floyd",
-                ["Audio:Title"] = "Money",
-                ["Audio:Album"] = "The Dark Side of the Moon",
-                ["Audio:Year"] = 1973,
-                ["Audio:Track"] = 6,
-                ["Audio:Genre"] = "Progressive Rock"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Podcasts", "Podcast_Ep12_Inteligencia_Artificial.m4a", 52_428_800, false, new Dictionary<string, object?>
-            {
-                ["Audio:Artist"] = "TechTalk Podcast",
-                ["Audio:Title"] = "El Futuro de la IA Generativa",
-                ["Audio:Album"] = "Temporada 2026",
-                ["Audio:Year"] = 2026,
-                ["Audio:Track"] = 12
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Facturas", "FAC-2026-08-00124_ClienteACME_v1.2.pdf", 524_288, false, new Dictionary<string, object?>
-            {
+                ["Category"] = "Documentos",
+                ["MediaType"] = "Document",
+                ["VirtualSample"] = true,
                 ["CustomCategory"] = "Facturas",
-                ["Hash:SHA256"] = "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
-                ["Hash:MD5"] = "c4ca4238a0b923820dcc509a6f75849b"
+                ["Doc:Author"] = "Departamento Contabilidad",
+                ["Doc:Title"] = "Factura F2026-00124",
+                ["Doc:PageCount"] = 3,
+                ["Doc:CreationDate"] = "2026-08-15",
+                ["FiscalYear"] = 2026,
+                ["Doc:Currency"] = "EUR",
+                ["Doc:TotalAmount"] = 1850.50
             }),
-            CreateSyntheticItem(@"C:\Muestras\Finanzas", "informe trimestral Q2 2026 borrador.docx", 786_432, false, new Dictionary<string, object?>
+            CreateSyntheticItem(@"C:\Muestras\Descargas", "Informe_Auditoria_Q2_2026.pdf", 2_314_572, false, new Dictionary<string, object?>
             {
-                ["CustomCategory"] = "Finanzas"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Contabilidad", "reporte_mensual_2026_08.xlsx", 262_144, false, new Dictionary<string, object?>
-            {
-                ["CustomCategory"] = "Reportes"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Corporativo", "Presentacion_Estrategia_Corporativa_2026.pptx", 5_242_880, false, new Dictionary<string, object?>
-            {
-                ["CustomCategory"] = "Presentaciones"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Descargas", "  mi.archivo.de.prueba...v1.0--FINAL(copia)  .pdf", 314_572, false, new Dictionary<string, object?>
-            {
-                ["CustomCategory"] = "Documentos"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Descargas", "DOCUMENTO CON ESPACIOS   MULTIPLES Y CARACTERES #%&.txt", 12_288, false, new Dictionary<string, object?>()),
-            CreateSyntheticItem(@"C:\Muestras\Capitulos", "capitulo_1_introduccion.mp4", 83_886_080, false, new Dictionary<string, object?>
-            {
-                ["Video:Duration"] = "00:10:00"
-            }),
-            CreateSyntheticItem(@"C:\Muestras\Backups", "backup_database_production_20260830_full.tar.gz", 209_715_200, false, new Dictionary<string, object?>
-            {
-                ["Hash:SHA256"] = "9f83c68a0a8635fc950c441b439534f59e924a35cf9119159d33cb41b8a536c4"
+                ["Category"] = "Documentos",
+                ["MediaType"] = "Document",
+                ["VirtualSample"] = true,
+                ["CustomCategory"] = "Informes",
+                ["Doc:Author"] = "Audit Team",
+                ["Doc:Title"] = "Informe Trimestral Q2",
+                ["Doc:PageCount"] = 48,
+                ["Doc:CreationDate"] = "2026-07-01"
             })
         ];
     }

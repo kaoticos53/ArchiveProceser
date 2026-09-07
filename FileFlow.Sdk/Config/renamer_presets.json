@@ -327,5 +327,398 @@
         "IsEnabled": true
       }
     ]
+  },
+  {
+    "Name": "🧹 Limpiar Nombre",
+    "Category": "Limpieza",
+    "Description": "Pipeline completo con todos los métodos de las fases 1 a 6: URLs, calidades/códecs, plataformas, idiomas, grupos scene/trackers/corchetes y normalización de separadores y espacios.",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)(?:https?:\\/\\/)?(?:www\\.)?[\\w-]+\\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\\b(?:\\.[\\w-]+)?(?:\\s*-\\s*)?",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 1: Sitios Web y URLs Publicitarias",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\\.?264|H\\.?265|10bit|DTS(?:-HD(?:\\.MA)?)?|TrueHD|Atmos|DDPlus\\d*\\.?\\d*|DDP\\d*\\.?\\d*|DD\\d*\\.?\\d*|AC3(?:\\.5\\.1)?|AAC(?:\\d*\\.?\\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\\d+kHz)?|SACD-DSD\\d*)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 2: Etiquetas de Calidad y Códecs",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\\.Music|Weekly\\.Shonen|MangaPlus|ComiXology)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 3: Fuentes y Plataformas de Streaming",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:Dual(?:\\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 4: Idiomas, Doblajes y Subtítulos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\\w+)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 5A: Grupos de Ripeo y Trackers",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "\\[[^\\]]*\\]",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 5B: Corchetes Residuales [...]",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "[._]+",
+        "ReplaceText": " ",
+        "ReplaceAll": true,
+        "Name": "Fase 6A: Puntos y Guiones Bajos a Espacios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "\\s+-\\s+(?:\\s+-)*",
+        "ReplaceText": " - ",
+        "ReplaceAll": true,
+        "Name": "Fase 6B: Normalizar Guiones Duplicados",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "^\\s*-\\s*|\\s*-\\s*$|^\\s+|\\s+$",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 6C: Limpiar Guiones y Espacios en Extremos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Fase 6D: Colapsar Espacios y Limpieza Final",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🎬 Pipeline Limpieza Multimedia (Scene, Rips, Códecs y URLs)",
+    "Category": "Multimedia",
+    "Description": "Pipeline secuencial completo de 6 fases: elimina URLs/dominios publicitarios, tags de códecs/calidad, plataformas de streaming, idiomas/subtítulos, grupos scene/trackers/corchetes y normaliza separadores/guiones/espacios.",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)(?:https?:\\/\\/)?(?:www\\.)?[\\w-]+\\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\\b(?:\\.[\\w-]+)?(?:\\s*-\\s*)?",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 1: Sitios Web y URLs Publicitarias",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\\.?264|H\\.?265|10bit|DTS(?:-HD(?:\\.MA)?)?|TrueHD|Atmos|DDPlus\\d*\\.?\\d*|DDP\\d*\\.?\\d*|DD\\d*\\.?\\d*|AC3(?:\\.5\\.1)?|AAC(?:\\d*\\.?\\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\\d+kHz)?|SACD-DSD\\d*)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 2: Etiquetas de Calidad y Códecs",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\\.Music|Weekly\\.Shonen|MangaPlus|ComiXology)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 3: Fuentes y Plataformas de Streaming",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:Dual(?:\\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 4: Idiomas, Doblajes y Subtítulos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\\w+)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 5A: Grupos de Ripeo y Trackers",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "\\[[^\\]]*\\]",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 5B: Corchetes Residuales [...]",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "[._]+",
+        "ReplaceText": " ",
+        "ReplaceAll": true,
+        "Name": "Fase 6A: Puntos y Guiones Bajos a Espacios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "\\s+-\\s+(?:\\s+-)*",
+        "ReplaceText": " - ",
+        "ReplaceAll": true,
+        "Name": "Fase 6B: Normalizar Guiones Duplicados",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "^\\s*-\\s*|\\s*-\\s*$|^\\s+|\\s+$",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Fase 6C: Limpiar Guiones y Espacios en Extremos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Fase 6D: Colapsar Espacios y Limpieza Final",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🌐 Limpieza: URLs y Dominios Publicitarios (Fase 1)",
+    "Category": "Limpieza",
+    "Description": "Elimina URLs completas, prefijos habituales (www.) y dominios (.org, .to, .net...) incluyendo corchetes o guiones pegados.",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)(?:https?:\\/\\/)?(?:www\\.)?[\\w-]+\\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\\b(?:\\.[\\w-]+)?(?:\\s*-\\s*)?",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar URLs y Dominios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "Name": "Colapsar Espacios",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "📺 Limpieza: Códecs, Calidades y Formatos (Fase 2)",
+    "Category": "Limpieza",
+    "Description": "Elimina tags de codificación, resolución y captura de audio/vídeo (2160p, 1080p, BluRay, x265, DTS, TrueHD, Atmos...).",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\\.?264|H\\.?265|10bit|DTS(?:-HD(?:\\.MA)?)?|TrueHD|Atmos|DDPlus\\d*\\.?\\d*|DDP\\d*\\.?\\d*|DD\\d*\\.?\\d*|AC3(?:\\.5\\.1)?|AAC(?:\\d*\\.?\\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\\d+kHz)?|SACD-DSD\\d*)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar Tags de Calidad y Códecs",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "Name": "Colapsar Espacios",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "📡 Limpieza: Plataformas y Servicios Streaming (Fase 3)",
+    "Category": "Limpieza",
+    "Description": "Descarta plataformas de streaming, canales y tags de origen (NF, AMZN, DSNP, ATVP, HULU, HBO, iTunes...).",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\\.Music|Weekly\\.Shonen|MangaPlus|ComiXology)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar Plataformas de Streaming",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "Name": "Colapsar Espacios",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🗣️ Limpieza: Idiomas, Doblajes y Subtítulos (Fase 4)",
+    "Category": "Limpieza",
+    "Description": "Elimina menciones a idiomas, doblajes y subtítulos genéricos (Dual, Castellano, Latino, SPANiSH, Multi-Audio, KORSUB...).",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)\\b(?:Dual(?:\\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar Idiomas y Subtítulos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "Name": "Colapsar Espacios",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "👥 Limpieza: Grupos Scene, Trackers y Corchetes (Fase 5)",
+    "Category": "Limpieza",
+    "Description": "Limpia grupos comunes de Scene/P2P tras guion (-FLUX, -YIFY...), corchetes residuales [...] y menciones a trackers.",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\\w+)\\b",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar Grupos Scene/P2P",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "\\[[^\\]]*\\]",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Eliminar Corchetes [...]",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "Name": "Colapsar Espacios",
+        "IsEnabled": true
+      }
+    ]
+  },
+  {
+    "Name": "🧹 Limpieza: Normalización de Separadores y Espacios (Fase 6)",
+    "Category": "Limpieza",
+    "Description": "Reemplaza puntos y barras bajas por espacios, normaliza guiones repetidos y limpia espacios/guiones en extremos.",
+    "Steps": [
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "[._]+",
+        "ReplaceText": " ",
+        "ReplaceAll": true,
+        "Name": "Puntos y Guiones Bajos a Espacios",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "\\s+-\\s+(?:\\s+-)*",
+        "ReplaceText": " - ",
+        "ReplaceAll": true,
+        "Name": "Normalizar Guiones",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 1,
+        "ApplyTo": 0,
+        "UseRegex": true,
+        "SearchText": "^\\s*-\\s*|\\s*-\\s*$|^\\s+|\\s+$",
+        "ReplaceText": "",
+        "ReplaceAll": true,
+        "Name": "Limpiar Extremos",
+        "IsEnabled": true
+      },
+      {
+        "MethodType": 7,
+        "ApplyTo": 2,
+        "CollapseSpaces": true,
+        "TrimWhitespace": true,
+        "SanitizeInvalidChars": true,
+        "Name": "Colapsar Espacios y Limpieza",
+        "IsEnabled": true
+      }
+    ]
   }
 ]

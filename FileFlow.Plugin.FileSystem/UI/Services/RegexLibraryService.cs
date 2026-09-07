@@ -44,6 +44,13 @@ public sealed class RegexLibraryService
 
     public IReadOnlyList<RegexPatternItem> GetBuiltInPatterns()
     {
+        var dict = new Dictionary<string, RegexPatternItem>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in GetFallbackBuiltInPatterns())
+        {
+            dict[item.Name] = item;
+        }
+
         string[] candidatePaths =
         [
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "regex_patterns.json"),
@@ -60,9 +67,12 @@ public sealed class RegexLibraryService
                 {
                     string json = File.ReadAllText(path);
                     var items = JsonSerializer.Deserialize<List<RegexPatternItem>>(json, JsonOptions);
-                    if (items != null && items.Count > 0)
+                    if (items != null)
                     {
-                        return items;
+                        foreach (var it in items)
+                        {
+                            dict[it.Name] = it;
+                        }
                     }
                 }
                 catch
@@ -72,7 +82,7 @@ public sealed class RegexLibraryService
             }
         }
 
-        return GetFallbackBuiltInPatterns();
+        return dict.Values.ToList();
     }
 
     private static List<RegexPatternItem> GetFallbackBuiltInPatterns()
@@ -214,6 +224,98 @@ public sealed class RegexLibraryService
                 Replacement = "$1 - $2",
                 Description = "Captura el número de pista o secuencia al principio del archivo.",
                 SampleInput = "05 Track Title.flac",
+                IsBuiltIn = true
+            },
+
+            // Releases y Multimedia (Pipeline de Limpieza)
+            new RegexPatternItem
+            {
+                Name = "Fase 1: Sitios Web, URLs y Dominios",
+                Category = "Releases y Multimedia",
+                Pattern = @"(?i)(?:https?:\/\/)?(?:www\.)?[\w-]+\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\b(?:\.[\w-]+)?(?:\s*-\s*)?",
+                Replacement = "",
+                Description = "Elimina URLs completas, prefijos habituales (www.) y dominios con extensiones comunes (.org, .to, .net...) y posibles guiones pegados.",
+                SampleInput = "Pelicula.2024.www.TorrentSite.to-1080p.mkv",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 2: Etiquetas de Calidad, Códecs y Formatos",
+                Category = "Releases y Multimedia",
+                Pattern = @"(?i)\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\.?264|H\.?265|10bit|DTS(?:-HD(?:\.MA)?)?|TrueHD|Atmos|DDPlus\d*\.?\d*|DDP\d*\.?\d*|DD\d*\.?\d*|AC3(?:\.5\.1)?|AAC(?:\d*\.?\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\d+kHz)?|SACD-DSD\d*)\b",
+                Replacement = "",
+                Description = "Elimina los tags típicos de codificación, resolución y captura de audio/vídeo que no forman parte del título real.",
+                SampleInput = "Serie.S01E01.1080p.WEBRip.x265.10bit.DTS-HD.MA.mkv",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 3: Fuentes, Plataformas y Servicios",
+                Category = "Releases y Multimedia",
+                Pattern = @"(?i)\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\.Music|Weekly\.Shonen|MangaPlus|ComiXology)\b",
+                Replacement = "",
+                Description = "Descarta plataformas de streaming (NF, AMZN, DSNP, HULU, HBO...), canales y tags de origen.",
+                SampleInput = "The.Show.S02E05.AMZN.WEB-DL.mkv",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 4: Idiomas, Doblajes y Subtítulos",
+                Category = "Releases y Multimedia",
+                Pattern = @"(?i)\b(?:Dual(?:\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\b",
+                Replacement = "",
+                Description = "Elimina menciones a idiomas, doblajes y subtítulos genéricos.",
+                SampleInput = "Episodio.03.Dual.Audio.Castellano.sub-espanol.mp4",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 5A: Grupos de Ripeo y Trackers",
+                Category = "Releases y Multimedia",
+                Pattern = @"(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\w+)\b",
+                Replacement = "",
+                Description = "Limpia grupos comunes de Scene/P2P tras guion (-FLUX, -YIFY, -EVO...) y menciones a trackers.",
+                SampleInput = "Pelicula.Accion.2023-YIFY.mp4",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 5B: Corchetes Residuales [...]",
+                Category = "Releases y Multimedia",
+                Pattern = @"\[[^\]]*\]",
+                Replacement = "",
+                Description = "Elimina corchetes residuales con contenido interno como [TGx] o [Torrent].",
+                SampleInput = "Documental [HD 1080p] [TGx].mkv",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 6A: Separadores [._] a Espacios",
+                Category = "Releases y Multimedia",
+                Pattern = @"[._]+",
+                Replacement = " ",
+                Description = "Reemplaza puntos y barras bajas por un espacio limpio.",
+                SampleInput = "Gran_Pelicula.De.Aventuras.2022.avi",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 6B: Normalización de Guiones Duplicados",
+                Category = "Releases y Multimedia",
+                Pattern = @"\s+-\s+(?:\s+-)*",
+                Replacement = " - ",
+                Description = "Normaliza guiones duplicados o espaciados irregularmente a un único ' - '.",
+                SampleInput = "Titulo - - Subtitulo.mp4",
+                IsBuiltIn = true
+            },
+            new RegexPatternItem
+            {
+                Name = "Fase 6C: Limpieza de Extremos (Espacios y Guiones)",
+                Category = "Releases y Multimedia",
+                Pattern = @"^\s*-\s*|\s*-\s*$|^\s+|\s+$",
+                Replacement = "",
+                Description = "Elimina espacios y guiones sueltos al inicio y al final de la cadena.",
+                SampleInput = " - Titulo Limpio - ",
                 IsBuiltIn = true
             }
         ];

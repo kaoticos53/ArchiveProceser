@@ -12,9 +12,22 @@ public partial class RegexHelperWindow : Window
 
     public RegexHelperWindow(string initialPattern = "", string initialReplacement = "", string initialSampleText = "")
     {
-        InitializeComponent();
+        InitializeComponentSafe();
         _viewModel = new RegexHelperViewModel(initialPattern, initialReplacement, initialSampleText);
         DataContext = _viewModel;
+    }
+
+    private void InitializeComponentSafe()
+    {
+        try
+        {
+            InitializeComponent();
+        }
+        catch (System.Exception)
+        {
+            var uri = new System.Uri("/FileFlow.Plugin.FileSystem;component/ui/views/regexhelperwindow.xaml", System.UriKind.Relative);
+            System.Windows.Application.LoadComponent(this, uri);
+        }
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)

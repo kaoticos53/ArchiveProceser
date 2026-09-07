@@ -12,10 +12,23 @@ public partial class AdvancedRenamerEditorWindow : Window
 
     public AdvancedRenamerEditorWindow(IFlowNode node)
     {
-        InitializeComponent();
+        InitializeComponentSafe();
         _viewModel = new AdvancedRenamerEditorViewModel(node);
         DataContext = _viewModel;
         UpdateVisibleFormPanels();
+    }
+
+    private void InitializeComponentSafe()
+    {
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception)
+        {
+            var uri = new System.Uri("/FileFlow.Plugin.FileSystem;component/ui/views/advancedrenamereditorwindow.xaml", System.UriKind.Relative);
+            System.Windows.Application.LoadComponent(this, uri);
+        }
     }
 
     private void StepsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -150,5 +150,7 @@
   <data name="Log_VarInjector_Injected" xml:space="preserve"><value>[Inyector de Variables] Inyectadas {0} variables en metadatos</value></data>
   <data name="Log_Report_Updated" xml:space="preserve"><value>[Reporte] Reporte actualizado en memoria (Formato: {0}, Ámbito: {1})</value></data>
   <data name="Log_Report_Error" xml:space="preserve"><value>[Reporte] Error al generar reporte: {0}</value></data>
-  <data name="Log_Report_Consolidated" xml:space="preserve"><value>[Reporte] Reporte consolidado generado en memoria ({0} archivos)</value></data>
+  <data name="SyntheticDataSourceNode_Name" xml:space="preserve"><value>Generador de Datos de Prueba (Test Bench)</value></data>
+  <data name="SyntheticDataSourceNode_Desc" xml:space="preserve"><value>Emite archivos de prueba categorizados (Películas, Series, Cómics, Música o Personalizados) para pruebas y depuración de pipelines sin requerir archivos reales.</value></data>
+  <data name="Log_SyntheticSource_Emitting" xml:space="preserve"><value>[Generador de Datos] Emitiendo {0} archivos sintéticos (Categoría: '{1}', Modo: '{2}').</value></data>
 </root>

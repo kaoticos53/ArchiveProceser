@@ -18,9 +18,21 @@ public sealed class RenamerLivePreviewService
 
     public List<PreviewRowItem> GeneratePreview(
         IReadOnlyList<RenameMethodStep> steps,
-        out string sourceDescription)
+        out string sourceDescription,
+        string? category = null,
+        IReadOnlyList<FileItemContext>? explicitItems = null)
     {
-        var sampleItems = RenamerSampleDataProvider.GetSampleItems(out sourceDescription);
+        IReadOnlyList<FileItemContext> sampleItems;
+        if (explicitItems != null && explicitItems.Count > 0)
+        {
+            sampleItems = explicitItems;
+            sourceDescription = $"({sampleItems.Count} Elementos capturados del pipeline)";
+        }
+        else
+        {
+            sampleItems = RenamerSampleDataProvider.GetSampleItemsByCategory(category, out sourceDescription);
+        }
+
         var previewItems = new List<PreviewRowItem>(sampleItems.Count);
         var batch = new RenameBatchContext();
 

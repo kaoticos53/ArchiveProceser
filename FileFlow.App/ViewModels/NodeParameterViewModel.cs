@@ -72,13 +72,16 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private List<VariableGroupItem> _availableVariables = [];
 
+    private bool _hasLoadedVersions;
+    private bool _isRefreshingVersions;
     private readonly ObservableCollection<FileVersionOption> _availableVersionOptions = [];
     public ObservableCollection<FileVersionOption> AvailableVersionOptions
     {
         get
         {
-            if (_availableVersionOptions.Count <= 2 && IsFileVersionSelector)
+            if (!_hasLoadedVersions && IsFileVersionSelector)
             {
+                _hasLoadedVersions = true;
                 RefreshAvailableVersions();
             }
             return _availableVersionOptions;
@@ -165,42 +168,56 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public void RefreshAvailableVersions()
     {
-        if (!IsFileVersionSelector || NodeOwner == null) return;
+        if (!IsFileVersionSelector || NodeOwner == null || _isRefreshingVersions) return;
 
-        var editor = ResolveEditor();
-        var conns = editor?.Connections ?? Enumerable.Empty<ConnectionViewModel>();
-        var versions = (editor?.VariableDiscoveryService ?? VariableDiscoveryService.Instance).GetAvailableFileVersions(NodeOwner, conns);
-
-        void UpdateList()
+        _isRefreshingVersions = true;
+        try
         {
-            _availableVersionOptions.Clear();
-            foreach (var v in versions)
+            var editor = ResolveEditor();
+            var conns = editor?.Connections ?? Enumerable.Empty<ConnectionViewModel>();
+            var versions = (editor?.VariableDiscoveryService ?? VariableDiscoveryService.Instance).GetAvailableFileVersions(NodeOwner, conns);
+
+            void UpdateList()
             {
-                _availableVersionOptions.Add(v);
+                bool isSame = _availableVersionOptions.Count == versions.Count &&
+                              _availableVersionOptions.Zip(versions, (a, b) => a.Tag == b.Tag && a.Token == b.Token).All(x => x);
+
+                if (!isSame)
+                {
+                    _availableVersionOptions.Clear();
+                    foreach (var v in versions)
+                    {
+                        _availableVersionOptions.Add(v);
+                    }
+                }
+
+                string valStr = Value?.ToString()?.Trim() ?? string.Empty;
+                bool matchesChip = _availableVersionOptions.Any(o =>
+                    string.Equals(valStr, o.Token, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(valStr, o.Tag, StringComparison.OrdinalIgnoreCase));
+
+                if (!string.IsNullOrEmpty(valStr) && !matchesChip)
+                {
+                    IsCustomExpressionMode = true;
+                }
+
+                _hasLoadedVersions = true;
+                OnPropertyChanged(nameof(ActiveVersionTag));
             }
 
-            string valStr = Value?.ToString()?.Trim() ?? string.Empty;
-            bool matchesChip = _availableVersionOptions.Any(o =>
-                string.Equals(valStr, o.Token, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(valStr, o.Tag, StringComparison.OrdinalIgnoreCase));
-
-            if (!string.IsNullOrEmpty(valStr) && !matchesChip)
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
             {
-                IsCustomExpressionMode = true;
+                dispatcher.InvokeAsync(UpdateList);
             }
-
-            OnPropertyChanged(nameof(AvailableVersionOptions));
-            OnPropertyChanged(nameof(ActiveVersionTag));
+            else
+            {
+                UpdateList();
+            }
         }
-
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
+        finally
         {
-            dispatcher.InvokeAsync(UpdateList);
-        }
-        else
-        {
-            UpdateList();
+            _isRefreshingVersions = false;
         }
     }
 

@@ -32,19 +32,15 @@ public static class RenamerPresetService
 
     public static IReadOnlyList<RenamerPreset> GetBuiltinPresets()
     {
-        // 1. Intentar cargar desde el fichero de usuario en %AppData%/FileFlow/presets/renamer_presets.json
-        AppPaths.EnsureDirectories();
-        string appDataFile = AppPaths.RenamerPresetsFile;
-        if (File.Exists(appDataFile))
+        var dict = new Dictionary<string, RenamerPreset>(StringComparer.OrdinalIgnoreCase);
+
+        // 1. Fallback determinista en memoria (garantiza que todos los presets oficiales siempre existan)
+        foreach (var p in GetFallbackPresets())
         {
-            var userPresets = TryLoadPresetsFromFile(appDataFile);
-            if (userPresets != null && userPresets.Count > 0)
-            {
-                return userPresets;
-            }
+            dict[p.Name] = p;
         }
 
-        // 2. Intentar cargar desde el directorio Config/ de la aplicación o plugin
+        // 2. Intentar cargar/actualizar desde el directorio Config/ de la aplicación o plugin
         string[] candidatePaths =
         [
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "renamer_presets.json"),
@@ -58,15 +54,32 @@ public static class RenamerPresetService
             if (File.Exists(path))
             {
                 var factoryPresets = TryLoadPresetsFromFile(path);
-                if (factoryPresets != null && factoryPresets.Count > 0)
+                if (factoryPresets != null)
                 {
-                    return factoryPresets;
+                    foreach (var fp in factoryPresets)
+                    {
+                        dict[fp.Name] = fp;
+                    }
                 }
             }
         }
 
-        // 3. Fallback determinista en memoria
-        return GetFallbackPresets();
+        // 3. Cargar presets de usuario en %AppData%/FileFlow/presets/renamer_presets.json
+        AppPaths.EnsureDirectories();
+        string appDataFile = AppPaths.RenamerPresetsFile;
+        if (File.Exists(appDataFile))
+        {
+            var userPresets = TryLoadPresetsFromFile(appDataFile);
+            if (userPresets != null)
+            {
+                foreach (var up in userPresets)
+                {
+                    dict[up.Name] = up;
+                }
+            }
+        }
+
+        return dict.Values.ToList();
     }
 
     public static List<RenamerPreset>? TryLoadPresetsFromFile(string filePath)
@@ -457,6 +470,435 @@ public static class RenamerPresetService
                         CollapseSpaces = true,
                         SanitizeInvalidChars = true,
                         Name = "Limpieza de Espacios Restantes"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "🧹 Limpiar Nombre",
+                Category = "Limpieza",
+                Description = "Pipeline completo con todos los métodos de las fases 1 a 6: URLs, calidades/códecs, plataformas, idiomas, grupos scene/trackers/corchetes y normalización de separadores y espacios.",
+                Steps =
+                [
+                    // Fase 1: Sitios web, URLs y dominios publicitarios
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)(?:https?:\/\/)?(?:www\.)?[\w-]+\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\b(?:\.[\w-]+)?(?:\s*-\s*)?",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 1: Sitios Web y URLs Publicitarias"
+                    },
+                    // Fase 2: Etiquetas de calidad, códecs, formatos de audio y vídeo
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\.?264|H\.?265|10bit|DTS(?:-HD(?:\.MA)?)?|TrueHD|Atmos|DDPlus\d*\.?\d*|DDP\d*\.?\d*|DD\d*\.?\d*|AC3(?:\.5\.1)?|AAC(?:\d*\.?\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\d+kHz)?|SACD-DSD\d*)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 2: Etiquetas de Calidad y Códecs"
+                    },
+                    // Fase 3: Fuentes, plataformas y servicios
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\.Music|Weekly\.Shonen|MangaPlus|ComiXology)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 3: Fuentes y Plataformas de Streaming"
+                    },
+                    // Fase 4: Idiomas, doblajes y subtítulos genéricos
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:Dual(?:\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 4: Idiomas, Doblajes y Subtítulos"
+                    },
+                    // Fase 5A: Grupos de ripeo y trackers
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\w+)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 5A: Grupos de Ripeo y Trackers"
+                    },
+                    // Fase 5B: Corchetes residuales [...]
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"\[[^\]]*\]",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 5B: Corchetes Residuales [...]"
+                    },
+                    // Fase 6A: Separadores a espacio
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"[._]+",
+                        ReplaceText = " ",
+                        ReplaceAll = true,
+                        Name = "Fase 6A: Puntos y Guiones Bajos a Espacios"
+                    },
+                    // Fase 6B: Normalizar guiones duplicados
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"\s+-\s+(?:\s+-)*",
+                        ReplaceText = " - ",
+                        ReplaceAll = true,
+                        Name = "Fase 6B: Normalizar Guiones Duplicados"
+                    },
+                    // Fase 6C: Recorte de guiones y espacios en extremos
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"^\s*-\s*|\s*-\s*$|^\s+|\s+$",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 6C: Limpiar Guiones y Espacios en Extremos"
+                    },
+                    // Fase 6D: Limpieza de espacios y sanitización final
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        SanitizeInvalidChars = true,
+                        Name = "Fase 6D: Colapsar Espacios y Limpieza Final"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "🎬 Pipeline Limpieza Multimedia (Scene, Rips, Códecs y URLs)",
+                Category = "Multimedia",
+                Description = "Pipeline secuencial completo de 6 fases: elimina URLs/dominios publicitarios, tags de códecs/calidad, plataformas de streaming, idiomas/subtítulos, grupos scene/trackers/corchetes y normaliza separadores/guiones/espacios.",
+                Steps =
+                [
+                    // Fase 1: Sitios web, URLs y dominios publicitarios
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)(?:https?:\/\/)?(?:www\.)?[\w-]+\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\b(?:\.[\w-]+)?(?:\s*-\s*)?",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 1: Sitios Web y URLs Publicitarias"
+                    },
+                    // Fase 2: Etiquetas de calidad, códecs, formatos de audio y vídeo
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\.?264|H\.?265|10bit|DTS(?:-HD(?:\.MA)?)?|TrueHD|Atmos|DDPlus\d*\.?\d*|DDP\d*\.?\d*|DD\d*\.?\d*|AC3(?:\.5\.1)?|AAC(?:\d*\.?\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\d+kHz)?|SACD-DSD\d*)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 2: Etiquetas de Calidad y Códecs"
+                    },
+                    // Fase 3: Fuentes, plataformas y servicios
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\.Music|Weekly\.Shonen|MangaPlus|ComiXology)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 3: Fuentes y Plataformas de Streaming"
+                    },
+                    // Fase 4: Idiomas, doblajes y subtítulos genéricos
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:Dual(?:\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 4: Idiomas, Doblajes y Subtítulos"
+                    },
+                    // Fase 5A: Grupos de ripeo y trackers
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\w+)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 5A: Grupos de Ripeo y Trackers"
+                    },
+                    // Fase 5B: Corchetes residuales [...]
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"\[[^\]]*\]",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 5B: Corchetes Residuales [...]"
+                    },
+                    // Fase 6A: Separadores a espacio
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"[._]+",
+                        ReplaceText = " ",
+                        ReplaceAll = true,
+                        Name = "Fase 6A: Puntos y Guiones Bajos a Espacios"
+                    },
+                    // Fase 6B: Normalizar guiones duplicados
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"\s+-\s+(?:\s+-)*",
+                        ReplaceText = " - ",
+                        ReplaceAll = true,
+                        Name = "Fase 6B: Normalizar Guiones Duplicados"
+                    },
+                    // Fase 6C: Recorte de guiones y espacios en extremos
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"^\s*-\s*|\s*-\s*$|^\s+|\s+$",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Fase 6C: Limpiar Guiones y Espacios en Extremos"
+                    },
+                    // Fase 6D: Limpieza de espacios y sanitización final
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        SanitizeInvalidChars = true,
+                        Name = "Fase 6D: Colapsar Espacios y Limpieza Final"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "🌐 Limpieza: URLs y Dominios Publicitarios (Fase 1)",
+                Category = "Limpieza",
+                Description = "Elimina URLs completas, prefijos habituales (www.) y dominios (.org, .to, .net...) incluyendo corchetes o guiones pegados.",
+                Steps =
+                [
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)(?:https?:\/\/)?(?:www\.)?[\w-]+\.(?:com|org|net|is|lat|lol|me|cc|biz|vip|re|nu|top|club|pro|info|to|in|fm)\b(?:\.[\w-]+)?(?:\s*-\s*)?",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Eliminar URLs y Dominios"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        Name = "Colapsar Espacios"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "📺 Limpieza: Códecs, Calidades y Formatos (Fase 2)",
+                Category = "Limpieza",
+                Description = "Elimina tags de codificación, resolución y captura de audio/vídeo (2160p, 1080p, BluRay, x265, DTS, TrueHD, Atmos...).",
+                Steps =
+                [
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:2160p|1080p|720p|480p|4K|UHD|HDR\d*|DV|BluRay|BDRip|BRRip|WEBRip|WEB-DL|WEB|HDTV|CAMRip|CAM|HDCAM|TS|DVDRip|DivX(?:-[\d.]+)?|XviD|Remux|Remaster(?:ed)?|Criterion(?:\.Collection)?|PROPER|REPACK|EXTENDED|Unrated|IMAX|x264|x265|HEVC|H\.?264|H\.?265|10bit|DTS(?:-HD(?:\.MA)?)?|TrueHD|Atmos|DDPlus\d*\.?\d*|DDP\d*\.?\d*|DD\d*\.?\d*|AC3(?:\.5\.1)?|AAC(?:\d*\.?\d*)?|6CH|FLAC|Lossless|MP3|320kbps|24bit(?:-\d+kHz)?|SACD-DSD\d*)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Eliminar Tags de Calidad y Códecs"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        Name = "Colapsar Espacios"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "📡 Limpieza: Plataformas y Servicios Streaming (Fase 3)",
+                Category = "Limpieza",
+                Description = "Descarta plataformas de streaming, canales y tags de origen (NF, AMZN, DSNP, ATVP, HULU, HBO, iTunes...).",
+                Steps =
+                [
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:NF|AMZN|DSNP|ATVP|HULU|HBO(?:-MAX)?|BBC\.iPlayer|CR|Tidal|Qobuz|iTunes|Apple\.Music|Weekly\.Shonen|MangaPlus|ComiXology)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Eliminar Plataformas de Streaming"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        Name = "Colapsar Espacios"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "🗣️ Limpieza: Idiomas, Doblajes y Subtítulos (Fase 4)",
+                Category = "Limpieza",
+                Description = "Elimina menciones a idiomas, doblajes y subtítulos genéricos (Dual, Castellano, Latino, SPANiSH, Multi-Audio, KORSUB...).",
+                Steps =
+                [
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)\b(?:Dual(?:\.Audio)?|Castellano|Latino|SPANiSH|Catalan|Ingles|English|German|JAP(?:ANESE)?|Hindi-Eng|Multi(?:-Audio)?|KORSUB|Subtitulos|sub-espanol)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Eliminar Idiomas y Subtítulos"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        Name = "Colapsar Espacios"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "👥 Limpieza: Grupos Scene, Trackers y Corchetes (Fase 5)",
+                Category = "Limpieza",
+                Description = "Limpia grupos comunes de Scene/P2P tras guion (-FLUX, -YIFY...), corchetes residuales [...] y menciones a trackers.",
+                Steps =
+                [
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"(?i)-(?:ROVERS|FLUX|NTb|SYNCOPY|CiNEFiLE|PSA|FGT|YIFY|EVO|Galaxy\w+|CMRG|TERMiNAL|ShortbreaD|TrollHD|SuccessfulCrab|MeGusta|CAKES|AVS|BiN|TOMMY|PHOENiX|danke-Empire|Zone-Empire|Empire|Minutemen-\w+)\b",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Eliminar Grupos Scene/P2P"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"\[[^\]]*\]",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Eliminar Corchetes [...]"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        Name = "Colapsar Espacios"
+                    }
+                ]
+            },
+            new RenamerPreset
+            {
+                Name = "🧹 Limpieza: Normalización de Separadores y Espacios (Fase 6)",
+                Category = "Limpieza",
+                Description = "Reemplaza puntos y barras bajas por espacios, normaliza guiones repetidos y limpia espacios/guiones en extremos.",
+                Steps =
+                [
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"[._]+",
+                        ReplaceText = " ",
+                        ReplaceAll = true,
+                        Name = "Puntos y Guiones Bajos a Espacios"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"\s+-\s+(?:\s+-)*",
+                        ReplaceText = " - ",
+                        ReplaceAll = true,
+                        Name = "Normalizar Guiones"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.SearchReplace,
+                        ApplyTo = ApplyToTarget.NameOnly,
+                        UseRegex = true,
+                        SearchText = @"^\s*-\s*|\s*-\s*$|^\s+|\s+$",
+                        ReplaceText = "",
+                        ReplaceAll = true,
+                        Name = "Limpiar Extremos"
+                    },
+                    new RenameMethodStep
+                    {
+                        MethodType = RenameMethodType.TrimClean,
+                        ApplyTo = ApplyToTarget.FullName,
+                        CollapseSpaces = true,
+                        TrimWhitespace = true,
+                        SanitizeInvalidChars = true,
+                        Name = "Colapsar Espacios y Limpieza"
                     }
                 ]
             }

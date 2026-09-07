@@ -119,7 +119,7 @@
                 <ItemsControl ItemsSource="{Binding CategoryGroups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Expander IsExpanded="True" Margin="0,0,0,8">
+                            <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,0,0,8">
                                 <Expander.Header>
                                     <TextBlock Text="{Binding CategoryName}" 
                                                Foreground="{DynamicResource AccentGlowBrush}" 

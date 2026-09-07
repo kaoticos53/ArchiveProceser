@@ -76,7 +76,7 @@
       <_PreReleaseSuffix Condition="'$(VersionPreRelease)' == ''"></_PreReleaseSuffix>
 
       <InformationalVersion>$(VersionPrefix)$(_PreReleaseSuffix)+build.$(BuildNumber)</InformationalVersion>
-      <AssemblyVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(BuildNumber)</AssemblyVersion>
+      <AssemblyVersion>$(VersionMajor).$(VersionMinor).0.0</AssemblyVersion>
       <FileVersion>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(BuildNumber)</FileVersion>
       <Version>$(InformationalVersion)</Version>
     </PropertyGroup>

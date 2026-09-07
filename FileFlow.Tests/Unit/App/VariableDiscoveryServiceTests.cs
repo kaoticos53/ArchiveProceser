@@ -327,4 +327,38 @@ public class VariableDiscoveryServiceTests
         paramA.AvailableVersionOptions.Should().Contain(v => v.Tag == "Optimized");
         paramA.AvailableVersionOptions.Should().Contain(v => v.Tag == "NoBackground");
     }
+
+    [Fact]
+    public void BestVersionSelectorNode_WhenAddedToEditor_ShouldInitializeAvailableVersionOptionsWithoutRecursionOrCrash()
+    {
+        // Arrange
+        var loader = new FileFlow.Core.Plugins.PluginLoader();
+        loader.RegisterNodeType<FileFlow.Plugin.Logic.BestVersionSelectorNode>();
+        var editor = new EditorViewModel(loader);
+
+        // Act - Simula la inserción directa del nodo en el lienzo
+        var bestNode = editor.AddNode("FileFlow.Plugin.Logic.BestVersionSelectorNode", new Point(100, 100));
+
+        // Assert
+        bestNode.Should().NotBeNull();
+        var candAParam = bestNode!.Parameters.First(p => p.Key == "CandidateA");
+        var candBParam = bestNode.Parameters.First(p => p.Key == "CandidateB");
+
+        candAParam.IsFileVersionSelector.Should().BeTrue();
+        candBParam.IsFileVersionSelector.Should().BeTrue();
+
+        // Múltiples accesos al getter emulando la evaluación continua del DataTemplate de WPF
+        for (int i = 0; i < 10; i++)
+        {
+            var optionsA = candAParam.AvailableVersionOptions;
+            optionsA.Should().HaveCount(2);
+            optionsA.Should().Contain(o => o.Tag == "Original");
+            optionsA.Should().Contain(o => o.Tag == "Current");
+
+            var optionsB = candBParam.AvailableVersionOptions;
+            optionsB.Should().HaveCount(2);
+            optionsB.Should().Contain(o => o.Tag == "Original");
+            optionsB.Should().Contain(o => o.Tag == "Current");
+        }
+    }
 }

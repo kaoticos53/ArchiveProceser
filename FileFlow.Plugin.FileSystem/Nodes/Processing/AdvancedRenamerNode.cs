@@ -276,6 +276,22 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             }
         }
 
+        // Si no hay pasos explícitos configurados pero se especificó un PipelineName correspondiente a un preset incorporado
+        if (Parameters.TryGetValue("PipelineName", out var nameVal) && nameVal != null && !string.IsNullOrWhiteSpace(nameVal.ToString()))
+        {
+            string pName = nameVal.ToString()!;
+            if (!string.Equals(pName, "Pipeline Predeterminado", StringComparison.OrdinalIgnoreCase))
+            {
+                var matchingPreset = RenamerPresetService.GetBuiltinPresets()
+                    .FirstOrDefault(p => string.Equals(p.Name, pName, StringComparison.OrdinalIgnoreCase) ||
+                                         p.Name.Contains(pName, StringComparison.OrdinalIgnoreCase));
+                if (matchingPreset != null && matchingPreset.Steps.Count > 0)
+                {
+                    return matchingPreset.Steps;
+                }
+            }
+        }
+
         // Migrar y limpiar parámetros legados (Pattern, NameTemplate, CaseTransformation)
         string legacyPattern = string.Empty;
         if (Parameters.TryGetValue("Pattern", out var pVal) && pVal != null && !string.IsNullOrWhiteSpace(pVal.ToString()))

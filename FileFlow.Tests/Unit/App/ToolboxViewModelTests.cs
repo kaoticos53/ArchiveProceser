@@ -156,4 +156,127 @@ public class ToolboxViewModelTests
         filteredItems.Should().NotBeEmpty();
         filteredItems.Should().AllSatisfy(i => i.Category.Should().Be("Documents"));
     }
+
+    /// <summary>
+    /// OBJETO: Expansión por defecto del catálogo de nodos.
+    /// QUÉ:    Verifica que por defecto todas las categorías estén colapsadas excepto la de más usados ('Frequent').
+    /// CÓMO:  Registra nodos y un uso en UserPreferencesService, instancia ToolboxViewModel y valida que solo 'Frequent' esté expandido.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_DefaultExpansion_ShouldOnlyExpandFrequentCategory()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FolderSourceNode).FullName!);
+
+        // Act
+        using var toolbox = new ToolboxViewModel(loader);
+
+        // Assert
+        toolbox.CategoryGroups.Should().NotBeEmpty();
+        var freqGroup = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
+        freqGroup.Should().NotBeNull("Frequent category should exist when there are used nodes");
+        freqGroup!.IsExpanded.Should().BeTrue("Only the 'Frequent' category must be expanded by default");
+
+        var otherGroups = toolbox.CategoryGroups.Where(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase)).ToList();
+        otherGroups.Should().NotBeEmpty();
+        otherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("All categories other than 'Frequent' must be collapsed by default"));
+    }
+
+    /// <summary>
+    /// OBJETO: Comportamiento de acordeón exclusivo en el catálogo de nodos.
+    /// QUÉ:    Verifica que al expandir una categoría cualquiera, las demás categorías abiertas se colapsen automáticamente.
+    /// CÓMO:  Instancia el toolbox, abre una categoría distinta de 'Frequent' y verifica que 'Frequent' y el resto queden colapsadas.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_AccordionBehavior_ShouldCollapseOtherCategoriesWhenOneExpands()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FolderSourceNode).FullName!);
+
+        using var toolbox = new ToolboxViewModel(loader);
+        var freqGroup = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
+        freqGroup.Should().NotBeNull();
+        freqGroup!.IsExpanded.Should().BeTrue();
+
+        var nonFreqGroup = toolbox.CategoryGroups.FirstOrDefault(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
+        nonFreqGroup.Should().NotBeNull();
+        nonFreqGroup!.IsExpanded.Should().BeFalse();
+
+        // Act - Abre la otra categoría
+        nonFreqGroup.IsExpanded = true;
+
+        // Assert - Comprueba que 'Frequent' se cerró y solo la nueva está abierta (acordeón)
+        nonFreqGroup.IsExpanded.Should().BeTrue();
+        freqGroup.IsExpanded.Should().BeFalse("Opening another category must automatically collapse 'Frequent'");
+
+        var allOtherGroups = toolbox.CategoryGroups.Where(g => g != nonFreqGroup).ToList();
+        allOtherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("Accordion mode requires all other categories to be collapsed"));
+    }
+
+    /// <summary>
+    /// OBJETO: Preservación de estado de categorías al añadir nodos al lienzo.
+    /// QUÉ:    Verifica que cuando se coloca un nodo en el lienzo (disparando incremento de uso y refresco del toolbox), la categoría que el usuario tenía abierta se conserve y no se descolapsen todas.
+    /// CÓMO:  Expande una categoría específica, invoca IncrementNodeUsage y valida que tras el refresco automático la misma categoría permanezca expandida y las demás colapsadas.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_PlacingNode_ShouldPreserveExpandedCategoryState()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
+
+        using var toolbox = new ToolboxViewModel(loader);
+
+        // Seleccionamos una categoría específica, por ejemplo 'Files', y la expandimos
+        var filesGroup = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase));
+        filesGroup.Should().NotBeNull();
+        filesGroup!.IsExpanded = true;
+
+        var otherGroupsBefore = toolbox.CategoryGroups.Where(g => g != filesGroup).ToList();
+        otherGroupsBefore.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse());
+
+        // Act - Simula la colocación de un nuevo nodo en el lienzo de trabajo
+        FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FileFlow.Plugin.Documents.PdfMergeNode).FullName!);
+
+        // Assert - Comprueba que 'Files' sigue abierta y las demás siguen colapsadas
+        var filesGroupAfter = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase));
+        filesGroupAfter.Should().NotBeNull();
+        filesGroupAfter!.IsExpanded.Should().BeTrue("The user's opened category must remain expanded after placing a node");
+
+        var otherGroupsAfter = toolbox.CategoryGroups.Where(g => !g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase)).ToList();
+        otherGroupsAfter.Should().NotBeEmpty();
+        otherGroupsAfter.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("All other categories must remain collapsed"));
+    }
+
+    /// <summary>
+    /// OBJETO: Expansión inteligente durante búsqueda activa en el catálogo.
+    /// QUÉ:    Verifica que al escribir un término en SearchText las categorías coincidentes se expandan para mostrar los resultados, y al limpiar el texto se respete la categoría activa.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_SearchText_ShouldExpandMatchingCategories()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        using var toolbox = new ToolboxViewModel(loader);
+
+        // Act - Búsqueda activa
+        toolbox.SearchText = "Folder";
+
+        // Assert - Todos los grupos con resultados de búsqueda deben estar expandidos
+        toolbox.CategoryGroups.Should().NotBeEmpty();
+        toolbox.CategoryGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeTrue("Categories with search results must be expanded"));
+
+        // Act - Limpia la búsqueda
+        toolbox.SearchText = string.Empty;
+
+        // Assert - Solo 1 categoría (o la de Frequent si existe) queda expandida
+        var expandedCount = toolbox.CategoryGroups.Count(g => g.IsExpanded);
+        expandedCount.Should().BeLessThanOrEqualTo(1, "Clearing search text should return to accordion mode");
+    }
 }

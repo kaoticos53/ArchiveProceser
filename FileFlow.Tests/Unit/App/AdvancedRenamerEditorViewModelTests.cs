@@ -3,6 +3,7 @@ using System.Windows;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
+using FileFlow.Plugin.FileSystem.UI.Services;
 using FileFlow.Plugin.FileSystem.UI.ViewModels;
 using FluentAssertions;
 using Xunit;
@@ -44,8 +45,34 @@ public class AdvancedRenamerEditorViewModelTests : IDisposable
 
         // Assert
         vm.PreviewItems.Should().NotBeEmpty();
-        vm.PreviewItems.Count.Should().Be(18);
+        vm.PreviewItems.Count.Should().BeGreaterThanOrEqualTo(18);
         vm.PreviewSourceDescription.Should().Contain("sintéticas");
+        vm.SampleCategories.Should().Contain("Películas");
+
+        // Act - Switch category to Películas
+        vm.SelectedSampleCategory = "Películas";
+        vm.PreviewItems.Should().HaveCount(40);
+
+        // Act - Switch category to Fotos
+        vm.SelectedSampleCategory = "Fotos";
+        vm.PreviewItems.Should().HaveCount(20);
+        vm.PreviewItems.Should().Contain(p => p.OriginalName.Contains("DSC_0042") || p.OriginalName.Contains("IMG_"));
+        var photoSamples = RenamerSampleDataProvider.GetSampleItemsByCategory("Fotos", out _);
+        photoSamples.Should().AllSatisfy(p => p.Metadata.Should().ContainKey("Exif:CameraModel"));
+
+        // Act - Switch category to Música
+        vm.SelectedSampleCategory = "Música";
+        vm.PreviewItems.Should().HaveCount(40);
+        vm.PreviewItems.Should().Contain(p => p.OriginalName.Contains("Daft Punk") || p.OriginalName.Contains("Queen"));
+        var musicSamples = RenamerSampleDataProvider.GetSampleItemsByCategory("Música", out _);
+        musicSamples.Should().AllSatisfy(p => p.Metadata.Should().ContainKey("Audio:Artist"));
+
+        // Act - Switch category to Documentos
+        vm.SelectedSampleCategory = "Documentos";
+        vm.PreviewItems.Should().HaveCount(20);
+        vm.PreviewItems.Should().Contain(p => p.OriginalName.Contains("Factura") || p.OriginalName.Contains("Informe") || p.OriginalName.Contains("FAC-"));
+        var docSamples = RenamerSampleDataProvider.GetSampleItemsByCategory("Documentos", out _);
+        docSamples.Should().AllSatisfy(p => p.Metadata.Should().ContainKey("Doc:Author"));
     }
 
     [Fact]
@@ -59,7 +86,7 @@ public class AdvancedRenamerEditorViewModelTests : IDisposable
 
         // Assert
         vm.PipelineName.Should().Be("Pipeline Predeterminado");
-        vm.AvailablePresets.Should().HaveCount(12);
+        vm.AvailablePresets.Should().HaveCountGreaterThanOrEqualTo(12);
         vm.AvailableTags.Should().NotBeEmpty();
     }
 

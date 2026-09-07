@@ -31,11 +31,18 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [ObservableProperty]
     private string _previewSourceDescription = "(Muestras sintéticas predefinidas)";
 
+    [ObservableProperty]
+    private string _selectedSampleCategory = "Todas";
+
+    [ObservableProperty]
+    private string _newCustomSampleName = string.Empty;
+
     public ObservableCollection<RenameMethodStep> Steps { get; } = [];
     public ObservableCollection<RenamerPreset> AvailablePresets { get; } = [];
     public ObservableCollection<PreviewRowItem> PreviewItems { get; } = [];
     public ObservableCollection<TagPickerItem> AvailableTags { get; } = [];
     public ObservableCollection<string> AvailableCategories { get; } = [];
+    public ObservableCollection<string> SampleCategories { get; } = [];
 
     public IReadOnlyList<string> CollisionStrategies { get; } = ["AutoIncrement", "Overwrite", "Skip", "Fail"];
     public IReadOnlyList<RenameMethodType> MethodTypes { get; } = Enum.GetValues<RenameMethodType>();
@@ -52,6 +59,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
         LoadFromNode();
         LoadPresets();
         LoadAvailableTags();
+        LoadSampleCategories();
         GenerateLivePreview();
     }
 
@@ -132,6 +140,20 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
         {
             AvailableCategories.Add(cat);
         }
+    }
+
+    private void LoadSampleCategories()
+    {
+        SampleCategories.Clear();
+        foreach (var cat in RenamerSampleDataProvider.AvailableCategories)
+        {
+            SampleCategories.Add(cat);
+        }
+    }
+
+    partial void OnSelectedSampleCategoryChanged(string value)
+    {
+        GenerateLivePreview();
     }
 
     [RelayCommand]
@@ -324,10 +346,32 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    public void AddCustomSample()
+    {
+        if (string.IsNullOrWhiteSpace(NewCustomSampleName)) return;
+
+        var lines = NewCustomSampleName.Split(['\r', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var line in lines)
+        {
+            RenamerSampleDataProvider.AddCustomSample(line);
+        }
+
+        NewCustomSampleName = string.Empty;
+        GenerateLivePreview();
+    }
+
+    [RelayCommand]
+    public void ClearCustomSamples()
+    {
+        RenamerSampleDataProvider.ClearCustomSamples();
+        GenerateLivePreview();
+    }
+
     public void GenerateLivePreview()
     {
         PreviewItems.Clear();
-        var previewList = _previewService.GeneratePreview(Steps.ToList(), out string srcDesc);
+        var previewList = _previewService.GeneratePreview(Steps.ToList(), out string srcDesc, SelectedSampleCategory);
         PreviewSourceDescription = srcDesc;
 
         foreach (var p in previewList)
