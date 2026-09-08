@@ -43,6 +43,10 @@ public record FileItemContext
     public HashSet<string> Tags { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> ExecutionLog { get; init; } = [];
 
+    public bool IsVirtual => (Metadata.TryGetValue("VirtualSample", out var v) && v is true or "true" or "True") ||
+                             (Metadata.TryGetValue("IsVirtual", out var iv) && iv is true or "true" or "True");
+
+
     public void RegisterVersion(string tag, string filePath)
     {
         if (string.IsNullOrWhiteSpace(tag) || string.IsNullOrWhiteSpace(filePath)) return;

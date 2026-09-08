@@ -35,17 +35,41 @@ public static class RenamerSampleDataProvider
     private static readonly List<string> _inMemoryCustomSamples = [];
     private static readonly Lock _customSamplesLock = new();
 
-    public static IReadOnlyList<string> AvailableCategories =>
-    [
-        "Todas",
-        "Películas",
-        "Series",
-        "Cómics y Manga",
-        "Música",
-        "Fotos",
-        "Documentos",
-        "Personalizada"
-    ];
+    public static IReadOnlyList<string> AvailableCategories
+    {
+        get
+        {
+            var list = new List<string>
+            {
+                "Todas",
+                "Películas",
+                "Series",
+                "Cómics y Manga",
+                "Música",
+                "Fotos",
+                "Documentos",
+                "Personalizada"
+            };
+
+            try
+            {
+                var userSets = FileFlow.Plugin.FileSystem.Services.SyntheticDataSetStorageService.Instance.GetAllDataSets().Where(d => !d.IsBuiltIn);
+                foreach (var ds in userSets)
+                {
+                    if (!list.Contains(ds.Name, StringComparer.OrdinalIgnoreCase))
+                    {
+                        list.Add(ds.Name);
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback a lista básica
+            }
+
+            return list;
+        }
+    }
 
     public static void AddCustomSample(string fileName)
     {
@@ -116,6 +140,25 @@ public static class RenamerSampleDataProvider
                 }
                 return false;
             }).ToList();
+
+            if (filtered.Count == 0)
+            {
+                var customDs = FileFlow.Plugin.FileSystem.Services.SyntheticDataSetStorageService.Instance.GetDataSetByName(category)
+                               ?? FileFlow.Plugin.FileSystem.Services.SyntheticDataSetStorageService.Instance.GetDataSetById(category);
+                if (customDs != null)
+                {
+                    var dsItems = new List<FileItemContext>(customDs.Items.Count);
+                    foreach (var it in customDs.Items)
+                    {
+                        var fic = CreateSyntheticItem(@"C:\Muestras\" + customDs.Category, it.FileName, it.FileSizeBytes, it.IsDirectory, it.Metadata);
+                        fic.Metadata["RelativePath"] = it.RelativePath;
+                        fic.Metadata["RelativeDir"] = it.Directory;
+                        dsItems.Add(fic);
+                    }
+                    sourceDescription = $"({dsItems.Count} Muestras del dataset '{customDs.Name}')";
+                    return dsItems;
+                }
+            }
 
             sourceDescription = $"({filtered.Count} Muestras de la categoría '{category}')";
             return filtered;

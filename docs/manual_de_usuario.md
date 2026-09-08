@@ -20,11 +20,14 @@
    - [Modo Monitorización Continua (Watchdog)](#modo-monitorización-continua-watchdog)
    - [Sistema de Rollback Transaccional (LIFO)](#sistema-de-rollback-transaccional-lifo)
    - [Depuración Interactiva con Puntos de Interrupción (Breakpoints)](#depuración-interactiva-con-puntos-de-interrupción-breakpoints)
+   - [Sistema de Archivos Virtual (VFS) y Banco de Pruebas No Destructivo](#sistema-de-archivos-virtual-vfs-y-banco-de-pruebas-no-destructivo)
+   - [Diseñador Visual de Conjuntos de Datos Sintéticos](#diseñador-visual-de-conjuntos-de-datos-sintéticos-syntheticdatasetdesignerwindow)
+   - [Simulación Híbrida de Archivos Comprimidos](#simulación-híbrida-de-archivos-comprimidos-zip-rar-7z)
 4. [Motor de Tokens y Variables Dinámicas](#4-motor-de-tokens-y-variables-dinámicas)
    - [Sintaxis y Dominios](#sintaxis-y-dominios)
    - [Tabla Completa de Tokens](#tabla-completa-de-tokens)
-5. [Catálogo Exhaustivo de Nodos (57 Nodos DAG)](#5-catálogo-exhaustivo-de-nodos-57-nodos-dag)
-   - [📁 Categoría 1: FileSystem (E/S de Disco y Ciclo de Vida)](#-categoría-1-filesystem-14-nodos)
+5. [Catálogo Exhaustivo de Nodos (58 Nodos DAG)](#5-catálogo-exhaustivo-de-nodos-58-nodos-dag)
+   - [📁 Categoría 1: FileSystem (E/S de Disco y Ciclo de Vida)](#-categoría-1-filesystem-15-nodos)
    - [🗜️ Categoría 2: Archives (Compresión y Desempaquetado)](#️-categoría-2-archives-3-nodos)
    - [🖼️ Categoría 3: Images (Procesamiento Gráfico y EXIF)](#️-categoría-3-images-4-nodos)
    - [🌐 Categoría 4: Network & Remote Storage (Hubs Multi-Protocolo)](#-categoría-4-network--remote-storage-2-nodos-unificados)
@@ -123,6 +126,61 @@ Si necesitas deshacer una ejecución:
 - Al alcanzar un nodo con breakpoint activo, la ejecución se pausará.
 - Usa **"Paso a Paso (F10)"** para inspeccionar las transformaciones de metadatos nodo a nodo.
 
+### Sistema de Archivos Virtual (VFS) y Banco de Pruebas No Destructivo
+Para diseñar, validar y depurar tuberías complejas sin manipular discos físicos ni arriesgar archivos reales:
+1. **Activación Automática**:
+   - Al colocar el nodo **`SyntheticDataSourceNode`** o marcar elementos virtuales (`IsVirtual = true`), el motor DAG (`WorkflowExecutor`) activa en memoria un almacén aislado de sistema de archivos virtual (`IVirtualFileSystemStore`).
+   - Los nodos de destino y reorganización (**`DestinationSinkNode`**, **`FileRelocatorNode`**, **`SafeRecycleDeleteNode`**, **`OriginalFileActionNode`**) detectan el entorno virtual y redirigen automáticamente sus escrituras, copias, movimientos y borrados lógicos hacia el VFS sin arrojar errores de I/O ni ensuciar carpetas reales.
+2. **Explorador Visual VFS (`VirtualFileSystemExplorerWindow`)**:
+   - Tras completar una ejecución con datos virtuales, la barra superior muestra el botón reactivo **`🗂️ VFS (N)`** informando del total de archivos generados. También se accede permanentemente desde el Drawer lateral.
+   - **Vista Dividida en 3 Columnas**:
+     - *Árbol de Directorios*: Estructura jerárquica reactiva de carpetas creadas en memoria.
+     - *Tabla de Archivos*: Listado detallado con badges visuales de operación (`Guardado`, `Copiado`, `Movido`, `Renombrado con Conflicto`, `Reciclado`, `Eliminado`).
+     - *Inspector de Metadatos*: Panel derecho categorizado por dominios (Fotografía/EXIF, Música/Audio ID3, Cine/Vídeo, Documentos/Fiscal y Sumas Criptográficas SHA/MD5).
+   - **Herramientas de Exportación**:
+     - `📋 Copiar Árbol`: Genera un diagrama jerárquico ASCII formateado al portapapeles.
+     - `📂 Abrir en Explorador`: Materializa el estado del VFS en una carpeta temporal segura (`%TEMP%/FileFlow_VFS_Sandbox/...`) y la abre en el Explorador de archivos de Windows.
+
+### Diseñador Visual de Conjuntos de Datos Sintéticos (`SyntheticDataSetDesignerWindow`)
+Permite al usuario crear, editar, guardar y reutilizar bancos de pruebas personalizados con estructuras de carpetas a medida:
+- **Acceso Directo**:
+  1. Botón `🎨 Diseñar Conjuntos de Datos...` en el inspector del nodo `SyntheticDataSourceNode`.
+  2. Botón `📊 Diseñador...` en la barra de muestras del Estudio de Renombrado (`AdvancedRenamerEditorWindow`).
+  3. Opción `📊 Diseñador de Datos Sintéticos` en el Drawer lateral de la ventana principal.
+- **Catálogo de Datasets**:
+  - Buscador reactivo por nombre y categoría.
+  - Métricas instantáneas de elementos, carpetas y archivos comprimidos.
+  - Creación (`➕ Nuevo`), Duplicación (`📄 Duplicar`) y Eliminación (`🗑️ Eliminar`) con protección de los datasets base incorporados (`IsBuiltIn`).
+  - Persistencia thread-safe en `%AppData%/FileFlow/SyntheticDataSets/*.json`.
+- **Tres Modos de Edición Sincronizados**:
+  - **📋 Tabla Visual**: Edición de rutas relativas (`RelativePath`), tamaños en bytes, flags `Es Directorio` y `Es Comprimido`, y diccionario de metadatos.
+  - **🌲 Árbol Rápido (DSL)**: Editor textual con parser jerárquico que interpreta niveles de carpetas por sangría/tabulaciones, tamaños legibles y metadatos. Pulsa `🔄 Aplicar Cambios` para sincronizar.
+  - **📄 JSON Puro**: Edición masiva o importación/exportación de la estructura serializada.
+
+#### Sintaxis del Lenguaje de Árbol Rápido (DSL):
+```dsl
+# Declaración de estructura jerárquica con metadatos y comprimidos
+Fotos/
+    2026/
+        playa.jpg (3.5MB, Exif:CameraModel=Sony A7 IV, Exif:ISO=100)
+        vacaciones.zip (15MB) [archive: ruta.gpx (12KB); diario.txt (5KB)]
+Documentos/
+    Facturas/
+        Factura_001.pdf (250KB, Doc:Author=Contabilidad, FiscalYear=2026)
+Musica/
+    Daft Punk/
+        Discovery/
+            01 - One More Time.flac (35MB, Audio:Artist=Daft Punk, Audio:Track=01)
+```
+- **Carpetas**: Terminan en `/` o no tienen extensión.
+- **Tamaños**: Declarados entre paréntesis `(500B)`, `(15KB)`, `(3.5MB)`, `(1.2GB)`.
+- **Metadatos**: Declarados como pares `Clave=Valor` dentro del paréntesis: `(2MB, Audio:Artist=Queen)`.
+- **Contenidos de Archivos Comprimidos**: Declarados al final de la línea mediante `[archive: inner1.txt (500B); inner2.png (2MB)]`.
+
+### Simulación Híbrida de Archivos Comprimidos (ZIP, RAR, 7Z)
+- **Extracción Virtual Directa (VFS)**: Cuando un archivo simulado fluye hacia **`SmartUnpackNode`**, el nodo detecta que es virtual o contiene `Archive:Entries` y extrae directamente cada una de sus entradas internas en el `IVirtualFileSystemStore` recreando su jerarquía y asignando sus metadatos individuales, sin acceder al disco.
+- **Generación Real en Modo `PhysicalMock`**: Si `SyntheticDataSourceNode` se configura en modo físico, empaqueta automáticamente un archivo `.zip` real y ligero mediante `System.IO.Compression` con los ficheros simulados en su interior, permitiendo probar utilidades de descompresión físicas y herramientas externas.
+
 ---
 
 ## 4. Motor de Tokens y Variables Dinámicas
@@ -160,13 +218,13 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 📁 Categoría 1: FileSystem (14 Nodos)
+### 📁 Categoría 1: FileSystem (15 Nodos)
 
 1. **`FolderSourceNode`**: Inicia el pipeline escaneando directorios con filtros por extensión, recursividad y soporte de monitorización reactiva en tiempo real.
-2. **`DestinationSinkNode`**: Receptor final de archivos con estrategias de resolución de colisiones (`Overwrite`, `Skip`, `RenameIncremental`).
+2. **`DestinationSinkNode`**: Receptor final de archivos con estrategias de resolución de colisiones (`Overwrite`, `Skip`, `RenameIncremental`) y soporte no destructivo transparente para el VFS.
 3. **`AdvancedRenamerNode`**: Renombrado avanzado con plantillas dinámicas de tokens, sanitización de caracteres y previsualización.
-4. **`FileRelocatorNode`**: Mueve, copia o crea enlaces duros hacia rutas calculadas con validación opcional SHA-256.
-5. **`SafeRecycleDeleteNode`**: Eliminación segura enviando los archivos a la Papelera de reciclaje de Windows mediante `SHFileOperationW`.
+4. **`FileRelocatorNode`**: Mueve, copia o crea enlaces duros hacia rutas calculadas con validación opcional SHA-256 y redirección VFS en pruebas.
+5. **`SafeRecycleDeleteNode`**: Eliminación segura enviando los archivos a la Papelera de reciclaje de Windows mediante `SHFileOperationW` (o borrado lógico en VFS).
 6. **`OriginalFileActionNode`**: Controla el ciclo de vida del archivo original (`Keep`, `MoveToRecycleBin`, `MoveToQuarantine`).
 7. **`OperationReportNode`**: Genera informes interactivos multi-formato (`HTML`, `Markdown`, `Text`, `JSON`, `CSV`) con trazabilidad completa.
 8. **`DirectoryInspectorNode`**: Clasifica carpetas según su contenido estructural (comprimido único vs. archivos mixtos).
@@ -176,6 +234,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 12. **`LogOutputNode`**: Emite trazas enriquecidas y personalizadas a la consola de ejecución.
 13. **`FileAttributeNode`**: Modifica atributos de archivo del sistema (Lectura, Oculto, Temporal, Timestamps).
 14. **`PathSplitterNode`**: Descompone la ruta en partes individuales inyectándolas como variables independientes.
+15. **`SyntheticDataSourceNode`**: Ingesta de prueba y banco de datos sintéticos hiperrealistas. Permite simular colecciones completas (Películas, Series, Música con ID3, Fotos con EXIF, Documentos/Facturas o Datasets personalizados del usuario) en memoria (`Virtual` sobre VFS) o en disco temporal (`PhysicalMock`), soportando jerarquías de carpetas intermedias (`EmitDirectories`), pausas regulables de emisión (`EmissionDelayMs`) y simulación híbrida de archivos comprimidos con desempaquetado virtual inmediato en `SmartUnpackNode`. Dispone de un botón de acción personalizada para invocar el **Diseñador Visual de Conjuntos de Datos Sintéticos**.
 
 ---
 

@@ -50,6 +50,14 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     private bool _isWatching;
 
     [ObservableProperty]
+    private bool _hasVirtualFiles;
+
+    [ObservableProperty]
+    private int _virtualFilesCount;
+
+    private FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? _lastVirtualFileSystem;
+
+    [ObservableProperty]
     private bool _isMenuOpen;
 
     [ObservableProperty]
@@ -341,6 +349,14 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
             else if (result.Succeeded)
             {
+                if (result.VirtualFileSystem != null && result.VirtualFileSystem.TotalFiles > 0)
+                {
+                    _lastVirtualFileSystem = result.VirtualFileSystem;
+                    HasVirtualFiles = true;
+                    VirtualFilesCount = result.VirtualFileSystem.TotalFiles;
+                    _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_VfsExecutionFinished", "[VFS] Simulación completada en Sistema de Archivos Virtual: {0} archivos generados.", VirtualFilesCount));
+                }
+
                 if (IsDryRun)
                 {
                     _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("Log_DryRunFinished", "[Dry Run] Simulación finalizada. {0} acciones planificadas registradas.", result.PlannedActionsCount));
@@ -464,6 +480,36 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         _editorViewModel.ClearGraph();
         WorkflowName = "Flujo de Procesamiento de Archivos";
         _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_NewWorkflowCreated", "Nuevo flujo creado."));
+    }
+
+    [RelayCommand]
+    public void OpenVirtualFileSystemExplorer()
+    {
+        var store = _lastVirtualFileSystem ?? _executionCoordinator.LastVirtualFileSystem;
+        if (store != null)
+        {
+            var win = new Views.Components.VirtualFileSystemExplorerWindow(store)
+            {
+                Owner = Application.Current?.MainWindow
+            };
+            win.Show();
+        }
+        else
+        {
+            _dialogService.ShowInformation(
+                _loc.GetString("VfsExplorer_NoData", "No hay datos de archivos virtuales en la última ejecución."),
+                _loc.GetString("VfsExplorer_Title", "Explorador de Archivos Virtual"));
+        }
+    }
+
+    [RelayCommand]
+    public void OpenSyntheticDataSetDesigner()
+    {
+        var win = new FileFlow.Plugin.FileSystem.UI.Views.SyntheticDataSetDesignerWindow
+        {
+            Owner = Application.Current?.MainWindow
+        };
+        win.ShowDialog();
     }
 
     [RelayCommand]

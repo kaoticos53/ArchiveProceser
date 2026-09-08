@@ -1,72 +1,24 @@
 using System.Diagnostics;
-using System.IO;
+using FileFlow.Core.Platform;
 
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Adaptador de infraestructura para <see cref="IProcessLauncherService"/> utilizando <see cref="Process"/>.
+/// Adaptador de infraestructura para <see cref="IProcessLauncherService"/> utilizando <see cref="OsPlatformServiceFactory"/>.
 /// </summary>
 public class ProcessLauncherService : IProcessLauncherService
 {
     private static readonly Lazy<ProcessLauncherService> _instance = new(() => new ProcessLauncherService());
     public static ProcessLauncherService Instance => _instance.Value;
 
-    public bool OpenUrl(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url)) return false;
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    public bool OpenUrl(string url) =>
+        OsPlatformServiceFactory.Instance.OpenUrl(url);
 
-    public bool OpenFolder(string folderPath)
-    {
-        if (string.IsNullOrWhiteSpace(folderPath)) return false;
-        try
-        {
-            string expanded = Environment.ExpandEnvironmentVariables(folderPath);
-            if (!Directory.Exists(expanded))
-            {
-                Directory.CreateDirectory(expanded);
-            }
+    public bool OpenFolder(string folderPath) =>
+        OsPlatformServiceFactory.Instance.OpenFolderInFileManager(folderPath);
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = expanded,
-                UseShellExecute = true,
-                Verb = "open"
-            });
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    public bool OpenFileInExplorer(string filePath)
-    {
-        if (string.IsNullOrWhiteSpace(filePath)) return false;
-        try
-        {
-            Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    public bool OpenFileInExplorer(string filePath) =>
+        OsPlatformServiceFactory.Instance.OpenFileInFileManager(filePath);
 
     public bool StartProcess(string fileName, string? arguments = null)
     {

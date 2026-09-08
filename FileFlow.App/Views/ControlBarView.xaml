@@ -47,6 +47,24 @@
                               Margin="0,0,8,0" 
                               ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_DryRunToolTip]}" />
 
+                <!-- VFS Explorer Button (Visible when VFS results exist) -->
+                <Button Command="{Binding OpenVirtualFileSystemExplorerCommand}"
+                        Padding="8,5"
+                        Margin="0,0,8,0"
+                        Visibility="{Binding HasVirtualFiles, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ControlBar_VfsToolTip], FallbackValue='Abrir el Explorador de Archivos Virtuales generado en la prueba'}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                            <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🗂️" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding VirtualFilesCount, StringFormat='VFS ({0})'}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <!-- Watch Mode Button -->
                 <Button Command="{Binding ToggleWatchModeCommand}" 
                         Padding="8,5" 

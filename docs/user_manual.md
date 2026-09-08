@@ -20,11 +20,14 @@
    - [Continuous Real-time Watchdog Mode](#continuous-real-time-watchdog-mode)
    - [Transactional LIFO Rollback System](#transactional-lifo-rollback-system)
    - [Interactive Debugging with Breakpoints](#interactive-debugging-with-breakpoints)
+   - [Virtual File System (VFS) & Non-Destructive Test Bench](#virtual-file-system-vfs--non-destructive-test-bench)
+   - [Synthetic Data Set Designer](#synthetic-data-set-designer-syntheticdatasetdesignerwindow)
+   - [Hybrid Compressed Archive Simulation](#hybrid-compressed-archive-simulation-zip-rar-7z)
 4. [Token & Dynamic Template Engine](#4-token--dynamic-template-engine)
    - [Syntax & Token Domains](#syntax--token-domains)
    - [Comprehensive Token Reference](#comprehensive-token-reference)
-5. [Complete Node Catalog (57 DAG Nodes)](#5-complete-node-catalog-57-dag-nodes)
-   - [📁 Category 1: FileSystem (Disk I/O & Lifecycle)](#-category-1-filesystem-14-nodes)
+5. [Complete Node Catalog (58 DAG Nodes)](#5-complete-node-catalog-58-dag-nodes)
+   - [📁 Category 1: FileSystem (Disk I/O & Lifecycle)](#-category-1-filesystem-15-nodes)
    - [🗜️ Category 2: Archives (Compression & Extraction)](#️-category-2-archives-3-nodes)
    - [🖼️ Category 3: Images (Graphic Processing & EXIF)](#️-category-3-images-4-nodes)
    - [🌐 Category 4: Network & Remote Storage (Multi-Protocol Hubs)](#-category-4-network--remote-storage-2-unified-nodes)
@@ -122,6 +125,61 @@ If you need to revert changes:
 - Execution halts when an item reaches a breakpoint.
 - Use **"Step Into (F10)"** to advance node by node while observing live metadata diffs in the inspector.
 
+### Virtual File System (VFS) & Non-Destructive Test Bench
+To design, validate, and debug complex pipelines without manipulating real disks or endangering production files:
+1. **Automated Zero-Config Activation**:
+   - Adding a **`SyntheticDataSourceNode`** or tagging items as virtual (`IsVirtual = true`) causes the DAG engine (`WorkflowExecutor`) to transparently instantiate an in-memory Virtual File System store (`IVirtualFileSystemStore`).
+   - File sink and relocation nodes (**`DestinationSinkNode`**, **`FileRelocatorNode`**, **`SafeRecycleDeleteNode`**, **`OriginalFileActionNode`**) automatically detect the virtual execution context and redirect their writes, copies, moves, and logical deletions to the VFS store without I/O errors or cluttering local storage.
+2. **Visual VFS Explorer (`VirtualFileSystemExplorerWindow`)**:
+   - Once a run completes with virtual items, the control bar displays a reactive badge button **`🗂️ VFS (N)`** indicating total virtual files generated. It is also permanently accessible via the side navigation Drawer.
+   - **3-Pane Split View**:
+     - *Directory Tree*: Interactive recursive folder hierarchy created in memory.
+     - *File Table*: Detailed view with operation badges (`Saved`, `Copied`, `Moved`, `ConflictRenamed`, `Recycled`, `Deleted`).
+     - *Metadata Inspector*: Right sidebar categorized by domain (Photo/EXIF, Music/Audio ID3, Video, Documents/Fiscal, and Cryptographic SHA/MD5 hashes).
+   - **Export & Diagnostics Tools**:
+     - `📋 Copy ASCII Tree`: Copies a formatted ASCII tree diagram to the clipboard.
+     - `📂 Open in Explorer`: Safely exports the in-memory VFS hierarchy into a temporary sandbox folder (`%TEMP%/FileFlow_VFS_Sandbox/...`) and opens it directly in Windows File Explorer.
+
+### Synthetic Data Set Designer (`SyntheticDataSetDesignerWindow`)
+Allows users to create, modify, persist, and reuse custom test datasets with customized directory trees:
+- **Direct Entry Points**:
+  1. `🎨 Diseñar Conjuntos de Datos...` custom action button in `SyntheticDataSourceNode` inspector.
+  2. `📊 Diseñador...` button on the sample toolbar in `AdvancedRenamerEditorWindow`.
+  3. `📊 Diseñador de Datos Sintéticos` menu item in the main window Drawer.
+- **Dataset Catalog & Sidebar**:
+  - Live search filter by name and category.
+  - Counters showing item count, directory count, and simulated archives.
+  - Create (`➕ New`), Duplicate (`📄 Duplicate`), and Delete (`🗑️ Delete`) actions with protection for built-in system datasets (`IsBuiltIn`).
+  - Thread-safe persistence in `%AppData%/FileFlow/SyntheticDataSets/*.json`.
+- **Three Synchronized Editing Modes**:
+  - **📋 Visual Table**: Cell-by-cell editing of relative paths (`RelativePath`), byte sizes, `Is Directory` and `Is Archive` flags, and metadata dictionaries.
+  - **🌲 Fast Tree (DSL)**: Lightning-fast indented text editor with a bidirectional hierarchical parser. Press `🔄 Apply Changes` to sync with the visual table.
+  - **📄 Raw JSON**: Inspect, format, copy, or paste raw JSON dataset definitions.
+
+#### Fast Tree DSL Syntax:
+```dsl
+# Hierarchical tree definition with metadata and inner archive entries
+Photos/
+    2026/
+        beach.jpg (3.5MB, Exif:CameraModel=Sony A7 IV, Exif:ISO=100)
+        trip.zip (15MB) [archive: track.gpx (12KB); notes.txt (5KB)]
+Documents/
+    Invoices/
+        Invoice_001.pdf (250KB, Doc:Author=Accounting, FiscalYear=2026)
+Music/
+    Daft Punk/
+        Discovery/
+            01 - One More Time.flac (35MB, Audio:Artist=Daft Punk, Audio:Track=01)
+```
+- **Directories**: End with `/` or omit file extensions.
+- **Human-readable Sizes**: Declared inside parentheses `(500B)`, `(15KB)`, `(3.5MB)`, `(1.2GB)`.
+- **Inline Metadata**: Key-value pairs inside parentheses: `(2MB, Audio:Artist=Queen)`.
+- **Inner Archive Entries**: Declared at the end of the line using `[archive: inner1.txt (500B); inner2.png (2MB)]`.
+
+### Hybrid Compressed Archive Simulation (ZIP, RAR, 7Z)
+- **Direct Virtual Extraction (VFS)**: When a simulated archive item flows into **`SmartUnpackNode`**, the node recognizes that the item is virtual or contains `Archive:Entries` metadata and unpacks its internal entries directly into `IVirtualFileSystemStore` preserving subfolder hierarchies and individual metadata tags, without physical disk reading.
+- **Real File Generation in `PhysicalMock` Mode**: When `SyntheticDataSourceNode` runs in physical mode, it automatically generates a real lightweight `.zip` archive via `System.IO.Compression.ZipArchive` containing the simulated inner files, allowing testing of external CLI unpackers and third-party tools against physical mock data.
+
 ---
 
 ## 4. Token & Dynamic Template Engine
@@ -155,17 +213,17 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-## 5. Complete Node Catalog (57 DAG Nodes)
+## 5. Complete Node Catalog (58 DAG Nodes)
 
 ---
 
-### 📁 Category 1: FileSystem (14 Nodes)
+### 📁 Category 1: FileSystem (15 Nodes)
 
 1. **`FolderSourceNode`**: Discovers and emits files with extension filters, recursive scanning, and real-time folder watching.
-2. **`DestinationSinkNode`**: Consolidates processed files with collision strategies (`Overwrite`, `Skip`, `RenameIncremental`).
+2. **`DestinationSinkNode`**: Consolidates processed files with collision strategies (`Overwrite`, `Skip`, `RenameIncremental`) and transparent non-destructive VFS support.
 3. **`AdvancedRenamerNode`**: Batch file renaming with token templates, character sanitization, and live preview.
-4. **`FileRelocatorNode`**: Moves, copies, or hard-links files to calculated destinations with optional SHA-256 validation.
-5. **`SafeRecycleDeleteNode`**: Safe recycling by sending files to the Windows Recycle Bin (`SHFileOperationW`).
+4. **`FileRelocatorNode`**: Moves, copies, or hard-links files to calculated destinations with optional SHA-256 validation and VFS redirection during testing.
+5. **`SafeRecycleDeleteNode`**: Safe recycling by sending files to the Windows Recycle Bin (`SHFileOperationW`) or performing logical deletion in VFS.
 6. **`OriginalFileActionNode`**: Centralized lifecycle management for source files (`Keep`, `MoveToRecycleBin`, `MoveToQuarantine`).
 7. **`OperationReportNode`**: Generates interactive reports in `HTML`, `Markdown`, `Text`, `JSON`, or `CSV` format with full audit history.
 8. **`DirectoryInspectorNode`**: Classifies folder structure (single archive vs. mixed contents).
@@ -175,6 +233,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 12. **`LogOutputNode`**: Emits custom formatted diagnostic log messages to the console.
 13. **`FileAttributeNode`**: Modifies file system attributes (ReadOnly, Hidden, Archive, Timestamps).
 14. **`PathSplitterNode`**: Decomposes paths into discrete token variables.
+15. **`SyntheticDataSourceNode`**: Hyper-realistic synthetic test bench and dataset generator. Simulates collections (Movies, TV Series, Music with ID3, Photos with EXIF, Documents/Invoices, or custom user datasets) in memory (`Virtual` mode over VFS) or in a temporary folder (`PhysicalMock`). Supports hierarchical folder emission (`EmitDirectories`), configurable emission delays (`EmissionDelayMs`), and hybrid compressed archive simulation with instant virtual unpacking in `SmartUnpackNode`. Features a custom action button to open the **Synthetic Data Set Designer**.
 
 ---
 

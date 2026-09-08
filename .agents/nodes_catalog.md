@@ -1,10 +1,10 @@
 # Catálogo Completo de Nodos y Especificaciones - FileFlow Studio
 
-Este catálogo contiene la especificación técnica completa de los **57 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
+Este catálogo contiene la especificación técnica completa de los **58 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
 
 ---
 
-## 1. Módulo: FileFlow.Plugin.FileSystem (12 Nodos)
+## 1. Módulo: FileFlow.Plugin.FileSystem (13 Nodos)
 
 ### 1. FolderSourceNode
 - **Tipo:** Trigger / Input (Ingesta)
@@ -88,6 +88,21 @@ Este catálogo contiene la especificación técnica completa de los **57 nodos**
 - **Salidas:** `Out` (`FileItemContext`)
 - **Parámetros:** `LogLevel` (`Debug`, `Information`, `Warning`, `Error`), `MessageTemplate` (string)
 - **Función:** Emite mensajes de log estructurados con resolución de variables en la consola de telemetría.
+
+### 13. SyntheticDataSourceNode
+- **Tipo:** Trigger / Input / Test Bench (Ingesta Sintética de Pruebas)
+- **Salidas:** `Out` (`FileItemContext`)
+- **Parámetros:**
+  - `Category` (`Todas`, `Películas`, `Series`, `Cómics y Manga`, `Música`, `Fotos`, `Documentos`, `Personalizada`): Categoría de muestras predefinidas o conjunto a emitir.
+  - `EmissionMode` (`Virtual`, `PhysicalMock`): En `Virtual`, opera en memoria sin tocar disco (`IsVirtual = true`), interactuando con el Sistema de Archivos Virtual (VFS); en `PhysicalMock`, materializa archivos dummy reales (incluyendo archivos `.zip` funcionales) en una carpeta temporal.
+  - `MaxItems` (int): Límite máximo de elementos a emitir (0 = sin límite).
+  - `EmissionDelayMs` (int): Pausa en milisegundos entre emisiones para simular cadencia en tiempo real y probar telemetría.
+  - `EmitDirectories` (bool): Si es `true`, emite las carpetas jerárquicas intermedias como elementos individuales `IsDirectory = true` antes de emitir los archivos contenidos.
+  - `CustomDataSetName` (string): Nombre del dataset personalizado guardado en `%AppData%/FileFlow/SyntheticDataSets/` a emitir.
+  - `CustomItems` (string): Lista textual libre o fragmento de árbol rápido DSL con nombres y rutas de prueba personalizadas.
+  - `PhysicalOutputDirectory` (string): Carpeta de destino temporal para el modo `PhysicalMock`.
+- **Acción Custom:** `🎨 Diseñar Conjuntos de Datos...` (Abre la ventana modal `SyntheticDataSetDesignerWindow` para creación visual, edición por árbol DSL y persistencia de datasets).
+- **Función:** Generador y banco de pruebas configurable para desarrollo y validación segura de flujos DAG sin requerir archivos reales de disco. Soporta estructuras jerárquicas, metadatos exhaustivos por categoría (ID3, EXIF, Documentos) y simulación híbrida de archivos comprimidos emitiendo `Archive:Entries` para descompresión virtual directa en VFS.
 
 ---
 

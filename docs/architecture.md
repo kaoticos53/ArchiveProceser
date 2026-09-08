@@ -114,15 +114,18 @@ sequenceDiagram
 - **Propósito**: Define los contratos de interfaces, modelos de dominio fundamentales y utilidades compartidas. Cero dependencias externas pesadas.
 - **Componentes Clave**:
   - `IFlowNode`: Contrato unificado que deben implementar todos los nodos ejecutables (`ExecuteAsync`, `ValidateConfiguration`, `Category`, `Inputs`, `Outputs`).
-  - `FileItemContext`: Encapsula el ciclo de vida de un archivo en el grafo (`Id`, `OriginalPath`, `CurrentPath`, `Size`, `Variables`, `Metadata`). Incluye memoización zero-alloc para `IdString`, `ShortIdString` y resolución reactiva de `FileName`.
-  - `IFlowExecutionContext`: Proporciona al nodo acceso al token de cancelación (`CancellationToken`), resolución de variables, almacenamiento de estado en memoria compartida, emisión de elementos y telemetría estructurada (`context.Log`).
+  - `FileItemContext`: Encapsula el ciclo de vida de un archivo en el grafo (`Id`, `OriginalPath`, `CurrentPath`, `Size`, `Variables`, `Metadata`, `IsVirtual`). Incluye memoización zero-alloc para `IdString`, `ShortIdString` y resolución reactiva de `FileName`.
+  - `IFlowExecutionContext`: Proporciona al nodo acceso al token de cancelación (`CancellationToken`), resolución de variables, almacenamiento de estado en memoria compartida, emisión de elementos, acceso al sistema de archivos virtual (`VirtualFileSystem`) y telemetría estructurada (`context.Log`).
+  - `IVirtualFileSystemStore` & `VirtualFileEntry`: Contrato canónico y modelo para operaciones de archivo y directorios en memoria durante pruebas sin I/O físico.
+  - `SyntheticDataSet`, `SyntheticFileDefinition`, `SyntheticArchiveEntryDefinition`: Modelos de definición de conjuntos sintéticos, estructuras jerárquicas y entradas simuladas de archivos comprimidos.
   - `StructuredLogRecord`: Registro inmutable con metadatos de ejecución, timestamps precisos, identificador de nodo, `ItemId`, `DurationMs`, tamaño y payload `DetailsJson`.
   - `VariableTemplateResolver`: Motor de interpolación de cadenas que sustituye sintaxis `{Ext}`, `{FileName}`, `{Date:yyyy-MM-dd}`, `{SizeMB}`, `{Hash:sha256}` y variables inyectadas.
 
 ### 4.2. `FileFlow.Core` (Capa de Orquestación y Telemetría)
 - **Propósito**: Ejecución determinista del DAG, resolución de dependencias topológicas, paralelismo adaptativo y almacenamiento analítico de logs.
 - **Componentes Clave**:
-  - `WorkflowExecutor`: Motor de ejecución asíncrono no bloqueante con soporte para sub-grafos, paralelismo multinúcleo configurable, puntos de interrupción (*Breakpoints*) y silenciado selectivo de logs.
+  - `WorkflowExecutor`: Motor de ejecución asíncrono no bloqueante con soporte para sub-grafos, paralelismo multinúcleo configurable, puntos de interrupción (*Breakpoints*), activación automática del store VFS ante flujos virtuales y silenciado selectivo de logs.
+  - `VirtualFileSystemStore`: Almacén VFS thread-safe con `System.Threading.Lock` de .NET 9, resolución incremental de colisiones, generador de árbol ASCII y exportador sandbox a disco.
   - `SqliteLogStore`: Motor analítico y almacén de logs estructurados en memoria de ultra-alto rendimiento basado en SQLite (`:memory:`). Emplea canal no bloqueante `Channel<StructuredLogRecord>`, inserción transaccional por lotes en una conexión persistente `_keepAliveConnection` protegida por `System.Threading.Lock`, alcanzando más de 82.000 logs/segundo.
   - `PluginLoader`: Cargador dinámico de extensiones basado en `AssemblyLoadContext` aislado, capaz de descubrir e instanciar nodos desde ensamblados externos.
   - `FolderWatcherService`: Servicio de monitorización reactiva de directorios basado en `FileSystemWatcher` con amortiguación anti-rebote (*debounce*) y control de bloqueo de lectura.
@@ -131,7 +134,7 @@ sequenceDiagram
 
 ### 4.3. `FileFlow.Plugin.*` (Capa de Plugins y Nodos de Producción)
 Colección modular de 24 nodos de procesamiento organizados por dominio:
-1. **`FileFlow.Plugin.FileSystem` (10 Nodos)**: `FolderSourceNode`, `DestinationSinkNode`, `FileRelocatorNode`, `AdvancedRenamerNode`, `DocumentProcessorNode`, `DirectoryInspectorNode`, `EmptyDirectoryCleanerNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`, `VariableInjectorNode`.
+1. **`FileFlow.Plugin.FileSystem` (13 Nodos)**: `FolderSourceNode`, `SyntheticDataSourceNode` (con diseñador visual modal, árbol DSL y simulación híbrida de comprimidos), `DestinationSinkNode`, `FileRelocatorNode`, `AdvancedRenamerNode`, `DocumentProcessorNode`, `DirectoryInspectorNode`, `EmptyDirectoryCleanerNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`, `VariableInjectorNode`, `LogOutputNode`, `OperationReportNode`.
 2. **`FileFlow.Plugin.Archives` (3 Nodos)**: `SmartUnpackNode` (descompresión inteligente auto-aplanado), `ArchiveCompressorNode` (Zip, Tar, GZip, 7z, BZip2 con ratios de compresión), `ArchiveFilterNode` (detección de partes .r00, .part1).
 3. **`FileFlow.Plugin.Images` (2 Nodos)**: `ImageOptimizerNode` (redimensionamiento, calidad WebP/JPEG/PNG y métricas de ahorro %), `ExifMetadataNode` (extracción estructurada de metadatos de cámara y geolocalización).
 4. **`FileFlow.Plugin.Integrations` (3 Nodos)**: `CliExecutionNode` (subprocesos externos asíncronos), `WebhookNotificationNode` (notificaciones HTTP POST/PUT con payloads JSON dinámicos), `MediaTranscoderNode` (transcodificación de audio/video con FFmpeg y telemetría periódica).

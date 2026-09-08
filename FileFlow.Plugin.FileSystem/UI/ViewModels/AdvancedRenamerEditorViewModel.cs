@@ -157,6 +157,19 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenDataSetDesigner()
+    {
+        var window = new Views.SyntheticDataSetDesignerWindow();
+        if (Application.Current?.MainWindow != null)
+        {
+            window.Owner = Application.Current.MainWindow;
+        }
+        window.ShowDialog();
+        LoadSampleCategories();
+        GenerateLivePreview();
+    }
+
+    [RelayCommand]
     public void AddStep(RenameMethodType methodType)
     {
         var newStep = new RenameMethodStep

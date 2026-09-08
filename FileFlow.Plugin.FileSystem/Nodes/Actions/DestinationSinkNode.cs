@@ -1,5 +1,7 @@
+using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.FileSystem;
 
@@ -46,8 +48,21 @@ public class DestinationSinkNode : IFlowNode
         string destRoot = ParameterHelper.ResolveOutputPath(destPattern, item);
         string strategy = Parameters.TryGetValue("ConflictStrategy", out var sVal) ? ParameterHelper.GetString(sVal, "RenameIncremental") : "RenameIncremental";
 
+        StorageCollisionStrategy collisionStrategy = strategy.ToUpperInvariant() switch
+        {
+            "SKIP" => StorageCollisionStrategy.Skip,
+            "THROWERROR" or "FAIL" => StorageCollisionStrategy.ThrowError,
+            "OVERWRITE" => StorageCollisionStrategy.Overwrite,
+            _ => StorageCollisionStrategy.RenameIncremental
+        };
+
+        var storage = context.GetStorage();
         string sourcePath = item.GetExistingPhysicalPath();
-        bool hasPhysicalFile = !string.IsNullOrWhiteSpace(sourcePath) && (File.Exists(sourcePath) || Directory.Exists(sourcePath));
+        if (string.IsNullOrWhiteSpace(sourcePath)) sourcePath = item.CurrentPath;
+
+        bool hasFile = await storage.FileExistsAsync(sourcePath, cancellationToken).ConfigureAwait(false)
+            || await storage.DirectoryExistsAsync(sourcePath, cancellationToken).ConfigureAwait(false);
+
         bool hasVirtualContent = item.Metadata.TryGetValue("VirtualContent", out var vc) && vc != null;
         if (!hasVirtualContent && item.Metadata.TryGetValue("ReportContent", out var rc) && rc != null)
         {
@@ -55,9 +70,7 @@ public class DestinationSinkNode : IFlowNode
             hasVirtualContent = true;
         }
 
-        bool isDryRun = context.IsDryRun;
-
-        if (!hasPhysicalFile && !hasVirtualContent)
+        if (!hasFile && !hasVirtualContent && !item.IsVirtual && !context.IsVirtualFileSystemEnabled)
         {
             context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_NoFileFound", "[Destination Sink] Input file not found: '{0}'", item.CurrentPath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -66,91 +79,87 @@ public class DestinationSinkNode : IFlowNode
 
         try
         {
-            if (!Directory.Exists(destRoot) && !isDryRun)
-            {
-                Directory.CreateDirectory(destRoot);
-            }
-
             string fileName = Path.GetFileName(item.CurrentPath);
             string targetPath = Path.Combine(destRoot, fileName);
 
-            if (File.Exists(targetPath))
+            StorageOperationResult result;
+            if (hasVirtualContent && !hasFile)
             {
-                switch (strategy.ToUpperInvariant())
+                if (vc is byte[] bytes)
                 {
-                    case "SKIP":
-                        context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_SkipCollision", "[Destination Sink] Skipped due to existing collision (Strategy: Skip): '{0}'", targetPath), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds);
-                        item.AddLog($"DestinationSinkNode skipped due to conflict: {targetPath}");
-                        await context.EmitAsync("Done", item);
-                        return;
-
-                    case "RENAMEINCREMENTAL":
-                        string originalTarget = targetPath;
-                        targetPath = GetIncrementalFileName(destRoot, fileName);
-                        context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_IncrementalRename", "[Destination Sink] Incremental rename to avoid collision: '{0}'", Path.GetFileName(targetPath)), LogLevel.Debug, item);
-                        break;
-
-                    case "OVERWRITE":
-                    default:
-                        context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_OverwriteExisting", "[Destination Sink] Overwriting existing target file: '{0}'", targetPath), LogLevel.Debug, item);
-                        break;
+                    result = await storage.WriteAllBytesAsync(targetPath, bytes, collisionStrategy, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    result = await storage.WriteAllTextAsync(targetPath, vc?.ToString() ?? string.Empty, collisionStrategy, cancellationToken).ConfigureAwait(false);
                 }
             }
-
-            if (!isDryRun)
+            else
             {
-                if (hasPhysicalFile)
-                {
-                    const long asyncCopyThreshold = 256 * 1024; // 256 KB
-                    var fileInfo = new FileInfo(sourcePath);
-                    if (fileInfo.Exists && fileInfo.Length > asyncCopyThreshold)
-                    {
-                        var readOptions = new FileStreamOptions
-                        {
-                            Mode = FileMode.Open,
-                            Access = FileAccess.Read,
-                            Share = FileShare.Read,
-                            Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
-                            BufferSize = 131072
-                        };
-                        var writeOptions = new FileStreamOptions
-                        {
-                            Mode = FileMode.Create,
-                            Access = FileAccess.Write,
-                            Share = FileShare.None,
-                            Options = FileOptions.Asynchronous,
-                            BufferSize = 131072
-                        };
-                        await using var sourceStream = new FileStream(sourcePath, readOptions);
-                        await using var destStream = new FileStream(targetPath, writeOptions);
-                        await sourceStream.CopyToAsync(destStream, 131072, cancellationToken);
-                    }
-                    else
-                    {
-                        File.Copy(sourcePath, targetPath, overwrite: true);
-                    }
-                }
-                else if (hasVirtualContent)
-                {
-                    if (vc is byte[] bytes)
-                    {
-                        await File.WriteAllBytesAsync(targetPath, bytes, cancellationToken);
-                    }
-                    else
-                    {
-                        await File.WriteAllTextAsync(targetPath, vc?.ToString() ?? string.Empty, cancellationToken);
-                    }
-                }
-
-                item.PhysicalPath = targetPath;
-                item.CurrentPath = targetPath;
+                result = await storage.CopyAsync(sourcePath, targetPath, collisionStrategy, cancellationToken).ConfigureAwait(false);
             }
 
             sw.Stop();
-            string detailsJson = $"{{\"destinationRoot\": \"{destRoot.Replace("\\", "\\\\")}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"strategy\": \"{strategy}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}, \"sizeBytes\": {item.FileSizeBytes}}}";
-            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_SavedSuccess", "[Destination Sink] Successfully saved to '{0}' (Strategy: {1}, DryRun={2})", targetPath, strategy, isDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
-            item.AddLog($"DestinationSinkNode output saved to {targetPath}");
+            if (result.WasSkipped)
+            {
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_SkipCollision", "[Destination Sink] Skipped due to existing collision (Strategy: Skip): '{0}'", targetPath), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds);
+                item.AddLog($"DestinationSinkNode skipped due to conflict: {targetPath}");
+                await context.EmitAsync("Done", item);
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                throw new IOException(result.ErrorMessage ?? $"Failed to save file to '{targetPath}'.");
+            }
+
+            if (result.WasCollision)
+            {
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_IncrementalRename", "[Destination Sink] Incremental rename to avoid collision: '{0}'", Path.GetFileName(result.FinalPath)), LogLevel.Debug, item);
+            }
+
+            // Enlazar entrada de origen y destino si VFS está activo
+            if (context.VirtualFileSystem != null)
+            {
+                var entry = new FileFlow.Sdk.VirtualFileSystem.VirtualFileEntry(
+                    VirtualPath: result.FinalPath,
+                    OriginalPath: item.OriginalPath,
+                    FileName: Path.GetFileName(result.FinalPath),
+                    Extension: Path.GetExtension(result.FinalPath),
+                    DirectoryPath: destRoot,
+                    FileSizeBytes: item.FileSizeBytes > 0 ? item.FileSizeBytes : result.BytesProcessed,
+                    OperationType: result.WasCollision ? FileFlow.Sdk.VirtualFileSystem.VirtualOperationType.ConflictRenamed : FileFlow.Sdk.VirtualFileSystem.VirtualOperationType.Saved,
+                    Role: FileFlow.Sdk.VirtualFileSystem.VirtualFileRole.Destination,
+                    RelatedSourcePath: item.OriginalPath,
+                    SourceNodeName: Name,
+                    SourceNodeId: Id,
+                    Metadata: new Dictionary<string, object?>(item.Metadata, StringComparer.OrdinalIgnoreCase),
+                    ExecutionLog: [$"Saved to destination folder: {result.FinalPath}"],
+                    TimestampUtc: DateTime.UtcNow
+                );
+                context.VirtualFileSystem.AddOrUpdateFile(entry);
+
+                if (!string.IsNullOrWhiteSpace(item.OriginalPath))
+                {
+                    var sourceEntry = context.VirtualFileSystem.GetFile(item.OriginalPath);
+                    if (sourceEntry != null && string.IsNullOrEmpty(sourceEntry.DestinationPath))
+                    {
+                        context.VirtualFileSystem.AddOrUpdateFile(sourceEntry with
+                        {
+                            DestinationPath = result.FinalPath
+                        });
+                    }
+                }
+            }
+
+            item.PhysicalPath = result.FinalPath;
+            item.CurrentPath = result.FinalPath;
+
+            string normalDetailsJson = $"{{\"destinationRoot\": \"{destRoot.Replace("\\", "\\\\")}\", \"targetPath\": \"{result.FinalPath.Replace("\\", "\\\\")}\", \"strategy\": \"{strategy}\", \"isDryRun\": {context.IsDryRun.ToString().ToLowerInvariant()}, \"sizeBytes\": {item.FileSizeBytes}}}";
+            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_SavedSuccess", "[Destination Sink] Successfully saved to '{0}' (Strategy: {1}, DryRun={2})", result.FinalPath, strategy, context.IsDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: normalDetailsJson);
+
+            item.AddLog($"DestinationSinkNode output saved to {result.FinalPath}");
             await context.EmitAsync("Done", item);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -161,21 +170,5 @@ public class DestinationSinkNode : IFlowNode
             item.AddLog($"DestinationSinkNode failed: {ex.Message}");
             await context.EmitAsync("Error", item);
         }
-    }
-
-    private static string GetIncrementalFileName(string folder, string fileName)
-    {
-        string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-        string ext = Path.GetExtension(fileName);
-        int counter = 1;
-        string targetPath;
-
-        do
-        {
-            targetPath = Path.Combine(folder, $"{nameWithoutExt}_{counter}{ext}");
-            counter++;
-        } while (File.Exists(targetPath));
-
-        return targetPath;
     }
 }

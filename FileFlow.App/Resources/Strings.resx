@@ -996,4 +996,28 @@
   <data name="Version_SuperResolution_Desc" xml:space="preserve"><value>Image upscaled using neural network</value></data>
   <data name="Version_CustomExpressionToolTip" xml:space="preserve"><value>Write custom expression or insert variable</value></data>
   <data name="Version_BackToChipsToolTip" xml:space="preserve"><value>Switch back to chip selection</value></data>
+
+  <!-- Virtual File System Explorer -->
+  <data name="VfsExplorer_Title" xml:space="preserve"><value>Virtual File System Explorer (VFS)</value></data>
+  <data name="VfsExplorer_HeaderTitle" xml:space="preserve"><value>Virtual File System Explorer</value></data>
+  <data name="VfsExplorer_HeaderSubtitle" xml:space="preserve"><value>Inspection of virtual folder structures, metadata, and pipeline simulation results</value></data>
+  <data name="VfsExplorer_TreeCopied" xml:space="preserve"><value>ASCII tree structure successfully copied to clipboard.</value></data>
+  <data name="VfsExplorer_ConfirmClear" xml:space="preserve"><value>Are you sure you want to clear all virtual files registered in the VFS?</value></data>
+  <data name="VfsExplorer_AllDirectories" xml:space="preserve"><value>📁 (All Folders)</value></data>
+  <data name="VfsExplorer_NoData" xml:space="preserve"><value>No virtual file system data found in the last execution.</value></data>
+  <data name="VfsExplorer_SourceFolders" xml:space="preserve"><value>📥 Source Folders</value></data>
+  <data name="VfsExplorer_DestinationFolders" xml:space="preserve"><value>📤 Destination Folders</value></data>
+  <data name="VfsExplorer_IntermediateFolders" xml:space="preserve"><value>⚙️ Intermediate Files</value></data>
+  <data name="VfsExplorer_Role_All" xml:space="preserve"><value>All Roles</value></data>
+  <data name="VfsExplorer_Role_Source" xml:space="preserve"><value>📥 Source</value></data>
+  <data name="VfsExplorer_Role_Destination" xml:space="preserve"><value>📤 Destination</value></data>
+  <data name="VfsExplorer_Role_Intermediate" xml:space="preserve"><value>⚙️ Intermediate</value></data>
+  <data name="VfsExplorer_ColRole" xml:space="preserve"><value>Role</value></data>
+  <data name="VfsExplorer_ColLinkedPath" xml:space="preserve"><value>Linked Path</value></data>
+  <data name="VfsExplorer_KpiSource" xml:space="preserve"><value>📥 Sources</value></data>
+  <data name="VfsExplorer_KpiDestination" xml:space="preserve"><value>📤 Destinations</value></data>
+  <data name="ControlBar_VfsToolTip" xml:space="preserve"><value>Open the Virtual File System Explorer generated during simulation/tests</value></data>
+  <data name="Log_VfsExecutionFinished" xml:space="preserve"><value>[VFS] Simulation finished in Virtual File System: {0} files generated.</value></data>
+  <data name="Drawer_DataSetDesigner" xml:space="preserve"><value>Synthetic Datasets</value></data>
+  <data name="Drawer_DataSetDesignerToolTip" xml:space="preserve"><value>Open the Synthetic Data Sets Designer</value></data>
 </root>

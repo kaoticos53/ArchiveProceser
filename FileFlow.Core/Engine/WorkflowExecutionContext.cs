@@ -29,6 +29,29 @@ public class WorkflowExecutionContext : IFlowExecutionContext
 
     public bool IsDryRun => _executor.IsDryRun;
     public string TemporaryDirectory => !string.IsNullOrWhiteSpace(_executor.TemporaryDirectory) ? _executor.TemporaryDirectory : FileFlow.Sdk.Storage.AppPaths.DefaultTempDirectory;
+    public FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? VirtualFileSystem => _executor.VirtualFileSystem;
+    public bool IsVirtualFileSystemEnabled => _executor.IsVirtualFileSystemEnabled;
+
+    private FileFlow.Sdk.Storage.IStorageService? _storageService;
+    public FileFlow.Sdk.Storage.IStorageService Storage
+    {
+        get
+        {
+            if (_storageService != null) return _storageService;
+            if ((IsVirtualFileSystemEnabled || (CurrentItem != null && CurrentItem.IsVirtual)) && VirtualFileSystem != null)
+            {
+                _storageService = new FileFlow.Core.Storage.VirtualStorageService(VirtualFileSystem);
+            }
+            else
+            {
+                _storageService = new FileFlow.Core.Storage.PhysicalStorageService(Platform, IsDryRun, RegisterPlannedAction);
+            }
+            return _storageService;
+        }
+    }
+
+    public FileFlow.Sdk.Platform.IOsPlatformService Platform => FileFlow.Core.Platform.OsPlatformServiceFactory.Instance;
+    public FileFlow.Sdk.Services.IExternalToolsService Tools => FileFlow.Core.Services.ExternalToolsService.Instance;
 
     public async Task EmitAsync(string outputPortName, FileItemContext item)
     {

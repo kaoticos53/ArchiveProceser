@@ -496,8 +496,12 @@
                         <TextBlock Text="Categoría:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="12,0,4,0" VerticalAlignment="Center" />
                         <ComboBox ItemsSource="{Binding SampleCategories}" SelectedItem="{Binding SelectedSampleCategory, Mode=TwoWay}"
                                   Width="145" Height="26" VerticalAlignment="Center" FontSize="11" Padding="6,2" />
+                        <Button Command="{Binding OpenDataSetDesignerCommand}" Style="{DynamicResource SecondaryButton}"
+                                Padding="6,3" Margin="4,0,0,0" Height="26" ToolTip="Abrir el Diseñador Visual de Datasets Sintéticos...">
+                            <TextBlock Text="📊 Diseñador..." FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                        </Button>
 
-                        <TextBlock Text="{Binding PreviewSourceDescription}" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                        <TextBlock Text="{Binding PreviewSourceDescription}" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="220" />
                     </StackPanel>
 
                     <!-- Right: Quick Manual Sample Addition (Single or Bulk) -->

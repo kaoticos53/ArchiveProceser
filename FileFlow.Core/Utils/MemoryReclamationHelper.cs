@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using FileFlow.Core.Platform;
 
 namespace FileFlow.Core.Utils;
 
@@ -11,10 +11,6 @@ public static class MemoryReclamationHelper
 {
     private static readonly Lock _lock = new();
     private static readonly List<Action> _cleanupCallbacks = [];
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetProcessWorkingSetSize(nint hProcess, nint dwMinimumWorkingSetSize, nint dwMaximumWorkingSetSize);
 
     /// <summary>
     /// Registra una acción de limpieza personalizada (por ejemplo, purga de pools de buffers o motores de inferencia).
@@ -35,7 +31,7 @@ public static class MemoryReclamationHelper
     /// Ejecuta una liberación profunda de memoria en 3 fases:
     /// 1. Invocación de callbacks de limpieza registrados (pools de memoria, librerías gráficas, etc.).
     /// 2. Recolección de basura de Generación 2 con compactación forzada de montículo LOH.
-    /// 3. Recorte de páginas de memoria no utilizadas devolviendo el Working Set a Windows.
+    /// 3. Recorte de páginas de memoria no utilizadas devolviendo el Working Set al sistema operativo.
     /// </summary>
     public static void ReclaimMemory(bool trimWorkingSet = true)
     {
@@ -70,17 +66,16 @@ public static class MemoryReclamationHelper
             Debug.WriteLine($"[MemoryReclamationHelper] Error en recolección de GC: {ex.Message}");
         }
 
-        // Fase 3: Recorte de Working Set en Windows
-        if (trimWorkingSet && OperatingSystem.IsWindows())
+        // Fase 3: Recorte de Working Set mediante el servicio de plataforma
+        if (trimWorkingSet)
         {
             try
             {
-                using var currentProcess = Process.GetCurrentProcess();
-                SetProcessWorkingSetSize(currentProcess.Handle, -1, -1);
+                OsPlatformServiceFactory.Instance.TrimWorkingSet();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MemoryReclamationHelper] Error al recortar Working Set en Windows: {ex.Message}");
+                Debug.WriteLine($"[MemoryReclamationHelper] Error al recortar Working Set: {ex.Message}");
             }
         }
     }

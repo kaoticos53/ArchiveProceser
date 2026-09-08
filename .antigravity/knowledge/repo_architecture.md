@@ -31,7 +31,7 @@ ArchiveProceser/
 ├── FileFlow.Plugin.AI/               # Plugin de inferencia local de IA (ONNX Runtime, Whisper, Vision, OCR)
 ├── FileFlow.Plugin.Scripting/        # Plugin de scripting dinámico en C# (Roslyn) y JavaScript (Jint)
 ├── FileFlow.Plugin.Integrations/     # Plugin de integraciones externas (CLI Process Runner, Webhooks HTTP, FFmpeg)
-└── FileFlow.Tests/                   # Suite de Pruebas Unitarias e Integración xUnit (.NET 9, 477 tests)
+└── FileFlow.Tests/                   # Suite de Pruebas Unitarias e Integración xUnit (.NET 9, 606 tests)
 ```
 
 ---
@@ -65,14 +65,22 @@ ArchiveProceser/
   - `void RecordJournalEntry(JournalEntry entry)`
 - [`PlannedAction`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/PlannedAction.cs): Registro de acción virtual para simulación en modo Dry Run.
 - [`JournalEntry`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/JournalEntry.cs): Registro inmutable de operación atómica con delegado inverso `UndoAction`.
+- [`IStorageService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/Storage/IStorageService.cs): Contrato universal de operaciones de sistema de archivos (físico y virtual): existencia, lectura/escritura en streams, copia, movimiento, borrado/papelera y resolución de colisiones (`StorageCollisionStrategy`).
+- [`IOsPlatformService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/Platform/IOsPlatformService.cs): Contrato universal de servicios del sistema operativo (detección de plataforma, shells, argumentos de terminal, papelera nativa, recorte de memoria working set).
+- [`IExternalToolsService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/Services/IExternalToolsService.cs): Contrato de descubrimiento y gestión de herramientas externas (FFmpeg, FFprobe, 7-Zip, ImageMagick).
+- [`IMediaTranscoderService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/Services/IMediaTranscoderService.cs): Contrato de transcodificación multimedia desacoplado de dependencias tecnológicas directas.
 - [`VariableTemplateResolver`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/TemplateEngine/VariableTemplateResolver.cs): Motor de resolución de tokens con soporte de dominios `{Exif:*}`, `{Regex:*}`, `{Hash:Algorithm:Length}`, `{Date:Format}`, `{Env:Var}`, `{FileSize:Unit}` y funciones.
+- [`SyntheticDataSet`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/SyntheticData/SyntheticDataSet.cs), [`SyntheticFileDefinition`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/SyntheticData/SyntheticFileDefinition.cs), [`SyntheticArchiveEntryDefinition`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/SyntheticData/SyntheticArchiveEntryDefinition.cs): Modelos de datos sintéticos, estructuras de directorios y simulación de entradas internas de archivos comprimidos.
 
 ---
 
 ### B. Capa Core (`FileFlow.Core`)
 - [`WorkflowExecutor`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowExecutor.cs): Orquestador asíncrono con soporte de Dry Run, Journaling, telemetría de edges y ejecución concurrente.
 - [`ExecutionJournalService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/ExecutionJournalService.cs): Gestor de transacciones y rollback LIFO de operaciones sobre archivos.
-- [`WindowsShellFileRecycler`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WindowsShellFileRecycler.cs): Borrado nativo a la Papelera de reciclaje de Windows mediante P/Invoke a `SHFileOperationW` (`FOF_ALLOWUNDO`).
+- [`PhysicalStorageService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Storage/PhysicalStorageService.cs): Implementación física de `IStorageService` con streams de alto rendimiento (128 KB, `FileOptions.SequentialScan`), resolución de colisiones y simulación dry-run.
+- [`OsPlatformServiceFactory`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Platform/OsPlatformServiceFactory.cs): Factoría singleton de servicios de SO (`WindowsPlatformService`, `LinuxPlatformService`, `MacPlatformService`).
+- [`ExternalToolsService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Services/ExternalToolsService.cs): Auto-detección y verificación de ejecutables externos multiplataforma.
+- [`FfmpegMediaTranscoderService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Services/FfmpegMediaTranscoderService.cs): Implementación de transcodificación basada en FFmpeg.
 - [`AdaptiveConcurrencyManager`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/AdaptiveConcurrencyManager.cs): Particionamiento de semáforos por disco/volumen físico (I/O) y CPU.
 - [`WorkflowDebugSession`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Engine/WorkflowDebugSession.cs): Coordinador de depuración interactiva con breakpoints.
 
@@ -104,4 +112,26 @@ ArchiveProceser/
   - Los nodos de visión e inferencia de `FileFlow.Plugin.AI` (`ObjectDetectorNode`, `PromptObjectDetectorNode`, `SmartImageClassifierNode`, `BackgroundRemoverNode`, `FaceDetectorNode`, `SuperResolutionUpscalerNode`) alimentan las llamadas de inferencia mediante contratos canónicos puros (imagen original sin deformar, umbrales y prompts estándar).
   - La inferencia reside en adaptadores especializados por familia (`IObjectDetectorAdapter`, `IImageClassifierAdapter`, `IBackgroundRemoverAdapter`, `IFaceDetectorAdapter`, `ISuperResolutionAdapter`) enrutados dinámicamente mediante factorías (`[Task]AdapterFactory`) tras inspeccionar la metadata del grafo ONNX (`InputMetadata`, `OutputMetadata`, tensores y capas).
   - Cada adaptador gestiona su preprocesamiento geométrico exacto (Letterbox cuadrático con padding y des-letterboxing inverso, normalización de canales ImageNet vs escalado [0..1] o [-1..1]), inyección de tensores auxiliares (embeddings semánticos normalizados L2 CLIP ViT-B/32 para consultas libres en YOLO-World / Grounding DINO, tensores de forma) y decodificación NMS.
+
+---
+
+## 7. Arquitectura de Simulación No Destructiva y Sistema de Archivos Virtual (VFS)
+
+- **Aislamiento en Memoria y Redirección Transparente**:
+  - Para pruebas, depuración e ingesta con datos sintéticos (`SyntheticDataSourceNode`), el motor DAG activa de forma automática o configurable una instancia de `IVirtualFileSystemStore` (`VirtualFileSystemStore`).
+  - Nodos de persistencia (`DestinationSinkNode`), organización (`FileRelocatorNode`) y ciclo de vida (`SafeRecycleDeleteNode`, `OriginalFileActionNode`) interceptan items virtuales (`item.IsVirtual || context.IsVirtualFileSystemEnabled`) y redirigen las operaciones al almacén VFS concurrente en memoria, resolviendo colisiones por sufijo numérico y registrando badges de operación (`Saved`, `Copied`, `Moved`, `ConflictRenamed`, `Deleted`, `Recycled`).
+  - La interfaz gráfica (`FileFlow.App`) expone el `VirtualFileSystemExplorerWindow` para navegar el árbol jerárquico, filtrar por badges o texto, inspeccionar metadatos enriquecidos (EXIF, ID3, Video, Docs, Hashes), copiar el árbol en formato ASCII legible y materializar el contenido bajo demanda en una carpeta sandbox temporal (`%TEMP%/FileFlow_VFS_Sandbox/...`) para abrirla en el Explorador de Windows.
+
+---
+
+## 8. Arquitectura de Portabilidad Multiplataforma (OS-Agnostic) y Abstracción de I/O
+
+- **Encapsulación Hermética del Sistema Operativo**:
+  - Toda interacción dependiente del sistema operativo está aislada tras el contrato [`IOsPlatformService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/Platform/IOsPlatformService.cs). Las llamadas P/Invoke a Win32 (`shell32.dll`, `kernel32.dll`) residen exclusivamente dentro de `WindowsPlatformService`. Linux (`LinuxPlatformService`) y macOS (`MacPlatformService`) implementan reciclaje con FreeDesktop trash / AppleScript y terminales bash/zsh nativos.
+  - La factoría [`OsPlatformServiceFactory`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Core/Platform/OsPlatformServiceFactory.cs) detecta el entorno en caliente en tiempo de ejecución.
+- **Abstracción Universal de Almacenamiento**:
+  - Los nodos de pipeline nunca invocan directamente métodos de `System.IO.File` ni gestionan bucles manuales de colisiones; consumen [`IStorageService`](file:///d:/Users/ricardo/Documents/GitHub/ArchiveProceser/FileFlow.Sdk/Storage/IStorageService.cs) a través de la extensión `context.GetStorage()`.
+  - Esta abstracción garantiza que el mismo código de nodo opere de forma transparente sobre discos físicos reales (`PhysicalStorageService`) o en memoria virtual (`VirtualStorageService`), respetando dry-run y políticas de colisión de forma homogénea.
+
+
 

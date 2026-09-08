@@ -996,4 +996,28 @@
   <data name="Version_SuperResolution_Desc" xml:space="preserve"><value>Imagen escalada con red neural</value></data>
   <data name="Version_CustomExpressionToolTip" xml:space="preserve"><value>Escribir expresión manual o insertar variable</value></data>
   <data name="Version_BackToChipsToolTip" xml:space="preserve"><value>Volver a selección por chips</value></data>
+
+  <!-- Virtual File System Explorer -->
+  <data name="VfsExplorer_Title" xml:space="preserve"><value>Explorador de Archivos Virtuales (VFS)</value></data>
+  <data name="VfsExplorer_HeaderTitle" xml:space="preserve"><value>Explorador de Archivos Virtuales</value></data>
+  <data name="VfsExplorer_HeaderSubtitle" xml:space="preserve"><value>Inspección de estructuras de carpetas virtuales, metadatos y resultados de simulación</value></data>
+  <data name="VfsExplorer_TreeCopied" xml:space="preserve"><value>Estructura de árbol ASCII copiada al portapapeles con éxito.</value></data>
+  <data name="VfsExplorer_ConfirmClear" xml:space="preserve"><value>¿Estás seguro de que deseas limpiar todos los archivos virtuales registrados en el VFS?</value></data>
+  <data name="VfsExplorer_AllDirectories" xml:space="preserve"><value>📁 (Todas las Carpetas)</value></data>
+  <data name="VfsExplorer_NoData" xml:space="preserve"><value>No hay datos de archivos virtuales en la última ejecución.</value></data>
+  <data name="VfsExplorer_SourceFolders" xml:space="preserve"><value>📥 Carpetas de Origen</value></data>
+  <data name="VfsExplorer_DestinationFolders" xml:space="preserve"><value>📤 Carpetas de Destino</value></data>
+  <data name="VfsExplorer_IntermediateFolders" xml:space="preserve"><value>⚙️ Archivos Intermedios</value></data>
+  <data name="VfsExplorer_Role_All" xml:space="preserve"><value>Todos los Roles</value></data>
+  <data name="VfsExplorer_Role_Source" xml:space="preserve"><value>📥 Origen</value></data>
+  <data name="VfsExplorer_Role_Destination" xml:space="preserve"><value>📤 Destino</value></data>
+  <data name="VfsExplorer_Role_Intermediate" xml:space="preserve"><value>⚙️ Intermedio</value></data>
+  <data name="VfsExplorer_ColRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="VfsExplorer_ColLinkedPath" xml:space="preserve"><value>Ruta Vinculada</value></data>
+  <data name="VfsExplorer_KpiSource" xml:space="preserve"><value>📥 Orígenes</value></data>
+  <data name="VfsExplorer_KpiDestination" xml:space="preserve"><value>📤 Destinos</value></data>
+  <data name="ControlBar_VfsToolTip" xml:space="preserve"><value>Abrir el Explorador de Archivos Virtuales generado durante la simulación/pruebas</value></data>
+  <data name="Log_VfsExecutionFinished" xml:space="preserve"><value>[VFS] Simulación completada en Sistema de Archivos Virtual: {0} archivos generados.</value></data>
+  <data name="Drawer_DataSetDesigner" xml:space="preserve"><value>Diseñador de Datasets</value></data>
+  <data name="Drawer_DataSetDesignerToolTip" xml:space="preserve"><value>Abrir el Diseñador de Conjuntos de Datos Sintéticos</value></data>
 </root>

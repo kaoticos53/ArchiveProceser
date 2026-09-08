@@ -8,8 +8,72 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **573 / 573 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **617 / 617 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --48. **Arquitectura de Portabilidad Multiplataforma (OS-Agnostic), Desacoplamiento de I/O y Abstracción de Servicios Tecnológicos**:
+      - **Objetivo**: Desacoplar todo el código dependiente de sistemas operativos (Win32, P/Invoke, Shells, Garbage Collection / Working Set) y tecnologías específicas (FFmpeg, transcoders, herramientas externas), así como encapsular todas las operaciones de I/O en un servicio de almacenamiento unificado (`IStorageService`) para que los nodos de plugins no realicen lecturas, escrituras, copias o resoluciones de colisiones directas ni distingan manualmente entre disco real y VFS.
+      - **Ajustes Realizados**:
+        1. *Contratos en `FileFlow.Sdk`*:
+           - `Storage/IStorageService.cs`, `StorageCollisionStrategy`, `StorageOperationResult`, `VirtualStorageService`, `NullStorageService`, `FlowExecutionContextStorageExtensions`.
+           - `Platform/IOsPlatformService.cs`, `NullOsPlatformService`, `IFileRecycler.cs`.
+           - `Services/IExternalToolsService.cs`, `IMediaTranscoderService.cs`, `NullExternalToolsService.cs`.
+           - `IFlowExecutionContext`: Nuevas propiedades `Storage`, `Platform` y `Tools`.
+        2. *Servicios y Adaptadores en `FileFlow.Core`*:
+           - Adaptadores de SO: `WindowsPlatformService` (encapsula P/Invoke Win32 `SHFileOperationW` y `EmptyWorkingSet`), `LinuxPlatformService` (`gio trash` / `~/.local/share/Trash`, `/bin/bash`), `MacPlatformService` (`osascript` / `~/.Trash`, `/bin/zsh`) y `OsPlatformServiceFactory.Instance`.
+           - Almacenamiento: `PhysicalStorageService` (streams con buffer de 128 KB, `FileOptions.SequentialScan`, resolución automática de colisiones e interceptor de dry-run `onRegisterPlannedAction`), `VirtualStorageService`.
+           - Servicios externos: `ExternalToolsService` (auto-detección y verificación de binarios multiplataforma), `FfmpegMediaTranscoderService`.
+           - `WorkflowExecutionContext`: Instanciación y cableado dinámico de `Storage`, `Platform` y `Tools`.
+        3. *Desacoplamiento de Nodos de Plugins*:
+           - `FileFlow.Plugin.FileSystem`: `DestinationSinkNode`, `FileRelocatorNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`, `AdvancedRenamerNode` refactorizados para usar `context.GetStorage()`. Eliminado P/Invoke directo de Win32.
+           - `FileFlow.Plugin.Hashing`: `HashCalculatorNode` refactorizado para abrir streams asíncronos mediante `storage.OpenReadAsync()`.
+           - `FileFlow.Plugin.Integrations`: `MediaTranscoderNode` utiliza `context.Tools.FfmpegExecutable`; `CliExecutionNode` utiliza `context.Platform.GetDefaultShellExecutable()` y `GetDefaultShellArguments()`.
+           - `FileFlow.Plugin.AI`: `HardwareCapabilityDetector` utiliza `GC.GetGCMemoryInfo().TotalAvailableMemoryBytes` eliminando `GlobalMemoryStatusEx`.
+        4. *Capa de Presentación `FileFlow.App`*:
+           - `ProcessLauncherService` delega lanzamiento de procesos a `OsPlatformServiceFactory.Instance`.
+           - `ExternalToolsService` deriva limpiamente de la implementación central de Core.
+        5. *Pruebas Unitarias Dedicadas*:
+           - `StorageServiceTests.cs` (4 pruebas) y `OsPlatformServiceTests.cs` (3 pruebas).
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y `dotnet test` $\rightarrow$ **617 / 617 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+  --47. **Separación y Visualización Dual de Carpetas de Origen y Destino en el Sistema de Archivos Virtual (VFS)**:
+      - **Objetivo**: Resolver la limitación donde el sistema de archivos virtual y su explorador visual solo contemplaban la modificación de archivos en su carpeta de origen. Permitir ver el resultado final del flujo de forma dual y organizada: tanto en la carpeta de origen (mostrando el estado original, modificado o trasladado) como en las carpetas de destino (archivos generados o movidos con sus nuevos nombres y metadatos).
+      - **Ajustes Realizados**:
+        1. *Roles Semánticos y Operaciones en SDK (`FileFlow.Sdk/VirtualFileSystem`)*: Añadido `VirtualFileRole` (`Source`, `Destination`, `Intermediate`) y operaciones `Original` y `Renamed` en `VirtualFileEntry.cs`. Nuevas propiedades `DestinationPath` (en origen enlazando al destino) y `RelatedSourcePath` (en destino enlazando al origen original).
+        2. *Contratos y Métodos en `IVirtualFileSystemStore` & `VirtualFileSystemStore`*: Métodos `GetSourceFiles()`, `GetDestinationFiles()` y `RenameFile(...)`. Actualizado `MoveFile` para preservar el archivo de origen marcado como `Moved` con su `DestinationPath`, creando la entrada destino como `Destination`.
+        3. *Definición Refinada de Actividad (`IsActive`)*: Detecta como inactivo en su ruta local aquel fichero que ha sido movido hacia otra ruta (`OperationType == Moved` con `DestinationPath` asignado), garantizando que `FileExists(origen)` sea `false`, `FileExists(destino)` sea `true` y las métricas de bytes y archivos no sufran duplicación.
+        4. *Nodos de Pipeline (`FileFlow.Plugin.FileSystem`)*:
+           - `SyntheticDataSourceNode`: Registra entradas virtuales con `Role = VirtualFileRole.Source` y `OperationType = VirtualOperationType.Original`.
+           - `AdvancedRenamerNode`: En modo virtual o items virtuales, invoca `context.VirtualFileSystem.RenameFile(...)` sin exigir presencia en disco físico.
+           - `DestinationSinkNode`: Registra entradas destino con `Role = VirtualFileRole.Destination` y vincula el `DestinationPath` en la entrada origen del VFS.
+           - `FileRelocatorNode` y `OriginalFileActionNode`: Soporte total para operaciones virtuales de movimiento, copia y reciclaje preservando roles.
+        5. *Explorador Visual VFS Dual (`FileFlow.App`)*:
+           - `VirtualFileSystemExplorerViewModel`: Árbol particionado en ramas `📥 Carpetas de Origen` y `📤 Carpetas de Destino`, selector desplegable de rol (`Todos`, `📥 Origen`, `📤 Destino`), KPIs dedicados para orígenes y destinos, e inspector con trazabilidad de origen y destino vinculados.
+           - `VirtualFileSystemExplorerWindow.xaml`: Columna `Rol` con badges por color, columna `Vinculado`, y pestaña `Antes / Después` con desglose visual.
+           - Cadenas multilingües añadidas a `Strings.resx` y `Strings.es.resx`.
+        6. *Suite de Pruebas*: Creado `VirtualPipelineSourceDestinationTests.cs` (4 pruebas).
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 errores, 0 warnings) y `dotnet test` $\rightarrow$ **610 / 610 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+  --46. **Diseñador Visual de Conjuntos de Datos Sintéticos, Estructuras Jerárquicas y Simulación Híbrida de Comprimidos**:
+      - **Objetivo**: Proporcionar una solución completa para que los usuarios puedan crear, modificar y guardar conjuntos de datos de prueba personalizados de forma persistente y reutilizable; soportar estructuras jerárquicas con carpetas y subcarpetas (`IsDirectory`, `RelativePath`); y soportar simulación híbrida de archivos comprimidos (ZIP, RAR, 7Z) con extracción virtual directa hacia el VFS (`SmartUnpackNode`) y generación de archivos ZIP reales y ligeros en modo físico (`PhysicalMock`).
+      - **Ajustes Realizados**:
+        1. *Modelos en el SDK (`FileFlow.Sdk/SyntheticData`)*: Modelos `SyntheticArchiveEntryDefinition`, `SyntheticFileDefinition` y `SyntheticDataSet` con clonación profunda preservando identidad/inmutabilidad.
+        2. *Parser DSL Jerárquico Rápido (`SyntheticTreeDslParser.cs`)*: Parser bidireccional que convierte entre texto indentado con tamaños humanos (`50KB`, `1.5GB`), metadatos (`key=val`) y entradas de archivo `[archive: inner1.txt; inner2.png]` y listas de `SyntheticFileDefinition`.
+        3. *Servicio de Persistencia (`SyntheticDataSetStorageService.cs`)*: Almacenamiento thread-safe en `%AppData%/FileFlow/SyntheticDataSets/`, carga inicial desde los 200 items de muestra categorizados, exportación/importación JSON y protección de datasets de sistema (`IsBuiltIn`).
+        4. *Diseñador Visual WPF (`SyntheticDataSetDesignerWindow.xaml` / `SyntheticDataSetDesignerViewModel.cs`)*: Ventana moderna modal con panel izquierdo de catálogo (búsqueda, métricas, nuevo, duplicar, eliminar) y área de trabajo con 3 pestañas sincronizadas (Tabla Visual, Árbol Rápido DSL y JSON Puro).
+        5. *Emisión Jerárquica y Modo Físico (`SyntheticDataSourceNode.cs`)*: Emisión de carpetas (`EmitDirectories`), resolución de rutas relativas con subdirectorios, empaquetado de metadata y generación automática de `.zip` reales con `ZipArchive` en modo `PhysicalMock`.
+        6. *Descompresión Virtual en VFS (`FileFlow.Plugin.Archives/SmartUnpackNode.cs`)*: Intercepción de archivos virtuales o con metadatos `Archive:Entries` para desplegar sus entradas directamente en `context.VirtualFileSystem` sin requerir archivos en disco.
+        7. *Puntos de Acceso en UI*: Botón de acción personalizada en `SyntheticDataSourceNode`, botón `📊 Diseñador...` en `AdvancedRenamerEditorWindow.xaml`, y opción en el Drawer de `MainWindow.xaml`.
+        8. *Suite de Pruebas*: 18 nuevos tests (Total 606): `SyntheticDataSetStorageServiceTests` (5), `SyntheticTreeDslParserTests` (3), `SyntheticDataSourceHierarchicalTests` (3), `SyntheticArchiveSimulationTests` (2) y `SyntheticDataSetDesignerViewModelTests` (5).
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 errores, 0 warnings) y `dotnet test` $\rightarrow$ **606 / 606 pruebas superadas al 100%**.
+  --45. **Sistema de Archivos Virtual (VFS) Híbrido, Persistencia No Destructiva en Pruebas y Explorador Visual VFS**:
+      - **Objetivo**: Implementar un sistema de archivos virtual (VFS) transparente para pruebas con datos sintéticos (`SyntheticDataSourceNode`), de modo que los nodos de persistencia (`DestinationSinkNode`, `FileRelocatorNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`) escriban y organicen en memoria sin ensuciar discos físicos ni arrojar errores de I/O, complementado con un explorador visual en WPF para inspección jerárquica de carpetas, archivos, badges de operaciones y metadatos.
+      - **Ajustes Realizados**:
+        1. *Modelos y Contratos (`FileFlow.Sdk`)*: Creado `VirtualFileEntry` (registro con ruta virtual, origen, marcas de tiempo, tipo de operación `Saved`, `Copied`, `Moved`, `ConflictRenamed`, `Deleted`, `Recycled`, metadatos y logs), contrato `IVirtualFileSystemStore`, y propiedades `IsVirtual` en `FileItemContext` y `VirtualFileSystem` / `IsVirtualFileSystemEnabled` en `IFlowExecutionContext`.
+        2. *Motor VFS Concurrente (`FileFlow.Core`)*: Creado `VirtualFileSystemStore` con sincronización `System.Threading.Lock` de .NET 9, resolución incremental de colisiones (`_1`, `_2`), generador de diagrama de árbol jerárquico ASCII (`GenerateAsciiTree`) y exportador a disco físico sandbox (`%TEMP%/FileFlow_VFS_Sandbox/...`) con sanitización de unidades de disco Windows (`C_Drive/...`).
+        3. *Activación Automática en Motor DAG (`WorkflowExecutor.cs` & `WorkflowExecutionContext.cs`)*: Auto-detección al arrancar el pipeline si hay nodos de origen sintético o contextos virtuales, instanciando un VFS store aislado y entregándolo en `WorkflowExecutionResult`.
+        4. *Nodos de Persistencia Redirigidos (`FileFlow.Plugin.FileSystem`)*: Interceptores no destructivos en `DestinationSinkNode`, `FileRelocatorNode`, `SafeRecycleDeleteNode` y `OriginalFileActionNode` con logging localizado.
+        5. *Explorador Visual VFS (`FileFlow.App`)*: Creados `VirtualFileSystemExplorerViewModel` y `VirtualFileSystemExplorerWindow.xaml` (SplitView 3 columnas: Árbol de Directorios, Tabla de Archivos con Badges y panel de Metadatos categorizado en EXIF, Audio, Vídeo, Documentos y Hashes, con comandos para copiar árbol ASCII y abrir carpeta sandbox).
+        6. *Acceso en UI Anfitriona*: Añadido botón y badge reactivo `🗂️ VFS (N)` en `ControlBarView.xaml` / `ControlBarViewModel.cs` tras ejecuciones virtuales y enlace directo en el Drawer lateral de `MainWindow.xaml`.
+        7. *Suite de Pruebas*: Añadidos `VirtualFileSystemStoreTests.cs` (6 tests), `VirtualPipelineExecutionTests.cs` (4 tests) y `VirtualFileSystemExplorerViewModelTests.cs` (5 tests).
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 errores, 0 advertencias) y `dotnet test` $\rightarrow$ **588 / 588 pruebas superadas al 100% (0 errores, 0 omitidas)**.
   --44. **Metadata Enriquecida para Datos Sintéticos y Nuevas Categorías Especializadas (Música, Fotos y Documentos)**:
       - **Objetivo**: Dotar a los datos sintéticos de metadata exhaustiva y especializada por dominio (ID3 para audio, EXIF/dimensiones para fotografía, y campos corporativos/fiscales para documentos) para posibilitar pruebas profundas tanto en el lienzo DAG con `SyntheticDataSourceNode` como en el Estudio de Renombrado (`AdvancedRenamerEditorWindow`).
       - **Ajustes Realizados**:

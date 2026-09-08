@@ -2,6 +2,132 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-08] - Arquitectura de Portabilidad Multiplataforma (OS-Agnostic), Desacoplamiento de I/O y Abstracción de Servicios Tecnológicos
+
+### 🎯 Objetivos y Alcance
+1. **Portabilidad Total Multiplataforma (Windows, Linux, macOS)**:
+   - Encapsular de forma hermética cualquier llamada ligada al sistema operativo (P/Invoke a Win32 `shell32.dll` / `kernel32.dll`, comandos de shell nativos, reciclaje de archivos, recorte de memoria working set) en adaptadores de plataforma intercambiables.
+   - Proporcionar implementaciones específicas para cada sistema operativo y un factory singleton dinámico de auto-detección (`OsPlatformServiceFactory.Instance`).
+2. **Abstracción Universal de Almacenamiento e I/O en el SDK (`IStorageService`)**:
+   - Eliminar de raíz las dependencias y duplicidades de lectura, escritura, copia, movimiento, resolución de colisiones y borrado en los nodos de plugins.
+   - Los nodos de pipeline operan de forma 100% transparente tanto sobre discos físicos reales como sobre el Sistema de Archivos Virtual (VFS) mediante `context.GetStorage()`.
+   - Soporte nativo para estrategias de colisión configurables (`StorageCollisionStrategy.RenameIncremental`, `Overwrite`, `Skip`, `ThrowError`), buffers de alto rendimiento de 128 KB con `FileOptions.SequentialScan` y registro determinista de acciones simuladas (`PlannedAction` / `IsDryRun`).
+3. **Abstracción de Herramientas Externas y Tecnologías Dependientes**:
+   - Contratos en el SDK para descubrimiento y ejecución de binarios externos (`IExternalToolsService`) y transcodificación multimedia (`IMediaTranscoderService`).
+   - Implementaciones concretas desacopladas en `FileFlow.Core` (`ExternalToolsService`, `FfmpegMediaTranscoderService`).
+4. **Refactorización y Desacoplamiento de Nodos**:
+   - `DestinationSinkNode`: Manejo unificado de copia a destino con resolución de colisiones y actualización transparente de VFS y disco físico.
+   - `FileRelocatorNode`: Operaciones de copia y movimiento seguras con opción `CleanupSource` delegadas en `IStorageService`.
+   - `SafeRecycleDeleteNode` y `OriginalFileActionNode`: Eliminación de P/Invoke directo de Win32, soporte para papelera en Windows, Linux y macOS, y dry-run no destructivo.
+   - `AdvancedRenamerNode` y `HashCalculatorNode`: Lectura de streams y renombrados ejecutados a través del servicio de almacenamiento.
+   - `CliExecutionNode`: Selección y formateo de comandos de terminal desacoplado mediante `IOsPlatformService.GetDefaultShellExecutable()` y `GetDefaultShellArguments()`.
+   - `MediaTranscoderNode`: Descubrimiento y transcoding delegado en `IExternalToolsService`.
+   - `HardwareCapabilityDetector`: Eliminado Win32 `GlobalMemoryStatusEx`; uso de APIs portables de .NET 9 (`GC.GetGCMemoryInfo().TotalAvailableMemoryBytes`).
+5. **Nuevas Pruebas Unitarias y Validación**:
+   - `StorageServiceTests.cs` (4 pruebas): Ciclo de vida completo en VFS, buffers físicos, resolución incremental de colisiones y modo simulación/dry-run.
+   - `OsPlatformServiceTests.cs` (3 pruebas): Auto-detección por plataforma, formateo de argumentos de shell en Windows/Linux/macOS y fallback seguro con `NullOsPlatformService`.
+   - **617 / 617 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+   - Compilación limpia bajo `--warnaserror` (0 advertencias, 0 errores).
+
+---
+
+## [2026-09-08] - Separación y Visualización Dual de Carpetas de Origen y Destino en el Sistema de Archivos Virtual (VFS)
+
+### 🎯 Objetivos y Alcance
+1. **Separación y Trazabilidad de Roles Semánticos (`VirtualFileRole`)**:
+   - Incorporación del enumerado `VirtualFileRole` (`Source`, `Destination`, `Intermediate`) en `FileFlow.Sdk/VirtualFileSystem/VirtualFileEntry.cs` para modelar el rol exacto de cada entrada en el pipeline.
+   - Extensión de `VirtualOperationType` con operaciones canónicas `Original` y `Renamed`.
+   - Propiedades de enlace cruzado en `VirtualFileEntry`: `DestinationPath` (para archivos de origen que registran su destino proyectado o final) y `RelatedSourcePath` (para archivos de destino que vinculan al archivo de origen del que provienen).
+2. **Métodos Especializados en `IVirtualFileSystemStore` y `VirtualFileSystemStore`**:
+   - `GetSourceFiles()` y `GetDestinationFiles()` para consultar colecciones particionadas por rol.
+   - `RenameFile(sourceVirtualPath, targetVirtualPath, sourceNodeName, sourceNodeId)`: Permite actualizar y registrar renombrados en VFS manteniendo la entrada de origen visible con `OperationType = Renamed` y enlazando la nueva ruta virtual.
+   - Preservación de la entrada de origen en operaciones de movimiento (`MoveFile`): Ya no se elimina el fichero de origen; se mantiene en `_files` con `OperationType = VirtualOperationType.Moved` y `DestinationPath = target`, mientras se crea la entrada destino con `Role = VirtualFileRole.Destination` y `RelatedSourcePath = source`.
+   - Lógica de actividad precisa (`IsActive`): Reconoce como inactivas en su ruta local únicamente las entradas cuyo archivo haya sido movido (`Moved` con `DestinationPath` asignado), garantizando que `FileExists(source)` sea `false`, `FileExists(target)` sea `true` y el cómputo de archivos y bytes no sufra duplicación.
+   - Generación de Árbol ASCII estructurado con secciones diferenciadas para `📥 [Carpetas de Origen]` y `📤 [Carpetas de Destino]`.
+3. **Adaptación de Nodos del Pipeline (`FileFlow.Plugin.FileSystem`)**:
+   - `SyntheticDataSourceNode`: Registra las muestras sintéticas con `Role = VirtualFileRole.Source` y `OperationType = VirtualOperationType.Original`.
+   - `AdvancedRenamerNode`: En modo virtual o sobre items virtuales, notifica al VFS mediante `context.VirtualFileSystem.RenameFile(...)` sin emitir errores si el archivo no existe en disco físico.
+   - `DestinationSinkNode`: Registra los archivos resultantes con `Role = VirtualFileRole.Destination` y `RelatedSourcePath = item.OriginalPath`, actualizando el `DestinationPath` de la entrada de origen en VFS.
+   - `FileRelocatorNode`: Mueve o copia en VFS asignando el rol de destino y preservando las referencias a origen.
+   - `OriginalFileActionNode`: Soporta `PermanentDelete` y `MoveToRecycleBin` marcando lógicamente las entradas en VFS.
+4. **Explorador Visual VFS con Partición y Filtrado Dual (`FileFlow.App`)**:
+   - `VirtualDirectoryTreeNode`: Añadida propiedad `Role` para identificar ramas del árbol.
+   - `VirtualFileSystemExplorerViewModel`:
+     - El árbol de carpetas particiona automáticamente sus ramas principales en `📥 Carpetas de Origen` y `📤 Carpetas de Destino` bajo la raíz general `📁 (Todas las carpetas)`.
+     - Nuevo filtro desplegable por rol: `Todos`, `📥 Origen`, `📤 Destino` con reactividad instantánea.
+     - Métricas KPI en cabecera: `📥 Orígenes` y `📤 Destinos` individuales junto con `📄 Archivos`, `📁 Carpetas`, `💾 Tamaño` y `⚠️ Conflictos`.
+     - Metadatos de inspector enriquecidos con `Rol en Pipeline`, `Ruta de Destino` y `Origen Vinculado`.
+   - `VirtualFileSystemExplorerWindow.xaml`:
+     - Nueva columna en la tabla de archivos: `Rol` con badges visuales distintivos (`📥 Origen` en azul, `📤 Destino` en verde, `⚙️ Interm.` en ámbar).
+     - Nueva columna `Vinculado` con vista previa de rutas enlazadas y tooltips.
+     - Pestaña `Antes / Después` con desglose visual completo de rol, origen, destino y operación.
+     - Cadenas multilingües añadidas a `Strings.resx` y `Strings.es.resx`.
+5. **Validación y Pruebas**:
+   - Nueva suite `VirtualPipelineSourceDestinationTests.cs` (4 pruebas) validando la integración del pipeline de extremo a extremo y el comportamiento del ViewModel.
+   - **610 / 610 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+## [2026-09-08] - Diseñador Visual de Conjuntos de Datos Sintéticos, Estructuras Jerárquicas y Simulación Híbrida de Comprimidos
+
+### 🎯 Objetivos y Alcance
+1. **Diseñador Visual Completo de Conjuntos de Datos Sintéticos (`SyntheticDataSetDesignerWindow`)**:
+   - Ventana modal de diseño y gestión integral de conjuntos de datos de prueba (`SyntheticDataSetDesignerViewModel`), co-ubicada en `FileFlow.Plugin.FileSystem/UI/`.
+   - Panel lateral izquierdo con catálogo de datasets (buscador dinámico en tiempo real, métricas de items/directorios/comprimidos, creación de nuevos conjuntos, duplicación y borrado con protección de conjuntos de sistema `IsBuiltIn`).
+   - Área de trabajo con 3 pestañas sincronizadas bidireccionalmente:
+     - **📋 Tabla Visual**: Edición celda por celda de ruta relativa (`RelativePath`), tamaño, flags de directorio/comprimido y diccionario de metadatos con validación instantánea.
+     - **🌲 Árbol Rápido (DSL)**: Editor de texto ultrarrápido con parser jerárquico inteligente (`SyntheticTreeDslParser`) que interpreta niveles de carpetas por sangría/indentación, tamaños legibles (`15MB`, `1.5GB`), etiquetas de metadatos `key=value` y declaración en línea de contenidos de archivos comprimidos `[archive: inner1.txt (500B); inner2.png (2MB)]`.
+     - **📄 JSON Puro**: Vista en crudo del modelo `SyntheticDataSet` para edición avanzada o copiado/pegado masivo.
+   - Acciones de persistencia: Guardar cambios, Exportar a JSON y Cargar desde JSON.
+2. **Soporte Integral para Estructuras Jerárquicas y Directorios**:
+   - Soporte para items con `IsDirectory = true` y rutas relativas con subdirectorios (ej. `Fotos/Viajes/2026/foto.jpg`).
+   - Parámetro configurable `EmitDirectories` en `SyntheticDataSourceNode` para emitir explícitamente los directorios contenedores como `FileItemContext` o sólo los ficheros hoja preservando su ruta relativa.
+   - Cálculo automático de `FileName` y `Directory` en `SyntheticFileDefinition`.
+3. **Simulación Híbrida de Archivos Comprimidos (ZIP, RAR, 7Z, TAR)**:
+   - Modelo `SyntheticArchiveEntryDefinition` en `FileFlow.Sdk/SyntheticData` para representar ficheros internos comprimidos con sus tamaños, rutas relativas y metadatos individuales.
+   - **Enfoque Virtual (VFS)**: Cuando el archivo simulado fluye hacia nodos de extracción como `SmartUnpackNode`, el plugin `FileFlow.Plugin.Archives` intercepta el item si es virtual o contiene `Archive:Entries` y extrae sus entradas directamente en el sistema de archivos virtual (`context.VirtualFileSystem`) con sus rutas jerárquicas y metadatos, sin requerir lectura de disco físico ni descompresores externos.
+   - **Enfoque PhysicalMock**: Cuando el nodo `SyntheticDataSourceNode` opera en modo físico (`PhysicalMock`), genera automáticamente un archivo `.zip` real y ligero utilizando `System.IO.Compression.ZipArchive` con las entradas simuladas en su interior, permitiendo validar nodos físicos de descompresión o herramientas de terceros.
+4. **Almacenamiento y Persistencia Desacoplada**:
+   - `SyntheticDataSetStorageService`: Servicio thread-safe con `System.Threading.Lock` de .NET 9 que almacena los datasets personalizados en `%AppData%/FileFlow/SyntheticDataSets/*.json`.
+   - Inicialización automática a partir de los 200 items de muestra categorizados (`renamer_samples.json`) manteniendo inmutables los conjuntos base (`IsBuiltIn = true`).
+5. **Puntos de Integración en la Interfaz (Zero-Touch en la lógica de negocio)**:
+   - Botón de Acción Personalizada en `SyntheticDataSourceNode`: `🎨 Diseñar Conjuntos de Datos...` (mediante `INodeCustomActionProvider`).
+   - Botón directo en la barra de herramientas del Estudio de Renombrado (`AdvancedRenamerEditorWindow.xaml`): `📊 Diseñador...` con recarga reactiva de categorías y datasets.
+   - Entrada dedicada en el Drawer lateral de navegación de la aplicación principal (`MainWindow.xaml`).
+6. **Validación Exhaustiva**:
+   - Creadas 5 nuevas suites de pruebas: `SyntheticDataSetStorageServiceTests.cs` (5 tests), `SyntheticTreeDslParserTests.cs` (3 tests), `SyntheticDataSourceHierarchicalTests.cs` (3 tests), `SyntheticArchiveSimulationTests.cs` (2 tests) y `SyntheticDataSetDesignerViewModelTests.cs` (5 tests).
+   - Cobertura de pruebas ampliada a **606 / 606 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
+### 🎯 Objetivos y Alcance
+1. **Sistema de Archivos Virtual (VFS) Integrado**:
+   - Proporcionar un entorno de ejecución no destructivo para pruebas y depuración con datos sintéticos (`SyntheticDataSourceNode`), de modo que los nodos de persistencia y reorganización (`DestinationSinkNode`, `FileRelocatorNode`, `SafeRecycleDeleteNode`, `OriginalFileActionNode`) escriban y operen contra un sistema de archivos virtual en memoria en vez de fallar o ensuciar discos físicos.
+   - Activación automática inteligente: cuando el pipeline contiene nodos de origen sintético (`SyntheticDataSourceNode`) o se marca un contexto como virtual, el motor (`WorkflowExecutor`) activa transparentemente el almacén VFS.
+2. **Arquitectura y Modelos en el SDK (`FileFlow.Sdk`)**:
+   - `VirtualFileEntry`: Representa un archivo virtual con ruta (`VirtualPath`), origen (`OriginalSourcePath`), tamaño, marcas de tiempo, tipo de operación (`Saved`, `Copied`, `Moved`, `ConflictRenamed`, `Deleted`, `Recycled`), colección de metadatos (`Metadata`) y registro de logs.
+   - `IVirtualFileSystemStore`: Contrato canónico para registro de carpetas, adición/actualización de archivos, copia, movimiento, borrado/reciclaje, existencia de rutas, generación de diagrama jerárquico ASCII (`GenerateAsciiTree`) y exportación a sandbox físico (`ExportToPhysicalDirectoryAsync`).
+   - `FileItemContext.IsVirtual`: Propiedad en el contexto de flujo para marcar items virtuales.
+   - `IFlowExecutionContext`: Expone `IVirtualFileSystemStore? VirtualFileSystem` y `bool IsVirtualFileSystemEnabled`.
+3. **Motor VFS Concurrente en Core (`FileFlow.Core`)**:
+   - `VirtualFileSystemStore`: Implementación thread-safe con `System.Threading.Lock` de .NET 9. Gestión de jerarquías de directorios, resolución incremental de colisiones (`archivo_1.ext`), métricas globales (`TotalFiles`, `TotalBytes`), generador de árbol ASCII y exportador a disco sandbox bajo `%TEMP%/FileFlow_VFS_Sandbox/...` con sanitización de unidades de disco Windows (`C_Drive/...`).
+   - `WorkflowExecutor` & `WorkflowExecutionContext`: Instanciación y desacoplamiento limpio del store durante la ejecución, retornando el resultado en `WorkflowExecutionResult`.
+4. **Nodos de Persistencia Adaptados (`FileFlow.Plugin.FileSystem`)**:
+   - `DestinationSinkNode`: Intercepta escrituras cuando `IsVirtualFileSystemEnabled` o `item.IsVirtual`, resolviendo colisiones (Overwrite, Skip, IncrementNumber) y registrando el archivo en VFS con logs informativos.
+   - `FileRelocatorNode`: Soporte para operaciones de copia y movimiento en VFS preservando metadatos.
+   - `SafeRecycleDeleteNode`: Ejecución de borrado y reciclaje lógico en VFS sin invocar APIs de disco o Shell de Windows.
+   - `OriginalFileActionNode`: Tratamiento virtual seguro de acciones sobre el archivo original.
+5. **Explorador Visual VFS en la Interfaz (`FileFlow.App`)**:
+   - `VirtualFileSystemExplorerViewModel`: Modelo de vista MVVM con árbol reactivo de carpetas (`VirtualFolderTreeNodeViewModel`), filtrado en tiempo real por texto y por tipo de operación, e inspector categorizado de metadatos (Fotografía/EXIF, Música/Audio, Vídeo/Cine, Documentos/Fiscal y Hashes). Comandos para copiar árbol ASCII al portapapeles y exportar/abrir el sandbox en el Explorador de Windows.
+   - `VirtualFileSystemExplorerWindow.xaml`: Ventana visual moderna con diseño adaptado al sistema de diseño de FileFlow Studio (`BgAppBrush`, `BgCardBrush`, etc.), split view de 3 columnas (Carpetas, Archivos con Badges y Metadatos) y barra de estado con estadísticas.
+   - `ControlBarViewModel` & `ControlBarView.xaml`: Botón y badge reactivo `🗂️ VFS (N)` en la barra superior tras ejecuciones virtuales para acceso inmediato con 1 clic.
+   - Acceso permanente en el Drawer lateral de la ventana principal (`MainWindow.xaml`).
+6. **Validación Exhaustiva**:
+   - Creadas suites de pruebas: `VirtualFileSystemStoreTests.cs` (6 pruebas), `VirtualPipelineExecutionTests.cs` (4 pruebas) y `VirtualFileSystemExplorerViewModelTests.cs` (5 pruebas).
+   - `dotnet test`: **588 / 588 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+
+---
+
 ## [2026-09-07] - Metadata Enriquecida para Datos Sintéticos y Nuevas Categorías Especializadas (Música, Fotos y Documentos)
 
 ### 🎯 Objetivos y Alcance

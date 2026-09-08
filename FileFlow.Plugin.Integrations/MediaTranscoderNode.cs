@@ -96,7 +96,7 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
             string targetPath = Path.Combine(destDir, outputFileName);
 
             bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
-            string ffmpegExe = ResolveFFmpegExecutable(string.Empty);
+            string ffmpegExe = ResolveFFmpegExecutable(string.Empty, context);
             bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (File.Exists(ffmpegExe) || CanExecuteCommand(ffmpegExe));
             bool transcodeSuccess = false;
 
@@ -216,34 +216,18 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         return "-c:v libx264 -crf 22 -preset medium -c:a aac -b:a 192k";
     }
 
-    private static string ResolveFFmpegExecutable(string paramPath)
+    private static string ResolveFFmpegExecutable(string paramPath, IFlowExecutionContext? context = null)
     {
         if (!string.IsNullOrWhiteSpace(paramPath) && paramPath != "ffmpeg" && File.Exists(paramPath))
         {
             return paramPath;
         }
 
-        // Try accessing App ExternalToolsService via reflection to remain decoupled
-        try
+        if (context?.Tools != null)
         {
-            var appDomainAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "FileFlow.App");
-            if (appDomainAssembly != null)
-            {
-                var serviceType = appDomainAssembly.GetType("FileFlow.App.Services.ExternalToolsService");
-                if (serviceType != null)
-                {
-                    var instanceProp = serviceType.GetProperty("Instance");
-                    var instance = instanceProp?.GetValue(null);
-                    if (instance != null)
-                    {
-                        var ffmpegProp = serviceType.GetProperty("FfmpegExecutable");
-                        string? path = ffmpegProp?.GetValue(instance)?.ToString();
-                        if (!string.IsNullOrWhiteSpace(path)) return path;
-                    }
-                }
-            }
+            string toolExe = context.Tools.FfmpegExecutable;
+            if (!string.IsNullOrWhiteSpace(toolExe)) return toolExe;
         }
-        catch { }
 
         return !string.IsNullOrWhiteSpace(paramPath) ? paramPath : "ffmpeg";
     }

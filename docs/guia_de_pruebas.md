@@ -1,6 +1,6 @@
 # Guía y Catálogo Exhaustivo de Pruebas - FileFlow Studio
 
-Este documento constituye el manual técnico oficial de pruebas automatizadas de **FileFlow Studio**, documentando el **Objeto**, el **Qué** (comportamiento validado) y el **Cómo** (estrategia técnica AAA: *Arrange, Act, Assert*) de las 190 pruebas que componen la suite de calidad del sistema.
+Este documento constituye el manual técnico oficial de pruebas automatizadas de **FileFlow Studio**, documentando el **Objeto**, el **Qué** (comportamiento validado) y el **Cómo** (estrategia técnica AAA: *Arrange, Act, Assert*) de las **606 pruebas** que componen la suite de calidad del sistema.
 
 ---
 
@@ -129,6 +129,20 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
   - **Qué:** Verifica el rendimiento y la persistencia de miles de trazas en una base de datos SQLite In-Memory protegida contra escrituras concurrentes.
   - **Cómo:** *Arrange:* Base de datos SQLite en memoria. *Act:* Se insertan 1.000 trazas concurrentes con `Parallel.For`. *Assert:* Todas las trazas se consultan con integridad y paginación correcta.
 
+#### 2.6. `VirtualFileSystemStoreTests.cs` y `VirtualPipelineExecutionTests.cs`
+- **`VirtualFileSystemStore_CRUD_Operations_ShouldSucceed`**:
+  - **Objeto:** Sistema de archivos virtual concurrente en memoria `VirtualFileSystemStore`.
+  - **Qué:** Valida el registro jerárquico de carpetas, adición/actualización de archivos con metadatos, copiado, movimiento y borrado lógico, así como la resolución automática de colisiones de nombres (`_1`, `_2`).
+  - **Cómo:** *Arrange:* Instancia de `VirtualFileSystemStore`. *Act:* Se registran directorios y archivos virtuales con diferentes estados (`Saved`, `Moved`, `ConflictRenamed`). *Assert:* Se verifica la existencia de rutas, conteo total de archivos/bytes y generación de diagrama de árbol ASCII con `GenerateAsciiTree()`.
+- **`ExportToPhysicalDirectoryAsync_ShouldSanitizeAndMaterializeSandbox`**:
+  - **Objeto:** Exportación de VFS a disco físico sandbox (`ExportToPhysicalDirectoryAsync`).
+  - **Qué:** Comprueba que los archivos virtuales se materialicen en disco bajo una carpeta temporal segura sanitizando letras de unidad de Windows (`C_Drive/...`).
+  - **Cómo:** *Arrange:* VFS poblado con estructura de carpetas. *Act:* Se exporta a `%TEMP%/FileFlow_VFS_Sandbox/...`. *Assert:* Se valida que los archivos físicos existan en disco y coincidan en tamaño y jerarquía.
+- **`VirtualPipelineExecution_ShouldInterceptSinksAndRelocators`**:
+  - **Objeto:** Ejecución E2E no destructiva en `WorkflowExecutor` con elementos virtuales.
+  - **Qué:** Valida que al circular items con `IsVirtual = true`, los nodos `DestinationSinkNode` y `FileRelocatorNode` redirijan sus operaciones exclusivamente al almacén VFS sin escribir en disco real.
+  - **Cómo:** *Arrange:* Pipeline con `SyntheticDataSourceNode` $\rightarrow$ `AdvancedRenamer` $\rightarrow$ `DestinationSinkNode`. *Act:* Se ejecuta el flujo. *Assert:* El resultado contiene el `IVirtualFileSystemStore` poblado y no se generan archivos en la ruta física configurada.
+
 ---
 
 ### 🧩 Módulo 3: Plugins y Nodos (`FileFlow.Tests/Unit/Plugins`)
@@ -195,6 +209,42 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
   - **Qué:** Evalúa expresiones o metadatos y desvía el archivo al puerto correspondiente.
   - **Cómo:** *Arrange:* Reglas para extensiones `.jpg` y `.zip`. *Act:* Se envía un `.jpg`. *Assert:* El ítem sale exclusivamente por el puerto asignado a imágenes.
 
+#### 3.8. `SyntheticDataSourceNodeTests.cs` y `SyntheticDataSourceHierarchicalTests.cs`
+- **`SyntheticDataSource_ShouldEmitHierarchicalItemsAndFolderItems`**:
+  - **Objeto:** Emisión jerárquica y de carpetas intermedias en `SyntheticDataSourceNode`.
+  - **Qué:** Valida que las rutas relativas anidadas (`Fotos/2026/playa.jpg`) se emitan preservando la jerarquía y que `EmitDirectories = true` emita previamente los items con `IsDirectory = true`.
+  - **Cómo:** *Arrange:* Nodo configurado con items jerárquicos y `EmitDirectories = true`. *Act:* Se ejecuta con `Mock<IFlowExecutionContext>`. *Assert:* Se emiten tanto las carpetas padre como los ficheros hoja en orden correcto.
+- **`SyntheticDataSource_ShouldEmitCustomDataSetByName`**:
+  - **Objeto:** Emisión de conjuntos personalizados guardados por el usuario.
+  - **Qué:** Asegura que al seleccionar `Category = "Personalizada"` y configurar `CustomDataSetName`, el nodo consulte `SyntheticDataSetStorageService` y emita los items correspondientes.
+  - **Cómo:** *Arrange:* Dataset guardado en almacenamiento. *Act:* Se ejecuta el nodo. *Assert:* Todos los elementos del dataset se emiten con sus metadatos intactos.
+
+#### 3.9. `SyntheticTreeDslParserTests.cs`
+- **`Parse_ShouldParseIndentedHierarchyAndSizesCorrectly`**:
+  - **Objeto:** Parser bidireccional del lenguaje DSL de árbol rápido `SyntheticTreeDslParser`.
+  - **Qué:** Valida que el parser interprete niveles de carpetas por sangría/espacios, tamaños legibles (`50KB`, `1.5MB`, `2GB`) y metadatos `key=val`.
+  - **Cómo:** *Arrange:* Cadena con texto DSL indentado. *Act:* `SyntheticTreeDslParser.Parse(dsl)`. *Assert:* Se obtienen los `SyntheticFileDefinition` con sus rutas relativas y tamaños en bytes exactos.
+- **`Parse_ShouldParseSimulatedArchiveEntries`**:
+  - **Objeto:** Parsing de entradas comprimidas `[archive: ...]`.
+  - **Qué:** Verifica la extracción de la lista `SimulatedArchiveEntries` dentro de archivos comprimidos con sus rutas internas y tamaños.
+  - **Cómo:** *Arrange:* DSL con `archivo.zip (10MB) [archive: file1.txt (1KB); file2.png (5MB)]`. *Act:* Se parsea la definición. *Assert:* El archivo se marca con `IsArchive = true` y contiene las 2 entradas internas correctamente dimensionadas.
+
+#### 3.10. `SyntheticDataSetStorageServiceTests.cs`
+- **`StorageService_CRUD_And_BuiltInProtection_ShouldSucceed`**:
+  - **Objeto:** Servicio de persistencia thread-safe `SyntheticDataSetStorageService`.
+  - **Qué:** Valida la inicialización de los 200 items base, guardado, actualización, duplicación, exportación/importación JSON y la protección estricta contra eliminación o sobreescritura de datasets del sistema (`IsBuiltIn = true`).
+  - **Cómo:** *Arrange:* Directorio de pruebas aislado. *Act:* Se realizan operaciones CRUD y se intenta eliminar un dataset de sistema. *Assert:* Se arroja `InvalidOperationException` al intentar borrar built-ins, mientras que los datasets de usuario se crean, guardan y eliminan correctamente.
+
+#### 3.11. `SyntheticArchiveSimulationTests.cs`
+- **`SmartUnpackNode_ShouldUnpackVirtualArchiveDirectlyIntoVfs`**:
+  - **Objeto:** Descompresión virtual directa hacia `IVirtualFileSystemStore`.
+  - **Qué:** Valida que cuando un archivo virtual simulado con `Archive:Entries` llega a `SmartUnpackNode`, se extraigan sus entradas directamente en el VFS en memoria sin requerir ficheros físicos ni lanzar errores de lectura.
+  - **Cómo:** *Arrange:* Archivo virtual con metadato `Archive:Entries` JSON conectado a `SmartUnpackNode`. *Act:* Se ejecuta la descompresión. *Assert:* Cada entrada interna se registra en el VFS y se emite como un `FileItemContext` virtual independiente.
+- **`SyntheticDataSource_PhysicalMock_ShouldCreateRealZipArchive`**:
+  - **Objeto:** Generación de archivo `.zip` real en modo `PhysicalMock`.
+  - **Qué:** Comprueba que en modo físico, el nodo cree un archivo `.zip` válido en disco mediante `System.IO.Compression.ZipArchive` conteniendo los ficheros simulados.
+  - **Cómo:** *Arrange:* Nodo con `EmissionMode = PhysicalMock` y archivo comprimido definido. *Act:* Se ejecuta el nodo. *Assert:* Se abre el archivo `.zip` con `ZipFile.OpenRead` y se verifica que contiene las entradas exactas.
+
 ---
 
 ### 🖥️ Módulo 4: UI y Presentación MVVM (`FileFlow.Tests/Unit/App`)
@@ -216,6 +266,18 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
   - **Objeto:** Servicio de persistencia `WorkflowStorageService`.
   - **Qué:** Verifica la serialización y deserialización polimórfica JSON de grafos de flujo, posiciones X/Y, conexiones y parámetros sin pérdida de tipos.
   - **Cómo:** *Arrange:* Grafo complejo en memoria. *Act:* Se serializa a JSON y se vuelve a cargar. *Assert:* El grafo reconstruido es idéntico en nodos, conexiones y valores de parámetros.
+
+#### 4.4. `SyntheticDataSetDesignerViewModelTests.cs`
+- **`DesignerViewModel_FilteringAndSync_ShouldWorkCorrectly`**:
+  - **Objeto:** ViewModel del diseñador de datasets `SyntheticDataSetDesignerViewModel`.
+  - **Qué:** Valida el filtrado reactivo por texto de búsqueda, creación de nuevos datasets, duplicación, cambio de pestañas (Tabla, DSL, JSON) y sincronización automática del texto DSL hacia la colección de archivos.
+  - **Cómo:** *Arrange:* ViewModel con almacenamiento mock. *Act:* Se escribe texto DSL y se invoca `ApplyDslCommand`. *Assert:* La colección `CurrentFiles` se actualiza de forma reactiva con los nuevos elementos parseados.
+
+#### 4.5. `VirtualFileSystemExplorerViewModelTests.cs`
+- **`ExplorerViewModel_TreePopulationAndFilters_ShouldSucceed`**:
+  - **Objeto:** ViewModel del explorador VFS `VirtualFileSystemExplorerViewModel`.
+  - **Qué:** Valida la construcción jerárquica reactiva del árbol de carpetas a partir de un `IVirtualFileSystemStore`, el filtrado por tipo de operación (`Saved`, `Moved`, etc.) y la selección de archivos con inspección de metadatos categorizados.
+  - **Cómo:** *Arrange:* Store poblado con archivos virtuales. *Act:* Se inicializa el ViewModel con el store. *Assert:* El árbol de carpetas refleja las rutas exactas y el total de archivos coincide con las métricas del almacén.
 
 ---
 

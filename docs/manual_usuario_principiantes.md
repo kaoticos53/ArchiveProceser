@@ -183,6 +183,24 @@ Cuando abres FileFlow Studio, la pantalla se divide en 4 partes muy fáciles de 
 
 ---
 
+### 🧪 Receta 9: Probar flujos con "Archivos de Prueba Ficticios" y Sistema Virtual (100% Inofensivo)
+
+**El Problema:** Estás creando un flujo complejo (renombrar fotos por cámara, descomprimir archivos, ordenar facturas por año...) pero no quieres arriesgar tus archivos personales o no tienes archivos a mano para probar.
+
+**La Solución:**
+1. Añade la caja **"Datos Sintéticos"** (`SyntheticDataSourceNode`) en lugar del lector de carpetas habitual.
+2. Elige una categoría lista para usar en el panel derecho: *"Películas"*, *"Series"*, *"Música"* (con carátulas y canciones de prueba), *"Fotos"* (con cámaras Sony, Canon, Nikon y fechas EXIF) o *"Documentos"* (con facturas e informes).
+3. ¿Quieres inventarte tus propios archivos o carpetas? Haz clic en el botón **"🎨 Diseñar Conjuntos de Datos..."** en el panel derecho:
+   - Podrás escribir tu propia estructura de carpetas como un árbol de texto rápido o en una tabla sencilla.
+   - ¡Incluso puedes simular archivos comprimidos `.zip` con ficheros ficticios dentro!
+4. Conecta tus cajas habituales (Renombrar, Mover, Guardar...) y pulsa **"▶ Ejecutar Flujo"**.
+5. **El Gran Secreto:** Ningún archivo se guardará en tu disco real. El programa escribe todo en un **Sistema de Archivos Virtual (VFS)** en la memoria del ordenador.
+6. Al terminar, pulsa el nuevo botón **"🗂️ VFS"** de la barra superior:
+   - Verás un explorador visual idéntico al de Windows con las carpetas virtuales creadas, insignias de colores (*Guardado*, *Movido*, *Renombrado*) y todos los metadatos.
+   - Si el resultado te gusta, puedes pulsar *"Abrir en Explorador"* para verlos en tu disco o aplicar el flujo con tus carpetas reales.
+
+---
+
 ### 👁️ El Truco de la Tecla Espacio (Visor Rápido QuickLook)
 ¿Quieres ver cómo ha quedado una foto, leer un documento o ver qué metadatos tiene un archivo sin abrir programas externos?
 1. Haz clic sobre cualquier archivo en la consola o sobre una tarjeta en el lienzo.
@@ -228,6 +246,8 @@ En la barra superior verás que la barra de progreso se llena en verde y en la c
 | **Rollback / Deshacer** | Rebobinar la película: deshace todos los cambios y deja tus archivos como estaban. |
 | **Punto de Control (Checkpoint)** | Memoria de guardado que permite continuar un trabajo largo donde se quedó si se corta la luz. |
 | **Metadatos (EXIF / ID3 / Columnas)** | Información oculta dentro de un archivo (fecha de la foto, modelo de cámara, autor, columnas de un Excel). |
+| **Datos Sintéticos (Muestras)** | Archivos falsos e inofensivos que el programa genera para probar flujos sin usar tus fotos o facturas reales. |
+| **VFS (Sistema de Archivos Virtual)** | Un disco duro simulado en la memoria RAM donde los flujos de prueba escriben y ordenan archivos sin tocar tu disco real. |
 | **Versión Portable** | Una versión de FileFlow Studio que puedes llevar en un pendrive USB y usar en cualquier ordenador sin necesidad de instalar nada. |
 
 ---

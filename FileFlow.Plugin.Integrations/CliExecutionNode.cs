@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Platform;
 using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.Integrations;
@@ -39,12 +40,23 @@ public class CliExecutionNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string exe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, "cmd.exe") : "cmd.exe";
+        var platform = context.Platform ?? NullOsPlatformService.Instance;
+        string defaultShell = platform.GetDefaultShellExecutable();
+        string exe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, defaultShell) : defaultShell;
+        if (string.Equals(exe, "cmd.exe", StringComparison.OrdinalIgnoreCase) && !platform.IsWindows)
+        {
+            exe = defaultShell;
+        }
+
         string argsTemplate = Parameters.TryGetValue("ArgumentsTemplate", out var aVal) ? ParameterHelper.GetString(aVal, "") : "";
         int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 60) : 60;
         bool captureOutput = Parameters.TryGetValue("CaptureOutputToMetadata", out var cVal) && ParameterHelper.GetBoolean(cVal, true);
 
         string resolvedArgs = VariableTemplateResolver.Resolve(argsTemplate, item);
+        if (!platform.IsWindows && resolvedArgs.StartsWith("/c ", StringComparison.OrdinalIgnoreCase))
+        {
+            resolvedArgs = "-c \"" + resolvedArgs[3..].Replace("\"", "\\\"") + "\"";
+        }
         string resolvedExe = VariableTemplateResolver.Resolve(exe, item);
 
         try

@@ -1,16 +1,18 @@
+using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.FileSystem;
 
-[NodeDefinition("OriginalFileActionNode_Name", "Files", "OriginalFileActionNode_Desc", PipelineRole.Transform,
-    "origen", "cuarentena", "papelera", "conservar", "ciclo de vida", "quarantine", "original", "cleanup")]
+[NodeDefinition("OriginalFileActionNode_Name", "Files", "OriginalFileActionNode_Desc", PipelineRole.Sink,
+    "original", "cuarentena", "papelera", "borrar", "eliminar", "quarantine", "recycle", "lifecycle", "cleanup")]
 public class OriginalFileActionNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("OriginalFileActionNode_Name", "Original File Action");
     public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("OriginalFileActionNode_Desc", "Applies lifecycle policy to the original file (keep, quarantine, or delete).");
+    public string Description => LocalizationManager.Instance.GetString("OriginalFileActionNode_Desc", "Centralized policy execution on original source files (Keep, Move to Recycle Bin, Move to Quarantine, Permanent Delete).");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -40,15 +42,19 @@ public class OriginalFileActionNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string actionType = Parameters.TryGetValue("ActionType", out var val) ? ParameterHelper.GetString(val, "Keep") : "Keep";
-        string quarantinePattern = Parameters.TryGetValue("QuarantinePath", out var qVal) ? ParameterHelper.GetString(qVal, @"{RelativeDir}\Quarantine") : @"{RelativeDir}\Quarantine";
-        string quarantinePath = ParameterHelper.ResolveOutputPath(quarantinePattern, item);
-        bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
-
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
+        string actionType = Parameters.TryGetValue("ActionType", out var aVal) ? ParameterHelper.GetString(aVal, "Keep") : "Keep";
+        string quarantinePattern = Parameters.TryGetValue("QuarantinePath", out var qVal) ? ParameterHelper.GetString(qVal, @"{RelativeDir}\Quarantine") : @"{RelativeDir}\Quarantine";
+        string quarantinePath = ParameterHelper.ResolveOutputPath(quarantinePattern, item);
         string targetFilePath = item.OriginalPath;
-        if (string.IsNullOrWhiteSpace(targetFilePath) || (!File.Exists(targetFilePath) && !Directory.Exists(targetFilePath)))
+        bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
+        var storage = context.GetStorage();
+
+        bool exists = await storage.FileExistsAsync(targetFilePath, cancellationToken).ConfigureAwait(false)
+            || await storage.DirectoryExistsAsync(targetFilePath, cancellationToken).ConfigureAwait(false);
+
+        if (!exists && !isDryRun)
         {
             context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_SourceNotFound", "[Original File Action] Original file not found: '{0}'", targetFilePath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -66,33 +72,29 @@ public class OriginalFileActionNode : IFlowNode
                 case "MOVETORECYCLEBIN":
                     string detailsRecycle = $"{{\"action\": \"MoveToRecycleBin\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
                     context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_Recycle", "[Original File Action] Sending original to Recycle Bin: '{0}' (DryRun={1})", targetFilePath, isDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsRecycle);
+
                     if (!isDryRun)
                     {
-                        bool recycled = SendToWindowsRecycleBin(targetFilePath);
-                        if (!recycled)
+                        var recycleResult = await storage.DeleteAsync(targetFilePath, permanent: false, cancellationToken).ConfigureAwait(false);
+                        if (!recycleResult.IsSuccess)
                         {
-                            throw new IOException($"Windows Shell API failed to send original file '{targetFilePath}' to Recycle Bin.");
+                            throw new IOException(recycleResult.ErrorMessage ?? $"Failed to send original file '{targetFilePath}' to Recycle Bin.");
                         }
                     }
                     break;
 
                 case "MOVETOQUARANTINE":
-                    if (!Directory.Exists(quarantinePath) && !isDryRun)
-                    {
-                        Directory.CreateDirectory(quarantinePath);
-                    }
                     string destPath = Path.Combine(quarantinePath, Path.GetFileName(targetFilePath));
                     string detailsMove = $"{{\"action\": \"MoveToQuarantine\", \"quarantinePath\": \"{destPath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
                     context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_Quarantine", "[Original File Action] Moving original to quarantine: '{0}' (DryRun={1})", destPath, isDryRun), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsMove);
+
                     if (!isDryRun)
                     {
-                        if (item.IsDirectory)
+                        await storage.CreateDirectoryAsync(quarantinePath, cancellationToken).ConfigureAwait(false);
+                        var moveResult = await storage.MoveAsync(targetFilePath, destPath, StorageCollisionStrategy.Overwrite, cancellationToken).ConfigureAwait(false);
+                        if (!moveResult.IsSuccess)
                         {
-                            Directory.Move(targetFilePath, destPath);
-                        }
-                        else
-                        {
-                            File.Move(targetFilePath, destPath, overwrite: true);
+                            throw new IOException(moveResult.ErrorMessage ?? $"Failed to move original file to quarantine '{destPath}'.");
                         }
                     }
                     break;
@@ -100,15 +102,13 @@ public class OriginalFileActionNode : IFlowNode
                 case "PERMANENTDELETE":
                     string detailsDelete = $"{{\"action\": \"PermanentDelete\", \"targetPath\": \"{targetFilePath.Replace("\\", "\\\\")}\", \"isDryRun\": {isDryRun.ToString().ToLowerInvariant()}}}";
                     context.Log(LocalizationManager.Instance.GetFormattedString("Log_OriginalAction_PermanentDelete", "[Original File Action] Permanently deleting original: '{0}' (DryRun={1})", targetFilePath, isDryRun), LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsDelete);
+
                     if (!isDryRun)
                     {
-                        if (item.IsDirectory)
+                        var deleteResult = await storage.DeleteAsync(targetFilePath, permanent: true, cancellationToken).ConfigureAwait(false);
+                        if (!deleteResult.IsSuccess)
                         {
-                            Directory.Delete(targetFilePath, recursive: true);
-                        }
-                        else
-                        {
-                            File.Delete(targetFilePath);
+                            throw new IOException(deleteResult.ErrorMessage ?? $"Failed to permanently delete original file '{targetFilePath}'.");
                         }
                     }
                     break;
@@ -131,62 +131,4 @@ public class OriginalFileActionNode : IFlowNode
             await context.EmitAsync("Error", item);
         }
     }
-
-    private static bool SendToWindowsRecycleBin(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-
-        try
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                string fullPath = Path.GetFullPath(path);
-                IntPtr pFrom = System.Runtime.InteropServices.Marshal.StringToHGlobalUni(fullPath + "\0\0");
-                try
-                {
-                    var fileOp = new SHFILEOPSTRUCT
-                    {
-                        hwnd = IntPtr.Zero,
-                        wFunc = 0x0003, // FO_DELETE
-                        pFrom = pFrom,
-                        pTo = IntPtr.Zero,
-                        fFlags = 0x0040 | 0x0010 | 0x0004 | 0x0400, // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
-                        fAnyOperationsAborted = false,
-                        hNameMappings = IntPtr.Zero,
-                        lpszProgressTitle = IntPtr.Zero
-                    };
-
-                    int result = SHFileOperation(ref fileOp);
-                    return result == 0 && !fileOp.fAnyOperationsAborted;
-                }
-                finally
-                {
-                    System.Runtime.InteropServices.Marshal.FreeHGlobal(pFrom);
-                }
-            }
-
-            return false;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private struct SHFILEOPSTRUCT
-    {
-        public IntPtr hwnd;
-        public uint wFunc;
-        public IntPtr pFrom;
-        public IntPtr pTo;
-        public ushort fFlags;
-        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-        public bool fAnyOperationsAborted;
-        public IntPtr hNameMappings;
-        public IntPtr lpszProgressTitle;
-    }
-
-    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private static extern int SHFileOperation([System.Runtime.InteropServices.In, System.Runtime.InteropServices.Out] ref SHFILEOPSTRUCT lpFileOp);
 }

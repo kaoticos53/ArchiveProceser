@@ -153,4 +153,28 @@
   <data name="SyntheticDataSourceNode_Name" xml:space="preserve"><value>Synthetic Data Source (Test Bench)</value></data>
   <data name="SyntheticDataSourceNode_Desc" xml:space="preserve"><value>Emits categorized test files (Movies, Series, Comics, Music, Documents or Custom) to test and debug pipelines without requiring real disk files.</value></data>
   <data name="Log_SyntheticSource_Emitting" xml:space="preserve"><value>[Synthetic Data Source] Emitting {0} synthetic files (Category: '{1}', Mode: '{2}').</value></data>
+  <data name="Log_Sink_SavedSuccessVirtual" xml:space="preserve"><value>[Destination Sink] Saved to Virtual File System: '{0}' (Strategy: {1})</value></data>
+  <data name="Log_Relocator_SuccessVirtual" xml:space="preserve"><value>[Relocator] {0} to Virtual File System: '{1}'</value></data>
+  <data name="Log_SafeRecycle_VirtualSuccess" xml:space="preserve"><value>[Safe Recycle] Sent to Virtual Recycle Bin: '{0}'</value></data>
+  <data name="Log_OriginalAction_VirtualDeleted" xml:space="preserve"><value>[Original File Action] Processed '{0}' in Virtual File System (Action: {1})</value></data>
+  <data name="Log_OriginalAction_VirtualQuarantine" xml:space="preserve"><value>[Original File Action] Moved '{0}' to virtual quarantine: '{1}'</value></data>
+  <data name="DataSetDesigner_WindowTitle" xml:space="preserve"><value>Synthetic Data Sets Designer</value></data>
+  <data name="DataSetDesigner_HeaderTitle" xml:space="preserve"><value>Synthetic Data &amp; Hierarchical Tree Designer</value></data>
+  <data name="DataSetDesigner_HeaderDesc" xml:space="preserve"><value>Create, customize and persist directory hierarchies, metadata and simulated compressed packages for testing.</value></data>
+  <data name="DataSetDesigner_SaveButton" xml:space="preserve"><value>💾 Save Dataset</value></data>
+  <data name="Msg_DataSetLoaded" xml:space="preserve"><value>Dataset '{0}' loaded.</value></data>
+  <data name="Msg_NewDataSetCreated" xml:space="preserve"><value>New dataset created successfully.</value></data>
+  <data name="Msg_DataSetDuplicated" xml:space="preserve"><value>Duplicate copy created: '{0}'.</value></data>
+  <data name="Msg_ConfirmDeleteDataSet" xml:space="preserve"><value>Are you sure you want to permanently delete dataset '{0}'?</value></data>
+  <data name="Title_ConfirmDelete" xml:space="preserve"><value>Confirm Deletion</value></data>
+  <data name="Msg_DataSetDeleted" xml:space="preserve"><value>Dataset '{0}' deleted.</value></data>
+  <data name="Msg_BuiltInClonedOnSave" xml:space="preserve"><value>Official datasets are read-only. A custom copy was saved: '{0}'.</value></data>
+  <data name="Msg_DataSetSavedSuccess" xml:space="preserve"><value>Dataset '{0}' saved successfully.</value></data>
+  <data name="Msg_DslApplied" xml:space="preserve"><value>DSL tree structure applied: {0} items created.</value></data>
+  <data name="Msg_JsonApplied" xml:space="preserve"><value>JSON applied successfully to dataset.</value></data>
+  <data name="Title_ExportDataSet" xml:space="preserve"><value>Export Synthetic Dataset</value></data>
+  <data name="Msg_DataSetExported" xml:space="preserve"><value>Dataset exported to '{0}'.</value></data>
+  <data name="Title_ImportDataSet" xml:space="preserve"><value>Import Synthetic Dataset</value></data>
+  <data name="Msg_DataSetImported" xml:space="preserve"><value>Dataset '{0}' imported and saved.</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
 </root>

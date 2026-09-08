@@ -153,4 +153,28 @@
   <data name="SyntheticDataSourceNode_Name" xml:space="preserve"><value>Generador de Datos de Prueba (Test Bench)</value></data>
   <data name="SyntheticDataSourceNode_Desc" xml:space="preserve"><value>Emite archivos de prueba categorizados (Películas, Series, Cómics, Música o Personalizados) para pruebas y depuración de pipelines sin requerir archivos reales.</value></data>
   <data name="Log_SyntheticSource_Emitting" xml:space="preserve"><value>[Generador de Datos] Emitiendo {0} archivos sintéticos (Categoría: '{1}', Modo: '{2}').</value></data>
+  <data name="Log_Sink_SavedSuccessVirtual" xml:space="preserve"><value>[Destination Sink] Guardado en Sistema de Archivos Virtual: '{0}' (Estrategia: {1})</value></data>
+  <data name="Log_Relocator_SuccessVirtual" xml:space="preserve"><value>[Relocator] Operación {0} en Sistema de Archivos Virtual: '{1}'</value></data>
+  <data name="Log_SafeRecycle_VirtualSuccess" xml:space="preserve"><value>[Safe Recycle] Enviado a la Papelera Virtual: '{0}'</value></data>
+  <data name="Log_OriginalAction_VirtualDeleted" xml:space="preserve"><value>[Original File Action] Procesado '{0}' en Sistema de Archivos Virtual (Acción: {1})</value></data>
+  <data name="Log_OriginalAction_VirtualQuarantine" xml:space="preserve"><value>[Original File Action] Movido '{0}' a cuarentena virtual: '{1}'</value></data>
+  <data name="DataSetDesigner_WindowTitle" xml:space="preserve"><value>Diseñador de Conjuntos de Datos Sintéticos</value></data>
+  <data name="DataSetDesigner_HeaderTitle" xml:space="preserve"><value>Diseñador de Datos Sintéticos y Árboles Jerárquicos</value></data>
+  <data name="DataSetDesigner_HeaderDesc" xml:space="preserve"><value>Crea, personaliza y guarda estructuras de directorios, metadatos y paquetes comprimidos simulados para pruebas.</value></data>
+  <data name="DataSetDesigner_SaveButton" xml:space="preserve"><value>💾 Guardar Dataset</value></data>
+  <data name="Msg_DataSetLoaded" xml:space="preserve"><value>Dataset '{0}' cargado.</value></data>
+  <data name="Msg_NewDataSetCreated" xml:space="preserve"><value>Nuevo dataset creado con éxito.</value></data>
+  <data name="Msg_DataSetDuplicated" xml:space="preserve"><value>Copia creada: '{0}'.</value></data>
+  <data name="Msg_ConfirmDeleteDataSet" xml:space="preserve"><value>¿Deseas eliminar de forma permanente el dataset '{0}'?</value></data>
+  <data name="Title_ConfirmDelete" xml:space="preserve"><value>Confirmar Eliminación</value></data>
+  <data name="Msg_DataSetDeleted" xml:space="preserve"><value>Dataset '{0}' eliminado.</value></data>
+  <data name="Msg_BuiltInClonedOnSave" xml:space="preserve"><value>Los datasets oficiales son de solo lectura. Se ha guardado una copia personalizada: '{0}'.</value></data>
+  <data name="Msg_DataSetSavedSuccess" xml:space="preserve"><value>Dataset '{0}' guardado correctamente.</value></data>
+  <data name="Msg_DslApplied" xml:space="preserve"><value>Estructura DSL aplicada: {0} elementos creados.</value></data>
+  <data name="Msg_JsonApplied" xml:space="preserve"><value>JSON aplicado con éxito al dataset.</value></data>
+  <data name="Title_ExportDataSet" xml:space="preserve"><value>Exportar Dataset Sintético</value></data>
+  <data name="Msg_DataSetExported" xml:space="preserve"><value>Dataset exportado a '{0}'.</value></data>
+  <data name="Title_ImportDataSet" xml:space="preserve"><value>Importar Dataset Sintético</value></data>
+  <data name="Msg_DataSetImported" xml:space="preserve"><value>Dataset '{0}' importado y guardado.</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Cerrar</value></data>
 </root>

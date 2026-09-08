@@ -1,9 +1,12 @@
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using FileFlow.Plugin.Archives.Services;
 using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.SyntheticData;
+using FileFlow.Sdk.VirtualFileSystem;
 
 namespace FileFlow.Plugin.Archives;
 
@@ -94,6 +97,86 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         string pwdFileParam = Parameters.TryGetValue("PasswordFile", out var pfVal) ? ParameterHelper.GetString(pfVal, "") : "";
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        bool isVirtualOrSimulated = item.IsVirtual || context.IsVirtualFileSystemEnabled || item.Metadata.ContainsKey("Archive:Entries");
+
+        if (isVirtualOrSimulated && (item.IsVirtual || !File.Exists(archivePath) || item.Metadata.ContainsKey("Archive:Entries")))
+        {
+            string archiveNameNoExt = Path.GetFileNameWithoutExtension(archivePath);
+            string finalExtractDir = Path.Combine(destFolder, archiveNameNoExt);
+
+            List<SyntheticArchiveEntryDefinition> simulatedEntries = [];
+            if (item.Metadata.TryGetValue("Archive:Entries", out var entriesObj) && entriesObj != null)
+            {
+                if (entriesObj is string entriesJson && !string.IsNullOrWhiteSpace(entriesJson))
+                {
+                    try
+                    {
+                        var parsed = JsonSerializer.Deserialize<List<SyntheticArchiveEntryDefinition>>(entriesJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (parsed != null) simulatedEntries = parsed;
+                    }
+                    catch { }
+                }
+                else if (entriesObj is List<SyntheticArchiveEntryDefinition> directList)
+                {
+                    simulatedEntries = directList;
+                }
+            }
+
+            if (simulatedEntries.Count == 0)
+            {
+                simulatedEntries.Add(new SyntheticArchiveEntryDefinition(
+                    $"{archiveNameNoExt}_content.dat",
+                    item.FileSizeBytes > 0 ? item.FileSizeBytes : 1024 * 1024));
+            }
+
+            if (context.VirtualFileSystem != null)
+            {
+                foreach (var entry in simulatedEntries)
+                {
+                    string entryRel = entry.InnerPath.Replace('\\', '/').TrimStart('/');
+                    string targetVirtualPath = Path.Combine(finalExtractDir, entryRel.Replace('/', Path.DirectorySeparatorChar));
+                    string targetDir = Path.GetDirectoryName(targetVirtualPath) ?? finalExtractDir;
+
+                    var meta = new Dictionary<string, object?>(entry.Metadata, StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["UnpackedFrom"] = archivePath,
+                        ["VirtualSample"] = true,
+                        ["IsVirtual"] = true
+                    };
+
+                    var vfe = new VirtualFileEntry(
+                        VirtualPath: targetVirtualPath,
+                        OriginalPath: targetVirtualPath,
+                        FileName: Path.GetFileName(targetVirtualPath),
+                        Extension: entry.IsDirectory ? string.Empty : Path.GetExtension(targetVirtualPath),
+                        DirectoryPath: targetDir,
+                        FileSizeBytes: entry.FileSizeBytes,
+                        OperationType: VirtualOperationType.Saved,
+                        SourceNodeName: Name,
+                        SourceNodeId: Id,
+                        Metadata: meta,
+                        ExecutionLog: [$"Extracted virtually from {archivePath}"],
+                        TimestampUtc: DateTime.UtcNow
+                    );
+                    context.VirtualFileSystem.AddOrUpdateFile(vfe);
+                }
+            }
+
+            sw.Stop();
+            var outputItem = new FileItemContext(finalExtractDir, isDirectory: true);
+            outputItem.Metadata["VirtualSample"] = true;
+            outputItem.Metadata["IsVirtual"] = true;
+            outputItem.Metadata["UnpackedFrom"] = archivePath;
+            outputItem.Metadata["ArchiveFormat"] = Path.GetExtension(archivePath).TrimStart('.').ToUpperInvariant();
+            outputItem.Metadata["UnpackedFileCount"] = simulatedEntries.Count;
+            outputItem.AddLog($"SmartUnpackNode virtual extraction to {finalExtractDir}");
+
+            context.Log($"[Descompresor] Extracción virtual completada: {simulatedEntries.Count} ficheros simulados en '{finalExtractDir}'", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds);
+
+            await context.EmitAsync("Out", outputItem);
+            return;
+        }
 
         if (string.IsNullOrWhiteSpace(archivePath) || !File.Exists(archivePath))
         {

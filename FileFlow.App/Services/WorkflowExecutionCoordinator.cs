@@ -29,7 +29,8 @@ public record WorkflowExecutionResult(
     bool Cancelled,
     string? ErrorMessage,
     ExecutionJournalService? JournalService,
-    int PlannedActionsCount
+    int PlannedActionsCount,
+    FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? VirtualFileSystem = null
 );
 
 /// <summary>
@@ -48,6 +49,7 @@ public sealed class WorkflowExecutionCoordinator
 
     public WorkflowExecutor? ActiveExecutor => _activeExecutor;
     public WorkflowDebugSession? ActiveDebugSession => _activeDebugSession;
+    public FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? LastVirtualFileSystem { get; private set; }
 
     public WorkflowExecutionCoordinator(
         EditorViewModel editorViewModel,
@@ -209,34 +211,40 @@ public sealed class WorkflowExecutionCoordinator
                 }
             }, cancellationToken);
 
+            LastVirtualFileSystem = _activeExecutor.VirtualFileSystem;
             return new WorkflowExecutionResult(
-                Succeeded: true,
-                Cancelled: false,
-                ErrorMessage: null,
-                JournalService: _activeExecutor.JournalService,
-                PlannedActionsCount: _activeExecutor.PlannedActions.Count
-            );
-        }
-        catch (OperationCanceledException)
-        {
-            return new WorkflowExecutionResult(
-                Succeeded: false,
-                Cancelled: true,
-                ErrorMessage: null,
-                JournalService: _activeExecutor?.JournalService,
-                PlannedActionsCount: _activeExecutor?.PlannedActions.Count ?? 0
-            );
-        }
-        catch (Exception ex)
-        {
-            return new WorkflowExecutionResult(
-                Succeeded: false,
-                Cancelled: false,
-                ErrorMessage: ex.Message,
-                JournalService: _activeExecutor?.JournalService,
-                PlannedActionsCount: _activeExecutor?.PlannedActions.Count ?? 0
-            );
-        }
+                    Succeeded: true,
+                    Cancelled: false,
+                    ErrorMessage: null,
+                    JournalService: _activeExecutor.JournalService,
+                    PlannedActionsCount: _activeExecutor.PlannedActions.Count,
+                    VirtualFileSystem: _activeExecutor.VirtualFileSystem
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                LastVirtualFileSystem = _activeExecutor?.VirtualFileSystem;
+                return new WorkflowExecutionResult(
+                    Succeeded: false,
+                    Cancelled: true,
+                    ErrorMessage: null,
+                    JournalService: _activeExecutor?.JournalService,
+                    PlannedActionsCount: _activeExecutor?.PlannedActions.Count ?? 0,
+                    VirtualFileSystem: _activeExecutor?.VirtualFileSystem
+                );
+            }
+            catch (Exception ex)
+            {
+                LastVirtualFileSystem = _activeExecutor?.VirtualFileSystem;
+                return new WorkflowExecutionResult(
+                    Succeeded: false,
+                    Cancelled: false,
+                    ErrorMessage: ex.Message,
+                    JournalService: _activeExecutor?.JournalService,
+                    PlannedActionsCount: _activeExecutor?.PlannedActions.Count ?? 0,
+                    VirtualFileSystem: _activeExecutor?.VirtualFileSystem
+                );
+            }
         finally
         {
             visualFlushTimer.Stop();

@@ -101,6 +101,8 @@ public class WorkflowExecutor
     public string GlobalOutputDir { get; set; } = string.Empty;
     public string TemporaryDirectory { get; set; } = string.Empty;
     public bool IsDryRun { get => _isDryRun; set => _isDryRun = value; }
+    public VirtualFileSystemStore VirtualFileSystem { get; } = new();
+    public bool IsVirtualFileSystemEnabled { get; set; }
     public bool IsPaused => _isPaused;
 
     public void Pause()
@@ -205,7 +207,17 @@ public class WorkflowExecutor
 
             _checkpointHandler.InitializeCheckpoint(graph.Name, _currentExecutionId, IsDryRun, (msg, lvl) => NotifyLog(msg, lvl));
 
-            NotifyLog($"Starting workflow execution '{graph.Name}' with {validation.TopologicalOrder.Count} nodes (DryRun={IsDryRun}, Debug={DebugSession != null}).", LogLevel.Information);
+            VirtualFileSystem.Clear();
+            bool hasSyntheticSources = graph.Nodes.Any(n => n.NodeTypeName.Contains("SyntheticDataSource", StringComparison.OrdinalIgnoreCase) ||
+                                                            (n.CustomTitle != null && (n.CustomTitle.Contains("Synthetic", StringComparison.OrdinalIgnoreCase) || n.CustomTitle.Contains("Sintético", StringComparison.OrdinalIgnoreCase))))
+                                       || validation.TopologicalOrder.Any(n => n.GetType().Name.Contains("SyntheticDataSource", StringComparison.OrdinalIgnoreCase) || n.Name.Contains("Sintético", StringComparison.OrdinalIgnoreCase) || n.Name.Contains("Synthetic", StringComparison.OrdinalIgnoreCase));
+            if (hasSyntheticSources)
+            {
+                IsVirtualFileSystemEnabled = true;
+                NotifyLog("Auto-activated Virtual File System (VFS) mode due to synthetic data sources.", LogLevel.Information);
+            }
+
+            NotifyLog($"Starting workflow execution '{graph.Name}' with {validation.TopologicalOrder.Count} nodes (DryRun={IsDryRun}, Debug={DebugSession != null}, VFS={IsVirtualFileSystemEnabled}).", LogLevel.Information);
 
             HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
             List<IFlowNode> startNodes = validation.TopologicalOrder.Where(n => !targetNodeIds.Contains(n.Id)).ToList();

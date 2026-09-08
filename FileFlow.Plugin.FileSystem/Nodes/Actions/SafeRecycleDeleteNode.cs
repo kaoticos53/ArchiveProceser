@@ -1,6 +1,7 @@
-using System.Runtime.InteropServices;
+using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.FileSystem;
 
@@ -40,8 +41,12 @@ public class SafeRecycleDeleteNode : IFlowNode
         string targetPath = deleteOriginal ? item.OriginalPath : item.CurrentPath;
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        var storage = context.GetStorage();
 
-        if (string.IsNullOrWhiteSpace(targetPath) || (!File.Exists(targetPath) && !Directory.Exists(targetPath)))
+        bool exists = await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false)
+            || await storage.DirectoryExistsAsync(targetPath, cancellationToken).ConfigureAwait(false);
+
+        if (!exists && !context.IsDryRun)
         {
             context.Log(LocalizationManager.Instance.GetFormattedString("Log_SafeRecycle_NotFound", "[Safe Recycle] File or folder not found: '{0}'", targetPath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -68,29 +73,32 @@ public class SafeRecycleDeleteNode : IFlowNode
 
         try
         {
-            bool success = SendToWindowsRecycleBin(targetPath);
+            var result = await storage.DeleteAsync(targetPath, permanent: false, cancellationToken).ConfigureAwait(false);
             sw.Stop();
 
-            if (success)
+            if (result.IsSuccess)
             {
-                context.RecordJournalEntry(new JournalEntry(
-                    Guid.NewGuid(),
-                    Id,
-                    JournalOperationType.DeletedToRecycleBin,
-                    targetPath,
-                    null,
-                    Notes: "Sent to Windows Recycle Bin via Shell API"
-                ));
+                if (!context.IsDryRun)
+                {
+                    context.RecordJournalEntry(new JournalEntry(
+                        Guid.NewGuid(),
+                        Id,
+                        JournalOperationType.DeletedToRecycleBin,
+                        targetPath,
+                        null,
+                        Notes: "Sent to Recycle Bin via Storage Service"
+                    ));
+                }
 
                 string detailsJson = $"{{\"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"fileSizeBytes\": {item.FileSizeBytes}, \"deleteOriginal\": {deleteOriginal.ToString().ToLowerInvariant()}}}";
                 context.Log(LocalizationManager.Instance.GetFormattedString("Log_SafeRecycle_Success", "[Safe Recycle] Item successfully sent to Recycle Bin: '{0}'", Path.GetFileName(targetPath)), LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
-                item.AddLog($"Sent to Windows Recycle Bin: {targetPath}");
+                item.AddLog($"Sent to Recycle Bin: {targetPath}");
                 await context.EmitAsync("Deleted", item);
             }
             else
             {
-                throw new IOException($"Windows Shell API failed to recycle '{targetPath}'.");
+                throw new IOException(result.ErrorMessage ?? $"Failed to recycle '{targetPath}'.");
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -102,63 +110,4 @@ public class SafeRecycleDeleteNode : IFlowNode
             await context.EmitAsync("Error", item);
         }
     }
-
-    private static bool SendToWindowsRecycleBin(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-
-        try
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                string fullPath = Path.GetFullPath(path);
-                // Windows SHFileOperation requiere doble null-terminator (\0\0)
-                IntPtr pFrom = Marshal.StringToHGlobalUni(fullPath + "\0\0");
-                try
-                {
-                    var fileOp = new SHFILEOPSTRUCT
-                    {
-                        hwnd = IntPtr.Zero,
-                        wFunc = 0x0003, // FO_DELETE
-                        pFrom = pFrom,
-                        pTo = IntPtr.Zero,
-                        fFlags = 0x0040 | 0x0010 | 0x0004 | 0x0400, // FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
-                        fAnyOperationsAborted = false,
-                        hNameMappings = IntPtr.Zero,
-                        lpszProgressTitle = IntPtr.Zero
-                    };
-
-                    int result = SHFileOperation(ref fileOp);
-                    return result == 0 && !fileOp.fAnyOperationsAborted;
-                }
-                finally
-                {
-                    Marshal.FreeHGlobal(pFrom);
-                }
-            }
-
-            return false;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct SHFILEOPSTRUCT
-    {
-        public IntPtr hwnd;
-        public uint wFunc;
-        public IntPtr pFrom;
-        public IntPtr pTo;
-        public ushort fFlags;
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool fAnyOperationsAborted;
-        public IntPtr hNameMappings;
-        public IntPtr lpszProgressTitle;
-    }
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern int SHFileOperation([In, Out] ref SHFILEOPSTRUCT lpFileOp);
 }

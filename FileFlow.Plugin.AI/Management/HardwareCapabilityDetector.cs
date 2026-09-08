@@ -51,55 +51,18 @@ public static class HardwareCapabilityDetector
     /// </summary>
     public static SystemHardwareSpecs Specs => _specs.Value;
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MEMORYSTATUSEX
-    {
-        public uint dwLength;
-        public uint dwMemoryLoad;
-        public ulong ullTotalPhys;
-        public ulong ullAvailPhys;
-        public ulong ullTotalPageFile;
-        public ulong ullAvailPageFile;
-        public ulong ullTotalVirtual;
-        public ulong ullAvailVirtual;
-        public ulong ullAvailExtendedVirtual;
-    }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
-
     private static SystemHardwareSpecs DetectSpecs()
     {
         long totalRam = 0;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        try
         {
-            try
-            {
-                var memStatus = new MEMORYSTATUSEX();
-                memStatus.dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
-                if (GlobalMemoryStatusEx(ref memStatus))
-                {
-                    totalRam = (long)memStatus.ullTotalPhys;
-                }
-            }
-            catch
-            {
-                // Fallback a GC Memory Info
-            }
+            totalRam = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
         }
+        catch { }
 
         if (totalRam <= 0)
         {
-            try
-            {
-                totalRam = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
-            }
-            catch
-            {
-                totalRam = 8L * 1024 * 1024 * 1024; // Asumir 8 GB por defecto
-            }
+            totalRam = 8L * 1024 * 1024 * 1024; // Asumir 8 GB por defecto
         }
 
         int cores = Environment.ProcessorCount;

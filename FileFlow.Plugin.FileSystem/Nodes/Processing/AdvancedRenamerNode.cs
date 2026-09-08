@@ -5,6 +5,7 @@ using FileFlow.Plugin.FileSystem.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Renaming;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
@@ -22,7 +23,6 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
     private readonly IRenameTransformEngine _transformEngine = new RenameTransformEngine();
     private readonly RenameBatchContext _batchContext = new();
     private readonly ConcurrentDictionary<string, byte> _claimedTargetPaths = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Lock _collisionLock = new();
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Avanzado con Tokens");
@@ -83,9 +83,10 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         CancellationToken cancellationToken)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        var storage = context.GetStorage();
         string existingSource = item.GetExistingPhysicalPath();
 
-        if (string.IsNullOrWhiteSpace(existingSource) || (!File.Exists(existingSource) && !Directory.Exists(existingSource)))
+        if (!item.IsVirtual && (string.IsNullOrWhiteSpace(existingSource) || (!await storage.FileExistsAsync(existingSource, cancellationToken) && !await storage.DirectoryExistsAsync(existingSource, cancellationToken))))
         {
             context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_SourceNotFound", "[Renamer] Source file or folder not found: '{0}'", item.CurrentPath), LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -132,40 +133,44 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
             bool isSameFileDifferentCasing = string.Equals(item.CurrentPath, targetPath, StringComparison.OrdinalIgnoreCase);
 
-            // Verificación y resolución atómica de colisiones (contra disco y contra el lote concurrente)
-            bool shouldSkip = false;
-            lock (_collisionLock)
+            var storageStrategy = collisionStrategy.ToUpperInvariant() switch
             {
-                bool hasDiskCollision = !isSameFileDifferentCasing && File.Exists(targetPath);
-                bool hasBatchCollision = _claimedTargetPaths.ContainsKey(targetPath);
+                "SKIP" => StorageCollisionStrategy.Skip,
+                "FAIL" => StorageCollisionStrategy.ThrowError,
+                "AUTOINCREMENT" => StorageCollisionStrategy.RenameIncremental,
+                _ => StorageCollisionStrategy.Overwrite
+            };
 
-                if (hasDiskCollision || hasBatchCollision)
+            // Verificación y resolución atómica de colisiones (contra storage y contra el lote concurrente)
+            bool shouldSkip = false;
+            bool targetExists = !isSameFileDifferentCasing && await storage.FileExistsAsync(targetPath, cancellationToken);
+
+            if (targetExists || _claimedTargetPaths.ContainsKey(targetPath))
+            {
+                switch (storageStrategy)
                 {
-                    switch (collisionStrategy.ToUpperInvariant())
-                    {
-                        case "SKIP":
-                            shouldSkip = true;
-                            break;
+                    case StorageCollisionStrategy.Skip:
+                        shouldSkip = true;
+                        break;
 
-                        case "FAIL":
-                            throw new IOException($"Target file already exists: '{targetPath}'.");
+                    case StorageCollisionStrategy.ThrowError:
+                        throw new IOException($"Target file already exists: '{targetPath}'.");
 
-                        case "AUTOINCREMENT":
-                            targetPath = GetAutoIncrementPath(currentDir, resolvedName);
-                            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_AutoIncrementCollision", "[Renamer] Auto-increment collision resolved: '{0}'", Path.GetFileName(targetPath)), LogLevel.Debug, item);
-                            break;
+                    case StorageCollisionStrategy.RenameIncremental:
+                        targetPath = await GetAutoIncrementPathAsync(currentDir, resolvedName, storage, cancellationToken);
+                        context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_AutoIncrementCollision", "[Renamer] Auto-increment collision resolved: '{0}'", Path.GetFileName(targetPath)), LogLevel.Debug, item);
+                        break;
 
-                        case "OVERWRITE":
-                        default:
-                            context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_OverwriteCollision", "[Renamer] Overwriting existing file per 'Overwrite' policy: '{0}'", targetPath), LogLevel.Debug, item);
-                            break;
-                    }
+                    case StorageCollisionStrategy.Overwrite:
+                    default:
+                        context.Log(LocalizationManager.Instance.GetFormattedString("Log_Renamer_OverwriteCollision", "[Renamer] Overwriting existing file per 'Overwrite' policy: '{0}'", targetPath), LogLevel.Debug, item);
+                        break;
                 }
+            }
 
-                if (!shouldSkip)
-                {
-                    _claimedTargetPaths.TryAdd(targetPath, 0);
-                }
+            if (!shouldSkip)
+            {
+                _claimedTargetPaths.TryAdd(targetPath, 0);
             }
 
             if (shouldSkip)
@@ -176,7 +181,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
                 return;
             }
 
-            if (context.IsDryRun || isVirtual)
+            if (context.IsDryRun || isVirtual || item.IsVirtual)
             {
                 if (context.IsDryRun)
                 {
@@ -197,6 +202,9 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
                     item.AddLog($"Renamed (Virtual): {resolvedName}");
                 }
 
+                // Sincronizar con el sistema de archivos virtual si está activo
+                context.VirtualFileSystem?.RenameFile(item.CurrentPath, targetPath, Name, Id);
+
                 sw.Stop();
                 string prevName = Path.GetFileName(item.CurrentPath);
                 item.CurrentPath = targetPath;
@@ -209,7 +217,12 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             }
 
             string originalCurrent = item.GetExistingPhysicalPath();
-            File.Move(originalCurrent, targetPath, overwrite: true);
+            var moveResult = await storage.MoveAsync(originalCurrent, targetPath, StorageCollisionStrategy.Overwrite, cancellationToken);
+            if (!moveResult.IsSuccess)
+            {
+                throw new IOException(moveResult.ErrorMessage ?? "Failed to move/rename file on storage.");
+            }
+            targetPath = moveResult.FinalPath;
 
             context.RecordJournalEntry(new JournalEntry(
                 Guid.NewGuid(),
@@ -217,14 +230,14 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
                 JournalOperationType.Renamed,
                 originalCurrent,
                 targetPath,
-                UndoAction: (ct) =>
+                UndoAction: async (ct) =>
                 {
-                    if (File.Exists(targetPath))
+                    if (await storage.FileExistsAsync(targetPath, ct))
                     {
-                        File.Move(targetPath, originalCurrent, true);
-                        return Task.FromResult(true);
+                        var undoResult = await storage.MoveAsync(targetPath, originalCurrent, StorageCollisionStrategy.Overwrite, ct);
+                        return undoResult.IsSuccess;
                     }
-                    return Task.FromResult(false);
+                    return false;
                 }
             ));
 
@@ -351,7 +364,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         return defaultSteps;
     }
 
-    private string GetAutoIncrementPath(string folder, string fileName)
+    private async ValueTask<string> GetAutoIncrementPathAsync(string folder, string fileName, IStorageService storage, CancellationToken ct)
     {
         string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
         string ext = Path.GetExtension(fileName);
@@ -362,7 +375,7 @@ public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         {
             targetPath = Path.Combine(folder, $"{nameWithoutExt}_{counter}{ext}");
             counter++;
-        } while (File.Exists(targetPath) || _claimedTargetPaths.ContainsKey(targetPath));
+        } while (_claimedTargetPaths.ContainsKey(targetPath) || await storage.FileExistsAsync(targetPath, ct));
 
         return targetPath;
     }
