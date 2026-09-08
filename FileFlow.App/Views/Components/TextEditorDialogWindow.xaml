@@ -31,20 +31,20 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock x:Name="TxtTitle" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Title], FallbackValue='Editor de Texto / Prompt'}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
-                <TextBlock x:Name="TxtSubtitle" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_Subtitle], FallbackValue='Parámetro configurable'}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                <TextBlock x:Name="TxtTitle" Text="{Binding Title}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock x:Name="TxtSubtitle" Text="{Binding Subtitle}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
             </StackPanel>
 
             <!-- Badges de Estadísticas -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,0,6,0">
-                    <TextBlock x:Name="TxtCharCount" Text="🔤 0 car." FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock x:Name="TxtCharCount" Text="{Binding CharCountText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                 </Border>
                 <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,0,6,0">
-                    <TextBlock x:Name="TxtWordCount" Text="📝 0 pal." FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock x:Name="TxtWordCount" Text="{Binding WordCountText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                 </Border>
                 <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3">
-                    <TextBlock x:Name="TxtLineCount" Text="📄 1 lín." FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock x:Name="TxtLineCount" Text="{Binding LineCountText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                 </Border>
             </StackPanel>
         </Grid>
@@ -98,10 +98,10 @@
         </Border>
 
         <!-- Barra de Acceso Rápido a Versiones de Archivo Upstream -->
-        <Border x:Name="BorderVersionChips" Grid.Row="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,0,8" Visibility="Collapsed">
+        <Border x:Name="BorderVersionChips" Grid.Row="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,0,8" Visibility="{Binding HasVersionOptions, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🏷️ Versiones:" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <ItemsControl x:Name="ItemsVersionChips">
+                <ItemsControl x:Name="ItemsVersionChips" ItemsSource="{Binding AvailableVersionOptions}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" />
@@ -122,12 +122,13 @@
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition x:Name="ColSidePanel" Width="260" />
+                <ColumnDefinition x:Name="ColSidePanel" Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <!-- Columna Izquierda: Editor de Texto con Autocompletado Inteligente -->
             <Grid Grid.Column="0">
                 <TextBox x:Name="TxtEditor"
+                         Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
                          TextChanged="TxtEditor_TextChanged"
                          PreviewKeyDown="TxtEditor_PreviewKeyDown"
                          AcceptsReturn="True"
@@ -153,6 +154,7 @@
 
                 <!-- Popup de IntelliSense Flotante -->
                 <Popup x:Name="PopupIntelliSense"
+                       IsOpen="{Binding IsIntelliSenseOpen, Mode=TwoWay}"
                        StaysOpen="False"
                        Placement="Bottom"
                        PlacementTarget="{Binding ElementName=TxtEditor}"
@@ -176,6 +178,8 @@
 
                             <ListBox Grid.Row="1"
                                      x:Name="ListIntelliSense"
+                                     ItemsSource="{Binding IntelliSenseCandidates}"
+                                     SelectedItem="{Binding SelectedIntelliSenseCandidate, Mode=TwoWay}"
                                      MouseLeftButtonUp="ListIntelliSense_MouseLeftButtonUp"
                                      Background="Transparent"
                                      BorderThickness="0"
@@ -203,6 +207,8 @@
 
             <!-- Columna Derecha: Panel Lateral Plegable de Variables -->
             <Border Grid.Column="1" x:Name="BorderSidePanel"
+                    Visibility="{Binding IsSidePanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Width="260"
                     Background="{DynamicResource BgSurfaceBrush}"
                     BorderBrush="{DynamicResource BorderDarkBrush}"
                     BorderThickness="1"
@@ -230,7 +236,7 @@
 
                     <!-- Búsqueda rápida en Panel Lateral -->
                     <TextBox Grid.Row="1" x:Name="TxtSideSearch"
-                             TextChanged="TxtSideSearch_TextChanged"
+                             Text="{Binding SideSearchText, UpdateSourceTrigger=PropertyChanged}"
                              Background="{DynamicResource BgCardBrush}"
                              Foreground="{DynamicResource TextPrimaryBrush}"
                              BorderBrush="{DynamicResource BorderDarkBrush}"
@@ -241,6 +247,7 @@
                     <!-- Lista de variables del Panel Lateral -->
                     <ListBox Grid.Row="2"
                              x:Name="ListSideVariables"
+                             ItemsSource="{Binding FilteredSideVariables}"
                              MouseDoubleClick="ListSideVariables_MouseDoubleClick"
                              Background="Transparent"
                              BorderThickness="0"
@@ -282,7 +289,15 @@
         </Grid>
 
         <!-- Panel de Vista Previa Resuelta en Tiempo Real (si contiene variables {x}) -->
-        <Border Grid.Row="4" x:Name="BorderLivePreview" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,8,0,0" MaxHeight="100" Visibility="Collapsed">
+        <Border Grid.Row="4" x:Name="BorderLivePreview"
+                Background="{DynamicResource BgSurfaceBrush}"
+                BorderBrush="{DynamicResource AccentCyanBrush}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="10,8"
+                Margin="0,8,0,0"
+                MaxHeight="100"
+                Visibility="{Binding IsPreviewVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -290,7 +305,7 @@
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_EvaluatedPreview]}" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" Margin="0,0,0,4" />
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <TextBlock x:Name="TxtLivePreview" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" TextWrapping="Wrap" />
+                    <TextBlock x:Name="TxtLivePreview" Text="{Binding PreviewText}" Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11" TextWrapping="Wrap" />
                 </ScrollViewer>
             </Grid>
         </Border>

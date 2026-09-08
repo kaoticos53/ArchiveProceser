@@ -61,10 +61,7 @@ public static class SafeArchiveExtractor
         return candidates;
     }
 
-    public static List<string?> GetPasswordCandidates(string passwordListParam, string passwordFileParam, FileItemContext item)
-    {
-        return GetPasswordCandidatesAsync(passwordListParam, passwordFileParam, item).GetAwaiter().GetResult();
-    }
+
 
     public static (IArchive archive, string? validPassword) OpenArchiveWithPassword(string archivePath, List<string?> candidates, IFlowExecutionContext context)
     {
@@ -202,8 +199,5 @@ public static class SafeArchiveExtractor
         }
     }
 
-    public static void ExtractNestedArchives(string targetDir, List<string?> candidates, IFlowExecutionContext context, CancellationToken cancellationToken)
-    {
-        ExtractNestedArchivesAsync(targetDir, candidates, context, null, cancellationToken).GetAwaiter().GetResult();
-    }
+
 }

@@ -1,15 +1,18 @@
 using System.IO;
 using System.Windows;
+using FileFlow.Sdk.Services;
 using Microsoft.Win32;
 
 namespace FileFlow.Plugin.Archives.UI.Views;
 
 public partial class PasswordManagerWindow : Window
 {
+    private readonly IDialogService _dialogService;
     public string PasswordsText { get; private set; } = string.Empty;
 
-    public PasswordManagerWindow(string currentPasswords)
+    public PasswordManagerWindow(string currentPasswords, IDialogService? dialogService = null)
     {
+        _dialogService = dialogService ?? NullDialogService.Instance;
         InitializeComponent();
         if (!string.IsNullOrWhiteSpace(currentPasswords))
         {
@@ -56,7 +59,7 @@ public partial class PasswordManagerWindow : Window
             {
                 string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgImportError", "Error al importar archivo: {0}"), ex.Message);
                 string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError(errorMsg, title);
             }
         }
     }
@@ -78,13 +81,13 @@ public partial class PasswordManagerWindow : Window
                 File.WriteAllText(dialog.FileName, TxtPasswordEditor.Text);
                 string successMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgExportSuccess", "Contraseñas exportadas con éxito a:\n{0}"), dialog.FileName);
                 string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Success", "Éxito");
-                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(successMsg, title);
             }
             catch (Exception ex)
             {
                 string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgExportError", "Error al exportar archivo: {0}"), ex.Message);
                 string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError(errorMsg, title);
             }
         }
     }

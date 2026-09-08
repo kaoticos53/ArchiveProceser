@@ -19,6 +19,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
 {
     private readonly EditorViewModel _editorViewModel;
     private readonly IFileDialogService _fileDialogService;
+    private readonly IDialogService _dialogService;
     private readonly LogViewModel? _logViewModel;
 
     public EditorViewModel Editor => _editorViewModel;
@@ -47,10 +48,16 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
 
     public ObservableCollection<MetadataDiffItem> MetadataDiffs { get; } = [];
 
-    public NodeInspectorViewModel(EditorViewModel editorViewModel, IFileDialogService fileDialogService, LogViewModel? logViewModel = null)
+
+    public NodeInspectorViewModel(
+        EditorViewModel editorViewModel,
+        IFileDialogService fileDialogService,
+        LogViewModel? logViewModel = null,
+        IDialogService? dialogService = null)
     {
         _editorViewModel = editorViewModel;
         _fileDialogService = fileDialogService;
+        _dialogService = dialogService ?? App.Services?.GetService(typeof(IDialogService)) as IDialogService ?? NullDialogService.Instance;
         _logViewModel = logViewModel;
 
         WeakReferenceMessenger.Default.RegisterAll(this);
@@ -333,7 +340,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
 
                 string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_NodeIsolatedTestSuccess", "Prueba completada con éxito para el nodo '{0}'."), InspectedNode.Title);
                 string title = LocalizationManager.Instance.GetString("Inspector_TestBtn", "Prueba");
-                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(successMsg, title);
             }
             catch (Exception ex)
             {
@@ -341,7 +348,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
                 _logViewModel?.AddLog(LogLevel.Error, $"[{InspectedNode.Title}] Error: {ex.Message}");
                 string errorMsg = string.Format(LocalizationManager.Instance.GetString("Msg_NodeIsolatedTestError", "Error durante la prueba aislada: {0}"), ex.Message);
                 string title = LocalizationManager.Instance.GetString("Error", "Error");
-                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError(errorMsg, title);
             }
         }
     }
@@ -370,7 +377,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
         {
             string noFileMsg = LocalizationManager.Instance.GetString("Preview_NoValidFile", "No hay un archivo válido generado o seleccionado para previsualizar.");
             string title = LocalizationManager.Instance.GetString("Node_PreviewButton", "Vista Previa");
-            MessageBox.Show(noFileMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            _dialogService.ShowInformation(noFileMsg, title);
             return;
         }
 

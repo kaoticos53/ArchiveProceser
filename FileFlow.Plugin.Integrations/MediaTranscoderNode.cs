@@ -103,7 +103,7 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
             bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
             string ffmpegExe = ResolveFFmpegExecutable(string.Empty, context);
-            bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (await storage.FileExistsAsync(ffmpegExe, cancellationToken).ConfigureAwait(false) || CanExecuteCommand(ffmpegExe, context));
+            bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (await storage.FileExistsAsync(ffmpegExe, cancellationToken).ConfigureAwait(false) || await CanExecuteCommandAsync(ffmpegExe, context, cancellationToken).ConfigureAwait(false));
             bool transcodeSuccess = false;
 
             if (!isDryRun && ffmpegAvailable)
@@ -232,17 +232,17 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         return !string.IsNullOrWhiteSpace(paramPath) ? paramPath : "ffmpeg";
     }
 
-    private static bool CanExecuteCommand(string command, IFlowExecutionContext? context = null)
+    private static async Task<bool> CanExecuteCommandAsync(string command, IFlowExecutionContext? context = null, CancellationToken cancellationToken = default)
     {
         try
         {
             var runner = context?.ProcessRunner ?? NullProcessRunner.Instance;
-            var result = runner.RunAsync(new ProcessExecutionRequest
+            var result = await runner.RunAsync(new ProcessExecutionRequest
             {
                 FileName = command,
                 Arguments = "-version",
                 Timeout = TimeSpan.FromSeconds(2)
-            }).GetAwaiter().GetResult();
+            }, cancellationToken).ConfigureAwait(false);
             return result.Success;
         }
         catch

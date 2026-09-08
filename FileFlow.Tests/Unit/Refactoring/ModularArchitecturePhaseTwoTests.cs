@@ -100,12 +100,12 @@ public class ModularArchitecturePhaseTwoTests
     }
 
     [Fact]
-    public void SafeArchiveExtractor_PasswordCandidates_MergesProperly()
+    public async Task SafeArchiveExtractor_PasswordCandidates_MergesProperly()
     {
         var item = new FileItemContext(@"C:\test\sample.zip");
         item.Metadata["Secret"] = "MyPass123";
 
-        var candidates = SafeArchiveExtractor.GetPasswordCandidates("{Secret};admin", "", item);
+        var candidates = await SafeArchiveExtractor.GetPasswordCandidatesAsync("{Secret};admin", "", item);
         Assert.Contains("MyPass123", candidates);
         Assert.Contains("admin", candidates);
     }

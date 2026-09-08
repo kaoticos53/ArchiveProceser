@@ -29,7 +29,7 @@ public class DocumentsTests
     }
 
     [Fact]
-    public void PdfMergeNode_MergePdfFiles_CombinesDocumentsSuccessfully()
+    public async Task PdfMergeNode_MergePdfFiles_CombinesDocumentsSuccessfully()
     {
         string tempDir = Path.Combine(Path.GetTempPath(), "FileFlowPdfMergeTest_" + Guid.NewGuid());
         Directory.CreateDirectory(tempDir);
@@ -43,7 +43,7 @@ public class DocumentsTests
             CreateSamplePdf(pdf1, "Document One", pages: 1);
             CreateSamplePdf(pdf2, "Document Two", pages: 2);
 
-            PdfMergeNode.MergePdfFiles([pdf1, pdf2], outputPdf);
+            await PdfMergeNode.MergePdfFilesAsync([pdf1, pdf2], outputPdf, FileFlow.Sdk.Storage.NullStorageService.Instance);
 
             Assert.True(File.Exists(outputPdf));
 

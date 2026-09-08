@@ -8,8 +8,25 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **627 / 627 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **641 / 641 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --53. **FASE 6: Erradicación de Sync-Over-Async, Generalización de IDialogService a Sdk y Clean MVVM en Diálogos**:
+      - **Objetivo**: Eliminar bloqueos de sincronización sobre asincronía (`.GetAwaiter().GetResult()`), promover la interfaz canónica `IDialogService` al SDK para permitir testing sin WPF, y desacoplar en ViewModels limpios los tres diálogos restantes con alta densidad de code-behind (`AiModelUrlsConfigDialog`, `VariablePickerWindow`, `TextEditorDialogWindow`).
+      - **Ajustes Realizados**:
+        1. *Sub-fase 6A (Sync-Over-Async)*:
+           - `SafeArchiveExtractor.cs`: Eliminados wrappers síncronos `GetPasswordCandidates` y `ExtractNestedArchives`. Migrados a llamadas asíncronas no bloqueantes.
+           - `MediaTranscoderNode.cs`: Sustituido `CanExecuteCommand(...).GetAwaiter().GetResult()` por `await CanExecuteCommandAsync(...)`.
+           - `PdfMergeNode.cs`: Marcado obsoleto `MergePdfFiles` y migrado a `MergePdfFilesAsync`.
+           - `IExternalToolsService.cs` y `IMediaTranscoderService.cs`: Añadido `IsToolAvailableAsync` e `IsAvailableAsync` en contratos e implementaciones de Core.
+        2. *Sub-fase 6C (Generalización de IDialogService y Reemplazo de MessageBox.Show)*:
+           - Creados `IDialogService`, `DialogResult` y `NullDialogService` en `FileFlow.Sdk.Services`.
+           - Enlazado `WpfDialogService` en `FileFlow.App` a la interfaz de SDK y definidos type-forwarders globales.
+           - Inyectado `IDialogService` en ~30 sitios de llamada en ViewModels y code-behinds sustituyendo llamadas directas a `MessageBox.Show`.
+        3. *Sub-fase 6B (Clean MVVM en 3 Diálogos)*:
+           - `AiModelUrlsConfigDialog`: Creado `AiModelUrlsConfigViewModel.cs` (gestión de URLs, health check concurrente, validación). 4 tests en `AiModelUrlsConfigViewModelTests.cs`.
+           - `VariablePickerWindow`: Creado `VariablePickerViewModel.cs` (aplanado de variables, categorización, filtrado reactivo). Tests en `VariablePickerAndIntelliSenseTests.cs`.
+           - `TextEditorDialogWindow`: Creado `TextEditorDialogViewModel.cs` (estadísticas en vivo, live preview con `VariableTemplateResolver`, motor de autocompletado `{query` e inserción). 8 tests en `TextEditorDialogViewModelTests.cs`.
+      - **Validación**: Compilación estricta con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` en 0 advertencias / 0 errores, y `dotnet test` $\rightarrow$ **641 / 641 pruebas superadas al 100% (0 errores, 0 omitidas)**.
   --52. **FASE 5: Universal Storage Service (IStorageService), Canonical Constants, Clean MVVM Settings and Async Cancellation Hardening**:
       - **Objetivo**: Erradicar los últimos bipaseos de I/O físico directo en nodos de flujo, centralizar constantes canónicas de puertos y metadatos en `FileFlow.Sdk`, desacoplar la ventana de configuración en `WorkflowSettingsViewModel` eliminando servicios wrapper redundantes y reforzar la propagación de cancelación asíncrona.
       - **Ajustes Realizados**:

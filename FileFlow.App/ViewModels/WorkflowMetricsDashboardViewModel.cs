@@ -45,7 +45,6 @@ public partial class NodeMetricsRowViewModel : ObservableObject
 
 public partial class WorkflowMetricsDashboardViewModel : ObservableObject
 {
-    private readonly EditorViewModel _editorViewModel;
 
     [ObservableProperty]
     private int _totalNodesCount;
@@ -90,9 +89,13 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
         ApplyFilter();
     }
 
-    public WorkflowMetricsDashboardViewModel(EditorViewModel editorViewModel)
+    private readonly EditorViewModel _editorViewModel;
+    private readonly IDialogService _dialogService;
+
+    public WorkflowMetricsDashboardViewModel(EditorViewModel editorViewModel, IDialogService? dialogService = null)
     {
         _editorViewModel = editorViewModel;
+        _dialogService = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
         RefreshMetrics();
     }
 
@@ -262,14 +265,14 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
                     sb.AppendLine($"\"{row.NodeId}\",\"{row.Title}\",\"{row.Category}\",{row.ExecutionCount},{row.ErrorCount},{row.AvgDurationMs:F3},{row.RollingAvgDurationMs:F3},{row.AvgAllocatedBytes},{row.PeakAllocatedBytes},{row.AvgCpuPercentage:F2},{row.IsGpuAccelerated},{row.IsBottleneck},{row.RelativeBottleneckRatio:F4}");
                 }
                 File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
-                MessageBox.Show(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a CSV."), "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a CSV."), "FileFlow Studio");
             }
         }
         catch (Exception ex)
         {
             string msg = string.Format(LocalizationManager.Instance.GetString("Msg_ExportCsvError", "Error al exportar CSV: {0}"), ex.Message);
             string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            _dialogService.ShowError(msg, title);
         }
     }
 
@@ -304,14 +307,14 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
 
                 var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(dialog.FileName, json, Encoding.UTF8);
-                MessageBox.Show(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a JSON."), "FileFlow Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a JSON."), "FileFlow Studio");
             }
         }
         catch (Exception ex)
         {
             string msg = string.Format(LocalizationManager.Instance.GetString("Msg_ExportJsonError", "Error al exportar JSON: {0}"), ex.Message);
             string title = LocalizationManager.Instance.GetString("App_Name", "FileFlow Studio");
-            MessageBox.Show(msg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            _dialogService.ShowError(msg, title);
         }
     }
 

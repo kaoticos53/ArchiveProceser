@@ -2,6 +2,28 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-08] - FASE 6: Erradicación de Sync-Over-Async, Generalización de IDialogService a Sdk y Clean MVVM en Diálogos
+
+### 🎯 Objetivos y Alcance
+1. **Erradicación Total de Anti-patrones Síncronos sobre Asíncronos (`.GetAwaiter().GetResult()`) [Sub-fase 6A]**:
+   - **`FileFlow.Plugin.Archives/Services/SafeArchiveExtractor.cs`**: Eliminados los métodos bloqueantes síncronos `GetPasswordCandidates` y `ExtractNestedArchives`. Migrado el consumo a `GetPasswordCandidatesAsync` y `ExtractNestedArchivesAsync`.
+   - **`FileFlow.Plugin.Integrations/MediaTranscoderNode.cs`**: Reemplazado `CanExecuteCommand(...).GetAwaiter().GetResult()` por invocación asíncrona pura `await CanExecuteCommandAsync(...)`.
+   - **`FileFlow.Plugin.Documents/PdfMergeNode.cs`**: Marcado `MergePdfFiles` obsoleto y migrado el motor y tests a `MergePdfFilesAsync`.
+   - **`FileFlow.Sdk/Services/IExternalToolsService.cs`** y **`IMediaTranscoderService.cs`**: Incorporados métodos `IsToolAvailableAsync` e `IsAvailableAsync` con implementaciones nativas no bloqueantes en `ExternalToolsService.cs` y `FfmpegMediaTranscoderService.cs`.
+2. **Generalización de `IDialogService` a `FileFlow.Sdk.Services` y Erradicación de `MessageBox.Show` Directo [Sub-fase 6C]**:
+   - Promovidos los contratos canónicos `IDialogService`, `DialogResult` y el objeto nulo `NullDialogService` a `FileFlow.Sdk.Services` para permitir diálogos desacoplados y testeables en cualquier capa sin ataduras a WPF.
+   - En `FileFlow.App/Services/IDialogService.cs`, definidos type-forwarders globales para retrocompatibilidad transparente.
+   - Inyectado `IDialogService` en más de 30 sitios de llamada en ViewModels y code-behinds: `NodeInspectorViewModel`, `ThemeCustomizerViewModel`, `AiModelManagerViewModel`, `WorkflowMetricsDashboardViewModel`, `LogExportService`, `SyntheticDataSetDesignerViewModel`, `AdvancedRenamerEditorViewModel`, `MediaPresetManagerWindow`, `PasswordManagerWindow` y `ScriptStudioWindow`.
+3. **Refactorización Clean MVVM en Diálogos Pesados con Code-Behind [Sub-fase 6B]**:
+   - **Diálogo 1 (`AiModelUrlsConfigDialog`)**: Creado `AiModelUrlsConfigViewModel.cs` en `FileFlow.App.ViewModels`, desacoplando la gestión de URLs multi-espejo, pruebas de conexión HTTP concurrentes y validación de URLs. Creados 4 tests unitarios en `AiModelUrlsConfigViewModelTests.cs`.
+   - **Diálogo 2 (`VariablePickerWindow`)**: Creado `VariablePickerViewModel.cs`, abstrayendo el aplanado de variables por grupos, conteo de upstream nodes, filtrado por categorías y búsqueda reactiva. Integrados tests en `VariablePickerAndIntelliSenseTests.cs`.
+   - **Diálogo 3 (`TextEditorDialogWindow`)**: Creado `TextEditorDialogViewModel.cs` desacoplando el cálculo dinámico de estadísticas (caracteres, palabras, líneas), evaluación de plantillas en tiempo real con `VariableTemplateResolver`, filtrado del panel lateral y motor de coincidencias de IntelliSense (`EvaluateIntelliSense`, `ApplyIntelliSenseSelection`, `InsertTokenAt`). Creados 8 tests unitarios en `TextEditorDialogViewModelTests.cs`.
+4. **Métricas de Pruebas y Compilación**:
+   - **641 / 641 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (aumento neto de +14 pruebas).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` mantenida en **0 advertencias y 0 errores**.
+
+---
+
 ## [2026-09-08] - FASE 5: Universal Storage Service (IStorageService), Canonical Constants, Clean MVVM Settings and Async Cancellation Hardening
 
 ### 🎯 Objetivos y Alcance

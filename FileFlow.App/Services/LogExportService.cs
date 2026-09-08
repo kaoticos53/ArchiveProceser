@@ -12,7 +12,7 @@ public static class LogExportService
     /// <summary>
     /// Abre un diálogo modal para guardar los logs de SqliteLogStore en un archivo de texto o log.
     /// </summary>
-    public static async Task<string?> ExportLogsWithDialogAsync()
+    public static async Task<string?> ExportLogsWithDialogAsync(IDialogService? dialogService = null)
     {
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
@@ -40,7 +40,8 @@ public static class LogExportService
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al exportar el log: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            var ds = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
+            ds.ShowError($"Error al exportar el log: {ex.Message}", "Error");
             return null;
         }
     }

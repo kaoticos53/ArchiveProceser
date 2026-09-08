@@ -10,4 +10,5 @@ public class NullExternalToolsService : IExternalToolsService
 
     public string ResolveToolPath(string toolName) => toolName;
     public bool IsToolAvailable(string toolName) => false;
+    public Task<bool> IsToolAvailableAsync(string toolName, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using FileFlow.Plugin.Scripting.UI.ViewModels;
+using FileFlow.Sdk.Services;
 using ICSharpCode.AvalonEdit.Highlighting;
 
 namespace FileFlow.Plugin.Scripting.UI.Views;
@@ -8,6 +9,7 @@ namespace FileFlow.Plugin.Scripting.UI.Views;
 public partial class ScriptStudioWindow : Window
 {
     private readonly ScriptStudioViewModel _viewModel;
+    private readonly IDialogService _dialogService;
     private bool _isUpdatingTextFromCode;
 
     public string SelectedLanguage => _viewModel.SelectedLanguage;
@@ -15,8 +17,9 @@ public partial class ScriptStudioWindow : Window
     public string InputPortsString => string.Join(", ", _viewModel.InputPorts);
     public string OutputPortsString => string.Join(", ", _viewModel.OutputPorts);
 
-    public ScriptStudioWindow(string initialLanguage, string initialCode, string initialInputs, string initialOutputs)
+    public ScriptStudioWindow(string initialLanguage, string initialCode, string initialInputs, string initialOutputs, IDialogService? dialogService = null)
     {
+        _dialogService = dialogService ?? NullDialogService.Instance;
         InitializeComponent();
 
         _viewModel = new ScriptStudioViewModel(initialLanguage, initialCode, initialInputs, initialOutputs);
@@ -110,13 +113,13 @@ public partial class ScriptStudioWindow : Window
                 string notFoundMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString(
                     "ScriptStudio_ManualNotFound",
                     "El archivo del manual no se encuentra en la ruta esperada. Puedes consultarlo en la carpeta 'docs/' del proyecto.");
-                MessageBox.Show(notFoundMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(notFoundMsg, title);
             }
         }
         catch (Exception ex)
         {
             string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("ScriptStudio_ManualTitle", "Manual de Scripting");
-            MessageBox.Show($"Error: {ex.Message}", title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            _dialogService.ShowWarning($"Error: {ex.Message}", title);
         }
     }
 

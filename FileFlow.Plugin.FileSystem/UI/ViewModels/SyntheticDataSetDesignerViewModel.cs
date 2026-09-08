@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.SyntheticData;
 using Microsoft.Win32;
 
@@ -14,6 +15,7 @@ namespace FileFlow.Plugin.FileSystem.UI.ViewModels;
 public partial class SyntheticDataSetDesignerViewModel : ObservableObject
 {
     private readonly ISyntheticDataSetStorageService _storageService;
+    private readonly IDialogService _dialogService;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -67,9 +69,10 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
     public int TotalDirectories => EditableItems.Count(i => i.IsDirectory);
     public string TotalSizeFormatted => SyntheticTreeDslParser.FormatSize(EditableItems.Where(i => !i.IsDirectory).Sum(i => i.FileSizeBytes));
 
-    public SyntheticDataSetDesignerViewModel(ISyntheticDataSetStorageService? storageService = null)
+    public SyntheticDataSetDesignerViewModel(ISyntheticDataSetStorageService? storageService = null, IDialogService? dialogService = null)
     {
         _storageService = storageService ?? SyntheticDataSetStorageService.Instance;
+        _dialogService = dialogService ?? NullDialogService.Instance;
         _storageService.DataSetsChanged += OnDataSetsChanged;
         RefreshDataSetsList();
 
@@ -196,13 +199,11 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
     {
         if (SelectedDataSet == null || SelectedDataSet.IsBuiltIn) return;
 
-        var result = MessageBox.Show(
+        bool confirm = _dialogService.ShowConfirmation(
             LocalizationManager.Instance.GetFormattedString("Msg_ConfirmDeleteDataSet", "¿Deseas eliminar de forma permanente el dataset '{0}'?", SelectedDataSet.Name),
-            LocalizationManager.Instance.GetString("Title_ConfirmDelete", "Confirmar Eliminación"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            LocalizationManager.Instance.GetString("Title_ConfirmDelete", "Confirmar Eliminación"));
 
-        if (result == MessageBoxResult.Yes)
+        if (confirm)
         {
             string deletedName = SelectedDataSet.Name;
             _storageService.DeleteDataSet(SelectedDataSet.Id);
@@ -299,7 +300,7 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Error en DSL", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _dialogService.ShowWarning(ex.Message, "Error en DSL");
         }
     }
 
@@ -327,7 +328,7 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Error en JSON", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _dialogService.ShowWarning(ex.Message, "Error en JSON");
         }
     }
 
@@ -377,7 +378,7 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error al importar", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError(ex.Message, "Error al importar");
             }
         }
     }

@@ -142,10 +142,12 @@ public partial class AiModelManagerViewModel : ObservableObject
 
     private CancellationTokenSource? _downloadCts;
     private readonly ILocalizationService _loc;
+    private readonly IDialogService _dialogService;
 
-    public AiModelManagerViewModel(ILocalizationService? localizationService = null)
+    public AiModelManagerViewModel(ILocalizationService? localizationService = null, IDialogService? dialogService = null)
     {
         _loc = localizationService ?? LocalizationManager.Instance;
+        _dialogService = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
         ModelsDirectory = AiModelManager.ModelsDirectory;
         InitializeModels();
         RefreshStatus();
@@ -289,13 +291,11 @@ public partial class AiModelManagerViewModel : ObservableObject
                 LastDownloadErrorMessage = $"{item.Name}: {err}";
                 HasDownloadError = true;
 
-                if (!suppressSingleAlert && Application.Current != null)
+                if (!suppressSingleAlert)
                 {
-                    MessageBox.Show(
+                    _dialogService.ShowError(
                         $"No se pudo descargar el modelo '{item.Name}':\n\n{err}",
-                        "Error en Descarga de Modelo IA",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
+                        "Error en Descarga de Modelo IA");
                 }
             }
         }
@@ -317,13 +317,11 @@ public partial class AiModelManagerViewModel : ObservableObject
             LastDownloadErrorMessage = $"{item.Name}: {err}";
             HasDownloadError = true;
 
-            if (!suppressSingleAlert && Application.Current != null)
+            if (!suppressSingleAlert)
             {
-                MessageBox.Show(
+                _dialogService.ShowError(
                     $"Error inesperado al descargar '{item.Name}':\n\n{ex.Message}",
-                    "Error en Descarga de Modelo IA",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    "Error en Descarga de Modelo IA");
             }
         }
         finally
@@ -362,17 +360,15 @@ public partial class AiModelManagerViewModel : ObservableObject
 
         IsBusy = false;
 
-        if (failedList.Count > 0 && Application.Current != null)
+        if (failedList.Count > 0)
         {
             string summary = string.Join("\n• ", failedList.Select(f => $"{f.Name}: {f.Error}"));
             LastDownloadErrorMessage = $"Falló la descarga de {failedList.Count} modelo(s).";
             HasDownloadError = true;
 
-            MessageBox.Show(
+            _dialogService.ShowWarning(
                 $"No se pudieron descargar {failedList.Count} de los {missing.Count} modelos solicitados:\n\n• {summary}\n\nPor favor, verifica la conexión a Internet o los detalles de red.",
-                "Error en Descarga de Modelos IA",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+                "Error en Descarga de Modelos IA");
         }
     }
 
@@ -381,13 +377,11 @@ public partial class AiModelManagerViewModel : ObservableObject
     {
         if (item == null) return;
 
-        var result = MessageBox.Show(
+        bool confirm = _dialogService.ShowConfirmation(
             $"¿Estás seguro de que deseas eliminar el modelo '{item.Name}' del disco local?",
-            "Eliminar Modelo",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            "Eliminar Modelo");
 
-        if (result == MessageBoxResult.Yes)
+        if (confirm)
         {
             AiModelManager.DeleteModel(item.ModelId);
             RefreshStatus();

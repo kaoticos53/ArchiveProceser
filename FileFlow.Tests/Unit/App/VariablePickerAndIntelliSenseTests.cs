@@ -124,4 +124,53 @@ public class VariablePickerAndIntelliSenseTests
         dateVars.Should().ContainSingle();
         dateVars[0].Token.Should().Be("{Date}");
     }
+
+    [Fact]
+    public void VariablePickerViewModel_CategoryFilterAndSearch_WorksCorrectly()
+    {
+        // Arrange
+        var groups = new List<VariableGroupItem>
+        {
+            new("🌐 Sistema & Rutas", isUpstream: false)
+            {
+                Variables =
+                {
+                    new("FileName", "{FileName}", "Nombre del archivo", "Sistema", "sample.txt"),
+                    new("TempDir", "{TempDir}", "Directorio temporal", "Sistema", "C:\\Temp")
+                }
+            },
+            new("🔗 Image Optimizer", isUpstream: true)
+            {
+                Variables =
+                {
+                    new("OutputFileSize", "{OutputFileSize}", "Tamaño de salida optimizado", "Nodos Anteriores", "1024", IsUpstream: true, SourceNodeTitle: "Image Optimizer")
+                }
+            }
+        };
+
+        var vm = new VariablePickerViewModel(groups);
+
+        // Assert initial
+        vm.AllVariables.Should().HaveCount(3);
+        vm.FilteredVariables.Should().HaveCount(3);
+        vm.HasUpstreamNodes.Should().BeTrue();
+        vm.UpstreamCount.Should().Be(1);
+
+        // Filter by upstream
+        vm.SetCategory("UPSTREAM");
+        vm.FilteredVariables.Should().ContainSingle().Which.Token.Should().Be("{OutputFileSize}");
+
+        // Filter by system
+        vm.SetCategory("SYSTEM");
+        vm.FilteredVariables.Should().HaveCount(2);
+
+        // Search text
+        vm.SetCategory("ALL");
+        vm.SearchText = "Temp";
+        vm.FilteredVariables.Should().ContainSingle().Which.Token.Should().Be("{TempDir}");
+
+        // Clear search
+        vm.ClearSearch();
+        vm.FilteredVariables.Should().HaveCount(3);
+    }
 }

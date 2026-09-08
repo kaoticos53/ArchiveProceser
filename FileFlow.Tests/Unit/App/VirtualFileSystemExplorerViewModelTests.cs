@@ -1,6 +1,7 @@
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.VirtualFileSystem;
 using FluentAssertions;
 using Moq;

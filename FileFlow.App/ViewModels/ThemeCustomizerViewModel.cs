@@ -14,6 +14,7 @@ namespace FileFlow.App.ViewModels;
 public partial class ThemeCustomizerViewModel : ObservableObject
 {
     private readonly CustomThemeService _themeService;
+    private readonly IDialogService _dialogService;
 
     [ObservableProperty]
     private ThemeDefinition? _selectedTheme;
@@ -36,13 +37,14 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     public IReadOnlyList<double> FontSizes { get; } = [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0];
     public IReadOnlyList<double> CornerRadiusOptions { get; } = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0];
 
-    public ThemeCustomizerViewModel() : this(CustomThemeService.Instance)
+    public ThemeCustomizerViewModel() : this(CustomThemeService.Instance, null)
     {
     }
 
-    public ThemeCustomizerViewModel(CustomThemeService themeService)
+    public ThemeCustomizerViewModel(CustomThemeService themeService, IDialogService? dialogService = null)
     {
         _themeService = themeService;
+        _dialogService = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
 
         LoadFontLists();
         LoadThemes();
@@ -144,17 +146,15 @@ public partial class ThemeCustomizerViewModel : ObservableObject
         {
             string factoryMsg = LocalizationManager.Instance.GetString("Msg_ThemeFactoryNoDelete", "No se pueden eliminar los temas predefinidos de fábrica.");
             string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Personalizador de Temas");
-            MessageBox.Show(factoryMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            _dialogService.ShowInformation(factoryMsg, title);
             return;
         }
 
-        var confirm = MessageBox.Show(
+        bool confirm = _dialogService.ShowConfirmation(
             $"¿Estás seguro de que deseas eliminar el tema personalizado '{SelectedTheme.Name}'?",
-            "Confirmar Eliminación",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            "Confirmar Eliminación");
 
-        if (confirm != MessageBoxResult.Yes) return;
+        if (!confirm) return;
 
         string idToDelete = SelectedTheme.Id;
         _themeService.DeleteCustomTheme(idToDelete);
@@ -231,11 +231,11 @@ public partial class ThemeCustomizerViewModel : ObservableObject
                 StatusMessage = $"Tema exportado con éxito a '{Path.GetFileName(sfd.FileName)}'.";
                 string successMsg = LocalizationManager.Instance.GetString("Msg_ThemeExportSuccess", "Tema exportado correctamente.");
                 string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
-                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(successMsg, title);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError($"Error: {ex.Message}", "Error");
             }
         }
     }
@@ -260,11 +260,11 @@ public partial class ThemeCustomizerViewModel : ObservableObject
                 StatusMessage = $"Tema '{imported.Name}' importado con éxito.";
                 string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ThemeImportSuccess", "Tema '{0}' importado y añadido a tus temas personalizados."), imported.Name);
                 string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
-                MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialogService.ShowInformation(successMsg, title);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError($"Error: {ex.Message}", "Error");
             }
         }
     }

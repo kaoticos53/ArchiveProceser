@@ -12,10 +12,15 @@ public interface IExternalToolsService
     string ResolveToolPath(string toolName);
 
     /// <summary>
-    /// <summary>
     /// Determina si la herramienta indicada está instalada y ejecutable en el sistema.
     /// </summary>
     bool IsToolAvailable(string toolName);
+
+    /// <summary>
+    /// Determina de forma asíncrona si la herramienta indicada está instalada y ejecutable en el sistema.
+    /// </summary>
+    Task<bool> IsToolAvailableAsync(string toolName, CancellationToken cancellationToken = default) =>
+        Task.FromResult(IsToolAvailable(toolName));
 
     /// <summary>
     /// Configuración actual de ejecutables externos.

@@ -7,6 +7,7 @@ using FileFlow.Plugin.FileSystem.UI.Models;
 using FileFlow.Plugin.FileSystem.UI.Services;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
+using FileFlow.Sdk.Services;
 using Microsoft.Win32;
 
 namespace FileFlow.Plugin.FileSystem.UI.ViewModels;
@@ -15,6 +16,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
 {
     private readonly RenamerLivePreviewService _previewService = new();
     private readonly IFlowNode _node;
+    private readonly IDialogService _dialogService;
 
     [ObservableProperty]
     private string _pipelineName = "Pipeline Predeterminado";
@@ -53,9 +55,10 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     public IReadOnlyList<UnicodeNormalizationMode> NormalizationModes { get; } = Enum.GetValues<UnicodeNormalizationMode>();
     public IReadOnlyList<NumberPaddingTarget> NumberPaddingTargets { get; } = Enum.GetValues<NumberPaddingTarget>();
 
-    public AdvancedRenamerEditorViewModel(IFlowNode node)
+    public AdvancedRenamerEditorViewModel(IFlowNode node, IDialogService? dialogService = null)
     {
         _node = node;
+        _dialogService = dialogService ?? NullDialogService.Instance;
         LoadFromNode();
         LoadPresets();
         LoadAvailableTags();
@@ -293,7 +296,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
             File.WriteAllText(saveDialog.FileName, json);
             string successMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_PresetSavedSuccess", "Preset guardado exitosamente.");
             string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Advanced Renaming Studio");
-            MessageBox.Show(successMsg, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            _dialogService.ShowInformation(successMsg, title);
         }
     }
 
@@ -325,7 +328,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
             {
                 string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_PresetLoadError", "Error al cargar preset: {0}"), ex.Message);
                 string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-                MessageBox.Show(errorMsg, title, MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError(errorMsg, title);
             }
         }
     }

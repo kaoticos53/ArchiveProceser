@@ -61,14 +61,24 @@ public class ExternalToolsService : IExternalToolsService
         if (string.IsNullOrWhiteSpace(path)) return false;
         if (File.Exists(path)) return true;
 
+        // Fallback rápido sin bloquear threads pesadamente
+        return false;
+    }
+
+    public async Task<bool> IsToolAvailableAsync(string toolName, CancellationToken cancellationToken = default)
+    {
+        string path = ResolveToolPath(toolName);
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        if (File.Exists(path)) return true;
+
         try
         {
-            var result = FileFlow.Sdk.Platform.ProcessRunner.Instance.RunAsync(new FileFlow.Sdk.Platform.ProcessExecutionRequest
+            var result = await FileFlow.Sdk.Platform.ProcessRunner.Instance.RunAsync(new FileFlow.Sdk.Platform.ProcessExecutionRequest
             {
                 FileName = path,
                 Arguments = "-version",
                 Timeout = TimeSpan.FromSeconds(2)
-            }).GetAwaiter().GetResult();
+            }, cancellationToken).ConfigureAwait(false);
             return result.Success;
         }
         catch { }

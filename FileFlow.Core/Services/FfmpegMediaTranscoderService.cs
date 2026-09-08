@@ -17,6 +17,8 @@ public class FfmpegMediaTranscoderService : IMediaTranscoderService
     }
 
     public bool IsAvailable() => _toolsService.IsToolAvailable("ffmpeg");
+    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) =>
+        _toolsService.IsToolAvailableAsync("ffmpeg", cancellationToken);
 
     public async Task<bool> TranscodeAsync(
         string inputPath,
