@@ -8,7 +8,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Adaptador especializado para modelos RMBG-1.4 y MODNet de segmentación de sujetos.
 /// </summary>
-public class RmbgSegmentationAdapter : IBackgroundRemoverAdapter
+internal sealed class RmbgSegmentationAdapter : IBackgroundRemoverAdapter
 {
     public bool CanHandle(InferenceSession session)
     {
@@ -152,7 +152,7 @@ public class RmbgSegmentationAdapter : IBackgroundRemoverAdapter
 /// <summary>
 /// Factoría de adaptadores de segmentación y eliminación de fondo.
 /// </summary>
-public static class BackgroundRemoverAdapterFactory
+internal static class BackgroundRemoverAdapterFactory
 {
     private static readonly IBackgroundRemoverAdapter[] Adapters =
     [

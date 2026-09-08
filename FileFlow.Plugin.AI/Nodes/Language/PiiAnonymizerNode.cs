@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -17,7 +18,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PiiAnonymizerNode_Name", "Security", "PiiAnonymizerNode_Desc", PipelineRole.Transform,
     "gdpr", "rgpd", "dni", "nie", "iban", "tarjeta", "privacidad", "ofuscar", "anonimizar", "luhn", "email", "telefono")]
-public class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
+public sealed class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -116,7 +117,8 @@ public class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[PiiAnonymizer] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -163,18 +165,18 @@ public class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
                 targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
             }
 
-            Directory.CreateDirectory(targetDir);
+            await storage.CreateDirectoryAsync(targetDir, cancellationToken).ConfigureAwait(false);
 
             string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_anonymized{ext}";
             string targetPath = Path.Combine(targetDir, targetFileName);
 
-            if (skipIfExists && File.Exists(targetPath))
+            if (skipIfExists && await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false))
             {
                 context.Log($"[PiiAnonymizer] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo análisis.", LogLevel.Information, item);
                 var existingItem = item.DeepClone();
                 existingItem.CurrentPath = targetPath;
                 existingItem.PhysicalPath = targetPath;
-                existingItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                existingItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                 await context.EmitAsync("Clean", existingItem).ConfigureAwait(false);
                 await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
                 return;
@@ -192,16 +194,16 @@ public class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
 
             context.Log($"[PiiAnonymizer] 🛡️ Escaneando datos sensibles en '{item.FileName}'...", LogLevel.Information, item);
 
-            string rawText = await File.ReadAllTextAsync(item.CurrentPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            string rawText = await storage.ReadAllTextAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
 
             var result = await Task.Run(() => PiiDetectionEngine.AnonymizeText(rawText, options), cancellationToken).ConfigureAwait(false);
 
-            await File.WriteAllTextAsync(targetPath, result.SanitizedText, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            await storage.WriteAllTextAsync(targetPath, result.SanitizedText, ct: cancellationToken).ConfigureAwait(false);
 
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
             newItem.PhysicalPath = targetPath;
-            newItem.FileSizeBytes = new FileInfo(targetPath).Length;
+            newItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
             newItem.Metadata["AI:PiiDetected"] = result.PiiDetected;
             newItem.Metadata["AI:PiiTotalCount"] = result.TotalCount;
             newItem.Metadata["AI:PiiCategories"] = string.Join(", ", result.Categories);

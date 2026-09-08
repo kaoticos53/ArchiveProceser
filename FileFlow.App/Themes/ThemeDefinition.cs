@@ -1,4 +1,4 @@
-namespace FileFlow.Sdk.Themes;
+namespace FileFlow.App.Themes;
 
 /// <summary>
 /// Define la estructura de un tema visual completo de la aplicación, incluyendo paleta de colores,

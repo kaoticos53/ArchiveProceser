@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("EmptyDirectoryCleanerNode_Name", "Files", "EmptyDirectoryCleanerNode_Desc", PipelineRole.Transform,
     "limpiar", "carpetas vacias", "directorios vacios", "purgar", "cleaner", "empty")]
-public class EmptyDirectoryCleanerNode : IFlowNode
+public sealed class EmptyDirectoryCleanerNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Name", "Empty Directory Cleaner");

@@ -17,7 +17,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("LocalAiTranslatorNode_Name", "LanguageAI", "LocalAiTranslatorNode_Desc", PipelineRole.Transform,
     "traducir", "traduccion", "idiomas", "marian", "nllb", "ingles", "español", "translator")]
-public class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
+public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 

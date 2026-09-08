@@ -13,7 +13,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// Aplica preprocesamiento Letterbox 640x640 con padding, genera tensores de características semánticas de texto
 /// (CLIP ViT-B/32 de 512 dimensiones) y decodifica las cajas delimitadoras aplicando des-padding para máxima precisión geométrica.
 /// </summary>
-public class YoloWorldDetectorAdapter : IObjectDetectorAdapter
+internal sealed class YoloWorldDetectorAdapter : IObjectDetectorAdapter
 {
     public bool CanHandle(InferenceSession session)
     {
@@ -240,7 +240,7 @@ public class YoloWorldDetectorAdapter : IObjectDetectorAdapter
 /// <summary>
 /// Adaptador especializado para modelos Tiny YOLOv3 (ONNX Model Zoo con capas yolonms_layer_1 y entrada image_shape).
 /// </summary>
-public class TinyYoloV3DetectorAdapter : IObjectDetectorAdapter
+internal sealed class TinyYoloV3DetectorAdapter : IObjectDetectorAdapter
 {
     public bool CanHandle(InferenceSession session)
     {
@@ -401,7 +401,7 @@ public class TinyYoloV3DetectorAdapter : IObjectDetectorAdapter
 /// <summary>
 /// Adaptador especializado para modelos YOLOv8 / YOLOv11 estándar (1 tensor de entrada de imagen, 1 tensor de salida de predicciones).
 /// </summary>
-public class YoloV8StandardDetectorAdapter : IObjectDetectorAdapter
+internal sealed class YoloV8StandardDetectorAdapter : IObjectDetectorAdapter
 {
     public bool CanHandle(InferenceSession session)
     {
@@ -455,7 +455,7 @@ public class YoloV8StandardDetectorAdapter : IObjectDetectorAdapter
 /// <summary>
 /// Adaptador de contingencia genérico para modelos de detección de objetos ONNX.
 /// </summary>
-public class GenericObjectDetectorAdapter : IObjectDetectorAdapter
+internal sealed class GenericObjectDetectorAdapter : IObjectDetectorAdapter
 {
     public bool CanHandle(InferenceSession session) => true;
 
@@ -498,7 +498,7 @@ public class GenericObjectDetectorAdapter : IObjectDetectorAdapter
 /// <summary>
 /// Factoría que resuelve automáticamente el adaptador óptimo para el modelo de detección de objetos ONNX cargado.
 /// </summary>
-public static class ObjectDetectorAdapterFactory
+internal static class ObjectDetectorAdapterFactory
 {
     private static readonly IObjectDetectorAdapter[] Adapters =
     [

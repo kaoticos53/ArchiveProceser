@@ -8,7 +8,7 @@ namespace FileFlow.Plugin.AI;
 /// Inicializador del plugin de IA y Visión por Computador (FileFlow.Plugin.AI).
 /// Registra de forma autónoma los diccionarios de recursos multilingües (.resx) en LocalizationManager.
 /// </summary>
-public class AiPluginInitializer : IPluginInitializer
+public sealed class AiPluginInitializer : IPluginInitializer
 {
     private static readonly Lock _lock = new();
     private static bool _isRegistered;
@@ -33,6 +33,14 @@ public class AiPluginInitializer : IPluginInitializer
             {
                 var rm = new ResourceManager("FileFlow.Plugin.AI.Resources.Strings", typeof(AiPluginInitializer).Assembly);
                 LocalizationManager.Instance.RegisterResourceManager(rm);
+
+                FileFlow.Sdk.ModelSessionRegistry.RegisterProvider(
+                    () => Inference.OnnxSessionManager.GetLoadedSessionCount() + AudioInferenceEngine.GetLoadedSessionCount(),
+                    ClearAllSessions
+                );
+                Inference.OnnxSessionManager.SessionStateChanged += FileFlow.Sdk.ModelSessionRegistry.NotifySessionStateChanged;
+                AudioInferenceEngine.SessionStateChanged += FileFlow.Sdk.ModelSessionRegistry.NotifySessionStateChanged;
+
                 _isRegistered = true;
             }
             catch

@@ -40,7 +40,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
             if (_storageService != null) return _storageService;
             if ((IsVirtualFileSystemEnabled || (CurrentItem != null && CurrentItem.IsVirtual)) && VirtualFileSystem != null)
             {
-                _storageService = new FileFlow.Core.Storage.VirtualStorageService(VirtualFileSystem);
+                _storageService = new FileFlow.Sdk.Storage.VirtualStorageService(VirtualFileSystem);
             }
             else
             {
@@ -51,6 +51,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
     }
 
     public FileFlow.Sdk.Platform.IOsPlatformService Platform => FileFlow.Core.Platform.OsPlatformServiceFactory.Instance;
+    public FileFlow.Sdk.Platform.IProcessRunner ProcessRunner => FileFlow.Sdk.Platform.ProcessRunner.Instance;
     public FileFlow.Sdk.Services.IExternalToolsService Tools => FileFlow.Core.Services.ExternalToolsService.Instance;
 
     public async Task EmitAsync(string outputPortName, FileItemContext item)

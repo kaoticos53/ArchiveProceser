@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("SwitchActiveFileNode_Name", "Logic", "SwitchActiveFileNode_Desc", PipelineRole.Control,
     "switch", "cambiar", "activar", "version", "original", "intercambiar")]
-public class SwitchActiveFileNode : IFlowNode
+public sealed class SwitchActiveFileNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SwitchActiveFileNode_Name", "Cambiar Archivo Activo");

@@ -5,7 +5,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("DirectoryInspectorNode_Name", "Files", "DirectoryInspectorNode_Desc", PipelineRole.Filter,
     "carpeta", "directorio", "inspeccionar", "comprimido", "mixto", "inspector", "branch")]
-public class DirectoryInspectorNode : IFlowNode
+public sealed class DirectoryInspectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Name", "Directory Inspector");

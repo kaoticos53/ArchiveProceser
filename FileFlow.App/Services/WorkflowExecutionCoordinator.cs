@@ -282,7 +282,7 @@ public sealed class WorkflowExecutionCoordinator
                             node.ToggleModelLoadCommand.Execute(null);
                         }
                     }
-                    FileFlow.Plugin.AI.AiPluginInitializer.ClearAllSessions();
+                    FileFlow.Sdk.ModelSessionRegistry.ClearAllSessions();
                 }
                 catch (Exception ex)
                 {

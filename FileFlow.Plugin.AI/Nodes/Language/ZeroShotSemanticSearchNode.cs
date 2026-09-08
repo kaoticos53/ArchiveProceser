@@ -16,7 +16,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("ZeroShotSemanticSearchNode_Name", "LanguageAI", "ZeroShotSemanticSearchNode_Desc", PipelineRole.Filter,
     "semantica", "embeddings", "clip", "bge", "similitud", "zero shot", "buscar", "clasificar")]
-public class ZeroShotSemanticSearchNode : IFlowNode
+public sealed class ZeroShotSemanticSearchNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Name", "Búsqueda y Clasificación Semántica (Zero-Shot)");

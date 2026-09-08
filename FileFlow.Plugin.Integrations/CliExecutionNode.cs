@@ -8,7 +8,7 @@ namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("CliExecutionNode_Name", "Integrations", "CliExecutionNode_Desc", PipelineRole.Control,
     "cli", "comando", "ejecutable", "cmd", "powershell", "proceso", "terminal", "bash", "execute")]
-public class CliExecutionNode : IFlowNode
+public sealed class CliExecutionNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("CliExecutionNode_Name", "Ejecutor de Comandos y Procesos CLI");
@@ -78,81 +78,46 @@ public class CliExecutionNode : IFlowNode
                 return;
             }
 
-            var startInfo = new ProcessStartInfo
+            var runner = context.ProcessRunner ?? ProcessRunner.Instance;
+            var runnerResult = await runner.RunAsync(new ProcessExecutionRequest
             {
                 FileName = resolvedExe,
                 Arguments = resolvedArgs,
+                WorkingDirectory = null,
+                Timeout = TimeSpan.FromSeconds(timeoutSec),
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                RedirectStandardError = true
+            }, cancellationToken).ConfigureAwait(false);
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            using var process = new Process { StartInfo = startInfo };
-            process.Start();
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(timeoutSec));
-
-            string stdOut = string.Empty;
-            string stdErr = string.Empty;
-
-            try
+            if (runnerResult.TimedOut)
             {
-                var readOutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
-                var readErrTask = process.StandardError.ReadToEndAsync(cts.Token);
-
-                await Task.WhenAll(readOutTask, readErrTask).ConfigureAwait(false);
-                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
-
-                stdOut = await readOutTask.ConfigureAwait(false);
-                stdErr = await readErrTask.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                try
-                {
-                    if (!process.HasExited)
-                    {
-                        process.Kill(entireProcessTree: true);
-                    }
-                }
-                catch { }
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    throw new OperationCanceledException("La ejecución del comando CLI fue cancelada por el usuario.", cancellationToken);
-                }
-
                 throw new TimeoutException($"CLI Execution timed out after {timeoutSec} seconds: {resolvedExe}");
             }
-            finally
-            {
-                sw.Stop();
-            }
+
+            string stdOut = runnerResult.StandardOutput;
+            string stdErr = runnerResult.StandardError;
+            int exitCode = runnerResult.ExitCode;
+            double durationMs = runnerResult.Duration.TotalMilliseconds;
 
             if (captureOutput)
             {
                 item.Metadata["Cli:StdOut"] = stdOut.Trim();
                 item.Metadata["Cli:StdErr"] = stdErr.Trim();
-                item.Metadata["Cli:ExitCode"] = process.ExitCode;
+                item.Metadata["Cli:ExitCode"] = exitCode;
             }
-
-            double durationMs = sw.Elapsed.TotalMilliseconds;
 
             string detailsJson = System.Text.Json.JsonSerializer.Serialize(new
             {
                 executable = resolvedExe,
                 arguments = resolvedArgs,
-                exitCode = process.ExitCode,
+                exitCode = exitCode,
                 stdOutLength = stdOut.Length,
                 stdErrLength = stdErr.Length,
                 stdOutSample = stdOut.Length > 200 ? stdOut[..200] + "..." : stdOut,
                 stdErrSample = stdErr.Length > 200 ? stdErr[..200] + "..." : stdErr
             });
 
-            if (process.ExitCode == 0)
+            if (exitCode == 0)
             {
                 item.AddLog($"CLI command succeeded (ExitCode=0): {resolvedExe}");
                 context.Log($"[Ejecutor CLI] Proceso finalizado exitosamente (ExitCode=0): '{Path.GetFileName(resolvedExe)}'", LogLevel.Information, item, durationMs: durationMs, detailsJson: detailsJson);
@@ -160,8 +125,8 @@ public class CliExecutionNode : IFlowNode
             }
             else
             {
-                item.AddLog($"CLI command failed (ExitCode={process.ExitCode}): {stdErr}");
-                context.Log($"[Ejecutor CLI] Proceso falló con código {process.ExitCode}: {stdErr.Trim()}", LogLevel.Warning, item, durationMs: durationMs, detailsJson: detailsJson);
+                item.AddLog($"CLI command failed (ExitCode={exitCode}): {stdErr}");
+                context.Log($"[Ejecutor CLI] Proceso falló con código {exitCode}: {stdErr.Trim()}", LogLevel.Warning, item, durationMs: durationMs, detailsJson: detailsJson);
                 await context.EmitAsync("Failed", item);
             }
         }

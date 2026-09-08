@@ -2,6 +2,7 @@ using System.IO;
 using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -10,7 +11,7 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("ObjectDetectorNode_Name", "ImageVision", "ObjectDetectorNode_Desc", PipelineRole.Analyze,
     "objetos", "yolo", "detectar", "vision", "ia", "personas", "coches", "bounding box")]
-public class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
+public sealed class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -106,7 +107,8 @@ public class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[ObjectDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -145,7 +147,8 @@ public class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
             string filter = Parameters.TryGetValue("FilterLabel", out var fl) ? fl?.ToString() ?? string.Empty : string.Empty;
             int maxDets = Parameters.TryGetValue("MaxDetections", out var md) ? ParameterHelper.GetInt32(md, 10) : 10;
 
-            using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
             int origW = image.Width;
             int origH = image.Height;
 

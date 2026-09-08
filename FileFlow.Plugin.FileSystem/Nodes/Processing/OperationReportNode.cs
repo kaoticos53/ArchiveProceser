@@ -8,7 +8,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("OperationReportNode_Name", "Integrations", "OperationReportNode_Desc", PipelineRole.Control,
     "reporte", "informe", "html", "markdown", "auditoria", "resumen", "trazabilidad", "report")]
-public class OperationReportNode : IFlowNode
+public sealed class OperationReportNode : IFlowNode
 {
     private readonly Lock _lock = new();
     private readonly List<ReportItemData> _accumulatedItems = [];

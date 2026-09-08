@@ -16,7 +16,7 @@ public static class NodeSwitchCaseCoordinator
         ObservableCollection<SwitchCaseItemViewModel> switchCases)
     {
         List<(string Name, string Pattern)> initialCases = [];
-        if (node is FileFlow.Plugin.Logic.SwitchCaseNode switchNode)
+        if (node is ISwitchCaseNode switchNode)
         {
             initialCases = switchNode.GetCases().Select(c => (c.Name, c.Pattern)).ToList();
         }
@@ -134,9 +134,9 @@ public static class NodeSwitchCaseCoordinator
 
     public static void SyncCasesToNode(IFlowNode nodeInstance, IEnumerable<SwitchCaseItemViewModel> switchCases)
     {
-        if (nodeInstance is FileFlow.Plugin.Logic.SwitchCaseNode switchNode)
+        if (nodeInstance is ISwitchCaseNode switchNode)
         {
-            var rules = switchCases.Select(c => new FileFlow.Plugin.Logic.SwitchCaseRule(c.Name, c.Pattern)).ToList();
+            var rules = switchCases.Select(c => new SwitchCaseRuleDefinition(c.Name, c.Pattern)).ToList();
             switchNode.SetCases(rules);
         }
         else

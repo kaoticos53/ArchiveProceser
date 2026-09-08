@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("FileRelocatorNode_Name", "Files", "FileRelocatorNode_Desc", PipelineRole.Sink,
     "mover", "copiar", "relocate", "move", "copy", "folder", "reubicar")]
-public class FileRelocatorNode : IFlowNode
+public sealed class FileRelocatorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FileRelocatorNode_Name", "File Relocator");

@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// Cada adaptador aísla el preprocesamiento específico del modelo (letterbox, normalización, embeddings CLIP),
 /// la llamada a la sesión ONNX y la decodificación de cajas/NMS a coordenadas canónicas normalizadas [0..1].
 /// </summary>
-public interface IObjectDetectorAdapter
+internal interface IObjectDetectorAdapter
 {
     /// <summary>
     /// Determina si este adaptador es compatible con la estructura/metadata de la sesión ONNX dada.

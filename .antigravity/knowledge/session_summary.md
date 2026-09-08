@@ -8,8 +8,64 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **617 / 617 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **622 / 622 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --51. **FASE 4: Organización, Encapsulación y Convenciones de Solución (Clean Architecture & C# 13)**:
+      - **Objetivo**: Concluir la auditoría arquitectónica integral asegurando el encapsulamiento estricto de las capas internas de los plugins, devirtualización de clases terminales mediante `sealed` en C# 13 y sincronización moderna de concurrencia con `System.Threading.Lock` de .NET 9.
+      - **Ajustes Realizados**:
+        1. *Encapsulación Estricta de Adaptadores y Renderers*:
+           - Convertidas todas las interfaces y clases de adaptadores de inferencia en `FileFlow.Plugin.AI` (`ISuperResolutionAdapter`, `IObjectDetectorAdapter`, `IImageClassifierAdapter`, `IFaceDetectorAdapter`, `IBackgroundRemoverAdapter` y sus 8 implementaciones concretas) a `internal` e `internal sealed`, junto con sus fábricas a `internal static`.
+           - Convertida la interfaz `IReportRenderer` y sus 5 implementaciones concretas en `FileFlow.Plugin.FileSystem` a `internal` e `internal sealed`.
+        2. *Sellado Sistemático de Nodos de Pipeline (`sealed class`)*:
+           - Selladas todas las clases concretas de nodos de flujo (`IFlowNode`) en los 11 plugins de la solución (AI, FileSystem, Archives, Images, Documents, Data, Logic, Scripting, Network, Integrations, Hashing), permitiendo al compilador JIT devirtualizar llamadas y optimizar el despacho en caliente.
+        3. *Sincronización Concurrente con `System.Threading.Lock`*:
+           - Reemplazados bloqueos sobre `Parameters` en `VariableInjectorNode` y `SmartUnpackNode` por instancias privadas `Lock _lock = new()`.
+      - **Validación**: Compilación limpia bajo `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` (0 advertencias, 0 errores) y `dotnet test` $\rightarrow$ **622 / 622 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+  --50. **FASE 2 & FASE 3: Desacoplamiento e Inyección de Dependencias (DI), Abstracción de I/O Universal y Consolidación Arquitectónica**:
+      - **Objetivo**: Ejecutar los planes aprobados en la auditoría estática, eliminando el bipaseo restante de `IStorageService` en nodos de IA (visión, lenguaje y audio), deduplicando lógica de carga de imágenes e inyectando dependencias formalmente en los ViewModels de la capa de presentación.
+      - **Ajustes Realizados**:
+        1. *Abstracción Total de I/O (`IStorageService`) en Nodos de IA ([CRIT-02])*:
+           - Centralizado en `AiFlowNodeBase` el método protegido `LoadInputRgb24ImageAsync` para abrir y decodificar streams asíncronos con `storage.OpenReadAsync()`.
+           - Migrados `FaceDetectorNode`, `ObjectDetectorNode`, `PromptObjectDetectorNode`, `SmartImageClassifierNode` y `ContentModerationFilterNode` a operaciones basadas en streams de almacenamiento, eliminando acoplamiento al disco físico y llamadas a `File.Exists`.
+           - `LocalOcrNode`: Lectura de bytes desde stream de almacenamiento y pasaje en memoria a `Pix.LoadFromMemory(imageBytes)`, permitiendo OCR en archivos virtuales y en memoria.
+           - `VoiceActivityDetectorNode`: Verificación de archivo migrada a `await storage.FileExistsAsync()`.
+        2. *Desacoplamiento e Inyección de Dependencias en UI ([MED-02])*:
+           - Registrado `AiModelManagerViewModel` en el contenedor de inversión de control (`ServiceCollectionExtensions.cs`).
+           - Inyectado `ILocalizationService` en `AiModelManagerViewModel` con fallback a `LocalizationManager.Instance`.
+           - Inyectado y resuelto `AiModelManagerViewModel` en `WorkflowSettingsWindow` mediante DI.
+           - Inyectados `IUserPreferencesService` e `ILocalizationService` en `ToolboxViewModel`, eliminando llamadas duras a Singletons durante el refresco del panel de herramientas.
+      - **Validación**: Compilación limpia bajo `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` (0 advertencias, 0 errores) y `dotnet test` $\rightarrow$ **622 / 622 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+  --49. **FASE 2: Auditoría de Software y Refactorización Integral - Desacoplamiento, Inyección de Dependencias (DI) e I/O Universal (`IStorageService`)**:
+      - **Objetivo**: Ejecutar la refactorización arquitectónica aprobada en la auditoría estática (Fase 1), solventando los hallazgos críticos de bipaseo de I/O, acoplamiento fuerte UI-Plugins, ausencia de abstracción en invocación de procesos externos, vulnerabilidades en librerías y duplicidad de código.
+      - **Ajustes Realizados**:
+        1. *Seguridad y Limpieza de Dependencias (Bloque 2.1)*:
+           - Actualizado `SSH.NET` a `2026.0.0` en `FileFlow.Plugin.Network`, mitigando la vulnerabilidad `GHSA-q939-rpr3-3284` y eliminando supresiones de advertencias.
+           - Eliminadas referencias innecesarias a `CommunityToolkit.Mvvm` en `FileFlow.Plugin.Archives` y `FileFlow.Plugin.Integrations`.
+           - Eliminadas clases/interfaces redundantes muertas `FileFlow.Core/Engine/IFileRecycler.cs` y `FileFlow.Core/Storage/VirtualStorageService.cs`.
+           - Subsanada advertencia CA2024 en `TextCodePreviewProvider.cs`.
+        2. *Abstracción de Procesos Externos (`IProcessRunner`) (Bloque 2.2)*:
+           - Diseñado `IProcessRunner` e implementado `ProcessRunner` en `FileFlow.Sdk.Platform`.
+           - Incorporado `context.ProcessRunner` en `IFlowExecutionContext` e inyectado en `ServiceCollectionExtensions`.
+           - Refactorizados `CliExecutionNode`, `MediaTranscoderNode`, `ExternalToolsService`, `FallbackPreviewProvider` y `FilePreviewerViewModel`.
+           - Creada suite `ProcessRunnerTests.cs` (5 tests).
+        3. *Desacoplamiento Estricto UI - Plugins (Bloque 2.3)*:
+           - Trasladado `ThemeDefinition.cs` a `FileFlow.App.Themes`, preservando la pureza de `FileFlow.Sdk`.
+           - Centralizado el autodescubrimiento de plugins en `PluginRegistryHelper.cs`.
+           - Eliminada la instanciación redundante en `MainWindow.xaml` usando `d:DataContext`.
+           - Creado `ISwitchCaseNode` en SDK desacoplando `NodeSwitchCaseCoordinator`.
+           - Creado `ModelSessionRegistry` en SDK desacoplando `StatusBarViewModel` y `WorkflowExecutionCoordinator` de `FileFlow.Plugin.AI`.
+           - Desacoplado el diseñador de datasets sintéticos en `ControlBarViewModel`.
+        4. *Migración Masiva a `IStorageService` y Unificación de Plantillas (Bloque 2.4 - [CRIT-01])*:
+           - Refactorizado `NetworkTemplateHelper` para utilizar `VariableTemplateResolver.Resolve` y añadidos alias de tokens en `SystemVariablesResolver`.
+           - Incorporados `GetCreationTimeAsync`, `GetLastWriteTimeAsync` y `OpenAppendAsync` en `IStorageService`.
+           - Implementado `DefaultPhysicalStorageService` en SDK como fallback seguro para contextos de ejecución sin mocks explícitos.
+           - Migrados todos los nodos de pipeline restantes a `context.GetStorage()`:
+             - Images: `ImageOptimizerNode`, `ExifMetadataNode`.
+             - Documents: `PdfTextExtractorNode`, `PdfSplitNode`, `PdfMetadataNode`, `PdfMergeNode`.
+             - Data: `ExcelReaderNode`, `CsvReaderNode`, `DataFormatConverterNode`, `CsvExportNode`, `ExcelReportGeneratorNode`, `SqliteDatabaseSinkNode`, `DataLookupTableLoader`, `DataLookupNode`.
+             - Archives: `ArchiveCompressorNode`, `SmartUnpackNode`, `SafeArchiveExtractor`.
+             - AI: `SuperResolutionUpscalerNode`, `BackgroundRemoverNode`, `PiiAnonymizerNode`, `LocalLlmProcessorNode`, `LocalWhisperTranscriberNode`.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` (0 advertencias, 0 errores) y `dotnet test` $\rightarrow$ **622 / 622 pruebas superadas al 100% (0 errores, 0 omitidas)**.
   --48. **Arquitectura de Portabilidad Multiplataforma (OS-Agnostic), Desacoplamiento de I/O y Abstracción de Servicios Tecnológicos**:
       - **Objetivo**: Desacoplar todo el código dependiente de sistemas operativos (Win32, P/Invoke, Shells, Garbage Collection / Working Set) y tecnologías específicas (FFmpeg, transcoders, herramientas externas), así como encapsular todas las operaciones de I/O en un servicio de almacenamiento unificado (`IStorageService`) para que los nodos de plugins no realicen lecturas, escrituras, copias o resoluciones de colisiones directas ni distingan manualmente entre disco real y VFS.
       - **Ajustes Realizados**:

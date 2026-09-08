@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using FileFlow.Sdk.Storage;
 using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
@@ -15,17 +16,23 @@ public static class DataLookupTableLoader
     private record CacheEntry(DateTime LastModifiedUtc, Dictionary<string, Dictionary<string, string>> LookupIndex);
     private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
 
-    public static async Task<Dictionary<string, Dictionary<string, string>>> LoadLookupTableAsync(string filePath, string keyColumn, CancellationToken cancellationToken)
+    public static async Task<Dictionary<string, Dictionary<string, string>>> LoadLookupTableAsync(
+        string filePath,
+        string keyColumn,
+        CancellationToken cancellationToken,
+        IStorageService? storage = null)
     {
-        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        storage ??= NullStorageService.Instance;
+
+        if (string.IsNullOrWhiteSpace(filePath) || !await storage.FileExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
         {
             return new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         }
 
-        var fileInfo = new FileInfo(filePath);
+        var lastModified = await storage.GetLastWriteTimeAsync(filePath, cancellationToken).ConfigureAwait(false);
         string cacheKey = $"{filePath}::{keyColumn}";
 
-        if (_cache.TryGetValue(cacheKey, out var entry) && entry.LastModifiedUtc == fileInfo.LastWriteTimeUtc)
+        if (_cache.TryGetValue(cacheKey, out var entry) && entry.LastModifiedUtc == lastModified.UtcDateTime)
         {
             return entry.LookupIndex;
         }
@@ -35,7 +42,7 @@ public static class DataLookupTableLoader
 
         if (ext is ".xlsx" or ".xls")
         {
-            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            await using var stream = await storage.OpenReadAsync(filePath, cancellationToken).ConfigureAwait(false);
             var rows = await stream.QueryAsync(useHeaderRow: true).ConfigureAwait(false);
 
             foreach (IDictionary<string, object> row in rows)
@@ -64,7 +71,8 @@ public static class DataLookupTableLoader
         }
         else if (ext is ".csv" or ".tsv" or ".txt")
         {
-            using var reader = new StreamReader(filePath, Encoding.UTF8);
+            await using var stream = await storage.OpenReadAsync(filePath, cancellationToken).ConfigureAwait(false);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
             string? headerLine = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(headerLine))
             {
@@ -99,7 +107,7 @@ public static class DataLookupTableLoader
         }
         else if (ext is ".json")
         {
-            string json = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
+            string json = await storage.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
 
             if (doc.RootElement.ValueKind == JsonValueKind.Array)
@@ -128,7 +136,7 @@ public static class DataLookupTableLoader
             }
         }
 
-        _cache[cacheKey] = new CacheEntry(fileInfo.LastWriteTimeUtc, index);
+        _cache[cacheKey] = new CacheEntry(lastModified.UtcDateTime, index);
         return index;
     }
 

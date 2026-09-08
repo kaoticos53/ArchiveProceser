@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("SafeRecycleDeleteNode_Name", "Files", "SafeRecycleDeleteNode_Desc", PipelineRole.Sink,
     "papelera", "borrar", "eliminar", "recycle", "delete", "trash", "recyclebin")]
-public class SafeRecycleDeleteNode : IFlowNode
+public sealed class SafeRecycleDeleteNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Name", "Safe Recycle Delete");

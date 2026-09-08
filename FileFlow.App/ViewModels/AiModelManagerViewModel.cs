@@ -141,9 +141,11 @@ public partial class AiModelManagerViewModel : ObservableObject
     }
 
     private CancellationTokenSource? _downloadCts;
+    private readonly ILocalizationService _loc;
 
-    public AiModelManagerViewModel()
+    public AiModelManagerViewModel(ILocalizationService? localizationService = null)
     {
+        _loc = localizationService ?? LocalizationManager.Instance;
         ModelsDirectory = AiModelManager.ModelsDirectory;
         InitializeModels();
         RefreshStatus();

@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Network;
 
 [NodeDefinition("NetworkDownloadNode_Name", "Network", "NetworkDownloadNode_Desc", PipelineRole.Source,
     "descargar", "download", "http", "https", "ftp", "ftps", "sftp", "ssh", "webdav", "smb", "red", "nube")]
-public class NetworkDownloadNode : IFlowNode
+public sealed class NetworkDownloadNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("NetworkDownloadNode_Name", "Descargar de Red / Nube (Network Download)");

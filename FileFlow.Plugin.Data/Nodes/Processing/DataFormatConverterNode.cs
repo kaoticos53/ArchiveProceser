@@ -3,13 +3,14 @@ using System.Text;
 using System.Text.Json;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("DataFormatConverterNode_Name", "Data", "DataFormatConverterNode_Desc", PipelineRole.Transform,
     "convertir", "formato", "excel a csv", "csv a json", "json a excel", "transformar", "tabular")]
-public class DataFormatConverterNode : IFlowNode
+public sealed class DataFormatConverterNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DataFormatConverterNode_Name", "Conversor de Formatos de Datos");
@@ -40,7 +41,8 @@ public class DataFormatConverterNode : IFlowNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken))
         {
             context.Log($"[DataConverter] Archivo de entrada no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             return;
@@ -59,7 +61,10 @@ public class DataFormatConverterNode : IFlowNode
             outDir = Path.GetDirectoryName(item.CurrentPath) ?? Path.GetTempPath();
         }
 
-        Directory.CreateDirectory(outDir);
+        if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
+        {
+            await storage.CreateDirectoryAsync(outDir, cancellationToken);
+        }
 
         string targetFormat = Parameters.TryGetValue("TargetFormat", out var tf) ? tf?.ToString() ?? "JSON" : "JSON";
         string inputExt = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
@@ -72,7 +77,7 @@ public class DataFormatConverterNode : IFlowNode
 
         if (inputExt is ".xlsx" or ".xls")
         {
-            await using var stream = new FileStream(item.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken);
             var rows = await stream.QueryAsync(useHeaderRow: true).ConfigureAwait(false);
             foreach (IDictionary<string, object> row in rows)
             {
@@ -81,7 +86,8 @@ public class DataFormatConverterNode : IFlowNode
         }
         else if (inputExt is ".csv" or ".tsv" or ".txt")
         {
-            using var reader = new StreamReader(item.CurrentPath, Encoding.UTF8);
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
             string? headerLine = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(headerLine))
             {
@@ -104,7 +110,7 @@ public class DataFormatConverterNode : IFlowNode
         }
         else if (inputExt is ".json")
         {
-            string json = await File.ReadAllTextAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            string json = await storage.ReadAllTextAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.ValueKind == JsonValueKind.Array)
             {
@@ -128,17 +134,18 @@ public class DataFormatConverterNode : IFlowNode
             destPath = Path.Combine(outDir, $"{baseName}.json");
             var options = new JsonSerializerOptions { WriteIndented = true };
             string jsonOutput = JsonSerializer.Serialize(records, options);
-            await File.WriteAllTextAsync(destPath, jsonOutput, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            await storage.WriteAllTextAsync(destPath, jsonOutput, ct: cancellationToken).ConfigureAwait(false);
         }
         else if (targetFormat.Equals("ExcelXlsx", StringComparison.OrdinalIgnoreCase) || targetFormat.Equals("Excel", StringComparison.OrdinalIgnoreCase))
         {
             destPath = Path.Combine(outDir, $"{baseName}.xlsx");
-            await MiniExcel.SaveAsAsync(destPath, records, overwriteFile: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await using var outStream = await storage.OpenWriteAsync(destPath, cancellationToken);
+            await MiniExcel.SaveAsAsync(outStream, records, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         else // CSV
         {
             destPath = Path.Combine(outDir, $"{baseName}.csv");
-            using var stream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await using var stream = await storage.OpenWriteAsync(destPath, cancellationToken);
             using var writer = new StreamWriter(stream, Encoding.UTF8);
 
             var headers = records.Count > 0 ? records[0].Keys.ToList() : [];
@@ -151,9 +158,13 @@ public class DataFormatConverterNode : IFlowNode
             }
         }
 
+        long destSize = await storage.FileExistsAsync(destPath, cancellationToken)
+            ? await storage.GetFileSizeAsync(destPath, cancellationToken)
+            : 0;
+
         var convertedItem = item.DeepClone();
         convertedItem.CurrentPath = destPath;
-        convertedItem.FileSizeBytes = new FileInfo(destPath).Length;
+        convertedItem.FileSizeBytes = destSize;
         convertedItem.Metadata["ConvertedFrom"] = inputExt;
         convertedItem.Metadata["ConvertedTo"] = targetFormat;
         convertedItem.Metadata["TotalRowsConverted"] = records.Count;

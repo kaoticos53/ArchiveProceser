@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("ForkJoinBarrierNode_Name", "Logic", "ForkJoinBarrierNode_Desc", PipelineRole.Control,
     "fork", "join", "sincronizar", "barrera", "paralelo", "barrier", "merge")]
-public class ForkJoinBarrierNode : IFlowNode
+public sealed class ForkJoinBarrierNode : IFlowNode
 {
     private sealed class BarrierState
     {

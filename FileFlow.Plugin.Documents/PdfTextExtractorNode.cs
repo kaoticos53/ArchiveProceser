@@ -2,13 +2,14 @@ using System.IO;
 using System.Text;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using UglyToad.PdfPig;
 
 namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfTextExtractorNode_Name", "Documents", "PdfTextExtractorNode_Desc", PipelineRole.Analyze,
     "pdf", "texto", "extraer", "ocr", "txt", "leer", "text", "extract")]
-public class PdfTextExtractorNode : IFlowNode
+public sealed class PdfTextExtractorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfTextExtractorNode_Name", "Extraer Texto de PDF (PDF Text Extractor)");
@@ -44,7 +45,8 @@ public class PdfTextExtractorNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken))
         {
             await context.EmitAsync("Out", item);
             return;
@@ -60,7 +62,8 @@ public class PdfTextExtractorNode : IFlowNode
         var sb = new StringBuilder();
         int pageCount = 0;
 
-        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(item.CurrentPath))
+        await using (var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken))
+        using (var pdf = UglyToad.PdfPig.PdfDocument.Open(stream))
         {
             pageCount = pdf.NumberOfPages;
             foreach (var page in pdf.GetPages())
@@ -82,12 +85,15 @@ public class PdfTextExtractorNode : IFlowNode
         {
             string rawOutDir = Parameters.TryGetValue("OutputDirectory", out var outDirObj) ? ParameterHelper.GetString(outDirObj, "{GlobalOutputDir}") : "{GlobalOutputDir}";
             string outDir = ParameterHelper.ResolveOutputPath(rawOutDir, item);
-            Directory.CreateDirectory(outDir);
+            if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
+            {
+                await storage.CreateDirectoryAsync(outDir, cancellationToken);
+            }
 
             string txtFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + ".txt";
             string txtFilePath = Path.Combine(outDir, txtFileName);
 
-            await File.WriteAllTextAsync(txtFilePath, extractedText, Encoding.UTF8, cancellationToken);
+            await storage.WriteAllTextAsync(txtFilePath, extractedText, ct: cancellationToken);
 
             var txtContext = new FileItemContext(txtFilePath)
             {

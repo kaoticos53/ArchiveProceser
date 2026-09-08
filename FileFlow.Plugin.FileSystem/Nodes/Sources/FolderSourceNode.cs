@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("FolderSourceNode_Name", "Files", "FolderSourceNode_Desc", PipelineRole.Source,
     "carpeta", "directorio", "escanear", "origen", "ingesta", "trigger", "watcher", "realtime", "folder", "files")]
-public class FolderSourceNode : IFlowNode
+public sealed class FolderSourceNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FolderSourceNode_Name", "Folder Source");

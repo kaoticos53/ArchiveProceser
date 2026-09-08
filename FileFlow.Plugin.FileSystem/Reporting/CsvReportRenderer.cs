@@ -2,7 +2,7 @@ using System.Text;
 
 namespace FileFlow.Plugin.FileSystem.Reporting;
 
-public class CsvReportRenderer : IReportRenderer
+internal sealed class CsvReportRenderer : IReportRenderer
 {
     public string FileExtension => "csv";
 

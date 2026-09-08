@@ -1,6 +1,7 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
@@ -8,7 +9,7 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfSplitNode_Name", "Documents", "PdfSplitNode_Desc", PipelineRole.Transform,
     "pdf", "separar", "dividir", "paginas", "cortar", "split", "extract")]
-public class PdfSplitNode : IFlowNode
+public sealed class PdfSplitNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfSplitNode_Name", "Dividir PDF (PDF Split)");
@@ -44,7 +45,8 @@ public class PdfSplitNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken))
         {
             await context.EmitAsync("Original", item);
             return;
@@ -59,12 +61,16 @@ public class PdfSplitNode : IFlowNode
 
         string rawOutDir = Parameters.TryGetValue("OutputDirectory", out var outDirObj) ? ParameterHelper.GetString(outDirObj, "{GlobalOutputDir}") : "{GlobalOutputDir}";
         string outDir = ParameterHelper.ResolveOutputPath(rawOutDir, item);
-        Directory.CreateDirectory(outDir);
+        if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
+        {
+            await storage.CreateDirectoryAsync(outDir, cancellationToken);
+        }
 
         string baseName = Path.GetFileNameWithoutExtension(item.CurrentPath);
         string pattern = Parameters.TryGetValue("FileNamePattern", out var patObj) ? ParameterHelper.GetString(patObj, "{BaseName}_page_{PageNumber:D3}.pdf") : "{BaseName}_page_{PageNumber:D3}.pdf";
 
-        using var inputDocument = PdfReader.Open(item.CurrentPath, PdfDocumentOpenMode.Import);
+        await using var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken);
+        using var inputDocument = PdfReader.Open(inStream, PdfDocumentOpenMode.Import);
         int pageCount = inputDocument.PageCount;
 
         for (int i = 0; i < pageCount; i++)
@@ -86,11 +92,19 @@ public class PdfSplitNode : IFlowNode
             }
 
             string outFilePath = Path.Combine(outDir, pageFileName);
-            singlePageDoc.Save(outFilePath);
+            await using (var outStream = await storage.OpenWriteAsync(outFilePath, cancellationToken))
+            {
+                singlePageDoc.Save(outStream);
+            }
+
+            long pageSizeBytes = await storage.FileExistsAsync(outFilePath, cancellationToken)
+                ? await storage.GetFileSizeAsync(outFilePath, cancellationToken)
+                : 0;
 
             var pageContext = new FileItemContext(outFilePath)
             {
-                OriginalPath = item.OriginalPath
+                OriginalPath = item.OriginalPath,
+                FileSizeBytes = pageSizeBytes
             };
 
             foreach (var (k, v) in item.Metadata)

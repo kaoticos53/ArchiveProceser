@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Logic;
 [NodeDefinition("FileForkNode_Name", "Logic", "FileForkNode_Desc", PipelineRole.Control,
     tags: ["fork", "duplicar", "clonar", "bifurcar", "versiones", "original", "paralelo", "avanzado"],
     SubCategory = "Advanced")]
-public class FileForkNode : IFlowNode
+public sealed class FileForkNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("FileForkNode_Name", "Bifurcador de Flujo (Original vs Actual)");

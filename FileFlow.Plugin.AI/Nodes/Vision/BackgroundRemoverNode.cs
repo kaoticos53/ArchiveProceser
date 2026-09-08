@@ -9,6 +9,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -18,7 +19,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("BackgroundRemoverNode_Name", "ImageVision", "BackgroundRemoverNode_Desc", PipelineRole.Transform,
     "fondo", "recortar", "transparente", "png", "mascara", "alpha", "quitar fondo", "cutout")]
-public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
+public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -128,7 +129,8 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[BackgroundRemover] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -153,7 +155,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
             bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
 
             string targetDir = ParameterHelper.ResolveIntermediateOutputDir(outputDirRaw, item, context);
-            Directory.CreateDirectory(targetDir);
+            await storage.CreateDirectoryAsync(targetDir, cancellationToken).ConfigureAwait(false);
 
             bool maskOnly = string.Equals(outputMode, "MaskOnly", StringComparison.OrdinalIgnoreCase);
             string targetFileName = maskOnly
@@ -161,7 +163,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                 : Path.GetFileNameWithoutExtension(item.CurrentPath) + "_nobg.png";
             string targetPath = Path.Combine(targetDir, targetFileName);
 
-            if (skipIfExists && File.Exists(targetPath))
+            if (skipIfExists && await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false))
             {
                 context.Log($"[BackgroundRemover] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo inferencia.", LogLevel.Information, item);
 
@@ -170,7 +172,7 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                     var maskItem = item.DeepClone();
                     maskItem.CurrentPath = targetPath;
                     maskItem.PhysicalPath = targetPath;
-                    maskItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                    maskItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                     maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                     await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
                 }
@@ -179,18 +181,18 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                     var outItem = item.DeepClone();
                     outItem.CurrentPath = targetPath;
                     outItem.PhysicalPath = targetPath;
-                    outItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                    outItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                     outItem.Metadata["AI:BackgroundRemoved"] = true;
                     await context.EmitAsync("Out", outItem).ConfigureAwait(false);
 
                     string maskFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png";
                     string maskPath = Path.Combine(targetDir, maskFileName);
-                    if (File.Exists(maskPath))
+                    if (await storage.FileExistsAsync(maskPath, cancellationToken).ConfigureAwait(false))
                     {
                         var maskItem = item.DeepClone();
                         maskItem.CurrentPath = maskPath;
                         maskItem.PhysicalPath = maskPath;
-                        maskItem.FileSizeBytes = new FileInfo(maskPath).Length;
+                        maskItem.FileSizeBytes = await storage.GetFileSizeAsync(maskPath, cancellationToken).ConfigureAwait(false);
                         maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                         await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
                     }
@@ -237,7 +239,8 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                 }
             }
 
-            using var originalImage = await Image.LoadAsync<Rgba32>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var originalImage = await Image.LoadAsync<Rgba32>(inStream, cancellationToken).ConfigureAwait(false);
 
             using var processedImage = await Task.Run(
                 () => OnnxInferenceEngine.RemoveBackground(modelPath, originalImage, bgColor, maskOnly),
@@ -252,12 +255,15 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
             if (maskOnly)
             {
                 // Modo solo máscara (targetPath ya es el maskPath)
-                await processedImage.SaveAsPngAsync(targetPath, cancellationToken).ConfigureAwait(false);
+                await using (var outStream = await storage.OpenWriteAsync(targetPath, cancellationToken).ConfigureAwait(false))
+                {
+                    await processedImage.SaveAsPngAsync(outStream, cancellationToken).ConfigureAwait(false);
+                }
 
                 var maskItem = item.DeepClone();
                 maskItem.CurrentPath = targetPath;
                 maskItem.PhysicalPath = targetPath;
-                maskItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                maskItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                 maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                 maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
 
@@ -267,14 +273,17 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
             else
             {
                 // Modo imagen procesada (transparente o color)
-                await processedImage.SaveAsPngAsync(targetPath, cancellationToken).ConfigureAwait(false);
+                await using (var outStream = await storage.OpenWriteAsync(targetPath, cancellationToken).ConfigureAwait(false))
+                {
+                    await processedImage.SaveAsPngAsync(outStream, cancellationToken).ConfigureAwait(false);
+                }
 
                 var outItem = item.DeepClone();
                 outItem.CurrentPath = targetPath;
                 outItem.PhysicalPath = targetPath;
                 outItem.RegisterVersion("NoBackground", targetPath);
-                long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(item.CurrentPath) ? new FileInfo(item.CurrentPath).Length : 0);
-                long newSizeBytes = new FileInfo(targetPath).Length;
+                long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false) ? await storage.GetFileSizeAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false) : 0);
+                long newSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                 outItem.FileSizeBytes = newSizeBytes;
                 outItem.Metadata["OriginalFileSize"] = origSizeBytes;
                 outItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
@@ -303,12 +312,16 @@ public class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                         }
                     }
                 });
-                await maskImage.SaveAsPngAsync(maskPath, cancellationToken).ConfigureAwait(false);
+
+                await using (var maskStream = await storage.OpenWriteAsync(maskPath, cancellationToken).ConfigureAwait(false))
+                {
+                    await maskImage.SaveAsPngAsync(maskStream, cancellationToken).ConfigureAwait(false);
+                }
 
                 var maskItem = item.DeepClone();
                 maskItem.CurrentPath = maskPath;
                 maskItem.PhysicalPath = maskPath;
-                maskItem.FileSizeBytes = new FileInfo(maskPath).Length;
+                maskItem.FileSizeBytes = await storage.GetFileSizeAsync(maskPath, cancellationToken).ConfigureAwait(false);
                 maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                 maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
 

@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Contrato canónico de adaptador de inferencia para detección de rostros.
 /// </summary>
-public interface IFaceDetectorAdapter
+internal interface IFaceDetectorAdapter
 {
     bool CanHandle(InferenceSession session);
 

@@ -104,14 +104,15 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     public bool IsPipelineRolePerspective => CurrentPerspective == ToolboxPerspective.ByPipelineRole;
 
     public string PerspectiveButtonText => CurrentPerspective == ToolboxPerspective.ByCategory
-        ? "🔄 " + LocalizationManager.Instance.GetString("Toolbox_Perspective_Pipeline", "Pipeline Stage")
-        : "📁 " + LocalizationManager.Instance.GetString("Toolbox_Perspective_Domain", "Domain");
+        ? "🔄 " + (_loc?.GetString("Toolbox_Perspective_Pipeline", "Pipeline Stage") ?? LocalizationManager.Instance.GetString("Toolbox_Perspective_Pipeline", "Pipeline Stage"))
+        : "📁 " + (_loc?.GetString("Toolbox_Perspective_Domain", "Domain") ?? LocalizationManager.Instance.GetString("Toolbox_Perspective_Domain", "Domain"));
 
     partial void OnIsCompactModeChanged(bool value)
     {
-        if (UserPreferencesService.Instance.Preferences.IsCompactToolbox != value)
+        var prefs = _userPreferencesService ?? UserPreferencesService.Instance;
+        if (prefs.Preferences.IsCompactToolbox != value)
         {
-            UserPreferencesService.Instance.UpdatePreferences(p => p.IsCompactToolbox = value);
+            prefs.UpdatePreferences(p => p.IsCompactToolbox = value);
         }
     }
 
@@ -131,15 +132,23 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         }
     }
 
-    public ToolboxViewModel(PluginLoader pluginLoader)
+    private readonly IUserPreferencesService _userPreferencesService;
+    private readonly ILocalizationService _loc;
+
+    public ToolboxViewModel(
+        PluginLoader pluginLoader,
+        IUserPreferencesService? userPreferencesService = null,
+        ILocalizationService? localizationService = null)
     {
         _pluginLoader = pluginLoader;
-        _isCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
+        _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _isCompactMode = _userPreferencesService.Preferences.IsCompactToolbox;
         _languageChangedHandler = (_, _) => RefreshToolbox();
         _preferencesChangedHandler = () => RefreshToolbox();
 
-        LocalizationManager.Instance.LanguageChanged += _languageChangedHandler;
-        UserPreferencesService.Instance.PreferencesChanged += _preferencesChangedHandler;
+        _loc.LanguageChanged += _languageChangedHandler;
+        _userPreferencesService.PreferencesChanged += _preferencesChangedHandler;
         RefreshToolbox();
     }
 
@@ -150,9 +159,9 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             _isRefreshing = true;
             try
             {
-                IsCompactMode = UserPreferencesService.Instance.Preferences.IsCompactToolbox;
+                IsCompactMode = _userPreferencesService.Preferences.IsCompactToolbox;
 
-                var prefs = UserPreferencesService.Instance;
+                var prefs = _userPreferencesService;
                 var allItems = new List<NodeToolboxItem>();
 
                 var uniqueTypes = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
@@ -168,7 +177,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     catch { }
 
                     var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
-                    string name = LocalizationManager.Instance.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
+                    string name = _loc.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
                     if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Name))
                     {
                         name = sampleInstance.Name;
@@ -176,7 +185,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
                     string category = sampleInstance?.Category ?? defAttr?.Category ?? "General";
 
-                    string description = LocalizationManager.Instance.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
+                    string description = _loc.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
                     if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Description))
                     {
                         description = sampleInstance.Description;

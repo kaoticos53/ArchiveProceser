@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
 using FileFlow.Sdk.Localization;
-using FileFlow.Sdk.Themes;
+using FileFlow.App.Themes;
 using Microsoft.Win32;
 
 namespace FileFlow.App.ViewModels;

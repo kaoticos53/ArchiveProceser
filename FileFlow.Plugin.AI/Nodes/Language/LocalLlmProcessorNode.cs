@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.AI;
@@ -17,7 +18,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("LocalLlmProcessorNode_Name", "LanguageAI", "LocalLlmProcessorNode_Desc", PipelineRole.Analyze,
     "llm", "ia", "phi", "resumen", "extraer json", "razonamiento", "generativo", "chat")]
-public class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
+public sealed class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -131,14 +132,16 @@ public class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
             double temperature = Parameters.TryGetValue("Temperature", out var tVal) ? ParameterHelper.GetDouble(tVal, 0.2) : 0.2;
             int maxTokens = Parameters.TryGetValue("MaxTokens", out var mtVal) ? ParameterHelper.GetInt32(mtVal, 1024) : 1024;
 
+            var storage = context.GetStorage();
+
             // 1. Si existe archivo físico de texto y no hay metadato explícito de texto, leerlo
             string fileContent = string.Empty;
-            if (!string.IsNullOrWhiteSpace(item.CurrentPath) && File.Exists(item.CurrentPath))
+            if (!string.IsNullOrWhiteSpace(item.CurrentPath) && await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
             {
                 string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
                 if (ext is ".txt" or ".md" or ".csv" or ".json" or ".xml" or ".html" or ".srt" or ".log")
                 {
-                    fileContent = await File.ReadAllTextAsync(item.CurrentPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                    fileContent = await storage.ReadAllTextAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -213,7 +216,7 @@ public class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
                 };
 
                 string targetPath = Path.Combine(originalDir, $"{origNameWithoutExt}_analisis{targetExt}");
-                await File.WriteAllTextAsync(targetPath, result.ResponseText, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                await storage.WriteAllTextAsync(targetPath, result.ResponseText, ct: cancellationToken).ConfigureAwait(false);
 
                 context.Log($"[LocalLlmProcessor] 💾 Resultado LLM guardado en: '{targetPath}'", LogLevel.Information, item);
             }

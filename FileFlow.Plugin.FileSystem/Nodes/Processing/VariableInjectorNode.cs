@@ -6,8 +6,9 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("VariableInjectorNode_Name", "Integrations", "VariableInjectorNode_Desc", PipelineRole.Control,
     "variables", "inyectar", "tokens", "metadata", "clave", "valor", "inject")]
-public class VariableInjectorNode : IFlowNode
+public sealed class VariableInjectorNode : IFlowNode
 {
+    private readonly Lock _lock = new();
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Variable Injector");
     public string Category => "Integrations";
@@ -39,7 +40,7 @@ public class VariableInjectorNode : IFlowNode
         CancellationToken cancellationToken)
     {
         KeyValuePair<string, object?>[] snapshot;
-        lock (Parameters)
+        lock (_lock)
         {
             snapshot = Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Key)).ToArray();
         }

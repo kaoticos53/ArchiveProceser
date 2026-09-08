@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("VersionRouterNode_Name", "Logic", "VersionRouterNode_Desc", PipelineRole.Filter,
     "router", "version", "enrutador", "condicion", "if", "branch", "autopurga", "desviar")]
-public class VersionRouterNode : IFlowNode
+public sealed class VersionRouterNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("VersionRouterNode_Name", "Enrutador de Versiones");

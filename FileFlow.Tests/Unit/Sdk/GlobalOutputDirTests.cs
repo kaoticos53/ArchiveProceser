@@ -4,6 +4,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Sdk;
 
+[Collection("AppPaths")]
 public class GlobalOutputDirTests
 {
     [Fact]

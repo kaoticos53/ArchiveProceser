@@ -34,6 +34,34 @@ public interface IStorageService
     ValueTask<Stream> OpenWriteAsync(string path, CancellationToken ct = default);
 
     /// <summary>
+    /// Abre o crea un flujo de adición (append) para el archivo especificado posicionando el cursor al final.
+    /// </summary>
+    ValueTask<Stream> OpenAppendAsync(string path, CancellationToken ct = default)
+    {
+        var streamTask = OpenWriteAsync(path, ct);
+        if (streamTask.IsCompletedSuccessfully)
+        {
+            var stream = streamTask.Result;
+            if (stream.CanSeek)
+            {
+                stream.Seek(0, SeekOrigin.End);
+            }
+            return ValueTask.FromResult(stream);
+        }
+        return AwaitAppendStreamAsync(streamTask);
+
+        static async ValueTask<Stream> AwaitAppendStreamAsync(ValueTask<Stream> task)
+        {
+            var stream = await task.ConfigureAwait(false);
+            if (stream.CanSeek)
+            {
+                stream.Seek(0, SeekOrigin.End);
+            }
+            return stream;
+        }
+    }
+
+    /// <summary>
     /// Copia un archivo desde la ruta de origen a la de destino aplicando la estrategia de colisión especificada.
     /// </summary>
     ValueTask<StorageOperationResult> CopyAsync(
@@ -99,4 +127,16 @@ public interface IStorageService
     /// Obtiene el tamaño en bytes del archivo.
     /// </summary>
     ValueTask<long> GetFileSizeAsync(string path, CancellationToken ct = default);
+
+    /// <summary>
+    /// Obtiene la fecha y hora de creación del archivo (UTC).
+    /// </summary>
+    ValueTask<DateTimeOffset> GetCreationTimeAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult(DateTimeOffset.UtcNow);
+
+    /// <summary>
+    /// Obtiene la fecha y hora de última modificación del archivo (UTC).
+    /// </summary>
+    ValueTask<DateTimeOffset> GetLastWriteTimeAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult(DateTimeOffset.UtcNow);
 }

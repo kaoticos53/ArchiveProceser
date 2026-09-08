@@ -4,6 +4,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

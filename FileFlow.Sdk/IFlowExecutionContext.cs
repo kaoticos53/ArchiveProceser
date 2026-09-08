@@ -17,6 +17,7 @@ public interface IFlowExecutionContext
         ? new FileFlow.Sdk.Storage.VirtualStorageService(VirtualFileSystem)
         : FileFlow.Sdk.Storage.NullStorageService.Instance;
     FileFlow.Sdk.Platform.IOsPlatformService Platform => FileFlow.Sdk.Platform.NullOsPlatformService.Instance;
+    FileFlow.Sdk.Platform.IProcessRunner ProcessRunner => FileFlow.Sdk.Platform.ProcessRunner.Instance;
     FileFlow.Sdk.Services.IExternalToolsService Tools => FileFlow.Sdk.Services.NullExternalToolsService.Instance;
     void RegisterPlannedAction(PlannedAction action);
     void RecordJournalEntry(JournalEntry entry);

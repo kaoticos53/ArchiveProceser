@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("OriginalFileActionNode_Name", "Files", "OriginalFileActionNode_Desc", PipelineRole.Sink,
     "original", "cuarentena", "papelera", "borrar", "eliminar", "quarantine", "recycle", "lifecycle", "cleanup")]
-public class OriginalFileActionNode : IFlowNode
+public sealed class OriginalFileActionNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("OriginalFileActionNode_Name", "Original File Action");

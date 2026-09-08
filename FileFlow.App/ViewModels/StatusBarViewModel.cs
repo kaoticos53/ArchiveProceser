@@ -184,11 +184,7 @@ public partial class StatusBarViewModel : ObservableObject
         };
 
         // Estado de modelos de IA en memoria
-        FileFlow.Plugin.AI.Inference.OnnxSessionManager.SessionStateChanged += () =>
-        {
-            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
-        };
-        FileFlow.Plugin.AI.AudioInferenceEngine.SessionStateChanged += () =>
+        FileFlow.Sdk.ModelSessionRegistry.SessionStateChanged += () =>
         {
             Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
         };
@@ -225,10 +221,9 @@ public partial class StatusBarViewModel : ObservableObject
 
     public void UpdateAiModelCount()
     {
-        int onnxCount = FileFlow.Plugin.AI.Inference.OnnxSessionManager.GetLoadedSessionCount();
-        int audioCount = FileFlow.Plugin.AI.AudioInferenceEngine.GetLoadedSessionCount();
+        int sessionCount = FileFlow.Sdk.ModelSessionRegistry.GetTotalLoadedSessions();
         int canvasLoadedCount = _editorViewModel.Nodes.Count(n => n.IsModelLoaded);
-        int total = Math.Max(canvasLoadedCount, onnxCount + audioCount);
+        int total = Math.Max(canvasLoadedCount, sessionCount);
 
         LoadedAiModelsCount = total;
         HasLoadedAiModels = total > 0;
@@ -241,7 +236,7 @@ public partial class StatusBarViewModel : ObservableObject
     [RelayCommand]
     public void ClearAllAiModels()
     {
-        FileFlow.Plugin.AI.AiPluginInitializer.ClearAllSessions();
+        FileFlow.Sdk.ModelSessionRegistry.ClearAllSessions();
         foreach (var node in _editorViewModel.Nodes)
         {
             if (node.IsModelManaged)

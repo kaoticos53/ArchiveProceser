@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Adaptador de superresolución neuronal (Real-ESRGAN / Swin2SR / FSRCNN).
 /// </summary>
-public class RealEsrganAdapter : ISuperResolutionAdapter
+internal sealed class RealEsrganAdapter : ISuperResolutionAdapter
 {
     public bool CanHandle(InferenceSession session)
     {
@@ -76,7 +76,7 @@ public class RealEsrganAdapter : ISuperResolutionAdapter
 /// <summary>
 /// Factoría de adaptadores de superresolución.
 /// </summary>
-public static class SuperResolutionAdapterFactory
+internal static class SuperResolutionAdapterFactory
 {
     private static readonly ISuperResolutionAdapter[] Adapters =
     [

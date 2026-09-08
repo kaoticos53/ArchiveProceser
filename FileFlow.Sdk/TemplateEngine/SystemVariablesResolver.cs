@@ -107,6 +107,8 @@ public static class SystemVariablesResolver
                 return Path.GetFileName(currentPath);
 
             case "filenamenoext":
+            case "filenamewithoutextension":
+            case "filebasename":
                 return Path.GetFileNameWithoutExtension(currentPath);
 
             case "extension":
@@ -126,10 +128,17 @@ public static class SystemVariablesResolver
             case "originaldir":
                 return Path.GetDirectoryName(originalPath) ?? string.Empty;
 
+            case "originaldirectoryname":
+                string? oDir = Path.GetDirectoryName(originalPath);
+                return string.IsNullOrEmpty(oDir) ? string.Empty : Path.GetFileName(oDir);
+
             case "parentdir":
             case "dirname":
                 string? pDir = Path.GetDirectoryName(currentPath);
                 return string.IsNullOrEmpty(pDir) ? string.Empty : Path.GetFileName(pDir);
+
+            case "date":
+                return DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
             case "inc nr":
             case "incnr":

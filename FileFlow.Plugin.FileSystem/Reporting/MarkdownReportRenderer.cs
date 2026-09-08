@@ -2,7 +2,7 @@ using System.Text;
 
 namespace FileFlow.Plugin.FileSystem.Reporting;
 
-public class MarkdownReportRenderer : IReportRenderer
+internal sealed class MarkdownReportRenderer : IReportRenderer
 {
     public string FileExtension => "md";
 

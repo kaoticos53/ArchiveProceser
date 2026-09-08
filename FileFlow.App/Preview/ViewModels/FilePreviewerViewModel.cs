@@ -146,7 +146,7 @@ public partial class FilePreviewerViewModel : ObservableObject
     {
         if (CurrentContext != null && File.Exists(CurrentContext.CurrentPath))
         {
-            Process.Start("explorer.exe", $"/select,\"{CurrentContext.CurrentPath}\"");
+            FileFlow.Core.Platform.OsPlatformServiceFactory.Instance.OpenFileInFileManager(CurrentContext.CurrentPath);
         }
     }
 

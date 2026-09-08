@@ -4,7 +4,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
 using FileFlow.Sdk.Renaming.Handlers;
-using FileFlow.Sdk.Themes;
+using FileFlow.App.Themes;
 using FluentAssertions;
 using Xunit;
 

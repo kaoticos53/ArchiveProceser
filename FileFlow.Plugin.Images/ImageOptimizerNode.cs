@@ -1,5 +1,6 @@
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
@@ -10,7 +11,7 @@ namespace FileFlow.Plugin.Images;
 
 [NodeDefinition("ImageOptimizerNode_Name", "ImageVision", "ImageOptimizerNode_Desc", PipelineRole.Transform,
     "imagen", "foto", "redimensionar", "optimizar", "comprimir", "webp", "jpeg", "png", "resize", "convert")]
-public class ImageOptimizerNode : IFlowNode
+public sealed class ImageOptimizerNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ImageOptimizerNode_Name", "Image Optimizer");
@@ -208,10 +209,11 @@ public class ImageOptimizerNode : IFlowNode
         string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, string.Empty) : string.Empty;
         string outputDir = ParameterHelper.ResolveIntermediateOutputDir(outputPattern, item, context);
         bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
+        var storage = context.GetStorage();
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        if (string.IsNullOrWhiteSpace(filePath) || !await storage.FileExistsAsync(filePath, cancellationToken))
         {
             context.Log($"[Optimizador Imágenes] Archivo de imagen no encontrado: '{filePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -249,12 +251,13 @@ public class ImageOptimizerNode : IFlowNode
             }
             else
             {
-                if (!Directory.Exists(outputDir))
+                if (!await storage.DirectoryExistsAsync(outputDir, cancellationToken))
                 {
-                    Directory.CreateDirectory(outputDir);
+                    await storage.CreateDirectoryAsync(outputDir, cancellationToken);
                 }
 
-                using Image image = await Image.LoadAsync(filePath, cancellationToken);
+                await using Stream inStream = await storage.OpenReadAsync(filePath, cancellationToken);
+                using Image image = await Image.LoadAsync(inStream, cancellationToken);
                 origWidth = image.Width;
                 origHeight = image.Height;
 
@@ -277,25 +280,26 @@ public class ImageOptimizerNode : IFlowNode
                 newWidth = image.Width;
                 newHeight = image.Height;
 
+                await using Stream outStream = await storage.OpenWriteAsync(outputPath, cancellationToken);
                 switch (formatStr.ToUpperInvariant())
                 {
                     case "WEBP":
-                        await image.SaveAsWebpAsync(outputPath, new WebpEncoder { Quality = quality }, cancellationToken);
+                        await image.SaveAsWebpAsync(outStream, new WebpEncoder { Quality = quality }, cancellationToken);
                         break;
                     case "PNG":
-                        await image.SaveAsPngAsync(outputPath, new PngEncoder(), cancellationToken);
+                        await image.SaveAsPngAsync(outStream, new PngEncoder(), cancellationToken);
                         break;
                     case "JPEG":
                     case "JPG":
                     default:
-                        await image.SaveAsJpegAsync(outputPath, new JpegEncoder { Quality = quality }, cancellationToken);
+                        await image.SaveAsJpegAsync(outStream, new JpegEncoder { Quality = quality }, cancellationToken);
                         break;
                 }
             }
 
             sw.Stop();
-            long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(filePath) ? new FileInfo(filePath).Length : 0);
-            long newSizeBytes = (!isDryRun && File.Exists(outputPath)) ? new FileInfo(outputPath).Length : origSizeBytes;
+            long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (await storage.FileExistsAsync(filePath, cancellationToken) ? await storage.GetFileSizeAsync(filePath, cancellationToken) : 0);
+            long newSizeBytes = (!isDryRun && await storage.FileExistsAsync(outputPath, cancellationToken)) ? await storage.GetFileSizeAsync(outputPath, cancellationToken) : origSizeBytes;
             double savedPct = origSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / origSizeBytes)) * 100.0 : 0.0;
 
             outputItem = new FileItemContext(outputPath, isDirectory: false)

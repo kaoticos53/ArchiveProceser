@@ -1,13 +1,14 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using Tesseract;
 
 namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("LocalOcrNode_Name", "Documents", "LocalOcrNode_Desc", PipelineRole.Analyze,
     "ocr", "texto", "imagen a texto", "escaner", "paddle", "leer", "text", "reconocimiento")]
-public class LocalOcrNode : IFlowNode
+public sealed class LocalOcrNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LocalOcrNode_Name", "Reconocimiento Óptico (OCR Local)");
@@ -44,7 +45,8 @@ public class LocalOcrNode : IFlowNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[LocalOcr] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -95,10 +97,18 @@ public class LocalOcrNode : IFlowNode
             // Directorio padre de tessdata (ej: %AppData%/FileFlow/Models/tessdata → %AppData%/FileFlow/Models)
             string tessdataDir = Path.GetDirectoryName(Path.GetDirectoryName(tessdataPath)) ?? AiModelManager.ModelsDirectory;
 
+            byte[] imageBytes;
+            await using (var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
+            using (var ms = new MemoryStream())
+            {
+                await inStream.CopyToAsync(ms, cancellationToken).ConfigureAwait(false);
+                imageBytes = ms.ToArray();
+            }
+
             string fullText = await Task.Run(() =>
             {
                 using var engine = new TesseractEngine(Path.Combine(tessdataDir, "tessdata"), ocrLang, mode);
-                using var pix = Pix.LoadFromFile(item.CurrentPath);
+                using var pix = Pix.LoadFromMemory(imageBytes);
                 using var page = engine.Process(pix);
                 return page.GetText();
             }, cancellationToken).ConfigureAwait(false);

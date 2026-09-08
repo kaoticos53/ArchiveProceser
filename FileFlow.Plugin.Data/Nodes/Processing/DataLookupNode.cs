@@ -1,12 +1,13 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("DataLookupNode_Name", "Data", "DataLookupNode_Desc", PipelineRole.Analyze,
     "lookup", "vlookup", "buscar", "cruzar", "enriquecer", "tabla", "clave")]
-public class DataLookupNode : IFlowNode
+public sealed class DataLookupNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DataLookupNode_Name", "Cruce de Datos (Lookup / BUSCARV)");
@@ -26,18 +27,18 @@ public class DataLookupNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["DataSourcePath"] = @"{RelativeDir}\clientes.xlsx",
+        ["DataSourcePath"] = @"{RelativeDir}\lookup_table.xlsx",
         ["LookupKeyColumn"] = "Id",
         ["MatchExpression"] = "{FileNameWithoutExtension}",
-        ["PrefixColumns"] = ""
+        ["PrefixColumns"] = "Lookup_"
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("DataSourcePath", ParameterEditorType.FilePath, DefaultValue: @"{RelativeDir}\clientes.xlsx", DisplayOrder: 1),
+        new("DataSourcePath", ParameterEditorType.FilePath, DefaultValue: @"{RelativeDir}\lookup_table.xlsx", DisplayOrder: 1),
         new("LookupKeyColumn", ParameterEditorType.Text, DefaultValue: "Id", DisplayOrder: 2),
         new("MatchExpression", ParameterEditorType.Text, DefaultValue: "{FileNameWithoutExtension}", DisplayOrder: 3),
-        new("PrefixColumns", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 4)
+        new("PrefixColumns", ParameterEditorType.Text, DefaultValue: "Lookup_", DisplayOrder: 4)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
@@ -50,7 +51,8 @@ public class DataLookupNode : IFlowNode
             dataSourcePath = dataSourcePath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
         }
 
-        if (string.IsNullOrWhiteSpace(dataSourcePath) || !File.Exists(dataSourcePath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(dataSourcePath) || !await storage.FileExistsAsync(dataSourcePath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[DataLookup] Archivo de datos de referencia no encontrado: '{dataSourcePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Unmatched", item).ConfigureAwait(false);
@@ -71,7 +73,7 @@ public class DataLookupNode : IFlowNode
             return;
         }
 
-        var lookupIndex = await DataLookupTableLoader.LoadLookupTableAsync(dataSourcePath, keyColumn, cancellationToken).ConfigureAwait(false);
+        var lookupIndex = await DataLookupTableLoader.LoadLookupTableAsync(dataSourcePath, keyColumn, cancellationToken, storage).ConfigureAwait(false);
 
         if (lookupIndex.TryGetValue(searchKey, out var matchedRow))
         {

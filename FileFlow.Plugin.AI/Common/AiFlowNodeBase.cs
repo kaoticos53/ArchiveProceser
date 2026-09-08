@@ -91,4 +91,21 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
             item,
             cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Carga una imagen RGB24 de forma desacoplada usando la abstracción de almacenamiento (IStorageService).
+    /// </summary>
+    protected static async Task<SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>?> LoadInputRgb24ImageAsync(
+        FileItemContext item,
+        FileFlow.Sdk.Storage.IStorageService storage,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+        return await SixLabors.ImageSharp.Image.LoadAsync<SixLabors.ImageSharp.PixelFormats.Rgb24>(stream, cancellationToken).ConfigureAwait(false);
+    }
 }

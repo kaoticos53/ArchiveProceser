@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("IntermediateCleanupNode_Name", "Logic", "IntermediateCleanupNode_Desc", PipelineRole.Control,
     "cleanup", "limpiar", "temporales", "borrar", "purgar", "intermedios", "purge")]
-public class IntermediateCleanupNode : IFlowNode
+public sealed class IntermediateCleanupNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("IntermediateCleanupNode_Name", "Limpieza de Archivos Intermedios");

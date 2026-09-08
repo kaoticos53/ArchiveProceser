@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace FileFlow.Plugin.FileSystem.Reporting;
 
-public class JsonReportRenderer : IReportRenderer
+internal sealed class JsonReportRenderer : IReportRenderer
 {
     public string FileExtension => "json";
 

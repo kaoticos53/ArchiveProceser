@@ -2,6 +2,7 @@ using System.IO;
 using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -10,7 +11,7 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("SmartImageClassifierNode_Name", "ImageVision", "SmartImageClassifierNode_Desc", PipelineRole.Analyze,
     "clasificar", "imagen", "foto", "vision", "ia", "mobilenet", "etiquetas", "classifier")]
-public class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
+public sealed class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -104,7 +105,8 @@ public class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[ImageClassifier] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -139,7 +141,8 @@ public class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
                 return;
             }
 
-            using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
             image.Mutate(x => x.Resize(224, 224));
 
             var (category, label, confidence) = await Task.Run(

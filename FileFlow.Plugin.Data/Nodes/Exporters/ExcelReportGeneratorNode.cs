@@ -2,13 +2,14 @@ using System.Collections.Concurrent;
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("ExcelReportGeneratorNode_Name", "Data", "ExcelReportGeneratorNode_Desc", PipelineRole.Sink,
     "excel", "informe", "reporte", "exportar", "tabla", "consolidar", "xlsx")]
-public class ExcelReportGeneratorNode : IFlowNode
+public sealed class ExcelReportGeneratorNode : IFlowNode
 {
     private readonly ConcurrentBag<Dictionary<string, object?>> _collectedRows = [];
     private readonly Lock _lock = new();
@@ -119,7 +120,11 @@ public class ExcelReportGeneratorNode : IFlowNode
             outDir = Path.GetTempPath();
         }
 
-        Directory.CreateDirectory(outDir);
+        var storage = context.GetStorage();
+        if (!await storage.DirectoryExistsAsync(outDir, cancellationToken).ConfigureAwait(false))
+        {
+            await storage.CreateDirectoryAsync(outDir, cancellationToken).ConfigureAwait(false);
+        }
 
         string reportNameTemplate = Parameters.TryGetValue("ReportFileName", out var rfn) ? rfn?.ToString() ?? "Reporte_{Date}.xlsx" : "Reporte_{Date}.xlsx";
         string dateStr = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -137,12 +142,19 @@ public class ExcelReportGeneratorNode : IFlowNode
 
         var rowsList = _collectedRows.ToList();
         _collectedRows.Clear();
-        await MiniExcel.SaveAsAsync(reportPath, rowsList, overwriteFile: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await using (var outStream = await storage.OpenWriteAsync(reportPath, cancellationToken).ConfigureAwait(false))
+        {
+            await MiniExcel.SaveAsAsync(outStream, rowsList, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        long reportSize = await storage.FileExistsAsync(reportPath, cancellationToken).ConfigureAwait(false)
+            ? await storage.GetFileSizeAsync(reportPath, cancellationToken).ConfigureAwait(false)
+            : 0;
 
         var reportItem = new FileItemContext(reportPath)
         {
             OriginalPath = reportPath,
-            FileSizeBytes = new FileInfo(reportPath).Length
+            FileSizeBytes = reportSize
         };
         reportItem.Metadata["IsReport"] = true;
         reportItem.Metadata["ReportType"] = "ExcelReport";

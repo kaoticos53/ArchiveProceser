@@ -2,14 +2,15 @@ using System.IO;
 using System.Text;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("CsvExportNode_Name", "Data", "CsvExportNode_Desc", PipelineRole.Sink,
     "csv", "exportar", "guardar", "tabla", "delimitado", "valores")]
-public class CsvExportNode : IFlowNode
+public sealed class CsvExportNode : IFlowNode
 {
-    private readonly Lock _lock = new();
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("CsvExportNode_Name", "Exportador CSV / TSV");
@@ -57,8 +58,12 @@ public class CsvExportNode : IFlowNode
             destPath = Path.Combine(Path.GetTempPath(), "FileFlow_Export.csv");
         }
 
+        var storage = context.GetStorage();
         string dir = Path.GetDirectoryName(destPath) ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+        if (!string.IsNullOrWhiteSpace(dir) && !await storage.DirectoryExistsAsync(dir, cancellationToken))
+        {
+            await storage.CreateDirectoryAsync(dir, cancellationToken);
+        }
 
         string delimiter = Parameters.TryGetValue("Delimiter", out var dVal) ? dVal?.ToString() ?? "," : ",";
         if (delimiter == "\\t") delimiter = "\t";
@@ -70,16 +75,21 @@ public class CsvExportNode : IFlowNode
 
         bool appendMode = Parameters.TryGetValue("AppendMode", out var am) && ParameterHelper.GetBoolean(am, true);
 
-        lock (_lock)
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            bool writeHeader = !File.Exists(destPath) || !appendMode;
+            bool fileExists = await storage.FileExistsAsync(destPath, cancellationToken).ConfigureAwait(false);
+            bool writeHeader = !fileExists || !appendMode;
 
-            using var stream = new FileStream(destPath, appendMode ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
-            using var writer = new StreamWriter(stream, Encoding.UTF8);
+            await using var stream = appendMode
+                ? await storage.OpenAppendAsync(destPath, cancellationToken).ConfigureAwait(false)
+                : await storage.OpenWriteAsync(destPath, cancellationToken).ConfigureAwait(false);
+
+            await using var writer = new StreamWriter(stream, Encoding.UTF8);
 
             if (writeHeader)
             {
-                writer.WriteLine(string.Join(delimiter, selectedCols.Select(EscapeCsvField)));
+                await writer.WriteLineAsync(string.Join(delimiter, selectedCols.Select(EscapeCsvField))).ConfigureAwait(false);
             }
 
             var values = new List<string>();
@@ -94,7 +104,12 @@ public class CsvExportNode : IFlowNode
                 else values.Add(string.Empty);
             }
 
-            writer.WriteLine(string.Join(delimiter, values));
+            await writer.WriteLineAsync(string.Join(delimiter, values)).ConfigureAwait(false);
+            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
         }
 
         await context.EmitAsync("Out", item).ConfigureAwait(false);

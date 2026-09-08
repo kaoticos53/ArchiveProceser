@@ -11,12 +11,16 @@ namespace FileFlow.App.Views.Components;
 public partial class WorkflowSettingsWindow : Window
 {
     public string GlobalOutputDir { get; private set; } = string.Empty;
+    private readonly ViewModels.AiModelManagerViewModel _aiModelManagerVm;
 
-    public WorkflowSettingsWindow(string currentGlobalOutputDir)
+    public WorkflowSettingsWindow(string currentGlobalOutputDir, ViewModels.AiModelManagerViewModel? aiModelManagerVm = null)
     {
         InitializeComponent();
         WindowThemeHelper.ApplyThemeToWindow(this);
         GlobalOutputDir = currentGlobalOutputDir;
+        _aiModelManagerVm = aiModelManagerVm 
+            ?? (App.Services?.GetService(typeof(ViewModels.AiModelManagerViewModel)) as ViewModels.AiModelManagerViewModel)
+            ?? new ViewModels.AiModelManagerViewModel();
 
         LoadAllPreferences();
     }
@@ -58,8 +62,6 @@ public partial class WorkflowSettingsWindow : Window
         TxtAiModelsSummary.Text = _aiModelManagerVm.InstalledSummary;
     }
 
-    private readonly ViewModels.AiModelManagerViewModel _aiModelManagerVm = new();
-
     private string currentGlobalOutputDirOrDefault(UserPreferencesData prefs)
     {
         return !string.IsNullOrWhiteSpace(GlobalOutputDir) ? GlobalOutputDir : prefs.DefaultGlobalOutputDir;
@@ -73,7 +75,7 @@ public partial class WorkflowSettingsWindow : Window
         {
             CmbActiveTheme.Items.Add(theme);
         }
-        CmbActiveTheme.Items.Add(new FileFlow.Sdk.Themes.ThemeDefinition
+        CmbActiveTheme.Items.Add(new FileFlow.App.Themes.ThemeDefinition
         {
             Id = "system",
             Name = "💻 Tema del Sistema (Windows)",
@@ -203,7 +205,7 @@ public partial class WorkflowSettingsWindow : Window
                 prefs.AutoSaveIntervalMinutes = interval;
             }
 
-            prefs.ActiveTheme = (CmbActiveTheme.SelectedItem as FileFlow.Sdk.Themes.ThemeDefinition)?.Id ?? CmbActiveTheme.SelectedValue?.ToString() ?? "dark_fluent";
+            prefs.ActiveTheme = (CmbActiveTheme.SelectedItem as FileFlow.App.Themes.ThemeDefinition)?.Id ?? CmbActiveTheme.SelectedValue?.ToString() ?? "dark_fluent";
             prefs.IsCompactToolbox = ChkIsCompactToolbox.IsChecked == true;
             prefs.AutoScrollConsole = ChkAutoScrollConsole.IsChecked == true;
             if (int.TryParse(TxtMaxLogEntries.Text, out int maxLogs) && maxLogs >= 0)

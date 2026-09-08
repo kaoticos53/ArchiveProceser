@@ -8,7 +8,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
-using FileFlow.Sdk.Themes;
+using FileFlow.App.Themes;
 
 namespace FileFlow.App.ViewModels;
 
@@ -505,11 +505,12 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void OpenSyntheticDataSetDesigner()
     {
-        var win = new FileFlow.Plugin.FileSystem.UI.Views.SyntheticDataSetDesignerWindow
+        var syntheticNodeType = _pluginLoader.DiscoveredNodeTypes.Values
+            .FirstOrDefault(t => t.Name.Equals("SyntheticDataSourceNode", StringComparison.OrdinalIgnoreCase));
+        if (syntheticNodeType != null && Activator.CreateInstance(syntheticNodeType) is INodeCustomActionProvider provider)
         {
-            Owner = Application.Current?.MainWindow
-        };
-        win.ShowDialog();
+            provider.ExecuteCustomAction("OpenDataSetDesigner", Application.Current?.MainWindow);
+        }
     }
 
     [RelayCommand]

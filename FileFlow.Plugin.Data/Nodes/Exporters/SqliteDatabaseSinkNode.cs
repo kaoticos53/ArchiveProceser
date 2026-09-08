@@ -2,13 +2,14 @@ using System.IO;
 using System.Text.Json;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using Microsoft.Data.Sqlite;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("SqliteDatabaseSinkNode_Name", "Data", "SqliteDatabaseSinkNode_Desc", PipelineRole.Sink,
     "sqlite", "sql", "base de datos", "db", "guardar", "insertar", "auditoria")]
-public class SqliteDatabaseSinkNode : IFlowNode
+public sealed class SqliteDatabaseSinkNode : IFlowNode
 {
     private static readonly Lock _initLock = new();
     private static readonly HashSet<string> _initializedDbs = new(StringComparer.OrdinalIgnoreCase);
@@ -59,8 +60,12 @@ public class SqliteDatabaseSinkNode : IFlowNode
             dbPath = Path.Combine(Path.GetTempPath(), "fileflow_audit.db");
         }
 
+        var storage = context.GetStorage();
         string? dir = Path.GetDirectoryName(dbPath);
-        if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+        if (!string.IsNullOrWhiteSpace(dir) && !await storage.DirectoryExistsAsync(dir, cancellationToken).ConfigureAwait(false))
+        {
+            await storage.CreateDirectoryAsync(dir, cancellationToken).ConfigureAwait(false);
+        }
 
         string tableName = Parameters.TryGetValue("TableName", out var tn) ? tn?.ToString() ?? "FileProcessingLog" : "FileProcessingLog";
         if (string.IsNullOrWhiteSpace(tableName)) tableName = "FileProcessingLog";

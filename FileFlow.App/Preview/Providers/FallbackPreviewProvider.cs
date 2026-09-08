@@ -54,7 +54,7 @@ public class FallbackPreviewProvider : IFilePreviewProvider
         {
             if (File.Exists(context.CurrentPath))
             {
-                Process.Start("explorer.exe", $"/select,\"{context.CurrentPath}\"");
+                FileFlow.Core.Platform.OsPlatformServiceFactory.Instance.OpenFileInFileManager(context.CurrentPath);
             }
         };
 

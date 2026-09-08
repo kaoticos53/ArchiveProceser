@@ -5,7 +5,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("ThrottleDelayNode_Name", "Logic", "ThrottleDelayNode_Desc", PipelineRole.Control,
     "retardo", "pausa", "esperar", "delay", "throttle", "jitter", "sleep")]
-public class ThrottleDelayNode : IFlowNode
+public sealed class ThrottleDelayNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ThrottleDelayNode_Name", "Control de Tasa y Pausa (Throttle)");

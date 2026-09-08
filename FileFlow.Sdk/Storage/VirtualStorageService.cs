@@ -72,6 +72,18 @@ public class VirtualStorageService : IStorageService
         return ValueTask.FromResult<Stream>(stream);
     }
 
+    public ValueTask<Stream> OpenAppendAsync(string path, CancellationToken ct = default)
+    {
+        string dir = Path.GetDirectoryName(path) ?? string.Empty;
+        if (!string.IsNullOrEmpty(dir))
+        {
+            _vfs.AddOrUpdateDirectory(dir);
+        }
+
+        var stream = new VirtualFileWriteStream(path, _vfs, append: true);
+        return ValueTask.FromResult<Stream>(stream);
+    }
+
     public async ValueTask<StorageOperationResult> CopyAsync(
         string sourcePath,
         string targetPath,
@@ -300,16 +312,53 @@ public class VirtualStorageService : IStorageService
         return ValueTask.FromResult(entry?.FileSizeBytes ?? 0L);
     }
 
+    public ValueTask<DateTimeOffset> GetCreationTimeAsync(string path, CancellationToken ct = default)
+    {
+        var entry = _vfs.GetFile(path);
+        return ValueTask.FromResult(entry != null && entry.TimestampUtc != default
+            ? new DateTimeOffset(entry.TimestampUtc, TimeSpan.Zero)
+            : DateTimeOffset.UtcNow);
+    }
+
+    public ValueTask<DateTimeOffset> GetLastWriteTimeAsync(string path, CancellationToken ct = default)
+    {
+        var entry = _vfs.GetFile(path);
+        return ValueTask.FromResult(entry != null && entry.TimestampUtc != default
+            ? new DateTimeOffset(entry.TimestampUtc, TimeSpan.Zero)
+            : DateTimeOffset.UtcNow);
+    }
+
     private sealed class VirtualFileWriteStream : MemoryStream
     {
         private readonly string _targetPath;
         private readonly IVirtualFileSystemStore _vfs;
         private bool _isDisposed;
 
-        public VirtualFileWriteStream(string targetPath, IVirtualFileSystemStore vfs)
+        public VirtualFileWriteStream(string targetPath, IVirtualFileSystemStore vfs, bool append = false)
         {
             _targetPath = targetPath;
             _vfs = vfs;
+
+            if (append)
+            {
+                var entry = _vfs.GetFile(targetPath);
+                if (entry != null)
+                {
+                    if (entry.BinaryContent != null && entry.BinaryContent.Length > 0)
+                    {
+                        Write(entry.BinaryContent, 0, entry.BinaryContent.Length);
+                    }
+                    else if (entry.Metadata != null && entry.Metadata.TryGetValue("VirtualContent", out var vc) && vc is byte[] b && b.Length > 0)
+                    {
+                        Write(b, 0, b.Length);
+                    }
+                    else if (!string.IsNullOrEmpty(entry.TextContent))
+                    {
+                        byte[] tBytes = Encoding.UTF8.GetBytes(entry.TextContent);
+                        Write(tBytes, 0, tBytes.Length);
+                    }
+                }
+            }
         }
 
         protected override void Dispose(bool disposing)

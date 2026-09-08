@@ -9,6 +9,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -18,7 +19,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("SuperResolutionUpscalerNode_Name", "ImageVision", "SuperResolutionUpscalerNode_Desc", PipelineRole.Transform,
     "super resolucion", "escalar", "aumentar", "upscale", "4x", "realesrgan", "calidad", "nitidez")]
-public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
+public sealed class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -127,7 +128,8 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[SuperResolution] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -151,18 +153,18 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
 
             string targetDir = ParameterHelper.ResolveIntermediateOutputDir(outputDirRaw, item, context);
-            Directory.CreateDirectory(targetDir);
+            await storage.CreateDirectoryAsync(targetDir, cancellationToken).ConfigureAwait(false);
 
             string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_upscaled{ext}";
             string targetPath = Path.Combine(targetDir, targetFileName);
 
-            if (skipIfExists && File.Exists(targetPath))
+            if (skipIfExists && await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false))
             {
                 context.Log($"[SuperResolution] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo inferencia.", LogLevel.Information, item);
                 var existingItem = item.DeepClone();
                 existingItem.CurrentPath = targetPath;
                 existingItem.PhysicalPath = targetPath;
-                existingItem.FileSizeBytes = new FileInfo(targetPath).Length;
+                existingItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                 existingItem.Metadata["AI:SuperResolution"] = true;
                 await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
                 return;
@@ -170,7 +172,8 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
 
             int requestedScale = scaleStr.Contains("2") ? 2 : 4;
 
-            using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var image = await Image.LoadAsync<Rgb24>(inStream, cancellationToken).ConfigureAwait(false);
             int origW = image.Width;
             int origH = image.Height;
 
@@ -205,14 +208,18 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             int newW = upscaledImage.Width;
             int newH = upscaledImage.Height;
 
-            await upscaledImage.SaveAsync(targetPath, cancellationToken).ConfigureAwait(false);
+            await using (var outStream = await storage.OpenWriteAsync(targetPath, cancellationToken).ConfigureAwait(false))
+            {
+                var encoder = GetEncoder(ext);
+                await upscaledImage.SaveAsync(outStream, encoder, cancellationToken).ConfigureAwait(false);
+            }
 
             var newItem = item.DeepClone();
             newItem.CurrentPath = targetPath;
             newItem.PhysicalPath = targetPath;
             newItem.RegisterVersion("SuperResolution", targetPath);
-            long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (File.Exists(item.CurrentPath) ? new FileInfo(item.CurrentPath).Length : 0);
-            long newSizeBytes = new FileInfo(targetPath).Length;
+            long origSizeBytes = item.FileSizeBytes > 0 ? item.FileSizeBytes : (await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false) ? await storage.GetFileSizeAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false) : 0);
+            long newSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
             newItem.FileSizeBytes = newSizeBytes;
             newItem.Metadata["OriginalFileSize"] = origSizeBytes;
             newItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
@@ -236,4 +243,13 @@ public class SuperResolutionUpscalerNode : IFlowNode, IModelLifecycleNode
             await context.EmitAsync("Error", item).ConfigureAwait(false);
         }
     }
+
+    private static SixLabors.ImageSharp.Formats.IImageEncoder GetEncoder(string ext) => ext switch
+    {
+        ".jpg" or ".jpeg" => new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder(),
+        ".webp" => new SixLabors.ImageSharp.Formats.Webp.WebpEncoder(),
+        ".bmp" => new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder(),
+        ".tiff" => new SixLabors.ImageSharp.Formats.Tiff.TiffEncoder(),
+        _ => new SixLabors.ImageSharp.Formats.Png.PngEncoder()
+    };
 }

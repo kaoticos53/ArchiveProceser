@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Contrato canónico de adaptador de inferencia para segmentación y eliminación de fondo.
 /// </summary>
-public interface IBackgroundRemoverAdapter
+internal interface IBackgroundRemoverAdapter
 {
     bool CanHandle(InferenceSession session);
 

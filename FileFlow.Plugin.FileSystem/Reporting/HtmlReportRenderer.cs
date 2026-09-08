@@ -3,7 +3,7 @@ using System.Text;
 
 namespace FileFlow.Plugin.FileSystem.Reporting;
 
-public class HtmlReportRenderer : IReportRenderer
+internal sealed class HtmlReportRenderer : IReportRenderer
 {
     public string FileExtension => "html";
 

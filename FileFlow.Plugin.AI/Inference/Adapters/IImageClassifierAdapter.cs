@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Contrato canónico de adaptador de inferencia para clasificación de imágenes.
 /// </summary>
-public interface IImageClassifierAdapter
+internal interface IImageClassifierAdapter
 {
     bool CanHandle(InferenceSession session);
 

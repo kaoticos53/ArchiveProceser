@@ -61,6 +61,25 @@ public class NullStorageService : IStorageService
         return ValueTask.FromResult(stream);
     }
 
+    public ValueTask<Stream> OpenAppendAsync(string path, CancellationToken ct = default)
+    {
+        string? dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.Append,
+            Access = FileAccess.Write,
+            Share = FileShare.ReadWrite,
+            BufferSize = BufferSize,
+            Options = FileOptions.Asynchronous
+        };
+        Stream stream = new FileStream(path, options);
+        return ValueTask.FromResult(stream);
+    }
+
     public async ValueTask<StorageOperationResult> CopyAsync(
         string sourcePath,
         string targetPath,
@@ -226,4 +245,10 @@ public class NullStorageService : IStorageService
         }
         return ValueTask.FromResult(0L);
     }
+
+    public ValueTask<DateTimeOffset> GetCreationTimeAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<DateTimeOffset>(File.Exists(path) ? new DateTimeOffset(File.GetCreationTimeUtc(path), TimeSpan.Zero) : DateTimeOffset.UtcNow);
+
+    public ValueTask<DateTimeOffset> GetLastWriteTimeAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<DateTimeOffset>(File.Exists(path) ? new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero) : DateTimeOffset.UtcNow);
 }

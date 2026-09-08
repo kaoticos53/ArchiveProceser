@@ -62,31 +62,7 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     public MainViewModel()
     {
-        PluginLoader = new PluginLoader();
-
-        // Register all built-in referenced plugin assemblies
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.FileSystem.FolderSourceNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Archives.SmartUnpackNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Images.ImageOptimizerNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.CliExecutionNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Scripting.CustomScriptNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.AI.PromptObjectDetectorNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Data.ExcelReaderNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
-        PluginLoader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.NetworkDownloadNode).Assembly);
-
-        // Dynamically load any additional external plugin assemblies in /Plugins directory
-        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        string pluginsDirectory = Path.Combine(baseDir, "Plugins");
-
-        if (!Directory.Exists(pluginsDirectory))
-        {
-            Directory.CreateDirectory(pluginsDirectory);
-        }
-
-        PluginLoader.LoadPluginDirectory(pluginsDirectory);
+        PluginLoader = PluginRegistryHelper.CreateConfiguredLoader();
 
         FileDialogService = new FileDialogService();
         WorkflowStorageService = new WorkflowStorageService();

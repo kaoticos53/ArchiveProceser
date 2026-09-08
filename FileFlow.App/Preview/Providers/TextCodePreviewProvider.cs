@@ -63,11 +63,14 @@ public class TextCodePreviewProvider : IFilePreviewProvider
                 {
                     using var reader = new StreamReader(context.CurrentPath);
                     var sb = new System.Text.StringBuilder();
-                    for (int i = 0; i < 500 && !reader.EndOfStream; i++)
+                    string? line;
+                    int lineCount = 0;
+                    while (lineCount < 500 && (line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
                     {
-                        sb.AppendLine(await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false));
+                        sb.AppendLine(line);
+                        lineCount++;
                     }
-                    sb.AppendLine($"\n... [Archivo grande ({fi.Length / 1024.0:F1} KB): mostrando las primeras 500 líneas] ...");
+                    sb.AppendLine($"\n... [Archivo grande ({fi.Length / 1024.0:F1} KB): mostrando las primeras {lineCount} líneas] ...");
                     editor.Text = sb.ToString();
                 }
                 else

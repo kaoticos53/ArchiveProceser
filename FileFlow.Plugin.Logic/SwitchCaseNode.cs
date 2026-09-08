@@ -10,7 +10,7 @@ public record SwitchCaseRule(string Name, string Pattern);
 
 [NodeDefinition("SwitchCaseNode_Name", "Logic", "SwitchCaseNode_Desc", PipelineRole.Filter,
     "switch", "case", "bifurcacion", "enrutar", "multiples", "router", "branch", "logica")]
-public class SwitchCaseNode : IFlowNode
+public sealed class SwitchCaseNode : IFlowNode, ISwitchCaseNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SwitchCaseNode_Name", "Enrutador Condicional (Switch / Case)");
@@ -90,6 +90,12 @@ public class SwitchCaseNode : IFlowNode
         var list = cases.ToList();
         Parameters["CasesJson"] = JsonSerializer.Serialize(list);
     }
+
+    IReadOnlyList<SwitchCaseRuleDefinition> ISwitchCaseNode.GetCases() =>
+        GetCases().Select(c => new SwitchCaseRuleDefinition(c.Name, c.Pattern)).ToList();
+
+    void ISwitchCaseNode.SetCases(IEnumerable<SwitchCaseRuleDefinition> cases) =>
+        SetCases(cases.Select(c => new SwitchCaseRule(c.Name, c.Pattern)));
 
     private static readonly Regex NumericRegex = new(@"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.Compiled);
 

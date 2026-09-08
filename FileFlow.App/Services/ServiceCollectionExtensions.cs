@@ -5,6 +5,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Platform;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FileFlow.App.Services;
@@ -23,33 +24,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILocalizationService>(_ => LocalizationManager.Instance);
         services.AddSingleton<ILogStore>(_ => SqliteLogStore.Instance);
         services.AddSingleton<IFileRecycler>(_ => WindowsShellFileRecycler.Instance);
+        services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddTransient<IFolderWatcherService, FolderWatcherService>();
 
         // 2. Cargador de Plugins con auto-descubrimiento
-        services.AddSingleton(sp =>
-        {
-            var loader = new PluginLoader();
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.FileSystem.FolderSourceNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Archives.SmartUnpackNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Images.ImageOptimizerNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.CliExecutionNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Scripting.CustomScriptNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.AI.PromptObjectDetectorNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Data.ExcelReaderNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
-            loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.NetworkDownloadNode).Assembly);
-
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string pluginsDirectory = Path.Combine(baseDir, "Plugins");
-            if (!Directory.Exists(pluginsDirectory))
-            {
-                Directory.CreateDirectory(pluginsDirectory);
-            }
-            loader.LoadPluginDirectory(pluginsDirectory);
-            return loader;
-        });
+        services.AddSingleton(sp => PluginRegistryHelper.CreateConfiguredLoader());
 
         // 3. Servicios y Adaptadores de Infraestructura de la UI
         services.AddSingleton<IFileDialogService, FileDialogService>();
@@ -70,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ControlBarViewModel>();
         services.AddSingleton<StatusBarViewModel>();
         services.AddSingleton<MainViewModel>();
+        services.AddTransient<AiModelManagerViewModel>();
 
         return services;
     }

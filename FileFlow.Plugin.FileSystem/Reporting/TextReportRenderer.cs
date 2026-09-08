@@ -2,7 +2,7 @@ using System.Text;
 
 namespace FileFlow.Plugin.FileSystem.Reporting;
 
-public class TextReportRenderer : IReportRenderer
+internal sealed class TextReportRenderer : IReportRenderer
 {
     public string FileExtension => "txt";
 

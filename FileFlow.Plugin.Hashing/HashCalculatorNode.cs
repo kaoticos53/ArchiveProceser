@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Hashing;
 
 [NodeDefinition("HashCalculatorNode_Name", "Security", "HashCalculatorNode_Desc", PipelineRole.Analyze,
     "hash", "sha256", "md5", "sha1", "sha512", "checksum", "integridad")]
-public class HashCalculatorNode : IFlowNode
+public sealed class HashCalculatorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => "Calculador Hash";

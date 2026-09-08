@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -15,7 +16,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("VoiceActivityDetectorNode_Name", "AudioVoice", "VoiceActivityDetectorNode_Desc", PipelineRole.Filter,
     "vad", "silero", "voz", "silencio", "recortar silencios", "audio", "speech", "speech detection")]
-public class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
+public sealed class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -117,7 +118,8 @@ public class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[SileroVAD] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);

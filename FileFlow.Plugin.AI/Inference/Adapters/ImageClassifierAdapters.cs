@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// Adaptador de clasificación para redes convolucionales estándar tipo MobileNetV2 y ResNet
 /// (entrada 224x224 NCHW, normalización ImageNet, salida de 1000 probabilidades o vector logits).
 /// </summary>
-public class MobileNetClassifierAdapter : IImageClassifierAdapter
+internal sealed class MobileNetClassifierAdapter : IImageClassifierAdapter
 {
     public bool CanHandle(InferenceSession session)
     {
@@ -103,7 +103,7 @@ public class MobileNetClassifierAdapter : IImageClassifierAdapter
 /// <summary>
 /// Factoría de adaptadores de clasificación de imágenes.
 /// </summary>
-public static class ImageClassifierAdapterFactory
+internal static class ImageClassifierAdapterFactory
 {
     private static readonly IImageClassifierAdapter[] Adapters =
     [

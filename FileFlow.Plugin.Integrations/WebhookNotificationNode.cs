@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("WebhookNotificationNode_Name", "Integrations", "WebhookNotificationNode_Desc", PipelineRole.Control,
     "webhook", "http", "post", "notificacion", "api", "rest", "json", "slack", "discord")]
-public class WebhookNotificationNode : IFlowNode
+public sealed class WebhookNotificationNode : IFlowNode
 {
     private static readonly HttpClient HttpClient = new(new SocketsHttpHandler
     {

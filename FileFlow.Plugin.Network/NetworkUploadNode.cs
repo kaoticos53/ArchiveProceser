@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Network;
 
 [NodeDefinition("NetworkUploadNode_Name", "Network", "NetworkUploadNode_Desc", PipelineRole.Sink,
     "subir", "upload", "transferir", "http", "https", "ftp", "ftps", "sftp", "ssh", "webdav", "smb", "red", "nube")]
-public class NetworkUploadNode : IFlowNode
+public sealed class NetworkUploadNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("NetworkUploadNode_Name", "Subir a Red / Nube (Network Upload)");

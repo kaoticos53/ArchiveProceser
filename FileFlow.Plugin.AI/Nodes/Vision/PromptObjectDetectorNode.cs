@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -19,7 +20,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PromptObjectDetectorNode_Name", "ImageVision", "PromptObjectDetectorNode_Desc", PipelineRole.Analyze,
     "dino", "grounding dino", "prompt", "objeto", "detectar", "texto a objeto", "vision")]
-public class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
+public sealed class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -103,7 +104,8 @@ public class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[PromptObjectDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -145,7 +147,8 @@ public class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
                 return;
             }
 
-            using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
             int origW = image.Width;
             int origH = image.Height;
 

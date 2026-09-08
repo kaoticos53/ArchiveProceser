@@ -2,7 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using FileFlow.App.Services;
-using FileFlow.Sdk.Themes;
+using FileFlow.App.Themes;
 using FluentAssertions;
 using Xunit;
 

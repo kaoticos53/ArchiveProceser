@@ -15,7 +15,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("TextToSpeechNode_Name", "AudioVoice", "TextToSpeechNode_Desc", PipelineRole.Transform,
     "tts", "piper", "voz", "hablar", "sintesis", "texto a voz", "audio", "locucion", "speech")]
-public class TextToSpeechNode : IFlowNode, IModelLifecycleNode
+public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 

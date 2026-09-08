@@ -5,7 +5,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("BatchBufferNode_Name", "Logic", "BatchBufferNode_Desc", PipelineRole.Control,
     "lote", "batch", "buffer", "acumular", "paquete", "buffer", "aggregate")]
-public class BatchBufferNode : IFlowNode
+public sealed class BatchBufferNode : IFlowNode
 {
     private readonly List<FileItemContext> _buffer = [];
     private readonly Lock _lock = new();

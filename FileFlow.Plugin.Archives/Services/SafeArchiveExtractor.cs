@@ -11,16 +11,29 @@ namespace FileFlow.Plugin.Archives.Services;
 /// </summary>
 public static class SafeArchiveExtractor
 {
-    public static List<string?> GetPasswordCandidates(string passwordListParam, string passwordFileParam, FileItemContext item)
+    public static async Task<List<string?>> GetPasswordCandidatesAsync(string passwordListParam, string passwordFileParam, FileItemContext item, FileFlow.Sdk.Storage.IStorageService? storage = null, CancellationToken cancellationToken = default)
     {
         var candidates = new List<string?> { null, string.Empty };
 
         if (!string.IsNullOrWhiteSpace(passwordFileParam))
         {
             string resolvedFile = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(passwordFileParam, item);
-            if (File.Exists(resolvedFile))
+            if (storage != null && await storage.FileExistsAsync(resolvedFile, cancellationToken))
             {
-                var lines = File.ReadAllLines(resolvedFile);
+                await using var stream = await storage.OpenReadAsync(resolvedFile, cancellationToken);
+                using var reader = new StreamReader(stream);
+                while (await reader.ReadLineAsync(cancellationToken) is { } line)
+                {
+                    string p = line.Trim();
+                    if (!string.IsNullOrEmpty(p) && !candidates.Contains(p))
+                    {
+                        candidates.Add(p);
+                    }
+                }
+            }
+            else if (File.Exists(resolvedFile))
+            {
+                var lines = await File.ReadAllLinesAsync(resolvedFile, cancellationToken);
                 foreach (var line in lines)
                 {
                     string p = line.Trim();
@@ -46,6 +59,11 @@ public static class SafeArchiveExtractor
         }
 
         return candidates;
+    }
+
+    public static List<string?> GetPasswordCandidates(string passwordListParam, string passwordFileParam, FileItemContext item)
+    {
+        return GetPasswordCandidatesAsync(passwordListParam, passwordFileParam, item).GetAwaiter().GetResult();
     }
 
     public static (IArchive archive, string? validPassword) OpenArchiveWithPassword(string archivePath, List<string?> candidates, IFlowExecutionContext context)
@@ -112,7 +130,7 @@ public static class SafeArchiveExtractor
         }
     }
 
-    public static void ExtractNestedArchives(string targetDir, List<string?> candidates, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public static async Task ExtractNestedArchivesAsync(string targetDir, List<string?> candidates, IFlowExecutionContext context, FileFlow.Sdk.Storage.IStorageService? storage, CancellationToken cancellationToken)
     {
         const int maxDepth = 5;
 
@@ -145,7 +163,14 @@ public static class SafeArchiveExtractor
                         ExtractEntriesSafely(archive, nestedExtractDir, cancellationToken);
                     }
 
-                    File.Delete(nestedArchive);
+                    if (storage != null)
+                    {
+                        await storage.DeleteAsync(nestedArchive, permanent: true, ct: cancellationToken);
+                    }
+                    else
+                    {
+                        File.Delete(nestedArchive);
+                    }
                     context.Log($"SmartUnpackNode: Archivo anidado intermedio eliminado '{Path.GetFileName(nestedArchive)}'.", LogLevel.Information);
                 }
                 catch (Exception ex)
@@ -162,11 +187,23 @@ public static class SafeArchiveExtractor
             {
                 try
                 {
-                    File.Delete(secVol);
+                    if (storage != null)
+                    {
+                        await storage.DeleteAsync(secVol, permanent: true, ct: cancellationToken);
+                    }
+                    else
+                    {
+                        File.Delete(secVol);
+                    }
                     context.Log($"SmartUnpackNode: Volumen secundario intermedio eliminado '{Path.GetFileName(secVol)}'.", LogLevel.Information);
                 }
                 catch { }
             }
         }
+    }
+
+    public static void ExtractNestedArchives(string targetDir, List<string?> candidates, IFlowExecutionContext context, CancellationToken cancellationToken)
+    {
+        ExtractNestedArchivesAsync(targetDir, candidates, context, null, cancellationToken).GetAwaiter().GetResult();
     }
 }

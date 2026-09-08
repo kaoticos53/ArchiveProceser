@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -13,7 +14,7 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("FaceDetectorNode_Name", "ImageVision", "FaceDetectorNode_Desc", PipelineRole.Filter,
     "rostros", "caras", "personas", "faces", "ultraface", "detector", "vision", "ia")]
-public class FaceDetectorNode : AiFlowNodeBase
+public sealed class FaceDetectorNode : AiFlowNodeBase
 {
     public override string Name => LocalizationManager.Instance.GetString("FaceDetectorNode_Name", "Detector de Rostros (Facial)");
     public override string Category => "ImageVision";
@@ -49,7 +50,8 @@ public class FaceDetectorNode : AiFlowNodeBase
 
     public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             Log(context, $"Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             item.Metadata["AI:HasFaces"] = false;
@@ -86,7 +88,16 @@ public class FaceDetectorNode : AiFlowNodeBase
             double threshold = Parameters.TryGetValue("ConfidenceThreshold", out var ct) ? ParameterHelper.GetDouble(ct, 0.7) : 0.7;
             int minFaces = Parameters.TryGetValue("MinimumFaces", out var mf) ? ParameterHelper.GetInt32(mf, 1) : 1;
 
-            using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var image = await LoadInputRgb24ImageAsync(item, storage, cancellationToken).ConfigureAwait(false);
+            if (image == null)
+            {
+                Log(context, $"No se pudo cargar la imagen '{item.CurrentPath}'.", LogLevel.Error, item);
+                item.Metadata["AI:HasFaces"] = false;
+                item.Metadata["AI:FaceCount"] = 0;
+                await EmitAsync(context, item, "NoFaces").ConfigureAwait(false);
+                return;
+            }
+
             image.Mutate(x => x.Resize(320, 240));
 
             var (faceCount, maxConf, faces) = await Task.Run(

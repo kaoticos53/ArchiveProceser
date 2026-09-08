@@ -1,13 +1,14 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using MiniExcelLibs;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("ExcelReaderNode_Name", "Data", "ExcelReaderNode_Desc", PipelineRole.Source,
     "excel", "xlsx", "leer", "tabla", "hoja", "filas", "importar", "sheet")]
-public class ExcelReaderNode : IFlowNode
+public sealed class ExcelReaderNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExcelReaderNode_Name", "Lector de Hojas Excel");
@@ -26,23 +27,22 @@ public class ExcelReaderNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["FilePath"] = @"{RelativeDir}\data.xlsx",
+        ["FilePath"] = "",
         ["SheetName"] = "",
-        ["HeaderRowIndex"] = 1,
         ["SkipEmptyRows"] = true
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("FilePath", ParameterEditorType.FilePath, DefaultValue: @"{RelativeDir}\data.xlsx", DisplayOrder: 1),
+        new("FilePath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 1),
         new("SheetName", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 2),
-        new("HeaderRowIndex", ParameterEditorType.Number, DefaultValue: 1, Min: 1, Max: 100, DisplayOrder: 3),
         new("SkipEmptyRows", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        string targetPath = !string.IsNullOrWhiteSpace(item.CurrentPath) && File.Exists(item.CurrentPath)
+        var storage = context.GetStorage();
+        string targetPath = !string.IsNullOrWhiteSpace(item.CurrentPath) && await storage.FileExistsAsync(item.CurrentPath, cancellationToken)
             ? item.CurrentPath
             : (Parameters.TryGetValue("FilePath", out var fp) ? fp?.ToString() ?? string.Empty : string.Empty);
 
@@ -52,7 +52,7 @@ public class ExcelReaderNode : IFlowNode
             targetPath = targetPath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
         }
 
-        if (string.IsNullOrWhiteSpace(targetPath) || !File.Exists(targetPath))
+        if (string.IsNullOrWhiteSpace(targetPath) || !await storage.FileExistsAsync(targetPath, cancellationToken))
         {
             context.Log($"[ExcelReader] Archivo no encontrado: '{targetPath}'", LogLevel.Error);
             return;
@@ -63,7 +63,7 @@ public class ExcelReaderNode : IFlowNode
 
         context.Log($"[ExcelReader] Abriendo hoja de cálculo: {Path.GetFileName(targetPath)}", LogLevel.Information);
 
-        await using var stream = new FileStream(targetPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        await using var stream = await storage.OpenReadAsync(targetPath, cancellationToken);
         
         var rows = await stream.QueryAsync(useHeaderRow: true, sheetName: string.IsNullOrWhiteSpace(sheetName) ? null : sheetName).ConfigureAwait(false);
 

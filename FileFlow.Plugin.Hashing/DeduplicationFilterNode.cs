@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Hashing;
 
 [NodeDefinition("DeduplicationFilterNode_Name", "Security", "DeduplicationFilterNode_Desc", PipelineRole.Filter,
     "duplicados", "deduplicar", "unicos", "repetidos", "checksum", "duplicate", "filter", "hash")]
-public class DeduplicationFilterNode : IFlowNode
+public sealed class DeduplicationFilterNode : IFlowNode
 {
     private readonly ConcurrentDictionary<string, string> _seenHashes = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastExecutionId;

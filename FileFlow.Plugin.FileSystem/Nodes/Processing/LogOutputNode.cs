@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("LogOutputNode_Name", "Integrations", "LogOutputNode_Desc", PipelineRole.Control,
     "log", "consola", "mensaje", "registro", "diagnostico", "telemetria", "print")]
-public class LogOutputNode : IFlowNode
+public sealed class LogOutputNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LogOutputNode_Name", "Log Inspector");

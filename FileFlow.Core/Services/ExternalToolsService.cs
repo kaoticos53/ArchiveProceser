@@ -71,21 +71,13 @@ public class ExternalToolsService : IExternalToolsService
 
         try
         {
-            using var proc = Process.Start(new ProcessStartInfo
+            var result = FileFlow.Sdk.Platform.ProcessRunner.Instance.RunAsync(new FileFlow.Sdk.Platform.ProcessExecutionRequest
             {
                 FileName = path,
                 Arguments = "-version",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            });
-            if (proc != null)
-            {
-                if (!proc.WaitForExit(2000))
-                {
-                    try { proc.Kill(true); } catch { }
-                }
-                return proc.ExitCode == 0;
-            }
+                Timeout = TimeSpan.FromSeconds(2)
+            }).GetAwaiter().GetResult();
+            return result.Success;
         }
         catch { }
 

@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Contrato canónico de adaptador de inferencia para superresolución y escalado neuronal.
 /// </summary>
-public interface ISuperResolutionAdapter
+internal interface ISuperResolutionAdapter
 {
     bool CanHandle(InferenceSession session);
 

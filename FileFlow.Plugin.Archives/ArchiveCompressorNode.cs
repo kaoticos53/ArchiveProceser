@@ -1,6 +1,7 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 
@@ -8,7 +9,7 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveCompressorNode_Name", "Archives", "ArchiveCompressorNode_Desc", PipelineRole.Transform,
     "comprimir", "empaquetar", "zip", "7z", "targz", "comprimido", "compress", "archive")]
-public class ArchiveCompressorNode : IFlowNode
+public sealed class ArchiveCompressorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ArchiveCompressorNode_Name", "Archive Compressor");
@@ -28,15 +29,16 @@ public class ArchiveCompressorNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["DestinationDirectory"] = @"{RelativeDir}\Compressed",
-        ["ArchiveName"] = @"{FileNameNoExt}_archive.zip",
-        ["ArchiveFormat"] = "ZIP", // ZIP, TAR, GZ, 7Z
-        ["CompressionType"] = "Deflate" // Deflate, Store, LZMA, BZip2
+        ["ArchiveFormat"] = "ZIP",
+        ["CompressionType"] = "Deflate",
+        ["DestinationFolder"] = "",
+        ["DestinationDirectory"] = "",
+        ["ArchiveName"] = "{FileNameWithoutExtension}.zip"
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
-        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Compressed", DisplayOrder: 1),
-        new("ArchiveName", ParameterEditorType.Text, DefaultValue: @"{FileNameNoExt}_archive.zip", DisplayOrder: 2),
+        new("DestinationFolder", ParameterEditorType.FolderPath, DisplayOrder: 1),
+        new("ArchiveName", ParameterEditorType.Text, DefaultValue: @"{FileNameWithoutExtension}.zip", DisplayOrder: 2),
         new("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "ZIP", DisplayOrder: 3, Options: ["ZIP", "TAR", "GZ", "7Z"]),
         new("CompressionType", ParameterEditorType.Dropdown, DefaultValue: "Deflate", DisplayOrder: 4, Options: ["Deflate", "Store", "LZMA", "BZip2"])
     ];
@@ -48,18 +50,27 @@ public class ArchiveCompressorNode : IFlowNode
         CancellationToken cancellationToken)
     {
         string inputPath = item.CurrentPath;
-        string destDirPattern = Parameters.TryGetValue("DestinationDirectory", out var dVal) ? ParameterHelper.GetString(dVal, "Compressed") : "Compressed";
-        string destDir = ParameterHelper.ResolveOutputPath(destDirPattern, item);
+        string destFolder = Parameters.TryGetValue("DestinationFolder", out var dfVal) && !string.IsNullOrWhiteSpace(dfVal?.ToString())
+            ? ParameterHelper.GetString(dfVal, string.Empty)
+            : (Parameters.TryGetValue("DestinationDirectory", out var ddVal) ? ParameterHelper.GetString(ddVal, string.Empty) : string.Empty);
 
-        string archiveName = Parameters.TryGetValue("ArchiveName", out var aVal) ? ParameterHelper.GetString(aVal, @"{FileNameNoExt}_archive.zip") : @"{FileNameNoExt}_archive.zip";
+        string destDir = !string.IsNullOrWhiteSpace(destFolder)
+            ? ParameterHelper.ResolveOutputPath(destFolder, item)
+            : (Path.GetDirectoryName(inputPath) ?? Directory.GetCurrentDirectory());
+
+        string archiveName = Parameters.TryGetValue("ArchiveName", out var aVal) ? ParameterHelper.GetString(aVal, "{FileNameWithoutExtension}.zip") : "{FileNameWithoutExtension}.zip";
         archiveName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(archiveName, item);
 
         string formatStr = Parameters.TryGetValue("ArchiveFormat", out var fVal) ? ParameterHelper.GetString(fVal, "ZIP").ToUpperInvariant() : "ZIP";
         string compTypeStr = Parameters.TryGetValue("CompressionType", out var cVal) ? ParameterHelper.GetString(cVal, "Deflate").ToUpperInvariant() : "DEFLATE";
 
+        var storage = context.GetStorage();
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        if (string.IsNullOrWhiteSpace(inputPath) || (!File.Exists(inputPath) && !Directory.Exists(inputPath)))
+        bool fileExists = await storage.FileExistsAsync(inputPath, cancellationToken).ConfigureAwait(false);
+        bool dirExists = await storage.DirectoryExistsAsync(inputPath, cancellationToken).ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(inputPath) || (!fileExists && !dirExists))
         {
             context.Log($"[Compresor] Ruta de entrada no encontrada: '{inputPath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -68,7 +79,7 @@ public class ArchiveCompressorNode : IFlowNode
 
         try
         {
-            if (Directory.Exists(inputPath))
+            if (dirExists)
             {
                 string fullInput = Path.GetFullPath(inputPath);
                 string fullDest = Path.GetFullPath(destDir);
@@ -78,9 +89,9 @@ public class ArchiveCompressorNode : IFlowNode
                 }
             }
 
-            if (!Directory.Exists(destDir))
+            if (!await storage.DirectoryExistsAsync(destDir, cancellationToken).ConfigureAwait(false))
             {
-                Directory.CreateDirectory(destDir);
+                await storage.CreateDirectoryAsync(destDir, cancellationToken).ConfigureAwait(false);
             }
 
             string targetArchivePath = Path.Combine(destDir, archiveName);
@@ -102,21 +113,24 @@ public class ArchiveCompressorNode : IFlowNode
                 _ => CompressionType.Deflate
             };
 
-            using (var stream = File.Create(targetArchivePath))
+            await using (var stream = await storage.OpenWriteAsync(targetArchivePath, cancellationToken).ConfigureAwait(false))
             using (var writer = WriterFactory.OpenWriter(stream, archiveType, new WriterOptions(compType)))
             {
-                if (File.Exists(inputPath))
+                if (fileExists)
                 {
-                    writer.Write(Path.GetFileName(inputPath), inputPath);
+                    await using var inStream = await storage.OpenReadAsync(inputPath, cancellationToken).ConfigureAwait(false);
+                    writer.Write(Path.GetFileName(inputPath), inStream);
                 }
-                else if (Directory.Exists(inputPath))
+                else if (dirExists)
                 {
                     writer.WriteAll(inputPath, "*", SearchOption.AllDirectories);
                 }
             }
 
             sw.Stop();
-            long outSize = new FileInfo(targetArchivePath).Length;
+            long outSize = await storage.FileExistsAsync(targetArchivePath, cancellationToken).ConfigureAwait(false)
+                ? await storage.GetFileSizeAsync(targetArchivePath, cancellationToken).ConfigureAwait(false)
+                : 0;
             double compressionRatio = item.FileSizeBytes > 0 ? (double)outSize / item.FileSizeBytes * 100.0 : 100.0;
 
             var outputItem = item.DeepClone();

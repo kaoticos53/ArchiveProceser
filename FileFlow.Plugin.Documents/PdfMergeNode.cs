@@ -1,6 +1,7 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
@@ -8,7 +9,7 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfMergeNode_Name", "Documents", "PdfMergeNode_Desc", PipelineRole.Transform,
     "pdf", "unir", "fusionar", "juntar", "combinar", "merge", "join")]
-public class PdfMergeNode : IFlowNode
+public sealed class PdfMergeNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfMergeNode_Name", "Unir PDFs (PDF Merge)");
@@ -48,7 +49,8 @@ public class PdfMergeNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken))
         {
             await context.EmitAsync("PassThrough", item);
             return;
@@ -72,14 +74,14 @@ public class PdfMergeNode : IFlowNode
         await context.EmitAsync("PassThrough", item);
     }
 
-    public Task OnWorkflowCompletedAsync(
+    public async Task OnWorkflowCompletedAsync(
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
         List<string> pdfsToMerge;
         lock (_lock)
         {
-            if (_collectedPdfPaths.Count == 0) return Task.CompletedTask;
+            if (_collectedPdfPaths.Count == 0) return;
             pdfsToMerge = new List<string>(_collectedPdfPaths);
             _collectedPdfPaths.Clear();
         }
@@ -91,6 +93,7 @@ public class PdfMergeNode : IFlowNode
         string resolvedDir = ParameterHelper.ResolveOutputPath(outDir, dummyItem);
         string resolvedName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(outFileName, dummyItem);
         string destinationPath = Path.Combine(resolvedDir, resolvedName);
+        var storage = context.GetStorage();
 
         if (context.IsDryRun)
         {
@@ -106,16 +109,19 @@ public class PdfMergeNode : IFlowNode
             var dryItem = new FileItemContext(destinationPath) { FileSizeBytes = 0 };
             dryItem.Metadata["MergedPdfCount"] = pdfsToMerge.Count;
             dryItem.AddLog($"[DryRun] Planned PDF Merge: {destinationPath} ({pdfsToMerge.Count} files)");
-            return context.EmitAsync("Out", dryItem);
+            await context.EmitAsync("Out", dryItem);
+            return;
         }
 
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            MergePdfFiles(pdfsToMerge, destinationPath);
+            await MergePdfFilesAsync(pdfsToMerge, destinationPath, storage, cancellationToken);
             sw.Stop();
 
-            long outSize = File.Exists(destinationPath) ? new FileInfo(destinationPath).Length : 0;
+            long outSize = await storage.FileExistsAsync(destinationPath, cancellationToken)
+                ? await storage.GetFileSizeAsync(destinationPath, cancellationToken)
+                : 0;
             var mergedItem = new FileItemContext(destinationPath)
             {
                 FileSizeBytes = outSize
@@ -124,33 +130,37 @@ public class PdfMergeNode : IFlowNode
             mergedItem.AddLog($"PDFs combinados exitosamente ({pdfsToMerge.Count} archivos) en '{destinationPath}'");
 
             context.Log($"[PDF Merge] {pdfsToMerge.Count} PDFs unidos exitosamente en '{destinationPath}' ({outSize} bytes)", LogLevel.Information, mergedItem, durationMs: sw.Elapsed.TotalMilliseconds);
-            return context.EmitAsync("Out", mergedItem);
+            await context.EmitAsync("Out", mergedItem);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             context.Log($"[PDF Merge] Error al unir PDFs: {ex.Message}", LogLevel.Error);
-            return Task.CompletedTask;
         }
     }
 
     /// <summary>
-    /// Combina una lista explícita de rutas PDF en un archivo destino.
+    /// Combina una lista explícita de rutas PDF en un archivo destino utilizando la abstracción de almacenamiento.
     /// </summary>
-    public static string MergePdfFiles(IEnumerable<string> pdfPaths, string destinationPath)
+    public static async Task<string> MergePdfFilesAsync(
+        IEnumerable<string> pdfPaths,
+        string destinationPath,
+        IStorageService storage,
+        CancellationToken ct = default)
     {
         string? destDir = Path.GetDirectoryName(destinationPath);
-        if (!string.IsNullOrWhiteSpace(destDir))
+        if (!string.IsNullOrWhiteSpace(destDir) && !await storage.DirectoryExistsAsync(destDir, ct))
         {
-            Directory.CreateDirectory(destDir);
+            await storage.CreateDirectoryAsync(destDir, ct);
         }
 
         using var outputDocument = new PdfDocument();
 
         foreach (string pdfPath in pdfPaths)
         {
-            if (!File.Exists(pdfPath)) continue;
+            if (!await storage.FileExistsAsync(pdfPath, ct)) continue;
 
-            using var inputDocument = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+            await using var inStream = await storage.OpenReadAsync(pdfPath, ct);
+            using var inputDocument = PdfReader.Open(inStream, PdfDocumentOpenMode.Import);
             int count = inputDocument.PageCount;
             for (int idx = 0; idx < count; idx++)
             {
@@ -159,7 +169,14 @@ public class PdfMergeNode : IFlowNode
             }
         }
 
-        outputDocument.Save(destinationPath);
+        await using var outStream = await storage.OpenWriteAsync(destinationPath, ct);
+        outputDocument.Save(outStream);
         return destinationPath;
     }
+
+    /// <summary>
+    /// Combina una lista explícita de rutas PDF en un archivo destino (sobrecarga síncrona / fallback).
+    /// </summary>
+    public static string MergePdfFiles(IEnumerable<string> pdfPaths, string destinationPath) =>
+        MergePdfFilesAsync(pdfPaths, destinationPath, NullStorageService.Instance).GetAwaiter().GetResult();
 }

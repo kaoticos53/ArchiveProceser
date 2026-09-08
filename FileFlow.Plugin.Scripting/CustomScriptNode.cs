@@ -8,7 +8,7 @@ namespace FileFlow.Plugin.Scripting;
 
 [NodeDefinition("CustomScriptNode_Name", "Logic", "CustomScriptNode_Desc", PipelineRole.Control,
     "script", "c#", "csharp", "javascript", "js", "codigo", "programar", "roslyn", "custom", "logica")]
-public class CustomScriptNode : IFlowNode, INodeCustomActionProvider
+public sealed class CustomScriptNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("CustomScriptNode_Name", "Script Personalizado (C# / JavaScript)");

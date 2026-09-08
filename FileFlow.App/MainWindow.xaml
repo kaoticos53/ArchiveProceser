@@ -13,11 +13,8 @@
         FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
-        UseLayoutRounding="True">
-    
-    <Window.DataContext>
-        <vm:MainViewModel />
-    </Window.DataContext>
+        UseLayoutRounding="True"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}">
 
     <Window.InputBindings>
         <KeyBinding Key="F5" Command="{Binding ControlBar.ContinueWorkflowCommand}" />

@@ -5,6 +5,7 @@ using FileFlow.Plugin.Archives.Services;
 using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.SyntheticData;
 using FileFlow.Sdk.VirtualFileSystem;
 
@@ -12,8 +13,9 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("SmartUnpackNode_Name", "Archives", "SmartUnpackNode_Desc", PipelineRole.Source,
     "descomprimir", "extraer", "zip", "rar", "7z", "tar", "unpack", "extract", "comprimido")]
-public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
+public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 {
+    private readonly Lock _lock = new();
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmartUnpackNode_Name", "Smart Unpack");
     public string Category => "Archives";
@@ -71,7 +73,7 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 
             if (window.ShowDialog() == true)
             {
-                lock (Parameters)
+                lock (_lock)
                 {
                     Parameters["PasswordList"] = window.PasswordsText;
                 }
@@ -97,10 +99,11 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         string pwdFileParam = Parameters.TryGetValue("PasswordFile", out var pfVal) ? ParameterHelper.GetString(pfVal, "") : "";
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        var storage = context.GetStorage();
 
         bool isVirtualOrSimulated = item.IsVirtual || context.IsVirtualFileSystemEnabled || item.Metadata.ContainsKey("Archive:Entries");
 
-        if (isVirtualOrSimulated && (item.IsVirtual || !File.Exists(archivePath) || item.Metadata.ContainsKey("Archive:Entries")))
+        if (isVirtualOrSimulated && (item.IsVirtual || !await storage.FileExistsAsync(archivePath, cancellationToken) || item.Metadata.ContainsKey("Archive:Entries")))
         {
             string archiveNameNoExt = Path.GetFileNameWithoutExtension(archivePath);
             string finalExtractDir = Path.Combine(destFolder, archiveNameNoExt);
@@ -178,7 +181,7 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(archivePath) || !File.Exists(archivePath))
+        if (string.IsNullOrWhiteSpace(archivePath) || !await storage.FileExistsAsync(archivePath, cancellationToken))
         {
             context.Log($"[Descompresor] Archivo comprimido no encontrado: '{archivePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Error", item);
@@ -187,7 +190,7 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 
         try
         {
-            var passwordCandidates = SafeArchiveExtractor.GetPasswordCandidates(pwdListParam, pwdFileParam, item);
+            var passwordCandidates = await SafeArchiveExtractor.GetPasswordCandidatesAsync(pwdListParam, pwdFileParam, item, storage, cancellationToken);
             var (archive, validPassword) = SafeArchiveExtractor.OpenArchiveWithPassword(archivePath, passwordCandidates, context);
 
             using (archive)
@@ -217,21 +220,21 @@ public class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 
                 if (!isDryRun)
                 {
-                    if (!Directory.Exists(finalExtractDir))
+                    if (!await storage.DirectoryExistsAsync(finalExtractDir, cancellationToken))
                     {
-                        Directory.CreateDirectory(finalExtractDir);
+                        await storage.CreateDirectoryAsync(finalExtractDir, cancellationToken);
                     }
 
                     SafeArchiveExtractor.ExtractEntriesSafely(archive, finalExtractDir, cancellationToken);
 
                     if (recursiveUnpack)
                     {
-                        SafeArchiveExtractor.ExtractNestedArchives(finalExtractDir, passwordCandidates, context, cancellationToken);
+                        await SafeArchiveExtractor.ExtractNestedArchivesAsync(finalExtractDir, passwordCandidates, context, storage, cancellationToken);
                     }
 
                     if (autoDelete)
                     {
-                        File.Delete(archivePath);
+                        await storage.DeleteAsync(archivePath, permanent: true, ct: cancellationToken);
                         context.Log($"[Descompresor] Archivo comprimido original eliminado tras extracción: '{archivePath}'", LogLevel.Debug, item);
                     }
                 }

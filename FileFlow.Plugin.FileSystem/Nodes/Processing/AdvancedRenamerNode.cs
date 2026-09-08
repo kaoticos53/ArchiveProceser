@@ -12,7 +12,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("AdvancedRenamerNode_Name", "Files", "AdvancedRenamerNode_Desc", PipelineRole.Transform,
     "renombrar", "nombre", "patron", "tokens", "exif", "fecha", "rename", "pattern", "batch")]
-public class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
+public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

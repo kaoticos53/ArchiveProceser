@@ -4,12 +4,13 @@ using System.Windows;
 using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Platform;
 
 namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("MediaTranscoderNode_Name", "AudioVoice", "MediaTranscoderNode_Desc", PipelineRole.Transform,
     "ffmpeg", "video", "audio", "mp4", "mp3", "transcodificar", "convertir", "h264", "h265", "webm", "media")]
-public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
+public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
@@ -97,7 +98,7 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
             bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
             string ffmpegExe = ResolveFFmpegExecutable(string.Empty, context);
-            bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (File.Exists(ffmpegExe) || CanExecuteCommand(ffmpegExe));
+            bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (File.Exists(ffmpegExe) || CanExecuteCommand(ffmpegExe, context));
             bool transcodeSuccess = false;
 
             if (!isDryRun && ffmpegAvailable)
@@ -107,49 +108,40 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
                     string cliArgs = $"-y -i \"{filePath}\" {ffmpegArgsTemplate} \"{targetPath}\"";
                     context.Log($"[Transcodificador] Ejecutando FFmpeg: {ffmpegExe} {cliArgs}", LogLevel.Debug, item);
 
-                    var psi = new ProcessStartInfo
+                    var timeRegex = new Regex(@"time=(\d{2}:\d{2}:\d{2}\.\d{2})", RegexOptions.Compiled);
+                    DateTime lastProgressLog = DateTime.MinValue;
+
+                    var runner = context.ProcessRunner ?? ProcessRunner.Instance;
+                    var runResult = await runner.RunAsync(new ProcessExecutionRequest
                     {
                         FileName = ffmpegExe,
                         Arguments = cliArgs,
-                        UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
-                        CreateNoWindow = true
-                    };
-
-                    using var process = new Process { StartInfo = psi };
-                    var timeRegex = new Regex(@"time=(\d{2}:\d{2}:\d{2}\.\d{2})", RegexOptions.Compiled);
-
-                    DateTime lastProgressLog = DateTime.MinValue;
-                    process.ErrorDataReceived += (_, e) =>
-                    {
-                        if (!string.IsNullOrWhiteSpace(e.Data))
+                        OnStandardErrorLine = line =>
                         {
-                            var match = timeRegex.Match(e.Data);
-                            if (match.Success && (DateTime.Now - lastProgressLog).TotalSeconds > 5)
+                            if (!string.IsNullOrWhiteSpace(line))
                             {
-                                lastProgressLog = DateTime.Now;
-                                context.Log($"[Transcodificador] Progreso: {match.Groups[1].Value}", LogLevel.Debug, item);
+                                var match = timeRegex.Match(line);
+                                if (match.Success && (DateTime.Now - lastProgressLog).TotalSeconds > 5)
+                                {
+                                    lastProgressLog = DateTime.Now;
+                                    context.Log($"[Transcodificador] Progreso: {match.Groups[1].Value}", LogLevel.Debug, item);
+                                }
                             }
                         }
-                    };
+                    }, cancellationToken).ConfigureAwait(false);
 
-                    try
-                    {
-                        process.Start();
-                        process.BeginErrorReadLine();
-                        process.BeginOutputReadLine();
-
-                        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-                        transcodeSuccess = process.ExitCode == 0 && File.Exists(targetPath);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { }
-                        throw;
-                    }
+                    transcodeSuccess = runResult.Success && File.Exists(targetPath);
                 }
-                catch { transcodeSuccess = false; }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    transcodeSuccess = false;
+                }
             }
 
             if (!transcodeSuccess)
@@ -232,26 +224,18 @@ public class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         return !string.IsNullOrWhiteSpace(paramPath) ? paramPath : "ffmpeg";
     }
 
-    private static bool CanExecuteCommand(string command)
+    private static bool CanExecuteCommand(string command, IFlowExecutionContext? context = null)
     {
         try
         {
-            using var proc = Process.Start(new ProcessStartInfo
+            var runner = context?.ProcessRunner ?? NullProcessRunner.Instance;
+            var result = runner.RunAsync(new ProcessExecutionRequest
             {
                 FileName = command,
                 Arguments = "-version",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            });
-            if (proc != null)
-            {
-                if (!proc.WaitForExit(2000))
-                {
-                    try { proc.Kill(entireProcessTree: true); } catch { }
-                }
-                return proc.ExitCode == 0;
-            }
-            return false;
+                Timeout = TimeSpan.FromSeconds(2)
+            }).GetAwaiter().GetResult();
+            return result.Success;
         }
         catch
         {

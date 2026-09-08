@@ -8,7 +8,7 @@ namespace FileFlow.Plugin.AI.Inference.Adapters;
 /// <summary>
 /// Adaptador de detección facial con UltraFace RFB-320 (entrada 320x240 NCHW, normalización (px-127)/128, NMS IoU 0.45).
 /// </summary>
-public class UltraFaceDetectorAdapter : IFaceDetectorAdapter
+internal sealed class UltraFaceDetectorAdapter : IFaceDetectorAdapter
 {
     private readonly struct FaceBox
     {
@@ -145,7 +145,7 @@ public class UltraFaceDetectorAdapter : IFaceDetectorAdapter
 /// <summary>
 /// Factoría de adaptadores de detección de rostros.
 /// </summary>
-public static class FaceDetectorAdapterFactory
+internal static class FaceDetectorAdapterFactory
 {
     private static readonly IFaceDetectorAdapter[] Adapters =
     [

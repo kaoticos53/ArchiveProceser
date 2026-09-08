@@ -5,7 +5,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("DocumentProcessorNode_Name", "Documents", "DocumentProcessorNode_Desc", PipelineRole.Analyze,
     "documento", "lineas", "conteo", "tipo", "extension", "doc", "pdf", "txt", "stats")]
-public class DocumentProcessorNode : IFlowNode
+public sealed class DocumentProcessorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("DocumentProcessorNode_Name", "Document & PDF Processor");

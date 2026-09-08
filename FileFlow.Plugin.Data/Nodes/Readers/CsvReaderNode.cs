@@ -2,12 +2,13 @@ using System.IO;
 using System.Text;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("CsvReaderNode_Name", "Data", "CsvReaderNode_Desc", PipelineRole.Source,
     "csv", "tsv", "delimitado", "leer", "tabla", "separador", "importar")]
-public class CsvReaderNode : IFlowNode
+public sealed class CsvReaderNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("CsvReaderNode_Name", "Lector de Archivos CSV / TSV");
@@ -26,7 +27,7 @@ public class CsvReaderNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["FilePath"] = @"{RelativeDir}\data.csv",
+        ["FilePath"] = "",
         ["Delimiter"] = "Auto",
         ["Encoding"] = "UTF-8",
         ["HasHeader"] = true
@@ -34,15 +35,16 @@ public class CsvReaderNode : IFlowNode
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("FilePath", ParameterEditorType.FilePath, DefaultValue: @"{RelativeDir}\data.csv", DisplayOrder: 1),
-        new("Delimiter", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", ",", ";", "\t", "|"], DisplayOrder: 2),
-        new("Encoding", ParameterEditorType.Dropdown, DefaultValue: "UTF-8", Options: ["UTF-8", "ANSI", "ASCII", "Unicode"], DisplayOrder: 3),
+        new("FilePath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 1),
+        new("Delimiter", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "Comma (,)", "Semicolon (;)", "Tab (\\t)", "Pipe (|)"], DisplayOrder: 2),
+        new("Encoding", ParameterEditorType.Dropdown, DefaultValue: "UTF-8", Options: ["UTF-8", "ASCII", "ANSI", "UNICODE"], DisplayOrder: 3),
         new("HasHeader", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
     ];
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        string targetPath = !string.IsNullOrWhiteSpace(item.CurrentPath) && File.Exists(item.CurrentPath)
+        var storage = context.GetStorage();
+        string targetPath = !string.IsNullOrWhiteSpace(item.CurrentPath) && await storage.FileExistsAsync(item.CurrentPath, cancellationToken)
             ? item.CurrentPath
             : (Parameters.TryGetValue("FilePath", out var fp) ? fp?.ToString() ?? string.Empty : string.Empty);
 
@@ -52,7 +54,7 @@ public class CsvReaderNode : IFlowNode
             targetPath = targetPath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
         }
 
-        if (string.IsNullOrWhiteSpace(targetPath) || !File.Exists(targetPath))
+        if (string.IsNullOrWhiteSpace(targetPath) || !await storage.FileExistsAsync(targetPath, cancellationToken))
         {
             context.Log($"[CsvReader] Archivo CSV no encontrado: '{targetPath}'", LogLevel.Error);
             return;
@@ -72,7 +74,8 @@ public class CsvReaderNode : IFlowNode
 
         context.Log($"[CsvReader] Leyendo archivo delimitado: {Path.GetFileName(targetPath)}", LogLevel.Information);
 
-        using var reader = new StreamReader(targetPath, enc);
+        await using var stream = await storage.OpenReadAsync(targetPath, cancellationToken);
+        using var reader = new StreamReader(stream, enc);
         string? firstLine = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(firstLine))
         {

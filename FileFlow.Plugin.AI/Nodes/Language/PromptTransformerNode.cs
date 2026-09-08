@@ -16,7 +16,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PromptTransformerNode_Name", "LanguageAI", "PromptTransformerNode_Desc", PipelineRole.Transform,
     "prompt", "enriquecer", "estilo", "transformar prompt", "asistente", "ia", "plantilla")]
-public class PromptTransformerNode : IFlowNode, IModelLifecycleNode
+public sealed class PromptTransformerNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 

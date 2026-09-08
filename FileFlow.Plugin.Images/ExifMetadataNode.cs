@@ -1,6 +1,7 @@
 using System.Globalization;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using MetadataExtractor;
 using SixLabors.ImageSharp;
 
@@ -8,7 +9,7 @@ namespace FileFlow.Plugin.Images;
 
 [NodeDefinition("ExifMetadataNode_Name", "ImageVision", "ExifMetadataNode_Desc", PipelineRole.Analyze,
     "exif", "gps", "camara", "fecha", "metadatos", "geolocalizacion", "metadata", "photo", "camera")]
-public class ExifMetadataNode : IFlowNode
+public sealed class ExifMetadataNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ExifMetadataNode_Name", "EXIF Metadata");
@@ -38,10 +39,11 @@ public class ExifMetadataNode : IFlowNode
     {
         string filePath = item.CurrentPath;
         bool fallbackToCreation = Parameters.TryGetValue("FallbackToCreationDate", out var fVal) && ParameterHelper.GetBoolean(fVal, true);
+        var storage = context.GetStorage();
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        if (string.IsNullOrWhiteSpace(filePath) || !await storage.FileExistsAsync(filePath, cancellationToken))
         {
             context.Log($"[Metadatos EXIF] Archivo de imagen no encontrado: '{filePath}'", LogLevel.Warning, item);
             await context.EmitAsync("Out", item);
@@ -50,7 +52,8 @@ public class ExifMetadataNode : IFlowNode
 
         try
         {
-            var directories = ImageMetadataReader.ReadMetadata(filePath);
+            await using Stream stream = await storage.OpenReadAsync(filePath, cancellationToken);
+            var directories = ImageMetadataReader.ReadMetadata(stream);
 
             string? dateTaken = null;
             string? cameraModel = null;
@@ -78,7 +81,8 @@ public class ExifMetadataNode : IFlowNode
 
             if (string.IsNullOrEmpty(dateTaken) && fallbackToCreation)
             {
-                dateTaken = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                var creationTime = await storage.GetCreationTimeAsync(filePath, cancellationToken);
+                dateTaken = creationTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             }
 
             item.Metadata["DateTaken"] = dateTaken ?? "Unknown";
@@ -92,18 +96,22 @@ public class ExifMetadataNode : IFlowNode
             // Extract Image Dimensions and Orientation
             try
             {
-                var info = Image.Identify(filePath);
-                if (info != null)
+                if (stream.CanSeek)
                 {
-                    imgWidth = info.Width;
-                    imgHeight = info.Height;
-                    item.Metadata["ImageWidth"] = imgWidth;
-                    item.Metadata["ImageHeight"] = imgHeight;
-                    orientation = imgWidth > imgHeight ? "Landscape" : (imgHeight > imgWidth ? "Portrait" : "Square");
-                    item.Metadata["Orientation"] = orientation;
-                    item.Metadata["AspectRatio"] = CalculateAspectRatio(imgWidth, imgHeight);
-                    megapixels = ((imgWidth * (double)imgHeight) / 1_000_000.0).ToString("F1", CultureInfo.InvariantCulture) + "MP";
-                    item.Metadata["Megapixels"] = megapixels;
+                    stream.Position = 0;
+                    var info = await Image.IdentifyAsync(stream, cancellationToken);
+                    if (info != null)
+                    {
+                        imgWidth = info.Width;
+                        imgHeight = info.Height;
+                        item.Metadata["ImageWidth"] = imgWidth;
+                        item.Metadata["ImageHeight"] = imgHeight;
+                        orientation = imgWidth > imgHeight ? "Landscape" : (imgHeight > imgWidth ? "Portrait" : "Square");
+                        item.Metadata["Orientation"] = orientation;
+                        item.Metadata["AspectRatio"] = CalculateAspectRatio(imgWidth, imgHeight);
+                        megapixels = ((imgWidth * (double)imgHeight) / 1_000_000.0).ToString("F1", CultureInfo.InvariantCulture) + "MP";
+                        item.Metadata["Megapixels"] = megapixels;
+                    }
                 }
             }
             catch (Exception ex)
@@ -123,7 +131,8 @@ public class ExifMetadataNode : IFlowNode
             context.Log($"[Metadatos EXIF] Advertencia al leer EXIF: {ex.Message}", LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             if (fallbackToCreation)
             {
-                item.Metadata["DateTaken"] = File.GetCreationTime(filePath).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                var creationTime = await storage.GetCreationTimeAsync(filePath, cancellationToken);
+                item.Metadata["DateTaken"] = creationTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
             }
         }
 

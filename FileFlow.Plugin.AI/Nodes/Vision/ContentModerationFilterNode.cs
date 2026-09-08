@@ -9,6 +9,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -18,7 +19,7 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("ContentModerationFilterNode_Name", "Security", "ContentModerationFilterNode_Desc", PipelineRole.Filter,
     "moderacion", "nsfw", "sensible", "inapropiado", "seguridad", "filtro", "opennsfw")]
-public class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
+public sealed class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
@@ -117,7 +118,8 @@ public class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[ContentModeration] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -157,7 +159,8 @@ public class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
 
             context.Log($"[ContentModeration] 🛡️ Analizando contenido de '{item.FileName}'...", LogLevel.Information, item);
 
-            using var image = await Image.LoadAsync<Rgb24>(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
 
             double nsfwScore = await Task.Run(
                 () => OnnxInferenceEngine.DetectNsfwScore(modelPath, image),

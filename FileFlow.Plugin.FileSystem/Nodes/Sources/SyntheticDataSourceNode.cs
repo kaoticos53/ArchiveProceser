@@ -13,7 +13,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("SyntheticDataSourceNode_Name", "Files", "SyntheticDataSourceNode_Desc", PipelineRole.Source,
     "testing", "pruebas", "sintetico", "mock", "dataset", "peliculas", "series", "musica", "comics", "dummy")]
-public class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvider
+public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvider
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Name", "Generador de Datos de Prueba");

@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveFilterNode_Name", "Archives", "ArchiveFilterNode_Desc", PipelineRole.Filter,
     "inspeccionar", "filtrar", "comprimido", "contenido", "zip", "tar", "filter", "archive")]
-public class ArchiveFilterNode : IFlowNode
+public sealed class ArchiveFilterNode : IFlowNode
 {
     private static readonly Regex SecondaryVolumeRegex = new(
         @"\.(r\d{2,3}|z\d{2,3}|part(?!0*1\.)\d+\.rar)$",

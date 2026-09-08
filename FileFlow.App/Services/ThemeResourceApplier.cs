@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
-using FileFlow.Sdk.Themes;
+using FileFlow.App.Themes;
 
 namespace FileFlow.App.Services;
 

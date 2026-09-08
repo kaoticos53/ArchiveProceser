@@ -1,6 +1,7 @@
 using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
@@ -8,7 +9,7 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfMetadataNode_Name", "Documents", "PdfMetadataNode_Desc", PipelineRole.Analyze,
     "pdf", "metadatos", "autor", "titulo", "asunto", "palabras clave", "metadata")]
-public class PdfMetadataNode : IFlowNode
+public sealed class PdfMetadataNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfMetadataNode_Name", "Metadatos de PDF (PDF Metadata)");
@@ -51,7 +52,8 @@ public class PdfMetadataNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken))
         {
             await context.EmitAsync("Out", item);
             return;
@@ -69,7 +71,8 @@ public class PdfMetadataNode : IFlowNode
         if (!update)
         {
             // Solo lectura de metadatos
-            using var pdfDoc = PdfReader.Open(item.CurrentPath, PdfDocumentOpenMode.Import);
+            await using var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken);
+            using var pdfDoc = PdfReader.Open(inStream, PdfDocumentOpenMode.Import);
             item.Metadata["Pdf:Title"] = pdfDoc.Info.Title;
             item.Metadata["Pdf:Author"] = pdfDoc.Info.Author;
             item.Metadata["Pdf:Subject"] = pdfDoc.Info.Subject;
@@ -84,11 +87,15 @@ public class PdfMetadataNode : IFlowNode
         // Actualización y exportación
         string rawOutDir = Parameters.TryGetValue("OutputDirectory", out var outDirObj) ? ParameterHelper.GetString(outDirObj, "{GlobalOutputDir}") : "{GlobalOutputDir}";
         string outDir = ParameterHelper.ResolveOutputPath(rawOutDir, item);
-        Directory.CreateDirectory(outDir);
+        if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
+        {
+            await storage.CreateDirectoryAsync(outDir, cancellationToken);
+        }
 
         string destPath = Path.Combine(outDir, Path.GetFileName(item.CurrentPath));
 
-        using (var pdfDoc = PdfReader.Open(item.CurrentPath, PdfDocumentOpenMode.Modify))
+        await using (var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken))
+        using (var pdfDoc = PdfReader.Open(inStream, PdfDocumentOpenMode.Modify))
         {
             if (Parameters.TryGetValue("Title", out var title) && !string.IsNullOrWhiteSpace(title?.ToString()))
             {
@@ -107,12 +114,18 @@ public class PdfMetadataNode : IFlowNode
                 pdfDoc.Info.Keywords = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(kw.ToString()!, item);
             }
 
-            pdfDoc.Save(destPath);
+            await using var outStream = await storage.OpenWriteAsync(destPath, cancellationToken);
+            pdfDoc.Save(outStream);
         }
+
+        long destSizeBytes = await storage.FileExistsAsync(destPath, cancellationToken)
+            ? await storage.GetFileSizeAsync(destPath, cancellationToken)
+            : 0;
 
         var resultContext = new FileItemContext(destPath)
         {
-            OriginalPath = item.OriginalPath
+            OriginalPath = item.OriginalPath,
+            FileSizeBytes = destSizeBytes
         };
 
         foreach (var (k, v) in item.Metadata)

@@ -7,7 +7,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("BestVersionSelectorNode_Name", "Logic", "BestVersionSelectorNode_Desc", PipelineRole.Filter,
     "comparar", "version", "mejor", "tamaño", "peso", "resolucion", "autopurga", "selector", "best", "version")]
-public class BestVersionSelectorNode : IFlowNode
+public sealed class BestVersionSelectorNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("BestVersionSelectorNode_Name", "Selector de Mejor Versión");

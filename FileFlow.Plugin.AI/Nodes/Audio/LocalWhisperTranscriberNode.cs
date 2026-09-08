@@ -2,6 +2,7 @@ using System.IO;
 using System.Text;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using Whisper.net;
@@ -10,7 +11,7 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("LocalWhisperTranscriberNode_Name", "AudioVoice", "LocalWhisperTranscriberNode_Desc", PipelineRole.Analyze,
     "audio", "voz", "transcribir", "subtitulos", "srt", "speech", "whisper", "mp3", "wav")]
-public class LocalWhisperTranscriberNode : IFlowNode
+public sealed class LocalWhisperTranscriberNode : IFlowNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Name", "Transcriptor de Voz a Texto (Whisper)");
@@ -119,7 +120,8 @@ public class LocalWhisperTranscriberNode : IFlowNode
 
                 var sb = new StringBuilder();
 
-                await using var fileStream = File.OpenRead(wavPath);
+                var storage = context.GetStorage();
+                await using var fileStream = await storage.OpenReadAsync(wavPath, cancellationToken).ConfigureAwait(false);
                 await foreach (var segment in processor.ProcessAsync(fileStream, cancellationToken).ConfigureAwait(false))
                 {
                     sb.AppendLine(segment.Text.Trim());
@@ -148,9 +150,10 @@ public class LocalWhisperTranscriberNode : IFlowNode
             finally
             {
                 // Limpiar archivo WAV temporal si fue generado
-                if (!wavPath.Equals(item.CurrentPath, StringComparison.OrdinalIgnoreCase) && File.Exists(wavPath))
+                var storage = context.GetStorage();
+                if (!wavPath.Equals(item.CurrentPath, StringComparison.OrdinalIgnoreCase) && await storage.FileExistsAsync(wavPath, cancellationToken).ConfigureAwait(false))
                 {
-                    try { File.Delete(wavPath); } catch { }
+                    try { await storage.DeleteAsync(wavPath, permanent: true, ct: cancellationToken).ConfigureAwait(false); } catch { }
                 }
             }
 
@@ -216,7 +219,8 @@ public class LocalWhisperTranscriberNode : IFlowNode
             ? g
             : Path.GetDirectoryName(item.CurrentPath) ?? Path.GetTempPath();
 
-        Directory.CreateDirectory(outDir);
+        var storage = context.GetStorage();
+        await storage.CreateDirectoryAsync(outDir, cancellationToken).ConfigureAwait(false);
 
         string baseName = Path.GetFileNameWithoutExtension(item.FileName);
         string srtPath = Path.Combine(outDir, $"{baseName}.srt");
@@ -231,7 +235,7 @@ public class LocalWhisperTranscriberNode : IFlowNode
             sb.AppendLine();
         }
 
-        await File.WriteAllTextAsync(srtPath, sb.ToString(), Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        await storage.WriteAllTextAsync(srtPath, sb.ToString(), ct: cancellationToken).ConfigureAwait(false);
         return srtPath;
     }
 
