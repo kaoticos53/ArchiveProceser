@@ -1,7 +1,9 @@
 using System.IO;
 using FileFlow.Plugin.Network.Transports;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Network;
 
@@ -16,13 +18,13 @@ public sealed class NetworkDownloadNode : IFlowNode
 
     public IReadOnlyList<NodePort> Inputs { get; } =
     [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     ];
 
     public IReadOnlyList<NodePort> Outputs { get; } =
     [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
+        new NodePort(WellKnownPorts.Error, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Error)
     ];
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
@@ -138,7 +140,8 @@ public sealed class NetworkDownloadNode : IFlowNode
             resolvedDestDir = Directory.GetCurrentDirectory();
         }
 
-        Directory.CreateDirectory(resolvedDestDir);
+        var storage = context.GetStorage();
+        await storage.CreateDirectoryAsync(resolvedDestDir, cancellationToken).ConfigureAwait(false);
 
         var request = new NetworkDownloadRequest(
             DestinationDirectory: resolvedDestDir,
@@ -170,7 +173,7 @@ public sealed class NetworkDownloadNode : IFlowNode
         catch (NotSupportedException ex)
         {
             context.Log(ex.Message, LogLevel.Error, item.CurrentPath);
-            await context.EmitAsync("Error", item);
+            await context.EmitAsync(WellKnownPorts.Error, item);
         }
     }
 }

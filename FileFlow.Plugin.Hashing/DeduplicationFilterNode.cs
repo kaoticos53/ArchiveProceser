@@ -1,7 +1,10 @@
 using System.Collections.Concurrent;
+using System.IO;
 using System.Security.Cryptography;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Hashing;
 
@@ -48,17 +51,18 @@ public sealed class DeduplicationFilterNode : IFlowNode
         }
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        var storage = context.GetStorage();
 
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[Filtro Deduplicación] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Warning, item);
-            await context.EmitAsync("Error", item);
+            await context.EmitAsync(WellKnownPorts.Error, item);
             return;
         }
 
         try
         {
-            string key = Parameters.TryGetValue("HashMetadataKey", out var kVal) ? ParameterHelper.GetString(kVal, "Hash:SHA256") : "Hash:SHA256";
+            string key = Parameters.TryGetValue("HashMetadataKey", out var kVal) ? ParameterHelper.GetString(kVal, WellKnownMetadataKeys.HashSha256) : WellKnownMetadataKeys.HashSha256;
             string hashValue;
 
             if (item.Metadata.TryGetValue(key, out var hObj) && hObj != null && !string.IsNullOrWhiteSpace(hObj.ToString()))
@@ -68,10 +72,10 @@ public sealed class DeduplicationFilterNode : IFlowNode
             else
             {
                 // Calcular SHA-256 on-the-fly si no venía en los metadatos
-                await using var stream = new FileStream(item.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, useAsync: true);
+                await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
                 byte[] hashBytes = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
                 hashValue = Convert.ToHexStringLower(hashBytes);
-                item.Metadata["Hash:SHA256"] = hashValue;
+                item.Metadata[WellKnownMetadataKeys.HashSha256] = hashValue;
             }
 
             sw.Stop();
@@ -80,18 +84,18 @@ public sealed class DeduplicationFilterNode : IFlowNode
             {
                 item.AddLog($"Deduplication: Unique file (Hash={hashValue})");
                 context.Log($"[Filtro Deduplicación] Archivo único (Hash: {hashValue[..Math.Min(12, hashValue.Length)]}...) -> Rama 'Unique'", LogLevel.Debug, item, durationMs: sw.Elapsed.TotalMilliseconds);
-                await context.EmitAsync("Unique", item);
+                await context.EmitAsync(WellKnownPorts.Unique, item);
             }
             else
             {
                 string firstPath = _seenHashes[hashValue];
-                item.Metadata["DuplicateOf"] = firstPath;
+                item.Metadata[WellKnownMetadataKeys.DuplicateOf] = firstPath;
                 item.AddLog($"Deduplication: DUPLICATE of '{firstPath}' (Hash={hashValue})");
 
                 string detailsJson = $"{{\"hash\": \"{hashValue}\", \"duplicateOf\": \"{firstPath.Replace("\\", "\\\\")}\", \"currentPath\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
                 context.Log($"[Filtro Deduplicación] Duplicado detectado de '{Path.GetFileName(firstPath)}' -> Rama 'Duplicate'", LogLevel.Information, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
-                await context.EmitAsync("Duplicate", item);
+                await context.EmitAsync(WellKnownPorts.Duplicate, item);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -100,7 +104,7 @@ public sealed class DeduplicationFilterNode : IFlowNode
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{item.CurrentPath.Replace("\\", "\\\\")}\"}}";
             context.Log($"[Filtro Deduplicación] Error en deduplicación: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"Deduplication failed: {ex.Message}");
-            await context.EmitAsync("Error", item);
+            await context.EmitAsync(WellKnownPorts.Error, item);
         }
     }
 }

@@ -83,7 +83,7 @@ public partial class App : Application
             prefsService.Load();
             string savedLang = prefsService.Preferences.Language;
             LocalizationManager.Instance.SetCulture(!string.IsNullOrWhiteSpace(savedLang) ? savedLang : "es-ES");
-            _ = ExternalToolsService.Instance.Config;
+            _ = Services.GetRequiredService<FileFlow.Sdk.Services.IExternalToolsService>().Config;
 
             var themeService = Services.GetRequiredService<IThemeService>();
             string savedTheme = prefsService.Preferences.ActiveTheme;

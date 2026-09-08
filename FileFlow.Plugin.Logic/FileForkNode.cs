@@ -1,6 +1,8 @@
 using System.IO;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Logic;
 
@@ -16,7 +18,7 @@ public sealed class FileForkNode : IFlowNode
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     };
 
     public IReadOnlyList<NodePort> Outputs { get; } = new[]
@@ -45,6 +47,8 @@ public sealed class FileForkNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var storage = context.GetStorage();
+
         bool forkOriginal = Parameters.TryGetValue("ForkOriginal", out var fo) ? ParameterHelper.GetBoolean(fo, true) : true;
         bool forkCurrent = Parameters.TryGetValue("ForkCurrent", out var fc) ? ParameterHelper.GetBoolean(fc, true) : true;
         bool forkAllVersions = Parameters.TryGetValue("ForkAllVersions", out var fa) ? ParameterHelper.GetBoolean(fa, false) : false;
@@ -54,9 +58,9 @@ public sealed class FileForkNode : IFlowNode
             var origClone = item.DeepClone();
             origClone.CurrentPath = item.OriginalPath;
             origClone.PhysicalPath = item.OriginalPath;
-            if (File.Exists(item.OriginalPath))
+            if (await storage.FileExistsAsync(item.OriginalPath, cancellationToken).ConfigureAwait(false))
             {
-                origClone.FileSizeBytes = new FileInfo(item.OriginalPath).Length;
+                origClone.FileSizeBytes = await storage.GetFileSizeAsync(item.OriginalPath, cancellationToken).ConfigureAwait(false);
             }
             origClone.Metadata["ForkBranch"] = "Original";
             origClone.AddLog("[FileForkNode] Emitted clone on 'Original' port");
@@ -83,9 +87,9 @@ public sealed class FileForkNode : IFlowNode
                 var verClone = item.DeepClone();
                 verClone.CurrentPath = kvp.Value;
                 verClone.PhysicalPath = kvp.Value;
-                if (File.Exists(kvp.Value))
+                if (await storage.FileExistsAsync(kvp.Value, cancellationToken).ConfigureAwait(false))
                 {
-                    verClone.FileSizeBytes = new FileInfo(kvp.Value).Length;
+                    verClone.FileSizeBytes = await storage.GetFileSizeAsync(kvp.Value, cancellationToken).ConfigureAwait(false);
                 }
                 verClone.Metadata["ForkBranch"] = kvp.Key;
                 verClone.AddLog($"[FileForkNode] Emitted clone on 'Version' port for version tag '{kvp.Key}'");

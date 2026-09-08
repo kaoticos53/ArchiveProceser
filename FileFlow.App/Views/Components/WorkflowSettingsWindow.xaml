@@ -39,10 +39,10 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtGlobalOutputDir" 
+                                <TextBox Text="{Binding GlobalOutputDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                          Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
                                          BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="11" />
-                                <Button Grid.Column="1" Click="BrowseGlobalOutput_Click" Style="{DynamicResource SecondaryButton}" Padding="10,5" Margin="6,0,0,0" Cursor="Hand">
+                                <Button Grid.Column="1" Command="{Binding BrowseGlobalOutputCommand}" Style="{DynamicResource SecondaryButton}" Padding="10,5" Margin="6,0,0,0" Cursor="Hand">
                                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" FontSize="11" />
                                 </Button>
                             </Grid>
@@ -56,24 +56,24 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtTempWorkingDir" 
+                                <TextBox Text="{Binding TempWorkingDir, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                          Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
                                          BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="11" />
-                                <Button Grid.Column="1" Click="BrowseTempWorkingDir_Click" Style="{DynamicResource SecondaryButton}" Padding="10,5" Margin="6,0,0,0" Cursor="Hand">
+                                <Button Grid.Column="1" Command="{Binding BrowseTempWorkingDirCommand}" Style="{DynamicResource SecondaryButton}" Padding="10,5" Margin="6,0,0,0" Cursor="Hand">
                                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" FontSize="11" />
                                 </Button>
                             </Grid>
 
                             <!-- Resolución de Colisión por Defecto -->
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictStrategyTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
-                            <ComboBox x:Name="CmbConflictStrategy" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" Margin="0,0,0,14">
-                                <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictRename]}" Tag="RenameIncremental" IsSelected="True" />
+                            <ComboBox SelectedValue="{Binding SelectedConflictStrategy, Mode=TwoWay}" SelectedValuePath="Tag" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" Margin="0,0,0,14">
+                                <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictRename]}" Tag="RenameIncremental" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictOverwrite]}" Tag="Overwrite" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictSkip]}" Tag="Skip" />
                             </ComboBox>
 
                             <!-- Auto-guardado de Proyectos -->
-                            <CheckBox x:Name="ChkEnableAutoSave" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableAutoSave]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6" />
+                            <CheckBox IsChecked="{Binding EnableAutoSave, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableAutoSave]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6" />
                             <Grid Margin="20,0,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -81,7 +81,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoSaveInterval]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBox Grid.Column="1" x:Name="TxtAutoSaveInterval" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" Text="5" />
+                                <TextBox Grid.Column="1" Text="{Binding AutoSaveIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" />
                                 <TextBlock Grid.Column="2" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MinutesLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                             </Grid>
                         </StackPanel>
@@ -101,23 +101,23 @@
                                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CustomizeThemesBtn]}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                 </Button>
                             </Grid>
-                            <ComboBox x:Name="CmbActiveTheme" 
+                            <ComboBox ItemsSource="{Binding Themes}"
+                                      SelectedValue="{Binding SelectedThemeId, Mode=TwoWay}"
+                                      SelectedValuePath="Id" 
+                                      DisplayMemberPath="Name" 
                                       Background="{DynamicResource BgSurfaceBrush}" 
                                       Foreground="{DynamicResource TextPrimaryBrush}" 
                                       BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                      SelectedValuePath="Id" 
-                                      DisplayMemberPath="Name" 
                                       Padding="6,4" 
                                       FontSize="11" 
                                       Margin="0,0,0,14" />
 
                             <!-- Modo de Vista del Catálogo de Nodos -->
-                            <CheckBox x:Name="ChkIsCompactToolbox" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CompactToolbox]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,14" />
+                            <CheckBox IsChecked="{Binding IsCompactToolbox, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CompactToolbox]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,14" />
 
                             <!-- Ajustes de Consola de Logs -->
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogConsoleTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6" />
-                            <CheckBox x:Name="ChkAutoScrollConsole" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoScrollConsole]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" IsChecked="True" />
-                            
+                            <CheckBox IsChecked="{Binding AutoScrollConsole, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoScrollConsole]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8" />
                             <Grid Margin="0,0,0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -125,7 +125,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MaxLogEntries]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBox Grid.Column="1" x:Name="TxtMaxLogEntries" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" Text="1000" />
+                                <TextBox Grid.Column="1" Text="{Binding MaxLogEntries, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" />
                                 <TextBlock Grid.Column="2" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LinesUnlimitedLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                             </Grid>
                         </StackPanel>
@@ -148,17 +148,17 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MaxCpuThreads]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBox Grid.Column="1" x:Name="TxtMaxThreads" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" Text="8" />
+                                <TextBox Grid.Column="1" Text="{Binding MaxParallelThreads, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" />
                                 <TextBlock Grid.Column="2" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ThreadsLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                             </Grid>
 
                             <!-- Estado del Modo Prueba (DryRun) por Defecto -->
-                            <CheckBox x:Name="ChkDefaultDryRun" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_DefaultDryRun]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,14" IsChecked="True" />
+                            <CheckBox IsChecked="{Binding DefaultDryRunState, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_DefaultDryRun]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,14" />
 
                             <!-- Nivel Mínimo de Logs -->
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
-                            <ComboBox x:Name="CmbDefaultLogLevel" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" Margin="0,0,0,14">
-                                <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelInfo]}" Tag="Information" IsSelected="True" />
+                            <ComboBox SelectedValue="{Binding SelectedLogLevel, Mode=TwoWay}" SelectedValuePath="Tag" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" Margin="0,0,0,14">
+                                <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelInfo]}" Tag="Information" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelWarning]}" Tag="Warning" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelError]}" Tag="Error" />
                                 <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelDebug]}" Tag="Debug" />
@@ -172,14 +172,14 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <CheckBox x:Name="ChkEnableCheckpointing" Grid.Column="0" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableCheckpointing]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" IsChecked="True" />
-                                <Button Grid.Column="1" Click="ClearCheckpoints_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Cursor="Hand">
+                                <CheckBox Grid.Column="0" IsChecked="{Binding EnableCheckpointing, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableCheckpointing]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Command="{Binding ClearCheckpointsCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Cursor="Hand">
                                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ClearCheckpointsBtn]}" FontSize="10.5" />
                                 </Button>
                             </Grid>
 
                             <!-- Descarga Automática de Modelos IA -->
-                            <CheckBox x:Name="ChkAutoUnloadAiModels" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels]}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels_Desc]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,12,0,0" />
+                            <CheckBox IsChecked="{Binding AutoUnloadAiModelsOnCompletion, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels]}" ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels_Desc]}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,12,0,0" />
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
@@ -196,7 +196,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ExecutablesTitle]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                                <Button Grid.Column="1" Click="AutoDetect_Click" Style="{DynamicResource PrimaryButton}" Padding="10,4" Cursor="Hand">
+                                <Button Grid.Column="1" Command="{Binding AutoDetectToolsCommand}" Style="{DynamicResource PrimaryButton}" Padding="10,4" Cursor="Hand">
                                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoDetectBtn]}" FontSize="10.5" />
                                 </Button>
                             </Grid>
@@ -208,8 +208,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtFfmpeg" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
-                                <Button Grid.Column="1" Click="BrowseFfmpeg_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
+                                <TextBox Text="{Binding FfmpegPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
+                                <Button Grid.Column="1" Command="{Binding BrowseFfmpegCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
                             </Grid>
 
                             <!-- FFprobe -->
@@ -219,8 +219,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtFfprobe" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
-                                <Button Grid.Column="1" Click="BrowseFfprobe_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
+                                <TextBox Text="{Binding FfprobePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
+                                <Button Grid.Column="1" Command="{Binding BrowseFfprobeCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
                             </Grid>
 
                             <!-- 7-Zip -->
@@ -230,8 +230,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtSevenZip" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
-                                <Button Grid.Column="1" Click="BrowseSevenZip_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
+                                <TextBox Text="{Binding SevenZipPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
+                                <Button Grid.Column="1" Command="{Binding BrowseSevenZipCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
                             </Grid>
 
                             <!-- Python -->
@@ -241,8 +241,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtPython" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
-                                <Button Grid.Column="1" Click="BrowsePython_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
+                                <TextBox Text="{Binding PythonPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11" />
+                                <Button Grid.Column="1" Command="{Binding BrowsePythonCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="4,0,0,0" Content="📁" Cursor="Hand" />
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>
@@ -270,23 +270,23 @@
                         <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,0,8">
                             <Grid>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                                    <Button x:Name="BtnDownloadAllMissing" Click="DownloadAllMissing_Click" Style="{DynamicResource PrimaryButton}" Padding="10,4" Margin="0,0,6,0" Cursor="Hand">
+                                    <Button Command="{Binding AiModelManager.DownloadMissingModelsCommand}" Style="{DynamicResource PrimaryButton}" Padding="10,4" Margin="0,0,6,0" Cursor="Hand">
                                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DownloadAll]}" FontSize="10.5" />
                                     </Button>
-                                    <Button Click="RefreshAiModels_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" Cursor="Hand">
+                                    <Button Command="{Binding AiModelManager.RefreshStatusCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Margin="0,0,6,0" Cursor="Hand">
                                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Refresh]}" FontSize="10.5" />
                                     </Button>
-                                    <Button Click="OpenAiModelsFolder_Click" Style="{DynamicResource SecondaryButton}" Padding="8,4" Cursor="Hand">
+                                    <Button Command="{Binding AiModelManager.OpenModelsFolderCommand}" Style="{DynamicResource SecondaryButton}" Padding="8,4" Cursor="Hand">
                                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_OpenDir]}" FontSize="10.5" />
                                     </Button>
                                 </StackPanel>
-                                <TextBlock x:Name="TxtAiModelsSummary" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding AiModelManager.InstalledSummary}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                             </Grid>
                         </Border>
 
                         <!-- Models list -->
                         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl x:Name="AiModelsItemsControl">
+                            <ItemsControl ItemsSource="{Binding AiModelManager.Models}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,6">
@@ -343,15 +343,15 @@
                                                             Padding="6,4" Margin="0,0,5,0" FontSize="10" Cursor="Hand"
                                                             ToolTip="Configurar URLs de descarga y espejos alternativos" />
                                                     <Button Content="⬇️ Descargar"
-                                                            Tag="{Binding}"
-                                                            Click="DownloadAiModelItem_Click"
+                                                            Command="{Binding DataContext.AiModelManager.DownloadModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
                                                             IsEnabled="{Binding CanDownload}"
                                                             Visibility="{Binding IsDownloaded, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                                                             Style="{DynamicResource PrimaryButton}"
                                                             Padding="8,4" FontSize="10" Cursor="Hand" />
                                                     <Button Content="🗑️"
-                                                            Tag="{Binding}"
-                                                            Click="DeleteAiModelItem_Click"
+                                                            Command="{Binding DataContext.AiModelManager.DeleteModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
                                                             Visibility="{Binding IsDownloaded, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                             Style="{DynamicResource SecondaryButton}"
                                                             Padding="6,4" FontSize="10" Cursor="Hand"
@@ -368,7 +368,7 @@
                         <Border Grid.Row="3" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="4" Padding="6,3" Margin="0,6,0,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📁 " FontSize="9.5" VerticalAlignment="Center" />
-                                <TextBlock x:Name="TxtAiModelsDir" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding AiModelManager.ModelsDirectory}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -378,8 +378,8 @@
 
         <!-- Pie con Botones -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Click="Cancel_Click" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" FontSize="11.5" Cursor="Hand" />
-            <Button Click="Save_Click" Style="{DynamicResource PrimaryButton}" Padding="16,6" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_SaveBtn]}" FontSize="11.5" Cursor="Hand" />
+            <Button Command="{Binding CancelCommand}" Style="{DynamicResource SecondaryButton}" Padding="14,6" Margin="0,0,8,0" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" FontSize="11.5" Cursor="Hand" />
+            <Button Command="{Binding SaveCommand}" Style="{DynamicResource PrimaryButton}" Padding="16,6" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_SaveBtn]}" FontSize="11.5" Cursor="Hand" />
         </StackPanel>
     </Grid>
 </Window>

@@ -1,6 +1,8 @@
 using System.IO;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Logic;
 
@@ -15,12 +17,12 @@ public sealed class IntermediateCleanupNode : IFlowNode
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     };
 
     public IReadOnlyList<NodePort> Outputs { get; } = new[]
     {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out)
     };
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
@@ -36,6 +38,8 @@ public sealed class IntermediateCleanupNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var storage = context.GetStorage();
+
         bool keepCurrent = Parameters.TryGetValue("KeepCurrent", out var kc) ? ParameterHelper.GetBoolean(kc, true) : true;
         string targetTags = Parameters.TryGetValue("TargetTags", out var tt) ? ParameterHelper.GetString(tt, "") : "";
 
@@ -69,15 +73,15 @@ public sealed class IntermediateCleanupNode : IFlowNode
                 continue;
             }
 
-            if (File.Exists(filePath))
+            if (await storage.FileExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
             {
                 try
                 {
-                    File.Delete(filePath);
+                    await storage.DeleteAsync(filePath, permanent: true, cancellationToken).ConfigureAwait(false);
                     deletedCount++;
                     context.Log($"[IntermediateCleanup] Purged intermediate file for version '{tag}': '{filePath}'", LogLevel.Debug, item);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     context.Log($"[IntermediateCleanup] Failed to delete intermediate file '{filePath}': {ex.Message}", LogLevel.Warning, item);
                 }
@@ -87,6 +91,6 @@ public sealed class IntermediateCleanupNode : IFlowNode
         item.AddLog($"[IntermediateCleanup] Purged {deletedCount} intermediate file(s)");
         context.Log($"[IntermediateCleanup] Successfully purged {deletedCount} intermediate file(s)", LogLevel.Information, item);
 
-        await context.EmitAsync("Out", item).ConfigureAwait(false);
+        await context.EmitAsync(WellKnownPorts.Out, item).ConfigureAwait(false);
     }
 }

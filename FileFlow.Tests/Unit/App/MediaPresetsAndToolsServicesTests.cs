@@ -27,7 +27,7 @@ public class MediaPresetsAndToolsServicesTests
     [Fact]
     public void ExternalToolsService_Instance_ShouldLoadConfigWithoutExceptions()
     {
-        var config = ExternalToolsService.Instance.Config;
+        var config = FileFlow.Core.Services.ExternalToolsService.Instance.Config;
         Assert.NotNull(config);
     }
 

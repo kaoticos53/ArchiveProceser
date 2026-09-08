@@ -12,9 +12,25 @@ public interface IExternalToolsService
     string ResolveToolPath(string toolName);
 
     /// <summary>
+    /// <summary>
     /// Determina si la herramienta indicada está instalada y ejecutable en el sistema.
     /// </summary>
     bool IsToolAvailable(string toolName);
+
+    /// <summary>
+    /// Configuración actual de ejecutables externos.
+    /// </summary>
+    ExternalToolsConfig Config => new();
+
+    /// <summary>
+    /// Guarda la configuración de herramientas externas.
+    /// </summary>
+    void SaveConfig(ExternalToolsConfig config) { }
+
+    /// <summary>
+    /// Escanea el sistema para autodetectar la presencia de herramientas externas conocidas.
+    /// </summary>
+    Task<ExternalToolsConfig> AutoDetectToolsAsync() => Task.FromResult(new ExternalToolsConfig());
 
     /// <summary>
     /// Ruta o comando para el ejecutable de FFmpeg.

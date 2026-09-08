@@ -2,6 +2,42 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-08] - FASE 5: Universal Storage Service (IStorageService), Canonical Constants, Clean MVVM Settings and Async Cancellation Hardening
+
+### 🎯 Objetivos y Alcance
+1. **Erradicación Total de Bipaseos de I/O Físico (`IStorageService` / `context.GetStorage()`)**:
+   - **`FileFlow.Plugin.Hashing/DeduplicationFilterNode`**: Reemplazado `!File.Exists` y `new FileStream` con llamadas asíncronas `await storage.FileExistsAsync()` y apertura de streams desacoplados `await storage.OpenReadAsync()`. Soporte nativo para VFS y almacenamiento en memoria sin tocar disco físico.
+   - **`FileFlow.Plugin.Logic`**:
+     - `VersionRouterNode`: Migrados `File.Exists`, `File.Delete` y `new FileInfo` a `storage.FileExistsAsync`, `storage.DeleteAsync` y `storage.GetFileSizeAsync`.
+     - `SwitchActiveFileNode`: Migrados `File.Exists`, `File.Delete` y `new FileInfo` a métodos de `IStorageService`.
+     - `IntermediateCleanupNode`: Eliminación y comprobación de archivos intermedios purgados mediante `await storage.FileExistsAsync()` y `await storage.DeleteAsync(..., permanent: true)`.
+     - `FileForkNode`: Lectura de longitudes y comprobaciones de bifurcación clonada (`OriginalPath` y versiones intermedias) mediante `storage.FileExistsAsync` y `storage.GetFileSizeAsync`.
+     - `BestVersionSelectorNode`: Resolución de rutas de candidatos (`ResolveCandidatePathAsync`), comparación de tamaños (`await storage.GetFileSizeAsync()`) y purga del candidato perdedor (`await storage.DeleteAsync()`) delegados 100% en `IStorageService`.
+   - **`FileFlow.Plugin.Integrations/MediaTranscoderNode`**:
+     - Creación de directorios destino con `await storage.CreateDirectoryAsync()`.
+     - Comprobación de binarios y copias fallback mediante `await storage.CopyAsync(..., StorageCollisionStrategy.Overwrite)`.
+     - Medición de tamaño resultante mediante `await storage.GetFileSizeAsync()`.
+   - **`FileFlow.Plugin.Network/NetworkDownloadNode`**:
+     - Creación del directorio de descarga resuelto mediante `await storage.CreateDirectoryAsync()`.
+2. **Constantes Canónicas en `FileFlow.Sdk` (Erradicación de Strings Mágicos)**:
+   - Creada clase `WellKnownPorts` en `FileFlow.Sdk.Common` conteniendo los identificadores estándar: `In`, `Out`, `Error`, `True`, `False`, `Unique`, `Duplicate`, `PassThrough`.
+   - Creada clase `WellKnownMetadataKeys` en `FileFlow.Sdk.Common` conteniendo claves canónicas de telemetría y metadatos: `WorkflowExecutionId`, `OriginalPath`, `FileSizeBytes`, `Hash`, `HashSha256`, `DuplicateOf`, `TranscodedFrom`, `TranscodePreset`.
+   - Nodos de lógica, hashing, red e integraciones actualizados para consumir estas constantes en lugar de literales de cadena dispersos.
+3. **Refactorización Clean MVVM para `WorkflowSettingsWindow`**:
+   - Creado `WorkflowSettingsViewModel` en `FileFlow.App.ViewModels`, gestionando de forma desacoplada y comprobable el almacenamiento, rendimiento, apariencia, herramientas externas y modelos de IA.
+   - Eliminada la subclase wrapper vacía redundante `FileFlow.App.Services.ExternalToolsService`.
+   - Promovido el modelo `ExternalToolsConfig` a `FileFlow.Sdk.Services` y ampliado el contrato `IExternalToolsService` con `Config`, `SaveConfig` y `AutoDetectToolsAsync`.
+   - Registrado `IExternalToolsService` y `WorkflowSettingsViewModel` en el contenedor de IoC (`ServiceCollectionExtensions.cs`).
+   - Reducido el code-behind de `WorkflowSettingsWindow.xaml.cs` de ~328 líneas a ~60 líneas, delegando eventos y propiedades en bindings XAML y comandos `RelayCommand`.
+   - Creada suite de pruebas unitarias `WorkflowSettingsViewModelTests.cs` (5 tests) cubriendo inicialización, navegación, detección y persistencia.
+4. **Robustez y Filtros de Excepción Asíncrona en Cancelación**:
+   - Preservados y garantizados los filtros `when (ex is not OperationCanceledException)` en bloques `catch` para evitar capturar inadvertidamente señales de cancelación (`CancellationToken`).
+5. **Métricas de Pruebas y Compilación**:
+   - **627 / 627 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (aumento de +5 pruebas netas).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` en **0 advertencias y 0 errores**.
+
+---
+
 ## [2026-09-08] - FASE 4: Organización, Encapsulación y Convenciones de Solución (Clean Architecture & C# 13)
 
 ### 🎯 Objetivos y Alcance

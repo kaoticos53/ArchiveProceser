@@ -7,14 +7,6 @@ using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Core.Services;
 
-public class ExternalToolsConfig
-{
-    public string FfmpegPath { get; set; } = string.Empty;
-    public string FfprobePath { get; set; } = string.Empty;
-    public string SevenZipPath { get; set; } = string.Empty;
-    public string PythonPath { get; set; } = string.Empty;
-}
-
 /// <summary>
 /// Servicio centralizado de resolución y configuración de ejecutables de herramientas externas.
 /// Soporta autodetección multiplataforma (Windows, Linux, macOS) y carpetas portables.

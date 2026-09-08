@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFileRecycler>(_ => WindowsShellFileRecycler.Instance);
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddTransient<IFolderWatcherService, FolderWatcherService>();
+        services.AddSingleton<FileFlow.Sdk.Services.IExternalToolsService>(_ => FileFlow.Core.Services.ExternalToolsService.Instance);
 
         // 2. Cargador de Plugins con auto-descubrimiento
         services.AddSingleton(sp => PluginRegistryHelper.CreateConfiguredLoader());
@@ -50,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<StatusBarViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddTransient<AiModelManagerViewModel>();
+        services.AddTransient<WorkflowSettingsViewModel>();
 
         return services;
     }

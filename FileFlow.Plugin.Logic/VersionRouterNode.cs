@@ -2,7 +2,9 @@ using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.Logic;
@@ -18,13 +20,13 @@ public sealed class VersionRouterNode : IFlowNode
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     };
 
     public IReadOnlyList<NodePort> Outputs { get; } = new[]
     {
-        new NodePort("True", typeof(FileItemContext), PortDirection.Output, "True"),
-        new NodePort("False", typeof(FileItemContext), PortDirection.Output, "False")
+        new NodePort(WellKnownPorts.True, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.True),
+        new NodePort(WellKnownPorts.False, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.False)
     };
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
@@ -65,23 +67,24 @@ public sealed class VersionRouterNode : IFlowNode
         string comparisonValue = VariableTemplateResolver.Resolve(compValPattern, item);
 
         bool result = EvaluateCondition(actualValue, op, comparisonValue);
-        string outcomePort = result ? "True" : "False";
+        var storage = context.GetStorage();
+        string outcomePort = result ? WellKnownPorts.True : WellKnownPorts.False;
         string activePattern = result ? trueFilePattern : falseFilePattern;
         string unselectedPattern = result ? falseFilePattern : trueFilePattern;
 
-        string activePath = ResolveVersionOrPath(activePattern, item);
-        string unselectedPath = ResolveVersionOrPath(unselectedPattern, item);
+        string activePath = await ResolveVersionOrPathAsync(storage, activePattern, item, cancellationToken).ConfigureAwait(false);
+        string unselectedPath = await ResolveVersionOrPathAsync(storage, unselectedPattern, item, cancellationToken).ConfigureAwait(false);
 
-        if (purgeUnselectedTemps && !string.IsNullOrWhiteSpace(unselectedPath) && File.Exists(unselectedPath))
+        if (purgeUnselectedTemps && !string.IsNullOrWhiteSpace(unselectedPath) && await storage.FileExistsAsync(unselectedPath, cancellationToken).ConfigureAwait(false))
         {
             if (!string.Equals(Path.GetFullPath(unselectedPath), Path.GetFullPath(item.OriginalPath), StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
-                    File.Delete(unselectedPath);
+                    await storage.DeleteAsync(unselectedPath, permanent: true, cancellationToken).ConfigureAwait(false);
                     context.Log($"[VersionRouter] Auto-purged unselected intermediate file: '{unselectedPath}'", LogLevel.Debug, item);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     context.Log($"[VersionRouter] Could not auto-purge unselected intermediate file '{unselectedPath}': {ex.Message}", LogLevel.Warning, item);
                 }
@@ -96,9 +99,9 @@ public sealed class VersionRouterNode : IFlowNode
         {
             item.CurrentPath = activePath;
             item.PhysicalPath = activePath;
-            if (File.Exists(activePath))
+            if (await storage.FileExistsAsync(activePath, cancellationToken).ConfigureAwait(false))
             {
-                item.FileSizeBytes = new FileInfo(activePath).Length;
+                item.FileSizeBytes = await storage.GetFileSizeAsync(activePath, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -112,7 +115,7 @@ public sealed class VersionRouterNode : IFlowNode
         await context.EmitAsync(outcomePort, item).ConfigureAwait(false);
     }
 
-    private static string ResolveVersionOrPath(string input, FileItemContext item)
+    private static async Task<string> ResolveVersionOrPathAsync(IStorageService storage, string input, FileItemContext item, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
@@ -120,13 +123,13 @@ public sealed class VersionRouterNode : IFlowNode
         }
 
         string resolved = VariableTemplateResolver.Resolve(input, item);
-        if (File.Exists(resolved))
+        if (await storage.FileExistsAsync(resolved, ct).ConfigureAwait(false))
         {
             return resolved;
         }
 
         string? versionPath = item.GetVersionPath(input);
-        if (!string.IsNullOrWhiteSpace(versionPath) && File.Exists(versionPath))
+        if (!string.IsNullOrWhiteSpace(versionPath) && await storage.FileExistsAsync(versionPath, ct).ConfigureAwait(false))
         {
             return versionPath;
         }

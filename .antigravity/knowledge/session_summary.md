@@ -8,8 +8,23 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **622 / 622 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **627 / 627 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --52. **FASE 5: Universal Storage Service (IStorageService), Canonical Constants, Clean MVVM Settings and Async Cancellation Hardening**:
+      - **Objetivo**: Erradicar los últimos bipaseos de I/O físico directo en nodos de flujo, centralizar constantes canónicas de puertos y metadatos en `FileFlow.Sdk`, desacoplar la ventana de configuración en `WorkflowSettingsViewModel` eliminando servicios wrapper redundantes y reforzar la propagación de cancelación asíncrona.
+      - **Ajustes Realizados**:
+        1. *Erradicación Total de Bipaseos de I/O Físico*:
+           - `DeduplicationFilterNode`: Migrado a `await storage.FileExistsAsync()` y `await storage.OpenReadAsync()`.
+           - `VersionRouterNode`, `SwitchActiveFileNode`, `IntermediateCleanupNode`, `FileForkNode`, `BestVersionSelectorNode`: Migrados a `IStorageService` para comprobaciones, lecturas de tamaño y purgas no destructivas.
+           - `MediaTranscoderNode`: Migrado a `await storage.CreateDirectoryAsync()`, `await storage.CopyAsync()` y `await storage.GetFileSizeAsync()`.
+           - `NetworkDownloadNode`: Migrada la creación del directorio de destino a `await storage.CreateDirectoryAsync()`.
+        2. *Constantes Canónicas en `FileFlow.Sdk`*:
+           - Introducidos `WellKnownPorts` y `WellKnownMetadataKeys` en `FileFlow.Sdk.Common`, sustituyendo cadenas mágicas sueltas por constantes fuertemente tipadas en SDK y plugins.
+        3. *Desacoplamiento Clean MVVM para Ajustes (`WorkflowSettingsViewModel`)*:
+           - Creado `WorkflowSettingsViewModel` en `FileFlow.App.ViewModels`, eliminando ~270 líneas de code-behind en `WorkflowSettingsWindow.xaml.cs` y enlazando propiedades y comandos vía XAML.
+           - Eliminado `FileFlow.App.Services.ExternalToolsService.cs` redundante y promovido `ExternalToolsConfig` a `FileFlow.Sdk.Services`, ampliando el contrato `IExternalToolsService`.
+           - Creada suite de pruebas `WorkflowSettingsViewModelTests.cs` (5 pruebas).
+      - **Validación**: Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia (0 advertencias, 0 errores) y `dotnet test` $\rightarrow$ **627 / 627 pruebas superadas al 100%**.
   --51. **FASE 4: Organización, Encapsulación y Convenciones de Solución (Clean Architecture & C# 13)**:
       - **Objetivo**: Concluir la auditoría arquitectónica integral asegurando el encapsulamiento estricto de las capas internas de los plugins, devirtualización de clases terminales mediante `sealed` en C# 13 y sincronización moderna de concurrencia con `System.Threading.Lock` de .NET 9.
       - **Ajustes Realizados**:

@@ -1,6 +1,8 @@
 using System.IO;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.Logic;
@@ -16,12 +18,12 @@ public sealed class BestVersionSelectorNode : IFlowNode
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     };
 
     public IReadOnlyList<NodePort> Outputs { get; } = new[]
     {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
         new NodePort("WonA", typeof(FileItemContext), PortDirection.Output, "WonA"),
         new NodePort("WonB", typeof(FileItemContext), PortDirection.Output, "WonB")
     };
@@ -51,6 +53,8 @@ public sealed class BestVersionSelectorNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var storage = context.GetStorage();
+
         string candAPattern = Parameters.TryGetValue("CandidateA", out var ca) ? ParameterHelper.GetString(ca, "{CurrentPath}") : "{CurrentPath}";
         string candBPattern = Parameters.TryGetValue("CandidateB", out var cb) ? ParameterHelper.GetString(cb, "{OriginalPath}") : "{OriginalPath}";
         string criterion = Parameters.TryGetValue("Criterion", out var cr) ? ParameterHelper.GetString(cr, "SmallestSize") : "SmallestSize";
@@ -58,11 +62,11 @@ public sealed class BestVersionSelectorNode : IFlowNode
         bool discardLoser = Parameters.TryGetValue("DiscardLoser", out var dl) ? ParameterHelper.GetBoolean(dl, true) : true;
         bool setWinnerAsCurrent = Parameters.TryGetValue("SetWinnerAsCurrent", out var sw) ? ParameterHelper.GetBoolean(sw, true) : true;
 
-        string pathA = ResolveCandidatePath(candAPattern, item);
-        string pathB = ResolveCandidatePath(candBPattern, item);
+        string pathA = await ResolveCandidatePathAsync(storage, candAPattern, item, cancellationToken).ConfigureAwait(false);
+        string pathB = await ResolveCandidatePathAsync(storage, candBPattern, item, cancellationToken).ConfigureAwait(false);
 
-        bool existsA = !string.IsNullOrWhiteSpace(pathA) && File.Exists(pathA);
-        bool existsB = !string.IsNullOrWhiteSpace(pathB) && File.Exists(pathB);
+        bool existsA = !string.IsNullOrWhiteSpace(pathA) && await storage.FileExistsAsync(pathA, cancellationToken).ConfigureAwait(false);
+        bool existsB = !string.IsNullOrWhiteSpace(pathB) && await storage.FileExistsAsync(pathB, cancellationToken).ConfigureAwait(false);
 
         bool isWinnerA;
         string reason;
@@ -84,8 +88,8 @@ public sealed class BestVersionSelectorNode : IFlowNode
         }
         else
         {
-            long sizeA = new FileInfo(pathA).Length;
-            long sizeB = new FileInfo(pathB).Length;
+            long sizeA = await storage.GetFileSizeAsync(pathA, cancellationToken).ConfigureAwait(false);
+            long sizeB = await storage.GetFileSizeAsync(pathB, cancellationToken).ConfigureAwait(false);
 
             switch (criterion.ToUpperInvariant())
             {
@@ -125,16 +129,16 @@ public sealed class BestVersionSelectorNode : IFlowNode
         string loserPath = isWinnerA ? pathB : pathA;
 
         // Auto-purge loser if requested and not the immutable original file
-        if (discardLoser && !string.IsNullOrWhiteSpace(loserPath) && File.Exists(loserPath))
+        if (discardLoser && !string.IsNullOrWhiteSpace(loserPath) && await storage.FileExistsAsync(loserPath, cancellationToken).ConfigureAwait(false))
         {
             if (!string.Equals(Path.GetFullPath(loserPath), Path.GetFullPath(item.OriginalPath), StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
-                    File.Delete(loserPath);
+                    await storage.DeleteAsync(loserPath, permanent: true, cancellationToken).ConfigureAwait(false);
                     context.Log($"[BestVersionSelector] Auto-purged losing candidate intermediate file: '{loserPath}'", LogLevel.Debug, item);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     context.Log($"[BestVersionSelector] Could not auto-purge losing candidate '{loserPath}': {ex.Message}", LogLevel.Warning, item);
                 }
@@ -149,9 +153,9 @@ public sealed class BestVersionSelectorNode : IFlowNode
         {
             item.CurrentPath = winnerPath;
             item.PhysicalPath = winnerPath;
-            if (File.Exists(winnerPath))
+            if (await storage.FileExistsAsync(winnerPath, cancellationToken).ConfigureAwait(false))
             {
-                item.FileSizeBytes = new FileInfo(winnerPath).Length;
+                item.FileSizeBytes = await storage.GetFileSizeAsync(winnerPath, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -162,7 +166,7 @@ public sealed class BestVersionSelectorNode : IFlowNode
 
         context.Log($"[BestVersionSelector] Selection: {(isWinnerA ? "CandidateA" : "CandidateB")} ('{Path.GetFileName(winnerPath)}') - {reason}", LogLevel.Information, item);
 
-        await context.EmitAsync("Out", item).ConfigureAwait(false);
+        await context.EmitAsync(WellKnownPorts.Out, item).ConfigureAwait(false);
         if (isWinnerA)
         {
             await context.EmitAsync("WonA", item).ConfigureAwait(false);
@@ -173,7 +177,7 @@ public sealed class BestVersionSelectorNode : IFlowNode
         }
     }
 
-    private static string ResolveCandidatePath(string candidatePattern, FileItemContext item)
+    private static async Task<string> ResolveCandidatePathAsync(IStorageService storage, string candidatePattern, FileItemContext item, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(candidatePattern))
         {
@@ -181,13 +185,13 @@ public sealed class BestVersionSelectorNode : IFlowNode
         }
 
         string resolved = VariableTemplateResolver.Resolve(candidatePattern, item);
-        if (File.Exists(resolved))
+        if (await storage.FileExistsAsync(resolved, cancellationToken).ConfigureAwait(false))
         {
             return resolved;
         }
 
         string? versionPath = item.GetVersionPath(candidatePattern);
-        if (!string.IsNullOrWhiteSpace(versionPath) && File.Exists(versionPath))
+        if (!string.IsNullOrWhiteSpace(versionPath) && await storage.FileExistsAsync(versionPath, cancellationToken).ConfigureAwait(false))
         {
             return versionPath;
         }

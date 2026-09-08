@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.TemplateEngine;
 
@@ -19,7 +20,7 @@ public sealed class SwitchCaseNode : IFlowNode, ISwitchCaseNode
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     };
 
     public IReadOnlyList<NodePort> Outputs

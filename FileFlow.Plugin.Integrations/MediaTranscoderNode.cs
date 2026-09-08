@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Platform;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Integrations;
 
@@ -19,13 +22,13 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
     };
 
     public IReadOnlyList<NodePort> Outputs { get; } = new[]
     {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
+        new NodePort(WellKnownPorts.Error, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Error)
     };
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
@@ -68,6 +71,8 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var storage = context.GetStorage();
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
         string filePath = item.CurrentPath;
         string presetName = Parameters.TryGetValue("Preset", out var pVal) ? ParameterHelper.GetString(pVal, "Convertir 1080p H.264 (Universal MP4)") : "Convertir 1080p H.264 (Universal MP4)";
@@ -76,18 +81,18 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
         string destDir = ParameterHelper.ResolveOutputPath(destDirPattern, item);
 
-        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        if (string.IsNullOrWhiteSpace(filePath) || !await storage.FileExistsAsync(filePath, cancellationToken).ConfigureAwait(false))
         {
             context.Log($"[Transcodificador] Archivo de entrada no encontrado: '{filePath}'", LogLevel.Warning, item);
-            await context.EmitAsync("Error", item);
+            await context.EmitAsync(WellKnownPorts.Error, item);
             return;
         }
 
         try
         {
-            if (!Directory.Exists(destDir))
+            if (!await storage.DirectoryExistsAsync(destDir, cancellationToken).ConfigureAwait(false))
             {
-                Directory.CreateDirectory(destDir);
+                await storage.CreateDirectoryAsync(destDir, cancellationToken).ConfigureAwait(false);
             }
 
             string ext = GetOutputExtensionForPreset(presetName);
@@ -98,7 +103,7 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
             bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
             string ffmpegExe = ResolveFFmpegExecutable(string.Empty, context);
-            bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (File.Exists(ffmpegExe) || CanExecuteCommand(ffmpegExe, context));
+            bool ffmpegAvailable = !string.IsNullOrWhiteSpace(ffmpegExe) && (await storage.FileExistsAsync(ffmpegExe, cancellationToken).ConfigureAwait(false) || CanExecuteCommand(ffmpegExe, context));
             bool transcodeSuccess = false;
 
             if (!isDryRun && ffmpegAvailable)
@@ -132,7 +137,7 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
                         }
                     }, cancellationToken).ConfigureAwait(false);
 
-                    transcodeSuccess = runResult.Success && File.Exists(targetPath);
+                    transcodeSuccess = runResult.Success && await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -153,24 +158,27 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
                 if (!string.Equals(Path.GetFullPath(filePath), Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase))
                 {
-                    File.Copy(filePath, targetPath, overwrite: true);
+                    await storage.CopyAsync(filePath, targetPath, StorageCollisionStrategy.Overwrite, cancellationToken).ConfigureAwait(false);
                 }
             }
 
             sw.Stop();
-            long outSize = File.Exists(targetPath) ? new FileInfo(targetPath).Length : 0;
+
+            long outSize = await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false)
+                ? await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false)
+                : 0;
 
             var outputItem = item.DeepClone();
             outputItem.CurrentPath = targetPath;
             outputItem.FileSizeBytes = outSize;
-            outputItem.Metadata["TranscodedFrom"] = filePath;
-            outputItem.Metadata["TranscodePreset"] = presetName;
+            outputItem.Metadata[WellKnownMetadataKeys.TranscodedFrom] = filePath;
+            outputItem.Metadata[WellKnownMetadataKeys.TranscodePreset] = presetName;
             outputItem.AddLog($"MediaTranscoderNode transcodificado exitosamente a {targetPath}");
 
             string detailsJson = $"{{\"preset\": \"{presetName}\", \"targetPath\": \"{targetPath.Replace("\\", "\\\\")}\", \"ffmpegAvailable\": {ffmpegAvailable.ToString().ToLowerInvariant()}, \"realTranscode\": {transcodeSuccess.ToString().ToLowerInvariant()}, \"outSizeBytes\": {outSize}}}";
             context.Log($"[Transcodificador] Transcodificación finalizada ({presetName}): '{Path.GetFileName(targetPath)}'", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
-            await context.EmitAsync("Out", outputItem);
+            await context.EmitAsync(WellKnownPorts.Out, outputItem);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -178,7 +186,7 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";
             context.Log($"[Transcodificador] Error al transcodificar: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"MediaTranscoderNode error: {ex.Message}");
-            await context.EmitAsync("Error", item);
+            await context.EmitAsync(WellKnownPorts.Error, item);
         }
     }
 

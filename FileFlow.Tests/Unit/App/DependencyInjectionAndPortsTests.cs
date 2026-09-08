@@ -28,6 +28,7 @@ public class DependencyInjectionAndPortsTests
         Assert.NotNull(provider.GetService<IFileRecycler>());
         Assert.NotNull(provider.GetService<IFolderWatcherService>());
         Assert.NotNull(provider.GetService<PluginLoader>());
+        Assert.NotNull(provider.GetService<FileFlow.Sdk.Services.IExternalToolsService>());
 
         // Assert - Presentation & UI Ports
         Assert.NotNull(provider.GetService<IFileDialogService>());
@@ -48,6 +49,7 @@ public class DependencyInjectionAndPortsTests
         Assert.NotNull(provider.GetService<ControlBarViewModel>());
         Assert.NotNull(provider.GetService<StatusBarViewModel>());
         Assert.NotNull(provider.GetService<MainViewModel>());
+        Assert.NotNull(provider.GetService<WorkflowSettingsViewModel>());
     }
 
     [Fact]
