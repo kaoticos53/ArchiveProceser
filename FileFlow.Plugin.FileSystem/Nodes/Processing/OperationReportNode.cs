@@ -302,9 +302,9 @@ public sealed class OperationReportNode : IFlowNode
             File.WriteAllText(tempFile, content, System.Text.Encoding.UTF8);
             Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
         }
-        catch
+        catch (Exception ex)
         {
-            // Silently ignore if preview launcher fails
+            System.Diagnostics.Debug.WriteLine($"[OperationReportNode] Failed to open temporary report '{fileName}': {ex.Message}");
         }
     }
 }

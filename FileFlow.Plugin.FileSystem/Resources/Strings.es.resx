@@ -177,4 +177,15 @@
   <data name="Title_ImportDataSet" xml:space="preserve"><value>Importar Dataset Sintético</value></data>
   <data name="Msg_DataSetImported" xml:space="preserve"><value>Dataset '{0}' importado y guardado.</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="DataSetDesigner_TabTree" xml:space="preserve"><value>🌳 Explorador de Archivos (Árbol)</value></data>
+  <data name="DataSetDesigner_TabDsl" xml:space="preserve"><value>📝 Árbol / DSL Rápido</value></data>
+  <data name="DataSetDesigner_TabJson" xml:space="preserve"><value>📄 JSON Crudo</value></data>
+  <data name="DataSetDesigner_AddFile" xml:space="preserve"><value>➕ Añadir Archivo</value></data>
+  <data name="DataSetDesigner_AddFolder" xml:space="preserve"><value>📁 Añadir Carpeta</value></data>
+  <data name="DataSetDesigner_AddArchive" xml:space="preserve"><value>📦 Añadir Comprimido</value></data>
+  <data name="DataSetDesigner_RemoveNode" xml:space="preserve"><value>🗑️ Eliminar</value></data>
+  <data name="DataSetDesigner_ExpandAll" xml:space="preserve"><value>↕️ Expandir Todo</value></data>
+  <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>↕️ Colapsar Todo</value></data>
+  <data name="DataSetDesigner_InspectorTitle" xml:space="preserve"><value>Propiedades del Elemento</value></data>
+  <data name="DataSetDesigner_InspectorNoSelection" xml:space="preserve"><value>Selecciona un archivo o carpeta en el árbol para ver y editar sus propiedades.</value></data>
 </root>

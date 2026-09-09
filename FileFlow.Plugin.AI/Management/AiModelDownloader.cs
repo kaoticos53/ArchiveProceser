@@ -13,7 +13,7 @@ namespace FileFlow.Plugin.AI;
 public static class AiModelDownloader
 {
     private static readonly Lock _fileLock = new();
-    private static readonly ConcurrentDictionary<string, bool> _downloadInProgress = new();
+    private static readonly ConcurrentDictionary<string, Task<string?>> _activeDownloads = new();
 
     /// <summary>
     /// Último error detallado producido durante la descarga o verificación de un modelo de IA.
@@ -68,24 +68,44 @@ public static class AiModelDownloader
             return targetPath;
         }
 
-        // Evitar descargas concurrentes del mismo modelo
-        if (!_downloadInProgress.TryAdd(modelId, true))
+        bool isPrimary = false;
+        var downloadTask = _activeDownloads.GetOrAdd(modelId, _ =>
         {
-            statusLogger?.Invoke($"Descarga de '{info.Description}' ya en curso...");
-            for (int i = 0; i < 600; i++)
-            {
-                await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
-                if (AiModelManager.IsModelAvailable(modelId))
-                {
-                    LastError = null;
-                    progress?.Report(100.0);
-                    return targetPath;
-                }
-                if (!_downloadInProgress.ContainsKey(modelId)) break;
-            }
-            return AiModelManager.IsModelAvailable(modelId) ? targetPath : null;
+            isPrimary = true;
+            return DownloadModelInternalAsync(modelId, info, targetPath, progress, statusLogger, cancellationToken);
+        });
+
+        if (!isPrimary)
+        {
+            statusLogger?.Invoke($"Descarga de '{info.Description}' ya en curso, sincronizando...");
         }
 
+        try
+        {
+            string? result = await downloadTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (result != null)
+            {
+                progress?.Report(100.0);
+            }
+            return result;
+        }
+        finally
+        {
+            if (isPrimary)
+            {
+                _activeDownloads.TryRemove(modelId, out _);
+            }
+        }
+    }
+
+    private static async Task<string?> DownloadModelInternalAsync(
+        string modelId,
+        AiModelInfo info,
+        string targetPath,
+        IProgress<double>? progress,
+        Action<string>? statusLogger,
+        CancellationToken cancellationToken)
+    {
         try
         {
             LastError = null;
@@ -121,8 +141,7 @@ public static class AiModelDownloader
                     {
                         if (!response.IsSuccessStatusCode)
                         {
-                            string statusDetails = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase})";
-                            string failMsg = $"Fallo en enlace {currentUrl}: {statusDetails}";
+                            string failMsg = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase}) desde {currentUrl}";
                             errors.Add(failMsg);
                             if (mirrorIndex < urls.Count - 1)
                             {
@@ -132,39 +151,43 @@ public static class AiModelDownloader
                         }
 
                         long? totalBytes = response.Content.Headers.ContentLength;
-                        long totalRead = 0;
-                        int lastReportedPercent = -1;
-
                         await using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
-                        await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                        await using (var fileStream = new FileStream(
+                            tempPath,
+                            FileMode.Create,
+                            FileAccess.Write,
+                            FileShare.None,
+                            bufferSize: 81920,
+                            useAsync: true))
                         {
                             var buffer = new byte[81920];
+                            long totalRead = 0;
                             int bytesRead;
+                            DateTime lastReport = DateTime.UtcNow;
 
-                            while ((bytesRead = await contentStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+                            while ((bytesRead = await contentStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
                             {
                                 await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
                                 totalRead += bytesRead;
 
-                                if (totalBytes.HasValue && totalBytes.Value > 0)
+                                if ((DateTime.UtcNow - lastReport).TotalMilliseconds >= 200)
                                 {
-                                    double percent = (double)totalRead * 100.0 / totalBytes.Value;
-                                    progress?.Report(percent);
-
-                                    int intPercent = (int)percent;
-                                    if (intPercent != lastReportedPercent && intPercent % 10 == 0)
+                                    lastReport = DateTime.UtcNow;
+                                    if (totalBytes.HasValue && totalBytes.Value > 0)
                                     {
-                                        lastReportedPercent = intPercent;
-                                        statusLogger?.Invoke($"Descargando {Path.GetFileName(info.FileName)}{mirrorLabel}: {intPercent}% ({totalRead / 1_048_576.0:F1} / {totalBytes.Value / 1_048_576.0:F1} MB)");
+                                        double pct = (double)totalRead / totalBytes.Value * 100.0;
+                                        progress?.Report(pct);
+                                        statusLogger?.Invoke($"⬇️ Descargando {info.FriendlyName}: {pct:F1}% ({totalRead / 1_048_576.0:F1} / {totalBytes.Value / 1_048_576.0:F1} MB)");
+                                    }
+                                    else
+                                    {
+                                        statusLogger?.Invoke($"⬇️ Descargando {info.FriendlyName}: {totalRead / 1_048_576.0:F1} MB");
                                     }
                                 }
                             }
-
-                            await fileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
                         }
                     }
 
-                    // Una vez cerrado el fileStream en Windows, verificar tamaño y mover
                     var fi = new FileInfo(tempPath);
                     if (!fi.Exists || fi.Length < info.MinSizeBytes)
                     {
@@ -182,7 +205,14 @@ public static class AiModelDownloader
                     {
                         if (File.Exists(targetPath))
                         {
-                            try { File.Delete(targetPath); } catch { }
+                            try
+                            {
+                                File.Delete(targetPath);
+                            }
+                            catch (Exception delEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[AiModelDownloader] Target delete before move failed: {delEx.Message}");
+                            }
                         }
 
                         string? destDir = Path.GetDirectoryName(targetPath);
@@ -214,7 +244,6 @@ public static class AiModelDownloader
                 }
             }
 
-            // Si se agotaron todas las URLs sin éxito
             LastError = $"Fallaron todos los espejos configurados ({urls.Count}) para '{info.FriendlyName}':\n" +
                         string.Join("\n", errors.Select(e => " • " + e));
             statusLogger?.Invoke($"❌ {LastError}");
@@ -222,25 +251,28 @@ public static class AiModelDownloader
         }
         catch (OperationCanceledException)
         {
-            CleanupTemp(AiModelManager.GetModelPath(info.FileName) + ".downloading");
+            CleanupTemp(targetPath + ".downloading");
             LastError = "Descarga cancelada por el usuario.";
             throw;
         }
         catch (Exception ex)
         {
-            CleanupTemp(AiModelManager.GetModelPath(info.FileName) + ".downloading");
+            CleanupTemp(targetPath + ".downloading");
             LastError = $"Error descargando '{modelId}': {ex.Message}";
             statusLogger?.Invoke($"❌ {LastError}");
             return null;
-        }
-        finally
-        {
-            _downloadInProgress.TryRemove(modelId, out _);
         }
     }
 
     private static void CleanupTemp(string tempPath)
     {
-        try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+        try
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AiModelDownloader] Cleanup temp failed: {ex.Message}");
+        }
     }
 }

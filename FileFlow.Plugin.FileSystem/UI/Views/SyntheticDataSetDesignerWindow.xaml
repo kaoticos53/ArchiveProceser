@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:FileFlow.Plugin.FileSystem.UI.ViewModels"
+        xmlns:converters="clr-namespace:FileFlow.Plugin.FileSystem.UI.Converters"
         xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
         mc:Ignorable="d"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_WindowTitle], FallbackValue='Diseñador de Conjuntos de Datos Sintéticos'}"
@@ -15,6 +16,9 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <converters:NullToVisibilityConverter x:Key="NullToVisibility" />
+        <converters:InverseNullToVisibilityConverter x:Key="InverseNullToVisibility" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibility" />
     </Window.Resources>
 
     <Grid Margin="14">
@@ -224,48 +228,228 @@
                     <!-- 2. Tabs for Edit Modes -->
                     <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
                                 Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}">
-                        <!-- Tab 1: Visual Table -->
-                        <TabItem Header="📊 Grilla Visual">
+                        <!-- Tab 1: Hierarchical Tree Explorer -->
+                        <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_TabTree], FallbackValue='🌳 Explorador de Archivos (Árbol)'}">
                             <Grid Margin="8">
                                 <Grid.RowDefinitions>
+                                    <!-- Top Toolbar -->
                                     <RowDefinition Height="Auto" />
+                                    <!-- Main Content: Tree (Left) + Inspector (Right) -->
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <!-- Table Toolbar -->
-                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                                    <Button Content="➕ Añadir Archivo" Command="{Binding AddFileCommand}"
-                                            Padding="8,4" Margin="0,0,6,0" Background="{DynamicResource BgCardBrush}"
-                                            Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand" />
-                                    <Button Content="📁 Añadir Carpeta" Command="{Binding AddFolderCommand}"
-                                            Padding="8,4" Margin="0,0,6,0" Background="{DynamicResource BgCardBrush}"
-                                            Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand" />
-                                    <Button Content="🗑️ Eliminar Fila" Command="{Binding RemoveItemCommand}"
-                                            Padding="8,4" Background="{DynamicResource BgCardBrush}"
-                                            Foreground="#FF8080" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand" />
-                                </StackPanel>
+                                <!-- Tree Toolbar -->
+                                <Border Grid.Row="0" Background="{DynamicResource BgDarkBrush}" CornerRadius="6" Padding="6" Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddFile], FallbackValue='➕ Archivo'}"
+                                                Command="{Binding AddFileToTreeCommand}"
+                                                Padding="8,4" Margin="0,0,4,0" Background="{DynamicResource BgSurfaceBrush}"
+                                                Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand"
+                                                ToolTip="Añadir un nuevo archivo en la carpeta seleccionada o en la raíz" />
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddFolder], FallbackValue='📁 Carpeta'}"
+                                                Command="{Binding AddFolderToTreeCommand}"
+                                                Padding="8,4" Margin="0,0,4,0" Background="{DynamicResource BgSurfaceBrush}"
+                                                Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand"
+                                                ToolTip="Añadir una nueva carpeta en la selección actual o en la raíz" />
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddArchive], FallbackValue='📦 Comprimido'}"
+                                                Command="{Binding AddArchiveToTreeCommand}"
+                                                Padding="8,4" Margin="0,0,6,0" Background="{DynamicResource BgSurfaceBrush}"
+                                                Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand"
+                                                ToolTip="Añadir un paquete comprimido simulado (.zip) con contenido interno" />
 
-                                <!-- Items DataGrid -->
-                                <DataGrid Grid.Row="1" ItemsSource="{Binding EditableItems}"
-                                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                                          AutoGenerateColumns="False" CanUserAddRows="False"
-                                          Background="{DynamicResource BgDarkBrush}"
-                                          Foreground="{DynamicResource TextPrimaryBrush}"
-                                          BorderBrush="{DynamicResource BorderDarkBrush}"
-                                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                                          RowHeaderWidth="0">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Ruta Relativa / Subcarpeta" Binding="{Binding RelativePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="3*" />
-                                        <DataGridTextColumn Header="Tamaño (Bytes)" Binding="{Binding FileSizeBytes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="1.2*" />
-                                        <DataGridCheckBoxColumn Header="¿Es Carpeta?" Binding="{Binding IsDirectory, Mode=TwoWay}" Width="1*" />
-                                        <DataGridCheckBoxColumn Header="¿Es Comprimido?" Binding="{Binding IsArchive, Mode=OneWay}" Width="1.1*" IsReadOnly="True" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                        <Rectangle Width="1" Fill="{DynamicResource BorderDarkBrush}" Margin="2,2,8,2" />
+
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_RemoveNode], FallbackValue='🗑️ Eliminar'}"
+                                                Command="{Binding RemoveTreeNodeCommand}"
+                                                Padding="8,4" Margin="0,0,8,0" Background="#3A2020"
+                                                Foreground="#FF8080" BorderBrush="#663333" Cursor="Hand"
+                                                ToolTip="Eliminar el elemento o carpeta seleccionada con todo su contenido" />
+
+                                        <Rectangle Width="1" Fill="{DynamicResource BorderDarkBrush}" Margin="2,2,8,2" />
+
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ExpandAll], FallbackValue='↕️ Expandir'}"
+                                                Command="{Binding ExpandAllTreeCommand}"
+                                                Padding="8,4" Margin="0,0,4,0" Background="{DynamicResource BgSurfaceBrush}"
+                                                Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand" />
+                                        <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_CollapseAll], FallbackValue='↕️ Colapsar'}"
+                                                Command="{Binding CollapseAllTreeCommand}"
+                                                Padding="8,4" Background="{DynamicResource BgSurfaceBrush}"
+                                                Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Main Tree & Inspector Split -->
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <!-- Left: Tree View (55%) -->
+                                        <ColumnDefinition Width="3*" MinWidth="240" />
+                                        <!-- Splitter -->
+                                        <ColumnDefinition Width="6" />
+                                        <!-- Right: Node Inspector (45%) -->
+                                        <ColumnDefinition Width="2*" MinWidth="220" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Left: Hierarchical TreeView -->
+                                    <Border Grid.Column="0" Background="{DynamicResource BgDarkBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                            BorderThickness="1" CornerRadius="6" Padding="4">
+                                        <TreeView ItemsSource="{Binding RootTreeNodes}"
+                                                  SelectedItemChanged="TreeView_SelectedItemChanged"
+                                                  Background="Transparent" BorderThickness="0"
+                                                  Foreground="{DynamicResource TextPrimaryBrush}">
+                                            <TreeView.ItemContainerStyle>
+                                                <Style TargetType="{x:Type TreeViewItem}">
+                                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Padding" Value="2,3" />
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                </Style>
+                                            </TreeView.ItemContainerStyle>
+                                            <TreeView.ItemTemplate>
+                                                <HierarchicalDataTemplate DataType="{x:Type vm:SyntheticTreeNodeItem}" ItemsSource="{Binding Children}">
+                                                    <Border CornerRadius="4" Padding="4,2" Margin="0,1" Background="Transparent">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding IconGlyph}" FontSize="13" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                                                       FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                            <Border Grid.Column="2" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="3" Padding="4,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding BadgeText}" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </HierarchicalDataTemplate>
+                                            </TreeView.ItemTemplate>
+                                        </TreeView>
+                                    </Border>
+
+                                    <!-- Splitter -->
+                                    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent" Cursor="SizeWE" />
+
+                                    <!-- Right: Node Inspector -->
+                                    <Border Grid.Column="2" Background="{DynamicResource BgDarkBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                            BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <Grid>
+                                            <!-- Empty State Placeholder when no node is selected -->
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                        Visibility="{Binding SelectedTreeNode, Converter={StaticResource InverseNullToVisibility}}">
+                                                <TextBlock Text="📁" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,8" Opacity="0.5" />
+                                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_InspectorNoSelection], FallbackValue='Selecciona un elemento en el árbol para ver sus propiedades.'}"
+                                                           TextWrapping="Wrap" TextAlignment="Center" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" MaxWidth="220" />
+                                            </StackPanel>
+
+                                            <!-- Property Inspector Form when a node is selected -->
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                                          Visibility="{Binding SelectedTreeNode, Converter={StaticResource NullToVisibility}}">
+                                                <StackPanel>
+                                                    <!-- Header -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                        <TextBlock Text="{Binding SelectedTreeNode.IconGlyph}" FontSize="16" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_InspectorTitle], FallbackValue='Propiedades del Elemento'}"
+                                                                   FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                                    </StackPanel>
+
+                                                    <!-- Name Field -->
+                                                    <TextBlock Text="Nombre del Archivo / Carpeta:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                                    <TextBox Text="{Binding SelectedTreeNode.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             FontSize="12" Padding="6,4" Background="{DynamicResource BgSurfaceBrush}"
+                                                             Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                             BorderThickness="1" Margin="0,0,0,8" />
+
+                                                    <!-- Relative Path (ReadOnly preview) -->
+                                                    <TextBlock Text="Ruta Relativa Calculada:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                                    <TextBox Text="{Binding SelectedTreeNode.RelativePath, Mode=OneWay}" IsReadOnly="True"
+                                                             FontSize="11" Padding="6,4" Background="{DynamicResource BgCardBrush}"
+                                                             Foreground="{DynamicResource TextSecondaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                             BorderThickness="1" Margin="0,0,0,8" />
+
+                                                    <!-- Container info if it is an internal archive entry -->
+                                                    <Border Visibility="{Binding SelectedTreeNode.IsArchiveEntry, Converter={StaticResource BoolToVisibility}}"
+                                                            Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                            BorderThickness="1" CornerRadius="4" Padding="8,5" Margin="0,0,0,8">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="📦 Contenido dentro de: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                            <TextBlock Text="{Binding SelectedTreeNode.Parent.Name}" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                        </StackPanel>
+                                                    </Border>
+
+                                                    <!-- Type Checks (only for top-level filesystem items) -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8"
+                                                                Visibility="{Binding SelectedTreeNode.IsArchiveEntry, Converter={StaticResource InverseBooleanToVisibility}}">
+                                                        <CheckBox IsChecked="{Binding SelectedTreeNode.IsDirectory, Mode=TwoWay}"
+                                                                  Content="¿Es Directorio?" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,12,0" />
+                                                        <CheckBox IsChecked="{Binding SelectedTreeNode.IsArchive, Mode=TwoWay}"
+                                                                  Content="¿Es Comprimido?" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                    </StackPanel>
+
+                                                    <!-- Size in Bytes (only if not directory) -->
+                                                    <StackPanel Visibility="{Binding SelectedTreeNode.IsDirectory, Converter={StaticResource InverseBooleanToVisibility}, FallbackValue=Visible}" Margin="0,0,0,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="Tamaño en Bytes:" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding SelectedTreeNode.SizeFormatted}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentSuccessBrush}" />
+                                                        </Grid>
+                                                        <TextBox Text="{Binding SelectedTreeNode.FileSizeBytes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 FontSize="12" Padding="6,4" Background="{DynamicResource BgSurfaceBrush}"
+                                                                 Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                                 BorderThickness="1" />
+                                                    </StackPanel>
+
+                                                    <!-- Archive Entries (if is archive) -->
+                                                    <StackPanel Visibility="{Binding SelectedTreeNode.IsArchive, Converter={StaticResource BoolToVisibility}}" Margin="0,4,0,8">
+                                                        <Grid Margin="0,0,0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="Contenido Interno Simulado del Paquete:" FontWeight="SemiBold" FontSize="11"
+                                                                       Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
+                                                            <Button Grid.Column="1" Content="➕ Añadir Entrada" Command="{Binding AddArchiveEntryCommand}"
+                                                                    Padding="6,2" FontSize="10" Background="{DynamicResource BgCardBrush}"
+                                                                    Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Cursor="Hand" />
+                                                        </Grid>
+                                                        <ItemsControl ItemsSource="{Binding SelectedTreeNode.SimulatedArchiveEntries}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                                            BorderThickness="1" CornerRadius="4" Padding="6,4" Margin="0,2">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Grid.Column="0" Text="{Binding InnerPath}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                                            <TextBlock Grid.Column="1" Text="{Binding FileSizeBytes, StringFormat='{}{0:N0} B'}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="6,0,6,0" VerticalAlignment="Center" />
+                                                                            <Button Grid.Column="2" Content="✕"
+                                                                                    Command="{Binding DataContext.RemoveArchiveEntryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                    CommandParameter="{Binding}"
+                                                                                    Padding="4,1" FontSize="9" Background="#3A2020" Foreground="#FF8080"
+                                                                                    BorderThickness="0" Cursor="Hand" ToolTip="Eliminar entrada interna" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </TabItem>
 
                         <!-- Tab 2: Fast Tree DSL -->
-                        <TabItem Header="🌳 Árbol / DSL Rápido">
+                        <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_TabDsl], FallbackValue='📝 Árbol / DSL Rápido'}">
                             <Grid Margin="8">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -295,7 +479,7 @@
                         </TabItem>
 
                         <!-- Tab 3: JSON -->
-                        <TabItem Header="📄 JSON Crudo">
+                        <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_TabJson], FallbackValue='📄 JSON Crudo'}">
                             <Grid Margin="8">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*" />

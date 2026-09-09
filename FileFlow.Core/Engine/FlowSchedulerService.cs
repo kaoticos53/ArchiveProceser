@@ -6,7 +6,7 @@ namespace FileFlow.Core.Engine;
 /// Servicio de planificación y ejecución programada de flujos desatendidos (Scheduler).
 /// Soporta ejecución por intervalo en segundos/minutos o disparos periódicos.
 /// </summary>
-public class FlowSchedulerService : IDisposable
+public sealed class FlowSchedulerService : IDisposable
 {
     private readonly Channel<DateTime> _triggerChannel = Channel.CreateUnbounded<DateTime>();
     private CancellationTokenSource? _cts;

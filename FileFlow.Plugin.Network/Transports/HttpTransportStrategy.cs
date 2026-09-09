@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Network.Transports;
 
@@ -12,6 +14,13 @@ namespace FileFlow.Plugin.Network.Transports;
 public sealed class HttpTransportStrategy : INetworkTransportStrategy
 {
     public string ProtocolName => "HTTP";
+
+    private static readonly HttpClient _sharedClient = new(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+        ConnectTimeout = TimeSpan.FromSeconds(30)
+    });
 
     public async Task DownloadAsync(
         NetworkDownloadRequest request,
@@ -33,7 +42,7 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
 
         if (string.IsNullOrWhiteSpace(effectiveFileName))
         {
-            effectiveFileName = $"download_{DateTime.Now:yyyyMMdd_HHmmss}.dat";
+            effectiveFileName = $"download_{DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture)}.dat";
         }
 
         string localFilePath = Path.Combine(request.DestinationDirectory, effectiveFileName);
@@ -48,26 +57,30 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
 
         try
         {
-            if (File.Exists(localFilePath) && !request.Overwrite)
+            var storage = context.GetStorage();
+            if (await storage.FileExistsAsync(localFilePath, cancellationToken) && !request.Overwrite)
             {
                 context.Log($"El archivo destino {localFilePath} ya existe y Overwrite=false.", LogLevel.Warning, localFilePath);
                 await context.EmitAsync("Error", item);
                 return;
             }
 
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(Math.Max(5, request.TimeoutSeconds)) };
-            using var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, request.TimeoutSeconds)));
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, uri);
+            using var response = await _sharedClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            await using (var remoteStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-            await using (var localStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+            await using (var remoteStream = await response.Content.ReadAsStreamAsync(timeoutCts.Token).ConfigureAwait(false))
+            await using (var localStream = await storage.OpenWriteAsync(localFilePath, timeoutCts.Token).ConfigureAwait(false))
             {
-                await remoteStream.CopyToAsync(localStream, cancellationToken);
+                await remoteStream.CopyToAsync(localStream, timeoutCts.Token).ConfigureAwait(false);
             }
 
-            var info = new FileInfo(localFilePath);
-            context.Log($"Descarga HTTP completada: {targetUrl} -> {localFilePath} ({info.Length} bytes)", LogLevel.Information, localFilePath);
-            var result = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, info.Length);
+            long sizeBytes = await storage.GetFileSizeAsync(localFilePath, cancellationToken).ConfigureAwait(false);
+            context.Log($"Descarga HTTP completada: {targetUrl} -> {localFilePath} ({sizeBytes} bytes)", LogLevel.Information, localFilePath);
+            var result = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, sizeBytes);
             await context.EmitAsync("Out", result);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -103,28 +116,24 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
 
         try
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(120));
+
+            using var req = new HttpRequestMessage(httpMethod == "PUT" ? HttpMethod.Put : HttpMethod.Post, uri);
             if (!string.IsNullOrWhiteSpace(request.AuthHeader))
             {
-                http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", request.AuthHeader);
+                req.Headers.TryAddWithoutValidation("Authorization", request.AuthHeader);
             }
 
+            var storage = context.GetStorage();
             using var form = new MultipartFormDataContent();
-            await using var fileStream = File.OpenRead(item.CurrentPath);
+            await using var fileStream = await storage.OpenReadAsync(item.CurrentPath, timeoutCts.Token).ConfigureAwait(false);
             using var streamContent = new StreamContent(fileStream);
             streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
             form.Add(streamContent, "file", Path.GetFileName(item.CurrentPath));
+            req.Content = form;
 
-            HttpResponseMessage response;
-            if (httpMethod == "PUT")
-            {
-                response = await http.PutAsync(uri, form, cancellationToken);
-            }
-            else
-            {
-                response = await http.PostAsync(uri, form, cancellationToken);
-            }
-
+            using var response = await _sharedClient.SendAsync(req, timeoutCts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             context.Log($"Subida HTTP completada: {item.CurrentPath} -> {targetUrl} (Status {response.StatusCode})", LogLevel.Information, item.CurrentPath);

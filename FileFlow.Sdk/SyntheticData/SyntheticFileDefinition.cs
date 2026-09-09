@@ -30,7 +30,7 @@ public sealed class SyntheticFileDefinition
         get
         {
             if (string.IsNullOrWhiteSpace(_relativePath)) return "item.dat";
-            var parts = _relativePath.Split('/');
+            var parts = _relativePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
             return parts.Length > 0 ? parts[^1] : _relativePath;
         }
     }
@@ -43,8 +43,9 @@ public sealed class SyntheticFileDefinition
         get
         {
             if (string.IsNullOrWhiteSpace(_relativePath)) return string.Empty;
-            int lastSlash = _relativePath.LastIndexOf('/');
-            return lastSlash >= 0 ? _relativePath[..lastSlash] : string.Empty;
+            string clean = _relativePath.Trim('/');
+            int lastSlash = clean.LastIndexOf('/');
+            return lastSlash >= 0 ? clean[..lastSlash] : string.Empty;
         }
     }
 
@@ -77,7 +78,7 @@ public sealed class SyntheticFileDefinition
         {
             if (SimulatedArchiveEntries.Count > 0) return true;
             string ext = Path.GetExtension(FileName).ToLowerInvariant();
-            return ext is ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" or ".xz";
+            return ext is ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" or ".xz" or ".cbr" or ".cbz";
         }
     }
 

@@ -27,6 +27,58 @@ public class SyntheticDataSetStorageServiceTests : IDisposable
     }
 
     [Fact]
+    public void BuiltInDataset_ShouldContainDescargasSucias()
+    {
+        // Act
+        var ds = _service.GetDataSetByName("Descargas Sucias (Oficial)");
+
+        // Assert
+        ds.Should().NotBeNull();
+        ds!.IsBuiltIn.Should().BeTrue();
+        ds.Items.Should().NotBeEmpty();
+        ds.Items.Should().Contain(i => i.SimulatedArchiveEntries != null && i.SimulatedArchiveEntries.Count > 0);
+    }
+
+    [Fact]
+    public void BuiltInDataset_ComicArchives_ShouldContainComicPagesAndMetadata()
+    {
+        // Act
+        var ds = _service.GetDataSetByName("Descargas Sucias (Oficial)");
+
+        // Assert
+        ds.Should().NotBeNull();
+        var comicItem = ds!.Items.FirstOrDefault(i => i.FileName.EndsWith(".cbr", StringComparison.OrdinalIgnoreCase) ||
+                                                      i.FileName.EndsWith(".cbz", StringComparison.OrdinalIgnoreCase));
+
+        comicItem.Should().NotBeNull();
+        comicItem!.SimulatedArchiveEntries.Should().NotBeEmpty();
+        comicItem.SimulatedArchiveEntries.Should().Contain(e => e.InnerPath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase));
+        comicItem.SimulatedArchiveEntries.Should().Contain(e => e.InnerPath == "ComicInfo.xml");
+        comicItem.SimulatedArchiveEntries.Should().NotContain(e => e.InnerPath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void BuiltInDataset_MusicAlbums_ShouldContainSongTracksAndCueSheet()
+    {
+        // Act
+        var ds = _service.GetDataSetByName("Descargas Sucias (Oficial)");
+
+        // Assert
+        var musicArchive = ds!.Items.FirstOrDefault(i =>
+            i.IsArchive &&
+            i.Metadata.TryGetValue("MediaType", out var m) &&
+            string.Equals(m?.ToString(), "Music", StringComparison.OrdinalIgnoreCase));
+
+        musicArchive.Should().NotBeNull();
+        musicArchive!.SimulatedArchiveEntries.Should().NotBeEmpty();
+        musicArchive.SimulatedArchiveEntries.Should().Contain(e => e.InnerPath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ||
+                                                                  e.InnerPath.EndsWith(".flac", StringComparison.OrdinalIgnoreCase));
+        musicArchive.SimulatedArchiveEntries.Should().Contain(e => e.InnerPath.EndsWith(".cue", StringComparison.OrdinalIgnoreCase));
+        musicArchive.SimulatedArchiveEntries.Should().Contain(e => e.InnerPath == "cover.jpg");
+        musicArchive.SimulatedArchiveEntries.Should().NotContain(e => e.InnerPath == "ComicInfo.xml");
+    }
+
+    [Fact]
     public void StorageService_ShouldLoadBuiltInDataSets_Initially()
     {
         var all = _service.GetAllDataSets();

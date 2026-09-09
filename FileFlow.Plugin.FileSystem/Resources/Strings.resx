@@ -177,4 +177,15 @@
   <data name="Title_ImportDataSet" xml:space="preserve"><value>Import Synthetic Dataset</value></data>
   <data name="Msg_DataSetImported" xml:space="preserve"><value>Dataset '{0}' imported and saved.</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="DataSetDesigner_TabTree" xml:space="preserve"><value>🌳 File Explorer (Tree)</value></data>
+  <data name="DataSetDesigner_TabDsl" xml:space="preserve"><value>📝 Fast Tree DSL</value></data>
+  <data name="DataSetDesigner_TabJson" xml:space="preserve"><value>📄 Raw JSON</value></data>
+  <data name="DataSetDesigner_AddFile" xml:space="preserve"><value>➕ Add File</value></data>
+  <data name="DataSetDesigner_AddFolder" xml:space="preserve"><value>📁 Add Folder</value></data>
+  <data name="DataSetDesigner_AddArchive" xml:space="preserve"><value>📦 Add Archive</value></data>
+  <data name="DataSetDesigner_RemoveNode" xml:space="preserve"><value>🗑️ Delete</value></data>
+  <data name="DataSetDesigner_ExpandAll" xml:space="preserve"><value>↕️ Expand All</value></data>
+  <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>↕️ Collapse All</value></data>
+  <data name="DataSetDesigner_InspectorTitle" xml:space="preserve"><value>Item Properties</value></data>
+  <data name="DataSetDesigner_InspectorNoSelection" xml:space="preserve"><value>Select a file or folder in the tree to inspect and edit its properties.</value></data>
 </root>

@@ -1,5 +1,6 @@
 using System.IO;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Network.Transports;
 
@@ -43,30 +44,49 @@ public sealed class SmbTransportStrategy : INetworkTransportStrategy
 
         try
         {
-            if (!File.Exists(resolvedUncPath))
+            var storage = context.GetStorage();
+            if (!await storage.FileExistsAsync(resolvedUncPath, cancellationToken).ConfigureAwait(false))
             {
                 context.Log($"El archivo SMB remoto no existe o es inaccesible: '{resolvedUncPath}'", LogLevel.Error, item.CurrentPath);
                 await context.EmitAsync("Error", item);
                 return;
             }
 
-            if (File.Exists(localFilePath) && !request.Overwrite)
+            if (await storage.FileExistsAsync(localFilePath, cancellationToken).ConfigureAwait(false) && !request.Overwrite)
             {
                 context.Log($"El archivo destino {localFilePath} ya existe y Overwrite=false.", LogLevel.Warning, localFilePath);
                 await context.EmitAsync("Error", item);
                 return;
             }
 
-            await Task.Run(() => File.Copy(resolvedUncPath, localFilePath, request.Overwrite), cancellationToken);
+            var copyResult = await storage.CopyAsync(
+                resolvedUncPath,
+                localFilePath,
+                request.Overwrite ? StorageCollisionStrategy.Overwrite : StorageCollisionStrategy.Skip,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!copyResult.IsSuccess)
+            {
+                context.Log($"Error copiando archivo SMB: {copyResult.ErrorMessage}", LogLevel.Error, item.CurrentPath);
+                await context.EmitAsync("Error", item);
+                return;
+            }
 
             if (request.DeleteAfterDownload)
             {
-                try { File.Delete(resolvedUncPath); } catch { }
+                try
+                {
+                    await storage.DeleteAsync(resolvedUncPath, permanent: true, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception delEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SmbTransportStrategy] Remote file cleanup failed: {delEx.Message}");
+                }
             }
 
-            var info = new FileInfo(localFilePath);
-            context.Log($"Copia SMB completada: {resolvedUncPath} -> {localFilePath} ({info.Length} bytes)", LogLevel.Information, localFilePath);
-            var result = CreateDownloadResult(item, localFilePath, resolvedUncPath, resolvedUncPath, info.Length);
+            long sizeBytes = await storage.GetFileSizeAsync(localFilePath, cancellationToken).ConfigureAwait(false);
+            context.Log($"Copia SMB completada: {resolvedUncPath} -> {localFilePath} ({sizeBytes} bytes)", LogLevel.Information, localFilePath);
+            var result = CreateDownloadResult(item, localFilePath, resolvedUncPath, resolvedUncPath, sizeBytes);
             await context.EmitAsync("Out", result);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -104,12 +124,24 @@ public sealed class SmbTransportStrategy : INetworkTransportStrategy
 
         try
         {
-            if (!Directory.Exists(resolvedUncDir))
+            var storage = context.GetStorage();
+            if (!await storage.DirectoryExistsAsync(resolvedUncDir, cancellationToken).ConfigureAwait(false))
             {
-                Directory.CreateDirectory(resolvedUncDir);
+                await storage.CreateDirectoryAsync(resolvedUncDir, cancellationToken).ConfigureAwait(false);
             }
 
-            await Task.Run(() => File.Copy(item.CurrentPath, targetFilePath, true), cancellationToken);
+            var copyResult = await storage.CopyAsync(
+                item.CurrentPath,
+                targetFilePath,
+                StorageCollisionStrategy.Overwrite,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!copyResult.IsSuccess)
+            {
+                context.Log($"Error en subida SMB hacia {targetFilePath}: {copyResult.ErrorMessage}", LogLevel.Error, item.CurrentPath);
+                await context.EmitAsync("Error", item);
+                return;
+            }
 
             context.Log($"Copia SMB completada: {item.CurrentPath} -> {targetFilePath}", LogLevel.Information, item.CurrentPath);
             EnrichUploadMetadata(item, targetFilePath, resolvedUncDir, item.FileSizeBytes);

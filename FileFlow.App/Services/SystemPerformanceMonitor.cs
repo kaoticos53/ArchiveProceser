@@ -64,9 +64,10 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
                 PerformanceUpdated?.Invoke(metrics);
             }
         }
-        catch
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
             // Ignore transient performance counter exceptions
+            System.Diagnostics.Debug.WriteLine($"[SystemPerformanceMonitor] Transient sampling exception: {ex.Message}");
         }
         finally
         {

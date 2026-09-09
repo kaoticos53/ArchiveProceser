@@ -1,5 +1,6 @@
 using System.IO;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Storage;
 using Renci.SshNet;
 
 namespace FileFlow.Plugin.Network.Transports;
@@ -62,31 +63,37 @@ public sealed class SftpTransportStrategy : INetworkTransportStrategy
             }
 
             using var client = new SftpClient(connInfo);
-            await Task.Run(() => client.Connect(), cancellationToken);
+            await Task.Run(() => client.Connect(), cancellationToken).ConfigureAwait(false);
 
             if (!client.Exists(remotePath))
             {
                 context.Log($"Archivo SFTP no existe: {remotePath}", LogLevel.Error, item.CurrentPath);
-                client.Disconnect();
                 await context.EmitAsync("Error", item);
                 return;
             }
 
-            if (!File.Exists(localFilePath) || request.Overwrite)
+            var storage = context.GetStorage();
+            if (!await storage.FileExistsAsync(localFilePath, cancellationToken).ConfigureAwait(false) || request.Overwrite)
             {
-                await using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-                await Task.Run(() => client.DownloadFile(remotePath, fileStream), cancellationToken);
+                await using var fileStream = await storage.OpenWriteAsync(localFilePath, cancellationToken).ConfigureAwait(false);
+                await Task.Run(() => client.DownloadFile(remotePath, fileStream), cancellationToken).ConfigureAwait(false);
             }
 
             if (request.DeleteAfterDownload)
             {
-                try { client.DeleteFile(remotePath); } catch { }
+                try
+                {
+                    client.DeleteFile(remotePath);
+                }
+                catch (Exception delEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SftpTransportStrategy] Delete remote file failed: {delEx.Message}");
+                }
             }
 
-            client.Disconnect();
-            var info = new FileInfo(localFilePath);
-            context.Log($"Descarga SFTP completada: {remotePath} -> {localFilePath} ({info.Length} bytes)", LogLevel.Information, localFilePath);
-            var result = CreateDownloadResult(item, localFilePath, remoteUrl, remotePath, info.Length);
+            long sizeBytes = await storage.GetFileSizeAsync(localFilePath, cancellationToken).ConfigureAwait(false);
+            context.Log($"Descarga SFTP completada: {remotePath} -> {localFilePath} ({sizeBytes} bytes)", LogLevel.Information, localFilePath);
+            var result = CreateDownloadResult(item, localFilePath, remoteUrl, remotePath, sizeBytes);
             await context.EmitAsync("Out", result);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -145,19 +152,19 @@ public sealed class SftpTransportStrategy : INetworkTransportStrategy
             }
 
             using var client = new SftpClient(connInfo);
-            await Task.Run(() => client.Connect(), cancellationToken);
+            await Task.Run(() => client.Connect(), cancellationToken).ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(remoteDir) && remoteDir != "/")
             {
                 EnsureSftpDirectory(client, remoteDir);
             }
 
-            await using (var fileStream = File.OpenRead(item.CurrentPath))
+            var storage = context.GetStorage();
+            await using (var fileStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
             {
-                await Task.Run(() => client.UploadFile(fileStream, remoteFilePath, canOverride: true), cancellationToken);
+                await Task.Run(() => client.UploadFile(fileStream, remoteFilePath, canOverride: true), cancellationToken).ConfigureAwait(false);
             }
 
-            client.Disconnect();
             context.Log($"Subida SFTP completada: {item.CurrentPath} -> {remoteUrl}", LogLevel.Information, item.CurrentPath);
             EnrichUploadMetadata(item, remoteUrl, remoteDir, item.FileSizeBytes);
             await context.EmitAsync("Out", item);

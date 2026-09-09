@@ -24,10 +24,18 @@ public partial class AdvancedRenamerEditorWindow : Window
         {
             InitializeComponent();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            var uri = new System.Uri("/FileFlow.Plugin.FileSystem;component/ui/views/advancedrenamereditorwindow.xaml", System.UriKind.Relative);
-            System.Windows.Application.LoadComponent(this, uri);
+            System.Diagnostics.Debug.WriteLine($"[InitializeComponentSafe] Primary InitializeComponent failed, trying fallback: {ex.Message}");
+            try
+            {
+                var uri = new System.Uri("/FileFlow.Plugin.FileSystem;component/ui/views/advancedrenamereditorwindow.xaml", System.UriKind.Relative);
+                System.Windows.Application.LoadComponent(this, uri);
+            }
+            catch (Exception fallbackEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[InitializeComponentSafe] Fallback LoadComponent failed: {fallbackEx.Message}");
+            }
         }
     }
 

@@ -23,6 +23,788 @@
     }
   },
   {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "[www.downsite.net] The Weeknd - After Hours (Deluxe Edition) - 2020 [FLAC].zip",
+    "FileSizeBytes": 1350000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "The Weeknd",
+      "Audio:Album": "After Hours (Deluxe)",
+      "Audio:Year": 2020
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "Daft.Punk.-.Random_Access_Memories_[320kbps]-[www.torrentsite.org].rar",
+    "FileSizeBytes": 600000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Daft Punk",
+      "Audio:Album": "Random Access Memories",
+      "Audio:Bitrate": "320 kbps"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "The_Beatles_-_Abbey_Road_(Remastered)_2019.zip",
+    "FileSizeBytes": 512000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "The Beatles",
+      "Audio:Album": "Abbey Road (Remastered)"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "01 - Intro.mp3",
+    "FileSizeBytes": 5230000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Various",
+      "Audio:Album": "Sampler Pack"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Batman - The Killing Joke (1988) (Digital) (Zone-Empire) [GetComics.INFO].cbr",
+    "FileSizeBytes": 52428800,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 48
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "OnePiece_v100.cbr",
+    "FileSizeBytes": 75400000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 36
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "[YTS.mx] Interstellar.2014.1080p.BluRay.x264.YIFY.mp4",
+    "FileSizeBytes": 2147483648,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Movie",
+      "VirtualSample": true,
+      "Title": "Interstellar"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "www.torrentz.site - Oppenheimer (2023) [720p].mp4",
+    "FileSizeBytes": 1073741824,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Movie",
+      "VirtualSample": true,
+      "Title": "Oppenheimer"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Series",
+    "FileName": "Stranger.Things.S04E09.Chapter.Nine.1080p.NF.WEB-DL.mkv",
+    "FileSizeBytes": 1872864000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Series",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "Contrato_Cliente_2026_FINAL (1) (sin firma).pdf",
+    "FileSizeBytes": 312000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Document",
+      "VirtualSample": true,
+      "Doc:Author": "Legal Dept"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "setup.autoinstaller.Prog_v2.3.4.7z",
+    "FileSizeBytes": 75400000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "AdobeReader_Setup.part1.rar",
+    "FileSizeBytes": 150000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Radiohead - In Rainbows (2007) [FLAC].zip",
+    "FileSizeBytes": 420000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Radiohead",
+      "Audio:Album": "In Rainbows"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Queen - Greatest Hits [encoded 320].zip",
+    "FileSizeBytes": 360000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Queen",
+      "Audio:Album": "Greatest Hits"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Manga_Scanlation_OneShot.cbz",
+    "FileSizeBytes": 20480000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Miscelanea",
+    "FileName": "Readme.txt",
+    "FileSizeBytes": 2048,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Document",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "[torrent] Album - Artist - 2021 - 320kbps.zip",
+    "FileSizeBytes": 120000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "CamRip.Movie.Title.2024.CAM.xvid.[somegroup].avi",
+    "FileSizeBytes": 900000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Movie", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Series",
+    "FileName": "Show.Name.S01E01.720p.HDTV.x264-GROUP.mkv",
+    "FileSizeBytes": 700000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Series", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "Invoice_2026-09-01_CLIENT_ACME.pdf",
+    "FileSizeBytes": 400000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Document", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "The.Animals - Greatest Hits (1999) [FLAC].rar",
+    "FileSizeBytes": 240000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Music", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "WebComic_2024_issue_12.cbz",
+    "FileSizeBytes": 15400000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Comic", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Miscelanea",
+    "FileName": "duplicate - file (1).mp3",
+    "FileSizeBytes": 5230000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Music", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "Movie.Name.WEBRip.1080p.x264-[group].mp4",
+    "FileSizeBytes": 1400000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Movie", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "PortableTool_v5.2.1.zip",
+    "FileSizeBytes": 35000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Installer", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Various - Live Session (2022) (320kbps).zip",
+    "FileSizeBytes": 98000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Music", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Graphic.Novel.Volume.1.cbz",
+    "FileSizeBytes": 31200000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Comic", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "TrailerPack_2024.zip",
+    "FileSizeBytes": 220000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Video", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Series",
+    "FileName": "Documentary.Series.S01E03.1080p.WEB.mkv",
+    "FileSizeBytes": 680000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Series", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "Manual_Usuario_v1.0_final_v2.docx",
+    "FileSizeBytes": 1024000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Document", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Miscelanea",
+    "FileName": "sample_unicode_ñ_á_é.mp3",
+    "FileSizeBytes": 4300000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Music", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "incomplete_download.part",
+    "FileSizeBytes": 12345,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Partial", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Album (Deluxe) [FLAC]-site.name.rar",
+    "FileSizeBytes": 210000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Music", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "collection_complete.cbz",
+    "FileSizeBytes": 98000000,
+    "IsDirectory": false,
+    "Metadata": { "Category": "Descargas Sucias", "MediaType": "Comic", "VirtualSample": true }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "[Rutracker.org].Pink.Floyd.-.The.Dark.Side.Of.The.Moon.(1973).[FLAC.24-96].rar",
+    "FileSizeBytes": 890000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Pink Floyd",
+      "Audio:Album": "The Dark Side Of The Moon",
+      "Audio:Year": 1973
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Nirvana - Nevermind (30th Anniversary Super Deluxe) [320kbps MP3] [TorrentCounter].zip",
+    "FileSizeBytes": 450000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Nirvana",
+      "Audio:Album": "Nevermind",
+      "Audio:Year": 1991
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Eminem - The Eminem Show (Expanded Edition) (2002) [FLAC] [WEB].7z",
+    "FileSizeBytes": 620000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Eminem",
+      "Audio:Album": "The Eminem Show"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Rosalia.-.Motomami.+.Plus.[2022.Album].[Mp3-320kbps]-[Vagabundo].rar",
+    "FileSizeBytes": 128000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Rosalía",
+      "Audio:Album": "Motomami +"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Iron_Maiden-The_Number_Of_The_Beast_(Remastered_2015)-WEB-FLAC.zip",
+    "FileSizeBytes": 380000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Iron Maiden",
+      "Audio:Album": "The Number Of The Beast"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Watchmen 001 (1986) (Digital) (Zone-Empire) [GetComics.INFO].cbr",
+    "FileSizeBytes": 42000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 32
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Spider-Man - Blue (2002) (Digital-Empire) [cbr-scans.me].cbr",
+    "FileSizeBytes": 68000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 36
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Dragon_Ball_Super_ch085_[MangaStream_HQ].cbz",
+    "FileSizeBytes": 28000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 24
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Saga - Issue 054 (2018) (Digital) (BlackManta-Empire).cbz",
+    "FileSizeBytes": 35000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 28
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Death_Note_Black_Edition_vol01_(Digital)_(Luigi-Scan).cbr",
+    "FileSizeBytes": 115000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 40
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Sandman_01_Preludes_and_Nocturnes_[Vertigo_Digital].cbz",
+    "FileSizeBytes": 89000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 38
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "The.Dark.Knight.2008.IMAX.2160p.UHD.BluRay.x265.HDR.DTS-HD.MA.5.1-TERMINAL.rar",
+    "FileSizeBytes": 6800000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Movie",
+      "VirtualSample": true,
+      "Title": "The Dark Knight"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "Pulp.Fiction.1994.1080p.BrRip.x264.YIFY+[Subtitles_Pack].zip",
+    "FileSizeBytes": 1950000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Movie",
+      "VirtualSample": true,
+      "Title": "Pulp Fiction"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Series",
+    "FileName": "Severance.S01.Complete.1080p.ATVP.WEB-DL.DDP5.1.Atmos.H.264-FLUX.rar",
+    "FileSizeBytes": 7500000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Series",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Series",
+    "FileName": "Chernobyl.Mini-Series.2019.720p.HDTV.x264-SceneGroup.zip",
+    "FileSizeBytes": 2200000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Series",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "AutoCAD_2026_x64_Multilingual_Full_Activated-[m0nkrus].iso",
+    "FileSizeBytes": 4500000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "WinRAR.v7.01.Final.Portable.Multilingual-[CrackingCity].zip",
+    "FileSizeBytes": 15000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "K-Lite_Codec_Pack_Mega_v18.5.0_Setup.exe",
+    "FileSizeBytes": 65000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "VSCodeUserSetup-x64-1.95.0 (1).exe",
+    "FileSizeBytes": 95000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "Declaracion_Renta_2025_Borrador_vFINAL_definitivo(2).pdf",
+    "FileSizeBytes": 850000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Document",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "Ebook_Clean_Architecture_Robert_Martin_2018.epub",
+    "FileSizeBytes": 7800000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Document",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "ISO_27001_Compliance_Checklist_Template_2026.xlsx",
+    "FileSizeBytes": 450000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Document",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "Torrent_Download_Sample_Incomplete.crdownload",
+    "FileSizeBytes": 54200000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Partial",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas",
+    "FileName": "descarga_archivo_temporal_~$temp098.tmp",
+    "FileSizeBytes": 4096,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Partial",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "AC_DC_-_Back_In_Black_[Remastered_Vinyl_Rip]_[FLAC-24bit].rar",
+    "FileSizeBytes": 720000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "AC/DC",
+      "Audio:Album": "Back In Black"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Kingdom_Come_001_to_004_Complete_TPB.cbz",
+    "FileSizeBytes": 145000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 48
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Peliculas",
+    "FileName": "[RARBG.to] Dune.2021.1080p.WEBRip.x264.AAC-[YTS].mp4",
+    "FileSizeBytes": 2200000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Movie",
+      "VirtualSample": true,
+      "Title": "Dune"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Musica",
+    "FileName": "Gorillaz_-_Demon_Days_(Special_Edition)_2005.zip",
+    "FileSizeBytes": 310000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Music",
+      "VirtualSample": true,
+      "Audio:Artist": "Gorillaz",
+      "Audio:Album": "Demon Days"
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Comics",
+    "FileName": "Civil_War_001_(2006)_(Digital)_(Zone-Empire).cbr",
+    "FileSizeBytes": 51000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Comic",
+      "VirtualSample": true,
+      "Doc:PageCount": 32
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Documentos",
+    "FileName": "Curriculum_Vitae_Ingeniero_Software_2026_ES.pdf",
+    "FileSizeBytes": 120000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Document",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Software",
+    "FileName": "DBeaver_Community_v24.1.0_x86_64.zip",
+    "FileSizeBytes": 115000000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Installer",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Miscelanea",
+    "FileName": "IMG_WA0023_familia_comida (1).jpeg",
+    "FileSizeBytes": 2100000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Photo",
+      "VirtualSample": true
+    }
+  },
+  {
+    "Category": "Descargas Sucias",
+    "Directory": "C:\\Muestras\\Descargas\\Miscelanea",
+    "FileName": "Backup_Config_Nginx_Apache_20260301.tar.gz",
+    "FileSizeBytes": 850000,
+    "IsDirectory": false,
+    "Metadata": {
+      "Category": "Descargas Sucias",
+      "MediaType": "Archive",
+      "VirtualSample": true
+    }
+  },
+  {
     "Category": "Películas",
     "Directory": "C:\\Muestras\\Peliculas",
     "FileName": "Dune.Part.Two.2024.2160p.UHD.HDR.DV.TrueHD.7.1.Atmos-SWTYBLZ_[rarbg.to].mkv",

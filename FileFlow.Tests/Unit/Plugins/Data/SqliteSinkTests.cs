@@ -63,6 +63,35 @@ public class SqliteSinkTests : IDisposable
         reader.GetString(4).Should().Contain("Departamento Legal");
     }
 
+    [Theory]
+    [InlineData("AuditTrail; DROP TABLE Users; --")]
+    [InlineData("Table]WithBracket")]
+    [InlineData("Table'WithQuote")]
+    [InlineData("123_StartsWithDigit")]
+    [InlineData("Table-With-Hyphen")]
+    public async Task SqliteDatabaseSinkNode_RejectsInvalidTableName_EmitsError(string maliciousTableName)
+    {
+        // Arrange
+        string dbPath = Path.Combine(_tempDir, "security_test.db");
+        var node = new SqliteDatabaseSinkNode();
+        node.Parameters["DatabasePath"] = dbPath;
+        node.Parameters["TableName"] = maliciousTableName;
+
+        bool errorEmitted = false;
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.Setup(c => c.EmitAsync("Error", It.IsAny<FileItemContext>()))
+            .Callback(() => errorEmitted = true)
+            .Returns(Task.CompletedTask);
+
+        var item = new FileItemContext(Path.Combine(_tempDir, "test.txt"));
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        errorEmitted.Should().BeTrue();
+    }
+
     public void Dispose()
     {
         try

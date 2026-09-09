@@ -2,6 +2,52 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-09] - FASE 8: Transformación del Diseñador de Datos Sintéticos a Explorador de Archivos en Árbol Jerárquico (Hierarchical TreeView Explorer)
+
+### 🎯 Objetivos y Alcance
+1. **Modelo y ViewModel de Árbol Jerárquico Reactivo**:
+   - **`SyntheticTreeNodeItem.cs` (`FileFlow.Plugin.FileSystem/UI/ViewModels/`)**: Creado nuevo nodo observable con propiedades de jerarquía (`Children`, `Parent`, `IsExpanded`, `IsSelected`), metadata tipada, entradas de archivo comprimido simulado (`SimulatedArchiveEntries`), cálculo reactivo de tamaño recursivo y conteo de elementos (`BadgeText`, `SizeFormatted`), y asignación dinámica de iconos por extensión/tipo de archivo (`IconGlyph`: 🎬 video, 🎵 audio, 🖼️ imagen, 📄 documento, 📊 datos, 📦 comprimido, 💾 binario, 📜 script, 📁 directorio).
+   - **`SyntheticDataSetDesignerViewModel.cs`**:
+     - Implementado algoritmo bidireccional `BuildTreeFromItems()` para construir árboles anidados a partir de rutas separadas por barras (`/`) y `SyncItemsFromTree()` para sincronizar el árbol hacia `EditableItems` conservando directorios vacíos, metadatos y entradas simuladas de archivos ZIP.
+     - Añadidos comandos de manipulación de árbol contextual: `AddFileToTreeCommand`, `AddFolderToTreeCommand`, `AddArchiveToTreeCommand`, `RemoveTreeNodeCommand`, `ExpandAllTreeCommand` y `CollapseAllTreeCommand`.
+2. **Interfaz de Usuario Visual Estilo Explorador de Archivos en XAML (`SyntheticDataSetDesignerWindow.xaml`)**:
+   - Reemplazada la antigua grilla tabular plana por una vista dual con **`TreeView` jerárquico** a la izquierda y un **Panel de Inspección y Edición de Propiedades** a la derecha.
+   - Plantilla `HierarchicalDataTemplate` con badges de peso/elementos, iconografía semántica y expansión/colapso con doble clic o botones de barra de herramientas.
+   - Sincronización transparente con las pestañas de **DSL de Árbol Rápido** y **JSON Crudo**.
+   - Creados convertidores `NullToVisibilityConverter`, `InverseNullToVisibilityConverter` e `InverseBooleanToVisibilityConverter` en `FileFlow.Plugin.FileSystem.UI.Converters`.
+3. **Internacionalización y Recursos Multilingües (i18n)**:
+   - Añadidas claves localizadas en `FileFlow.Plugin.FileSystem/Resources/Strings.resx` y `Strings.es.resx` para todas las acciones, pestañas y mensajes del nuevo explorador de árbol.
+4. **Pruebas y Validación**:
+   - Creadas pruebas unitarias exhaustivas en `FileFlow.Tests/Unit/Plugins/SyntheticDataSetDesignerViewModelTests.cs` cubriendo construcción de árbol anidado, inserción contextual en carpetas seleccionadas, eliminación de subárboles completos, expansión/colapso recursivo y sincronización de DSL/JSON.
+   - **652 / 652 pruebas unitarias e integración superadas al 100% (0 fallos, 0 omitidas)** (aumento neto de +6 tests).
+   - Compilación estricta con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-09] - FASE 7: Auditoría QA Integral y Corrección Sistemática de 21 Hallazgos
+
+### 🎯 Objetivos y Alcance
+1. **Seguridad y Validación (Críticos)**:
+   - **`CRIT-01` & `CRIT-03` (`SqliteDatabaseSinkNode`)**: Sanitización estricta por expresión regular (`^[a-zA-Z_]\w{0,127}$`) del parámetro `TableName` para prevenir inyección SQL. Reemplazado `HashSet<string>` estático por `ConcurrentDictionary<string, bool>` para eliminar data race en el patrón double-check locking.
+   - **`CRIT-02` & `LOW-01` (`RoslynCSharpEngine`)**: Añadido timeout de seguridad (60s) enlazado al `CancellationToken` para ejecución de scripts C# y política de expulsión LRU con capacidad máxima de 256 scripts en caché para evitar consumo desmedido de memoria.
+2. **Concurrencia, Recursos y Red (Altos)**:
+   - **`HIGH-01` (`PdfMergeNode`)**: Sobrecarga síncrona `MergePdfFiles` marcada con `[Obsolete(..., true)]` (error de compilación) lanzando `NotSupportedException`, erradicando el riesgo de deadlock por sync-over-async.
+   - **`HIGH-02` & `HIGH-05` & `LOW-04` (`HttpTransportStrategy`, `WebDavTransportStrategy`, `SmbTransportStrategy`, `SftpTransportStrategy`)**: Refactorizado `HttpClient` a singleton estático compartido con `SocketsHttpHandler` (pooling de 15m, idle 2m, connect 30s) evitando agotamiento de sockets (socket exhaustion). Migradas todas las operaciones de archivos y verificación a `IStorageService` (`context.GetStorage()`). Sanitizado el timestamp fallback con `CultureInfo.InvariantCulture`.
+   - **`HIGH-03` (`AdvancedRenamerEditorViewModel`)**: Reemplazado el bloqueo sobre diccionario público `lock(_node.Parameters)` por un objeto `Lock` privado y dedicado (`_parameterSyncLock`).
+   - **`HIGH-04` (`FolderSourceNode`)**: Añadido `.ContinueWith` con control de excepciones y registro de diagnóstico en el fallback en background (`Task.Run`) para pre-conteo de archivos.
+   - **`HIGH-06` (`AiModelManagerViewModel`, `LogViewModel`)**: Reemplazado `Dispatcher.Invoke` síncrono bloqueante por `Dispatcher.InvokeAsync` en callbacks de progreso y flushing de logs en vivo.
+3. **Resiliencia, Diálogos y Robustez (Medios y Bajos)**:
+   - **`MED-01` (`AdvancedRenamerEditorWindow`, `SyntheticDataSetDesignerWindow`)**: Añadido registro diagnóstico de excepciones en `InitializeComponentSafe` para fallbacks de carga XAML.
+   - **`MED-03` (`SystemPerformanceMonitor`)**: Filtradas excepciones críticas (`OutOfMemoryException`, `StackOverflowException`) en el handler de temporizador `OnTimerTick`.
+   - **`MED-06` & `LOW-03` (`AiModelDownloader`)**: Erradicado el busy-wait con bucle de polling mediante compartición concurrente de tareas con `ConcurrentDictionary<string, Task<string?>>`. Añadido logging de excepciones en bloques `catch` de limpieza temporal y reemplazo atómico de modelos.
+   - **`LOW-02` (`SftpTransportStrategy`)**: Eliminadas llamadas redundantes a `client.Disconnect()` previas al `Dispose` del `using`.
+   - **`LOW-05` (`FlowSchedulerService`)**: Sellada la clase (`public sealed class FlowSchedulerService : IDisposable`).
+4. **Métricas de Pruebas y Compilación**:
+   - **646 / 646 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (aumento neto de +5 pruebas de validación de seguridad e inyección SQL).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` mantenida en **0 advertencias y 0 errores**.
+
+---
+
 ## [2026-09-08] - FASE 6: Erradicación de Sync-Over-Async, Generalización de IDialogService a Sdk y Clean MVVM en Diálogos
 
 ### 🎯 Objetivos y Alcance

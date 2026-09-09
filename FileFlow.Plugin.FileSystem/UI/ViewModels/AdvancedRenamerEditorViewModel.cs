@@ -17,6 +17,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     private readonly RenamerLivePreviewService _previewService = new();
     private readonly IFlowNode _node;
     private readonly IDialogService _dialogService;
+    private readonly Lock _parameterSyncLock = new();
 
     [ObservableProperty]
     private string _pipelineName = "Pipeline Predeterminado";
@@ -406,7 +407,8 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
 
         string serializedSteps = RenamerPresetService.SerializeSteps(Steps.ToList());
 
-        lock (_node.Parameters)
+        // HIGH-03: Lock privado dedicado en lugar de lock sobre colección pública
+        lock (_parameterSyncLock)
         {
             _node.Parameters["PipelineName"] = PipelineName;
             _node.Parameters["CollisionStrategy"] = CollisionStrategy;

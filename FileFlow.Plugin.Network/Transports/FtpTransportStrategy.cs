@@ -66,7 +66,14 @@ public sealed class FtpTransportStrategy : INetworkTransportStrategy
             {
                 if (request.DeleteAfterDownload)
                 {
-                    try { await client.DeleteFile(remotePath, cancellationToken); } catch { }
+                    try
+                    {
+                        await client.DeleteFile(remotePath, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception delEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[FtpTransportStrategy] Delete remote file failed: {delEx.Message}");
+                    }
                 }
                 await client.Disconnect(cancellationToken);
 

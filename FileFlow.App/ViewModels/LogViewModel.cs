@@ -168,7 +168,7 @@ public partial class LogViewModel : ObservableObject
 
         if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
         {
-            Application.Current.Dispatcher.Invoke(FlushPendingLogs);
+            _ = Application.Current.Dispatcher.InvokeAsync(FlushPendingLogs);
             return;
         }
 

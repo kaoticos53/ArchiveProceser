@@ -174,11 +174,7 @@ public static class SemanticEmbeddingEngine
                 long[] tokens = text.Select(c => (long)c).Take(128).ToArray();
                 if (tokens.Length == 0) tokens = [0L];
 
-                var inputTensor = new DenseTensor<long>(tokens, [1, tokens.Length]);
-                var inputs = new List<NamedOnnxValue>
-                {
-                    NamedOnnxValue.CreateFromTensor(session.InputNames[0], inputTensor)
-                };
+                var inputs = BuildTextInputs(session, tokens);
 
                 lock (_inferenceLock)
                 {
@@ -194,6 +190,69 @@ public static class SemanticEmbeddingEngine
         }
 
         return GenerateLexicalEmbedding(text);
+    }
+
+    private static List<NamedOnnxValue> BuildTextInputs(InferenceSession session, long[] tokens)
+    {
+        int seqLen = Math.Max(1, tokens.Length);
+        long[] normalizedTokens = tokens.Length == seqLen ? tokens : tokens.Take(seqLen).ToArray();
+        var attentionMask = Enumerable.Repeat(1L, seqLen).ToArray();
+        var tokenTypeIds = new long[seqLen];
+
+        string primaryInputName = session.InputNames.FirstOrDefault() ?? "input_ids";
+        var primaryInputTensor = new DenseTensor<long>(normalizedTokens, [1, seqLen]);
+        var inputs = new List<NamedOnnxValue>
+        {
+            NamedOnnxValue.CreateFromTensor(primaryInputName, primaryInputTensor)
+        };
+
+        foreach (var kv in session.InputMetadata)
+        {
+            string name = kv.Key;
+            if (name.Equals(primaryInputName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (name.Contains(".weight", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains(".bias", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("running_mean", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("running_var", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("num_batches_tracked", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (kv.Value.ElementType == typeof(long))
+            {
+                long[] values = name.Contains("attention_mask", StringComparison.OrdinalIgnoreCase)
+                    ? attentionMask
+                    : name.Contains("token_type", StringComparison.OrdinalIgnoreCase)
+                        ? tokenTypeIds
+                        : normalizedTokens;
+
+                var tensor = new DenseTensor<long>(values, [1, seqLen]);
+                inputs.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
+                continue;
+            }
+
+            if (kv.Value.ElementType == typeof(float) &&
+                (name.Contains("pixel", StringComparison.OrdinalIgnoreCase) ||
+                 name.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+                 name.Contains("vision", StringComparison.OrdinalIgnoreCase)))
+            {
+                int[] dims = kv.Value.Dimensions;
+                int batch = dims.Length > 0 && dims[0] > 0 ? dims[0] : 1;
+                int channels = dims.Length > 1 && dims[1] > 0 ? dims[1] : 3;
+                int height = dims.Length > 2 && dims[2] > 0 ? dims[2] : 224;
+                int width = dims.Length > 3 && dims[3] > 0 ? dims[3] : 224;
+
+                var pixelTensor = new DenseTensor<float>([batch, channels, height, width]);
+                inputs.Add(NamedOnnxValue.CreateFromTensor(name, pixelTensor));
+            }
+        }
+
+        return inputs;
     }
 
     private static float[] GetImageEmbedding(string? modelPath, string imagePath)

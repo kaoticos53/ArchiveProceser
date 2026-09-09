@@ -32,7 +32,13 @@ public sealed class RoslynCSharpEngine : IScriptExecutionEngine
     private static readonly Lazy<RoslynCSharpEngine> _instance = new(() => new RoslynCSharpEngine());
     public static RoslynCSharpEngine Instance => _instance.Value;
 
-    private readonly ConcurrentDictionary<string, ScriptRunner<object>> _cachedRunners = new();
+    private readonly ConcurrentDictionary<string, (ScriptRunner<object> Runner, long LastUsedTicks)> _cachedRunners = new();
+    private const int MaxCachedScripts = 256;
+
+    /// <summary>
+    /// Tiempo máximo de ejecución de un script de usuario (seguridad). Configurable si se desea.
+    /// </summary>
+    private static readonly TimeSpan ScriptExecutionTimeout = TimeSpan.FromSeconds(60);
 
     private static readonly ScriptOptions DefaultScriptOptions = ScriptOptions.Default
         .WithImports(
@@ -67,11 +73,23 @@ public sealed class RoslynCSharpEngine : IScriptExecutionEngine
 
         try
         {
-            if (!_cachedRunners.TryGetValue(hash, out var runner))
+            if (!_cachedRunners.TryGetValue(hash, out var entry))
             {
                 var script = CSharpScript.Create<object>(code, DefaultScriptOptions, typeof(RoslynScriptGlobals));
-                runner = script.CreateDelegate(cancellationToken);
-                _cachedRunners[hash] = runner;
+                var runner = script.CreateDelegate(cancellationToken);
+                entry = (runner, Environment.TickCount64);
+                _cachedRunners[hash] = entry;
+
+                // LOW-01: Evicción LRU si se supera el límite de caché
+                if (_cachedRunners.Count > MaxCachedScripts)
+                {
+                    var oldest = _cachedRunners.OrderBy(kv => kv.Value.LastUsedTicks).First();
+                    _cachedRunners.TryRemove(oldest.Key, out _);
+                }
+            }
+            else
+            {
+                _cachedRunners[hash] = entry with { LastUsedTicks = Environment.TickCount64 };
             }
 
             var globals = new RoslynScriptGlobals
@@ -82,7 +100,19 @@ public sealed class RoslynCSharpEngine : IScriptExecutionEngine
                 CancellationToken = cancellationToken
             };
 
-            await runner(globals, cancellationToken).ConfigureAwait(false);
+            // CRIT-02: Timeout de seguridad para evitar scripts infinitos o maliciosos
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(ScriptExecutionTimeout);
+
+            try
+            {
+                await entry.Runner(globals, timeoutCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                context.Log($"[Roslyn C#] El script excedió el tiempo límite de ejecución ({ScriptExecutionTimeout.TotalSeconds}s).", LogLevel.Error);
+                throw new TimeoutException($"El script C# excedió el tiempo máximo de ejecución de {ScriptExecutionTimeout.TotalSeconds} segundos.");
+            }
         }
         catch (CompilationErrorException ex)
         {

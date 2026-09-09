@@ -20,10 +20,26 @@ public partial class SyntheticDataSetDesignerWindow : Window
         {
             InitializeComponent();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            var uri = new Uri("/FileFlow.Plugin.FileSystem;component/ui/views/syntheticdatasetdesignerwindow.xaml", UriKind.Relative);
-            Application.LoadComponent(this, uri);
+            System.Diagnostics.Debug.WriteLine($"[SyntheticDataSetDesignerWindow] Primary InitializeComponent failed, trying fallback: {ex.Message}");
+            try
+            {
+                var uri = new Uri("/FileFlow.Plugin.FileSystem;component/ui/views/syntheticdatasetdesignerwindow.xaml", UriKind.Relative);
+                Application.LoadComponent(this, uri);
+            }
+            catch (Exception fallbackEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SyntheticDataSetDesignerWindow] Fallback LoadComponent failed: {fallbackEx.Message}");
+            }
+        }
+    }
+
+    private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (DataContext is SyntheticDataSetDesignerViewModel vm && e.NewValue is SyntheticTreeNodeItem node)
+        {
+            vm.SelectedTreeNode = node;
         }
     }
 }

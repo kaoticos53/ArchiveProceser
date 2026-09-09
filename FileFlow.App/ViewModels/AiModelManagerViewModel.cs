@@ -242,7 +242,7 @@ public partial class AiModelManagerViewModel : ObservableObject
             }
 
             if (Application.Current?.Dispatcher != null)
-                Application.Current.Dispatcher.Invoke(UpdateProgress);
+                _ = Application.Current.Dispatcher.InvokeAsync(UpdateProgress);
             else
                 UpdateProgress();
         });
@@ -266,7 +266,7 @@ public partial class AiModelManagerViewModel : ObservableObject
                     }
 
                     if (Application.Current?.Dispatcher != null)
-                        Application.Current.Dispatcher.Invoke(UpdateText);
+                        _ = Application.Current.Dispatcher.InvokeAsync(UpdateText);
                     else
                         UpdateText();
                 },

@@ -175,9 +175,9 @@ public sealed class PdfMergeNode : IFlowNode
     }
 
     /// <summary>
-    /// Combina una lista explícita de rutas PDF en un archivo destino (sobrecarga síncrona / fallback).
+    /// Sobrecarga síncrona eliminada. Use MergePdfFilesAsync en su lugar.
     /// </summary>
-    [Obsolete("Utilice MergePdfFilesAsync en su lugar para evitar llamadas síncronas bloqueantes.", false)]
+    [Obsolete("Utilice MergePdfFilesAsync. Este método ha sido eliminado por riesgo de deadlock (sync-over-async).", true)]
     public static string MergePdfFiles(IEnumerable<string> pdfPaths, string destinationPath) =>
-        MergePdfFilesAsync(pdfPaths, destinationPath, NullStorageService.Instance).GetAwaiter().GetResult();
+        throw new NotSupportedException("Use MergePdfFilesAsync en su lugar.");
 }

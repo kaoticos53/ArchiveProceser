@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Network.Transports;
 
@@ -12,6 +13,13 @@ namespace FileFlow.Plugin.Network.Transports;
 public sealed class WebDavTransportStrategy : INetworkTransportStrategy
 {
     public string ProtocolName => "WEBDAV";
+
+    private static readonly HttpClient _sharedClient = new(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+        ConnectTimeout = TimeSpan.FromSeconds(30)
+    });
 
     public async Task DownloadAsync(
         NetworkDownloadRequest request,
@@ -48,20 +56,31 @@ public sealed class WebDavTransportStrategy : INetworkTransportStrategy
 
         try
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+            var storage = context.GetStorage();
+            if (await storage.FileExistsAsync(localFilePath, cancellationToken) && !request.Overwrite)
+            {
+                context.Log($"El archivo destino {localFilePath} ya existe y Overwrite=false.", LogLevel.Warning, localFilePath);
+                await context.EmitAsync("Error", item);
+                return;
+            }
+
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, request.TimeoutSeconds > 0 ? request.TimeoutSeconds : 120)));
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, uri);
             if (!string.IsNullOrEmpty(user))
             {
                 var authBytes = Encoding.ASCII.GetBytes($"{user}:{pass}");
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+                req.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
             }
 
-            using var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await _sharedClient.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            await using (var remoteStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-            await using (var localStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+            await using (var remoteStream = await response.Content.ReadAsStreamAsync(timeoutCts.Token).ConfigureAwait(false))
+            await using (var localStream = await storage.OpenWriteAsync(localFilePath, timeoutCts.Token).ConfigureAwait(false))
             {
-                await remoteStream.CopyToAsync(localStream, cancellationToken);
+                await remoteStream.CopyToAsync(localStream, timeoutCts.Token).ConfigureAwait(false);
             }
 
             if (request.DeleteAfterDownload)
@@ -69,14 +88,22 @@ public sealed class WebDavTransportStrategy : INetworkTransportStrategy
                 try
                 {
                     using var deleteReq = new HttpRequestMessage(HttpMethod.Delete, uri);
-                    await http.SendAsync(deleteReq, cancellationToken);
+                    if (!string.IsNullOrEmpty(user))
+                    {
+                        var authBytes = Encoding.ASCII.GetBytes($"{user}:{pass}");
+                        deleteReq.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+                    }
+                    using var delResp = await _sharedClient.SendAsync(deleteReq, cancellationToken).ConfigureAwait(false);
                 }
-                catch { }
+                catch (Exception delEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[WebDavTransportStrategy] Delete after download failed: {delEx.Message}");
+                }
             }
 
-            var info = new FileInfo(localFilePath);
-            context.Log($"Descarga WebDAV completada: {targetUrl} -> {localFilePath} ({info.Length} bytes)", LogLevel.Information, localFilePath);
-            var result = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, info.Length);
+            long sizeBytes = await storage.GetFileSizeAsync(localFilePath, cancellationToken).ConfigureAwait(false);
+            context.Log($"Descarga WebDAV completada: {targetUrl} -> {localFilePath} ({sizeBytes} bytes)", LogLevel.Information, localFilePath);
+            var result = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, sizeBytes);
             await context.EmitAsync("Out", result);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -116,18 +143,22 @@ public sealed class WebDavTransportStrategy : INetworkTransportStrategy
 
         try
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
-            if (!string.IsNullOrEmpty(user))
-            {
-                var authBytes = Encoding.ASCII.GetBytes($"{user}:{pass}");
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
-            }
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(120));
 
-            await using var fileStream = File.OpenRead(item.CurrentPath);
+            var storage = context.GetStorage();
+            await using var fileStream = await storage.OpenReadAsync(item.CurrentPath, timeoutCts.Token).ConfigureAwait(false);
             using var content = new StreamContent(fileStream);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
 
-            var response = await http.PutAsync(uri, content, cancellationToken);
+            using var req = new HttpRequestMessage(HttpMethod.Put, uri) { Content = content };
+            if (!string.IsNullOrEmpty(user))
+            {
+                var authBytes = Encoding.ASCII.GetBytes($"{user}:{pass}");
+                req.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+            }
+
+            using var response = await _sharedClient.SendAsync(req, timeoutCts.Token).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             context.Log($"Subida WebDAV completada: {item.CurrentPath} -> {targetFileUrl}", LogLevel.Information, item.CurrentPath);

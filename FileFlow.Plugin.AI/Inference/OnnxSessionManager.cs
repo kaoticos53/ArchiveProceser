@@ -139,7 +139,8 @@ public static class OnnxSessionManager
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
             ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
             InterOpNumThreads = 1,
-            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4)
+            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4),
+            LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR
         };
         dmlOptions.AppendExecutionProvider_DML(0);
         return new InferenceSession(modelPath, dmlOptions);
@@ -155,7 +156,8 @@ public static class OnnxSessionManager
             GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
             ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
             InterOpNumThreads = 1,
-            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4)
+            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4),
+            LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR
         };
         return new InferenceSession(modelPath, cpuOptions);
     }

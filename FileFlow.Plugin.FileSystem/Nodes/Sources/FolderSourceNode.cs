@@ -148,11 +148,17 @@ public sealed class FolderSourceNode : IFlowNode
                         context.SetTotalExpectedItems(totalFound);
                     }
                 }
-                catch
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    // Fallback silencioso
+                    System.Diagnostics.Debug.WriteLine($"[FolderSourceNode] Fallback file count warning: {ex.Message}");
                 }
-            }, cancellationToken);
+            }, cancellationToken).ContinueWith(t =>
+            {
+                if (t.IsFaulted)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FolderSourceNode] Fallback count unobserved fault: {t.Exception?.InnerException?.Message}");
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         // Bounded channel with 1000 items capacity to provide backpressure control

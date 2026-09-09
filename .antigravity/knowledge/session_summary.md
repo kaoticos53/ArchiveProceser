@@ -8,9 +8,42 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **641 / 641 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **652 / 652 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
-  --53. **FASE 6: Erradicación de Sync-Over-Async, Generalización de IDialogService a Sdk y Clean MVVM en Diálogos**:
+  --55. **FASE 8: Transformación del Diseñador de Datos Sintéticos a Explorador de Archivos en Árbol Jerárquico (Hierarchical TreeView Explorer)**:
+      - **Objetivo**: Rediseñar la vista principal del Diseñador de Conjuntos de Datos Sintéticos (`SyntheticDataSetDesignerWindow`) para que los archivos y carpetas se visualicen como un árbol jerárquico anidado interactivo (estilo explorador de archivos de sistema operativo), reemplazando la vista de lista plana y permitiendo agregar, organizar, inspeccionar y manipular subcarpetas, archivos y paquetes comprimidos simulados.
+      - **Ajustes Realizados**:
+        1. *Modelo Jerárquico Observable y ViewModel (`SyntheticTreeNodeItem`, `SyntheticDataSetDesignerViewModel`)*:
+           - Creado `SyntheticTreeNodeItem.cs` con propiedades `Children`, `Parent`, `IsExpanded`, `IsSelected`, iconografía contextual `IconGlyph` (🎬, 🎵, 🖼️, 📄, 📊, 📦, 💾, 📜, 📁), badges de peso recursivo y conteo de archivos.
+           - Implementados métodos bidireccionales `BuildTreeFromItems()` y `SyncItemsFromTree()` con soporte completo para directorios vacíos, metadata tipada y entradas de archivos ZIP simulados.
+           - Añadidos comandos de manipulación de árbol: `AddFileToTreeCommand`, `AddFolderToTreeCommand`, `AddArchiveToTreeCommand`, `RemoveTreeNodeCommand`, `ExpandAllTreeCommand` y `CollapseAllTreeCommand`.
+        2. *Interfaz de Usuario WPF (`SyntheticDataSetDesignerWindow.xaml`)*:
+           - Diseñada interfaz en 2 columnas: `TreeView` jerárquico con `HierarchicalDataTemplate` a la izquierda y Panel de Inspección y Edición de propiedades a la derecha.
+           - Creado `InverseBooleanToVisibilityConverter` en `FileSystemUiConverters.cs`.
+           - Sincronización transparente con las pestañas de DSL de Árbol Rápido y JSON Crudo.
+        3. *Localización i18n y Pruebas Unitarias*:
+           - Actualizados `Strings.resx` y `Strings.es.resx` con claves para pestañas, comandos e inspectores.
+           - Creadas pruebas unitarias en `SyntheticDataSetDesignerViewModelTests.cs` evaluando anidamiento, inserción contextual y sincronización.
+      - **Validación**: Compilación estricta con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` en 0 advertencias / 0 errores, y `dotnet test` $\rightarrow$ **652 / 652 pruebas superadas al 100% (0 errores, 0 omitidas)**.
+  --54. **FASE 7: Auditoría QA Integral y Corrección Sistemática de 21 Hallazgos (Críticos, Altos, Medios y Bajos)**:
+      - **Objetivo**: Ejecutar un análisis y depuración exhaustiva en todo el repositorio (SDK, Core, 11 Plugins, App, Tests) cubriendo errores lógicos/runtime, seguridad y validación, concurrencia, y fugas de recursos.
+      - **Ajustes Realizados**:
+        1. *Seguridad y Validación (Críticos)*:
+           - `CRIT-01` & `CRIT-03` (`SqliteDatabaseSinkNode`): Sanitización estricta por regex (`^[a-zA-Z_]\w{0,127}$`) del parámetro `TableName` previniendo inyecciones SQL. Reemplazado `HashSet<string>` estático por `ConcurrentDictionary<string, bool>` para eliminar data race en double-check locking.
+           - `CRIT-02` & `LOW-01` (`RoslynCSharpEngine`): Añadido timeout de seguridad (60s) enlazado al `CancellationToken` para ejecución de scripts y política de expulsión LRU con capacidad máxima de 256 scripts en caché.
+        2. *Concurrencia, Recursos y Red (Altos)*:
+           - `HIGH-01` (`PdfMergeNode`): Sobrecarga síncrona `MergePdfFiles` marcada con `[Obsolete(..., true)]` lanzando `NotSupportedException`, erradicando el riesgo de deadlock por sync-over-async.
+           - `HIGH-02`, `HIGH-05` & `LOW-04` (`HttpTransportStrategy`, `WebDavTransportStrategy`, `SmbTransportStrategy`, `SftpTransportStrategy`): Refactorizado `HttpClient` a singleton estático compartido con `SocketsHttpHandler` (pooling de 15m, idle 2m, connect 30s) evitando agotamiento de sockets (socket exhaustion). Migradas todas las operaciones de archivos y verificación a `IStorageService` (`context.GetStorage()`). Sanitizado el timestamp fallback con `CultureInfo.InvariantCulture`.
+           - `HIGH-03` (`AdvancedRenamerEditorViewModel`): Reemplazado el bloqueo sobre diccionario público `lock(_node.Parameters)` por un objeto `Lock` privado y dedicado (`_parameterSyncLock`).
+           - `HIGH-04` (`FolderSourceNode`): Añadido `.ContinueWith` con control de excepciones y registro de diagnóstico en el fallback en background (`Task.Run`) para pre-conteo de archivos.
+           - `HIGH-06` (`AiModelManagerViewModel`, `LogViewModel`): Reemplazado `Dispatcher.Invoke` síncrono bloqueante por `Dispatcher.InvokeAsync` en callbacks de progreso y flushing de logs en vivo.
+        3. *Resiliencia, Diálogos y Robustez (Medios y Bajos)*:
+           - `MED-01` (`AdvancedRenamerEditorWindow`, `SyntheticDataSetDesignerWindow`): Añadido registro diagnóstico de excepciones en `InitializeComponentSafe` para fallbacks de carga XAML.
+           - `MED-03` (`SystemPerformanceMonitor`): Filtradas excepciones críticas (`OutOfMemoryException`, `StackOverflowException`) en el handler de temporizador `OnTimerTick`.
+           - `MED-06` & `LOW-03` (`AiModelDownloader`): Erradicado el busy-wait con bucle de polling mediante compartición concurrente de tareas con `ConcurrentDictionary<string, Task<string?>>`. Añadido logging de excepciones en bloques `catch` de limpieza temporal y reemplazo atómico de modelos.
+           - `LOW-02` (`SftpTransportStrategy`): Eliminadas llamadas redundantes a `client.Disconnect()` previas al `Dispose` del `using`.
+           - `LOW-05` (`FlowSchedulerService`): Sellada la clase (`public sealed class FlowSchedulerService : IDisposable`).
+      - **Validación**: Compilación estricta con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` en 0 advertencias / 0 errores, y `dotnet test` $\rightarrow$ **646 / 646 pruebas superadas al 100% (0 errores, 0 omitidas)**.
       - **Objetivo**: Eliminar bloqueos de sincronización sobre asincronía (`.GetAwaiter().GetResult()`), promover la interfaz canónica `IDialogService` al SDK para permitir testing sin WPF, y desacoplar en ViewModels limpios los tres diálogos restantes con alta densidad de code-behind (`AiModelUrlsConfigDialog`, `VariablePickerWindow`, `TextEditorDialogWindow`).
       - **Ajustes Realizados**:
         1. *Sub-fase 6A (Sync-Over-Async)*:

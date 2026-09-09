@@ -46,6 +46,7 @@ public static class RenamerSampleDataProvider
                 "Series",
                 "Cómics y Manga",
                 "Música",
+                "Descargas Sucias",
                 "Fotos",
                 "Documentos",
                 "Personalizada"

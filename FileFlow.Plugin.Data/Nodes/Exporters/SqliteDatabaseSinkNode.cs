@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -12,7 +14,8 @@ namespace FileFlow.Plugin.Data;
 public sealed class SqliteDatabaseSinkNode : IFlowNode
 {
     private static readonly Lock _initLock = new();
-    private static readonly HashSet<string> _initializedDbs = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, bool> _initializedDbs = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Regex _validTableNameRegex = new(@"^[a-zA-Z_]\w{0,127}$", RegexOptions.Compiled);
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Name", "Registro de Auditoría SQLite");
@@ -70,6 +73,14 @@ public sealed class SqliteDatabaseSinkNode : IFlowNode
         string tableName = Parameters.TryGetValue("TableName", out var tn) ? tn?.ToString() ?? "FileProcessingLog" : "FileProcessingLog";
         if (string.IsNullOrWhiteSpace(tableName)) tableName = "FileProcessingLog";
 
+        // CRIT-01: Validación estricta del nombre de tabla para prevenir inyección SQL
+        if (!_validTableNameRegex.IsMatch(tableName))
+        {
+            context.Log($"[SqliteSink] Nombre de tabla inválido o inseguro: '{tableName}'. Solo se permiten letras, dígitos y guión bajo.", LogLevel.Error, item);
+            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            return;
+        }
+
         bool autoCreate = Parameters.TryGetValue("AutoCreateTable", out var ac) && ParameterHelper.GetBoolean(ac, true);
         bool storeMetadata = Parameters.TryGetValue("StoreMetadataAsJson", out var sm) && ParameterHelper.GetBoolean(sm, true);
 
@@ -117,11 +128,11 @@ public sealed class SqliteDatabaseSinkNode : IFlowNode
     private static void EnsureTableCreated(string connectionString, string tableName)
     {
         string initKey = $"{connectionString}::{tableName}";
-        if (_initializedDbs.Contains(initKey)) return;
+        if (_initializedDbs.ContainsKey(initKey)) return;
 
         lock (_initLock)
         {
-            if (_initializedDbs.Contains(initKey)) return;
+            if (_initializedDbs.ContainsKey(initKey)) return;
 
             using var conn = new SqliteConnection(connectionString);
             conn.Open();
@@ -145,7 +156,7 @@ public sealed class SqliteDatabaseSinkNode : IFlowNode
             using var cmd = new SqliteCommand(createSql, conn);
             cmd.ExecuteNonQuery();
 
-            _initializedDbs.Add(initKey);
+            _initializedDbs.TryAdd(initKey, true);
         }
     }
 }
