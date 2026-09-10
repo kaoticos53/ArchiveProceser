@@ -1,8 +1,10 @@
+using System.Windows;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Platform;
 using FileFlow.Sdk.Services;
@@ -127,15 +129,104 @@ public class DependencyInjectionAndPortsTests
         public DialogResult ShowYesNoCancel(string message, string title = "FileFlow Studio") => DialogResult.Yes;
     }
 
+    [Fact]
+    public void StatusBarViewModel_UpdateAiModelCount_ShouldUseMaxBetweenCanvasAndRegistry()
+    {
+        var pluginLoader = new PluginLoader();
+        var editor = new EditorViewModel(pluginLoader);
+        var log = new LogViewModel();
+        var inspector = new NodeInspectorViewModel(editor, new FileDialogService(), log);
+        var controlBar = new ControlBarViewModel(editor, pluginLoader, log, inspector, new FileDialogService(), new WorkflowStorageService());
+
+        editor.Nodes.Add(new NodeViewModel(new FakeModelLifecycleNode("Model-A", isLoaded: true), new Point(0, 0)));
+        editor.Nodes.Add(new NodeViewModel(new FakeModelLifecycleNode("Model-B", isLoaded: false), new Point(100, 0)));
+
+        var fakePerfMonitor = new FakePerformanceMonitor();
+        var fakeDialog = new FakeDialogService();
+        var fakeLauncher = new FakeProcessLauncherService();
+
+        var statusBar = new StatusBarViewModel(editor, controlBar, fakePerfMonitor, log, LocalizationManager.Instance, fakeDialog, fakeLauncher);
+
+        statusBar.UpdateAiModelCount();
+
+        Assert.True(statusBar.HasLoadedAiModels);
+        Assert.Equal(1, statusBar.LoadedAiModelsCount);
+    }
+
+    [Fact]
+    public void StatusBarViewModel_OpenGlobalOutputFolder_WhenLauncherFails_ShouldShowError()
+    {
+        var pluginLoader = new PluginLoader();
+        var editor = new EditorViewModel(pluginLoader);
+        var log = new LogViewModel();
+        var inspector = new NodeInspectorViewModel(editor, new FileDialogService(), log);
+        var controlBar = new ControlBarViewModel(editor, pluginLoader, log, inspector, new FileDialogService(), new WorkflowStorageService());
+
+        var fakePerfMonitor = new FakePerformanceMonitor();
+        var fakeDialog = new FakeDialogService();
+        var failingLauncher = new FakeProcessLauncherService(alwaysFail: true);
+
+        var statusBar = new StatusBarViewModel(editor, controlBar, fakePerfMonitor, log, LocalizationManager.Instance, fakeDialog, failingLauncher)
+        {
+            GlobalOutputDir = "C:\\NoExiste\\FileFlow"
+        };
+
+        statusBar.OpenGlobalOutputFolder();
+
+        Assert.NotEmpty(fakeDialog.ErrorMessages);
+    }
+
+    private class FakeModelLifecycleNode : IModelLifecycleNode
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Name => "FakeModelNode";
+        public string Category => "AI";
+        public string Description => "Fake model lifecycle node";
+        public IReadOnlyList<NodePort> Inputs { get; } = [new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")];
+        public IReadOnlyList<NodePort> Outputs { get; } = [new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")];
+        public Dictionary<string, object?> Parameters { get; } = [];
+        public bool IsModelLoaded { get; private set; }
+        public string? ModelIdentifier { get; }
+        public event Action? ModelStatusChanged;
+
+        public FakeModelLifecycleNode(string identifier, bool isLoaded)
+        {
+            ModelIdentifier = identifier;
+            IsModelLoaded = isLoaded;
+        }
+
+        public Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task OnWorkflowCompletedAsync(IFlowExecutionContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task PreloadModelAsync(CancellationToken cancellationToken = default)
+        {
+            IsModelLoaded = true;
+            ModelStatusChanged?.Invoke();
+            return Task.CompletedTask;
+        }
+
+        public void UnloadModel()
+        {
+            IsModelLoaded = false;
+            ModelStatusChanged?.Invoke();
+        }
+    }
+
     private class FakeProcessLauncherService : IProcessLauncherService
     {
+        private readonly bool _alwaysFail;
         public List<string> OpenedFolders { get; } = [];
+
+        public FakeProcessLauncherService(bool alwaysFail = false)
+        {
+            _alwaysFail = alwaysFail;
+        }
 
         public bool OpenUrl(string url) => true;
         public bool OpenFolder(string folderPath)
         {
             OpenedFolders.Add(folderPath);
-            return true;
+            return !_alwaysFail;
         }
         public bool OpenFileInExplorer(string filePath) => true;
         public bool StartProcess(string fileName, string? arguments = null) => true;

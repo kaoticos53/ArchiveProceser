@@ -173,4 +173,108 @@ public class VariablePickerAndIntelliSenseTests
         vm.ClearSearch();
         vm.FilteredVariables.Should().HaveCount(3);
     }
+
+    [Fact]
+    public void VariablePickerViewModel_ShouldDeduplicateByToken_AndCountUniqueUpstreamSources()
+    {
+        var groups = new List<VariableGroupItem>
+        {
+            new("🌐 Sistema", isUpstream: false)
+            {
+                Variables =
+                {
+                    new("FileName", "{FileName}", "Nombre", "Sistema", "a.txt"),
+                    new("FileNameDuplicado", "{FileName}", "Nombre duplicado", "Sistema", "b.txt")
+                }
+            },
+            new("🔗 Upstream A", isUpstream: true)
+            {
+                Variables =
+                {
+                    new("OutputFileSize", "{OutputFileSize}", "Size", "Nodos Anteriores", "1024", IsUpstream: true, SourceNodeTitle: "Node A")
+                }
+            },
+            new("🔗 Upstream B", isUpstream: true)
+            {
+                Variables =
+                {
+                    new("SavedPercent", "{SavedPercent}", "Saved", "Nodos Anteriores", "66.7", IsUpstream: true, SourceNodeTitle: "Node B")
+                }
+            }
+        };
+
+        var vm = new VariablePickerViewModel(groups);
+
+        vm.AllVariables.Should().HaveCount(3);
+        vm.UpstreamCount.Should().Be(2);
+        vm.HasUpstreamNodes.Should().BeTrue();
+    }
+
+    [Fact]
+    public void VariablePickerViewModel_CategoryFilters_DatesSizesFunctions_ShouldWork()
+    {
+        var groups = new List<VariableGroupItem>
+        {
+            new("📅 Fechas", isUpstream: false)
+            {
+                Variables =
+                {
+                    new("DateNow", "{DateNow}", "Fecha", "Fechas", "2026-09-10")
+                }
+            },
+            new("📐 Tamaños", isUpstream: false)
+            {
+                Variables =
+                {
+                    new("SizeMB", "{SizeMB}", "Tamaño en MB", "Tamaños", "3.0")
+                }
+            },
+            new("🔤 Funciones", isUpstream: false)
+            {
+                Variables =
+                {
+                    new("Upper", "{Upper(FileName)}", "Función Upper", "Function", "ABC")
+                }
+            }
+        };
+
+        var vm = new VariablePickerViewModel(groups);
+
+        vm.SetCategory("DATES");
+        vm.FilteredVariables.Should().ContainSingle().Which.Token.Should().Be("{DateNow}");
+
+        vm.SetCategory("SIZES");
+        vm.FilteredVariables.Should().ContainSingle().Which.Token.Should().Be("{SizeMB}");
+
+        vm.SetCategory("FUNCTIONS");
+        vm.FilteredVariables.Should().ContainSingle().Which.Token.Should().Be("{Upper(FileName)}");
+    }
+
+    [Fact]
+    public void VariablePickerViewModel_SelectingNullVariable_ShouldClearDetail()
+    {
+        var groups = new List<VariableGroupItem>
+        {
+            new("🌐 Sistema", isUpstream: false)
+            {
+                Variables =
+                {
+                    new("FileName", "{FileName}", "Nombre", "Sistema", "sample.txt")
+                }
+            }
+        };
+
+        var vm = new VariablePickerViewModel(groups);
+        vm.SelectedVariable = vm.FilteredVariables.First();
+
+        vm.HasSelectedVariable.Should().BeTrue();
+        vm.SelectedVariable = null;
+
+        vm.HasSelectedVariable.Should().BeFalse();
+        vm.DetailToken.Should().BeEmpty();
+        vm.DetailDescription.Should().BeEmpty();
+        vm.DetailCategory.Should().BeEmpty();
+        vm.DetailSource.Should().BeEmpty();
+        vm.DetailEvaluated.Should().BeEmpty();
+    }
 }

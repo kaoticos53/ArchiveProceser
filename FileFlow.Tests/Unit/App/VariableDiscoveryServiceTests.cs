@@ -361,4 +361,33 @@ public class VariableDiscoveryServiceTests
             optionsB.Should().Contain(o => o.Tag == "Current");
         }
     }
+
+    [Fact]
+    public void GetAvailableVariables_WhenUpstreamNodeTypeIsUnknown_ShouldNotCreateUpstreamGroup()
+    {
+        var unknownUpstream = new NodeViewModel(new MockNode { Id = "unknown-1", Name = "Unknown Upstream" }, new Point(0, 0));
+        var targetVm = new NodeViewModel(new MockNode { Id = "target-1", Name = "Target" }, new Point(200, 0));
+
+        var conn = new ConnectionViewModel(unknownUpstream.OutputPorts.First(), targetVm.InputPorts.First());
+
+        var groups = _discoveryService.GetAvailableVariables(targetVm, [conn]);
+
+        groups.Should().NotContain(g => g.IsUpstream);
+    }
+
+    [Fact]
+    public void GetAvailableVariables_WithCycle_ShouldNotDuplicateUpstreamGroups()
+    {
+        var optimizerVm = new NodeViewModel(new FileFlow.Plugin.Images.ImageOptimizerNode(), new Point(0, 0));
+        var targetVm = new NodeViewModel(new MockNode { Id = "target-cycle", Name = "Target Cycle" }, new Point(200, 0));
+
+        var connToTarget = new ConnectionViewModel(optimizerVm.OutputPorts.First(), targetVm.InputPorts.First());
+        var connBackToOptimizer = new ConnectionViewModel(targetVm.OutputPorts.First(), optimizerVm.InputPorts.First());
+
+        var groups = _discoveryService.GetAvailableVariables(targetVm, [connToTarget, connBackToOptimizer]);
+
+        var upstreamGroups = groups.Where(g => g.IsUpstream).ToList();
+        upstreamGroups.Should().ContainSingle();
+        upstreamGroups[0].Variables.Should().Contain(v => v.Token == "{OutputFileSize}");
+    }
 }
