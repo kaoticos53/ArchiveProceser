@@ -17,7 +17,7 @@ public class LocalizationManager : ILocalizationService
     public LocalizationManager()
     {
         CultureInfo.DefaultThreadCurrentCulture = _currentCulture;
-        CultureInfo.DefaultThreadCurrentUICulture = _currentCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = GetResourceCulture(_currentCulture);
     }
 
     public CultureInfo CurrentCulture
@@ -28,9 +28,9 @@ public class LocalizationManager : ILocalizationService
             if (Equals(_currentCulture, value)) return;
             _currentCulture = value;
             CultureInfo.CurrentCulture = value;
-            CultureInfo.CurrentUICulture = value;
+            CultureInfo.CurrentUICulture = GetResourceCulture(value);
             CultureInfo.DefaultThreadCurrentCulture = value;
-            CultureInfo.DefaultThreadCurrentUICulture = value;
+            CultureInfo.DefaultThreadCurrentUICulture = GetResourceCulture(value);
             OnPropertyChanged(string.Empty);
             OnPropertyChanged("Item[]");
             OnPropertyChanged("Item");
@@ -60,6 +60,7 @@ public class LocalizationManager : ILocalizationService
     public string GetString(string key, string fallback = "")
     {
         List<ResourceManager> managers;
+        CultureInfo resourceCulture = GetResourceCulture(_currentCulture);
         lock (_lock)
         {
             managers = [.. _resourceManagers];
@@ -69,7 +70,7 @@ public class LocalizationManager : ILocalizationService
         {
             try
             {
-                string? val = rm.GetString(key, _currentCulture);
+                string? val = rm.GetString(key, resourceCulture);
                 if (!string.IsNullOrEmpty(val))
                 {
                     return val;
@@ -102,6 +103,12 @@ public class LocalizationManager : ILocalizationService
     public void SetCulture(string cultureCode)
     {
         CurrentCulture = new CultureInfo(cultureCode);
+    }
+
+    private static CultureInfo GetResourceCulture(CultureInfo culture)
+    {
+        CultureInfo parent = culture.Parent;
+        return string.IsNullOrWhiteSpace(parent.Name) ? culture : parent;
     }
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

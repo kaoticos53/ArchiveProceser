@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="CustomScriptNode_Name" xml:space="preserve"><value>Script Personalizado (C# / JavaScript)</value></data>
+  <data name="CustomScriptNode_Desc" xml:space="preserve"><value>Ejecuta lógica a medida en C# (Roslyn) o JavaScript con editor de código, puertos dinámicos configurables y biblioteca de scripts.</value></data>
+  <data name="ScriptStudio_Button" xml:space="preserve"><value>💻 Editor de Scripts...</value></data>
+  <data name="ScriptStudio_Tooltip" xml:space="preserve"><value>Abrir el estudio de programación de scripts con editor de código, plantillas y probador</value></data>
+  <data name="ScriptStudio_Title" xml:space="preserve"><value>Estudio de Scripts</value></data>
+  <data name="ScriptStudio_Engine" xml:space="preserve"><value>Motor:</value></data>
+  <data name="ScriptStudio_ManualPdf" xml:space="preserve"><value>📘 Manual</value></data>
+  <data name="ScriptStudio_ManualTitle" xml:space="preserve"><value>Manual de Scripting</value></data>
+  <data name="ScriptStudio_ManualNotFound" xml:space="preserve"><value>El archivo del manual no se encuentra en la ruta esperada. Puedes consultarlo en la carpeta 'docs/' del proyecto.</value></data>
+  <data name="ScriptStudio_Templates" xml:space="preserve"><value>Plantillas:</value></data>
+  <data name="ScriptStudio_LoadTemplate" xml:space="preserve"><value>Cargar</value></data>
+  <data name="ScriptStudio_TabPorts" xml:space="preserve"><value>Puertos</value></data>
+  <data name="ScriptStudio_InputPorts" xml:space="preserve"><value>Puertos de Entrada</value></data>
+  <data name="ScriptStudio_AddPort" xml:space="preserve"><value>Añadir</value></data>
+  <data name="ScriptStudio_OutputPorts" xml:space="preserve"><value>Puertos de Salida</value></data>
+  <data name="ScriptStudio_TabTest" xml:space="preserve"><value>Prueba</value></data>
+  <data name="ScriptStudio_TestFileName" xml:space="preserve"><value>Nombre del archivo de prueba</value></data>
+  <data name="ScriptStudio_RunTest" xml:space="preserve"><value>Ejecutar Prueba</value></data>
+  <data name="ScriptStudio_ReadyToTest" xml:space="preserve"><value>Listo para probar</value></data>
+  <data name="ScriptStudio_Running" xml:space="preserve"><value>Ejecutando...</value></data>
+  <data name="ScriptStudio_Success" xml:space="preserve"><value>Éxito</value></data>
+  <data name="ScriptStudio_Error" xml:space="preserve"><value>Error</value></data>
+  <data name="ScriptStudio_TabSave" xml:space="preserve"><value>Guardar</value></data>
+  <data name="ScriptStudio_ScriptName" xml:space="preserve"><value>Nombre del script</value></data>
+  <data name="ScriptStudio_ScriptDesc" xml:space="preserve"><value>Descripción</value></data>
+  <data name="ScriptStudio_SaveToMyScripts" xml:space="preserve"><value>Guardar en Mis Scripts</value></data>
+  <data name="ScriptStudio_Tip" xml:space="preserve"><value>Consejo: usa Item, Context, Log(...) y EmitAsync(...) dentro de tu script.</value></data>
+  <data name="ScriptStudio_Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="ScriptStudio_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+</root>

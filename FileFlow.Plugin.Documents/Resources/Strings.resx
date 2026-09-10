@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="PdfTextExtractorNode_Name" xml:space="preserve"><value>PDF Text Extractor</value></data>
+  <data name="PdfTextExtractorNode_Desc" xml:space="preserve"><value>Extracts textual content from PDF documents for indexing, search, or export.</value></data>
+  <data name="PdfSplitNode_Name" xml:space="preserve"><value>PDF Split</value></data>
+  <data name="PdfSplitNode_Desc" xml:space="preserve"><value>Splits a multi-page PDF document into individual files per page.</value></data>
+  <data name="PdfMetadataNode_Name" xml:space="preserve"><value>PDF Metadata</value></data>
+  <data name="PdfMetadataNode_Desc" xml:space="preserve"><value>Inspects and updates PDF document metadata (Title, Author, Subject, Keywords).</value></data>
+  <data name="PdfMergeNode_Name" xml:space="preserve"><value>PDF Merge</value></data>
+  <data name="PdfMergeNode_Desc" xml:space="preserve"><value>Combines multiple PDF documents into a single consolidated PDF file.</value></data>
+</root>

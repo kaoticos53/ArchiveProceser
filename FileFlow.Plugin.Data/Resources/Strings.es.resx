@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="ExcelReaderNode_Name" xml:space="preserve"><value>Lector de Hojas Excel</value></data>
+  <data name="ExcelReaderNode_Desc" xml:space="preserve"><value>Lee archivos Excel (.xlsx/.csv) y emite cada fila como un registro de datos con sus columnas en los metadatos.</value></data>
+  <data name="CsvReaderNode_Name" xml:space="preserve"><value>Lector de Archivos CSV / TSV</value></data>
+  <data name="CsvReaderNode_Desc" xml:space="preserve"><value>Lee archivos delimitados (CSV, TSV, TXT) con autodetección de formato y emite cada fila con sus columnas en los metadatos.</value></data>
+  <data name="DataFormatConverterNode_Name" xml:space="preserve"><value>Conversor de Formatos de Datos</value></data>
+  <data name="DataFormatConverterNode_Desc" xml:space="preserve"><value>Convierte archivos tabulares y estructurados directamente entre formatos Excel (.xlsx), CSV y JSON.</value></data>
+  <data name="DataLookupNode_Name" xml:space="preserve"><value>Cruce de Datos (Lookup / BUSCARV)</value></data>
+  <data name="DataLookupNode_Desc" xml:space="preserve"><value>Busca y cruza información del archivo actual contra una tabla externa (Excel, CSV o JSON) inyectando sus columnas en los metadatos.</value></data>
+  <data name="SqliteDatabaseSinkNode_Name" xml:space="preserve"><value>Registro de Auditoría SQLite</value></data>
+  <data name="SqliteDatabaseSinkNode_Desc" xml:space="preserve"><value>Inserta un registro histórico y de auditoría en una base de datos SQLite con los metadatos y trazabilidad de cada archivo procesado.</value></data>
+  <data name="CsvExportNode_Name" xml:space="preserve"><value>Exportador CSV / TSV</value></data>
+  <data name="CsvExportNode_Desc" xml:space="preserve"><value>Exporta y acumula los metadatos de cada archivo procesado en un archivo CSV delimitado con formato configurable.</value></data>
+  <data name="ExcelReportGeneratorNode_Name" xml:space="preserve"><value>Generador de Reportes Excel (.xlsx)</value></data>
+  <data name="ExcelReportGeneratorNode_Desc" xml:space="preserve"><value>Acumula los metadatos de los archivos procesados y genera un archivo Excel (.xlsx) estructurado al concluir el flujo.</value></data>
+</root>
