@@ -8,8 +8,13 @@ using Xunit;
 namespace FileFlow.Tests.Unit.ViewModels;
 
 [Collection("Localization")]
-public class NodeParameterViewModelTests
+public class NodeParameterViewModelTests : IDisposable
 {
+    public void Dispose()
+    {
+        LocalizationManager.Instance.SetCulture("es-ES");
+    }
+
     [Fact]
     public void DisplayName_ShouldReturnFormattedFallback_WhenNoResourceManagerRegistered()
     {

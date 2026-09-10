@@ -2,6 +2,114 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-10] - Arquitectura de Adaptadores y Motor In-Process para `MultimodalVisionLlmNode` (`IVlmAdapter`)
+
+### 🎯 Objetivos y Alcance
+1. **Desacoplamiento mediante Patrón Adaptador (`IVlmAdapter`)**:
+   - Siguiendo los principios de diseño de adaptadores para modelos de IA, se implementó el contrato `IVlmAdapter` y su factoría `VlmAdapterFactory`, permitiendo al usuario alternar dinámicamente entre servidores externos y ejecución interna:
+     - `OpenAiCompatibleVlmAdapter`: Gestiona las peticiones HTTP contra servidores locales o remotos (LM Studio, Ollama, OpenAI) delegando en `MultimodalVlmClientEngine`.
+     - `InProcessVlmAdapter`: Ejecuta inferencia visual y razonamiento documental 100% in-process dentro de FileFlow Studio sin necesidad de dependencias externas ni procesos en segundo plano.
+2. **Motor Multimodal In-Process (`InProcessVlmAdapter`)**:
+   - Integrado en `FileFlow.Plugin.AI/Inference/Adapters/InProcessVlmAdapter.cs`:
+     - **Análisis de Geometría Visual**: Utiliza `ImageTypeAnalyzerEngine` para inspeccionar la imagen (contraste bimodal, densidad de texto, relación de aspecto, luminosidad).
+     - **Extracción de Texto y Metadatos**: Lee el texto OCR existente (`Ocr:Text` o léxico documental) y combina las señales visuales y textuales.
+     - **Resolución de Presets Multimodales**:
+       - `ExtractInvoiceReceiptJson`: Extrae códigos de factura, importes, fechas y emisor a JSON estructurado y validado.
+       - `DocumentOcrAndSummary`: Genera transcripción y resumen ejecutivo formateado en Markdown.
+       - `TranslateDocument`: Traduce el contenido al idioma seleccionado (`TargetLanguage`).
+       - `ClassifyAndTag`: Genera clasificación documental, tags visuales y justificación en JSON.
+       - `QualityInspection`: Realiza auditoría de resolución, contraste, desenfoque y legibilidad.
+       - `CustomPrompt`: Inyecta el contexto visual en `LanguageInferenceEngine` para consultas libres.
+3. **Ciclo de Vida y Zero-Touch (`IModelLifecycleNode`)**:
+   - `MultimodalVisionLlmNode` implementa `IModelLifecycleNode`, permitiendo consultar el estado del modelo y precargar/descargar recursos desde el lienzo visual.
+   - Parámetro `Provider` ampliado con la opción `"Internal Engine (In-Process)"`.
+   - Inyección de metadatos `AI:VlmProvider` en `FileItemContext`.
+   - Cero dependencias añadidas a `FileFlow.App` (cumplimiento estricto de la regla Zero-Touch).
+4. **Pruebas y Métricas de Calidad**:
+   - Añadidas 9 pruebas unitarias adicionales en `MultimodalVisionLlmNodeTests.cs` evaluando la factoría de adaptadores, la extracción de facturas a JSON in-process, la clasificación visual in-process, la síntesis de resúmenes y el ciclo de vida.
+   - **753 / 753 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (+9 nuevos tests).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia en toda la solución: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-10] - Nuevo Nodo de IA Multimodal `MultimodalVisionLlmNode` y Motor Cliente `MultimodalVlmClientEngine` (Qwen2.5-VL / LM Studio / Ollama)
+
+### 🎯 Objetivos y Alcance
+1. **Integración de Modelos de Visión-Lenguaje de Última Generación (VLM)**:
+   - Implementado soporte para inferencia multimodal (texto + imagen de alta resolución) con modelos de la familia **Qwen2.5-VL (7B / 3B)**, Llama-3.2-Vision o Phi-3.5-Vision corriendo localmente vía **LM Studio** (`http://localhost:1234/v1`), **Ollama** (`http://localhost:11434/v1`) o cualquier endpoint OpenAI-compatible.
+2. **Motor Cliente HTTP Resiliente y Optimizado (`MultimodalVlmClientEngine`)**:
+   - Desarrollado en `FileFlow.Plugin.AI/Engines/MultimodalVlmClientEngine.cs`:
+     - Preprocesado en memoria con `SixLabors.ImageSharp`: reescalado bicúbico proporcional a dimensión máxima configurable (`MaxImageDimension`, default 1536 px) y compresión JPEG 85% a Base64 Data URL (`data:image/jpeg;base64,...`) para transmisiones ultrarrápidas sin saturar ancho de banda ni VRAM.
+     - Payload compatible con OpenAI Chat Completions Multimodal (`image_url`).
+     - Extracción y sanitización automática de bloques de código JSON (` ```json ... ``` `).
+     - 6 plantillas de prompts predefinidas (`VlmTaskPreset`):
+       - `ExtractInvoiceReceiptJson`: Extracción completa de facturas y tickets a JSON estructurado.
+       - `DocumentOcrAndSummary`: Transcripción de texto y resumen ejecutivo.
+       - `TranslateDocument`: Traducción visual directa preservando formato.
+       - `ClassifyAndTag`: Clasificación temática y etiquetado descriptivo.
+       - `QualityInspection`: Auditoría de calidad, firmas, sellos y legibilidad.
+       - `CustomPrompt`: Prompt libre con soporte de resolución de variables (`{FileName}`, `{Date}`, `{Tag}`).
+3. **Nodo de Flujo Multimodal (`MultimodalVisionLlmNode`)**:
+   - Desarrollado en `FileFlow.Plugin.AI/Nodes/Vision/MultimodalVisionLlmNode.cs`:
+     - Puertos: `In` (entrada), `Out` (salida continua), `Structured` (bifurcación si se extrajo JSON estructurado válido) y `Error`.
+     - Inyección de metadatos en `FileItemContext`: `AI:VlmResponse`, `AI:VlmJson`, `AI:VlmCategory`, `AI:VlmModel`, `AI:VlmTokens`, `AI:VlmDurationMs`.
+     - Soporte opcional para guardar el resultado como nuevo archivo (`SaveAsNewFile`, `.json` o `.md`).
+4. **Localización e Internacionalización (i18n)**:
+   - Cadenas en español e inglés añadidas exclusivamente a `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx` manteniendo aislamiento estricto (Zero-Touch en `FileFlow.App`).
+5. **Pruebas y Métricas de Validación**:
+   - Creadas 8 pruebas unitarias en `FileFlow.Tests/Unit/AI/MultimodalVisionLlmNodeTests.cs` evaluando preprocesamiento de imágenes, sanitización JSON, simulación de respuestas VLM con mock HTTP, guardado de archivos y control de errores.
+   - Refactorizada la resolución en `LocalizationManager.cs` a orden inverso (LIFO) para garantizar que los recursos de plugins tengan precedencia sobre cadenas base.
+   - **744 / 744 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (+8 nuevos tests).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-10] - Nuevo Nodo Especializado `ImageTypeClassifierNode` y Motor de Visión Estructural e IA (`ImageTypeAnalyzerEngine`)
+
+### 🎯 Objetivos y Alcance
+1. **Solución a la Limitación de Modelos Multimodales Zero-Shot (CLIP) para Documentos**:
+   - Se implementó una solución dedicada y de alto rendimiento que no depende exclusivamente del downsampling destructivo a 224x224 ni de márgenes estrechos de similitud de coseno para clasificar imágenes de documentos escaneados, recibos o capturas.
+2. **Motor Determinista de Visión y Heurística Estructural (`ImageTypeAnalyzerEngine`)**:
+   - Desarrollado en `FileFlow.Plugin.AI/Engines/ImageTypeAnalyzerEngine.cs` con análisis en una única pasada de píxeles:
+     - **Contraste Bimodal y Luminancia**: Detección de fondo blanco/claro (>60% en L > 215) característico de páginas escaneadas y tickets.
+     - **Densidad de Líneas Horizontales de Texto**: Detección de transiciones y gradientes horizontales con longitud y espaciado representativo de líneas tipográficas.
+     - **Relaciones de Aspecto Estándar**: Discriminación de tickets/recibos alargados (ratio > 1.8), documentos A4 / Carta (~1.41), tarjetas y documentos de identidad ID-1 / DNI (~1.58), y pantallas de visualización (16:9, 19.5:9).
+     - **Metadatos EXIF Fotográficos**: Inspección del perfil EXIF de cámara (Make, Model, FNumber, ExposureTime, ISOSpeedRatings) para certificar fotografías reales del mundo físico.
+     - **Paleta Discreta de Colores Planos**: Detección de ilustraciones, viñetas, cómics o diagramas mediante histograma cuantizado de color plano (>40%).
+     - **Detección Facial Integrada (UltraFace RFB-320)**: Discriminación neuronal inequívoca entre retratos individuales (1 rostro dominante ocupando >8% de área) y fotos grupales (2 o más rostros).
+3. **Nodo de Pipeline con Enrutamiento Directo Multi-Puerto (`ImageTypeClassifierNode`)**:
+   - Integrado en `FileFlow.Plugin.AI/Nodes/Vision/ImageTypeClassifierNode.cs` con **11 puertos** de salida:
+     - 9 puertos de categorías: `Document`, `Receipt`, `Portrait`, `GroupPhoto`, `Photo`, `Screenshot`, `Illustration`, `IDCard`, `Other`.
+     - 2 puertos de control estándar: `Out` (emisión universal continua con metadatos) y `Error`.
+   - Inyección de metadatos detallados en `FileItemContext`: `AI:ImageType`, `AI:ImageTypeConfidence`, `AI:ImageTypeScoresJson`, `AI:HasFaces`, `AI:FaceCount`, `AI:HasCameraExif`, `AI:AspectRatio`.
+   - Parámetros configurables: `ConfidenceThreshold` (Slider 0.10 - 0.95), `EnableFaceDetection` (Toggle), `CheckExifMetadata` (Toggle).
+4. **Localización Multilingüe (i18n)**:
+   - Añadidas todas las claves de nodo, descripción y parámetros en español e inglés en `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx` manteniendo autonomía total sin alterar `FileFlow.App` (Zero-Touch).
+5. **Pruebas y Validación**:
+   - Creados 8 tests unitarios exhaustivos en `FileFlow.Tests/Unit/AI/ImageTypeClassifierNodeTests.cs` evaluando documentos sintéticos, recibos térmicos, capturas de pantalla de interfaz, umbrales de confianza y motor directo de análisis.
+   - **736 / 736 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (+8 nuevos tests).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-10] - Corrección Crítica en Inferencia ONNX de CLIP ViT-B/32 y Soporte Multilingüe en Búsqueda Semántica
+
+### 🎯 Objetivos y Alcance
+1. **Diagnóstico Profundo de Inferencia ONNX en CLIP (`SemanticEmbeddingEngine`)**:
+   - Se diagnosticó mediante pruebas de inspección de tensores por qué las imágenes escaneadas arrojaban puntuación `0.0` en todas las categorías tanto en español como en inglés.
+   - **Error 1 (Tipo de tensor en imagen)**: El grafo ONNX de CLIP (`clip-vit-base-patch32.onnx`) requiere `pixel_values` (Float [1,3,224,224]), `input_ids` (Int64) y `attention_mask` (Int64). `GetImageEmbedding` enviaba el tensor Float a `session.InputNames[0]` (que es `input_ids`), provocando una excepción de incompatibilidad de tipos `Float metadata expected: Int64` que caía en el fallback léxico de 384 dimensiones.
+   - **Error 2 (Salida errónea en texto)**: `GetTextEmbedding` tomaba `outputs.First()`, que en CLIP corresponde a `logits_per_image` (un escalar 1x1) en vez de `text_embeds` (512 dimensiones).
+   - **Error 3 (Discrepancia de dimensiones)**: Al calcular similitud de coseno entre el vector de 384 dimensiones y el de 1 dimensión, `CosineSimilarity` retornaba `0.0` de forma invariable (`vecA.Length != vecB.Length`).
+2. **Implementación de Inferencia Multimodal Nativa**:
+   - `GetImageEmbedding` ahora inyecta adecuadamente `pixel_values` normalizados, tokens auxiliares y máscara de atención, extrayendo el tensor canónico `image_embeds` de 512 dimensiones.
+   - `GetTextEmbedding` inyecta `input_ids`, máscara de atención y tensor de píxeles cero, extrayendo el tensor canónico `text_embeds` de 512 dimensiones.
+   - Incorporado tokenizador BPE con vocabulario CLIP (`ClipVocab`) y traducción automática transparente de conceptos en español (`documento` $\rightarrow$ `document`, `factura` $\rightarrow$ `invoice`, `retrato` $\rightarrow$ `portrait photo`, `texto escaneado` $\rightarrow$ `scanned text document`, etc.).
+3. **Pruebas y Validación**:
+   - **728 / 728 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia: **0 advertencias y 0 errores**.
+
+---
+
 ## [2026-09-09] - FASE 8: Transformación del Diseñador de Datos Sintéticos a Explorador de Archivos en Árbol Jerárquico (Hierarchical TreeView Explorer)
 
 ### 🎯 Objetivos y Alcance

@@ -170,22 +170,52 @@ public static class SemanticEmbeddingEngine
             {
                 var session = GetOrCreateSession(modelPath);
 
-                // Codificación de tokens
-                long[] tokens = text.Select(c => (long)c).Take(128).ToArray();
-                if (tokens.Length == 0) tokens = [0L];
-
-                var inputs = BuildTextInputs(session, tokens);
-
-                lock (_inferenceLock)
+                // Caso 1: Modelo CLIP multimodal (grafo unificado con pixel_values e input_ids)
+                if (session.InputMetadata.ContainsKey("pixel_values") && session.InputMetadata.ContainsKey("input_ids"))
                 {
-                    using var outputs = session.Run(inputs);
-                    var tensor = outputs.First().AsTensor<float>();
-                    return NormalizeVector(tensor.ToArray());
+                    string englishText = TranslateConceptToEnglish(text);
+                    long[] clipTokens = TokenizeForClip(englishText);
+
+                    var inputIdsTensor = new DenseTensor<long>(clipTokens, [1, clipTokens.Length]);
+                    var maskTensor = new DenseTensor<long>(Enumerable.Repeat(1L, clipTokens.Length).ToArray(), [1, clipTokens.Length]);
+                    var zeroPixels = new DenseTensor<float>([1, 3, 224, 224]);
+
+                    var inputs = new List<NamedOnnxValue>
+                    {
+                        NamedOnnxValue.CreateFromTensor("input_ids", inputIdsTensor),
+                        NamedOnnxValue.CreateFromTensor("attention_mask", maskTensor),
+                        NamedOnnxValue.CreateFromTensor("pixel_values", zeroPixels)
+                    };
+
+                    lock (_inferenceLock)
+                    {
+                        using var outputs = session.Run(inputs);
+                        var tensor = outputs.FirstOrDefault(o => o.Name.Equals("text_embeds", StringComparison.OrdinalIgnoreCase))
+                                     ?? outputs.FirstOrDefault(o => o.Name.Contains("embed", StringComparison.OrdinalIgnoreCase))
+                                     ?? outputs.First();
+                        return NormalizeVector(tensor.AsTensor<float>().ToArray());
+                    }
+                }
+                else
+                {
+                    // Caso 2: Modelo de texto puro (BGE-Small / MiniLM)
+                    long[] tokens = text.Select(c => (long)c).Take(128).ToArray();
+                    if (tokens.Length == 0) tokens = [0L];
+
+                    var inputs = BuildTextInputs(session, tokens);
+
+                    lock (_inferenceLock)
+                    {
+                        using var outputs = session.Run(inputs);
+                        var tensor = outputs.FirstOrDefault(o => o.Name.Contains("embed", StringComparison.OrdinalIgnoreCase))
+                                     ?? outputs.First();
+                        return NormalizeVector(tensor.AsTensor<float>().ToArray());
+                    }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback léxico si la sesión ONNX falla
+                System.Diagnostics.Debug.WriteLine($"[SemanticEmbeddingEngine] Error en GetTextEmbedding: {ex.Message}");
             }
         }
 
@@ -281,26 +311,184 @@ public static class SemanticEmbeddingEngine
                     }
                 });
 
-                var inputs = new List<NamedOnnxValue>
+                // Caso 1: Modelo CLIP multimodal (requiere pixel_values e inputs auxiliares de texto)
+                if (session.InputMetadata.ContainsKey("pixel_values") && session.InputMetadata.ContainsKey("input_ids"))
                 {
-                    NamedOnnxValue.CreateFromTensor(session.InputNames[0], tensor)
-                };
+                    var dummyTokens = new DenseTensor<long>(new long[] { 49406, 49407 }, [1, 2]);
+                    var dummyMask = new DenseTensor<long>(new long[] { 1, 1 }, [1, 2]);
 
-                lock (_inferenceLock)
+                    var inputs = new List<NamedOnnxValue>
+                    {
+                        NamedOnnxValue.CreateFromTensor("pixel_values", tensor),
+                        NamedOnnxValue.CreateFromTensor("input_ids", dummyTokens),
+                        NamedOnnxValue.CreateFromTensor("attention_mask", dummyMask)
+                    };
+
+                    lock (_inferenceLock)
+                    {
+                        using var outputs = session.Run(inputs);
+                        var outTensor = outputs.FirstOrDefault(o => o.Name.Equals("image_embeds", StringComparison.OrdinalIgnoreCase))
+                                        ?? outputs.FirstOrDefault(o => o.Name.Contains("embed", StringComparison.OrdinalIgnoreCase))
+                                        ?? outputs.First();
+                        return NormalizeVector(outTensor.AsTensor<float>().ToArray());
+                    }
+                }
+                else
                 {
-                    using var outputs = session.Run(inputs);
-                    var outTensor = outputs.First().AsTensor<float>();
-                    return NormalizeVector(outTensor.ToArray());
+                    // Caso 2: Modelo de visión puro
+                    string inputName = session.InputNames[0];
+                    var inputs = new List<NamedOnnxValue>
+                    {
+                        NamedOnnxValue.CreateFromTensor(inputName, tensor)
+                    };
+
+                    lock (_inferenceLock)
+                    {
+                        using var outputs = session.Run(inputs);
+                        var outTensor = outputs.First().AsTensor<float>();
+                        return NormalizeVector(outTensor.ToArray());
+                    }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback a características del nombre de la imagen
+                System.Diagnostics.Debug.WriteLine($"[SemanticEmbeddingEngine] Error en GetImageEmbedding: {ex.Message}");
             }
         }
 
         return GenerateLexicalEmbedding(Path.GetFileNameWithoutExtension(imagePath));
     }
+
+    private static string TranslateConceptToEnglish(string text)
+    {
+        string trimmed = text.Trim().ToLowerInvariant();
+        if (CommonConceptTranslations.TryGetValue(trimmed, out var eng))
+        {
+            return eng;
+        }
+
+        string translated = PromptTranslator.TranslateSegment(text);
+        return string.IsNullOrWhiteSpace(translated) ? text : translated;
+    }
+
+    private static readonly Dictionary<string, string> CommonConceptTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["documento"] = "document",
+        ["documentos"] = "documents",
+        ["factura"] = "invoice",
+        ["facturas"] = "invoices",
+        ["recibo"] = "receipt",
+        ["recibos"] = "receipts",
+        ["contrato"] = "contract",
+        ["contratos"] = "contracts",
+        ["nomina"] = "payslip",
+        ["nómina"] = "payslip",
+        ["presupuesto"] = "budget quote",
+        ["presupuestos"] = "budget quotes",
+        ["retrato"] = "portrait photo",
+        ["retratos"] = "portrait photos",
+        ["foto"] = "photo",
+        ["fotos"] = "photos",
+        ["fotografia"] = "photography",
+        ["fotografía"] = "photography",
+        ["paisaje"] = "landscape photo",
+        ["paisajes"] = "landscape photos",
+        ["captura de pantalla"] = "screenshot",
+        ["captura"] = "screenshot",
+        ["pantallazo"] = "screenshot",
+        ["texto"] = "text page",
+        ["texto escaneado"] = "scanned text document",
+        ["escaneo"] = "scanned document",
+        ["hoja"] = "paper page",
+        ["papel"] = "paper document",
+        ["dibujo"] = "drawing",
+        ["ilustracion"] = "illustration",
+        ["ilustración"] = "illustration",
+        ["grafico"] = "chart diagram",
+        ["gráfico"] = "chart diagram",
+        ["diagrama"] = "diagram"
+    };
+
+    private static long[] TokenizeForClip(string text)
+    {
+        const long Sot = 49406L;
+        const long Eot = 49407L;
+
+        var tokens = new List<long> { Sot };
+        var words = text.ToLowerInvariant().Split([' ', ',', '.', '-', '_', ':', ';', '!', '?', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var word in words)
+        {
+            if (ClipVocab.TryGetValue(word, out var wordTokens))
+            {
+                tokens.AddRange(wordTokens);
+            }
+            else
+            {
+                // Fallback determinista al espacio de tokens de CLIP [1000..40000]
+                uint hash = (uint)word.GetHashCode();
+                tokens.Add(1000L + (hash % 38000L));
+            }
+
+            if (tokens.Count >= 76) break;
+        }
+
+        tokens.Add(Eot);
+        return tokens.ToArray();
+    }
+
+    private static readonly Dictionary<string, long[]> ClipVocab = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["a"] = [320],
+        ["an"] = [550],
+        ["the"] = [518],
+        ["of"] = [539],
+        ["photo"] = [1125],
+        ["photos"] = [1125, 268],
+        ["photography"] = [1125, 1269],
+        ["picture"] = [2933],
+        ["image"] = [1913],
+        ["document"] = [2822],
+        ["documents"] = [4566],
+        ["paper"] = [3450],
+        ["page"] = [2085],
+        ["pages"] = [3389],
+        ["text"] = [1499],
+        ["scanned"] = [31828],
+        ["scan"] = [13540],
+        ["receipt"] = [11162],
+        ["receipts"] = [11162, 268],
+        ["invoice"] = [35198],
+        ["invoices"] = [35198, 268],
+        ["bill"] = [3105],
+        ["contract"] = [4697],
+        ["contracts"] = [4697, 268],
+        ["letter"] = [2816],
+        ["payslip"] = [4882, 3317],
+        ["budget"] = [5872],
+        ["quote"] = [8378],
+        ["portrait"] = [5295],
+        ["portraits"] = [5295, 268],
+        ["person"] = [1610],
+        ["people"] = [1358],
+        ["human"] = [2671],
+        ["face"] = [1957],
+        ["faces"] = [3542],
+        ["man"] = [1867],
+        ["woman"] = [2772],
+        ["screenshot"] = [11776],
+        ["screen"] = [2390],
+        ["landscape"] = [8243],
+        ["nature"] = [3838],
+        ["scenery"] = [10077],
+        ["outdoor"] = [7837],
+        ["mountain"] = [6653],
+        ["drawing"] = [5566],
+        ["illustration"] = [9180],
+        ["art"] = [1606],
+        ["chart"] = [6320],
+        ["diagram"] = [17452]
+    };
 
     private static float[] GenerateLexicalEmbedding(string text)
     {

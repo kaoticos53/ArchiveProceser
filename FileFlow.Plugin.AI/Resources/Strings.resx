@@ -112,4 +112,15 @@
   <data name="Param_TopK" xml:space="preserve"><value>Top K Results</value></data>
   <data name="Param_SkipIfExists" xml:space="preserve"><value>Skip If File Exists</value></data>
   <data name="Param_SkipIfExists_Desc" xml:space="preserve"><value>If the output file already exists at the destination, skips heavy neural inference and reuses the existing file.</value></data>
+  <data name="ImageTypeClassifierNode_Name" xml:space="preserve"><value>Image Type Classifier</value></data>
+  <data name="ImageTypeClassifierNode_Desc" xml:space="preserve"><value>Classifies images deterministically into Documents, Receipts, Portraits, Group Photos, Photos, Screenshots, Illustrations, and ID Cards.</value></data>
+  <data name="Param_EnableFaceDetection" xml:space="preserve"><value>Enable Face Detection</value></data>
+  <data name="MultimodalVisionLlmNode_Name" xml:space="preserve"><value>Multimodal Vision AI (Qwen2.5-VL / In-Process)</value></data>
+  <data name="MultimodalVisionLlmNode_Desc" xml:space="preserve"><value>Processes images and documents with Vision-Language Models (Qwen2.5-VL) via LM Studio, Ollama, or internal in-process engine.</value></data>
+  <data name="Param_Provider" xml:space="preserve"><value>Provider</value></data>
+  <data name="Param_EndpointUrl" xml:space="preserve"><value>Endpoint URL</value></data>
+  <data name="Param_ModelName" xml:space="preserve"><value>Model Name</value></data>
+  <data name="Param_TaskPreset" xml:space="preserve"><value>Task Preset</value></data>
+  <data name="Param_ForceJsonOutput" xml:space="preserve"><value>Force JSON Output</value></data>
+  <data name="Param_MaxImageDimension" xml:space="preserve"><value>Max Image Dimension (px)</value></data>
 </root>

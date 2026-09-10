@@ -112,4 +112,16 @@
   <data name="Param_TopK" xml:space="preserve"><value>Mejores Resultados (Top K)</value></data>
   <data name="Param_SkipIfExists" xml:space="preserve"><value>Omitir si ya existe</value></data>
   <data name="Param_SkipIfExists_Desc" xml:space="preserve"><value>Si el archivo de salida ya existe en la carpeta de destino, omite la inferencia neural pesada y reutiliza el archivo existente.</value></data>
+  <data name="ImageTypeClassifierNode_Name" xml:space="preserve"><value>Clasificador de Tipo de Imagen</value></data>
+  <data name="ImageTypeClassifierNode_Desc" xml:space="preserve"><value>Clasifica imágenes de forma determinista y precisa en Documentos, Recibos, Retratos, Fotos Grupales, Fotos, Capturas, Ilustraciones y Tarjetas ID.</value></data>
+  <data name="Param_EnableFaceDetection" xml:space="preserve"><value>Activar Detección Facial</value></data>
+  <data name="Param_CheckExifMetadata" xml:space="preserve"><value>Comprobar Metadatos EXIF de Cámara</value></data>
+  <data name="MultimodalVisionLlmNode_Name" xml:space="preserve"><value>IA Multimodal VLM (Qwen2.5-VL / In-Process)</value></data>
+  <data name="MultimodalVisionLlmNode_Desc" xml:space="preserve"><value>Procesa imágenes y documentos con modelos de Visión-Lenguaje (Qwen2.5-VL) locales vía LM Studio, Ollama o motor interno in-process.</value></data>
+  <data name="Param_Provider" xml:space="preserve"><value>Proveedor</value></data>
+  <data name="Param_EndpointUrl" xml:space="preserve"><value>URL del Endpoint</value></data>
+  <data name="Param_ModelName" xml:space="preserve"><value>Nombre del Modelo</value></data>
+  <data name="Param_TaskPreset" xml:space="preserve"><value>Plantilla de Tarea</value></data>
+  <data name="Param_ForceJsonOutput" xml:space="preserve"><value>Forzar Salida JSON</value></data>
+  <data name="Param_MaxImageDimension" xml:space="preserve"><value>Dimensión Máxima de Imagen (px)</value></data>
 </root>

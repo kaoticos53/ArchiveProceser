@@ -219,4 +219,27 @@ public class SecurityAndSemanticNodesTests : IDisposable
         mockContext.Verify(c => c.EmitAsync("Matched", item), Times.Once);
         mockContext.Verify(c => c.EmitAsync("Out", item), Times.Once);
     }
+
+    [Fact]
+    public void ClipModel_Diagnostic_Test()
+    {
+        string clipPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlow", "Models", "clip-vit-base-patch32.onnx");
+        if (!File.Exists(clipPath)) return;
+
+        string imgPath = Path.Combine(_tempDir, "test.png");
+        using (var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(100, 100))
+        using (var fs = File.Create(imgPath))
+        {
+            img.Save(fs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+        }
+
+        var result = SemanticEmbeddingEngine.ClassifyZeroShot(clipPath, imgPath, ["document", "photo", "portrait"], "document");
+        result.TopScore.Should().BeGreaterThan(0.0);
+        result.CategoryScores.Values.All(v => v > 0.0).Should().BeTrue();
+
+        // Also test Spanish labels directly!
+        var esResult = SemanticEmbeddingEngine.ClassifyZeroShot(clipPath, imgPath, ["documento", "foto", "retrato"], "documento");
+        esResult.TopScore.Should().BeGreaterThan(0.0);
+        esResult.CategoryScores.Values.All(v => v > 0.0).Should().BeTrue();
+    }
 }

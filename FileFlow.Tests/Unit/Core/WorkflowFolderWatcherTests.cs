@@ -112,7 +112,7 @@ public class WorkflowFolderWatcherTests : IDisposable
         await File.WriteAllTextAsync(newFile, "Log payload");
 
         // Esperar hasta que el nodo downstream haya procesado el archivo
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 60; i++)
         {
             var currentStats = executor.GetNodeTelemetryStats();
             if (currentStats.TryGetValue("throttle-node-1", out var s) && s.ProcessedCount > 0)

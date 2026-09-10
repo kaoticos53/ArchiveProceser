@@ -55,6 +55,14 @@ public class LocalizationManager : ILocalizationService
         }
     }
 
+    public void ClearResourceManagers()
+    {
+        lock (_lock)
+        {
+            _resourceManagers.Clear();
+        }
+    }
+
     public string this[string key] => GetString(key);
 
     public string GetString(string key, string fallback = "")

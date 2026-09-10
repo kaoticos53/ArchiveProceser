@@ -8,8 +8,51 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` $\rightarrow$ **652 / 652 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **753 / 753 Pruebas Pasadas con 100% de Éxito**.
 - **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+  --60. **Arquitectura de Adaptadores y Motor In-Process para `MultimodalVisionLlmNode` (`IVlmAdapter`)**:
+      - **Motivación**: Brindar la opción de elegir entre servidores externos (LM Studio, Ollama, API OpenAI) y un motor interno 100% in-process dentro de FileFlow Studio sin necesidad de dependencias externas ni procesos en segundo plano.
+      - **Solución Implementada**:
+        1. *Patrón Adaptador (`IVlmAdapter`, `VlmExecutionRequest`, `VlmAdapterFactory`)*: Desacopla la invocación del modelo VLM en adaptadores intercambiables. `OpenAiCompatibleVlmAdapter` para HTTP y `InProcessVlmAdapter` para ejecución autónoma local.
+        2. *Motor In-Process (`InProcessVlmAdapter`)*: Inspecciona características de geometría visual con `ImageTypeAnalyzerEngine` (contraste bimodal, densidad de texto, relación de aspecto) e integra texto OCR o léxico documental con `LanguageInferenceEngine` para resolver tareas visuales (`ExtractInvoiceReceiptJson`, `DocumentOcrAndSummary`, `TranslateDocument`, `ClassifyAndTag`, `QualityInspection`, `CustomPrompt`).
+        3. *Ciclo de Vida y Zero-Touch (`IModelLifecycleNode`)*: Implementado en `MultimodalVisionLlmNode` para inspeccionar y precargar/descargar recursos. Opción `"Internal Engine (In-Process)"` añadida en el parámetro `Provider`.
+        4. *Pruebas Unitarias*: 9 tests añadidos en `MultimodalVisionLlmNodeTests.cs` evaluando la factoría de adaptadores, la extracción de facturas a JSON in-process, la clasificación visual in-process, el resumen documental y el ciclo de vida.
+      - **Validación**: 753 / 753 pruebas superadas (100%), compilación con `--warnaserror` con 0 advertencias y 0 errores.
+  --59. **Nuevo Nodo de IA Multimodal `MultimodalVisionLlmNode` y Motor Cliente `MultimodalVlmClientEngine` (Qwen2.5-VL / LM Studio / Ollama)**:
+      - **Motivación**: Dotar a FileFlow Studio de capacidades multimodales avanzadas de visión y lenguaje con resolución dinámica (Dynamic Resolution ViT), superando el OCR tradicional y la clasificación ciega de CLIP.
+      - **Solución Implementada**:
+        1. *Motor Cliente HTTP Resiliente (`MultimodalVlmClientEngine`)*: Preprocesado de imagen en memoria con ImageSharp (downscale bicúbico a 1536 px y compresión JPEG 85% a Base64 URI), conexión a servidores locales (LM Studio en `localhost:1234` u Ollama en `localhost:11434`) vía OpenAI Chat Completions Multimodal (`image_url`), sanitización de bloques JSON y 6 presets de tareas (`ExtractInvoiceReceiptJson`, `DocumentOcrAndSummary`, `TranslateDocument`, `ClassifyAndTag`, `QualityInspection`, `CustomPrompt`).
+        2. *Nodo de Flujo (`MultimodalVisionLlmNode`)*: 3 puertos de salida (`Out`, `Structured` para JSON extraído y `Error`). Inyección de metadatos `AI:VlmResponse`, `AI:VlmJson`, `AI:VlmTokens`, etc.
+        3. *Resolución de Recursos LIFO*: Optimizado `LocalizationManager.cs` a búsqueda inversa (LIFO) garantizando la precedencia absoluta de los recursos autónomos de plugins.
+        4. *Pruebas Unitarias*: 8 pruebas en `MultimodalVisionLlmNodeTests.cs` evaluando codificación, mock HTTP, extracción JSON y manejo de errores.
+      - **Validación**: 744 / 744 pruebas superadas (100%), 0 advertencias y 0 errores.
+  --58. **Nuevo Nodo Especializado `ImageTypeClassifierNode` y Motor de Visión Estructural e IA (`ImageTypeAnalyzerEngine`)**:
+      - **Motivación**: La limitación arquitectónica de modelos multimodales zero-shot generalistas (como CLIP ViT-B/32) sobre imágenes escaneadas de documentos/recibos, debido al downsampling destructivo a 224x224 que desvanece el texto y a los márgenes estrechos de similitud de coseno, impedía una clasificación determinista y fiable.
+      - **Solución Implementada**:
+        1. *Motor Determinista de Visión y Análisis Estructural (`ImageTypeAnalyzerEngine`)*: Análisis en un único pase de píxeles combinando detección de luminancia y fondo claro (>60%), densidad de transiciones de texto horizontal, ratios de aspecto estándar (A4/Carta, ID-1, tickets verticales > 1.8, 16:9), paleta de colores planos (ilustraciones/gráficos), metadatos EXIF fotográficos reales y detección facial neuronal con UltraFace RFB-320 (distinción inequívoca de retratos y fotos grupales).
+        2. *Nodo de Flujo con Enrutamiento Directo Multi-Puerto (`ImageTypeClassifierNode`)*: 11 puertos de salida (`Document`, `Receipt`, `Portrait`, `GroupPhoto`, `Photo`, `Screenshot`, `Illustration`, `IDCard`, `Other`, `Out`, `Error`). Inyección de metadatos `AI:ImageType`, `AI:ImageTypeConfidence`, `AI:ImageTypeScoresJson`, `AI:HasFaces`, etc.
+        3. *Localización Multilingüe Autónoma (Zero-Touch)*: Claves añadidas exclusivamente a `FileFlow.Plugin.AI/Resources/Strings.resx` y `Strings.es.resx`.
+        4. *Pruebas Unitarias*: 8 pruebas unitarias en `ImageTypeClassifierNodeTests.cs` evaluando documentos sintéticos, tickets térmicos, capturas de pantalla, umbrales y motor directo.
+      - **Validación**: 736 / 736 pruebas superadas (100%), 0 advertencias y 0 errores.
+  --57. **BUGFIX CRÍTICO: Fallo en Inferencia ONNX de CLIP ViT-B/32 y Clasificación Semántica Zero-Shot en Imágenes (`SemanticEmbeddingEngine`)**:
+      - **Causa Raíz Descubierta**:
+        1. *Desajuste de Tensores en Grafo Multimodal*: El grafo ONNX de CLIP (`clip-vit-base-patch32.onnx`) requiere simultáneamente tensores `pixel_values` (Single [1, 3, 224, 224]), `input_ids` (Int64 [1, seq_len]) y `attention_mask` (Int64 [1, seq_len]). En `GetImageEmbedding`, el código anterior asignaba el tensor de píxeles a `session.InputNames[0]` (que en CLIP es `input_ids` de tipo Int64), arrojando la excepción silenciosa `[ErrorCode:InvalidArgument] Tensor element data type discovered: Float metadata expected: Int64`. El bloque `catch` tragaba la excepción y caía al fallback léxico de 384 dimensiones basado en el nombre del archivo.
+        2. *Selección de Salida Errónea en Texto*: En `GetTextEmbedding`, se extraía `outputs.First()`, que en CLIP corresponde a `logits_per_image` (un escalar 1x1) en lugar de `text_embeds` (512 dimensiones).
+        3. *Similitud Coseno Nula (0.0)*: `CosineSimilarity` recibía un vector léxico de 384 dimensiones y un vector de 1 dimensión, devolviendo `0.0` por discrepancia de longitudes (`vecA.Length != vecB.Length`).
+        4. *Alineación de Vocabulario y Conceptos en Español*: CLIP de OpenAI fue preentrenado con textos en inglés. Al consultar etiquetas en español como `"documento, foto, retrato"`, no existía mapeo hacia los tokens BPE nativos de CLIP.
+      - **Ajustes Realizados**:
+        1. *Inferencia Multimodal Robusta en `GetImageEmbedding`*: Detección de grafos CLIP con `pixel_values` e inyección correcta de tensores tipados: píxeles normalizados RGB 224x224, tokens dummy (`49406L`, `49407L`) y máscara de atención, extrayendo y normalizando el tensor `image_embeds` de 512 dimensiones.
+        2. *Inferencia Multimodal en `GetTextEmbedding`*: Inyección de `input_ids`, `attention_mask` y tensor de ceros para `pixel_values`, extrayendo el tensor `text_embeds` de 512 dimensiones.
+        3. *Traductor y Tokenizador Especializado para CLIP*: Integrado `TranslateConceptToEnglish` con diccionario de conceptos visuales/documentales frecuentes (`documento`, `factura`, `recibo`, `retrato`, `paisaje`, `pantallazo`, etc.) con fallback a `PromptTranslator.TranslateSegment`, y tokenizador BPE con vocabulario CLIP (`ClipVocab`).
+      - **Validación**: Pruebas automáticas con el modelo real descargado en `ClipModel_Diagnostic_Test` evaluando imágenes sintéticas contra etiquetas en inglés y español con similitud coseno positiva real (> 0.25). `dotnet test` $\rightarrow$ **728 / 728 pruebas superadas al 100% (0 errores, 0 advertencias)**.
+  --56. **BUGFIX: ZeroShotSemanticSearchNode — `IsQueryMatch` siempre `false`**:
+      - **Causa Raíz**: Dos bugs acumulados en `ZeroShotSemanticSearchNode.cs`:
+        1. *Bypassing de `IStorageService`*: Se usaba `File.Exists(item.CurrentPath)` directamente, rompiendo el modo VFS/virtual.
+        2. *Embedding sobre la ruta del archivo*: Se pasaba `item.CurrentPath` (ej. `C:\Temp\invoice.txt`) a `SemanticEmbeddingEngine.ClassifyZeroShot`. En el fallback léxico (sin modelo ONNX), el embedding se calculaba sobre la ruta del archivo —texto sin valor semántico— produciendo similitud de coseno ≈ 0 contra cualquier query o label, y por tanto `IsQueryMatch = false` siempre.
+      - **Corrección Aplicada** (`ZeroShotSemanticSearchNode.cs`):
+        1. Reemplazado `File.Exists` por `await storage.FileExistsAsync()` vía `context.GetStorage()` (compatible con VFS).
+        2. Añadido método privado `ResolveContentForEmbeddingAsync` que lee el contenido real del archivo de texto (hasta 2000 chars) vía `IStorageService.OpenReadAsync()` y lo pasa al engine. Para imágenes físicas pasa la ruta real (CLIP ONNX puede leerla); para imágenes VFS o binarios usa el nombre base del archivo como texto representativo.
+      - **Validación**: `dotnet build FileFlow.slnx --warnaserror` → 0 advertencias, 0 errores. `dotnet test` → **727 / 727 pruebas superadas al 100%**.
   --55. **FASE 8: Transformación del Diseñador de Datos Sintéticos a Explorador de Archivos en Árbol Jerárquico (Hierarchical TreeView Explorer)**:
       - **Objetivo**: Rediseñar la vista principal del Diseñador de Conjuntos de Datos Sintéticos (`SyntheticDataSetDesignerWindow`) para que los archivos y carpetas se visualicen como un árbol jerárquico anidado interactivo (estilo explorador de archivos de sistema operativo), reemplazando la vista de lista plana y permitiendo agregar, organizar, inspeccionar y manipular subcarpetas, archivos y paquetes comprimidos simulados.
       - **Ajustes Realizados**:

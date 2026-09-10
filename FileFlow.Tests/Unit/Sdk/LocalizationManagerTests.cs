@@ -5,8 +5,13 @@ using Xunit;
 namespace FileFlow.Tests.Unit.Sdk;
 
 [Collection("Localization")]
-public class LocalizationManagerTests
+public class LocalizationManagerTests : IDisposable
 {
+    public void Dispose()
+    {
+        LocalizationManager.Instance.SetCulture("es-ES");
+    }
+
     [Fact]
     public void Instance_ShouldReturnSingleton_WhenAccessedMultipleTimes()
     {

@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -62,7 +64,9 @@ public sealed class ZeroShotSemanticSearchNode : IFlowNode
 
     public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
+        var storage = context.GetStorage();
+        bool fileExists = await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(item.CurrentPath) || !fileExists)
         {
             context.Log($"[SemanticSearch] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
@@ -87,10 +91,15 @@ public sealed class ZeroShotSemanticSearchNode : IFlowNode
                 item,
                 cancellationToken).ConfigureAwait(false);
 
+            // Leer el contenido textual del archivo para generar embeddings semánticos significativos.
+            // Si es una imagen o binario, usar el nombre del archivo como texto representativo.
+            // Esto evita que el embedding se calcule sobre la ruta del archivo, que no tiene valor semántico.
+            string contentForEmbedding = await ResolveContentForEmbeddingAsync(storage, item, cancellationToken).ConfigureAwait(false);
+
             context.Log($"[SemanticSearch] 🔍 Analizando semántica de '{item.FileName}' contra {candidateLabels.Count} categorías...", LogLevel.Information, item);
 
             var result = await Task.Run(
-                () => SemanticEmbeddingEngine.ClassifyZeroShot(modelPath, item.CurrentPath, candidateLabels, searchQuery, threshold),
+                () => SemanticEmbeddingEngine.ClassifyZeroShot(modelPath, contentForEmbedding, candidateLabels, searchQuery, threshold),
                 cancellationToken).ConfigureAwait(false);
 
             item.Metadata["AI:TopCategory"] = result.TopCategory;
@@ -117,6 +126,45 @@ public sealed class ZeroShotSemanticSearchNode : IFlowNode
         {
             context.Log($"[SemanticSearch] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
             await context.EmitAsync("Error", item).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Resuelve el contenido textual del archivo para pasar al motor de embeddings.
+    /// Para archivos de texto lee hasta 2000 caracteres; para imágenes/binarios devuelve el nombre base.
+    /// </summary>
+    private static async Task<string> ResolveContentForEmbeddingAsync(
+        IStorageService storage,
+        FileItemContext item,
+        CancellationToken cancellationToken)
+    {
+        string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
+
+        // Para imágenes: pasar la ruta real (el engine ONNX de CLIP puede usar la imagen directamente)
+        // o el nombre base como texto semántico en modo fallback léxico.
+        if (ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" or ".gif" or ".tiff")
+        {
+            // Si el archivo existe físicamente, el engine puede leer la imagen directamente.
+            // Usamos la ruta real; si es VFS, caemos al nombre de archivo como texto.
+            return File.Exists(item.CurrentPath)
+                ? item.CurrentPath
+                : Path.GetFileNameWithoutExtension(item.FileName);
+        }
+
+        // Para archivos de texto: leer contenido via IStorageService (compatible con VFS)
+        try
+        {
+            await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: false);
+            char[] buffer = new char[2000];
+            int charsRead = await reader.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            string content = new string(buffer, 0, charsRead).Trim();
+            return string.IsNullOrWhiteSpace(content) ? item.FileName : content;
+        }
+        catch
+        {
+            // Fallback al nombre de archivo si no se puede leer el contenido
+            return Path.GetFileNameWithoutExtension(item.FileName);
         }
     }
 }

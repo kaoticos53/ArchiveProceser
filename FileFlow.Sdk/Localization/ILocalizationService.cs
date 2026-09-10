@@ -16,5 +16,6 @@ public interface ILocalizationService : INotifyPropertyChanged
     string GetFormattedString(string key, string fallbackTemplate, params object?[] args);
     void SetCulture(string cultureName);
     void RegisterResourceManager(ResourceManager resourceManager);
+    void ClearResourceManagers();
     event EventHandler<CultureInfo>? LanguageChanged;
 }

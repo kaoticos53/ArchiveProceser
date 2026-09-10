@@ -1,6 +1,6 @@
 # Catálogo Completo de Nodos y Especificaciones - FileFlow Studio
 
-Este catálogo contiene la especificación técnica completa de los **58 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
+Este catálogo contiene la especificación técnica completa de los **60 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
 
 ---
 
@@ -356,7 +356,7 @@ Este catálogo contiene la especificación técnica completa de los **58 nodos**
 
 ---
 
-## 11. Módulo: FileFlow.Plugin.AI (16 Nodos)
+## 11. Módulo: FileFlow.Plugin.AI (18 Nodos)
 
 ### 1. LocalOcrNode
 - **Tipo:** Enricher / Visión & OCR
@@ -469,3 +469,17 @@ Este catálogo contiene la especificación técnica completa de los **58 nodos**
 - **Salidas:** `Matched` (`FileItemContext`), `Unmatched` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
 - **Parámetros:** `Model` (`Auto`, `clip-vit-b32`, `bge-small-multilingual`, `Custom`), `SearchQuery` (string), `CandidateLabels` (string), `SimilarityThreshold` (double), `TopK` (int)
 - **Función:** Búsqueda semántica zero-shot y enrutamiento inteligente por similitud de coseno en lenguaje natural libre (CLIP / BGE).
+
+### 17. ImageTypeClassifierNode
+- **Tipo:** Classifier & Router / Visión Estructural e IA
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Document` (`FileItemContext`), `Receipt` (`FileItemContext`), `Portrait` (`FileItemContext`), `GroupPhoto` (`FileItemContext`), `Photo` (`FileItemContext`), `Screenshot` (`FileItemContext`), `Illustration` (`FileItemContext`), `IDCard` (`FileItemContext`), `Other` (`FileItemContext`), `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `ConfidenceThreshold` (double 0.10 - 0.95), `EnableFaceDetection` (bool, UltraFace RFB-320), `CheckExifMetadata` (bool, metadatos de cámara fotográfica)
+- **Función:** Clasificación determinista y neuronal de imágenes con enrutamiento directo de 9 puertos (`Document`, `Receipt`, `Portrait`, `GroupPhoto`, `Photo`, `Screenshot`, `Illustration`, `IDCard`, `Other`) basada en contraste bimodal, densidad de líneas de texto, relaciones de aspecto estándar (A4, ID-1, tickets, 16:9), histograma de color plano, detección facial y EXIF. Inyecta `AI:ImageType`, `AI:ImageTypeConfidence` y `AI:ImageTypeScoresJson` en el contexto.
+
+### 18. MultimodalVisionLlmNode
+- **Tipo:** Analyze & Extract / Visión-Lenguaje Multimodal (VLM)
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Structured` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `Provider` (`LM Studio (localhost:1234)`, `Ollama (localhost:11434)`, `Internal Engine (In-Process)`, `Custom Endpoint`), `EndpointUrl` (string), `ModelName` (string, ej. `qwen2.5-vl-7b-instruct`), `ApiKey` (string), `TaskPreset` (`ExtractInvoiceReceiptJson`, `DocumentOcrAndSummary`, `TranslateDocument`, `ClassifyAndTag`, `QualityInspection`, `CustomPrompt`), `SystemPrompt` (string), `UserPrompt` (string), `TargetLanguage` (string), `ForceJsonOutput` (bool), `MaxImageDimension` (int, default 1536), `Temperature` (double), `MaxTokens` (int), `SaveAsNewFile` (bool), `TimeoutSeconds` (int)
+- **Función:** Ejecuta inferencia visual y razonamiento en lenguaje natural sobre imágenes y documentos escaneados mediante servidores locales (LM Studio, Ollama), remotos OpenAI-compatibles (Qwen2.5-VL 7B/3B, Llama-3.2-Vision, Phi-3.5-Vision) o directamente a través del motor interno In-Process de FileFlow Studio sin aplicaciones externas. Proporciona extracción directa de facturas y tickets a JSON, traducción visual completa, transcripción OCR con resumen y auditoría de calidad de documentos. Inyecta `AI:VlmResponse`, `AI:VlmJson`, `AI:VlmCategory`, `AI:VlmModel`, `AI:VlmTokens`, `AI:VlmDurationMs` y `AI:VlmProvider`. Implementa `IModelLifecycleNode`.
