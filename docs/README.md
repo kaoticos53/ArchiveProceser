@@ -25,7 +25,7 @@ Para compilar y ejecutar la aplicación inmediatamente en un entorno Windows con
 .\run.ps1
 ```
 
-Para ejecutar la batería completa de 477 pruebas automatizadas:
+Para ejecutar la batería completa de pruebas automatizadas:
 
 ```powershell
 dotnet test FileFlow.slnx

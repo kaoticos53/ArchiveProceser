@@ -330,4 +330,116 @@ public class ScriptingPluginTests
             }
         }
     }
+
+    [Fact]
+    public async Task RoslynCSharpEngine_WithEmptyScript_ShouldEmitOutByDefault()
+    {
+        var item = new FileItemContext(Path.Combine(Path.GetTempPath(), "empty_cs.txt"));
+        var mockContext = new MockFlowExecutionContext();
+        var execContext = new ScriptExecutionContext
+        {
+            Item = item,
+            FlowContext = mockContext,
+            InputPortName = "In",
+            CancellationToken = CancellationToken.None
+        };
+
+        await RoslynCSharpEngine.Instance.ExecuteAsync(string.Empty, execContext, CancellationToken.None);
+
+        mockContext.Emitted.Should().ContainSingle();
+        mockContext.Emitted[0].Port.Should().Be("Out");
+    }
+
+    [Fact]
+    public async Task JintJavaScriptEngine_WithEmptyScript_ShouldEmitOutByDefault()
+    {
+        var item = new FileItemContext(Path.Combine(Path.GetTempPath(), "empty_js.txt"));
+        var mockContext = new MockFlowExecutionContext();
+        var execContext = new ScriptExecutionContext
+        {
+            Item = item,
+            FlowContext = mockContext,
+            InputPortName = "In",
+            CancellationToken = CancellationToken.None
+        };
+
+        await JintJavaScriptEngine.Instance.ExecuteAsync(" ", execContext, CancellationToken.None);
+
+        mockContext.Emitted.Should().ContainSingle();
+        mockContext.Emitted[0].Port.Should().Be("Out");
+    }
+
+    [Fact]
+    public async Task JintJavaScriptEngine_ShouldThrowInvalidOperationException_OnScriptError()
+    {
+        var item = new FileItemContext(Path.Combine(Path.GetTempPath(), "error_js.txt"));
+        var mockContext = new MockFlowExecutionContext();
+        var execContext = new ScriptExecutionContext
+        {
+            Item = item,
+            FlowContext = mockContext,
+            InputPortName = "In",
+            CancellationToken = CancellationToken.None
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            JintJavaScriptEngine.Instance.ExecuteAsync("throw new Error('boom');", execContext, CancellationToken.None));
+
+        mockContext.Logs.Should().Contain(log => log.Contains("JavaScript Error"));
+    }
+
+    [Fact]
+    public async Task CustomScriptNode_ShouldExecuteJavaScript_WhenLanguageIsJsAlias()
+    {
+        var node = new CustomScriptNode();
+        node.Parameters["Language"] = "JS";
+        node.Parameters["InputPorts"] = "In";
+        node.Parameters["OutputPorts"] = "Ruta";
+        node.Parameters["ScriptCode"] = "emit('Ruta', item);";
+        node.SyncPortsFromParameters();
+
+        var item = new FileItemContext(Path.Combine(Path.GetTempPath(), "alias_js.mp4"));
+        var mockContext = new MockFlowExecutionContext();
+
+        await node.ExecuteAsync("In", item, mockContext, CancellationToken.None);
+
+        mockContext.Emitted.Should().ContainSingle();
+        mockContext.Emitted[0].Port.Should().Be("Ruta");
+    }
+
+    [Fact]
+    public void CustomScriptNode_SyncPortsFromParameters_WithEmptyValues_ShouldFallbackToInOut()
+    {
+        var node = new CustomScriptNode();
+        node.Parameters["InputPorts"] = " , , ";
+        node.Parameters["OutputPorts"] = " , ";
+
+        node.SyncPortsFromParameters();
+
+        node.Inputs.Should().ContainSingle();
+        node.Outputs.Should().ContainSingle();
+        node.Inputs[0].Name.Should().Be("In");
+        node.Outputs[0].Name.Should().Be("Out");
+    }
+
+    [Fact]
+    public void ScriptLibraryService_DeleteUserScript_WhenScriptDoesNotExist_ShouldReturnFalse()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "FF_Scripts_Test_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var service = new ScriptLibraryService(tempDir);
+            bool deleted = service.DeleteUserScript("does-not-exist");
+            deleted.Should().BeFalse();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
 }

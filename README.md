@@ -6,25 +6,69 @@
 ![Language](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)
 ![UI](https://img.shields.io/badge/WPF-Nodify%20MVVM-0078D4?style=for-the-badge&logo=windows&logoColor=white)
 ![Nodes](https://img.shields.io/badge/Nodes-57%20DAG%20Nodes-38BDF8?style=for-the-badge&logo=diagram-next)
-![Tests](https://img.shields.io/badge/Tests-477%2F477%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=xunit)
+![Tests](https://img.shields.io/badge/Tests-714%2F714%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=xunit)
 ![Telemetry](https://img.shields.io/badge/Telemetry->82.000%20logs%2Fsec-blueviolet?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge&logo=gnu)
 
+**File automation, large-scale processing, and transformation engine powered by interactive Directed Acyclic Graphs (DAG) for Windows.**
+
 **Motor de automatización, procesamiento masivo y transformación de archivos basado en Grafos Dirigidos Acíclicos (DAG) interactivos para Windows.**
 
-[✨ Características](#-características-principales) •
-[🏛️ Arquitectura](#️-arquitectura-del-sistema) •
-[🧩 Módulos y Plugins](#-módulos-y-plugins-oficiales-57-nodos) •
-[🚀 Inicio Rápido](#-inicio-rápido) •
-[📊 Reportes Visuales](#-reporte-visual-de-operaciones) •
-[📚 Documentación](#-documentación-adicional) •
-[📄 Licencia](#-licencia)
+[🇬🇧 English](#-english) • [🇪🇸 Español](#-español)
 
 </div>
 
 ---
 
-## 🌟 Características Principales
+## 🇬🇧 English
+
+### 🌟 Key Features
+
+- **Visual DAG Workflow Designer** with Nodify + MVVM.
+- **High-performance async engine** using Channels and TPL Dataflow.
+- **Safe-by-default pipelines** with non-destructive behavior and Dry Run simulation.
+- **Local AI inference (ONNX Runtime)** for classification, OCR, detection, and semantic search.
+- **Unified Network & Cloud connectivity**: HTTP/HTTPS, FTP/FTPS, SFTP/SSH, WebDAV, SMB.
+- **Interactive operation reports** in HTML, Markdown, JSON, CSV, and plain text.
+- **Extensible microkernel plugin architecture** with isolated domain plugins.
+
+### 🏛️ Architecture
+
+FileFlow Studio is organized in three main layers:
+
+- **FileFlow.App**: WPF UI (Nodify canvas + MVVM).
+- **FileFlow.Core**: DAG orchestration engine, validation, telemetry, plugin loading.
+- **FileFlow.Sdk**: core contracts (`IFlowNode`, `FileItemContext`, `IFlowExecutionContext`).
+
+Official plugins include: **FileSystem, Archives, Images, Network, AI, Documents, Data, Logic, Scripting, Integrations, Hashing**.
+
+### 🚀 Quick Start
+
+```powershell
+git clone https://github.com/kaoticos53/ArchiveProceser.git
+cd ArchiveProceser
+dotnet build FileFlow.slnx
+dotnet test FileFlow.slnx
+.\run.ps1
+```
+
+### 📚 Documentation
+
+- [System Specifications (SRS v2.0)](docs/ESPECIFICACIONES.md)
+- [User Manual](docs/manual_de_usuario.md)
+- [Testing Guide](docs/guia_de_pruebas.md)
+- [Architecture](docs/architecture.md)
+- [Project Walkthrough](docs/PROJECT_WALKTHROUGH.md)
+
+### 📄 License
+
+This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE).
+
+---
+
+## 🇪🇸 Español
+
+### 🌟 Características Principales
 
 - **🎨 Lienzo Visual de Diseño de Flujos (DAG)**:
   - Diseñe flujos de trabajo arrastrando y conectando nodos con **Nodify** y **CommunityToolkit.Mvvm**.
@@ -135,7 +179,8 @@ cd ArchiveProceser
 # 2. Compilar toda la solución
 dotnet build FileFlow.slnx
 
-# 3. Ejecutar la suite de pruebas automatizadas (477 tests)
+# 3. Ejecutar la suite de pruebas automatizadas
+
 dotnet test FileFlow.slnx
 
 # 4. Lanzar la aplicación FileFlow Studio
@@ -148,7 +193,7 @@ dotnet test FileFlow.slnx
 
 FileFlow Studio cuenta con una rigurosa suite de pruebas automatizadas con **100% de cobertura de éxito**:
 
-- **477 Pruebas Unitarias, de Integración y Estrés** ejecutadas bajo xUnit y FluentAssertions.
+- **700+ pruebas unitarias, de integración y estrés** ejecutadas bajo xUnit y FluentAssertions.
 - **Aislamiento Total**: Entornos temporales con GUID para operaciones de disco y pruebas deterministas.
 - **Benchmarking Multihilo**: Pruebas de estrés que validan >82.000 logs/segundo en telemetría concurrente.
 
