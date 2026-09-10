@@ -77,6 +77,32 @@ public class PromptObjectDetectorNodeTests
     }
 
     [Fact]
+    public async Task PromptTranslator_TranslateToEnglishAsync_EmptyInput_ShouldReturnEmptyString()
+    {
+        string result = await PromptTranslator.TranslateToEnglishAsync("   ");
+
+        result.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("", "")]
+    [InlineData("el coche rojo", "red car")]
+    [InlineData("gafas de sol", "sunglasses")]
+    public void PromptTranslator_TranslateSegment_ShouldHandleSingleSegmentCases(string input, string expectedToken)
+    {
+        string result = PromptTranslator.TranslateSegment(input);
+
+        if (string.IsNullOrEmpty(expectedToken))
+        {
+            result.Should().BeEmpty();
+        }
+        else
+        {
+            result.Should().Contain(expectedToken);
+        }
+    }
+
+    [Fact]
     public void PromptObjectDetectorNode_ShouldHaveValidPortsAndParameters()
     {
         // Arrange & Act

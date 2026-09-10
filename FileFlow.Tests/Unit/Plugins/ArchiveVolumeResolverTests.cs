@@ -1,3 +1,4 @@
+using System.IO;
 using FileFlow.Plugin.Archives.Services;
 using FluentAssertions;
 using Xunit;
@@ -58,5 +59,84 @@ public class ArchiveVolumeResolverTests
 
         string? root = ArchiveVolumeResolver.GetCommonRootFolder(entries);
         root.Should().BeNull();
+    }
+
+    [Fact]
+    public void FindRelatedVolumeFiles_WhenDirectoryDoesNotExist_ShouldReturnOnlyInput()
+    {
+        string archivePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "movie.part01.rar");
+
+        var volumes = ArchiveVolumeResolver.FindRelatedVolumeFiles(archivePath);
+
+        volumes.Should().ContainSingle();
+        volumes[0].Should().Be(archivePath);
+    }
+
+    [Fact]
+    public void FindRelatedVolumeFiles_ForPartRar_ShouldIncludeSiblingParts()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "ArchiveVolumeResolverTests_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            string part01 = Path.Combine(tempDir, "album.part01.rar");
+            string part02 = Path.Combine(tempDir, "album.part02.rar");
+            string part03 = Path.Combine(tempDir, "album.part03.rar");
+            string other = Path.Combine(tempDir, "other.part01.rar");
+
+            File.WriteAllText(part01, "");
+            File.WriteAllText(part02, "");
+            File.WriteAllText(part03, "");
+            File.WriteAllText(other, "");
+
+            var volumes = ArchiveVolumeResolver.FindRelatedVolumeFiles(part01);
+
+            volumes.Should().Contain(part01);
+            volumes.Should().Contain(part02);
+            volumes.Should().Contain(part03);
+            volumes.Should().NotContain(other);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    [Fact]
+    public void FindRelatedVolumeFiles_ForZipSplit_ShouldIncludeSiblingZVolumes()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "ArchiveVolumeResolverTests_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            string zip = Path.Combine(tempDir, "backup.zip");
+            string z01 = Path.Combine(tempDir, "backup.z01");
+            string z02 = Path.Combine(tempDir, "backup.z02");
+            string other = Path.Combine(tempDir, "another.z01");
+
+            File.WriteAllText(zip, "");
+            File.WriteAllText(z01, "");
+            File.WriteAllText(z02, "");
+            File.WriteAllText(other, "");
+
+            var volumes = ArchiveVolumeResolver.FindRelatedVolumeFiles(zip);
+
+            volumes.Should().Contain(zip);
+            volumes.Should().Contain(z01);
+            volumes.Should().Contain(z02);
+            volumes.Should().NotContain(other);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

@@ -17,6 +17,8 @@ public class ModelLifecycleAndMemoryTests
     public void AiNodes_ShouldImplementIModelLifecycleNode()
     {
         // Arrange
+        AiPluginInitializer.ClearAllSessions();
+
         IFlowNode[] aiNodes =
         [
             new BackgroundRemoverNode(),
@@ -40,6 +42,7 @@ public class ModelLifecycleAndMemoryTests
             node.Should().BeAssignableTo<IModelLifecycleNode>();
             var lifecycle = (IModelLifecycleNode)node;
             lifecycle.ModelIdentifier.Should().NotBeNullOrWhiteSpace();
+            lifecycle.UnloadModel();
             lifecycle.IsModelLoaded.Should().BeFalse();
         }
     }

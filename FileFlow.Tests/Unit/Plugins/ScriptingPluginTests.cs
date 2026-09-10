@@ -3,6 +3,7 @@ using FileFlow.Plugin.Scripting;
 using FileFlow.Plugin.Scripting.Engines;
 using FileFlow.Plugin.Scripting.Services;
 using FileFlow.Sdk;
+using FluentAssertions;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.Plugins;
@@ -237,6 +238,89 @@ public class ScriptingPluginTests
 
             Assert.Single(loaded);
             Assert.Equal("Mi Script Personalizado", loaded[0].Name);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
+
+    [Fact]
+    public void ScriptLibraryService_SaveDeleteAndReload_ShouldHandleInvalidFileNameChars()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "FF_Scripts_Test_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var service = new ScriptLibraryService(tempDir);
+            var script = new ScriptDefinition
+            {
+                Id = "script-1",
+                Name = "Mi:Script*Invalido?",
+                Description = "Prueba sanitización",
+                Language = "JavaScript",
+                ScriptCode = "emit('Out', item);",
+                InputPorts = ["In"],
+                OutputPorts = ["Out"]
+            };
+
+            service.SaveUserScript(script);
+
+            Directory.GetFiles(tempDir, "*.ffscript").Should().NotBeEmpty();
+            service.GetUserScripts().Should().ContainSingle(s => s.Name == "Mi:Script*Invalido?");
+
+            // Recarga desde disco
+            var reloadedService = new ScriptLibraryService(tempDir);
+            reloadedService.GetUserScripts().Should().ContainSingle(s => s.Name == "Mi:Script*Invalido?");
+
+            bool deleted = reloadedService.DeleteUserScript("script-1");
+            deleted.Should().BeTrue();
+            reloadedService.GetUserScripts().Should().BeEmpty();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
+
+    [Fact]
+    public void ScriptLibraryService_GetAllScripts_ShouldIncludeBuiltInAndUserScripts()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "FF_Scripts_Test_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var service = new ScriptLibraryService(tempDir);
+            int builtInCount = service.GetBuiltInScripts().Count;
+
+            service.SaveUserScript(new ScriptDefinition
+            {
+                Id = "script-2",
+                Name = "Usuario 1",
+                Language = "CSharp",
+                ScriptCode = "await EmitAsync(\"Out\");"
+            });
+
+            service.SaveUserScript(new ScriptDefinition
+            {
+                Id = "script-3",
+                Name = "Usuario 2",
+                Language = "JavaScript",
+                ScriptCode = "emit('Out', item);"
+            });
+
+            var all = service.GetAllScripts();
+            all.Count.Should().BeGreaterThanOrEqualTo(builtInCount + 2);
+            all.Should().Contain(s => s.Name == "Usuario 1");
+            all.Should().Contain(s => s.Name == "Usuario 2");
         }
         finally
         {

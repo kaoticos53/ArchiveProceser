@@ -390,5 +390,64 @@ public class NetworkNodesTests
         privateKeyParam.IsVisible.Should().BeTrue("PrivateKeyPath must be visible for SFTP");
     }
 
+    [Fact]
+    public async Task NetworkDownloadNode_UnsupportedProtocol_ShouldEmitError()
+    {
+        var node = new NetworkDownloadNode();
+        node.Parameters["Protocol"] = "Gopher";
+        node.Parameters["DestinationFolder"] = Path.Combine(_testDir, "UnsupportedDownload");
+
+        var item = new FileItemContext("trigger.tmp");
+        var mockContext = new Mock<IFlowExecutionContext>();
+
+        string? emittedPort = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, _) => emittedPort = p)
+            .Returns(Task.CompletedTask);
+
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        emittedPort.Should().Be("Error");
+    }
+
+    [Fact]
+    public async Task NetworkUploadNode_MissingFile_WhenNotDryRun_ShouldEmitError()
+    {
+        var node = new NetworkUploadNode();
+        var item = new FileItemContext(Path.Combine(_testDir, "missing_file.bin"));
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.SetupGet(c => c.IsDryRun).Returns(false);
+
+        string? emittedPort = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, _) => emittedPort = p)
+            .Returns(Task.CompletedTask);
+
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        emittedPort.Should().Be("Error");
+    }
+
+    [Fact]
+    public async Task NetworkUploadNode_UnsupportedProtocol_ShouldEmitError()
+    {
+        var node = new NetworkUploadNode();
+        node.Parameters["Protocol"] = "Gopher";
+
+        string testFile = CreateTestFile("upload.bin", "payload");
+        var item = new FileItemContext(testFile);
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        string? emittedPort = null;
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((p, _) => emittedPort = p)
+            .Returns(Task.CompletedTask);
+
+        await node.ExecuteAsync("In", item, mockContext.Object);
+
+        emittedPort.Should().Be("Error");
+    }
+
     #endregion
 }

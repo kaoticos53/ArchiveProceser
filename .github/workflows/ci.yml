@@ -33,8 +33,38 @@ jobs:
       - name: 🏗️ Compilar solución
         run: dotnet build FileFlow.slnx -c Release --no-restore
 
-      - name: 🧪 Ejecutar suite de pruebas (303 tests)
-        run: dotnet test FileFlow.slnx -c Release --no-build --verbosity normal --logger "trx;LogFileName=test_results.trx"
+      - name: 🧪 Ejecutar suite de pruebas
+        run: dotnet test FileFlow.slnx -c Release --no-build --verbosity normal --logger "trx;LogFileName=test_results.trx" --collect:"XPlat Code Coverage"
+
+      - name: 🚧 Verificar umbral mínimo de cobertura
+        shell: pwsh
+        run: |
+          $thresholdLine = 0.60
+          $thresholdBranch = 0.44
+
+          $coverageFile = Get-ChildItem -Path "FileFlow.Tests/TestResults" -Recurse -Filter "coverage.cobertura.xml" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+          if (-not $coverageFile) {
+            throw "No se encontró coverage.cobertura.xml en FileFlow.Tests/TestResults"
+          }
+
+          [xml]$xml = Get-Content $coverageFile.FullName
+          $lineRate = [double]$xml.coverage.'line-rate'
+          $branchRate = [double]$xml.coverage.'branch-rate'
+
+          Write-Host "Coverage file: $($coverageFile.FullName)"
+          Write-Host ("Line rate: {0:P2}" -f $lineRate)
+          Write-Host ("Branch rate: {0:P2}" -f $branchRate)
+
+          if ($lineRate -lt $thresholdLine) {
+            throw ("Cobertura de líneas insuficiente: {0:P2} < {1:P2}" -f $lineRate, $thresholdLine)
+          }
+
+          if ($branchRate -lt $thresholdBranch) {
+            throw ("Cobertura de ramas insuficiente: {0:P2} < {1:P2}" -f $branchRate, $thresholdBranch)
+          }
 
       - name: 📊 Publicar resultados de pruebas
         uses: actions/upload-artifact@v4
@@ -42,4 +72,12 @@ jobs:
         with:
           name: test-results-trx
           path: '**/TestResults/*.trx'
+          retention-days: 7
+
+      - name: 📈 Publicar reporte de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-coverage-cobertura
+          path: '**/TestResults/**/coverage.cobertura.xml'
           retention-days: 7
