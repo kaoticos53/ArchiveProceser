@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Serialization;
 using FileFlow.Sdk.TemplateEngine;
 using Microsoft.ML.OnnxRuntime;
 
@@ -294,7 +295,7 @@ public static class LanguageInferenceEngine
             ["has_critical_data"] = emails.Count > 0 || amounts.Count > 0
         };
 
-        string json = JsonSerializer.Serialize(structured, new JsonSerializerOptions { WriteIndented = true });
+        string json = JsonDefaults.SerializeRelaxed(structured, indented: true);
         int approxTokens = (json.Length / 4) + 5;
 
         return new LlmExecutionResult(

@@ -188,4 +188,12 @@
   <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>↕️ Colapsar Todo</value></data>
   <data name="DataSetDesigner_InspectorTitle" xml:space="preserve"><value>Propiedades del Elemento</value></data>
   <data name="DataSetDesigner_InspectorNoSelection" xml:space="preserve"><value>Selecciona un archivo o carpeta en el árbol para ver y editar sus propiedades.</value></data>
+  <data name="LogOutputNode_Name" xml:space="preserve"><value>Registrar Log</value></data>
+  <data name="LogOutputNode_Desc" xml:space="preserve"><value>Registra mensajes personalizados con variables o información detallada del elemento en la consola e historial.</value></data>
+  <data name="Param_CustomMessage" xml:space="preserve"><value>Mensaje Personalizado</value></data>
+  <data name="Param_CustomMessage_Help" xml:space="preserve"><value>Plantilla de mensaje a registrar en el log (admite {FileName}, {Extension}, {FileSize}, {AI:VlmTags}, expresiones, etc.).</value></data>
+  <data name="Param_LogLevel" xml:space="preserve"><value>Nivel de Log</value></data>
+  <data name="Param_LogMetadata" xml:space="preserve"><value>Incluir Metadatos</value></data>
+  <data name="Param_LogExecutionHistory" xml:space="preserve"><value>Incluir Historial</value></data>
+  <data name="Param_CompactFormat" xml:space="preserve"><value>Formato Compacto</value></data>
 </root>

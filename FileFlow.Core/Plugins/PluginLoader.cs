@@ -146,6 +146,11 @@ public class PluginLoader
                     !name.EndsWith(".g.resources", StringComparison.OrdinalIgnoreCase)) // exclude BAML/XAML generated resources
                 {
                     string baseName = name[..^10]; // Strip ".resources"
+                    if (baseName.EndsWith(".es", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     try
                     {
                         var rm = new ResourceManager(baseName, asm);

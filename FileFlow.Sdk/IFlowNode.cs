@@ -21,6 +21,13 @@ public interface IFlowNode
     /// </summary>
     IReadOnlyList<NodeActionDescriptor> CustomActions => Array.Empty<NodeActionDescriptor>();
 
+    /// <summary>
+    /// Concurrencia máxima simultánea admitida por este nodo específico.
+    /// Un valor menor o igual a 0 indica que usa la concurrencia global del flujo sin restricción propia.
+    /// Nodos que acceden a recursos exclusivos o serializados (VLM, GPU local, APIs con rate limit estricto) pueden devolver 1.
+    /// </summary>
+    int MaxConcurrency => 0;
+
     Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,

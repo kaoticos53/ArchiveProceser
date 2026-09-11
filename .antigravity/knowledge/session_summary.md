@@ -8,8 +8,193 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **753 / 753 Pruebas Pasadas con 100% de Éxito**.
-- **Nuevas Funcionalidades y Correcciones Implementadas en Sesión**:
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **826 / 826 Pruebas Pasadas con 100% de Éxito**.
+  --77. **Gestión de Ciclo de Vida y Limpieza Determinista del Espacio Temporal de Ejecución (Temp Workspace Lifecycle & Housekeeping)**:
+      - **Motivación y Diagnóstico**:
+        1. En ejecuciones complejas (Fan-Out/Fan-In de cómics, optimizaciones sucesivas de imágenes, eliminación de fondo con IA), se generaban miles de carpetas aleatorias no rastreadas (`Guid.NewGuid()[..8]`) a través de `ParameterHelper.ResolveIntermediateOutputDir`, acumulando gigabytes de basura en `%TEMP%`.
+        2. Si un flujo se cancelaba o fallaba en un nodo intermedio, los directorios de trabajo de sesión (`FileFlow_Sessions`) no se liberaban.
+      - **Solución Implementada**:
+        1. *Espacio de Trabajo Temporal Acotado (`ITempWorkspaceManager` & `WorkflowWorkspaceManager`)*: Cada ejecución de flujo crea su propio subdirectorio aislado (`Runs/{ExecutionId}/`), registrando archivos y carpetas concurrentemente de forma thread-safe.
+        2. *Limpieza Determinista en `WorkflowExecutor.finally`*: Se garantiza que al finalizar, cancelar o abortar un flujo por excepción, el espacio temporal y todos los recursos registrados se eliminan automáticamente si `AutoCleanIntermediateTempFiles == true`.
+        3. *Eliminación de Subcarpetas Aleatorias No Rastreadas*: `ParameterHelper.ResolveIntermediateOutputDir` ahora delega en `context.TempWorkspace.CreateSubdirectory("intermediate")` o la carpeta de sesión del cómic/archivo, evitando fragmentación de carpetas en disco.
+        4. *Sincronización en Fan-Out / Fan-In*: En `ArchiveFanInNode`, los archivos temporales intermedios procesados se eliminan inmediatamente tras copiarse en la sesión antes del empaquetado final.
+        5. *Housekeeping de Temporales Huérfanos*: `AppPaths.CleanupStaleTempDirectories(TimeSpan? maxAge)` purga ejecuciones residuales (>2 horas) en segundo plano al iniciar la app (`App.xaml.cs`) y bajo demanda desde los ajustes de la app (`WorkflowSettingsViewModel.CleanTemporaryFilesNowCommand`).
+        6. *Preferencias de Usuario*: `AutoCleanIntermediateTempFiles` y `CleanStaleTempOnStartup` persistidas en `user_preferences.json`.
+      - **Validación**: Creados `TempWorkspaceManagerTests.cs`, `StaleTempHousekeeperTests.cs`, `WorkflowWorkspaceCleanupIntegrationTests.cs` y adaptados `TemporaryDirectoryAndSizeVariablesTests.cs`. **826 / 826 pruebas unitarias superadas al 100% (0 errores, 0 advertencias bajo `--warnaserror`)**.
+  --76. **Motor de Descompresión Universal Multi-Estrategia (.NET 9 Zip, 7-Zip CLI Universal y SharpCompress Resiliente)**:
+      - **Motivación y Diagnóstico**:
+        1. En archivos comprimidos modernos, cómics (.cbz, .cbr, .cb7), paquetes RAR5 con diccionarios extensos (>128 MB) o archivos sólidos (*solid archives* en 7z/RAR), el acceso aleatorio de SharpCompress fallaba silenciosamente tras 1 o 2 entradas, provocando extracciones incompletas.
+      - **Solución Implementada**:
+        1. *Motor Nativo .NET 9 (`DotNetZipArchiveExtractor`)*: Extracción ultrarrápida, streaming nativo, Zip64 y protección Zip-Slip para `.zip`, `.cbz`, `.epub`, `.jar`.
+        2. *Puente 7-Zip CLI Universal (`SevenZipCliRunner`)*: Detección automática en Windows (`Program Files`, `PATH` o ruta personalizada `CustomSevenZipPath`) permitiendo extraer el 100% de formatos y métodos de compresión (RAR5, 7z LZMA2, CBR, CB7, ZSTD, split volumes).
+        3. *Motor Administrado Resiliente (`SharpCompressResilientExtractor`)*: Lectura continua stream por stream con captura `try/catch` individualizada por entrada para evitar que archivos dañados aborten el resto.
+        4. *Orquestador Central (`SafeArchiveExtractor.UniversalExtractAsync`)*: Fallback transparente multi-nivel (`DotNetZip` $\rightarrow$ `7z CLI` $\rightarrow$ `SharpCompress`).
+        5. *Parámetros en Nodos*: `ExtractionEngine` y `CustomSevenZipPath` añadidos a `SmartUnpackNode` y `ArchiveFanOutNode`. Reconocimiento de cómics y formatos modernos en `ArchiveFilterNode` y `ArchiveVolumeResolver`.
+        6. *Localización (i18n)*: Recursos actualizados en `FileFlow.Plugin.Archives/Resources/` (`Strings.resx` y `Strings.es.resx`).
+      - **Validación**: Creados `DotNetZipArchiveExtractorTests.cs`, `SevenZipCliRunnerTests.cs`, `SharpCompressResilientExtractorTests.cs`, `UniversalArchiveExtractorTests.cs`. 819 / 819 pruebas unitarias superadas al 100% (0 errores, 0 advertencias bajo `--warnaserror`).
+  --75. **Patrón Genérico Fan-Out / Fan-In para Archivos Comprimidos (`ArchiveFanOutNode` y `ArchiveFanInNode`), Preservación de Subcarpetas y Optimización Condicional de Imágenes**:
+      - **Motivación y Requisito**:
+        1. Procesar archivos comprimidos (cómics `.cbz`, álbumes de audio `.zip`, lotes de documentos) desempaquetando sus contenidos, procesando cada elemento con cualquier nodo del catálogo (WebP, transcodificación de audio, OCR, metadatos) y re-empaquetando automáticamente el resultado final en el destino con el mismo nombre y estructura.
+        2. Preservar íntegramente cualquier jerarquía de subcarpetas interna (ej. `Capitulo 1/01.jpg`, `CD1/track01.flac`) en el desempaquetado y re-empaquetado.
+        3. Para imágenes, comparar el peso en bytes de la versión convertida (ej. WebP) contra la original; si el WebP pesa más o igual, conservar la imagen original intacta.
+      - **Solución Implementada**:
+        1. *`ArchiveFanOutNode` (`FileFlow.Plugin.Archives`)*: Extrae el archivo comprimido a una sesión temporal de trabajo y emite cada elemento interno con metadatos de sesión (`Archive:SessionId`, `Archive:TotalEntries`, `Archive:RelativePath`, `Archive:OriginalArchiveFileName`). `CleanWrapper` establecido en `false` por defecto para no colapsar carpetas legítimas.
+        2. *`ArchiveFanInNode` (`FileFlow.Plugin.Archives`)*: Barrera de sincronización basada en `System.Threading.Lock` que acumula los archivos procesados de la sesión y, al completarse, los re-empaqueta en el destino final (`.cbz`, `.zip`, `.7z`, etc.) preservando las rutas relativas normalizadas (`/`) de todas las subcarpetas y eliminando los temporales.
+        3. *`ArchiveCompressorNode` (`FileFlow.Plugin.Archives`)*: Iteración determinista recursiva de todos los archivos y subdirectorios.
+        4. *`ImageOptimizerNode` (`FileFlow.Plugin.Images`)*: Parámetros `KeepOriginalIfLarger` y `ReplaceOriginalInPlace` para comparación estricta de bytes y preservación de originales.
+        5. *`VariableDiscoveryService`*: Autodescubrimiento contextual de variables de archivo (`{Archive:SessionId}`, `{Archive:OriginalArchiveFileName}`, `{Archive:SavedPercent}`, etc.).
+      - **Validación**: Creados `ArchiveFanOutNodeTests.cs`, `ArchiveFanInNodeTests.cs` (con test de subdirectorios anidados), `ArchiveFanOutFanInPipelineTests.cs` y ampliados `ImageOptimizerNodeTests.cs`. 806 / 806 pruebas superadas al 100% con 0 errores y 0 advertencias bajo `--warnaserror`.
+  --74. **Sincronización en Hilo Dispatcher para Colecciones de Variables en Diálogo VLM y Corrección de Inversión de Semáforos**:
+      - **Motivación y Diagnóstico**:
+        1. Al ejecutar la inferencia de prueba de 1 ciclo en la ventana de configuración VLM, la tarea asíncrona reanudaba en un hilo del ThreadPool y modificaba `SampleDiscoveredVariables` (un `ObservableCollection` vinculado al `DataGrid` de WPF). `CollectionView` arrojaba `NotSupportedException: Este tipo de CollectionView no admite cambios en el SourceCollection de un subproceso distinto del subproceso Dispatcher`, deteniendo la inserción de variables tras la primera (`{tipo_documento}`).
+        2. En flujos de trabajo con lotes grandes, la adquisición de `concurrencyThrottle` previa a `nodeThrottle` generaba bloqueo e inanición en nodos downstream como `LogOutputNode`.
+      - **Solución Implementada**:
+        1. *Seguridad de Hilos en UI*: En `MultimodalVlmConfigViewModel.cs`, se recolectan todas las variables en una lista intermedia y se aplican las mutaciones a `SampleDiscoveredVariables` y propiedades observables despachando explícitamente a `Application.Current.Dispatcher`.
+        2. *Reordenación de Semáforos*: En `WorkflowItemDispatcher.cs`, las tareas esperan su turno primero en `nodeThrottle` y luego adquieren `concurrencyThrottle`, habilitando streaming fluido 1 a 1 en tiempo real.
+      - **Validación**: 800 / 800 pruebas unitarias superadas con 100% de éxito, 0 advertencias, 0 errores con `--warnaserror`.
+  --73. **Variables Dinámicas VLM, Structured Outputs Determinista y Banco de Pruebas Interactivo de 1 Ciclo (`MultimodalVisionLlmNode` & `VariableDiscoveryService`)**:
+      - **Motivación y Requisito**:
+        1. Al conectar nodos downstream tras `MultimodalVisionLlmNode`, las variables dinámicas producidas por la respuesta del modelo no aparecían en el catálogo de autocompletado (`{x}`).
+        2. Los modelos VLM frecuentemente devuelven sub-JSONs embebidos o cadenas serializadas dentro de propiedades JSON ("JSON dentro de otro JSON"), dificultando su consumo.
+        3. Se requería un mecanismo determinista de salidas estructuradas (`json_schema`) y una herramienta de prueba para ejecutar 1 ciclo de muestra con un archivo de prueba real e importar automáticamente las variables descubiertas al flujo de trabajo.
+      - **Solución Implementada**:
+        1. *Aplanador Recursivo de JSON (`JsonMetadataFlattener`)*:
+           - Recorre recursivamente `JsonElement` soportando tipos anidados, arrays indexados (`item[0].subcampo`) y desanidado automático de sub-JSONs embebidos como cadenas de texto (`{...}` / `[...]`).
+           - Sanitiza bloques markdown (`` ```json ``) y genera claves canónicas en minúsculas y alias con prefijo `AI:`.
+        2. *Structured Outputs Determinista en `MultimodalVlmClientEngine`*:
+           - Implementado soporte para `response_format: { type: "json_schema", json_schema: ... }` mediante `VlmExecutionRequest.JsonSchema`.
+           - Esquemas JSON canónicos tipados para plantillas de extracción (`Facturas y Recibos`, `Inspección de Calidad`, `Clasificación y Etiquetado`).
+           - Degradación progresiva transparente en 2 niveles (`json_schema` $\rightarrow$ `json_object` $\rightarrow$ prompt guiado) con memoria negativa en caché (`s_unsupportedJsonSchemaCache` y `s_unsupportedResponseFormatCache`) ante servidores que rechacen HTTP 400.
+        3. *Autodescubrimiento Topológico en `VariableDiscoveryService`*:
+           - `MultimodalVisionLlmNode` expone variables fijas (`AI:VlmResponse`, `AI:VlmTokens`, `AI:VlmDurationMs`, etc.), variables canónicas de la plantilla activa (`AI:numero_factura`, `AI:importe_total`, etc.) y variables dinámicas aprendidas del banco de pruebas (`DiscoveredVariables`).
+           - Soporte añadido también para `ImageTypeClassifierNode` (`AI:ImageType`, `AI:ImageTypeConfidence`, etc.).
+           - Enriquecido `CreatePreviewItem` con metadatos realistas para el IntelliSense contextual en tiempo de diseño.
+        4. *Banco de Pruebas de 1 Ciclo en `MultimodalVlmConfigWindow`*:
+           - Nueva pestaña *"🔬 Probar Muestra (1 Ciclo)"* con selector de archivo de imagen, ejecución de inferencia en segundo plano con indicador de carga, visor de respuesta JSON y DataGrid de variables extraídas.
+           - Botón *"📥 Usar Variables en el Flujo"* que persiste las variables descubiertas en `DiscoveredVariables` del nodo para exponerlas inmediatamente a todos los nodos conectados en el lienzo.
+        5. *Pruebas Unitarias*: Creados `JsonMetadataFlattenerTests.cs`, ampliados `VariableDiscoveryServiceTests.cs`, `MultimodalVisionLlmNodeTests.cs` y `MultimodalVlmConfigViewModelTests.cs`.
+      - **Validación**: 800 / 800 pruebas superadas con 100% de éxito, 0 advertencias, 0 errores con `--warnaserror`.
+  --72. **Mensajes Personalizados con Variables Dinámicas y Editor Multilínea Ampliado en el Nodo Registrar Log (`LogOutputNode`)**:
+      - **Motivación y Requisito**: Permitir al usuario redactar mensajes de log personalizados en el nodo "Registrar Log", interpolando dinámicamente variables del sistema y del ítem (p. ej. `{FileName}`, `{Extension}`, `{SizeKb}`, `{AI:Category}`, `{AI:VlmTags}`, etc.) y disponiendo de un editor modal ampliado (`⤢`) y selector de variables (`{x}`) cuando sea necesario escribir textos extensos.
+      - **Solución Implementada**:
+        1. *Parámetro `CustomMessage` y Descriptor `ParameterEditorType.MultiLineText`*: Añadido el parámetro `CustomMessage` en `LogOutputNode` con descriptor multilínea y orden de visualización prioritario (`DisplayOrder: 1`).
+        2. *Interpolación de Expresiones*: `LogOutputNode.ExecuteAsync` evalúa `VariableTemplateResolver.Resolve(customMsg, item)` si `CustomMessage` no está vacío, registrando el mensaje resultante en `IFlowExecutionContext.Log` y en `item.ExecutionLog`. Si está vacío, mantiene el resumen estándar de inspección.
+        3. *Integración con la UI*: `NodeParameterTemplates.xaml` activa automáticamente los botones `⤢` (`OpenTextEditorCommand`) para abrir `TextEditorDialogWindow` y `{x}` (`OpenVariablePickerCommand`) para el catálogo interactivo de variables.
+        4. *Recursos Localizados (i18n)*: Actualizados `Strings.resx` y `Strings.es.resx` en `FileFlow.Plugin.FileSystem` con claves para el nodo y sus parámetros.
+        5. *Pruebas Unitarias*: Creado `LogOutputNodeTests.cs` verificando la resolución de variables y configuración de descriptores.
+      - **Validación**: 791 / 791 pruebas unitarias superadas al 100%, 0 advertencias, 0 errores con `--warnaserror`.
+  --71. **Concurrencia Configurable en Nodos de IA Multimodal (VLM) y Perfiles de Proveedor**:
+      - **Motivación y Requisito**: Permitir al usuario configurar el grado de paralelismo en nodos como `MultimodalVisionLlmNode` para aprovechar servidores con múltiples slots (p. ej. LM Studio con concurrencia 4 o GPUs de alta capacidad) sin limitarlo forzosamente a 1.
+      - **Solución Implementada**:
+        1. *Propiedad Dinámica `MaxConcurrency` en `MultimodalVisionLlmNode`*: Expuesta como parámetro editable de tipo `ParameterEditorType.Number` (`Min: 1`, `Max: 32`, Default: 1).
+        2. *Soporte en Adaptadores y Motor Cliente*: `VlmExecutionRequest`, `OpenAiCompatibleVlmAdapter` y `MultimodalVlmClientEngine.ExecuteChatCompletionAsync` reciben `ConcurrencyLimit`. `GetThrottleForEndpoint` dimensiona dinámicamente los semáforos concurrentes (`s_endpointThrottles[$"{hostKey}::{count}"]`).
+        3. *Gestión en Perfiles de Proveedor (`VlmProviderProfile`)*: Añadida propiedad `ConcurrencyLimit` con persistencia en `vlm_providers.json` y control editable en la ventana modal `MultimodalVlmConfigWindow.xaml`.
+      - **Validación**: 788 / 788 pruebas unitarias superadas al 100%, compilación limpia bajo `--warnaserror` (0 advertencias, 0 errores).
+  --70. **Medición Precisa de Rendimiento de Nodos (Eliminación de Distorsión por Cola) y Deduplicación del Contador de Elementos Completados**:
+      - **Diagnóstico y Causas Raíz**:
+        1. *Distorsión de Tiempos en la Ficha Rendimiento y Tarjetas de Nodo*: En `WorkflowItemDispatcher`, el cronómetro `Stopwatch.GetTimestamp()` se iniciaba antes de invocar `targetNode.ExecuteAsync`. En nodos con serialización de concurrencia o recursos exclusivos (como `MultimodalVisionLlmNode` que protege la GPU local de LM Studio mediante un semáforo de 1 en 1), los 16 hilos del motor DAG entraban en paralelo a `ExecuteAsync` y aguardaban en cola dentro del método. El despachador medía `tiempo de espera en cola + tiempo real de procesamiento`: el archivo 1 marcaba 1.2s, pero el archivo 10 marcaba 12s (10.8s en cola + 1.2s de proceso), inflando la media a más de 6 segundos.
+        2. *Inflación del Contador de Elementos Procesados*: En `WorkflowItemDispatcher`, cada vez que un nodo emitía por un puerto de salida desconectado (como el puerto `Structured` en `MultimodalVisionLlmNode` cuando solo se usa `Out`, o el nodo terminal `ExcelReportGeneratorNode`), se invocaba `_telemetryTracker.IncrementCompletedFiles()`. Además, al terminar el nodo sumidero (`!targetContext.HasEmittedAnyDownstream`), volvía a llamarse `IncrementCompletedFiles()`. Para 10 archivos de entrada, el contador sumaba 20 o 30, mostrando 20/20 elementos procesados.
+      - **Solución y Mejoras**:
+        1. *Concurrencia Declarativa por Nodo (`MaxConcurrency`)*: Añadido `int MaxConcurrency => 0;` a `IFlowNode` y `FlowNodeBase`. `MultimodalVisionLlmNode` declara `MaxConcurrency => 1`. En `WorkflowItemDispatcher`, si el nodo declara concurrencia limitada, se adquiere el semáforo `_nodeConcurrencyThrottles` **antes** de tomar la marca de tiempo `startTicks`.
+        2. *Reporte de Duración Neta de Ejecución (`ReportExecutionDuration`)*: Añadido `ReportExecutionDuration(double durationMs)` en `IFlowExecutionContext` y `WorkflowExecutionContext`. `MultimodalVisionLlmNode` reporta el tiempo exacto de inferencia VLM `result.DurationMs`, evitando cualquier desfase por cola o I/O secundario.
+        3. *Deduplicación Concurrente de Archivos Completados*: En `WorkflowTelemetryTracker`, se incorporó `ConcurrentDictionary<string, byte> _uniqueCompletedFiles`. `IncrementCompletedFiles(string? fileKey = null)` garantiza que cada archivo físico (`OriginalPath`, `CurrentPath` o `IdString`) se contabilice **exactamente una vez**, reflejando con total fidelidad el progreso (10/10 elementos).
+      - **Validación**: 787 / 787 pruebas unitarias superadas al 100%, compilación limpia bajo `--warnaserror` (0 advertencias, 0 errores).
+  --69. **Mitigación Definitiva de LM Studio `Channel Error` y HTTP 400 (Optimización 1024px, Cooldown y Desempaquetado Tabular)**:
+      - **Diagnóstico Forense de Logs**:
+        - En la primera petición exitosa (`13:21:32`), la imagen a 1536px generó **2441 tokens de prompt**, provocando en LM Studio la advertencia: `W srv alloc: - making room for prompt cache entry, removing oldest entry (size = 139.731 MiB)`.
+        - En la segunda petición (`13:21:34`), mientras el slot 0 procesaba al 7.4%, llegaron más de 20 peticiones concurrentes en el mismo segundo (`13:21:35`) porque la aplicación en ejecución aún no había cargado la DLL actualizada con el semáforo. La saturación de peticiones entrantes colapsó el canal IPC de LM Studio (`Channel Error: Fetch.onAborted`), retornando errores 400 y 500 al resto del lote.
+      - **Solución y Mejoras**:
+        1. *Optimización de Resolución Máxima (1024px)*: Reducido el valor por defecto de `MaxImageDimension` de 1536 a 1024px en `MultimodalVlmClientEngine`, `MultimodalVisionLlmNode` y `VlmConfigurationStorageService`. Para `Qwen2.5-VL`, reduce los tokens de ~2500 a ~900 y el uso de KV cache de ~140 MB a ~40 MB, acelerando la inferencia y evitando la expulsión forzada de caché de prompt en llama-server.
+        2. *Cooldown de 250ms en Endpoints Locales*: Añadida una pausa de 250ms tras cada inferencia local antes de liberar el semáforo para permitir a LM Studio limpiar los tensores de memoria del slot.
+        3. *Reintento de 400 Transitorio por Fallo de Canal*: Si LM Studio responde con 400 por error interno de canal (`channel`, `overload`, `busy`, `terminated`, `slot`), FileFlow lo reconoce como transitorio y reintenta con backoff en vez de fallar.
+        4. *Desempaquetado Plano de Metadatos JSON*: `MultimodalVisionLlmNode` aplana las propiedades del JSON estructurado a claves de metadatos (`categoria`, `etiquetas_descriptivas`, `motivo`, `AI:VlmTags`, `AI:VlmReason`), facilitando su ingesta directa en nodos como `ExcelReportGeneratorNode`.
+        5. *Sincronización Total de Binarios*: Recompilado `FileFlow.App` y verificado que `Plugins\FileFlow.Plugin.AI.dll` está 100% al día.
+      - **Validación**: 785 / 785 pruebas unitarias superadas al 100%, 0 advertencias, 0 errores con `--warnaserror`.
+  --68. **Resiliencia VLM: Serialización de Concurrencia por Host, Caché Negativa de `response_format` y Reintentos 5xx con Backoff**:
+      - **Motivación**:
+        - Al procesar directorios de imágenes con `MultimodalVisionLlmNode` conectado a LM Studio (`qwen2.5-vl-7b-instruct`), surgían errores 400 y errores 500 (`Channel Error: fetch failed / undici TypeError: terminated at Fetch.onAborted`).
+        - Causa Raíz 500: El pipeline DAG procesa elementos en paralelo según el número de núcleos de la CPU (`MaxDegreeOfParallelism = Environment.ProcessorCount`, típicamente 8-16 hilos). Todos los hilos cargaban imágenes y enviaban peticiones POST masivas con Base64 al mismo milisegundo a `http://localhost:1234`. LM Studio local trabaja con un único slot de inferencia y memoria VRAM acotada, provocando que su proxy Node.js abortase los sockets y el motor llama.cpp colapsase su canal IPC.
+        - Causa Raíz 400: Para tareas con salida estructurada, se enviaba `response_format: {"type": "json_object"}`. Aunque había un reintento reactivo, no se recordaba la incompatibilidad en memoria, lo que provocaba que cada una de las imágenes de la tanda generase primero un 400 y un reintento inmediato, duplicando la inundación sobre el servidor.
+      - **Solución Implementada**:
+        1. *Semáforos de Concurrencia por Host (`s_endpointThrottles`)*: Creado `GetThrottleForEndpoint` en `MultimodalVlmClientEngine`. Para endpoints locales (`localhost`, `127.0.0.1`, `::1` en puertos 1234, 11434, etc.), la concurrencia se limita estrictamente a 1 petición simultánea, serializando las llamadas hacia la GPU/LM Studio sin frenar las demás etapas no-AI del pipeline.
+        2. *Caché Negativa en Memoria de `response_format` (`s_unsupportedResponseFormatCache`)*: Si un endpoint/modelo responde con 400 rechazando `response_format`, se registra en memoria. Las siguientes imágenes del lote verifican esta clave y omiten directamente `response_format`, evitando generar errores 400 previos y eliminando tráfico redundante.
+        3. *Reintentos con Backoff Exponencial para Errores 5xx Transitorios*: Si LM Studio cicla sus slots de inferencia o responde con 500, 502, 503 o 504, FileFlow efectúa hasta 3 intentos con pausas de 1.5s y 3s antes de reportar fallo.
+        4. *Pruebas Unitarias*: Nuevos tests en `MultimodalVisionLlmNodeTests.cs` comprobando que la segunda imagen no genera error 400 gracias a la caché negativa y que los errores 500 transitorios se reintentan exitosamente.
+      - **Validación**: 19 / 19 pruebas de `MultimodalVisionLlmNodeTests` y 784 pruebas de la solución superadas con 100% de éxito, 0 advertencias y 0 errores bajo `--warnaserror`.
+  --67. **Corrección de Interpretación de Caracteres Unicode y Serialización JSON Relajada en Visor de Logs e Inspector**:
+      - **Motivación**:
+        - En el visor de logs de la consola de ejecución y en el panel de inspección de nodos, el texto de campos como `AI:VlmResponse` mostraba secuencias de escape unicode literales no interpretadas como `\u0060\u0060\u0060json\n{\n  \u0022categoria\u0022: \u0022Fotografia_Paisaje\u0022...`.
+        - Esto ocurría porque `System.Text.Json` por defecto utiliza `JavaScriptEncoder.Default`, que codifica agresivamente backticks (`` ` ``) como `\u0060`, comillas dentro de strings como `\u0022` y caracteres no-ASCII como `\uXXXX`. Al serializar `Metadata` en `WorkflowExecutionContext.Log`, se generaba un JSON con dichos escapes literales en una sola línea.
+      - **Solución Implementada**:
+        1. *Nueva utilidad centralizada `JsonDefaults` en `FileFlow.Sdk/Serialization`*: Opciones `RelaxedOptions` y `RelaxedIndentedOptions` con `JavaScriptEncoder.UnsafeRelaxedJsonEscaping`, método `UnescapeUnicode(string?)` basado en expresiones regulares para decodificar con seguridad secuencias `\uXXXX` sin alterar rutas Windows, método `SerializeRelaxed`, y `FormatDetailsForDisplay` para formateo legible e indentado.
+        2. *SDK & Core*: `StructuredLogRecord.DisplayDetails` formatea e indenta el JSON para la UI; `StructuredLogRecord.Create` desescapa mensajes. `WorkflowExecutionContext.Log` serializa metadatos con `JsonDefaults.SerializeRelaxed(..., indented: true)`.
+        3. *Plugins de IA*: `InProcessVlmAdapter`, `MultimodalVlmClientEngine` y `LanguageInferenceEngine` usan serialización relajada y desescapado unicode.
+        4. *Interfaz de Usuario (WPF)*: `LogView.xaml` y `LogViewModel` consumen `DisplayDetails` para visualizar y copiar el JSON limpio; `NodeInspectorViewModel`, `VirtualFileSystemExplorerViewModel` y `PortViewModel` desempatan secuencias unicode en metadatos y diffs.
+        5. *Pruebas Unitarias*: Creado `JsonDefaultsTests.cs` evaluando desescapado de backticks, comillas, acentos en español, rutas de Windows y serialización relajada.
+      - **Validación**: 783 / 783 pruebas unitarias superadas al 100%, compilación estricta con `--warnaserror` (0 advertencias, 0 errores).
+  --66. **Robustez en Inferencia VLM: Fallback Automático para `response_format` y Resolución Precisa de Proveedores**:
+      - **Motivación**:
+        - Al ejecutar inferencias VLM (p. ej. en plantillas de extracción de facturas) contra ciertos servidores o versiones de LM Studio / OpenAI-compatibles, el servidor respondía con error HTTP 400 (`'response_format.type' must be 'json_schema' or 'text'`), ya que el backend no admitía `{"type": "json_object"}`.
+      - **Solución Implementada**:
+        1. *Fallback Automático en `MultimodalVlmClientEngine`*: Si el servidor devuelve código 400 rechazando `response_format`, el motor elimina de inmediato `response_format` del payload y reintenta de forma transparente. Dado que los prompts del sistema ya fuerzan el formato JSON estructurado y `TryExtractValidJson` extrae el bloque, la inferencia tiene éxito sin error.
+        2. *Resolución de Nombres en `VlmConfigurationStorageService`*: Se prioriza la coincidencia exacta por `DisplayName` o `ProviderId` antes de buscar por subcadenas parciales, garantizando que proveedores como el motor interno In-Process o perfiles personalizados se asignen con total precisión.
+        3. *Pruebas Unitarias*: Se agregó el test `ExecuteAsync_WhenServerRejectsResponseFormat_ShouldRetryWithoutResponseFormatAndSucceed` en `MultimodalVisionLlmNodeTests.cs`.
+      - **Validación**: 776 / 776 pruebas unitarias e integración superadas al 100%, compilación estricta con `--warnaserror` (0 advertencias, 0 errores).
+  --65. **Desplegable Editable para Idioma Destino (`TargetLanguage`) y Soporte Universal de Desplegables Abiertos**:
+      - **Motivación**:
+        - En el nodo de IA Multimodal (`MultimodalVisionLlmNode`), el parámetro de idioma destino era un cuadro de texto libre simple (`ParameterEditorType.Text`), lo que obligaba a escribir siempre a mano "Español", "Inglés", etc., sin sugerencias rápidas ni consistencia con los demás selectores.
+      - **Solución Implementada**:
+        1. *Nuevo `ParameterEditorType.EditableDropdown` en SDK*: Creado en `FileFlow.Sdk/Descriptors/ParameterEditorType.cs` para representar campos con opciones preconfiguradas seleccionables y capacidad de sobreescritura directa o tecleo de texto arbitrario.
+        2. *Configuración en `MultimodalVisionLlmNode`*: Se configuró `TargetLanguage` con `ParameterEditorType.EditableDropdown`, opciones `["Español", "Inglés"]` y valor por defecto `"Español"`.
+        3. *Soporte UI en WPF*:
+           - `NodeParameterViewModel`: Añadidas propiedades `IsEditableDropdown`, `HasOptionsAndNotEditable` y actualización en `IsDropdown`.
+           - `NodeParameterTemplates.xaml`: Desplegable de tarjeta actualizado con `ComboBox IsEditable="True"` enlazado a `Text="{Binding Value}"`, manteniendo `SelectedItem` para desplegables no editables (`HasOptionsAndNotEditable`) y añadiendo botón `[{x}]` para variables.
+           - `NodeInspectorPanelView.xaml`: Integración análoga en el panel lateral de inspección para paridad funcional completa.
+      - **Validación**: 775 / 775 pruebas unitarias e integración superadas al 100%, compilación estricta con `--warnaserror` (0 advertencias, 0 errores).
+  --64. **Rediseño de Layout para Parámetros Multilínea en Tarjetas de Nodo (Prompts a Ancho Completo)**:
+      - **Motivación**:
+        - En las tarjetas del lienzo visual, los parámetros multilínea (`IsMultiLine`, como `AdditionalPrompt` o plantillas SQL/scripts) se renderizaban en la misma cuadrícula de 2 columnas que los parámetros simples con `SharedSizeGroup="ParamKey"`.
+        - Una etiqueta larga como *"Instrucciones Adicionales / Prompt Particular"* provocaba que la columna 0 acaparara ~65% del ancho de la tarjeta, forzando al `TextBox` multilínea y a sus botones de acción (`[⤢]` y `[{x}]`) a encajonarse en un diminuto recuadro residual de ~90px a la derecha.
+      - **Solución Implementada**:
+        1. *Desacoplamiento de Cuadrícula con `IsStandardRow`*: Los parámetros simples (Dropdown, Slider, CheckBox, FilePath, Text) continúan en la cuadrícula de 2 columnas bajo `IsStandardRow`, compartiendo `ParamKey` solo entre etiquetas cortas (recuperando ancho para desplegables).
+        2. *Bloque Multilínea a Ancho Completo*: Parámetros con `IsMultiLine = true` se presentan en un bloque vertical que aprovecha el 100% del ancho de la tarjeta:
+           - Fila superior con etiqueta a la izquierda y botones `[⤢]` (editor modal ampliado) y `[{x}]` (insertar variable) a la derecha.
+           - Cuadro de texto multilínea a ancho completo debajo, con scroll vertical automático y tipografía monospace `Cascadia Code`.
+        3. *Refinamiento de Etiquetas*: Se abrevió la clave `Param_AdditionalPrompt` a *"Instrucciones Adicionales"* en español y *"Additional Instructions"* en inglés.
+        4. *Pruebas Unitarias*: Nuevos tests en `NodeParameterViewModelTests.cs` evaluando `IsStandardRow` y `UpdateOptions`.
+      - **Validación**: 775 / 775 pruebas superadas (100%), 0 advertencias y 0 errores en compilación estricta `--warnaserror`.
+  --63. **Categorización en Lenguaje y LLM y Sincronización Reactiva de Nombres de Plantillas en IA Multimodal (VLM)**:
+      - **Motivación**:
+        1. El desplegable de plantillas de tarea (`TaskPreset`) mostraba identificadores técnicos en inglés (`t.Id`) en lugar de los nombres legibles definidos en el editor de plantillas (`t.Name`), y las plantillas recién creadas o modificadas no aparecían dinámicamente en el selector del lienzo.
+        2. El nodo `MultimodalVisionLlmNode` residía en la categoría `ImageVision`, siendo más idóneo ubicarlo en la categoría canónica `LanguageAI` ("🧠 Lenguaje y LLM") junto al resto de procesadores y asistentes basados en LLMs.
+      - **Solución Implementada**:
+        1. *Reubicación a `LanguageAI`*: Actualizados el atributo `[NodeDefinition(..., "LanguageAI", ...)]` y la propiedad `Category => "LanguageAI"`.
+        2. *Nombres Descriptivos en `TaskPreset`*: El descriptor de parámetros extrae ahora `templates.Select(t => t.Name)` ("Extracción de Facturas y Recibos (JSON)", "OCR y Resumen Ejecutivo", etc.), y `MultimodalVlmConfigViewModel.SaveAll` asigna `SelectedTemplate.Name` al nodo.
+        3. *Compatibilidad Total en `ExecuteAsync`*: Se evalúa `VlmConfigurationStorageService.Instance.LoadTemplates().FirstOrDefault(t => string.Equals(t.Name, taskPresetStr, ...) || string.Equals(t.Id, taskPresetStr, ...))`, garantizando que flujos preexistentes guardados con `Id` o `Name` sigan funcionando transparentemente.
+        4. *Sincronización Reactiva en `NodeViewModel` y `NodeParameterViewModel`*: Creado `UpdateOptions(IEnumerable<string>? newOptions)` en `NodeParameterViewModel` con despacho UI seguro. En `NodeViewModel.ExecuteCustomAction`, al cerrar el diálogo modal, se re-evalúan los descriptores del nodo y se actualizan en vivo las opciones de los desplegables (`param.UpdateOptions(...)`) y los valores (`param.Value`). Cualquier plantilla o proveedor nuevo aparece al instante en la tarjeta del lienzo y en el inspector sin recargar el nodo.
+        5. *Pruebas Unitarias*: Aserciones añadidas en `MultimodalVisionLlmNodeTests.cs` y `MultimodalVlmConfigViewModelTests.cs`.
+      - **Validación**: 773 / 773 pruebas superadas (100%), 0 advertencias y 0 errores en compilación estricta `--warnaserror`.
+  --62. **Mejoras de Configuración VLM: CRUD de Proveedores, Auto-Detección de Modelos, Prompts Expandibles y Esquemas JSON Canónicos**:
+      - **Motivación**: Facilitar la selección rápida de modelos en servidores locales (LM Studio / Ollama) sin escribir manualmente identificadores largos, permitir la gestión libre de endpoints personalizados (CRUD), eliminar la limitación de altura en la edición de prompts extensos y blindar la predictibilidad de los esquemas JSON para su consumo en nodos downstream.
+      - **Solución Implementada**:
+        1. *Desplegable Editable y Detección Automática de Modelos*: `ComboBox IsEditable="True"` enlazado a `AvailableModels` y `ModelName`. Se corrigió el `ControlTemplate` de `ComboBox` en `InputStyles.xaml` y `MultimodalVlmConfigWindow.xaml` añadiendo `PART_EditableTextBox` y el trigger de `IsEditable="True"` (que antes faltaba en WPF, impidiendo teclear o ver el texto editado). Se dotó a `VlmProviderProfile` de reactividad con `ObservableObject` para notificar cambios de modelo en caliente. Comando `RefreshModelsCommand` que consulta `/v1/models` (OpenAI / LM Studio) y `/api/tags` (Ollama), y ofrece modelos internos para *In-Process*.
+        2. *Gestión CRUD Completa de Proveedores*: Comandos `NewProvider`, `DuplicateProvider` y `DeleteProvider` con protección de borrado para perfiles de fábrica (`IsBuiltIn`). Edición de `DisplayName` legible e ID interno. Sincronización en tiempo de ejecución con `MultimodalVisionLlmNode.ParameterDescriptors`.
+        3. *Editor de Plantillas Expandible*: Eliminadas restricciones `MaxHeight` en `SystemPrompt` y `UserPrompt`, añadiendo `VerticalScrollBarVisibility="Auto"` y alturas mínimas confortables (`MinHeight="140"` y `MinHeight="100"`).
+        4. *Esquemas JSON Canónicos e Inmutables*: Estandarizadas todas las plantillas y generadores sintéticos a nombres de campo fijos en minúsculas con guiones bajos (`numero_factura`, `fecha_emision`, `nif_emisor`, `lineas_articulos`, `importe_total`, `es_valido_para_tramite`, `legibilidad`, etc.) con directrices negativas explícitas para impedir variaciones de vocabulario del LLM.
+        5. *Robustez y Tests*: Ajuste en `LocalizationManager.RegisterResourceManager` (`Insert(0, rm)`), aislamiento de colecciones xUnit (`[Collection("RenamerSampleDataTests")]`) y 8 nuevos tests en `MultimodalVlmConfigViewModelTests.cs` y `VlmConfigurationStorageServiceTests.cs`.
+      - **Validación**: 773 / 773 pruebas superadas (100%), compilación estricta con `--warnaserror` (0 advertencias y 0 errores).
+  --61. **Rediseño de Parámetros de `MultimodalVisionLlmNode` y Ventana Modal Avanzada con Pestañas (`MultimodalVlmConfigWindow`)**:
+      - **Motivación**: La tarjeta del nodo y el panel de propiedades acumulaban 14 parámetros simultáneos (URLs, API keys, temperaturas, dimensiones máximas, tokens, sliders) generando ruido visual y sobrecarga cognitiva.
+      - **Solución Implementada**:
+        1. *Limpieza de Parámetros Visibles (Reducción de 14 a 4)*: Se redujo `ParameterDescriptors` a `Provider`, `TaskPreset`, `TargetLanguage` y `AdditionalPrompt`. Los parámetros técnicos restantes se conservan en `Parameters` para deserialización y workflows.
+        2. *Sistema de Prompts en 2 Niveles (Plantilla Global + Instrucción Local)*: `AdditionalPrompt` permite inyectar instrucciones particulares por nodo sin crear plantillas duplicadas. Se evalúa dinámicamente con `VariableTemplateResolver.Resolve` y se anexa al prompt base.
+        3. *Ventana Modal de Configuración Técnica (`MultimodalVlmConfigWindow`)*: Accesible mediante `INodeCustomActionProvider` (`⚙️ Configurar Proveedores y Plantillas...`). Dispone de 3 pestañas:
+           - *Proveedores de IA*: Endpoints, modelos, API Keys, temperatura, tokens y botón `⚡ Probar Conexión (Ping)` contra `/models` con diagnóstico visual en vivo.
+           - *Gestor de Plantillas*: Maestro-Detalle con catálogo (`[SISTEMA]` / `[USUARIO]`), CRUD completo (`➕ Nueva`, `📋 Duplicar`, `🗑️ Eliminar`, `🔄 Restaurar Fábrica`) y editor multilínea.
+           - *Vista Previa del Prompt*: Visor reactivo en vivo del prompt completo resultante con variables.
+        4. *Co-ubicación y Autonomía Total (Regla 6 Zero-Touch)*: XAML, ViewModel, modelos y almacenamiento (`VlmConfigurationStorageService` en `%AppData%/FileFlow/`) ubicados 100% dentro de `FileFlow.Plugin.AI`.
+        5. *Pruebas Unitarias*: 12 nuevos tests en `VlmConfigurationStorageServiceTests.cs` y `MultimodalVlmConfigViewModelTests.cs`.
+      - **Validación**: 765 / 765 pruebas superadas (100%), compilación estricta con `--warnaserror` (0 advertencias y 0 errores).
   --60. **Arquitectura de Adaptadores y Motor In-Process para `MultimodalVisionLlmNode` (`IVlmAdapter`)**:
       - **Motivación**: Brindar la opción de elegir entre servidores externos (LM Studio, Ollama, API OpenAI) y un motor interno 100% in-process dentro de FileFlow Studio sin necesidad de dependencias externas ni procesos en segundo plano.
       - **Solución Implementada**:

@@ -36,7 +36,9 @@ public sealed class ImageOptimizerNode : IFlowNode
         ["TargetFormat"] = "WebP",
         ["Quality"] = 80,
         ["OnlyDownscale"] = true,
-        ["OutputDirectory"] = ""
+        ["OutputDirectory"] = "",
+        ["KeepOriginalIfLarger"] = false,
+        ["ReplaceOriginalInPlace"] = false
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
@@ -45,7 +47,9 @@ public sealed class ImageOptimizerNode : IFlowNode
         new("TargetFormat", ParameterEditorType.Dropdown, DefaultValue: "WebP", DisplayOrder: 3, Options: ["WebP", "JPEG", "PNG", "GIF"]),
         new("Quality", ParameterEditorType.Slider, DefaultValue: 80, DisplayOrder: 4, Min: 1, Max: 100, Step: 1),
         new("OnlyDownscale", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
-        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 6, HelpText: "Output folder. If left empty, uses the temporary working directory with a unique subfolder.")
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 6, HelpText: "Output folder. If left empty, uses the temporary working directory with a unique subfolder."),
+        new("KeepOriginalIfLarger", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 7, HelpText: "Keep original file if the converted image is larger in file size."),
+        new("ReplaceOriginalInPlace", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 8, HelpText: "Delete original file if conversion is successful and smaller in file size.")
     ];
 
     public static (int Pixels, double? Percentage) ParseDimensionSpec(object? value)
@@ -203,6 +207,8 @@ public sealed class ImageOptimizerNode : IFlowNode
         }
 
         bool onlyDownscale = !Parameters.TryGetValue("OnlyDownscale", out var odVal) || ParameterHelper.GetBoolean(odVal, true);
+        bool keepOriginalIfLarger = Parameters.TryGetValue("KeepOriginalIfLarger", out var koVal) && ParameterHelper.GetBoolean(koVal, false);
+        bool replaceOriginalInPlace = Parameters.TryGetValue("ReplaceOriginalInPlace", out var ropVal) && ParameterHelper.GetBoolean(ropVal, false);
 
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
@@ -302,34 +308,68 @@ public sealed class ImageOptimizerNode : IFlowNode
             long newSizeBytes = (!isDryRun && await storage.FileExistsAsync(outputPath, cancellationToken)) ? await storage.GetFileSizeAsync(outputPath, cancellationToken) : origSizeBytes;
             double savedPct = origSizeBytes > 0 && newSizeBytes > 0 ? (1.0 - ((double)newSizeBytes / origSizeBytes)) * 100.0 : 0.0;
 
-            outputItem = new FileItemContext(outputPath, isDirectory: false)
+            if (keepOriginalIfLarger && newSizeBytes >= origSizeBytes && !string.Equals(outputPath, filePath, StringComparison.OrdinalIgnoreCase))
             {
-                OriginalPath = item.OriginalPath,
-                FileSizeBytes = newSizeBytes
-            };
-            foreach (var kvp in item.Metadata)
-            {
-                outputItem.Metadata[kvp.Key] = kvp.Value;
-            }
-            foreach (var kvp in item.FileVersions)
-            {
-                outputItem.FileVersions[kvp.Key] = kvp.Value;
-            }
-            outputItem.RegisterVersion("Optimized", outputPath);
-            outputItem.Metadata["OriginalFileSize"] = origSizeBytes;
-            outputItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
-            outputItem.Metadata["OutputFileSize"] = newSizeBytes;
-            outputItem.Metadata["OutputFileSizeBytes"] = newSizeBytes;
-            outputItem.Metadata["SavedBytes"] = origSizeBytes - newSizeBytes;
-            outputItem.Metadata["SavedPercent"] = Math.Round(savedPct, 2);
-            outputItem.Metadata["CompressionRatio"] = origSizeBytes > 0 ? Math.Round((double)newSizeBytes / origSizeBytes, 4) : 1.0;
-            outputItem.Metadata["OptimizedFormat"] = formatStr;
-            outputItem.Metadata["OptimizedWidth"] = newWidth;
-            outputItem.Metadata["OptimizedHeight"] = newHeight;
-            outputItem.AddLog($"ImageOptimizerNode output saved to {outputPath}");
+                if (!isDryRun && await storage.FileExistsAsync(outputPath, cancellationToken))
+                {
+                    await storage.DeleteAsync(outputPath, permanent: true, ct: cancellationToken);
+                }
 
-            string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"width\": \"{widthSpec}\", \"height\": \"{heightSpec}\", \"onlyDownscale\": {onlyDownscale.ToString().ToLowerInvariant()}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {item.FileSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
-            context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality} {newWidth}x{newHeight}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+                outputItem = item.DeepClone();
+                outputItem.CurrentPath = filePath;
+                outputItem.Metadata["IsOriginalKept"] = true;
+                outputItem.Metadata["OriginalFileSize"] = origSizeBytes;
+                outputItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
+                outputItem.Metadata["OutputFileSize"] = origSizeBytes;
+                outputItem.Metadata["OutputFileSizeBytes"] = origSizeBytes;
+                outputItem.Metadata["SavedBytes"] = 0L;
+                outputItem.Metadata["SavedPercent"] = 0.0;
+                outputItem.Metadata["CompressionRatio"] = 1.0;
+                outputItem.AddLog($"ImageOptimizerNode kept original file because optimized size ({newSizeBytes} B) >= original size ({origSizeBytes} B)");
+
+                string keepDetailsJson = $"{{\"keptOriginal\": true, \"originalSizeBytes\": {origSizeBytes}, \"discardedOptimizedBytes\": {newSizeBytes}}}";
+                context.Log($"[Optimizador Imágenes] Conservada original ({Path.GetFileName(filePath)}): optimizada ({newSizeBytes} B) >= original ({origSizeBytes} B)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: keepDetailsJson);
+            }
+            else
+            {
+                if (replaceOriginalInPlace && newSizeBytes < origSizeBytes && !string.Equals(outputPath, filePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!isDryRun && await storage.FileExistsAsync(filePath, cancellationToken))
+                    {
+                        await storage.DeleteAsync(filePath, permanent: true, ct: cancellationToken);
+                    }
+                }
+
+                outputItem = new FileItemContext(outputPath, isDirectory: false)
+                {
+                    OriginalPath = item.OriginalPath,
+                    FileSizeBytes = newSizeBytes
+                };
+                foreach (var kvp in item.Metadata)
+                {
+                    outputItem.Metadata[kvp.Key] = kvp.Value;
+                }
+                foreach (var kvp in item.FileVersions)
+                {
+                    outputItem.FileVersions[kvp.Key] = kvp.Value;
+                }
+                outputItem.RegisterVersion("Optimized", outputPath);
+                outputItem.Metadata["IsOriginalKept"] = false;
+                outputItem.Metadata["OriginalFileSize"] = origSizeBytes;
+                outputItem.Metadata["OriginalFileSizeBytes"] = origSizeBytes;
+                outputItem.Metadata["OutputFileSize"] = newSizeBytes;
+                outputItem.Metadata["OutputFileSizeBytes"] = newSizeBytes;
+                outputItem.Metadata["SavedBytes"] = origSizeBytes - newSizeBytes;
+                outputItem.Metadata["SavedPercent"] = Math.Round(savedPct, 2);
+                outputItem.Metadata["CompressionRatio"] = origSizeBytes > 0 ? Math.Round((double)newSizeBytes / origSizeBytes, 4) : 1.0;
+                outputItem.Metadata["OptimizedFormat"] = formatStr;
+                outputItem.Metadata["OptimizedWidth"] = newWidth;
+                outputItem.Metadata["OptimizedHeight"] = newHeight;
+                outputItem.AddLog($"ImageOptimizerNode output saved to {outputPath}");
+
+                string detailsJson = $"{{\"format\": \"{formatStr}\", \"quality\": {quality}, \"width\": \"{widthSpec}\", \"height\": \"{heightSpec}\", \"onlyDownscale\": {onlyDownscale.ToString().ToLowerInvariant()}, \"originalDimensions\": \"{origWidth}x{origHeight}\", \"optimizedDimensions\": \"{newWidth}x{newHeight}\", \"originalSizeBytes\": {origSizeBytes}, \"optimizedSizeBytes\": {newSizeBytes}, \"savedPct\": {savedPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}}}";
+                context.Log($"[Optimizador Imágenes] Optimizado ({formatStr} Q:{quality} {newWidth}x{newHeight}): '{Path.GetFileName(outputPath)}' (Ahorro: {savedPct:F1}%)", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -124,4 +124,83 @@
   <data name="Param_TaskPreset" xml:space="preserve"><value>Plantilla de Tarea</value></data>
   <data name="Param_ForceJsonOutput" xml:space="preserve"><value>Forzar Salida JSON</value></data>
   <data name="Param_MaxImageDimension" xml:space="preserve"><value>Dimensión Máxima de Imagen (px)</value></data>
+  <data name="Param_MaxConcurrency" xml:space="preserve"><value>Concurrencia Máxima</value></data>
+  <data name="Param_AdditionalPrompt" xml:space="preserve"><value>Instrucciones Adicionales</value></data>
+  <data name="MultimodalVisionLlmNode_ActionConfig" xml:space="preserve"><value>⚙️ Configurar Proveedores y Plantillas...</value></data>
+
+  <!-- VLM Configuration Window -->
+  <data name="VlmConfig_WindowTitle" xml:space="preserve"><value>Configuración Avanzada de IA Multimodal (VLM)</value></data>
+  <data name="VlmConfig_HeaderTitle" xml:space="preserve"><value>Configuración de IA Multimodal (Visión y Lenguaje)</value></data>
+  <data name="VlmConfig_HeaderSubtitle" xml:space="preserve"><value>Administra servidores de inferencia locales y remotos, y gestiona plantillas y directrices de análisis visual.</value></data>
+  <data name="VlmConfig_BtnSaveAll" xml:space="preserve"><value>💾 Guardar Todo</value></data>
+  <data name="VlmConfig_BtnApplyAndClose" xml:space="preserve"><value>✔ Aplicar y Cerrar</value></data>
+  <data name="VlmConfig_TabProviders" xml:space="preserve"><value>🔌 Proveedores de Inferencia</value></data>
+  <data name="VlmConfig_TabTemplates" xml:space="preserve"><value>📋 Gestor de Plantillas</value></data>
+  <data name="VlmConfig_TabPromptPreview" xml:space="preserve"><value>🧪 Vista Previa del Prompt</value></data>
+  <data name="VlmConfig_SelectProviderLabel" xml:space="preserve"><value>Proveedores Disponibles</value></data>
+  <data name="VlmConfig_EndpointUrlLabel" xml:space="preserve"><value>Endpoint URL (Base /v1)</value></data>
+  <data name="VlmConfig_ModelNameLabel" xml:space="preserve"><value>Nombre del Modelo VLM</value></data>
+  <data name="VlmConfig_ApiKeyLabel" xml:space="preserve"><value>API Key / Token (opcional para local)</value></data>
+  <data name="VlmConfig_TemperatureLabel" xml:space="preserve"><value>Temperatura (0.0 Precisión - 1.0 Creativo)</value></data>
+  <data name="VlmConfig_MaxTokensLabel" xml:space="preserve"><value>Tokens Máximos</value></data>
+  <data name="VlmConfig_MaxImageDimensionLabel" xml:space="preserve"><value>Dimensión Máxima de Imagen (px)</value></data>
+  <data name="VlmConfig_TimeoutSecondsLabel" xml:space="preserve"><value>Timeout (segundos)</value></data>
+  <data name="VlmConfig_ConcurrencyLimitLabel" xml:space="preserve"><value>Concurrencia Máxima (Slots Simultáneos)</value></data>
+  <data name="VlmConfig_DiagnosisLabel" xml:space="preserve"><value>Comprobación de Conectividad</value></data>
+  <data name="VlmConfig_BtnTestConnection" xml:space="preserve"><value>⚡ Probar Conexión</value></data>
+  <data name="VlmConfig_TemplatesListTitle" xml:space="preserve"><value>Plantillas de Tareas</value></data>
+  <data name="VlmConfig_BtnNewTemplate" xml:space="preserve"><value>➕ Nueva</value></data>
+  <data name="VlmConfig_BtnDuplicateTemplate" xml:space="preserve"><value>📋 Duplicar</value></data>
+  <data name="VlmConfig_BtnDeleteTemplate" xml:space="preserve"><value>🗑️ Eliminar</value></data>
+  <data name="VlmConfig_TemplateNameLabel" xml:space="preserve"><value>Nombre de la Plantilla</value></data>
+  <data name="VlmConfig_TemplateDescLabel" xml:space="preserve"><value>Descripción</value></data>
+  <data name="VlmConfig_SystemPromptLabel" xml:space="preserve"><value>System Prompt (Rol e Instrucciones del Modelo)</value></data>
+  <data name="VlmConfig_UserPromptLabel" xml:space="preserve"><value>User Prompt Base (Admite {FileName}, {Date}, {Tag})</value></data>
+  <data name="VlmConfig_ForceJsonLabel" xml:space="preserve"><value>Forzar salida estricta en JSON</value></data>
+  <data name="VlmConfig_SaveAsFileLabel" xml:space="preserve"><value>Guardar salida en archivo adjunto</value></data>
+  <data name="VlmConfig_BtnRestoreBuiltIn" xml:space="preserve"><value>🔄 Restaurar Fábrica</value></data>
+  <data name="VlmConfig_AdditionalPromptTestLabel" xml:space="preserve"><value>Simular Instrucciones Adicionales (Parámetro local del nodo):</value></data>
+  <data name="VlmConfig_FinalPromptResolvedLabel" xml:space="preserve"><value>Prompt Ensamblado Resultante:</value></data>
+  <data name="VlmConfig_TestingConnection" xml:space="preserve"><value>Comprobando conexión...</value></data>
+  <data name="VlmConfig_InProcessReady" xml:space="preserve"><value>✅ Motor interno listo. No requiere red ni procesos externos.</value></data>
+  <data name="VlmConfig_ConnectionSuccess" xml:space="preserve"><value>🟢 Conexión exitosa. Servidor activo ({0} modelos detectados).</value></data>
+  <data name="VlmConfig_ConnectionHttpError" xml:space="preserve"><value>🔴 El servidor respondió con código {0} ({1}).</value></data>
+  <data name="VlmConfig_ConnectionFailed" xml:space="preserve"><value>🔴 Error de conexión: {0}</value></data>
+  <data name="VlmConfig_NewTemplateName" xml:space="preserve"><value>Nueva Plantilla Personalizada</value></data>
+  <data name="VlmConfig_NewTemplateDesc" xml:space="preserve"><value>Descripción de la plantilla...</value></data>
+  <data name="VlmConfig_TemplateCreated" xml:space="preserve"><value>Plantilla creada. Recuerda pulsar 'Guardar'.</value></data>
+  <data name="VlmConfig_TemplateDuplicated" xml:space="preserve"><value>Plantilla duplicada.</value></data>
+  <data name="VlmConfig_CannotDeleteBuiltIn" xml:space="preserve"><value>No se pueden eliminar plantillas integradas del sistema.</value></data>
+  <data name="VlmConfig_TemplateDeleted" xml:space="preserve"><value>Plantilla eliminada.</value></data>
+  <data name="VlmConfig_TemplateRestored" xml:space="preserve"><value>Plantilla restaurada a los valores de fábrica.</value></data>
+  <data name="VlmConfig_SavedSuccess" xml:space="preserve"><value>Configuración guardada correctamente.</value></data>
+  <data name="Common_Copy" xml:space="preserve"><value>Copia</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="VlmConfig_BtnNewProvider" xml:space="preserve"><value>➕ Nuevo</value></data>
+  <data name="VlmConfig_BtnDuplicateProvider" xml:space="preserve"><value>📋 Duplicar</value></data>
+  <data name="VlmConfig_BtnDeleteProvider" xml:space="preserve"><value>🗑️ Eliminar</value></data>
+  <data name="VlmConfig_ProviderDisplayNameLabel" xml:space="preserve"><value>Nombre del Proveedor</value></data>
+  <data name="VlmConfig_ProviderIdLabel" xml:space="preserve"><value>Identificador Interno (ID)</value></data>
+  <data name="VlmConfig_BtnDetectModels" xml:space="preserve"><value>🔄 Detectar Modelos</value></data>
+  <data name="VlmConfig_NewProviderName" xml:space="preserve"><value>Nuevo Proveedor Personalizado</value></data>
+  <data name="VlmConfig_ProviderCreated" xml:space="preserve"><value>Proveedor creado. Recuerda pulsar 'Guardar'.</value></data>
+  <data name="VlmConfig_ProviderDuplicated" xml:space="preserve"><value>Proveedor duplicado.</value></data>
+  <data name="VlmConfig_CannotDeleteBuiltInProvider" xml:space="preserve"><value>No se pueden eliminar los proveedores integrados del sistema.</value></data>
+  <data name="VlmConfig_ProviderDeleted" xml:space="preserve"><value>Proveedor eliminado.</value></data>
+  <data name="VlmConfig_DetectingModels" xml:space="preserve"><value>Consultando modelos disponibles en el servidor...</value></data>
+  <data name="VlmConfig_ModelsDetectedCount" xml:space="preserve"><value>🟢 Detectados {0} modelos en el servidor.</value></data>
+  <data name="VlmConfig_DetectModelsFailed" xml:space="preserve"><value>⚠️ Error al consultar modelos: {0}</value></data>
+  <data name="VlmConfig_TabSampleTest" xml:space="preserve"><value>🔬 Probar Muestra (1 Ciclo)</value></data>
+  <data name="VlmConfig_SampleFileLabel" xml:space="preserve"><value>Archivo de Imagen o Documento de Muestra:</value></data>
+  <data name="VlmConfig_BtnRunSample" xml:space="preserve"><value>▶ Ejecutar Prueba</value></data>
+  <data name="VlmConfig_SampleOutputLabel" xml:space="preserve"><value>Respuesta del Modelo:</value></data>
+  <data name="VlmConfig_DiscoveredVarsLabel" xml:space="preserve"><value>Variables Dinámicas Detectadas:</value></data>
+  <data name="VlmConfig_BtnApplyVars" xml:space="preserve"><value>📥 Importar al Flujo</value></data>
+  <data name="VlmConfig_SelectSampleFileTitle" xml:space="preserve"><value>Seleccionar Archivo de Imagen o Documento de Muestra</value></data>
+  <data name="VlmConfig_SampleFileNotFound" xml:space="preserve"><value>Selecciona un archivo de prueba existente.</value></data>
+  <data name="VlmConfig_SelectProviderTemplate" xml:space="preserve"><value>Selecciona un proveedor y una plantilla válidos.</value></data>
+  <data name="VlmConfig_RunningSample" xml:space="preserve"><value>🧠 Ejecutando inferencia de prueba...</value></data>
+  <data name="VlmConfig_SampleSuccess" xml:space="preserve"><value>✨ Inferencia de prueba completada en {0} ms ({1} tokens). {2} variables detectadas.</value></data>
+  <data name="VlmConfig_SampleError" xml:space="preserve"><value>❌ Error durante la inferencia de prueba: {0}</value></data>
+  <data name="VlmConfig_VariablesApplied" xml:space="preserve"><value>✅ {0} variables importadas al nodo correctamente.</value></data>
 </root>

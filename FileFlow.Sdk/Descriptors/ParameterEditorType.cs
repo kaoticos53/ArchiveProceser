@@ -26,6 +26,11 @@ public enum ParameterEditorType
     Dropdown,
 
     /// <summary>
+    /// Lista desplegable editable que permite seleccionar entre opciones predefinidas o escribir un valor libre arbitrario.
+    /// </summary>
+    EditableDropdown,
+
+    /// <summary>
     /// Interruptor o casilla de verificación booleana (true/false).
     /// </summary>
     Toggle,

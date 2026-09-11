@@ -31,6 +31,24 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
+  <!-- Nodos -->
+  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Descompresor Inteligente</value></data>
+  <data name="SmartUnpackNode_Desc" xml:space="preserve"><value>Inspecciona la estructura de archivos comprimidos y extrae de forma inteligente con soporte multi-motor (.NET 9, 7-Zip, SharpCompress) y contraseñas.</value></data>
+  <data name="ArchiveCompressorNode_Name" xml:space="preserve"><value>Compresor de Archivos</value></data>
+  <data name="ArchiveCompressorNode_Desc" xml:space="preserve"><value>Empaqueta y comprime archivos y carpetas en contenedores ZIP, TAR, GZ, 7Z o CBZ.</value></data>
+  <data name="ArchiveFilterNode_Name" xml:space="preserve"><value>Filtro de Comprimidos</value></data>
+  <data name="ArchiveFilterNode_Desc" xml:space="preserve"><value>Inspecciona el contenido y número de archivos de un comprimido para enrutar sin extraer.</value></data>
+  <data name="ArchiveFanOutNode_Name" xml:space="preserve"><value>Desempaquetador Streamer (Fan-Out)</value></data>
+  <data name="ArchiveFanOutNode_Desc" xml:space="preserve"><value>Descomprime un archivo en una sesión de trabajo y emite cada elemento interno individualmente con metadatos de correlación.</value></data>
+  <data name="ArchiveFanInNode_Name" xml:space="preserve"><value>Agregador y Empaquetador (Fan-In)</value></data>
+  <data name="ArchiveFanInNode_Desc" xml:space="preserve"><value>Recolecta todos los archivos procesados de una sesión de descompresión y los re-empaqueta en el archivo final en el destino.</value></data>
+
+  <!-- Parámetros y Ayudas -->
+  <data name="Param_ExtractionEngine" xml:space="preserve"><value>Motor de Descompresión</value></data>
+  <data name="Param_ExtractionEngine_Help" xml:space="preserve"><value>Selecciona el motor de extracción: Auto (degradación inteligente multi-nivel), SevenZip (7z.exe), DotNetZip (.NET 9 nativo) o SharpCompress (administrado).</value></data>
+  <data name="Param_CustomSevenZipPath" xml:space="preserve"><value>Ejecutable 7z Personalizado</value></data>
+  <data name="Param_CustomSevenZipPath_Help" xml:space="preserve"><value>Ruta opcional al ejecutable 7z.exe / 7za.exe personalizado o portátil.</value></data>
+
   <!-- Password Manager Window -->
   <data name="PasswordManager_WindowTitle" xml:space="preserve"><value>Gestor de Contraseñas - SmartUnpack</value></data>
   <data name="PasswordManager_HeaderTitle" xml:space="preserve"><value>🔑 Gestor de Contraseñas para Descompresión</value></data>

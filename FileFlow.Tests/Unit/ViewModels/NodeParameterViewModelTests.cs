@@ -100,4 +100,36 @@ public class NodeParameterViewModelTests : IDisposable
         param.HasExpression.Should().BeTrue();
         param.EvaluatedValue.Should().Be("Prefix_XYZ_file.txt");
     }
+
+    [Fact]
+    public void IsStandardRow_ShouldBeTrueForSingleLine_AndFalseForMultiLine()
+    {
+        // Arrange
+        using var singleLineParam = new NodeParameterViewModel("Width", 1920);
+        using var multiLineParam = new NodeParameterViewModel(
+            new NodeParameterDescriptor("AdditionalPrompt", ParameterEditorType.MultiLineText, DefaultValue: ""),
+            ""
+        );
+
+        // Act & Assert
+        singleLineParam.IsStandardRow.Should().BeTrue();
+        singleLineParam.IsMultiLine.Should().BeFalse();
+
+        multiLineParam.IsStandardRow.Should().BeFalse();
+        multiLineParam.IsMultiLine.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateOptions_ShouldRefreshOptions_AndKeepMatchedValue()
+    {
+        // Arrange
+        using var param = new NodeParameterViewModel("Format", "PNG", ["JPG", "PNG", "WEBP"]);
+
+        // Act
+        param.UpdateOptions(["GIF", "PNG", "AVIF"]);
+
+        // Assert
+        param.Options.Should().ContainInOrder("GIF", "PNG", "AVIF");
+        param.Value.Should().Be("PNG");
+    }
 }

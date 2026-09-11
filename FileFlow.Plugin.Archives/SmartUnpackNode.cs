@@ -12,14 +12,14 @@ using FileFlow.Sdk.VirtualFileSystem;
 namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("SmartUnpackNode_Name", "Archives", "SmartUnpackNode_Desc", PipelineRole.Source,
-    "descomprimir", "extraer", "zip", "rar", "7z", "tar", "unpack", "extract", "comprimido")]
+    "descomprimir", "extraer", "zip", "rar", "7z", "tar", "cbz", "cbr", "cb7", "unpack", "extract", "comprimido")]
 public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 {
     private readonly Lock _lock = new();
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmartUnpackNode_Name", "Smart Unpack");
     public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("SmartUnpackNode_Desc", "Inspects archive structure and extracts intelligently, supporting password lists and multipart archives.");
+    public string Description => LocalizationManager.Instance.GetString("SmartUnpackNode_Desc", "Inspects archive structure and extracts intelligently, supporting password lists, multi-engine extraction (.NET 9, 7-Zip, SharpCompress) and multipart archives.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -38,17 +38,21 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         ["CleanWrapper"] = true,
         ["AutoDeleteAfterExtraction"] = false,
         ["RecursiveUnpack"] = true,
+        ["ExtractionEngine"] = "Auto",
+        ["CustomSevenZipPath"] = "",
         ["PasswordList"] = "",
         ["PasswordFile"] = ""
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("DestinationFolder", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Unpacked", DisplayOrder: 1),
-        new("CleanWrapper", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 2),
-        new("AutoDeleteAfterExtraction", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3),
-        new("RecursiveUnpack", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4),
-        new("PasswordList", ParameterEditorType.PasswordList, DefaultValue: "", DisplayOrder: 5),
-        new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 6)
+        new("ExtractionEngine", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "SevenZip", "DotNetZip", "SharpCompress"], DisplayOrder: 2),
+        new("CleanWrapper", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
+        new("AutoDeleteAfterExtraction", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 4),
+        new("RecursiveUnpack", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
+        new("CustomSevenZipPath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 6),
+        new("PasswordList", ParameterEditorType.PasswordList, DefaultValue: "", DisplayOrder: 7),
+        new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 8)
     ];
 
     public IReadOnlyList<NodeActionDescriptor> CustomActions => [
@@ -94,6 +98,10 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         bool autoDelete = Parameters.TryGetValue("AutoDeleteAfterExtraction", out var adVal) && ParameterHelper.GetBoolean(adVal, false);
         bool recursiveUnpack = !Parameters.TryGetValue("RecursiveUnpack", out var ruVal) || ParameterHelper.GetBoolean(ruVal, true);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
+
+        string engineStr = Parameters.TryGetValue("ExtractionEngine", out var eeVal) ? ParameterHelper.GetString(eeVal, "Auto") : "Auto";
+        var engine = Enum.TryParse<ArchiveExtractionEngine>(engineStr, true, out var parsedEngine) ? parsedEngine : ArchiveExtractionEngine.Auto;
+        string customSevenZipPath = Parameters.TryGetValue("CustomSevenZipPath", out var szVal) ? ParameterHelper.GetString(szVal, "") : "";
 
         string pwdListParam = Parameters.TryGetValue("PasswordList", out var plVal) ? ParameterHelper.GetString(plVal, "") : "";
         string pwdFileParam = Parameters.TryGetValue("PasswordFile", out var pfVal) ? ParameterHelper.GetString(pfVal, "") : "";
@@ -191,69 +199,107 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         try
         {
             var passwordCandidates = await SafeArchiveExtractor.GetPasswordCandidatesAsync(pwdListParam, pwdFileParam, item, storage, cancellationToken);
-            var (archive, validPassword) = SafeArchiveExtractor.OpenArchiveWithPassword(archivePath, passwordCandidates, context);
+            string archiveNameNoExt = Path.GetFileNameWithoutExtension(archivePath);
+            string finalExtractDir = Path.Combine(destFolder, archiveNameNoExt);
 
-            using (archive)
+            if (!isDryRun)
             {
-                var entryKeys = archive.Entries
-                    .Where(e => !e.IsDirectory)
-                    .Select(e => e.Key?.Replace('\\', '/') ?? string.Empty)
-                    .Where(k => !string.IsNullOrWhiteSpace(k))
+                if (!await storage.DirectoryExistsAsync(finalExtractDir, cancellationToken))
+                {
+                    await storage.CreateDirectoryAsync(finalExtractDir, cancellationToken);
+                }
+
+                var extractionResult = await SafeArchiveExtractor.UniversalExtractAsync(
+                    archivePath,
+                    finalExtractDir,
+                    passwordCandidates,
+                    engine,
+                    customSevenZipPath,
+                    context,
+                    cancellationToken);
+
+                if (!extractionResult.Success)
+                {
+                    throw new InvalidOperationException(extractionResult.ErrorMessage ?? "Error desconocido en descompresión.");
+                }
+
+                // Identificar si existe una única carpeta envoltorio
+                var extractedFiles = Directory.Exists(finalExtractDir)
+                    ? Directory.GetFiles(finalExtractDir, "*.*", SearchOption.AllDirectories)
+                    : [];
+
+                var entryRelKeys = extractedFiles
+                    .Select(f => Path.GetRelativePath(finalExtractDir, f).Replace('\\', '/'))
                     .ToList();
 
-                string? commonRoot = ArchiveVolumeResolver.GetCommonRootFolder(entryKeys);
+                string? commonRoot = ArchiveVolumeResolver.GetCommonRootFolder(entryRelKeys);
                 bool hasSingleWrapper = !string.IsNullOrEmpty(commonRoot);
 
-                string archiveNameNoExt = Path.GetFileNameWithoutExtension(archivePath);
-                string finalExtractDir;
-
-                if (hasSingleWrapper && cleanWrapper)
+                if (hasSingleWrapper && cleanWrapper && !string.IsNullOrEmpty(commonRoot))
                 {
-                    finalExtractDir = destFolder;
-                    context.Log($"[Descompresor] Carpeta envoltorio única detectada ('{commonRoot}'). Limpiando nivel redundante y extrayendo en: {finalExtractDir}", LogLevel.Debug, item);
-                }
-                else
-                {
-                    finalExtractDir = Path.Combine(destFolder, archiveNameNoExt);
-                    context.Log($"[Descompresor] Múltiples entradas raíz. Extrayendo en subcarpeta: {finalExtractDir}", LogLevel.Debug, item);
-                }
-
-                if (!isDryRun)
-                {
-                    if (!await storage.DirectoryExistsAsync(finalExtractDir, cancellationToken))
+                    string wrapperPath = Path.Combine(finalExtractDir, commonRoot.Trim('/', '\\'));
+                    if (Directory.Exists(wrapperPath))
                     {
-                        await storage.CreateDirectoryAsync(finalExtractDir, cancellationToken);
-                    }
-
-                    SafeArchiveExtractor.ExtractEntriesSafely(archive, finalExtractDir, cancellationToken);
-
-                    if (recursiveUnpack)
-                    {
-                        await SafeArchiveExtractor.ExtractNestedArchivesAsync(finalExtractDir, passwordCandidates, context, storage, cancellationToken);
-                    }
-
-                    if (autoDelete)
-                    {
-                        await storage.DeleteAsync(archivePath, permanent: true, ct: cancellationToken);
-                        context.Log($"[Descompresor] Archivo comprimido original eliminado tras extracción: '{archivePath}'", LogLevel.Debug, item);
+                        foreach (var subDir in Directory.GetDirectories(wrapperPath))
+                        {
+                            string destSubDir = Path.Combine(finalExtractDir, Path.GetFileName(subDir));
+                            if (!Directory.Exists(destSubDir))
+                            {
+                                Directory.Move(subDir, destSubDir);
+                            }
+                        }
+                        foreach (var subFile in Directory.GetFiles(wrapperPath))
+                        {
+                            string destSubFile = Path.Combine(finalExtractDir, Path.GetFileName(subFile));
+                            if (!File.Exists(destSubFile))
+                            {
+                                File.Move(subFile, destSubFile);
+                            }
+                        }
+                        try { Directory.Delete(wrapperPath, true); } catch { }
                     }
                 }
+
+                if (recursiveUnpack)
+                {
+                    await SafeArchiveExtractor.ExtractNestedArchivesAsync(finalExtractDir, passwordCandidates, context, storage, engine, customSevenZipPath, cancellationToken);
+                }
+
+                if (autoDelete)
+                {
+                    await storage.DeleteAsync(archivePath, permanent: true, ct: cancellationToken);
+                    context.Log($"[Descompresor] Archivo comprimido original eliminado tras extracción: '{archivePath}'", LogLevel.Debug, item);
+                }
+
+                // Recuento final de ficheros extraídos
+                var finalFiles = Directory.Exists(finalExtractDir)
+                    ? Directory.GetFiles(finalExtractDir, "*.*", SearchOption.AllDirectories)
+                    : [];
 
                 sw.Stop();
                 var outputItem = new FileItemContext(finalExtractDir, isDirectory: true);
                 outputItem.Metadata["UnpackedFrom"] = archivePath;
                 outputItem.Metadata["HasSingleWrapper"] = hasSingleWrapper;
                 outputItem.Metadata["ArchiveFormat"] = Path.GetExtension(archivePath).TrimStart('.').ToUpperInvariant();
-                outputItem.Metadata["UnpackedFileCount"] = entryKeys.Count;
-                if (!string.IsNullOrEmpty(validPassword))
+                outputItem.Metadata["UnpackedFileCount"] = finalFiles.Length;
+                outputItem.Metadata["ExtractionEngineUsed"] = extractionResult.EngineUsed;
+                if (!string.IsNullOrEmpty(extractionResult.ValidPasswordUsed))
                 {
-                    outputItem.Metadata["UsedPassword"] = validPassword;
+                    outputItem.Metadata["UsedPassword"] = extractionResult.ValidPasswordUsed;
                 }
-                outputItem.AddLog($"SmartUnpackNode extracted to {finalExtractDir}");
+                outputItem.AddLog($"SmartUnpackNode extracted to {finalExtractDir} using {extractionResult.EngineUsed}");
 
-                string detailsJson = $"{{\"archive\": \"{archivePath.Replace("\\", "\\\\")}\", \"extractDir\": \"{finalExtractDir.Replace("\\", "\\\\")}\", \"entriesCount\": {entryKeys.Count}, \"hasSingleWrapper\": {hasSingleWrapper.ToString().ToLowerInvariant()}, \"passwordProtected\": {!string.IsNullOrEmpty(validPassword)}}}";
-                context.Log($"[Descompresor] Descompresión completada: {entryKeys.Count} ficheros extraídos en '{finalExtractDir}'", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
+                string detailsJson = $"{{\"archive\": \"{archivePath.Replace("\\", "\\\\")}\", \"extractDir\": \"{finalExtractDir.Replace("\\", "\\\\")}\", \"entriesCount\": {finalFiles.Length}, \"engine\": \"{extractionResult.EngineUsed}\", \"hasSingleWrapper\": {hasSingleWrapper.ToString().ToLowerInvariant()}, \"passwordProtected\": {!string.IsNullOrEmpty(extractionResult.ValidPasswordUsed)}}}";
+                context.Log($"[Descompresor] Descompresión completada: {finalFiles.Length} ficheros extraídos en '{finalExtractDir}' mediante {extractionResult.EngineUsed}", LogLevel.Information, outputItem, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: detailsJson);
 
+                await context.EmitAsync("Out", outputItem);
+            }
+            else
+            {
+                sw.Stop();
+                var outputItem = new FileItemContext(finalExtractDir, isDirectory: true);
+                outputItem.Metadata["UnpackedFrom"] = archivePath;
+                outputItem.Metadata["DryRun"] = true;
                 await context.EmitAsync("Out", outputItem);
             }
         }

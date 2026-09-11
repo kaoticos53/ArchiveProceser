@@ -23,6 +23,7 @@ public sealed class WorkflowTelemetryTracker
     private readonly Lock _nodeStatsLock = new();
 
     private readonly RollingNodeMetricsTracker _rollingTracker = new();
+    private readonly ConcurrentDictionary<string, byte> _uniqueCompletedFiles = new(StringComparer.OrdinalIgnoreCase);
 
     public void Reset()
     {
@@ -33,6 +34,7 @@ public sealed class WorkflowTelemetryTracker
         Interlocked.Exchange(ref _completedFilesCount, 0);
         Interlocked.Exchange(ref _processedBytesCount, 0);
         Volatile.Write(ref _lastCustomStatusMessage, string.Empty);
+        _uniqueCompletedFiles.Clear();
 
         lock (_nodeStatsLock)
         {
@@ -63,9 +65,19 @@ public sealed class WorkflowTelemetryTracker
         Interlocked.Increment(ref _sourceItemsEmitted);
     }
 
-    public long IncrementCompletedFiles()
+    public long IncrementCompletedFiles(string? fileKey = null)
     {
-        return Interlocked.Increment(ref _completedFilesCount);
+        if (string.IsNullOrWhiteSpace(fileKey))
+        {
+            return Interlocked.Increment(ref _completedFilesCount);
+        }
+
+        if (_uniqueCompletedFiles.TryAdd(fileKey, 0))
+        {
+            return Interlocked.Increment(ref _completedFilesCount);
+        }
+
+        return Volatile.Read(ref _completedFilesCount);
     }
 
     public void IncrementProcessedItems()

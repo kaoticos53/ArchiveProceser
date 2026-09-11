@@ -123,4 +123,83 @@
   <data name="Param_TaskPreset" xml:space="preserve"><value>Task Preset</value></data>
   <data name="Param_ForceJsonOutput" xml:space="preserve"><value>Force JSON Output</value></data>
   <data name="Param_MaxImageDimension" xml:space="preserve"><value>Max Image Dimension (px)</value></data>
+  <data name="Param_MaxConcurrency" xml:space="preserve"><value>Max Concurrency</value></data>
+  <data name="Param_AdditionalPrompt" xml:space="preserve"><value>Additional Instructions</value></data>
+  <data name="MultimodalVisionLlmNode_ActionConfig" xml:space="preserve"><value>⚙️ Configure Providers &amp; Templates...</value></data>
+
+  <!-- VLM Configuration Window -->
+  <data name="VlmConfig_WindowTitle" xml:space="preserve"><value>Multimodal AI (VLM) Advanced Configuration</value></data>
+  <data name="VlmConfig_HeaderTitle" xml:space="preserve"><value>Multimodal AI Configuration (Vision-Language)</value></data>
+  <data name="VlmConfig_HeaderSubtitle" xml:space="preserve"><value>Manage local and remote inference servers, and customize task templates and prompt guidelines.</value></data>
+  <data name="VlmConfig_BtnSaveAll" xml:space="preserve"><value>💾 Save All</value></data>
+  <data name="VlmConfig_BtnApplyAndClose" xml:space="preserve"><value>✔ Apply &amp; Close</value></data>
+  <data name="VlmConfig_TabProviders" xml:space="preserve"><value>🔌 AI Inference Providers</value></data>
+  <data name="VlmConfig_TabTemplates" xml:space="preserve"><value>📋 Task Templates Manager</value></data>
+  <data name="VlmConfig_TabPromptPreview" xml:space="preserve"><value>🧪 Prompt Preview</value></data>
+  <data name="VlmConfig_SelectProviderLabel" xml:space="preserve"><value>Available Providers</value></data>
+  <data name="VlmConfig_EndpointUrlLabel" xml:space="preserve"><value>Endpoint URL (Base /v1)</value></data>
+  <data name="VlmConfig_ModelNameLabel" xml:space="preserve"><value>VLM Model Identifier</value></data>
+  <data name="VlmConfig_ApiKeyLabel" xml:space="preserve"><value>API Key / Token (optional for local)</value></data>
+  <data name="VlmConfig_TemperatureLabel" xml:space="preserve"><value>Sampling Temperature (0.0 Factual - 1.0 Creative)</value></data>
+  <data name="VlmConfig_MaxTokensLabel" xml:space="preserve"><value>Max Tokens</value></data>
+  <data name="VlmConfig_MaxImageDimensionLabel" xml:space="preserve"><value>Max Image Dimension (px)</value></data>
+  <data name="VlmConfig_TimeoutSecondsLabel" xml:space="preserve"><value>Timeout (seconds)</value></data>
+  <data name="VlmConfig_ConcurrencyLimitLabel" xml:space="preserve"><value>Max Concurrency (Simultaneous Slots)</value></data>
+  <data name="VlmConfig_DiagnosisLabel" xml:space="preserve"><value>Connectivity Check</value></data>
+  <data name="VlmConfig_BtnTestConnection" xml:space="preserve"><value>⚡ Test Connection</value></data>
+  <data name="VlmConfig_TemplatesListTitle" xml:space="preserve"><value>Task Templates</value></data>
+  <data name="VlmConfig_BtnNewTemplate" xml:space="preserve"><value>➕ New</value></data>
+  <data name="VlmConfig_BtnDuplicateTemplate" xml:space="preserve"><value>📋 Duplicate</value></data>
+  <data name="VlmConfig_BtnDeleteTemplate" xml:space="preserve"><value>🗑️ Delete</value></data>
+  <data name="VlmConfig_TemplateNameLabel" xml:space="preserve"><value>Template Name</value></data>
+  <data name="VlmConfig_TemplateDescLabel" xml:space="preserve"><value>Description</value></data>
+  <data name="VlmConfig_SystemPromptLabel" xml:space="preserve"><value>System Prompt (Model Role &amp; Guidelines)</value></data>
+  <data name="VlmConfig_UserPromptLabel" xml:space="preserve"><value>Base User Prompt (Supports {FileName}, {Date}, {Tag})</value></data>
+  <data name="VlmConfig_ForceJsonLabel" xml:space="preserve"><value>Force strict JSON output</value></data>
+  <data name="VlmConfig_SaveAsFileLabel" xml:space="preserve"><value>Save output as companion file</value></data>
+  <data name="VlmConfig_BtnRestoreBuiltIn" xml:space="preserve"><value>🔄 Restore Default</value></data>
+  <data name="VlmConfig_AdditionalPromptTestLabel" xml:space="preserve"><value>Simulate Additional Instructions (Node local parameter):</value></data>
+  <data name="VlmConfig_FinalPromptResolvedLabel" xml:space="preserve"><value>Resulting Assembled Prompt:</value></data>
+  <data name="VlmConfig_TestingConnection" xml:space="preserve"><value>Testing connection...</value></data>
+  <data name="VlmConfig_InProcessReady" xml:space="preserve"><value>✅ Internal engine ready. No network or external processes required.</value></data>
+  <data name="VlmConfig_ConnectionSuccess" xml:space="preserve"><value>🟢 Connected successfully. Server online ({0} models detected).</value></data>
+  <data name="VlmConfig_ConnectionHttpError" xml:space="preserve"><value>🔴 Server returned status code {0} ({1}).</value></data>
+  <data name="VlmConfig_ConnectionFailed" xml:space="preserve"><value>🔴 Connection error: {0}</value></data>
+  <data name="VlmConfig_NewTemplateName" xml:space="preserve"><value>New Custom Template</value></data>
+  <data name="VlmConfig_NewTemplateDesc" xml:space="preserve"><value>Template description...</value></data>
+  <data name="VlmConfig_TemplateCreated" xml:space="preserve"><value>Template created. Remember to click 'Save'.</value></data>
+  <data name="VlmConfig_TemplateDuplicated" xml:space="preserve"><value>Template duplicated.</value></data>
+  <data name="VlmConfig_CannotDeleteBuiltIn" xml:space="preserve"><value>Built-in system templates cannot be deleted.</value></data>
+  <data name="VlmConfig_TemplateDeleted" xml:space="preserve"><value>Template deleted.</value></data>
+  <data name="VlmConfig_TemplateRestored" xml:space="preserve"><value>Template restored to factory defaults.</value></data>
+  <data name="VlmConfig_SavedSuccess" xml:space="preserve"><value>Configuration saved successfully.</value></data>
+  <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="VlmConfig_BtnNewProvider" xml:space="preserve"><value>➕ New</value></data>
+  <data name="VlmConfig_BtnDuplicateProvider" xml:space="preserve"><value>📋 Duplicate</value></data>
+  <data name="VlmConfig_BtnDeleteProvider" xml:space="preserve"><value>🗑️ Delete</value></data>
+  <data name="VlmConfig_ProviderDisplayNameLabel" xml:space="preserve"><value>Provider Name</value></data>
+  <data name="VlmConfig_ProviderIdLabel" xml:space="preserve"><value>Internal Identifier (ID)</value></data>
+  <data name="VlmConfig_BtnDetectModels" xml:space="preserve"><value>🔄 Detect Models</value></data>
+  <data name="VlmConfig_NewProviderName" xml:space="preserve"><value>New Custom Provider</value></data>
+  <data name="VlmConfig_ProviderCreated" xml:space="preserve"><value>Provider created. Remember to click 'Save'.</value></data>
+  <data name="VlmConfig_ProviderDuplicated" xml:space="preserve"><value>Provider duplicated.</value></data>
+  <data name="VlmConfig_CannotDeleteBuiltInProvider" xml:space="preserve"><value>Built-in system providers cannot be deleted.</value></data>
+  <data name="VlmConfig_ProviderDeleted" xml:space="preserve"><value>Provider deleted.</value></data>
+  <data name="VlmConfig_DetectingModels" xml:space="preserve"><value>Querying available models from server...</value></data>
+  <data name="VlmConfig_ModelsDetectedCount" xml:space="preserve"><value>🟢 {0} model(s) detected on server.</value></data>
+  <data name="VlmConfig_DetectModelsFailed" xml:space="preserve"><value>⚠️ Failed to query models: {0}</value></data>
+  <data name="VlmConfig_TabSampleTest" xml:space="preserve"><value>🔬 Test Sample (1 Cycle)</value></data>
+  <data name="VlmConfig_SampleFileLabel" xml:space="preserve"><value>Sample Image or Document File:</value></data>
+  <data name="VlmConfig_BtnRunSample" xml:space="preserve"><value>▶ Run Test</value></data>
+  <data name="VlmConfig_SampleOutputLabel" xml:space="preserve"><value>Model Output:</value></data>
+  <data name="VlmConfig_DiscoveredVarsLabel" xml:space="preserve"><value>Discovered Dynamic Variables:</value></data>
+  <data name="VlmConfig_BtnApplyVars" xml:space="preserve"><value>📥 Import to Flow</value></data>
+  <data name="VlmConfig_SelectSampleFileTitle" xml:space="preserve"><value>Select Sample Image or Document File</value></data>
+  <data name="VlmConfig_SampleFileNotFound" xml:space="preserve"><value>Please select an existing sample file.</value></data>
+  <data name="VlmConfig_SelectProviderTemplate" xml:space="preserve"><value>Please select a valid provider and template.</value></data>
+  <data name="VlmConfig_RunningSample" xml:space="preserve"><value>🧠 Running sample inference...</value></data>
+  <data name="VlmConfig_SampleSuccess" xml:space="preserve"><value>✨ Sample inference completed in {0} ms ({1} tokens). {2} variables detected.</value></data>
+  <data name="VlmConfig_SampleError" xml:space="preserve"><value>❌ Sample inference error: {0}</value></data>
+  <data name="VlmConfig_VariablesApplied" xml:space="preserve"><value>✅ {0} variables imported into node successfully.</value></data>
 </root>

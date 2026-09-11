@@ -74,7 +74,7 @@
 
                             <!-- Auto-guardado de Proyectos -->
                             <CheckBox IsChecked="{Binding EnableAutoSave, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableAutoSave]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6" />
-                            <Grid Margin="20,0,0,0">
+                            <Grid Margin="20,0,0,14">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="80" />
@@ -84,6 +84,20 @@
                                 <TextBox Grid.Column="1" Text="{Binding AutoSaveIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" />
                                 <TextBlock Grid.Column="2" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MinutesLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
                             </Grid>
+
+                            <!-- Limpieza Automática de Archivos Temporales -->
+                            <Border BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Margin="0,4,0,12" Padding="0,12,0,0">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding AutoCleanIntermediateTempFiles, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCleanIntermediateTempFiles]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,3" />
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCleanIntermediateTempFilesDesc]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="20,0,0,8" />
+
+                                    <CheckBox IsChecked="{Binding CleanStaleTempOnStartup, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CleanStaleTempOnStartup]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+
+                                    <Button Command="{Binding CleanTemporaryFilesNowCommand}" Style="{DynamicResource SecondaryButton}" HorizontalAlignment="Left" Padding="12,6" Margin="0,4,0,0" Cursor="Hand">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CleanTempNowBtn]}" FontSize="11" FontWeight="SemiBold" />
+                                    </Button>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>

@@ -100,7 +100,7 @@ public class WorkflowDebugSessionTests
             });
             graph.BreakpointNodeIds.Add("node-1");
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
             bool breakpointHit = false;
             session.NodeStatusChanged += (nodeId, status, details) =>

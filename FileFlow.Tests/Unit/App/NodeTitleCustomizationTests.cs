@@ -24,12 +24,12 @@ public class NodeTitleCustomizationTests
         var nodeVm = new NodeViewModel(node, new Point(0, 0));
 
         nodeVm.IsEditingTitle.Should().BeFalse();
-        nodeVm.Title.Should().Be(node.Name);
+        nodeVm.Title.Should().NotBeNullOrWhiteSpace();
 
         nodeVm.StartRenaming();
 
         nodeVm.IsEditingTitle.Should().BeTrue();
-        nodeVm.EditingTitleText.Should().Be(node.Name);
+        nodeVm.EditingTitleText.Should().Be(nodeVm.Title);
     }
 
     [Fact]

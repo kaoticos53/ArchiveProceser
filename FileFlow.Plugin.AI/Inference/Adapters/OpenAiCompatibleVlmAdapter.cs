@@ -24,8 +24,10 @@ public sealed class OpenAiCompatibleVlmAdapter : IVlmAdapter
             temperature: request.Temperature,
             maxTokens: request.MaxTokens,
             forceJsonOutput: request.ForceJsonOutput,
+            jsonSchema: request.JsonSchema,
             timeout: request.Timeout,
             customHttpClient: request.CustomHttpClient,
+            concurrencyLimit: request.ConcurrencyLimit,
             cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

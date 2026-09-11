@@ -8,6 +8,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Plugins;
 
+[Collection("RenamerSampleDataTests")]
 public class SyntheticDataSourceNodeTests : IDisposable
 {
     private readonly string _tempDirectory;

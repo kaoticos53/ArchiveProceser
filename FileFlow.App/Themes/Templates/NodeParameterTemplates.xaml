@@ -7,8 +7,8 @@
     <!-- Node Parameter Row DataTemplate -->
     <DataTemplate x:Key="NodeParameterItemTemplate" DataType="{x:Type vm:NodeParameterViewModel}">
         <Grid Margin="0,3" Visibility="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <!-- Standard Node Parameter Row -->
-            <Grid Visibility="{Binding IsVariableInjectorNode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+            <!-- Standard Single-Line Node Parameter Row -->
+            <Grid Visibility="{Binding IsStandardRow, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="ParamKey" />
                     <ColumnDefinition Width="*" />
@@ -16,20 +16,56 @@
 
                 <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10" MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
 
-                <!-- Dropdown ComboBox for parameters with options -->
-                <Grid Grid.Column="1" Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <!-- Dropdown ComboBox for parameters with options (standard or editable) -->
+                <Grid Grid.Column="1" Visibility="{Binding IsDropdown, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
+                    <!-- Standard non-editable ComboBox -->
                     <ComboBox Grid.Column="0"
                               ItemsSource="{Binding Options}"
                               SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Visibility="{Binding HasOptionsAndNotEditable, Converter={StaticResource BooleanToVisibilityConverter}}"
                               IsEditable="False"
                               Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
                               BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,2"
                               HorizontalAlignment="Stretch" />
+
+                    <!-- Editable ComboBox (allows selecting from options or typing custom value) -->
+                    <Grid Grid.Column="0" Visibility="{Binding IsEditableDropdown, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0"
+                                  ItemsSource="{Binding Options}"
+                                  Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  IsEditable="True"
+                                  Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                  BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10" Padding="4,2"
+                                  HorizontalAlignment="Stretch" />
+                        <Button Grid.Column="1" 
+                                Command="{Binding OpenVariablePickerCommand}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                Content="{}{x}" 
+                                Background="{DynamicResource BgHoverBrush}" 
+                                Foreground="{DynamicResource AccentGlowBrush}" 
+                                BorderThickness="0" 
+                                Padding="5,2" 
+                                FontSize="10" 
+                                FontWeight="Bold" 
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="0,4,4,0" />
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </Grid>
 
                     <Button Grid.Column="1"
                             Command="{Binding OpenMediaPresetManagerCommand}"
@@ -138,74 +174,6 @@
                     </Button>
                 </Grid>
 
-                <!-- MultiLine TextBox for Prompts, Templates, SQL, and Long Text -->
-                <Grid Grid.Column="1"
-                      Visibility="{Binding IsMultiLine, Converter={StaticResource BooleanToVisibilityConverter}}"
-                      HorizontalAlignment="Stretch">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBox Grid.Column="0"
-                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             AcceptsReturn="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             MinHeight="44"
-                             MaxHeight="95"
-                             Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="10.5" Padding="5,4"
-                             FontFamily="Cascadia Code, Consolas, Segoe UI, monospace"
-                             HorizontalAlignment="Stretch">
-                        <TextBox.Resources>
-                            <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="4,0,0,4" />
-                            </Style>
-                        </TextBox.Resources>
-                    </TextBox>
-
-                    <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Stretch">
-                        <!-- Botón Expandir a Editor Modal (⤢) -->
-                        <Button Command="{Binding OpenTextEditorCommand}"
-                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
-                                Content="⤢" 
-                                Background="{DynamicResource BgHoverBrush}" 
-                                Foreground="{DynamicResource AccentCyanBrush}" 
-                                BorderThickness="0" 
-                                Padding="5,3" 
-                                FontSize="10.5" 
-                                FontWeight="Bold" 
-                                Cursor="Hand"
-                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip], FallbackValue='Abrir editor ampliado (⤢)'}">
-                            <Button.Resources>
-                                <Style TargetType="Border">
-                                    <Setter Property="CornerRadius" Value="0,4,0,0" />
-                                </Style>
-                            </Button.Resources>
-                        </Button>
-
-                        <!-- Botón Insertar Variable ({x}) -->
-                        <Button Command="{Binding OpenVariablePickerCommand}"
-                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
-                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                Content="{}{x}" 
-                                Background="{DynamicResource BgHoverBrush}" 
-                                Foreground="{DynamicResource AccentGlowBrush}" 
-                                BorderThickness="0" 
-                                Padding="5,3" 
-                                FontSize="10" 
-                                FontWeight="Bold" 
-                                Cursor="Hand"
-                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
-                            <Button.Resources>
-                                <Style TargetType="Border">
-                                    <Setter Property="CornerRadius" Value="0,0,4,0" />
-                                </Style>
-                            </Button.Resources>
-                        </Button>
-                    </StackPanel>
-                </Grid>
 
                 <!-- TextBox for standard text/numeric parameters -->
                 <Grid Grid.Column="1"
@@ -456,6 +424,94 @@
                         </Button>
                     </Grid>
                 </Grid>
+            </Grid>
+
+            <!-- MultiLine Parameter Block (Prompts, Scripts, Templates, SQL) -->
+            <Grid Visibility="{Binding IsMultiLine, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,3,0,2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Header: Label a la izquierda y botones de acción (⤢ y {x}) a la derecha -->
+                <Grid Grid.Row="0" Margin="0,0,0,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" 
+                               Text="{Binding DisplayName}" 
+                               ToolTip="{Binding Key}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" 
+                               FontSize="10" 
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Botón Expandir a Editor Modal (⤢) -->
+                        <Button Command="{Binding OpenTextEditorCommand}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                Content="⤢" 
+                                Background="{DynamicResource BgHoverBrush}" 
+                                Foreground="{DynamicResource AccentCyanBrush}" 
+                                BorderThickness="0" 
+                                Padding="6,2" 
+                                Margin="0,0,4,0"
+                                FontSize="10" 
+                                FontWeight="Bold" 
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip], FallbackValue='Abrir editor ampliado (⤢)'}">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="3" />
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+
+                        <!-- Botón Insertar Variable ({x}) -->
+                        <Button Command="{Binding OpenVariablePickerCommand}"
+                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                Content="{}{x}" 
+                                Background="{DynamicResource BgHoverBrush}" 
+                                Foreground="{DynamicResource AccentGlowBrush}" 
+                                BorderThickness="0" 
+                                Padding="6,2" 
+                                FontSize="9.5" 
+                                FontWeight="Bold" 
+                                Cursor="Hand"
+                                ToolTip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip], FallbackValue='Insertar variable dinámicamente ({x})'}">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="3" />
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- MultiLine TextBox ocupando todo el ancho de la tarjeta -->
+                <TextBox Grid.Row="1"
+                         Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         MinHeight="44"
+                         MaxHeight="95"
+                         Background="{DynamicResource BgCardBrush}" 
+                         Foreground="{DynamicResource TextPrimaryBrush}" 
+                         BorderBrush="{DynamicResource BorderDarkBrush}" 
+                         FontSize="10.5" 
+                         Padding="6,4"
+                         FontFamily="Cascadia Code, Consolas, Segoe UI, monospace"
+                         HorizontalAlignment="Stretch">
+                    <TextBox.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4" />
+                        </Style>
+                    </TextBox.Resources>
+                </TextBox>
             </Grid>
 
             <!-- Dynamic Variable Row for VariableInjectorNode -->

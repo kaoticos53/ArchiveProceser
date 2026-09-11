@@ -31,6 +31,24 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
+  <!-- Nodes -->
+  <data name="SmartUnpackNode_Name" xml:space="preserve"><value>Smart Unpack</value></data>
+  <data name="SmartUnpackNode_Desc" xml:space="preserve"><value>Inspects archive structure and extracts intelligently, supporting password lists, multi-engine extraction (.NET 9, 7-Zip, SharpCompress) and multipart archives.</value></data>
+  <data name="ArchiveCompressorNode_Name" xml:space="preserve"><value>Archive Compressor</value></data>
+  <data name="ArchiveCompressorNode_Desc" xml:space="preserve"><value>Packs and compresses files and directories into ZIP, TAR, GZ, 7Z or CBZ containers.</value></data>
+  <data name="ArchiveFilterNode_Name" xml:space="preserve"><value>Archive Filter</value></data>
+  <data name="ArchiveFilterNode_Desc" xml:space="preserve"><value>Inspects the contents and file count of an archive to route files without extracting.</value></data>
+  <data name="ArchiveFanOutNode_Name" xml:space="preserve"><value>Archive Streamer (Fan-Out)</value></data>
+  <data name="ArchiveFanOutNode_Desc" xml:space="preserve"><value>Extracts an archive into a temporary session and streams each internal file individually with correlation metadata.</value></data>
+  <data name="ArchiveFanInNode_Name" xml:space="preserve"><value>Archive Aggregator (Fan-In)</value></data>
+  <data name="ArchiveFanInNode_Desc" xml:space="preserve"><value>Collects all processed files from an archive session and repacks them into the destination archive.</value></data>
+
+  <!-- Parameters & Help -->
+  <data name="Param_ExtractionEngine" xml:space="preserve"><value>Extraction Engine</value></data>
+  <data name="Param_ExtractionEngine_Help" xml:space="preserve"><value>Selects the decompression engine: Auto (intelligent multi-level fallback), SevenZip (7z.exe), DotNetZip (.NET 9 native) or SharpCompress (managed).</value></data>
+  <data name="Param_CustomSevenZipPath" xml:space="preserve"><value>Custom 7z Executable</value></data>
+  <data name="Param_CustomSevenZipPath_Help" xml:space="preserve"><value>Optional path to a custom or portable 7z.exe / 7za.exe executable.</value></data>
+
   <!-- Password Manager Window -->
   <data name="PasswordManager_WindowTitle" xml:space="preserve"><value>Password Manager - SmartUnpack</value></data>
   <data name="PasswordManager_HeaderTitle" xml:space="preserve"><value>🔑 Password Manager for Archive Extraction</value></data>

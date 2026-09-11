@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Serialization;
 using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -129,7 +130,7 @@ public sealed class InProcessVlmAdapter : IVlmAdapter
             case VlmTaskPreset.ClassifyAndTag:
             {
                 var classificationObj = BuildClassificationJson(visualAnalysis, request.Item.FileName);
-                extractedJson = JsonSerializer.Serialize(classificationObj, new JsonSerializerOptions { WriteIndented = true });
+                extractedJson = JsonDefaults.SerializeRelaxed(classificationObj, indented: true);
                 detectedCategory = visualAnalysis?.TopCategory ?? "Desconocido";
                 rawResponse = request.ForceJsonOutput ? extractedJson : $"```json\n{extractedJson}\n```";
                 break;
@@ -171,8 +172,8 @@ public sealed class InProcessVlmAdapter : IVlmAdapter
         int completionTokens = Math.Max(10, rawResponse.Length / 4);
 
         return new VlmInferenceResult(
-            RawText: rawResponse,
-            ExtractedJson: extractedJson,
+            RawText: JsonDefaults.UnescapeUnicode(rawResponse),
+            ExtractedJson: JsonDefaults.UnescapeUnicode(extractedJson),
             DetectedCategory: detectedCategory,
             PromptTokens: promptTokens,
             CompletionTokens: completionTokens,
@@ -228,15 +229,26 @@ public sealed class InProcessVlmAdapter : IVlmAdapter
             ["receptor_cif_nif"] = null,
             ["base_imponible"] = totalAmount,
             ["porcentaje_iva"] = 21.0,
+            ["cuota_iva"] = "0.00",
             ["importe_total"] = totalAmount,
             ["divisa"] = totalAmount.Contains('$') ? "USD" : "EUR",
+            ["lineas_articulos"] = new List<object>
+            {
+                new Dictionary<string, object?>
+                {
+                    ["descripcion"] = "Servicios / Artículos detectados",
+                    ["cantidad"] = 1.0,
+                    ["precio_unitario"] = totalAmount,
+                    ["importe"] = totalAmount
+                }
+            },
             ["confianza_extraccion"] = analysis != null ? Math.Round(analysis.TopScore, 2) : 0.85,
             ["resolucion_imagen"] = $"{width}x{height}",
             ["densidad_texto"] = analysis != null ? Math.Round(analysis.TextEdgeDensity, 3) : 0.5,
             ["motor_inferencia"] = "FileFlow In-Process VLM"
         };
 
-        return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+        return JsonDefaults.SerializeRelaxed(payload, indented: true);
     }
 
     private static Dictionary<string, object?> BuildClassificationJson(ImageTypeAnalysisResult? analysis, string fileName)
@@ -276,19 +288,25 @@ public sealed class InProcessVlmAdapter : IVlmAdapter
         bool isLowRes = width < 800 || height < 600;
 
         string verdict = (!isBlurry && !isLowRes) ? "APTO / ALTA CALIDAD" : "REVISIÓN MANUAL REQUERIDA";
+        string legibilidad = isBlurry ? "Deficiente" : (isLowRes ? "Aceptable" : "Excelente");
 
-        var metrics = new Dictionary<string, object>
+        var defects = new List<string>();
+        if (isBlurry) defects.Add("Posible desenfoque o baja nitidez");
+        if (isLowRes) defects.Add("Resolución digital reducida");
+
+        var canonicalMetrics = new Dictionary<string, object?>
         {
-            ["veredicto"] = verdict,
+            ["es_valido_para_tramite"] = !isBlurry && !isLowRes,
+            ["legibilidad"] = legibilidad,
+            ["tiene_firma"] = false,
+            ["tiene_sello"] = false,
+            ["defectos_detectados"] = defects,
+            ["recomendacion"] = (!isBlurry && !isLowRes) ? "Documento nítido y apto para procesamiento automatizado" : "Verificar manualmente antes de tramitar",
             ["resolucion"] = $"{width}x{height}",
-            ["nitidez_estimada"] = Math.Round(edgeDensity, 2),
-            ["nivel_brillo"] = Math.Round(brightness, 2),
-            ["desenfoque_detectado"] = isBlurry,
-            ["resolucion_insuficiente"] = isLowRes,
-            ["apto_para_ocr"] = !isBlurry && !isLowRes
+            ["nitidez_estimada"] = Math.Round(edgeDensity, 2)
         };
 
-        string json = JsonSerializer.Serialize(metrics, new JsonSerializerOptions { WriteIndented = true });
+        string json = JsonDefaults.SerializeRelaxed(canonicalMetrics, indented: true);
 
         if (forceJson)
         {

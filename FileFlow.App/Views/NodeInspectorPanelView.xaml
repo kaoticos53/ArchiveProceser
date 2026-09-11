@@ -194,14 +194,43 @@
                                                         </Border>
                                                     </Grid>
                                                     
-                                                     <!-- Editor ComboBox para parámetros con opciones (Dropdowns como Protocol) -->
-                                                    <ComboBox ItemsSource="{Binding Options}"
-                                                              SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                              Visibility="{Binding HasOptions, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                              IsEditable="False"
-                                                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                              BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="12" Padding="8,5"
-                                                              HorizontalAlignment="Stretch" />
+                                                     <!-- Editor ComboBox para parámetros con opciones estándar (Dropdowns como Protocol) -->
+                                                     <ComboBox ItemsSource="{Binding Options}"
+                                                               SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               Visibility="{Binding HasOptionsAndNotEditable, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                               IsEditable="False"
+                                                               Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                               BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="12" Padding="8,5"
+                                                               HorizontalAlignment="Stretch" />
+
+                                                     <!-- Editor ComboBox Editable para parámetros con opciones pero con entrada personalizada (como TargetLanguage) -->
+                                                     <Grid Visibility="{Binding IsEditableDropdown, Converter={StaticResource BooleanToVisibilityConverter}}" HorizontalAlignment="Stretch">
+                                                         <Grid.ColumnDefinitions>
+                                                             <ColumnDefinition Width="*" />
+                                                             <ColumnDefinition Width="Auto" />
+                                                         </Grid.ColumnDefinitions>
+                                                         <ComboBox Grid.Column="0"
+                                                                   ItemsSource="{Binding Options}"
+                                                                   Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                   IsEditable="True"
+                                                                   Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                   BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="12" Padding="8,5"
+                                                                   HorizontalAlignment="Stretch" />
+                                                         <Button Grid.Column="1" 
+                                                                 Command="{Binding OpenVariablePickerCommand}"
+                                                                 CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
+                                                                 Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                 Content="{}{x}" 
+                                                                 Background="{DynamicResource BgHoverBrush}" 
+                                                                 Foreground="{DynamicResource AccentGlowBrush}" 
+                                                                 BorderThickness="0" 
+                                                                 Padding="8,5" 
+                                                                 FontSize="11" 
+                                                                 FontWeight="Bold" 
+                                                                 Cursor="Hand" 
+                                                                 Margin="4,0,0,0"
+                                                                 ToolTip="Insertar variable dinámicamente ({x})" />
+                                                     </Grid>
 
                                                     <!-- Editor CheckBox para booleanos/toggles -->
                                                     <CheckBox IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Serialization;
 
 namespace FileFlow.App.ViewModels;
 
@@ -83,7 +84,7 @@ public partial class PortViewModel : ObservableObject
         {
             if (kvp.Value != null)
             {
-                MetadataVariables.Add(new KeyValuePair<string, string>(kvp.Key, kvp.Value.ToString() ?? ""));
+                MetadataVariables.Add(new KeyValuePair<string, string>(kvp.Key, JsonDefaults.UnescapeUnicode(kvp.Value.ToString()) ?? ""));
             }
         }
 

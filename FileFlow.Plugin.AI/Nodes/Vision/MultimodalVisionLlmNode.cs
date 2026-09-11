@@ -1,9 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
+using FileFlow.Plugin.AI.Management;
+using FileFlow.Plugin.AI.UI;
+using FileFlow.Plugin.AI.ViewModels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -19,17 +25,32 @@ namespace FileFlow.Plugin.AI;
 /// o ejecuta el motor interno In-Process de FileFlow Studio sin dependencias externas.
 /// Permite extracción directa de facturas y recibos a JSON, traducción visual, OCR con resumen y auditoría de calidad.
 /// </summary>
-[NodeDefinition("MultimodalVisionLlmNode_Name", "ImageVision", "MultimodalVisionLlmNode_Desc", PipelineRole.Analyze,
+[NodeDefinition("MultimodalVisionLlmNode_Name", "LanguageAI", "MultimodalVisionLlmNode_Desc", PipelineRole.Analyze,
     "vlm", "multimodal", "qwen", "qwen2.5-vl", "vision", "llm", "lm studio", "ollama", "in-process", "factura", "recibo", "ocr", "traduccion")]
-public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
+public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode, INodeCustomActionProvider
 {
     public event Action? ModelStatusChanged;
 
     public HttpClient? CustomHttpClient { get; set; }
 
     public override string Name => LocalizationManager.Instance.GetString("MultimodalVisionLlmNode_Name", "IA Multimodal VLM (Qwen2.5-VL)");
-    public override string Category => "ImageVision";
+    public override string Category => "LanguageAI";
     public override string Description => LocalizationManager.Instance.GetString("MultimodalVisionLlmNode_Desc", "Procesa imágenes y documentos con modelos de Visión-Lenguaje (Qwen2.5-VL) locales vía LM Studio, Ollama o motor in-process.");
+
+    public override int MaxConcurrency
+    {
+        get
+        {
+            if (Parameters.TryGetValue("MaxConcurrency", out var mcVal) && mcVal is not null)
+            {
+                int custom = ParameterHelper.GetInt32(mcVal, 0);
+                if (custom > 0) return custom;
+            }
+            string provider = Parameters.TryGetValue("Provider", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+            var profile = VlmConfigurationStorageService.Instance.GetProviderProfile(provider);
+            return Math.Max(1, profile.ConcurrencyLimit);
+        }
+    }
 
     public bool IsModelLoaded
     {
@@ -69,6 +90,29 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
         ModelStatusChanged?.Invoke();
     }
 
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions =>
+    [
+        new("OpenVlmConfig", LocalizationManager.Instance.GetString("MultimodalVisionLlmNode_ActionConfig", "⚙️ Configurar Proveedores y Plantillas..."), "⚙️", "Abrir la ventana de configuración detallada para gestionar endpoints de proveedores de IA y editar plantillas de tareas")
+    ];
+
+    public void ExecuteCustomAction(string actionId, object? context = null)
+    {
+        if (string.Equals(actionId, "OpenVlmConfig", StringComparison.OrdinalIgnoreCase))
+        {
+            var vm = new MultimodalVlmConfigViewModel(this);
+            var window = new MultimodalVlmConfigWindow(vm);
+            if (context is Window ownerWindow)
+            {
+                window.Owner = ownerWindow;
+            }
+            else if (Application.Current?.MainWindow != null)
+            {
+                window.Owner = Application.Current.MainWindow;
+            }
+            window.ShowDialog();
+        }
+    }
+
     public MultimodalVisionLlmNode()
     {
         Inputs =
@@ -83,75 +127,75 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
             new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
         ];
 
-        Parameters["Provider"] = VlmAdapterFactory.ProviderLmStudio;
+        Parameters["Provider"] = "LM Studio (Local Server)";
         Parameters["EndpointUrl"] = "http://localhost:1234/v1";
         Parameters["ModelName"] = "qwen2.5-vl-7b-instruct";
         Parameters["ApiKey"] = "lm-studio";
-        Parameters["TaskPreset"] = "ExtractInvoiceReceiptJson";
+        Parameters["TaskPreset"] = "Extracción de Facturas y Recibos (JSON)";
         Parameters["SystemPrompt"] = string.Empty;
         Parameters["UserPrompt"] = string.Empty;
+        Parameters["AdditionalPrompt"] = string.Empty;
         Parameters["TargetLanguage"] = "Español";
         Parameters["ForceJsonOutput"] = false;
-        Parameters["MaxImageDimension"] = 1536;
+        Parameters["MaxImageDimension"] = 1024;
         Parameters["Temperature"] = 0.1;
         Parameters["MaxTokens"] = 2048;
         Parameters["SaveAsNewFile"] = false;
         Parameters["TimeoutSeconds"] = 120;
+        Parameters["MaxConcurrency"] = 1;
     }
 
-    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
-    [
-        new("Provider", ParameterEditorType.Dropdown, DefaultValue: VlmAdapterFactory.ProviderLmStudio,
-            Options: VlmAdapterFactory.AvailableProviders,
-            HelpText: "Servidor local (LM Studio, Ollama) o motor interno In-Process para ejecutar el modelo de visión.", DisplayOrder: 1),
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors
+    {
+        get
+        {
+            var providers = VlmConfigurationStorageService.Instance.LoadProviders();
+            var providerOptions = providers.Select(p => p.DisplayName).Where(d => !string.IsNullOrWhiteSpace(d)).Distinct().ToArray();
+            if (providerOptions.Length == 0)
+            {
+                providerOptions = VlmAdapterFactory.AvailableProviders;
+            }
 
-        new("EndpointUrl", ParameterEditorType.Text, DefaultValue: "http://localhost:1234/v1",
-            HelpText: "URL base de la API compatible con OpenAI (/v1/chat/completions). No requerida para In-Process.", DisplayOrder: 2),
+            var templates = VlmConfigurationStorageService.Instance.LoadTemplates();
+            var presetOptions = templates.Select(t => t.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToArray();
+            if (presetOptions.Length == 0)
+            {
+                presetOptions =
+                [
+                    "Extracción de Facturas y Recibos (JSON)",
+                    "OCR y Resumen Ejecutivo",
+                    "Traducción Visual de Documentos",
+                    "Clasificación y Etiquetado Visual",
+                    "Inspección de Calidad Formal",
+                    "Prompt Libre / Personalizado"
+                ];
+            }
 
-        new("ModelName", ParameterEditorType.Text, DefaultValue: "qwen2.5-vl-7b-instruct",
-            HelpText: "Identificador del modelo cargado en LM Studio u Ollama (ej. qwen2.5-vl-7b-instruct, qwen2.5-vl-3b, default).", DisplayOrder: 3),
+            string defaultPreset = presetOptions.FirstOrDefault() ?? "Extracción de Facturas y Recibos (JSON)";
 
-        new("ApiKey", ParameterEditorType.Text, DefaultValue: "lm-studio",
-            HelpText: "Clave de API para el endpoint (opcional para servidores locales).", DisplayOrder: 4),
+            return
+            [
+                new("Provider", ParameterEditorType.Dropdown, DefaultValue: providerOptions.FirstOrDefault() ?? "LM Studio (Local Server)",
+                    Options: providerOptions,
+                    HelpText: "Servidor local (LM Studio, Ollama), motor interno In-Process o proveedor personalizado para ejecutar el modelo de visión.", DisplayOrder: 1),
 
-        new("TaskPreset", ParameterEditorType.Dropdown, DefaultValue: "ExtractInvoiceReceiptJson",
-            Options: [
-                "ExtractInvoiceReceiptJson",
-                "DocumentOcrAndSummary",
-                "TranslateDocument",
-                "ClassifyAndTag",
-                "QualityInspection",
-                "CustomPrompt"
-            ],
-            HelpText: "Plantilla predefinida para la tarea visual que optimiza los prompts automáticamente.", DisplayOrder: 5),
+                new("TaskPreset", ParameterEditorType.Dropdown, DefaultValue: defaultPreset,
+                    Options: presetOptions,
+                    HelpText: "Plantilla de tarea visual que optimiza automáticamente el rol y formato de respuesta.", DisplayOrder: 2),
 
-        new("SystemPrompt", ParameterEditorType.MultiLineText, DefaultValue: string.Empty,
-            HelpText: "Instrucciones de sistema para el modelo VLM. Si se deja en blanco, usa la plantilla del preset.", DisplayOrder: 6),
+                new("TargetLanguage", ParameterEditorType.EditableDropdown, DefaultValue: "Español",
+                    Options: ["Español", "Inglés"],
+                    HelpText: "Idioma de destino para transcripciones, resúmenes o traducciones.", DisplayOrder: 3),
 
-        new("UserPrompt", ParameterEditorType.MultiLineText, DefaultValue: string.Empty,
-            HelpText: "Pregunta o instrucción de usuario. Admite variables de plantilla {FileName}, {Date}, {Tag}, etc.", DisplayOrder: 7),
+                new("AdditionalPrompt", ParameterEditorType.MultiLineText, DefaultValue: string.Empty,
+                    HelpText: "Instrucciones o notas adicionales para este nodo particular (admite variables de plantilla {FileName}, {Date}, etc.).", DisplayOrder: 4),
 
-        new("TargetLanguage", ParameterEditorType.Text, DefaultValue: "Español",
-            HelpText: "Idioma de destino para traducciones o resúmenes.", DisplayOrder: 8),
-
-        new("ForceJsonOutput", ParameterEditorType.Toggle, DefaultValue: false,
-            HelpText: "Obliga al modelo a responder estrictamente en formato JSON válido.", DisplayOrder: 9),
-
-        new("MaxImageDimension", ParameterEditorType.Number, DefaultValue: 1536, Min: 256, Max: 4096, Step: 128,
-            HelpText: "Dimensión máxima (ancho o alto) a la que se escala la imagen para optimizar VRAM y ancho de banda.", DisplayOrder: 10),
-
-        new("Temperature", ParameterEditorType.Slider, DefaultValue: 0.1, Min: 0.0, Max: 1.0, Step: 0.05,
-            HelpText: "Temperatura de muestreo (0.0 para máxima precisión fáctica; valores más altos para creatividad).", DisplayOrder: 11),
-
-        new("MaxTokens", ParameterEditorType.Number, DefaultValue: 2048, Min: 64, Max: 8192, Step: 256,
-            HelpText: "Límite máximo de tokens generados en la respuesta.", DisplayOrder: 12),
-
-        new("SaveAsNewFile", ParameterEditorType.Toggle, DefaultValue: false,
-            HelpText: "Guarda la salida generada como un nuevo archivo (.json o .md) junto a la imagen original.", DisplayOrder: 13),
-
-        new("TimeoutSeconds", ParameterEditorType.Number, DefaultValue: 120, Min: 10, Max: 600, Step: 10,
-            HelpText: "Tiempo máximo de espera en segundos para la respuesta del modelo.", DisplayOrder: 14)
-    ];
+                new("MaxConcurrency", ParameterEditorType.Number, DefaultValue: 1,
+                    Min: 1, Max: 32,
+                    HelpText: "Número máximo de inferencias simultáneas hacia el servidor VLM (LM Studio, Ollama, etc.). Ajusta este valor según los slots y la GPU de tu servidor.", DisplayOrder: 5)
+            ];
+        }
+    }
 
     public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
@@ -166,21 +210,51 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
 
         try
         {
-            // 1. Leer parámetros
+            // 1. Leer parámetros y sincronizar con perfil de proveedor si es necesario
             string provider = Parameters.TryGetValue("Provider", out var pVal) ? pVal?.ToString() ?? VlmAdapterFactory.ProviderLmStudio : VlmAdapterFactory.ProviderLmStudio;
-            string endpointUrl = Parameters.TryGetValue("EndpointUrl", out var eVal) ? eVal?.ToString() ?? "http://localhost:1234/v1" : "http://localhost:1234/v1";
-            string modelName = Parameters.TryGetValue("ModelName", out var mVal) ? mVal?.ToString() ?? "qwen2.5-vl-7b-instruct" : "qwen2.5-vl-7b-instruct";
-            string apiKey = Parameters.TryGetValue("ApiKey", out var kVal) ? kVal?.ToString() ?? "lm-studio" : "lm-studio";
+            var providerProfile = VlmConfigurationStorageService.Instance.GetProviderProfile(provider);
+
+            string endpointUrl = Parameters.TryGetValue("EndpointUrl", out var eVal) && !string.IsNullOrWhiteSpace(eVal?.ToString())
+                ? eVal.ToString()!
+                : providerProfile.EndpointUrl;
+
+            string modelName = Parameters.TryGetValue("ModelName", out var mVal) && !string.IsNullOrWhiteSpace(mVal?.ToString())
+                ? mVal.ToString()!
+                : providerProfile.ModelName;
+
+            string apiKey = Parameters.TryGetValue("ApiKey", out var kVal) && !string.IsNullOrWhiteSpace(kVal?.ToString())
+                ? kVal.ToString()!
+                : providerProfile.ApiKey;
+
             string taskPresetStr = Parameters.TryGetValue("TaskPreset", out var tpVal) ? tpVal?.ToString() ?? "ExtractInvoiceReceiptJson" : "ExtractInvoiceReceiptJson";
             string customSystemPrompt = Parameters.TryGetValue("SystemPrompt", out var spVal) ? spVal?.ToString() ?? string.Empty : string.Empty;
             string rawUserPrompt = Parameters.TryGetValue("UserPrompt", out var upVal) ? upVal?.ToString() ?? string.Empty : string.Empty;
+            string additionalPrompt = Parameters.TryGetValue("AdditionalPrompt", out var apVal) ? apVal?.ToString() ?? string.Empty : string.Empty;
             string targetLanguage = Parameters.TryGetValue("TargetLanguage", out var tlVal) ? tlVal?.ToString() ?? "Español" : "Español";
-            bool forceJsonOutput = Parameters.TryGetValue("ForceJsonOutput", out var fjVal) ? ParameterHelper.GetBoolean(fjVal, false) : false;
-            int maxImageDimension = Parameters.TryGetValue("MaxImageDimension", out var midVal) ? ParameterHelper.GetInt32(midVal, 1536) : 1536;
-            double temperature = Parameters.TryGetValue("Temperature", out var tVal) ? ParameterHelper.GetDouble(tVal, 0.1) : 0.1;
-            int maxTokens = Parameters.TryGetValue("MaxTokens", out var mtVal) ? ParameterHelper.GetInt32(mtVal, 2048) : 2048;
-            bool saveAsNewFile = Parameters.TryGetValue("SaveAsNewFile", out var sfVal) ? ParameterHelper.GetBoolean(sfVal, false) : false;
-            int timeoutSeconds = Parameters.TryGetValue("TimeoutSeconds", out var tsVal) ? ParameterHelper.GetInt32(tsVal, 120) : 120;
+
+            bool forceJsonOutput = Parameters.TryGetValue("ForceJsonOutput", out var fjVal)
+                ? ParameterHelper.GetBoolean(fjVal, false)
+                : false;
+
+            int maxImageDimension = Parameters.TryGetValue("MaxImageDimension", out var midVal)
+                ? ParameterHelper.GetInt32(midVal, providerProfile.MaxImageDimension)
+                : providerProfile.MaxImageDimension;
+
+            double temperature = Parameters.TryGetValue("Temperature", out var tVal)
+                ? ParameterHelper.GetDouble(tVal, providerProfile.Temperature)
+                : providerProfile.Temperature;
+
+            int maxTokens = Parameters.TryGetValue("MaxTokens", out var mtVal)
+                ? ParameterHelper.GetInt32(mtVal, providerProfile.MaxTokens)
+                : providerProfile.MaxTokens;
+
+            bool saveAsNewFile = Parameters.TryGetValue("SaveAsNewFile", out var sfVal)
+                ? ParameterHelper.GetBoolean(sfVal, false)
+                : false;
+
+            int timeoutSeconds = Parameters.TryGetValue("TimeoutSeconds", out var tsVal)
+                ? ParameterHelper.GetInt32(tsVal, providerProfile.TimeoutSeconds)
+                : providerProfile.TimeoutSeconds;
 
             // Ajustar endpoint por defecto según proveedor si no se especificó uno personalizado
             if (provider.Contains("Ollama", StringComparison.OrdinalIgnoreCase) && endpointUrl == "http://localhost:1234/v1")
@@ -188,9 +262,43 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
                 endpointUrl = "http://localhost:11434/v1";
             }
 
-            if (!Enum.TryParse<VlmTaskPreset>(taskPresetStr, true, out var preset))
+            // 2. Resolver plantilla y prompts desde el catálogo o preset integrado
+            var storedTemplate = VlmConfigurationStorageService.Instance.LoadTemplates()
+                .FirstOrDefault(t => string.Equals(t.Name, taskPresetStr, StringComparison.OrdinalIgnoreCase) ||
+                                     string.Equals(t.Id, taskPresetStr, StringComparison.OrdinalIgnoreCase));
+
+            VlmTaskPreset preset = VlmTaskPreset.ExtractInvoiceReceiptJson;
+            if (storedTemplate != null)
             {
-                preset = VlmTaskPreset.ExtractInvoiceReceiptJson;
+                if (Enum.TryParse<VlmTaskPreset>(storedTemplate.Id, true, out var matchedPreset))
+                {
+                    preset = matchedPreset;
+                }
+                else
+                {
+                    preset = VlmTaskPreset.CustomPrompt;
+                }
+            }
+            else if (Enum.TryParse<VlmTaskPreset>(taskPresetStr, true, out var parsedPreset))
+            {
+                preset = parsedPreset;
+            }
+
+            string templateSysPrompt;
+            string templateUsrPrompt;
+
+            if (storedTemplate != null)
+            {
+                templateSysPrompt = storedTemplate.SystemPrompt;
+                templateUsrPrompt = storedTemplate.UserPrompt;
+                if (storedTemplate.ForceJsonOutput) forceJsonOutput = true;
+                if (storedTemplate.SaveAsNewFile) saveAsNewFile = true;
+            }
+            else
+            {
+                var (defaultSys, defaultUsr) = MultimodalVlmClientEngine.GetPresetPrompts(preset, targetLanguage);
+                templateSysPrompt = defaultSys;
+                templateUsrPrompt = defaultUsr;
             }
 
             // Forzar JSON si el preset es de extracción a JSON
@@ -199,11 +307,17 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
                 forceJsonOutput = true;
             }
 
-            // 2. Resolver prompts (preset por defecto si está vacío)
-            var (defaultSystemPrompt, defaultUserPrompt) = MultimodalVlmClientEngine.GetPresetPrompts(preset, targetLanguage);
-            string finalSystemPrompt = !string.IsNullOrWhiteSpace(customSystemPrompt) ? customSystemPrompt : defaultSystemPrompt;
+            string finalSystemPrompt = !string.IsNullOrWhiteSpace(customSystemPrompt) ? customSystemPrompt : templateSysPrompt;
+            string baseUserPrompt = !string.IsNullOrWhiteSpace(rawUserPrompt) ? rawUserPrompt : templateUsrPrompt;
 
-            string baseUserPrompt = !string.IsNullOrWhiteSpace(rawUserPrompt) ? rawUserPrompt : defaultUserPrompt;
+            // Anexar instrucciones adicionales particulares si se especificaron
+            if (!string.IsNullOrWhiteSpace(additionalPrompt))
+            {
+                baseUserPrompt = string.IsNullOrWhiteSpace(baseUserPrompt)
+                    ? additionalPrompt
+                    : $"{baseUserPrompt}\n\n[Instrucciones Adicionales]:\n{additionalPrompt}";
+            }
+
             string evaluatedUserPrompt = VariableTemplateResolver.Resolve(baseUserPrompt, item);
 
             // 3. Resolver adaptador correspondiente
@@ -221,6 +335,8 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
             }
 
             Log(context, $"🧠 Ejecutando VLM [{adapter.ProviderName}] (Preset: '{preset}')...", LogLevel.Information, item);
+
+            string? jsonSchema = storedTemplate?.JsonSchema ?? MultimodalVlmClientEngine.GetPresetJsonSchema(preset);
 
             // 4. Inferencia con el adaptador seleccionado
             var request = new VlmExecutionRequest(
@@ -240,10 +356,13 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
                 Timeout: TimeSpan.FromSeconds(timeoutSeconds),
                 CustomHttpClient: CustomHttpClient,
                 Context: context,
-                Item: item
+                Item: item,
+                ConcurrencyLimit: MaxConcurrency,
+                JsonSchema: jsonSchema
             );
 
             var result = await adapter.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
+            context.ReportExecutionDuration(result.DurationMs);
 
             // 5. Inyectar metadatos en el contexto del elemento
             item.Metadata["AI:VlmResponse"] = result.RawText;
@@ -257,9 +376,17 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode
                 item.Metadata["AI:VlmJson"] = result.ExtractedJson;
             }
 
+            // Aplanado recursivo y extracción de variables estructuradas
+            string? jsonSource = !string.IsNullOrWhiteSpace(result.ExtractedJson) ? result.ExtractedJson : result.RawText;
+            FileFlow.Plugin.AI.Utilities.JsonMetadataFlattener.FlattenAndInject(jsonSource, item.Metadata, prefix: "AI:Vlm:");
+
             if (!string.IsNullOrWhiteSpace(result.DetectedCategory))
             {
                 item.Metadata["AI:VlmCategory"] = result.DetectedCategory;
+                if (!item.Metadata.ContainsKey("categoria"))
+                {
+                    item.Metadata["categoria"] = result.DetectedCategory;
+                }
             }
 
             Log(context, $"✨ Inferencia VLM ({adapter.ProviderName}) completada en {result.DurationMs} ms ({result.TotalTokens} tokens).", LogLevel.Information, item);

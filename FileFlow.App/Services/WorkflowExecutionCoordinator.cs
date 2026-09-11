@@ -85,7 +85,8 @@ public sealed class WorkflowExecutionCoordinator
             TemporaryDirectory = effectiveTempDir,
             IsDryRun = options.IsDryRun,
             MaxDegreeOfParallelism = options.IsDebug ? 1 : options.MaxParallelThreads,
-            EnableCheckpointing = options.EnableCheckpointing
+            EnableCheckpointing = options.EnableCheckpointing,
+            AutoCleanIntermediateTempFiles = UserPreferencesService.Instance.Preferences.AutoCleanIntermediateTempFiles
         };
 
         if (options.IsDebug)

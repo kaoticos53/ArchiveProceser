@@ -1,3 +1,5 @@
+using FileFlow.Sdk.Serialization;
+
 namespace FileFlow.Sdk.Telemetry;
 
 /// <summary>
@@ -22,6 +24,8 @@ public record StructuredLogRecord(
     public string FormattedTimestamp => $"[{Timestamp:HH:mm:ss.fff}]";
 
     public bool HasDetails => !string.IsNullOrWhiteSpace(DetailsJson);
+
+    public string DisplayDetails => JsonDefaults.FormatDetailsForDisplay(DetailsJson);
 
     public string ShortItemId => !string.IsNullOrWhiteSpace(ItemId)
         ? (ItemId.Length > 8 ? ItemId[..8] : ItemId)
@@ -77,6 +81,7 @@ public record StructuredLogRecord(
         string? fileName = null)
     {
         fileName ??= !string.IsNullOrWhiteSpace(filePath) ? System.IO.Path.GetFileName(filePath) : null;
+        message = JsonDefaults.UnescapeUnicode(message);
         return new StructuredLogRecord(
             Id: 0,
             ExecutionId: executionId ?? string.Empty,

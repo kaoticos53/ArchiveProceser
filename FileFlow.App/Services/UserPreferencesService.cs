@@ -25,6 +25,8 @@ public class UserPreferencesData
     public int AutoSaveIntervalMinutes { get; set; } = 5;
     public bool EnableCheckpointing { get; set; } = true;
     public bool AutoUnloadAiModelsOnCompletion { get; set; } = false;
+    public bool AutoCleanIntermediateTempFiles { get; set; } = true;
+    public bool CleanStaleTempOnStartup { get; set; } = true;
 }
 
 public class UserPreferencesService : IUserPreferencesService

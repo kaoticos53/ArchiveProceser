@@ -123,7 +123,13 @@ public sealed class ArchiveCompressorNode : IFlowNode
                 }
                 else if (dirExists)
                 {
-                    writer.WriteAll(inputPath, "*", SearchOption.AllDirectories);
+                    var filesToPack = Directory.GetFiles(inputPath, "*.*", SearchOption.AllDirectories);
+                    foreach (var file in filesToPack)
+                    {
+                        string relativeEntryName = Path.GetRelativePath(inputPath, file).Replace('\\', '/');
+                        await using var inStream = await storage.OpenReadAsync(file, cancellationToken).ConfigureAwait(false);
+                        writer.Write(relativeEntryName, inStream);
+                    }
                 }
             }
 

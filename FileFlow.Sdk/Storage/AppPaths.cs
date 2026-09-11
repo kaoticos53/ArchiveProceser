@@ -112,6 +112,93 @@ public static class AppPaths
         }
     }
 
+    /// <summary>
+    /// Directorio que alberga los espacios de trabajo temporales acotados por ejecución (Runs/{ExecutionId}/).
+    /// </summary>
+    public static string RunsDirectory => Path.Combine(DefaultTempDirectory, "Runs");
+
+    /// <summary>
+    /// Limpia de forma segura y recursiva directorios y archivos temporales residuales o abandonados de ejecuciones anteriores.
+    /// </summary>
+    /// <param name="maxAge">Antigüedad mínima para considerar un temporal como abandonado (por defecto 2 horas).</param>
+    /// <returns>Número total de bytes liberados en el disco.</returns>
+    public static long CleanupStaleTempDirectories(TimeSpan? maxAge = null)
+    {
+        TimeSpan effectiveMaxAge = maxAge ?? TimeSpan.FromHours(2);
+        DateTime thresholdUtc = DateTime.UtcNow - effectiveMaxAge;
+        long totalBytesFreed = 0;
+
+        string[] candidateRoots =
+        [
+            RunsDirectory,
+            Path.Combine(DefaultTempDirectory, "intermediate"),
+            Path.Combine(Path.GetTempPath(), "FileFlow_Sessions"),
+            Path.Combine(Path.GetTempPath(), "FileFlow_MockData")
+        ];
+
+        foreach (var root in candidateRoots)
+        {
+            if (!Directory.Exists(root)) continue;
+
+            try
+            {
+                // Limpieza de subdirectorios
+                foreach (var subDir in Directory.GetDirectories(root))
+                {
+                    try
+                    {
+                        var dirInfo = new DirectoryInfo(subDir);
+                        if (dirInfo.LastWriteTimeUtc < thresholdUtc || dirInfo.CreationTimeUtc < thresholdUtc)
+                        {
+                            long dirSize = GetDirectorySize(subDir);
+                            Directory.Delete(subDir, recursive: true);
+                            totalBytesFreed += dirSize;
+                        }
+                    }
+                    catch
+                    {
+                        // Resistencia ante archivos bloqueados o en uso
+                    }
+                }
+
+                // Limpieza de archivos sueltos
+                foreach (var file in Directory.GetFiles(root))
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(file);
+                        if (fileInfo.LastWriteTimeUtc < thresholdUtc || fileInfo.CreationTimeUtc < thresholdUtc)
+                        {
+                            long size = fileInfo.Length;
+                            File.Delete(file);
+                            totalBytesFreed += size;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        return totalBytesFreed;
+    }
+
+    private static long GetDirectorySize(string directoryPath)
+    {
+        if (!Directory.Exists(directoryPath)) return 0;
+        try
+        {
+            return Directory.GetFiles(directoryPath, "*.*", SearchOption.AllDirectories)
+                .Sum(f => {
+                    try { return new FileInfo(f).Length; } catch { return 0L; }
+                });
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     // Ficheros estándar de configuración del usuario
     public static string UserPreferencesFile => Path.Combine(ConfigDirectory, "user_preferences.json");
     public static string ExternalToolsFile => Path.Combine(ConfigDirectory, "external_tools.json");

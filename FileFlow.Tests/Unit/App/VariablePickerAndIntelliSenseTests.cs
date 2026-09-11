@@ -48,14 +48,14 @@ public class VariablePickerAndIntelliSenseTests
         var upstreamGroups = groups.Where(g => g.IsUpstream).ToList();
         upstreamGroups.Should().HaveCount(2);
 
-        // Optimizer group
-        var optGroup = upstreamGroups.FirstOrDefault(g => g.GroupName.Contains(optVm.Title));
+        // Optimizer group (identified by unique {SavedPercent})
+        var optGroup = upstreamGroups.FirstOrDefault(g => g.Variables.Any(v => v.Token == "{SavedPercent}"));
         optGroup.Should().NotBeNull();
         optGroup!.Variables.Should().Contain(v => v.Token == "{OutputFileSize}");
         optGroup.Variables.Should().Contain(v => v.Token == "{SavedPercent}");
 
-        // Background remover group
-        var bgGroup = upstreamGroups.FirstOrDefault(g => g.GroupName.Contains(bgVm.Title));
+        // Background remover group (identified by unique {AI:BackgroundRemoved})
+        var bgGroup = upstreamGroups.FirstOrDefault(g => g.Variables.Any(v => v.Token == "{AI:BackgroundRemoved}"));
         bgGroup.Should().NotBeNull();
         bgGroup!.Variables.Should().Contain(v => v.Token == "{AI:BackgroundRemoved}");
         bgGroup.Variables.Should().Contain(v => v.Token == "{AI:BackgroundModel}");

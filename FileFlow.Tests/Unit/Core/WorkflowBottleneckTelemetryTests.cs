@@ -124,4 +124,37 @@ public class WorkflowBottleneckTelemetryTests
             }
         }
     }
+
+    [Fact]
+    public void TelemetryTracker_IncrementCompletedFiles_DeduplicatesSameFile()
+    {
+        // Arrange
+        var tracker = new WorkflowTelemetryTracker();
+        tracker.Reset();
+
+        // Act: Same file completed through multiple disconnected terminal paths or steps
+        long count1 = tracker.IncrementCompletedFiles("C:\\data\\img1.jpg");
+        long count2 = tracker.IncrementCompletedFiles("C:\\data\\img1.jpg");
+        long count3 = tracker.IncrementCompletedFiles("C:\\data\\img2.jpg");
+
+        // Assert
+        count1.Should().Be(1);
+        count2.Should().Be(1); // Deduplicated, does not increment
+        count3.Should().Be(2); // New file, increments
+        tracker.CompletedFilesCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void FlowExecutionContext_ReportExecutionDuration_StoresReportedTime()
+    {
+        // Arrange
+        var context = new WorkflowExecutionContext("test-node", null!, CancellationToken.None);
+
+        // Act
+        context.ReportExecutionDuration(345.5);
+
+        // Assert
+        context.CustomExecutionDurationMs.Should().Be(345.5);
+    }
 }
+

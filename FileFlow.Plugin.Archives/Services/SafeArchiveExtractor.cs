@@ -7,11 +7,42 @@ using SharpCompress.Readers;
 namespace FileFlow.Plugin.Archives.Services;
 
 /// <summary>
-/// Motor desacoplado para la apertura segura y extracción recursiva de archivos comprimidos con mitigación de Zip Slip y soporte de contraseñas.
+/// Motor de descompresión configurable.
+/// </summary>
+public enum ArchiveExtractionEngine
+{
+    Auto,
+    SevenZip,
+    DotNetZip,
+    SharpCompress
+}
+
+/// <summary>
+/// Resultado detallado de la operación de extracción de un archivo comprimido.
+/// </summary>
+public sealed record ArchiveExtractionResult(
+    bool Success,
+    string ArchivePath,
+    string DestinationDirectory,
+    List<string> ExtractedFiles,
+    int TotalEntriesCount,
+    string EngineUsed,
+    string? ValidPasswordUsed,
+    string? ErrorMessage,
+    List<string> Warnings);
+
+/// <summary>
+/// Motor desacoplado para la apertura segura y extracción recursiva de archivos comprimidos con mitigación de Zip Slip,
+/// soporte multi-estrategia con fallback transparente (.NET 9 Zip, 7-Zip CLI, SharpCompress Resiliente) y contraseñas.
 /// </summary>
 public static class SafeArchiveExtractor
 {
-    public static async Task<List<string?>> GetPasswordCandidatesAsync(string passwordListParam, string passwordFileParam, FileItemContext item, FileFlow.Sdk.Storage.IStorageService? storage = null, CancellationToken cancellationToken = default)
+    public static async Task<List<string?>> GetPasswordCandidatesAsync(
+        string passwordListParam,
+        string passwordFileParam,
+        FileItemContext item,
+        FileFlow.Sdk.Storage.IStorageService? storage = null,
+        CancellationToken cancellationToken = default)
     {
         var candidates = new List<string?> { null, string.Empty };
 
@@ -61,7 +92,143 @@ public static class SafeArchiveExtractor
         return candidates;
     }
 
+    /// <summary>
+    /// Ejecuta la extracción universal de un archivo comprimido utilizando la estrategia óptima o la seleccionada,
+    /// con degradación progresiva automática ante cualquier fallo.
+    /// </summary>
+    public static async Task<ArchiveExtractionResult> UniversalExtractAsync(
+        string archivePath,
+        string targetDir,
+        List<string?> passwordCandidates,
+        ArchiveExtractionEngine engine = ArchiveExtractionEngine.Auto,
+        string? customSevenZipPath = null,
+        IFlowExecutionContext? context = null,
+        CancellationToken cancellationToken = default)
+    {
+        var allWarnings = new List<string>();
 
+        // Si se fuerza un motor específico:
+        if (engine == ArchiveExtractionEngine.DotNetZip)
+        {
+            foreach (var pwd in passwordCandidates)
+            {
+                var res = await DotNetZipArchiveExtractor.ExtractAsync(archivePath, targetDir, pwd, cancellationToken);
+                if (res.Success) return res;
+            }
+            return new ArchiveExtractionResult(
+                Success: false,
+                ArchivePath: archivePath,
+                DestinationDirectory: targetDir,
+                ExtractedFiles: [],
+                TotalEntriesCount: 0,
+                EngineUsed: "DotNetZip",
+                ValidPasswordUsed: null,
+                ErrorMessage: "Fallo en extracción con motor .NET Zip especificado.",
+                Warnings: allWarnings);
+        }
+
+        if (engine == ArchiveExtractionEngine.SevenZip)
+        {
+            foreach (var pwd in passwordCandidates)
+            {
+                var res = await SevenZipCliRunner.ExtractAsync(archivePath, targetDir, pwd, customSevenZipPath, cancellationToken);
+                if (res.Success) return res;
+                if (!string.IsNullOrEmpty(res.ErrorMessage)) allWarnings.Add(res.ErrorMessage);
+            }
+            return new ArchiveExtractionResult(
+                Success: false,
+                ArchivePath: archivePath,
+                DestinationDirectory: targetDir,
+                ExtractedFiles: [],
+                TotalEntriesCount: 0,
+                EngineUsed: "SevenZipCLI",
+                ValidPasswordUsed: null,
+                ErrorMessage: "Fallo en extracción con motor 7-Zip CLI especificado.",
+                Warnings: allWarnings);
+        }
+
+        if (engine == ArchiveExtractionEngine.SharpCompress)
+        {
+            foreach (var pwd in passwordCandidates)
+            {
+                var res = await SharpCompressResilientExtractor.ExtractAsync(archivePath, targetDir, pwd, cancellationToken);
+                if (res.Success) return res;
+                if (!string.IsNullOrEmpty(res.ErrorMessage)) allWarnings.Add(res.ErrorMessage);
+            }
+            return new ArchiveExtractionResult(
+                Success: false,
+                ArchivePath: archivePath,
+                DestinationDirectory: targetDir,
+                ExtractedFiles: [],
+                TotalEntriesCount: 0,
+                EngineUsed: "SharpCompress",
+                ValidPasswordUsed: null,
+                ErrorMessage: "Fallo en extracción con motor SharpCompress especificado.",
+                Warnings: allWarnings);
+        }
+
+        // --- MODO AUTO: ESTRATEGIA INTELIGENTE CON FALLBACK MULTI-NIVEL ---
+
+        // Nivel 1: Si es ZIP/CBZ sin contraseña, probar primero con .NET 9 ZipArchive (ultrarrápido)
+        if (DotNetZipArchiveExtractor.CanHandle(archivePath))
+        {
+            var zipResult = await DotNetZipArchiveExtractor.ExtractAsync(archivePath, targetDir, password: null, cancellationToken);
+            if (zipResult.Success && zipResult.ExtractedFiles.Count > 0)
+            {
+                context?.Log($"SafeArchiveExtractor: Extraído exitosamente mediante motor nativo .NET 9 Zip ('{Path.GetFileName(archivePath)}').", LogLevel.Debug);
+                return zipResult;
+            }
+            if (zipResult.Warnings.Count > 0)
+            {
+                allWarnings.AddRange(zipResult.Warnings);
+            }
+        }
+
+        // Nivel 2: Si 7-Zip CLI está disponible en el sistema (100% de soporte de códecs/formatos)
+        if (SevenZipCliRunner.IsAvailable(customSevenZipPath))
+        {
+            foreach (var pwd in passwordCandidates)
+            {
+                var sevenZipRes = await SevenZipCliRunner.ExtractAsync(archivePath, targetDir, pwd, customSevenZipPath, cancellationToken);
+                if (sevenZipRes.Success && sevenZipRes.ExtractedFiles.Count > 0)
+                {
+                    context?.Log($"SafeArchiveExtractor: Extraído exitosamente mediante 7-Zip CLI ('{Path.GetFileName(archivePath)}').", LogLevel.Debug);
+                    return sevenZipRes;
+                }
+                if (!string.IsNullOrEmpty(sevenZipRes.ErrorMessage))
+                {
+                    allWarnings.Add($"7-Zip intento (pwd: {pwd ?? "sin clave"}): {sevenZipRes.ErrorMessage}");
+                }
+            }
+        }
+
+        // Nivel 3: Fallback a SharpCompress Resiliente (Secuencial + ArchiveFactory)
+        foreach (var pwd in passwordCandidates)
+        {
+            var sharpRes = await SharpCompressResilientExtractor.ExtractAsync(archivePath, targetDir, pwd, cancellationToken);
+            if (sharpRes.Success && (sharpRes.ExtractedFiles.Count > 0 || sharpRes.TotalEntriesCount == 0))
+            {
+                context?.Log($"SafeArchiveExtractor: Extraído exitosamente mediante SharpCompress Resiliente ('{Path.GetFileName(archivePath)}').", LogLevel.Debug);
+                return sharpRes;
+            }
+            if (!string.IsNullOrEmpty(sharpRes.ErrorMessage))
+            {
+                allWarnings.Add($"SharpCompress intento: {sharpRes.ErrorMessage}");
+            }
+            allWarnings.AddRange(sharpRes.Warnings);
+        }
+
+        return new ArchiveExtractionResult(
+            Success: false,
+            ArchivePath: archivePath,
+            DestinationDirectory: targetDir,
+            ExtractedFiles: [],
+            TotalEntriesCount: 0,
+            EngineUsed: "Auto (All engines failed)",
+            ValidPasswordUsed: null,
+            ErrorMessage: $"No se pudo extraer el archivo '{Path.GetFileName(archivePath)}' con ninguno de los motores disponibles. Detalles: {string.Join(" | ", allWarnings.Take(3))}",
+            Warnings: allWarnings);
+    }
 
     public static (IArchive archive, string? validPassword) OpenArchiveWithPassword(string archivePath, List<string?> candidates, IFlowExecutionContext context)
     {
@@ -127,7 +294,14 @@ public static class SafeArchiveExtractor
         }
     }
 
-    public static async Task ExtractNestedArchivesAsync(string targetDir, List<string?> candidates, IFlowExecutionContext context, FileFlow.Sdk.Storage.IStorageService? storage, CancellationToken cancellationToken)
+    public static async Task ExtractNestedArchivesAsync(
+        string targetDir,
+        List<string?> candidates,
+        IFlowExecutionContext context,
+        FileFlow.Sdk.Storage.IStorageService? storage,
+        ArchiveExtractionEngine engine = ArchiveExtractionEngine.Auto,
+        string? customSevenZipPath = null,
+        CancellationToken cancellationToken = default)
     {
         const int maxDepth = 5;
 
@@ -153,22 +327,25 @@ public static class SafeArchiveExtractor
 
                 try
                 {
-                    var (archive, validPassword) = OpenArchiveWithPassword(nestedArchive, candidates, context);
-                    using (archive)
-                    {
-                        string nestedExtractDir = Path.GetDirectoryName(nestedArchive) ?? targetDir;
-                        ExtractEntriesSafely(archive, nestedExtractDir, cancellationToken);
-                    }
+                    string nestedExtractDir = Path.GetDirectoryName(nestedArchive) ?? targetDir;
+                    var result = await UniversalExtractAsync(nestedArchive, nestedExtractDir, candidates, engine, customSevenZipPath, context, cancellationToken);
 
-                    if (storage != null)
+                    if (result.Success)
                     {
-                        await storage.DeleteAsync(nestedArchive, permanent: true, ct: cancellationToken);
+                        if (storage != null)
+                        {
+                            await storage.DeleteAsync(nestedArchive, permanent: true, ct: cancellationToken);
+                        }
+                        else
+                        {
+                            File.Delete(nestedArchive);
+                        }
+                        context.Log($"SmartUnpackNode: Archivo anidado intermedio descomprimido y eliminado '{Path.GetFileName(nestedArchive)}'.", LogLevel.Information);
                     }
                     else
                     {
-                        File.Delete(nestedArchive);
+                        context.Log($"SmartUnpackNode: Advertencia al descomprimir anidado '{nestedArchive}': {result.ErrorMessage}", LogLevel.Warning);
                     }
-                    context.Log($"SmartUnpackNode: Archivo anidado intermedio eliminado '{Path.GetFileName(nestedArchive)}'.", LogLevel.Information);
                 }
                 catch (Exception ex)
                 {
@@ -198,6 +375,4 @@ public static class SafeArchiveExtractor
             }
         }
     }
-
-
 }

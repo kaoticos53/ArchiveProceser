@@ -29,6 +29,31 @@ public class ArchiveFilterNodeTests
         item.Metadata.Should().ContainKey("IsPrimaryArchive");
     }
 
+    [Theory]
+    [InlineData(@"C:\comics\Batman.cbz")]
+    [InlineData(@"C:\comics\Superman.cbr")]
+    [InlineData(@"C:\comics\Manga.cb7")]
+    [InlineData(@"C:\books\novel.epub")]
+    public async Task ExecuteAsync_ShouldEmitToArchivePort_WhenComicOrEpubArchive(string filePath)
+    {
+        // Arrange
+        var node = new ArchiveFilterNode();
+        var item = new FileItemContext(filePath);
+        var contextMock = new Mock<IFlowExecutionContext>();
+        string? emittedPort = null;
+
+        contextMock.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((port, _) => emittedPort = port)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, contextMock.Object, CancellationToken.None);
+
+        // Assert
+        emittedPort.Should().Be("Archive");
+        item.Metadata.Should().ContainKey("IsPrimaryArchive");
+    }
+
     [Fact]
     public async Task ExecuteAsync_ShouldEmitToSecondaryVolumePort_WhenSplitRarVolume()
     {

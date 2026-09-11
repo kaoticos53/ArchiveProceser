@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.Plugin.FileSystem;
 
@@ -25,11 +26,26 @@ public sealed class LogOutputNode : IFlowNode
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["CustomMessage"] = string.Empty,
+        ["LogLevel"] = "Information",
         ["LogMetadata"] = true,
         ["LogExecutionHistory"] = true,
-        ["CompactFormat"] = false,
-        ["LogLevel"] = "Information"
+        ["CompactFormat"] = false
     };
+
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        new("CustomMessage", ParameterEditorType.MultiLineText, DefaultValue: string.Empty, DisplayOrder: 1,
+            HelpText: "Mensaje personalizado a registrar en el log (admite variables de plantilla {FileName}, {Extension}, {FileSize}, {AI:VlmTags}, etc.). Si se deja vacío, registrará el resumen de inspección estándar."),
+        new("LogLevel", ParameterEditorType.Dropdown, DefaultValue: "Information", DisplayOrder: 2,
+            Options: ["Trace", "Debug", "Information", "Warning", "Error", "Critical"],
+            HelpText: "Nivel de severidad para el registro en consola y telemetría."),
+        new("LogMetadata", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3,
+            HelpText: "Incluir diccionario completo de metadatos en la carga JSON de detalles del log."),
+        new("LogExecutionHistory", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4,
+            HelpText: "Incluir historial de nodos previos por los que ha transitado el elemento."),
+        new("CompactFormat", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 5,
+            HelpText: "Formato resumido en una sola línea compacta.")
+    ];
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -42,6 +58,7 @@ public sealed class LogOutputNode : IFlowNode
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
+        string customMsg = Parameters.TryGetValue("CustomMessage", out var cmVal) ? ParameterHelper.GetString(cmVal, string.Empty) : string.Empty;
         bool logMetadata = Parameters.TryGetValue("LogMetadata", out var mVal) && ParameterHelper.GetBoolean(mVal, true);
         bool logHistory = Parameters.TryGetValue("LogExecutionHistory", out var hVal) && ParameterHelper.GetBoolean(hVal, true);
         bool compactFormat = Parameters.TryGetValue("CompactFormat", out var cVal) && ParameterHelper.GetBoolean(cVal, false);
@@ -84,7 +101,11 @@ public sealed class LogOutputNode : IFlowNode
         string detailsJson = JsonSerializer.Serialize(payload, _jsonOptions);
 
         string summaryMessage;
-        if (compactFormat)
+        if (!string.IsNullOrWhiteSpace(customMsg))
+        {
+            summaryMessage = VariableTemplateResolver.Resolve(customMsg, item);
+        }
+        else if (compactFormat)
         {
             summaryMessage = $"🔍 {fileName} ({sizeText}) | {item.Metadata.Count} meta";
         }
@@ -98,7 +119,15 @@ public sealed class LogOutputNode : IFlowNode
         }
 
         context.Log(summaryMessage, level, item, durationMs: 0.0, detailsJson: detailsJson);
-        item.AddLog($"LogOutputNode inspeccionó estado ({fileName})");
+
+        if (!string.IsNullOrWhiteSpace(customMsg))
+        {
+            item.AddLog($"LogOutputNode: {summaryMessage}");
+        }
+        else
+        {
+            item.AddLog($"LogOutputNode inspeccionó estado ({fileName})");
+        }
 
         await context.EmitAsync("Out", item);
     }

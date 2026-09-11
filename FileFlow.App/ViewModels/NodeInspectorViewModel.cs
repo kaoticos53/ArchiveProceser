@@ -9,6 +9,7 @@ using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Serialization;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.App.ViewModels;
@@ -188,7 +189,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
                             if (kvp.Value is System.Text.Json.JsonElement je)
                             {
                                 if (je.ValueKind == System.Text.Json.JsonValueKind.String)
-                                    item.Metadata[kvp.Key] = je.GetString()!;
+                                    item.Metadata[kvp.Key] = JsonDefaults.UnescapeUnicode(je.GetString()!);
                                 else if (je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetInt32(out int intVal))
                                     item.Metadata[kvp.Key] = intVal;
                                 else if (je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetDouble(out double dblVal))
@@ -196,11 +197,11 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
                                 else if (je.ValueKind == System.Text.Json.JsonValueKind.True || je.ValueKind == System.Text.Json.JsonValueKind.False)
                                     item.Metadata[kvp.Key] = je.GetBoolean();
                                 else
-                                    item.Metadata[kvp.Key] = je.GetRawText();
+                                    item.Metadata[kvp.Key] = JsonDefaults.UnescapeUnicode(je.GetRawText());
                             }
                             else
                             {
-                                item.Metadata[kvp.Key] = kvp.Value;
+                                item.Metadata[kvp.Key] = kvp.Value is string s ? JsonDefaults.UnescapeUnicode(s) : kvp.Value;
                             }
                         }
                     }
@@ -279,8 +280,8 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
             bool hasOld = lastInput?.Metadata.TryGetValue(key, out oldVal) ?? false;
             bool hasNew = lastOutput?.Metadata.TryGetValue(key, out newVal) ?? false;
 
-            string oldStr = oldVal?.ToString() ?? "(null)";
-            string newStr = newVal?.ToString() ?? "(null)";
+            string oldStr = JsonDefaults.UnescapeUnicode(oldVal?.ToString()) ?? "(null)";
+            string newStr = JsonDefaults.UnescapeUnicode(newVal?.ToString()) ?? "(null)";
 
             if (!hasOld && hasNew)
             {
@@ -464,7 +465,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
             var effectiveItem = item ?? _initialItem;
             if (detailsJson == null && effectiveItem?.Metadata != null && effectiveItem.Metadata.Count > 0)
             {
-                try { detailsJson = System.Text.Json.JsonSerializer.Serialize(effectiveItem.Metadata); } catch { }
+                try { detailsJson = JsonDefaults.SerializeRelaxed(effectiveItem.Metadata, indented: true); } catch { }
             }
             var record = StructuredLogRecord.Create(
                 executionId: "TEST",
@@ -487,7 +488,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
             var effectiveItem = _initialItem;
             if (detailsJson == null && effectiveItem?.Metadata != null && effectiveItem.Metadata.Count > 0)
             {
-                try { detailsJson = System.Text.Json.JsonSerializer.Serialize(effectiveItem.Metadata); } catch { }
+                try { detailsJson = JsonDefaults.SerializeRelaxed(effectiveItem.Metadata, indented: true); } catch { }
             }
             var record = StructuredLogRecord.Create(
                 executionId: "TEST",

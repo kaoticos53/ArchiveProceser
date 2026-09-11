@@ -45,6 +45,12 @@ public partial class WorkflowSettingsViewModel : ObservableObject
     private int _autoSaveIntervalMinutes = 5;
 
     [ObservableProperty]
+    private bool _autoCleanIntermediateTempFiles = true;
+
+    [ObservableProperty]
+    private bool _cleanStaleTempOnStartup = true;
+
+    [ObservableProperty]
     private string _selectedThemeId = "dark_fluent";
 
     [ObservableProperty]
@@ -120,6 +126,8 @@ public partial class WorkflowSettingsViewModel : ObservableObject
             : "RenameIncremental";
         EnableAutoSave = prefs.EnableAutoSave;
         AutoSaveIntervalMinutes = prefs.AutoSaveIntervalMinutes > 0 ? prefs.AutoSaveIntervalMinutes : 5;
+        AutoCleanIntermediateTempFiles = prefs.AutoCleanIntermediateTempFiles;
+        CleanStaleTempOnStartup = prefs.CleanStaleTempOnStartup;
 
         // Tab 2: Appearance
         ReloadThemes(prefs.ActiveTheme);
@@ -271,6 +279,18 @@ public partial class WorkflowSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void CleanTemporaryFilesNow()
+    {
+        long bytesFreed = AppPaths.CleanupStaleTempDirectories(TimeSpan.Zero);
+        double mbFreed = bytesFreed / (1024.0 * 1024.0);
+        string title = _loc.GetString("Settings_TempCleanedTitle", "Espacio Temporal");
+        string msg = string.Format(
+            _loc.GetString("Settings_TempCleanedMsg", "Se han liberado {0:F2} MB de espacio temporal de ejecuciones pasadas."),
+            mbFreed);
+        _dialogService.ShowInformation(msg, title);
+    }
+
+    [RelayCommand]
     public void Save()
     {
         _preferencesService.UpdatePreferences(prefs =>
@@ -291,6 +311,8 @@ public partial class WorkflowSettingsViewModel : ObservableObject
             prefs.DefaultLogLevel = SelectedLogLevel;
             prefs.EnableCheckpointing = EnableCheckpointing;
             prefs.AutoUnloadAiModelsOnCompletion = AutoUnloadAiModelsOnCompletion;
+            prefs.AutoCleanIntermediateTempFiles = AutoCleanIntermediateTempFiles;
+            prefs.CleanStaleTempOnStartup = CleanStaleTempOnStartup;
         });
 
         var toolsConfig = new ExternalToolsConfig

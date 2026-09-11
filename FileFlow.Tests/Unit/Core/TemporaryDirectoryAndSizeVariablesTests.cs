@@ -157,14 +157,19 @@ public class TemporaryDirectoryAndSizeVariablesTests : IDisposable
         string? outPath1 = null;
         string? outPath2 = null;
 
+        var ws1 = new WorkflowWorkspaceManager("run_1", _testTempDir);
+        var ws2 = new WorkflowWorkspaceManager("run_2", _testTempDir);
+
         var mockContext1 = new Mock<IFlowExecutionContext>();
         mockContext1.Setup(c => c.TemporaryDirectory).Returns(_testTempDir);
+        mockContext1.Setup(c => c.TempWorkspace).Returns(ws1);
         mockContext1.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
             .Callback<string, FileItemContext>((_, itm) => outPath1 = itm.CurrentPath)
             .Returns(Task.CompletedTask);
 
         var mockContext2 = new Mock<IFlowExecutionContext>();
         mockContext2.Setup(c => c.TemporaryDirectory).Returns(_testTempDir);
+        mockContext2.Setup(c => c.TempWorkspace).Returns(ws2);
         mockContext2.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
             .Callback<string, FileItemContext>((_, itm) => outPath2 = itm.CurrentPath)
             .Returns(Task.CompletedTask);

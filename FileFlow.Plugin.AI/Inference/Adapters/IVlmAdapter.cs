@@ -26,7 +26,9 @@ public record VlmExecutionRequest(
     TimeSpan Timeout,
     HttpClient? CustomHttpClient,
     IFlowExecutionContext Context,
-    FileItemContext Item
+    FileItemContext Item,
+    int ConcurrencyLimit = 1,
+    string? JsonSchema = null
 );
 
 /// <summary>

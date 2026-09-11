@@ -92,6 +92,21 @@ public partial class App : Application
                 themeService.SetTheme(themeEnum);
             }
 
+            if (prefsService.Preferences.CleanStaleTempOnStartup)
+            {
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        FileFlow.Sdk.Storage.AppPaths.CleanupStaleTempDirectories(TimeSpan.FromHours(2));
+                    }
+                    catch
+                    {
+                        // Best effort background housekeeping
+                    }
+                });
+            }
+
             splash.UpdateStatus("Cargando plugins y motor de nodos...", 70);
             await Task.Delay(40);
 

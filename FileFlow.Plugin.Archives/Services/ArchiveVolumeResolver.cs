@@ -40,7 +40,7 @@ public static class ArchiveVolumeResolver
         if (fileName.EndsWith(".part01.rar") || fileName.EndsWith(".part1.rar")) return true;
         if (System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\.part(?!0*1\.)\d+\.rar$")) return false;
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
-        return ext is ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".tgz" or ".bz2";
+        return ext is ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".tgz" or ".bz2" or ".cbz" or ".cbr" or ".cb7" or ".zipx" or ".zst" or ".epub";
     }
 
     public static bool IsSecondaryVolumeFile(string filePath)

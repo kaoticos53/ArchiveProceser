@@ -149,14 +149,45 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                     }
                     else if (typeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase))
                     {
+                        var paramDict = upstreamNode.NodeInstance?.Parameters;
+                        if (paramDict != null)
+                        {
+                            foreach (var (keyName, _) in paramDict)
+                            {
+                                if (!string.IsNullOrWhiteSpace(keyName))
+                                {
+                                    AddUpstreamVar(keyName, $"{{{keyName}}}", $"Inyectado por {upstreamNode.Title}");
+                                }
+                            }
+                        }
+
                         foreach (var param in upstreamNode.Parameters)
                         {
                             string keyName = param.Key;
-                            if (!string.IsNullOrWhiteSpace(keyName))
+                            if (!string.IsNullOrWhiteSpace(keyName) && (paramDict == null || !paramDict.ContainsKey(keyName)))
                             {
                                 AddUpstreamVar(keyName, $"{{{keyName}}}", $"Inyectado por {upstreamNode.Title}");
                             }
                         }
+                    }
+                    else if (typeName.Contains("ArchiveFanOutNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddUpstreamVar("Archive:SessionId", "{Archive:SessionId}", "Identificador único de la sesión del archivo comprimido");
+                        AddUpstreamVar("Archive:OriginalArchivePath", "{Archive:OriginalArchivePath}", "Ruta absoluta del archivo comprimido original");
+                        AddUpstreamVar("Archive:OriginalArchiveFileName", "{Archive:OriginalArchiveFileName}", "Nombre del archivo comprimido original");
+                        AddUpstreamVar("Archive:OriginalArchiveFormat", "{Archive:OriginalArchiveFormat}", "Formato original del archivo (CBZ/ZIP/7Z)");
+                        AddUpstreamVar("Archive:RelativePath", "{Archive:RelativePath}", "Ruta interna relativa dentro del archivo comprimido");
+                        AddUpstreamVar("Archive:EntryIndex", "{Archive:EntryIndex}", "Índice de la entrada dentro del archivo comprimido");
+                        AddUpstreamVar("Archive:TotalEntries", "{Archive:TotalEntries}", "Número total de entradas del archivo comprimido");
+                        AddUpstreamVar("Archive:WorkingFolder", "{Archive:WorkingFolder}", "Directorio temporal de trabajo de la sesión");
+                    }
+                    else if (typeName.Contains("ArchiveFanInNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddUpstreamVar("Archive:OriginalSize", "{Archive:OriginalSize}", "Tamaño original del archivo comprimido");
+                        AddUpstreamVar("Archive:CompressedSize", "{Archive:CompressedSize}", "Tamaño del archivo re-empaquetado final");
+                        AddUpstreamVar("Archive:SavedBytes", "{Archive:SavedBytes}", "Bytes ahorrados en la re-compresión");
+                        AddUpstreamVar("Archive:SavedPercent", "{Archive:SavedPercent}", "Porcentaje de reducción de tamaño");
+                        AddUpstreamVar("Archive:EntriesCount", "{Archive:EntriesCount}", "Número de entradas empaquetadas");
                     }
                     else if (typeName.Contains("SmartUnpackNode", StringComparison.OrdinalIgnoreCase))
                     {
@@ -180,11 +211,136 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                         AddUpstreamVar("Cli:StdErr", "{Cli:StdErr}", "Salida de errores (stderr) del comando");
                         AddUpstreamVar("Cli:ExitCode", "{Cli:ExitCode}", "Código de salida del proceso");
                     }
+                    else if (typeName.Contains("MultimodalVisionLlmNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Variables universales del modelo VLM
+                        AddUpstreamVar("AI:VlmResponse", "{AI:VlmResponse}", "Respuesta textual completa del modelo VLM");
+                        AddUpstreamVar("AI:VlmJson", "{AI:VlmJson}", "Contenido estructurado JSON extraído por VLM");
+                        AddUpstreamVar("AI:VlmCategory", "{AI:VlmCategory}", "Categoría visual o tipología clasificada");
+                        AddUpstreamVar("AI:VlmTags", "{AI:VlmTags}", "Etiquetas descriptivas generadas");
+                        AddUpstreamVar("AI:VlmReason", "{AI:VlmReason}", "Motivo o explicación de la inferencia");
+                        AddUpstreamVar("AI:VlmModel", "{AI:VlmModel}", "Modelo de lenguaje y visión utilizado");
+                        AddUpstreamVar("AI:VlmTokens", "{AI:VlmTokens}", "Total de tokens consumidos en la inferencia");
+                        AddUpstreamVar("AI:VlmDurationMs", "{AI:VlmDurationMs}", "Tiempo de ejecución de la inferencia en ms");
+                        AddUpstreamVar("AI:VlmProvider", "{AI:VlmProvider}", "Proveedor de inferencia (LM Studio, Ollama, In-Process)");
+
+                        string? GetParamValue(string key)
+                        {
+                            var vmParam = upstreamNode.Parameters.FirstOrDefault(p => p.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value?.ToString();
+                            if (!string.IsNullOrWhiteSpace(vmParam)) return vmParam;
+
+                            if (upstreamNode.NodeInstance?.Parameters != null &&
+                                upstreamNode.NodeInstance.Parameters.TryGetValue(key, out var rawVal) && rawVal != null)
+                            {
+                                return rawVal.ToString();
+                            }
+                            return null;
+                        }
+
+                        // Variables según la plantilla / preset activo
+                        string preset = GetParamValue("TaskPreset") ?? string.Empty;
+
+                        if (preset.Contains("Factura", StringComparison.OrdinalIgnoreCase) || preset.Contains("Invoice", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(preset))
+                        {
+                            AddUpstreamVar("tipo_documento", "{tipo_documento}", "Tipo de documento (Factura, Recibo, Ticket, Albarán)");
+                            AddUpstreamVar("numero_factura", "{numero_factura}", "Número o identificador legal de la factura");
+                            AddUpstreamVar("fecha_emision", "{fecha_emision}", "Fecha de emisión de la factura (YYYY-MM-DD)");
+                            AddUpstreamVar("emisor_nombre", "{emisor_nombre}", "Nombre o razón social del emisor");
+                            AddUpstreamVar("emisor_cif_nif", "{emisor_cif_nif}", "CIF/NIF/TaxID del emisor");
+                            AddUpstreamVar("receptor_nombre", "{receptor_nombre}", "Nombre del cliente o receptor");
+                            AddUpstreamVar("receptor_cif_nif", "{receptor_cif_nif}", "CIF/NIF del receptor");
+                            AddUpstreamVar("base_imponible", "{base_imponible}", "Base imponible total");
+                            AddUpstreamVar("porcentaje_iva", "{porcentaje_iva}", "Porcentaje de IVA aplicado");
+                            AddUpstreamVar("cuota_iva", "{cuota_iva}", "Importe del impuesto (cuota de IVA)");
+                            AddUpstreamVar("importe_total", "{importe_total}", "Importe económico total de la factura");
+                            AddUpstreamVar("divisa", "{divisa}", "Código de moneda/divisa (EUR, USD...)");
+                        }
+                        else if (preset.Contains("Ocr", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AddUpstreamVar("texto_transcrito", "{texto_transcrito}", "Texto completo transcrito del documento");
+                            AddUpstreamVar("resumen_ejecutivo", "{resumen_ejecutivo}", "Resumen ejecutivo generado por el modelo");
+                            AddUpstreamVar("puntos_clave", "{puntos_clave}", "Puntos clave y conclusiones del documento");
+                            AddUpstreamVar("idioma_detectado", "{idioma_detectado}", "Idioma identificado en la transcripción");
+                        }
+                        else if (preset.Contains("Clasifica", StringComparison.OrdinalIgnoreCase) || preset.Contains("Classify", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AddUpstreamVar("categoria", "{categoria}", "Categoría asignada a la imagen");
+                            AddUpstreamVar("confianza_aproximada", "{confianza_aproximada}", "Nivel de confianza estimado");
+                            AddUpstreamVar("etiquetas_descriptivas", "{etiquetas_descriptivas}", "Lista de etiquetas conceptuales");
+                            AddUpstreamVar("motivo", "{motivo}", "Justificación analítica de la clasificación");
+                        }
+                        else if (preset.Contains("Calidad", StringComparison.OrdinalIgnoreCase) || preset.Contains("Quality", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AddUpstreamVar("es_valido_para_tramite", "{es_valido_para_tramite}", "True si el documento es válido formalmente");
+                            AddUpstreamVar("legibilidad", "{legibilidad}", "Nivel de legibilidad (Excelente, Aceptable, Deficiente...)");
+                            AddUpstreamVar("tiene_firma", "{tiene_firma}", "True si contiene firma manuscrita");
+                            AddUpstreamVar("tiene_sello", "{tiene_sello}", "True si contiene sello oficial");
+                            AddUpstreamVar("defectos_detectados", "{defectos_detectados}", "Defectos o anomalías encontradas");
+                            AddUpstreamVar("recomendacion", "{recomendacion}", "Recomendación de subsanación o aceptación");
+                        }
+
+                        // Variables descubiertas dinámicamente mediante prueba de 1 ciclo
+                        string? discoveredJson = GetParamValue("DiscoveredVariables");
+                        if (!string.IsNullOrWhiteSpace(discoveredJson))
+                        {
+                            try
+                            {
+                                using var doc = System.Text.Json.JsonDocument.Parse(discoveredJson);
+                                if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+                                {
+                                    foreach (var prop in doc.RootElement.EnumerateObject())
+                                    {
+                                        string varName = prop.Name;
+                                        string sampleVal = prop.Value.ToString();
+                                        if (!upstreamGroup.Variables.Any(v => string.Equals(v.Name, varName, StringComparison.OrdinalIgnoreCase)))
+                                        {
+                                            upstreamGroup.Variables.Add(new VariableItem(
+                                                varName,
+                                                $"{{{varName}}}",
+                                                $"Variable dinámica descubierta ({upstreamNode.Title})",
+                                                Category: "Nodos Anteriores",
+                                                SampleValue: sampleVal,
+                                                IsUpstream: true,
+                                                SourceNodeTitle: upstreamNode.Title));
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    else if (typeName.Contains("ImageTypeClassifierNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddUpstreamVar("AI:ImageType", "{AI:ImageType}", "Tipo de imagen analizada (Documento, Factura, Foto...)");
+                        AddUpstreamVar("AI:ImageTypeConfidence", "{AI:ImageTypeConfidence}", "Nivel de certeza de la clasificación");
+                        AddUpstreamVar("AI:HasFaces", "{AI:HasFaces}", "True si detectó rostros en la imagen");
+                        AddUpstreamVar("AI:TextDensity", "{AI:TextDensity}", "Densidad de texto detectada");
+                    }
                     else if (typeName.Contains("DirectoryInspectorNode", StringComparison.OrdinalIgnoreCase))
                     {
                         AddUpstreamVar("Directory:FilesCount", "{Directory:FilesCount}", "Archivos en la carpeta inspeccionada");
                         AddUpstreamVar("Directory:SubdirsCount", "{Directory:SubdirsCount}", "Subdirectorios presentes");
                         AddUpstreamVar("Directory:ArchivesCount", "{Directory:ArchivesCount}", "Paquetes comprimidos detectados");
+                    }
+                    else if (typeName.Contains("VariableInjectorNode", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (upstreamNode.NodeInstance?.Parameters != null)
+                        {
+                            foreach (var kvp in upstreamNode.NodeInstance.Parameters)
+                            {
+                                if (!string.IsNullOrWhiteSpace(kvp.Key))
+                                {
+                                    AddUpstreamVar(kvp.Key, $"{{{kvp.Key}}}", $"Variable inyectada por {upstreamNode.Title}");
+                                }
+                            }
+                        }
+                        foreach (var p in upstreamNode.Parameters)
+                        {
+                            if (!string.IsNullOrWhiteSpace(p.Key) && !upstreamGroup.Variables.Any(v => string.Equals(v.Name, p.Key, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                AddUpstreamVar(p.Key, $"{{{p.Key}}}", $"Variable inyectada por {upstreamNode.Title}");
+                            }
+                        }
                     }
 
                     if (upstreamGroup.Variables.Count > 0)
@@ -357,6 +513,32 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         item.Metadata["AI:AudioDuration"] = "12.5";
         item.Metadata["AI:PiiRedacted"] = "Cliente [REDACTADO]";
         item.Metadata["AI:PiiEntitiesCount"] = 1;
+
+        // VLM & Visión Multimodal
+        item.Metadata["AI:VlmResponse"] = "{\"tipo_documento\": \"Factura\", \"numero_factura\": \"FAC-2026-0891\", \"importe_total\": 1450.00}";
+        item.Metadata["AI:VlmJson"] = "{\n  \"tipo_documento\": \"Factura\",\n  \"numero_factura\": \"FAC-2026-0891\",\n  \"fecha_emision\": \"2026-09-11\",\n  \"emisor_nombre\": \"Servicios Digitales S.L.\",\n  \"emisor_cif_nif\": \"B87654321\",\n  \"importe_total\": 1450.00,\n  \"divisa\": \"EUR\"\n}";
+        item.Metadata["AI:VlmCategory"] = "Factura_Recibo";
+        item.Metadata["AI:VlmTags"] = "factura, tecnologia, consultoria";
+        item.Metadata["AI:VlmReason"] = "Documento estructurado con emisor y líneas de importe";
+        item.Metadata["AI:VlmModel"] = "qwen2.5-vl-7b-instruct";
+        item.Metadata["AI:VlmTokens"] = 384;
+        item.Metadata["AI:VlmDurationMs"] = 1120L;
+        item.Metadata["AI:VlmProvider"] = "LM Studio (Local Server)";
+        item.Metadata["tipo_documento"] = "Factura";
+        item.Metadata["numero_factura"] = "FAC-2026-0891";
+        item.Metadata["fecha_emision"] = "2026-09-11";
+        item.Metadata["emisor_nombre"] = "Servicios Digitales S.L.";
+        item.Metadata["emisor_cif_nif"] = "B87654321";
+        item.Metadata["receptor_nombre"] = "Cliente Ejemplo S.A.";
+        item.Metadata["receptor_cif_nif"] = "A12345678";
+        item.Metadata["base_imponible"] = 1198.35;
+        item.Metadata["porcentaje_iva"] = 21.0;
+        item.Metadata["cuota_iva"] = 251.65;
+        item.Metadata["importe_total"] = 1450.00;
+        item.Metadata["divisa"] = "EUR";
+        item.Metadata["categoria"] = "Factura_Recibo";
+        item.Metadata["AI:ImageType"] = "Factura_Recibo";
+        item.Metadata["AI:ImageTypeConfidence"] = "98.5%";
 
         // Hash
         item.Metadata["Hash:SHA256"] = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";

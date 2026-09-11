@@ -1,6 +1,7 @@
-using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -9,6 +10,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Sdk.Serialization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
@@ -50,6 +52,23 @@ public static partial class MultimodalVlmClientEngine
 {
     private static readonly HttpClient DefaultHttpClient = CreateDefaultHttpClient();
 
+    /// <summary>
+    /// Semáforos de concurrencia por host/endpoint para evitar saturar la memoria VRAM y los slots
+    /// de inferencia de servidores locales de VLM (LM Studio, Ollama) durante ejecuciones paralelas en pipeline.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> s_endpointThrottles = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Registro en memoria de endpoints/modelos que han rechazado el parámetro 'response_format' (ej. Error 400).
+    /// Evita reenviar 'response_format' en subsecuentes imágenes del mismo lote.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, bool> s_unsupportedResponseFormatCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Registro en memoria de endpoints/modelos que han rechazado 'json_schema' en 'response_format' pero admiten 'json_object'.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, bool> s_unsupportedJsonSchemaCache = new(StringComparer.OrdinalIgnoreCase);
+
     private static HttpClient CreateDefaultHttpClient()
     {
         var handler = new SocketsHttpHandler
@@ -70,6 +89,77 @@ public static partial class MultimodalVlmClientEngine
     }
 
     /// <summary>
+    /// Retorna el esquema JSON canónico para el preset indicado (si aplica).
+    /// </summary>
+    public static string? GetPresetJsonSchema(VlmTaskPreset preset)
+    {
+        return preset switch
+        {
+            VlmTaskPreset.ExtractInvoiceReceiptJson => """
+            {
+              "type": "object",
+              "properties": {
+                "tipo_documento": { "type": "string" },
+                "numero_factura": { "type": "string" },
+                "fecha_emision": { "type": "string" },
+                "emisor_nombre": { "type": "string" },
+                "emisor_cif_nif": { "type": "string" },
+                "receptor_nombre": { "type": "string" },
+                "receptor_cif_nif": { "type": "string" },
+                "base_imponible": { "type": "number" },
+                "porcentaje_iva": { "type": "number" },
+                "cuota_iva": { "type": "number" },
+                "importe_total": { "type": "number" },
+                "divisa": { "type": "string" },
+                "lineas_articulos": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "descripcion": { "type": "string" },
+                      "cantidad": { "type": "number" },
+                      "precio_unitario": { "type": "number" },
+                      "importe": { "type": "number" }
+                    },
+                    "required": ["descripcion", "importe"]
+                  }
+                }
+              },
+              "required": ["tipo_documento", "importe_total"]
+            }
+            """,
+            VlmTaskPreset.ClassifyAndTag => """
+            {
+              "type": "object",
+              "properties": {
+                "categoria": { "type": "string" },
+                "confianza_aproximada": { "type": "number" },
+                "etiquetas_descriptivas": { "type": "array", "items": { "type": "string" } },
+                "motivo": { "type": "string" },
+                "archivo": { "type": "string" }
+              },
+              "required": ["categoria", "confianza_aproximada", "etiquetas_descriptivas", "motivo"]
+            }
+            """,
+            VlmTaskPreset.QualityInspection => """
+            {
+              "type": "object",
+              "properties": {
+                "es_valido_para_tramite": { "type": "boolean" },
+                "legibilidad": { "type": "string" },
+                "tiene_firma": { "type": "boolean" },
+                "tiene_sello": { "type": "boolean" },
+                "defectos_detectados": { "type": "array", "items": { "type": "string" } },
+                "recomendacion": { "type": "string" }
+              },
+              "required": ["es_valido_para_tramite", "legibilidad", "tiene_firma", "tiene_sello", "defectos_detectados", "recomendacion"]
+            }
+            """,
+            _ => null
+        };
+    }
+
+    /// <summary>
     /// Retorna los prompts de sistema y usuario sugeridos según el preset seleccionado.
     /// </summary>
     public static (string SystemPrompt, string UserPrompt) GetPresetPrompts(VlmTaskPreset preset, string targetLanguage = "Español")
@@ -77,13 +167,36 @@ public static partial class MultimodalVlmClientEngine
         return preset switch
         {
             VlmTaskPreset.ExtractInvoiceReceiptJson => (
-                "Eres un asistente contable y fiscal experto. Analiza la imagen del documento (factura, recibo, ticket o albarán) y extrae todos sus datos clave en formato JSON estricto. " +
-                "Incluye campos como: emisor_nombre, emisor_cif_nif, receptor_nombre, receptor_cif_nif, fecha_emision, numero_factura, base_imponible, porcentaje_iva, cuota_iva, importe_total, divisa y lineas_articulos (lista con descripcion, cantidad, precio_unitario, importe). " +
-                "No agregues texto explicativo ni bloques markdown adicionales fuera del JSON.",
-                "Por favor, lee y extrae todos los datos contables y fiscales de esta imagen de documento en formato JSON estructurado."
+                "Eres un asistente contable y fiscal experto. Analiza la imagen del documento (factura, recibo, ticket o albarán) y extrae sus datos fiscales y económicos.\n" +
+                "REGLA CRÍTICA DE ESTRUCTURA: Debes responder EXCLUSIVAMENTE con un único objeto JSON válido que respete de forma exacta e inmutable la siguiente estructura de campos (no inventes, no traduzcas ni renombres las claves; usa null o 0.00 si no se encuentra el dato):\n" +
+                "{\n" +
+                "  \"tipo_documento\": \"Factura | Recibo | Ticket | Albaran\",\n" +
+                "  \"numero_factura\": \"string\",\n" +
+                "  \"fecha_emision\": \"YYYY-MM-DD\",\n" +
+                "  \"emisor_nombre\": \"string\",\n" +
+                "  \"emisor_cif_nif\": \"string\",\n" +
+                "  \"receptor_nombre\": \"string\",\n" +
+                "  \"receptor_cif_nif\": \"string\",\n" +
+                "  \"base_imponible\": 0.00,\n" +
+                "  \"porcentaje_iva\": 21.00,\n" +
+                "  \"cuota_iva\": 0.00,\n" +
+                "  \"importe_total\": 0.00,\n" +
+                "  \"divisa\": \"EUR | USD | GBP\",\n" +
+                "  \"lineas_articulos\": [\n" +
+                "    {\n" +
+                "      \"descripcion\": \"string\",\n" +
+                "      \"cantidad\": 1.0,\n" +
+                "      \"precio_unitario\": 0.00,\n" +
+                "      \"importe\": 0.00\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}\n" +
+                "No agregues texto explicativo, comentarios ni bloques markdown fuera del JSON.",
+                "Por favor, analiza este documento y extrae todos sus datos contables y fiscales completando estrictamente el esquema JSON requerido."
             ),
             VlmTaskPreset.DocumentOcrAndSummary => (
-                "Eres un analista documental experto. Transcribe con fidelidad el texto visible en la imagen y a continuación elabora un resumen ejecutivo destacando los puntos y conclusiones principales en " + targetLanguage + ".",
+                "Eres un analista documental experto. Transcribe con fidelidad el texto visible en la imagen y a continuación elabora un resumen ejecutivo destacando los puntos y conclusiones principales en " + targetLanguage + ".\n" +
+                "Si la salida requerida es JSON, utiliza obligatoriamente las siguientes claves inmutables: {\"texto_transcrito\": \"string\", \"resumen_ejecutivo\": \"string\", \"puntos_clave\": [\"string\"], \"idioma_detectado\": \"string\"}.",
                 "Transcribe el texto visible de esta imagen o documento escaneado y genera un resumen ejecutivo claro y conciso."
             ),
             VlmTaskPreset.TranslateDocument => (
@@ -92,17 +205,31 @@ public static partial class MultimodalVlmClientEngine
             ),
             VlmTaskPreset.ClassifyAndTag => (
                 "Eres un clasificador de visión computacional y catalogación digital. Analiza la imagen y clasifícala en una de las siguientes categorías principales: " +
-                "['Documento_Legal', 'Factura_Recibo', 'Documento_Identidad', 'Fotografia_Retrato', 'Fotografia_Paisaje', 'Captura_Pantalla_UI', 'Ilustracion_Dibujo', 'Otro']. " +
-                "Responde con un objeto JSON que contenga: 'categoria', 'confianza_aproximada' (0.0 a 1.0), 'etiquetas_descriptivas' (lista de 5 a 10 tags) y 'motivo' (una frase explicativa).",
+                "['Documento_Legal', 'Factura_Recibo', 'Documento_Identidad', 'Fotografia_Retrato', 'Fotografia_Paisaje', 'Captura_Pantalla_UI', 'Ilustracion_Dibujo', 'Otro'].\n" +
+                "REGLA CRÍTICA DE ESTRUCTURA: Debes responder EXCLUSIVAMENTE con un único objeto JSON válido con estas claves inmutables en minúsculas:\n" +
+                "{\n" +
+                "  \"categoria\": \"string\",\n" +
+                "  \"confianza_aproximada\": 0.95,\n" +
+                "  \"etiquetas_descriptivas\": [\"tag1\", \"tag2\"],\n" +
+                "  \"motivo\": \"string\",\n" +
+                "  \"archivo\": \"string\"\n" +
+                "}\n" +
+                "No agregues explicaciones fuera del JSON.",
                 "Clasifica esta imagen, asigna etiquetas descriptivas y explica brevemente el motivo."
             ),
             VlmTaskPreset.QualityInspection => (
-                "Eres un auditor de calidad documental y fotográfica. Inspecciona minuciosamente la imagen y evalúa: " +
-                "1) Legibilidad del texto (Excelente, Aceptable, Deficiente, Ilegible), " +
-                "2) Presencia de firmas manuscritas o sellos oficiales (Sí/No y ubicación), " +
-                "3) Defectos de imagen (desenfoque, sobreexposición, sombras excesivas, recortes o rotaciones indeseadas). " +
-                "Devuelve un informe estructurado en formato JSON con los campos: 'es_valido_para_tramite' (booleano), 'legibilidad', 'tiene_firma', 'tiene_sello', 'defectos_detectados' y 'recomendacion'.",
-                "Realiza una inspección exhaustiva de calidad y validez formal sobre esta imagen o documento escaneado."
+                "Eres un auditor de calidad documental y fotográfica. Inspecciona minuciosamente la imagen y evalúa formalmente su validez.\n" +
+                "REGLA CRÍTICA DE ESTRUCTURA: Debes responder EXCLUSIVAMENTE con un único objeto JSON válido con estas claves inmutables en minúsculas:\n" +
+                "{\n" +
+                "  \"es_valido_para_tramite\": true,\n" +
+                "  \"legibilidad\": \"Excelente | Aceptable | Deficiente | Ilegible\",\n" +
+                "  \"tiene_firma\": false,\n" +
+                "  \"tiene_sello\": false,\n" +
+                "  \"defectos_detectados\": [\"string\"],\n" +
+                "  \"recomendacion\": \"string\"\n" +
+                "}\n" +
+                "No agregues texto explicativo fuera del JSON.",
+                "Realiza una inspección exhaustiva de calidad y validez formal sobre esta imagen o documento escaneado respetando el esquema JSON requerido."
             ),
             VlmTaskPreset.CustomPrompt => (
                 "Eres un asistente de inteligencia artificial visual multimodal preciso, conciso y objetivo.",
@@ -119,7 +246,7 @@ public static partial class MultimodalVlmClientEngine
     /// Codifica una imagen ImageSharp en una URI de datos Base64 JPEG optimizada para envío HTTP a modelos VLM,
     /// aplicando un reescalado bicúbico proporcional si sobrepasa la dimensión máxima configurada.
     /// </summary>
-    public static string PrepareImageAsBase64Jpeg(Image<Rgb24> image, int maxDimension = 1536)
+    public static string PrepareImageAsBase64Jpeg(Image<Rgb24> image, int maxDimension = 1024)
     {
         ArgumentNullException.ThrowIfNull(image);
 
@@ -173,8 +300,10 @@ public static partial class MultimodalVlmClientEngine
         double temperature = 0.1,
         int maxTokens = 2048,
         bool forceJsonOutput = false,
+        string? jsonSchema = null,
         TimeSpan? timeout = null,
         HttpClient? customHttpClient = null,
+        int concurrencyLimit = 0,
         CancellationToken cancellationToken = default)
     {
         var client = customHttpClient ?? DefaultHttpClient;
@@ -186,6 +315,9 @@ public static partial class MultimodalVlmClientEngine
         {
             cleanEndpoint += "/chat/completions";
         }
+
+        string effectiveModel = !string.IsNullOrWhiteSpace(modelName) ? modelName : "qwen2.5-vl-7b-instruct";
+        string unsupportedCacheKey = $"{cleanEndpoint}::{effectiveModel}";
 
         // Construir payload JSON compatible con OpenAI Chat Completions Multimodal
         var userContentList = new JsonArray
@@ -224,31 +356,58 @@ public static partial class MultimodalVlmClientEngine
 
         var requestBody = new JsonObject
         {
-            ["model"] = !string.IsNullOrWhiteSpace(modelName) ? modelName : "qwen2.5-vl-7b-instruct",
+            ["model"] = effectiveModel,
             ["messages"] = messagesArray,
             ["temperature"] = Math.Clamp(temperature, 0.0, 1.0),
             ["max_tokens"] = Math.Max(64, maxTokens),
             ["stream"] = false
         };
 
-        if (forceJsonOutput)
+        // Configuración de response_format determinista (Structured Outputs con json_schema o json_object)
+        bool shouldSendResponseFormat = forceJsonOutput && !s_unsupportedResponseFormatCache.ContainsKey(unsupportedCacheKey);
+        if (shouldSendResponseFormat)
         {
-            requestBody["response_format"] = new JsonObject
+            bool tryJsonSchema = !string.IsNullOrWhiteSpace(jsonSchema) && !s_unsupportedJsonSchemaCache.ContainsKey(unsupportedCacheKey);
+            if (tryJsonSchema)
             {
-                ["type"] = "json_object"
-            };
+                try
+                {
+                    var schemaNode = JsonNode.Parse(jsonSchema!);
+                    if (schemaNode != null)
+                    {
+                        requestBody["response_format"] = new JsonObject
+                        {
+                            ["type"] = "json_schema",
+                            ["json_schema"] = new JsonObject
+                            {
+                                ["name"] = "vlm_output_schema",
+                                ["strict"] = true,
+                                ["schema"] = schemaNode
+                            }
+                        };
+                    }
+                    else
+                    {
+                        requestBody["response_format"] = new JsonObject { ["type"] = "json_object" };
+                    }
+                }
+                catch
+                {
+                    requestBody["response_format"] = new JsonObject { ["type"] = "json_object" };
+                }
+            }
+            else
+            {
+                requestBody["response_format"] = new JsonObject
+                {
+                    ["type"] = "json_object"
+                };
+            }
         }
 
-        string requestJson = requestBody.ToJsonString();
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, cleanEndpoint)
-        {
-            Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
-        };
-
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
-        }
+        // Obtener el semáforo de concurrencia adecuado según el host y la concurrencia configurada
+        var throttle = GetThrottleForEndpoint(cleanEndpoint, concurrencyLimit);
+        await throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         if (timeout.HasValue && timeout.Value > TimeSpan.Zero)
@@ -257,16 +416,109 @@ public static partial class MultimodalVlmClientEngine
         }
 
         HttpResponseMessage response;
+        string responseContent;
+
         try
         {
-            response = await client.SendAsync(requestMessage, cts.Token).ConfigureAwait(false);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new InvalidOperationException($"No se pudo conectar con el servidor VLM en '{cleanEndpoint}'. Asegúrate de que LM Studio o el servidor local esté en ejecución: {ex.Message}", ex);
-        }
+            const int maxAttempts = 3;
+            int currentAttempt = 0;
 
-        string responseContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+            while (true)
+            {
+                currentAttempt++;
+                string requestJson = requestBody.ToJsonString();
+
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Post, cleanEndpoint)
+                {
+                    Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+                };
+
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                {
+                    requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
+                }
+
+                try
+                {
+                    response = await client.SendAsync(requestMessage, cts.Token).ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex)
+                {
+                    if (currentAttempt < maxAttempts && !cts.IsCancellationRequested)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(1.5 * currentAttempt), cts.Token).ConfigureAwait(false);
+                        continue;
+                    }
+                    throw new InvalidOperationException($"No se pudo conectar con el servidor VLM en '{cleanEndpoint}'. Asegúrate de que LM Studio o el servidor local esté en ejecución: {ex.Message}", ex);
+                }
+
+                responseContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+
+                // Manejo de Error 400 por rechazo de 'response_format' o 'json_schema':
+                // Si falla con json_schema, degradamos a json_object. Si falla con json_object, omitimos response_format.
+                if (response.StatusCode == HttpStatusCode.BadRequest && requestBody.ContainsKey("response_format"))
+                {
+                    var currentRf = requestBody["response_format"] as JsonObject;
+                    string currentType = currentRf?["type"]?.ToString() ?? string.Empty;
+
+                    if (string.Equals(currentType, "json_schema", StringComparison.OrdinalIgnoreCase))
+                    {
+                        s_unsupportedJsonSchemaCache[unsupportedCacheKey] = true;
+                        requestBody["response_format"] = new JsonObject { ["type"] = "json_object" };
+                        response.Dispose();
+                        continue;
+                    }
+
+                    if (responseContent.Contains("response_format", StringComparison.OrdinalIgnoreCase) ||
+                        responseContent.Contains("json_schema", StringComparison.OrdinalIgnoreCase) ||
+                        responseContent.Contains("json_object", StringComparison.OrdinalIgnoreCase) ||
+                        responseContent.Contains("schema", StringComparison.OrdinalIgnoreCase))
+                    {
+                        s_unsupportedResponseFormatCache[unsupportedCacheKey] = true;
+                        requestBody.Remove("response_format");
+                        response.Dispose();
+                        continue;
+                    }
+                }
+
+                // Manejo de errores transitorios 5xx (500 Channel Error, 502, 503, 504) o 400 por colapso de slot / canal en LM Studio
+                // Ocurren típicamente en LM Studio cuando un slot de inferencia se reinicia o se recupera de sobrecarga.
+                bool isTransient = ((int)response.StatusCode >= 500 && (int)response.StatusCode <= 504) ||
+                                   (response.StatusCode == HttpStatusCode.BadRequest &&
+                                    (responseContent.Contains("channel", StringComparison.OrdinalIgnoreCase) ||
+                                     responseContent.Contains("overload", StringComparison.OrdinalIgnoreCase) ||
+                                     responseContent.Contains("busy", StringComparison.OrdinalIgnoreCase) ||
+                                     responseContent.Contains("terminated", StringComparison.OrdinalIgnoreCase) ||
+                                     responseContent.Contains("aborted", StringComparison.OrdinalIgnoreCase) ||
+                                     responseContent.Contains("slot", StringComparison.OrdinalIgnoreCase)));
+
+                if (isTransient && currentAttempt < maxAttempts && !cts.IsCancellationRequested)
+                {
+                    response.Dispose();
+                    await Task.Delay(TimeSpan.FromSeconds(2.0 * currentAttempt), cts.Token).ConfigureAwait(false);
+                    continue;
+                }
+
+                break;
+            }
+        }
+        finally
+        {
+            // Breve enfriamiento (cooldown) en endpoints locales para permitir que llama-server / LM Studio
+            // libere completamente la memoria KV Cache del slot antes de admitir la siguiente inferencia en pipeline.
+            if (IsLocalEndpoint(cleanEndpoint))
+            {
+                try
+                {
+                    await Task.Delay(250, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Ignorar cancelación en cooldown
+                }
+            }
+            throttle.Release();
+        }
 
         if (!response.IsSuccessStatusCode)
         {
@@ -283,7 +535,7 @@ public static partial class MultimodalVlmClientEngine
             var firstChoice = choices[0];
             if (firstChoice.TryGetProperty("message", out var msg) && msg.TryGetProperty("content", out var contentElem))
             {
-                assistantText = contentElem.GetString() ?? string.Empty;
+                assistantText = JsonDefaults.UnescapeUnicode(contentElem.GetString() ?? string.Empty);
             }
         }
 
@@ -327,7 +579,7 @@ public static partial class MultimodalVlmClientEngine
         // 1. Si el texto completo es JSON directo
         if ((trimmed.StartsWith('{') && trimmed.EndsWith('}')) || (trimmed.StartsWith('[') && trimmed.EndsWith(']')))
         {
-            if (IsValidJson(trimmed)) return trimmed;
+            if (IsValidJson(trimmed)) return JsonDefaults.FormatDetailsForDisplay(trimmed);
         }
 
         // 2. Extraer bloques de código ```json ... ```
@@ -335,7 +587,7 @@ public static partial class MultimodalVlmClientEngine
         if (match.Success)
         {
             string candidate = match.Groups[1].Value.Trim();
-            if (IsValidJson(candidate)) return candidate;
+            if (IsValidJson(candidate)) return JsonDefaults.FormatDetailsForDisplay(candidate);
         }
 
         // 3. Buscar el primer '{' y el último '}'
@@ -344,7 +596,7 @@ public static partial class MultimodalVlmClientEngine
         if (firstBrace >= 0 && lastBrace > firstBrace)
         {
             string candidate = trimmed.Substring(firstBrace, lastBrace - firstBrace + 1);
-            if (IsValidJson(candidate)) return candidate;
+            if (IsValidJson(candidate)) return JsonDefaults.FormatDetailsForDisplay(candidate);
         }
 
         return null;
@@ -388,4 +640,53 @@ public static partial class MultimodalVlmClientEngine
 
     [GeneratedRegex(@"```(?:json)?\s*([\s\S]*?)\s*```", RegexOptions.IgnoreCase)]
     private static partial Regex JsonBlockRegex();
+
+    /// <summary>
+    /// Determina si una URL corresponde a un servidor local (localhost, 127.0.0.1, ::1 o puertos locales 1234/11434).
+    /// </summary>
+    public static bool IsLocalEndpoint(string endpointUrl)
+    {
+        if (string.IsNullOrWhiteSpace(endpointUrl)) return false;
+
+        try
+        {
+            var uri = new Uri(endpointUrl);
+            return uri.IsLoopback ||
+                   string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(uri.Host, "::1", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return endpointUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+                   endpointUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                   endpointUrl.Contains("1234", StringComparison.OrdinalIgnoreCase) ||
+                   endpointUrl.Contains("11434", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// Retorna un semáforo de limitación de concurrencia adecuado para el endpoint dado.
+    /// Si el usuario configuró una concurrencia específica, se respeta dicha capacidad.
+    /// Por defecto, para servidores locales se usa 1 (salvo configuración explícita) y para remotos 4.
+    /// </summary>
+    private static SemaphoreSlim GetThrottleForEndpoint(string endpointUrl, int requestedConcurrency = 0)
+    {
+        string hostKey;
+        bool isLocal = IsLocalEndpoint(endpointUrl);
+
+        try
+        {
+            var uri = new Uri(endpointUrl);
+            hostKey = $"{uri.Scheme}://{uri.Host}:{uri.Port}";
+        }
+        catch
+        {
+            hostKey = endpointUrl;
+        }
+
+        int count = requestedConcurrency > 0 ? requestedConcurrency : (isLocal ? 1 : 4);
+        string throttleKey = $"{hostKey}::{count}";
+        return s_endpointThrottles.GetOrAdd(throttleKey, _ => new SemaphoreSlim(count, count));
+    }
 }

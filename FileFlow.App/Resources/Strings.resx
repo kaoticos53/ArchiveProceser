@@ -244,9 +244,6 @@
   <data name="ArchiveFilterNode_Name" xml:space="preserve"><value>Filter Archives</value></data>
   <data name="ArchiveFilterNode_Desc" xml:space="preserve"><value>Filters and routes files based on compression type or split volumes.</value></data>
 
-  <data name="ImageOptimizerNode_Name" xml:space="preserve"><value>Optimize Image</value></data>
-  <data name="ImageOptimizerNode_Desc" xml:space="preserve"><value>Resizes images keeping aspect ratio and converts to modern formats.</value></data>
-
   <data name="MediaTranscoderNode_Name" xml:space="preserve"><value>Transcode Media</value></data>
   <data name="MediaTranscoderNode_Desc" xml:space="preserve"><value>Transcodes audio and video files using presets or external FFmpeg commands.</value></data>
 
@@ -291,9 +288,6 @@
   <!-- New Nodes: Hashing -->
   <data name="HashCalculatorNode_Name" xml:space="preserve"><value>Calculate Hash</value></data>
   <data name="HashCalculatorNode_Desc" xml:space="preserve"><value>Calculates file content hashes (SHA-256, MD5, SHA-512, SHA-1) and injects into metadata.</value></data>
-
-  <data name="DeduplicationFilterNode_Name" xml:space="preserve"><value>Filter Duplicates</value></data>
-  <data name="DeduplicationFilterNode_Desc" xml:space="preserve"><value>Compares content hashes to detect duplicate files, separating originals from redundant copies.</value></data>
 
   <!-- New Nodes: Integrations -->
   <data name="CliExecutionNode_Name" xml:space="preserve"><value>Run CLI Command</value></data>
@@ -493,7 +487,6 @@
   <data name="Param_DeleteRootIfEmpty" xml:space="preserve"><value>Delete Root If Empty</value></data>
 
   <!-- Script Studio -->
-  <data name="ScriptStudio_Title" xml:space="preserve"><value>Custom Script Studio (C# / JavaScript)</value></data>
   <data name="ScriptStudio_Engine" xml:space="preserve"><value>💻 Scripting Engine:</value></data>
   <data name="ScriptStudio_Templates" xml:space="preserve"><value>📚 Templates:</value></data>
   <data name="ScriptStudio_LoadTemplate" xml:space="preserve"><value>📂 Load Template</value></data>
@@ -573,6 +566,12 @@
   <data name="Settings_EnableAutoSave" xml:space="preserve"><value>Enable automatic project auto-save</value></data>
   <data name="Settings_AutoSaveInterval" xml:space="preserve"><value>Auto-save interval:</value></data>
   <data name="Settings_MinutesLabel" xml:space="preserve"><value>minutes</value></data>
+  <data name="Settings_AutoCleanIntermediateTempFiles" xml:space="preserve"><value>🧹 Auto-clean intermediate temporary files on workflow completion</value></data>
+  <data name="Settings_AutoCleanIntermediateTempFilesDesc" xml:space="preserve"><value>Automatically purges temporary execution workspace and intermediate node outputs when a workflow finishes, is cancelled, or errors.</value></data>
+  <data name="Settings_CleanStaleTempOnStartup" xml:space="preserve"><value>🧹 Purge orphan temporary directories on application startup</value></data>
+  <data name="Settings_CleanTempNowBtn" xml:space="preserve"><value>🧹 Clean Temporary Workspace Now</value></data>
+  <data name="Settings_TempCleanedTitle" xml:space="preserve"><value>Temporary Workspace</value></data>
+  <data name="Settings_TempCleanedMsg" xml:space="preserve"><value>Temporary workspace cleaned successfully. Removed {0} stale execution folder(s).</value></data>
   <data name="Settings_TabAppearance" xml:space="preserve"><value>🎨 Appearance &amp; UI</value></data>
   <data name="Settings_DefaultThemeTitle" xml:space="preserve"><value>🎨 Default Visual Theme</value></data>
   <data name="Settings_CustomizeThemesBtn" xml:space="preserve"><value>🎨 Customize Themes...</value></data>

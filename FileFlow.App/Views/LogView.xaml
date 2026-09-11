@@ -568,7 +568,7 @@
 
                                         <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Log_CopyJsonBtn]}" 
                                                 Command="{Binding DataContext.CopyDetailsJsonCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                CommandParameter="{Binding DetailsJson}"
+                                                CommandParameter="{Binding DisplayDetails}"
                                                 Style="{StaticResource SecondaryButton}" 
                                                 Padding="8,2" FontSize="10.5"
                                                 Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -585,7 +585,7 @@
                                         MaxHeight="200"
                                         Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                                        <TextBox Text="{Binding DetailsJson, Mode=OneWay}" 
+                                        <TextBox Text="{Binding DisplayDetails, Mode=OneWay}" 
                                                  IsReadOnly="True" 
                                                  Background="Transparent" 
                                                  Foreground="{DynamicResource TextPrimaryBrush}" 

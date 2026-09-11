@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Serialization;
 using FileFlow.Sdk.VirtualFileSystem;
 
 namespace FileFlow.App.ViewModels;
@@ -437,7 +438,7 @@ public partial class VirtualFileSystemExplorerViewModel : ObservableObject
         foreach (var kvp in file.Metadata.OrderBy(m => m.Key, StringComparer.OrdinalIgnoreCase))
         {
             string key = kvp.Key;
-            string value = kvp.Value?.ToString() ?? string.Empty;
+            string value = JsonDefaults.UnescapeUnicode(kvp.Value?.ToString() ?? string.Empty);
             string category = "General";
 
             if (key.StartsWith("Exif:", StringComparison.OrdinalIgnoreCase) || key.StartsWith("Img:", StringComparison.OrdinalIgnoreCase))

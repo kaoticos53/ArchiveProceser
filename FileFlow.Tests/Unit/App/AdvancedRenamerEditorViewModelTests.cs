@@ -10,18 +10,21 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+[Collection("RenamerSampleDataTests")]
 public class AdvancedRenamerEditorViewModelTests : IDisposable
 {
     private readonly string _testDir;
 
     public AdvancedRenamerEditorViewModelTests()
     {
+        RenamerSampleDataProvider.ClearCustomSamples();
         _testDir = Path.Combine(Path.GetTempPath(), "FileFlow_RenamerPreview_Tests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_testDir);
     }
 
     public void Dispose()
     {
+        RenamerSampleDataProvider.ClearCustomSamples();
         try
         {
             if (Directory.Exists(_testDir))

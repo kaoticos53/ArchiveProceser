@@ -39,8 +39,11 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsSlider))]
     [NotifyPropertyChangedFor(nameof(IsToggle))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
+    [NotifyPropertyChangedFor(nameof(IsEditableDropdown))]
+    [NotifyPropertyChangedFor(nameof(HasOptionsAndNotEditable))]
     [NotifyPropertyChangedFor(nameof(IsFileVersionSelector))]
     [NotifyPropertyChangedFor(nameof(ActiveVersionTag))]
+    [NotifyPropertyChangedFor(nameof(IsStandardRow))]
     private object? _value;
 
     [ObservableProperty]
@@ -67,6 +70,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsMultiLine))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
+    [NotifyPropertyChangedFor(nameof(IsEditableDropdown))]
+    [NotifyPropertyChangedFor(nameof(HasOptionsAndNotEditable))]
+    [NotifyPropertyChangedFor(nameof(IsStandardRow))]
     private ObservableCollection<string> _options = [];
 
     [ObservableProperty]
@@ -100,7 +106,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public bool IsToggle => EditorType == ParameterEditorType.Toggle;
 
-    public bool IsDropdown => (EditorType == ParameterEditorType.Dropdown || HasOptions) && !IsFileVersionSelector;
+    public bool IsDropdown => (EditorType == ParameterEditorType.Dropdown || EditorType == ParameterEditorType.EditableDropdown || HasOptions) && !IsFileVersionSelector;
+    public bool IsEditableDropdown => EditorType == ParameterEditorType.EditableDropdown;
+    public bool HasOptionsAndNotEditable => HasOptions && !IsEditableDropdown;
 
     public bool IsFileVersionSelector => EditorType == ParameterEditorType.FileVersionSelector;
 
@@ -121,6 +129,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
 
     public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode && !IsMultiLine && !IsFileVersionSelector;
+    public bool IsStandardRow => !IsVariableInjectorNode && !IsMultiLine;
 
     public string ActiveVersionTag
     {
@@ -283,6 +292,47 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             string msg = string.Format(_loc.GetString("Msg_OpenPasswordsError", "Error al abrir el Gestor de Contraseñas: {0}"), ex.Message);
             string title = _loc.GetString("Error", "Error");
             _dialogService.ShowError(msg, title);
+        }
+    }
+
+    public void UpdateOptions(IEnumerable<string>? newOptions)
+    {
+        if (newOptions == null) return;
+        var list = newOptions.Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
+
+        void Apply()
+        {
+            if (Options.SequenceEqual(list)) return;
+
+            Options.Clear();
+            foreach (var opt in list)
+            {
+                Options.Add(opt);
+            }
+
+            string valStr = Value?.ToString() ?? string.Empty;
+            var matchedOpt = Options.FirstOrDefault(o => o.Equals(valStr, StringComparison.OrdinalIgnoreCase));
+            if (matchedOpt != null)
+            {
+                Value = matchedOpt;
+            }
+            else if (!string.IsNullOrWhiteSpace(valStr) && Options.Count > 0)
+            {
+                Options.Insert(0, valStr);
+            }
+
+            OnPropertyChanged(nameof(HasOptions));
+            OnPropertyChanged(nameof(IsDropdown));
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
+        {
+            dispatcher.InvokeAsync(Apply);
+        }
+        else
+        {
+            Apply();
         }
     }
 

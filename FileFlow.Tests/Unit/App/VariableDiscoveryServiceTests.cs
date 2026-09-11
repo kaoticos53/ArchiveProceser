@@ -93,7 +93,7 @@ public class VariableDiscoveryServiceTests
         var variableGroups = _discoveryService.GetAvailableVariables(targetVm, [conn]);
 
         // Assert
-        var group = variableGroups.FirstOrDefault(g => g.GroupName.Contains(optimizerVm.Title));
+        var group = variableGroups.FirstOrDefault(g => g.IsUpstream);
         group.Should().NotBeNull();
         group!.IsUpstream.Should().BeTrue();
         group.Variables.Should().Contain(v => v.Token == "{OutputFileSize}");
@@ -389,5 +389,42 @@ public class VariableDiscoveryServiceTests
         var upstreamGroups = groups.Where(g => g.IsUpstream).ToList();
         upstreamGroups.Should().ContainSingle();
         upstreamGroups[0].Variables.Should().Contain(v => v.Token == "{OutputFileSize}");
+    }
+
+    [Fact]
+    public void GetAvailableVariables_ShouldDiscoverUpstreamMultimodalVisionLlmVariables()
+    {
+        // Arrange
+        var vlmNode = new FileFlow.Plugin.AI.MultimodalVisionLlmNode();
+        vlmNode.Parameters["TaskPreset"] = "Extracción de Facturas y Recibos (JSON)";
+        vlmNode.Parameters["DiscoveredVariables"] = """{"campo_custom": "valor_ejemplo", "codigo_qr": "12345"}""";
+
+        var vlmVm = new NodeViewModel(vlmNode, new Point(0, 0));
+        var targetVm = new NodeViewModel(new MockNode { Id = "target-vlm" }, new Point(200, 0));
+
+        var conn = new ConnectionViewModel(vlmVm.OutputPorts.First(), targetVm.InputPorts.First());
+
+        // Act
+        var variableGroups = _discoveryService.GetAvailableVariables(targetVm, [conn]);
+
+        // Assert
+        var group = variableGroups.FirstOrDefault(g => g.IsUpstream);
+        group.Should().NotBeNull();
+        group!.IsUpstream.Should().BeTrue();
+
+        // Variables fijas de telemetría e inferencia VLM
+        group.Variables.Should().Contain(v => v.Token == "{AI:VlmResponse}");
+        group.Variables.Should().Contain(v => v.Token == "{AI:VlmJson}");
+        group.Variables.Should().Contain(v => v.Token == "{AI:VlmCategory}");
+        group.Variables.Should().Contain(v => v.Token == "{AI:VlmTokens}");
+
+        // Variables de la plantilla de facturas
+        group.Variables.Should().Contain(v => v.Token == "{numero_factura}");
+        group.Variables.Should().Contain(v => v.Token == "{importe_total}");
+        group.Variables.Should().Contain(v => v.Token == "{emisor_nombre}");
+
+        // Variables descubiertas interactivamente
+        group.Variables.Should().Contain(v => v.Token == "{campo_custom}");
+        group.Variables.Should().Contain(v => v.Token == "{codigo_qr}");
     }
 }

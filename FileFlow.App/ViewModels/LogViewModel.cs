@@ -10,6 +10,7 @@ using FileFlow.App.Services;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Serialization;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.App.ViewModels;
@@ -519,7 +520,7 @@ public partial class LogViewModel : ObservableObject
     {
         var target = log ?? SelectedLog;
         if (target == null || string.IsNullOrWhiteSpace(target.DetailsJson)) return;
-        SafeSetClipboardText(target.DetailsJson);
+        SafeSetClipboardText(target.DisplayDetails);
     }
 
     [RelayCommand]
@@ -540,7 +541,7 @@ public partial class LogViewModel : ObservableObject
     public void CopyDetailsJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return;
-        SafeSetClipboardText(json);
+        SafeSetClipboardText(JsonDefaults.FormatDetailsForDisplay(json));
     }
 
     [RelayCommand]

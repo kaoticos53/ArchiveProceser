@@ -57,16 +57,50 @@ public class MultimodalVisionLlmNodeTests : IDisposable
         node.Inputs.Should().ContainSingle(p => p.Name == "In");
         node.Outputs.Select(p => p.Name).Should().Contain(["Out", "Structured", "Error"]);
 
-        // Assert parameters
+        // Assert parameters dictionary
         node.Parameters.Should().ContainKey("Provider");
         node.Parameters.Should().ContainKey("EndpointUrl");
         node.Parameters.Should().ContainKey("ModelName");
         node.Parameters.Should().ContainKey("TaskPreset");
+        node.Parameters.Should().ContainKey("AdditionalPrompt");
+        node.Parameters.Should().ContainKey("TargetLanguage");
         node.Parameters.Should().ContainKey("MaxImageDimension");
         node.Parameters.Should().ContainKey("Temperature");
         node.Parameters.Should().ContainKey("MaxTokens");
         node.Parameters.Should().ContainKey("SaveAsNewFile");
         node.Parameters.Should().ContainKey("TimeoutSeconds");
+
+        // Assert category is LanguageAI
+        node.Category.Should().Be("LanguageAI");
+
+        // Assert ParameterDescriptors: 5 clean visible parameters including MaxConcurrency
+        node.ParameterDescriptors.Should().HaveCount(5);
+        node.ParameterDescriptors.Select(p => p.Key).Should().Contain(["Provider", "TaskPreset", "TargetLanguage", "AdditionalPrompt", "MaxConcurrency"]);
+
+        var taskPresetDesc = node.ParameterDescriptors.First(p => p.Key == "TaskPreset");
+        taskPresetDesc.Options.Should().NotBeNull();
+        taskPresetDesc.Options.Should().Contain("Extracción de Facturas y Recibos (JSON)");
+
+        // Assert CustomActions
+        node.CustomActions.Should().ContainSingle(a => a.ActionId == "OpenVlmConfig");
+    }
+
+    [Fact]
+    public void MultimodalVisionLlmNode_MaxConcurrency_ShouldBeConfigurable()
+    {
+        // Arrange
+        var node = new MultimodalVisionLlmNode();
+
+        // Default concurrency should be 1
+        node.MaxConcurrency.Should().Be(1);
+
+        // Custom concurrency (e.g. 4 for multi-slot LM Studio or remote server)
+        node.Parameters["MaxConcurrency"] = 4;
+        node.MaxConcurrency.Should().Be(4);
+
+        // Clamped to minimum 1 if invalid value is set
+        node.Parameters["MaxConcurrency"] = 0;
+        node.MaxConcurrency.Should().Be(1);
     }
 
     [Fact]
@@ -195,7 +229,77 @@ public class MultimodalVisionLlmNodeTests : IDisposable
         item.Metadata.Should().ContainKey("AI:VlmResponse");
         item.Metadata.Should().ContainKey("AI:VlmJson");
         item.Metadata["AI:VlmJson"]?.ToString().Should().Contain("Acme Corp");
+        item.Metadata.Should().ContainKey("emisor");
+        item.Metadata["emisor"]?.ToString().Should().Be("Acme Corp");
         Convert.ToInt32(item.Metadata["AI:VlmTokens"]).Should().Be(140);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithClassifyAndTagPreset_ShouldUnpackCategoryTagsAndReasonIntoMetadata()
+    {
+        // Arrange
+        string imgPath = Path.Combine(_tempDir, "sample_landscape.jpg");
+        using (var img = new Image<Rgba32>(200, 200))
+        {
+            FillImage(img, Color.Blue);
+            await img.SaveAsJpegAsync(imgPath);
+        }
+
+        string mockResponseBody = """
+        {
+          "id": "chatcmpl-456",
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "```json\n{\n  \"categoria\": \"Fotografia_Paisaje\",\n  \"confianza_aproximada\": 0.95,\n  \"etiquetas_descriptivas\": [\"montana\", \"lago\", \"cielo azul\"],\n  \"motivo\": \"Se observa una cordillera con lago.\"\n}\n```"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 80,
+            "completion_tokens": 50,
+            "total_tokens": 130
+          }
+        }
+        """;
+
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(mockResponseBody, Encoding.UTF8, "application/json")
+            });
+
+        var node = new MultimodalVisionLlmNode
+        {
+            CustomHttpClient = new HttpClient(mockHandler.Object)
+        };
+        node.Parameters["TaskPreset"] = "Clasificación y Etiquetado Visual";
+
+        var item = new FileItemContext(imgPath);
+        var mockContext = new Mock<IFlowExecutionContext>();
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        item.Metadata.Should().ContainKey("categoria");
+        item.Metadata["categoria"]?.ToString().Should().Be("Fotografia_Paisaje");
+        item.Metadata.Should().ContainKey("etiquetas_descriptivas");
+        item.Metadata["etiquetas_descriptivas"]?.ToString().Should().Be("montana, lago, cielo azul");
+        item.Metadata.Should().ContainKey("AI:VlmTags");
+        item.Metadata["AI:VlmTags"]?.ToString().Should().Be("montana, lago, cielo azul");
+        item.Metadata.Should().ContainKey("motivo");
+        item.Metadata["motivo"]?.ToString().Should().Be("Se observa una cordillera con lago.");
+        item.Metadata.Should().ContainKey("AI:VlmReason");
+        item.Metadata["AI:VlmReason"]?.ToString().Should().Be("Se observa una cordillera con lago.");
     }
 
     [Fact]
@@ -426,6 +530,248 @@ public class MultimodalVisionLlmNodeTests : IDisposable
         eventTriggered = false;
         node.UnloadModel();
         eventTriggered.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenServerRejectsResponseFormat_ShouldRetryWithoutResponseFormatAndSucceed()
+    {
+        // Arrange
+        string imgPath = Path.Combine(_tempDir, "sample_receipt_retry.png");
+        using (var img = new Image<Rgba32>(200, 200))
+        {
+            FillImage(img, Color.White);
+            await img.SaveAsPngAsync(imgPath);
+        }
+
+        int callCount = 0;
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // Primer intento falla con error 400 por response_format
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)
+                    {
+                        Content = new StringContent("{\"error\":\"'response_format.type' must be 'json_schema' or 'text'\"}", Encoding.UTF8, "application/json")
+                    });
+                }
+
+                // Segundo intento (reintento sin response_format) triunfa
+                string successJson = """
+                {
+                  "id": "chatcmpl-456",
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "```json\n{\n  \"importe_total\": 99.95\n}\n```"
+                      },
+                      "finish_reason": "stop"
+                    }
+                  ],
+                  "usage": {
+                    "prompt_tokens": 80,
+                    "completion_tokens": 30,
+                    "total_tokens": 110
+                  }
+                }
+                """;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(successJson, Encoding.UTF8, "application/json")
+                });
+            });
+
+        var node = new MultimodalVisionLlmNode
+        {
+            CustomHttpClient = new HttpClient(mockHandler.Object)
+        };
+        node.Parameters["TaskPreset"] = "ExtractInvoiceReceiptJson";
+
+        var item = new FileItemContext(imgPath);
+        var mockContext = new Mock<IFlowExecutionContext>();
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        callCount.Should().Be(2, "debió reintentar la solicitud sin response_format");
+        mockContext.Verify(c => c.EmitAsync("Out", item), Times.Once);
+        mockContext.Verify(c => c.EmitAsync("Structured", item), Times.Once);
+        mockContext.Verify(c => c.EmitAsync("Error", It.IsAny<FileItemContext>()), Times.Never);
+        item.Metadata["AI:VlmJson"]?.ToString().Should().Contain("99.95");
+
+        // Act 2: Procesar una segunda imagen. Gracias a la caché negativa en memoria, NO debe enviar response_format ni generar error 400.
+        string imgPath2 = Path.Combine(_tempDir, "sample_receipt_cached.png");
+        using (var img2 = new Image<Rgba32>(200, 200))
+        {
+            FillImage(img2, Color.White);
+            await img2.SaveAsPngAsync(imgPath2);
+        }
+        var item2 = new FileItemContext(imgPath2);
+        await node.ExecuteAsync("In", item2, mockContext.Object, CancellationToken.None);
+
+        // Assert 2: callCount debió incrementarse solo en 1 (petición directa exitosa sin 400 ni reintento)
+        callCount.Should().Be(3, "la segunda imagen no debe provocar error 400 porque recuerda que el modelo rechaza response_format");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenServerReturnsTransient500_ShouldRetryAndSucceed()
+    {
+        // Arrange
+        string imgPath = Path.Combine(_tempDir, "sample_500_retry.png");
+        using (var img = new Image<Rgba32>(200, 200))
+        {
+            FillImage(img, Color.White);
+            await img.SaveAsPngAsync(imgPath);
+        }
+
+        int callCount = 0;
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns<HttpRequestMessage, CancellationToken>((req, ct) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // Primer intento simula error 500 Channel Error de LM Studio
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                    {
+                        Content = new StringContent("{\"error\":\"Channel Error: fetch failed\"}", Encoding.UTF8, "application/json")
+                    });
+                }
+
+                // Segundo intento tiene éxito una vez el slot está listo
+                string successJson = """
+                {
+                  "id": "chatcmpl-789",
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "Análisis exitoso tras reintento de 500."
+                      },
+                      "finish_reason": "stop"
+                    }
+                  ],
+                  "usage": {
+                    "prompt_tokens": 50,
+                    "completion_tokens": 20,
+                    "total_tokens": 70
+                  }
+                }
+                """;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(successJson, Encoding.UTF8, "application/json")
+                });
+            });
+
+        var node = new MultimodalVisionLlmNode
+        {
+            CustomHttpClient = new HttpClient(mockHandler.Object)
+        };
+        node.Parameters["TaskPreset"] = "CustomPrompt";
+
+        var item = new FileItemContext(imgPath);
+        var mockContext = new Mock<IFlowExecutionContext>();
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        callCount.Should().Be(2, "debió reintentar ante el error transitorio 500");
+        mockContext.Verify(c => c.EmitAsync("Out", item), Times.Once);
+        mockContext.Verify(c => c.EmitAsync("Error", It.IsAny<FileItemContext>()), Times.Never);
+        item.Metadata["AI:VlmResponse"]?.ToString().Should().Contain("Análisis exitoso tras reintento de 500.");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithStructuredNestedJson_ShouldFlattenAndInjectMetadata()
+    {
+        // Arrange
+        string imgPath = Path.Combine(_tempDir, "invoice_test.png");
+        using (var img = new Image<Rgba32>(100, 100))
+        {
+            FillImage(img, Color.White);
+            await img.SaveAsPngAsync(imgPath);
+        }
+
+        string invoiceJson = """
+        {
+          "tipo_documento": "Factura",
+          "numero_factura": "FAC-2026-999",
+          "fecha_emision": "2026-09-11",
+          "emisor": {
+            "nombre": "Empresa Tecnológica S.A.",
+            "cif": "A12345678"
+          },
+          "importe_total": 2420.00
+        }
+        """;
+
+        string apiResponse = $$"""
+        {
+          "id": "chatcmpl-invoice-1",
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "{{invoiceJson.Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "")}}"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": { "prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150 }
+        }
+        """;
+
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(apiResponse, Encoding.UTF8, "application/json")
+            });
+
+        var node = new MultimodalVisionLlmNode
+        {
+            CustomHttpClient = new HttpClient(mockHandler.Object)
+        };
+        node.Parameters["TaskPreset"] = "Extracción de Facturas y Recibos (JSON)";
+
+        var item = new FileItemContext(imgPath);
+        var mockContext = new Mock<IFlowExecutionContext>();
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        mockContext.Verify(c => c.EmitAsync("Structured", item), Times.Once);
+        mockContext.Verify(c => c.EmitAsync("Out", item), Times.Once);
+
+        // Comprobar variables aplanadas
+        item.Metadata["tipo_documento"].Should().Be("Factura");
+        item.Metadata["numero_factura"].Should().Be("FAC-2026-999");
+        item.Metadata["fecha_emision"].Should().Be("2026-09-11");
+        item.Metadata["emisor_nombre"].Should().Be("Empresa Tecnológica S.A.");
+        item.Metadata["emisor.nombre"].Should().Be("Empresa Tecnológica S.A.");
+        item.Metadata["emisor_cif"].Should().Be("A12345678");
+        item.Metadata["AI:Vlm:numero_factura"].Should().Be("FAC-2026-999");
+        item.Metadata["AI:Vlm:emisor_nombre"].Should().Be("Empresa Tecnológica S.A.");
     }
 }
 

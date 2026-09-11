@@ -100,6 +100,8 @@ public class WorkflowExecutor
 
     public string GlobalOutputDir { get; set; } = string.Empty;
     public string TemporaryDirectory { get; set; } = string.Empty;
+    public bool AutoCleanIntermediateTempFiles { get; set; } = true;
+    public FileFlow.Sdk.Storage.ITempWorkspaceManager WorkspaceManager { get; private set; } = FileFlow.Sdk.Storage.NullTempWorkspaceManager.Instance;
     public bool IsDryRun { get => _isDryRun; set => _isDryRun = value; }
     public VirtualFileSystemStore VirtualFileSystem { get; } = new();
     public bool IsVirtualFileSystemEnabled { get; set; }
@@ -158,6 +160,7 @@ public class WorkflowExecutor
             TemporaryDirectory = graph.TemporaryDirectory;
         }
         _currentExecutionId = Guid.NewGuid().ToString("N");
+        WorkspaceManager = new WorkflowWorkspaceManager(_currentExecutionId, TemporaryDirectory);
         _nodeInstances.Clear();
         _nodeDisplayNames.Clear();
         foreach (var nodeDto in graph.Nodes)
@@ -334,6 +337,22 @@ public class WorkflowExecutor
         }
         finally
         {
+            if (AutoCleanIntermediateTempFiles && WorkspaceManager != null)
+            {
+                try
+                {
+                    long bytesFreed = await WorkspaceManager.CleanupExecutionWorkspaceAsync(CancellationToken.None).ConfigureAwait(false);
+                    if (bytesFreed > 0)
+                    {
+                        double mbFreed = bytesFreed / (1024.0 * 1024.0);
+                        NotifyLog(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_TempWorkspaceCleaned", "🧹 Espacio temporal de ejecución liberado: {0:F2} MB recuperados en disco.", mbFreed), LogLevel.Information);
+                    }
+                }
+                catch (Exception exClean)
+                {
+                    NotifyLog($"[Limpieza] Advertencia al liberar espacio temporal: {exClean.Message}", LogLevel.Debug);
+                }
+            }
             _isRunning = false;
         }
     }
@@ -353,6 +372,7 @@ public class WorkflowExecutor
             TemporaryDirectory = graph.TemporaryDirectory;
         }
         _currentExecutionId = Guid.NewGuid().ToString("N");
+        WorkspaceManager = new WorkflowWorkspaceManager(_currentExecutionId, TemporaryDirectory);
         _nodeInstances.Clear();
         _nodeDisplayNames.Clear();
         foreach (var nodeDto in graph.Nodes)
@@ -469,6 +489,19 @@ public class WorkflowExecutor
         }
         finally
         {
+            if (AutoCleanIntermediateTempFiles && WorkspaceManager != null)
+            {
+                try
+                {
+                    long bytesFreed = await WorkspaceManager.CleanupExecutionWorkspaceAsync(CancellationToken.None).ConfigureAwait(false);
+                    if (bytesFreed > 0)
+                    {
+                        double mbFreed = bytesFreed / (1024.0 * 1024.0);
+                        NotifyLog(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_TempWorkspaceCleaned", "🧹 Espacio temporal de ejecución liberado: {0:F2} MB recuperados en disco.", mbFreed), LogLevel.Information);
+                    }
+                }
+                catch { }
+            }
             _isRunning = false;
         }
     }

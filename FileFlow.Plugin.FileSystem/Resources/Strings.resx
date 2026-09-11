@@ -188,4 +188,12 @@
   <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>↕️ Collapse All</value></data>
   <data name="DataSetDesigner_InspectorTitle" xml:space="preserve"><value>Item Properties</value></data>
   <data name="DataSetDesigner_InspectorNoSelection" xml:space="preserve"><value>Select a file or folder in the tree to inspect and edit its properties.</value></data>
+  <data name="LogOutputNode_Name" xml:space="preserve"><value>Log Output</value></data>
+  <data name="LogOutputNode_Desc" xml:space="preserve"><value>Logs custom messages with template variables or detailed item context, metadata, and execution history.</value></data>
+  <data name="Param_CustomMessage" xml:space="preserve"><value>Custom Message</value></data>
+  <data name="Param_CustomMessage_Help" xml:space="preserve"><value>Custom message template to log (supports {FileName}, {Extension}, {FileSize}, {AI:VlmTags}, expressions, etc.).</value></data>
+  <data name="Param_LogLevel" xml:space="preserve"><value>Log Level</value></data>
+  <data name="Param_LogMetadata" xml:space="preserve"><value>Include Metadata</value></data>
+  <data name="Param_LogExecutionHistory" xml:space="preserve"><value>Include History</value></data>
+  <data name="Param_CompactFormat" xml:space="preserve"><value>Compact Format</value></data>
 </root>

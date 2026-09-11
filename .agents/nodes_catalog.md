@@ -1,6 +1,6 @@
 # Catálogo Completo de Nodos y Especificaciones - FileFlow Studio
 
-Este catálogo contiene la especificación técnica completa de los **60 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
+Este catálogo contiene la especificación técnica completa de los **62 nodos** disponibles en los plugins oficiales de **FileFlow Studio**, detallando sus puertos de entrada y salida, parámetros configurables, tipo de operación y librerías de dominio subyacentes.
 
 ---
 
@@ -330,7 +330,7 @@ Este catálogo contiene la especificación técnica completa de los **60 nodos**
 
 ---
 
-## 10. Módulo: FileFlow.Plugin.Archives (3 Nodos)
+## 10. Módulo: FileFlow.Plugin.Archives (5 Nodos)
 
 ### 1. SmartUnpackNode
 - **Tipo:** Source / Extractor
@@ -353,6 +353,21 @@ Este catálogo contiene la especificación técnica completa de los **60 nodos**
 - **Salidas:** `Matched` (`FileItemContext`), `Unmatched` (`FileItemContext`)
 - **Parámetros:** `ContainsPattern` (string), `MinFiles` (int), `MaxFiles` (int)
 - **Función:** Inspecciona el índice de un comprimido para decidir el enrutamiento sin extraer a disco.
+
+### 4. ArchiveFanOutNode
+- **Tipo:** Source / Fan-Out (Desempaquetador Streamer)
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `ItemOut` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `WorkingFolder` (string), `CleanWrapper` (bool), `DeleteOriginalArchive` (bool), `PasswordList` (string), `PasswordFile` (string)
+- **Acción Custom:** `🔑 Claves...` (Gestión de lista de contraseñas para descompresión).
+- **Función:** Descomprime un archivo en una sesión de trabajo temporal y emite cada elemento interno individualmente al pipeline DAG con metadatos de correlación (`Archive:SessionId`, `Archive:TotalEntries`, `Archive:RelativePath`).
+
+### 5. ArchiveFanInNode
+- **Tipo:** Sink / Fan-In (Barrera de Agregación & Empaquetador)
+- **Entradas:** `In` (`FileItemContext`)
+- **Salidas:** `Out` (`FileItemContext`), `Error` (`FileItemContext`)
+- **Parámetros:** `DestinationFolder` (string), `ArchiveName` (string), `ArchiveFormat` (`Auto`, `CBZ`, `ZIP`, `7Z`, `TAR`, `GZ`), `CompressionType` (`Deflate`, `Store`, `LZMA`, `BZip2`), `CleanWorkingFolder` (bool), `TimeoutSeconds` (int)
+- **Función:** Recolecta todos los archivos procesados de una sesión de descompresión y los re-empaqueta en el archivo final en el destino, limpiando automáticamente la carpeta temporal.
 
 ---
 

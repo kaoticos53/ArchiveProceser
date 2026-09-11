@@ -109,6 +109,18 @@
                                           HorizontalAlignment="Left" 
                                           VerticalAlignment="Center" 
                                           IsHitTestVisible="False" />
+                        <TextBox x:Name="PART_EditableTextBox"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Center"
+                                 Margin="8,3,28,3"
+                                 Background="Transparent"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 CaretBrush="{DynamicResource AccentPrimaryBrush}"
+                                 BorderThickness="0"
+                                 FontSize="{TemplateBinding FontSize}"
+                                 FontFamily="{TemplateBinding FontFamily}"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}"
+                                 Visibility="Collapsed" />
                         <Popup x:Name="PART_Popup" 
                                AllowsTransparency="True" 
                                IsOpen="{TemplateBinding IsDropDownOpen}" 
@@ -131,6 +143,13 @@
                             </Border>
                         </Popup>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter Property="IsTabStop" Value="False" />
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="contentTemplate" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

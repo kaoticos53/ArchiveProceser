@@ -287,14 +287,34 @@ public static class ParameterHelper
             return ResolveOutputPath(outputPattern, item);
         }
 
+        // Si el archivo forma parte de una sesión de descompresión (ej. ArchiveFanOut), usar la carpeta de la sesión
+        if (item.Metadata.TryGetValue("Archive:WorkingFolder", out var wfObj) && wfObj != null && !string.IsNullOrWhiteSpace(wfObj.ToString()))
+        {
+            string sessionFolder = wfObj.ToString()!;
+            if (Directory.Exists(sessionFolder))
+            {
+                string? currentDir = Path.GetDirectoryName(item.CurrentPath);
+                if (!string.IsNullOrEmpty(currentDir) && currentDir.StartsWith(sessionFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    return currentDir;
+                }
+                return sessionFolder;
+            }
+        }
+
+        // Utilizar el espacio de trabajo acotado de la ejecución actual
+        if (context.TempWorkspace != null)
+        {
+            return context.TempWorkspace.CreateSubdirectory("intermediate");
+        }
+
         string tempBase = !string.IsNullOrWhiteSpace(context.TemporaryDirectory)
             ? context.TemporaryDirectory
             : (item.Metadata.TryGetValue("TemporaryDirectory", out var tdVal) && tdVal != null && !string.IsNullOrWhiteSpace(tdVal.ToString())
                 ? tdVal.ToString()!
                 : Storage.AppPaths.DefaultTempDirectory);
 
-        string randomSubdir = Guid.NewGuid().ToString("N")[..8];
-        string resolvedDir = Path.Combine(tempBase, randomSubdir);
+        string resolvedDir = Path.Combine(tempBase, "intermediate");
         try
         {
             Directory.CreateDirectory(resolvedDir);

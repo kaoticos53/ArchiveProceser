@@ -5,7 +5,7 @@ using FileFlow.Sdk.Localization;
 namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveFilterNode_Name", "Archives", "ArchiveFilterNode_Desc", PipelineRole.Filter,
-    "inspeccionar", "filtrar", "comprimido", "contenido", "zip", "tar", "filter", "archive")]
+    "inspeccionar", "filtrar", "comprimido", "contenido", "zip", "tar", "cbz", "cbr", "cb7", "filter", "archive")]
 public sealed class ArchiveFilterNode : IFlowNode
 {
     private static readonly Regex SecondaryVolumeRegex = new(
@@ -13,13 +13,13 @@ public sealed class ArchiveFilterNode : IFlowNode
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex PrimaryArchiveRegex = new(
-        @"\.(zip|rar|7z|tar|gz|tgz|bz2|xz|part0*1\.rar)$",
+        @"\.(zip|rar|7z|tar|gz|tgz|bz2|xz|cbz|cbr|cb7|zipx|zst|epub|part0*1\.rar)$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("ArchiveFilterNode_Name", "Clasificador de Archivos Comprimidos");
     public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("ArchiveFilterNode_Desc", "Clasifica elementos entrantes entre archivos comprimidos principales, volúmenes secundarios divididos (split-RAR) y archivos normales.");
+    public string Description => LocalizationManager.Instance.GetString("ArchiveFilterNode_Desc", "Clasifica elementos entrantes entre archivos comprimidos principales (ZIP, RAR, 7Z, CBZ, CBR, CB7), volúmenes secundarios divididos (split-RAR) y archivos normales.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = new[]
     {
@@ -64,7 +64,7 @@ public sealed class ArchiveFilterNode : IFlowNode
             return;
         }
 
-        // 2. Check if it's a primary archive (.zip, .rar, .7z, .part01.rar)
+        // 2. Check if it's a primary archive (.zip, .rar, .7z, .cbz, .cbr, .cb7, .part01.rar)
         if (PrimaryArchiveRegex.IsMatch(fileName))
         {
             string detailsJson = $"{{\"classification\": \"PrimaryArchive\", \"fileName\": \"{fileName}\"}}";

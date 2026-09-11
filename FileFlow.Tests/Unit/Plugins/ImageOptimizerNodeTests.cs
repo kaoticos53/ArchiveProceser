@@ -331,4 +331,53 @@ public class ImageOptimizerNodeTests
         result.TargetWidth.Should().Be(3840);
         result.TargetHeight.Should().Be(2160);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WithKeepOriginalIfLarger_ShouldKeepOriginal_WhenOptimizedIsLarger()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_KeepOrigTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string originalFile = Path.Combine(tempDir, "tiny.png");
+
+        // Create a 1x1 tiny solid PNG which in uncompressed/lossy WebP with headers can be larger or equal
+        using (var img = new Image<Rgba32>(1, 1))
+        {
+            img[0, 0] = new Rgba32(255, 0, 0);
+            await img.SaveAsPngAsync(originalFile);
+        }
+
+        try
+        {
+            var node = new ImageOptimizerNode();
+            node.Parameters["TargetFormat"] = "WebP";
+            node.Parameters["Quality"] = 100;
+            node.Parameters["KeepOriginalIfLarger"] = true;
+            node.Parameters["OutputDirectory"] = Path.Combine(tempDir, "Out");
+
+            var item = new FileItemContext(originalFile, isDirectory: false);
+            var emittedItems = new List<FileItemContext>();
+
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+                       .Callback<string, FileItemContext>((port, emItem) => emittedItems.Add(emItem))
+                       .Returns(Task.CompletedTask);
+
+            // Act
+            await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+            // Assert
+            emittedItems.Should().HaveCount(1);
+            var output = emittedItems[0];
+            output.Metadata.Should().ContainKey("IsOriginalKept");
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
 }
+

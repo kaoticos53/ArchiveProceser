@@ -1,5 +1,6 @@
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Serialization;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.Core.Engine;
@@ -28,7 +29,8 @@ public class WorkflowExecutionContext : IFlowExecutionContext
     }
 
     public bool IsDryRun => _executor.IsDryRun;
-    public string TemporaryDirectory => !string.IsNullOrWhiteSpace(_executor.TemporaryDirectory) ? _executor.TemporaryDirectory : FileFlow.Sdk.Storage.AppPaths.DefaultTempDirectory;
+    public FileFlow.Sdk.Storage.ITempWorkspaceManager TempWorkspace => _executor.WorkspaceManager;
+    public string TemporaryDirectory => _executor.WorkspaceManager.ExecutionTempDirectory;
     public FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? VirtualFileSystem => _executor.VirtualFileSystem;
     public bool IsVirtualFileSystemEnabled => _executor.IsVirtualFileSystemEnabled;
 
@@ -72,6 +74,16 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         _executor.SetTotalExpectedItems(totalExpectedItems);
     }
 
+    public double? CustomExecutionDurationMs { get; private set; }
+
+    public void ReportExecutionDuration(double durationMs)
+    {
+        if (durationMs >= 0)
+        {
+            CustomExecutionDurationMs = durationMs;
+        }
+    }
+
     public void Log(string message, LogLevel level)
     {
         if (_executor.IsLoggingDisabledForNode(_sourceNodeId)) return;
@@ -88,7 +100,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         string? detailsJson = null;
         if (CurrentItem?.Metadata != null && CurrentItem.Metadata.Count > 0)
         {
-            try { detailsJson = System.Text.Json.JsonSerializer.Serialize(CurrentItem.Metadata); } catch { }
+            try { detailsJson = JsonDefaults.SerializeRelaxed(CurrentItem.Metadata, indented: true); } catch { }
         }
         _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson: detailsJson, itemId: itemId, fileName: effectiveFileName);
     }
@@ -103,7 +115,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         long fileSize = effectiveItem?.FileSizeBytes ?? 0;
         if (detailsJson == null && effectiveItem?.Metadata != null && effectiveItem.Metadata.Count > 0)
         {
-            try { detailsJson = System.Text.Json.JsonSerializer.Serialize(effectiveItem.Metadata); } catch { }
+            try { detailsJson = JsonDefaults.SerializeRelaxed(effectiveItem.Metadata, indented: true); } catch { }
         }
         _executor.NotifyLog(_sourceNodeId, message, level, path, fileSize, durationMs, detailsJson, itemId, fileName);
     }
@@ -117,7 +129,7 @@ public class WorkflowExecutionContext : IFlowExecutionContext
         long fileSize = CurrentItem?.FileSizeBytes ?? 0;
         if (detailsJson == null && CurrentItem?.Metadata != null && CurrentItem.Metadata.Count > 0)
         {
-            try { detailsJson = System.Text.Json.JsonSerializer.Serialize(CurrentItem.Metadata); } catch { }
+            try { detailsJson = JsonDefaults.SerializeRelaxed(CurrentItem.Metadata, indented: true); } catch { }
         }
         _executor.NotifyLog(_sourceNodeId, message, level, effectivePath, fileSize, durationMs, detailsJson, effectiveItemId, effectiveFileName);
     }

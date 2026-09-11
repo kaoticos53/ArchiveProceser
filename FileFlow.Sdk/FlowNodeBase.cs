@@ -20,6 +20,7 @@ public abstract class FlowNodeBase : IFlowNode
     public virtual IReadOnlyList<NodePort> Inputs { get; protected set; } = [];
     public virtual IReadOnlyList<NodePort> Outputs { get; protected set; } = [];
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public virtual int MaxConcurrency => 0;
 
     public virtual IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [];
     public virtual IReadOnlyList<NodeActionDescriptor> CustomActions => [];
