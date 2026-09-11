@@ -200,6 +200,120 @@ public static class DomainVariableResolver
                 result = (item.FileSizeBytes / (1024.0 * 1024.0)).ToString("F2", CultureInfo.InvariantCulture);
                 return true;
 
+            case "archive":
+                switch (key.ToLowerInvariant())
+                {
+                    case "relativedir":
+                    case "originalrelativedir":
+                    case "originalarchiverelativedir":
+                    case "archiverelativedir":
+                        if (item.Metadata.TryGetValue("Archive:OriginalArchiveRelativeDir", out var ardVal) && ardVal != null)
+                        {
+                            result = ardVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        if (item.Metadata.TryGetValue("Archive:RelativeDir", out var rdVal) && rdVal != null)
+                        {
+                            result = rdVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "relativefilepath":
+                    case "originalrelativefilepath":
+                    case "originalarchiverelativepath":
+                    case "archiverelativefilepath":
+                        if (item.Metadata.TryGetValue("Archive:OriginalArchiveRelativePath", out var arpVal) && arpVal != null)
+                        {
+                            result = arpVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "originalarchivepath":
+                    case "originalpath":
+                        if (item.Metadata.TryGetValue("Archive:OriginalArchivePath", out var oapVal) && oapVal != null)
+                        {
+                            result = oapVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "originalarchivefilename":
+                    case "originalfilename":
+                    case "filename":
+                        if (item.Metadata.TryGetValue("Archive:OriginalArchiveFileName", out var oanVal) && oanVal != null)
+                        {
+                            result = oanVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "originalarchivefilenamenoext":
+                    case "originalfilenamenoext":
+                    case "filenamenoext":
+                        if (item.Metadata.TryGetValue("Archive:OriginalArchiveFileName", out var oannVal) && oannVal != null)
+                        {
+                            result = Path.GetFileNameWithoutExtension(oannVal.ToString() ?? string.Empty);
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "format":
+                    case "originalarchiveformat":
+                        if (item.Metadata.TryGetValue("Archive:OriginalArchiveFormat", out var ofmVal) && ofmVal != null)
+                        {
+                            result = ofmVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "workingfolder":
+                    case "workingdir":
+                        if (item.Metadata.TryGetValue("Archive:WorkingFolder", out var wfVal) && wfVal != null)
+                        {
+                            result = wfVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "relativepath":
+                    case "innerpath":
+                    case "entrypath":
+                        if (item.Metadata.TryGetValue("Archive:RelativePath", out var rpVal) && rpVal != null)
+                        {
+                            result = rpVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    case "sessionid":
+                        if (item.Metadata.TryGetValue("Archive:SessionId", out var sidVal) && sidVal != null)
+                        {
+                            result = sidVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+
+                    default:
+                        if (item.Metadata.TryGetValue($"Archive:{key}", out var genVal) && genVal != null)
+                        {
+                            result = genVal.ToString() ?? string.Empty;
+                            return true;
+                        }
+                        result = string.Empty;
+                        return true;
+                }
+
             default:
                 result = string.Empty;
                 return false;

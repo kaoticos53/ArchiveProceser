@@ -182,10 +182,30 @@ public static class SystemVariablesResolver
             case "relativepath":
             case "relativedir":
             case "relativedirectory":
+                if (item.Metadata.TryGetValue("Archive:OriginalArchiveRelativeDir", out var ardVal) && ardVal != null && !string.IsNullOrWhiteSpace(ardVal.ToString()))
+                {
+                    return ardVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("Archive:RelativeDir", out var rdVal) && rdVal != null && !string.IsNullOrWhiteSpace(rdVal.ToString()))
+                {
+                    return rdVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("Archive:OriginalArchivePath", out var oapVal) && oapVal != null && !string.IsNullOrWhiteSpace(oapVal.ToString()))
+                {
+                    return PathRelativeCalculator.CalculateRelativeDirectory(oapVal.ToString()!, effectiveRootPath);
+                }
                 string pathForRelDir = !string.IsNullOrWhiteSpace(originalPath) ? originalPath : currentPath;
                 return PathRelativeCalculator.CalculateRelativeDirectory(pathForRelDir, effectiveRootPath);
 
             case "relativefilepath":
+                if (item.Metadata.TryGetValue("Archive:OriginalArchiveRelativePath", out var arpVal) && arpVal != null && !string.IsNullOrWhiteSpace(arpVal.ToString()))
+                {
+                    return arpVal.ToString()!;
+                }
+                if (item.Metadata.TryGetValue("Archive:OriginalArchivePath", out var oap2Val) && oap2Val != null && !string.IsNullOrWhiteSpace(oap2Val.ToString()))
+                {
+                    return PathRelativeCalculator.CalculateRelativeFilePath(oap2Val.ToString()!, effectiveRootPath);
+                }
                 string pathForRelFile = !string.IsNullOrWhiteSpace(originalPath) ? originalPath : currentPath;
                 return PathRelativeCalculator.CalculateRelativeFilePath(pathForRelFile, effectiveRootPath);
 

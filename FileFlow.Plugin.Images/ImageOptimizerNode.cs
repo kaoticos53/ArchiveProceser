@@ -29,6 +29,11 @@ public sealed class ImageOptimizerNode : IFlowNode
         new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
     };
 
+    private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tga", ".tiff", ".tif", ".pbm"
+    };
+
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Width"] = "",
@@ -37,8 +42,10 @@ public sealed class ImageOptimizerNode : IFlowNode
         ["Quality"] = 80,
         ["OnlyDownscale"] = true,
         ["OutputDirectory"] = "",
+        ["FileNameSuffix"] = "",
         ["KeepOriginalIfLarger"] = false,
-        ["ReplaceOriginalInPlace"] = false
+        ["ReplaceOriginalInPlace"] = false,
+        ["PassThroughNonImages"] = true
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
@@ -48,8 +55,10 @@ public sealed class ImageOptimizerNode : IFlowNode
         new("Quality", ParameterEditorType.Slider, DefaultValue: 80, DisplayOrder: 4, Min: 1, Max: 100, Step: 1),
         new("OnlyDownscale", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 6, HelpText: "Output folder. If left empty, uses the temporary working directory with a unique subfolder."),
-        new("KeepOriginalIfLarger", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 7, HelpText: "Keep original file if the converted image is larger in file size."),
-        new("ReplaceOriginalInPlace", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 8, HelpText: "Delete original file if conversion is successful and smaller in file size.")
+        new("FileNameSuffix", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 7, HelpText: "Optional filename suffix to append (e.g. _optimized or empty to preserve name)."),
+        new("KeepOriginalIfLarger", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 8, HelpText: "Keep original file if the converted image is larger in file size."),
+        new("ReplaceOriginalInPlace", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 9, HelpText: "Delete original file if conversion is successful and smaller in file size."),
+        new("PassThroughNonImages", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 10, HelpText: "Si el archivo no es una imagen o no puede procesarse, se transfiere intacto a la salida Out sin generar error.")
     ];
 
     public static (int Pixels, double? Percentage) ParseDimensionSpec(object? value)
@@ -209,6 +218,7 @@ public sealed class ImageOptimizerNode : IFlowNode
         bool onlyDownscale = !Parameters.TryGetValue("OnlyDownscale", out var odVal) || ParameterHelper.GetBoolean(odVal, true);
         bool keepOriginalIfLarger = Parameters.TryGetValue("KeepOriginalIfLarger", out var koVal) && ParameterHelper.GetBoolean(koVal, false);
         bool replaceOriginalInPlace = Parameters.TryGetValue("ReplaceOriginalInPlace", out var ropVal) && ParameterHelper.GetBoolean(ropVal, false);
+        bool passThroughNonImages = !Parameters.TryGetValue("PassThroughNonImages", out var ptniVal) || ParameterHelper.GetBoolean(ptniVal, true);
 
         string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
         int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
@@ -226,6 +236,18 @@ public sealed class ImageOptimizerNode : IFlowNode
             return;
         }
 
+        // Si el archivo no tiene una extensión de imagen conocida y PassThroughNonImages está activado, pasar intacto a Out
+        string inputExt = Path.GetExtension(filePath);
+        if (passThroughNonImages && !SupportedImageExtensions.Contains(inputExt))
+        {
+            item.Metadata["IsImageOptimized"] = false;
+            item.Metadata["ImageOptimizationSkipped"] = true;
+            item.Metadata["SkipReason"] = "NonImageFormat";
+            context.Log($"[Optimizador Imágenes] Formato no imagen omitido: '{Path.GetFileName(filePath)}'. Pasando a Out sin alterar.", LogLevel.Debug, item);
+            await context.EmitAsync("Out", item);
+            return;
+        }
+
         FileItemContext? outputItem = null;
         try
         {
@@ -237,7 +259,13 @@ public sealed class ImageOptimizerNode : IFlowNode
             };
 
             string filenameNoExt = Path.GetFileNameWithoutExtension(filePath);
-            string outputPath = Path.Combine(outputDir, $"{filenameNoExt}_optimized{ext}");
+            string suffix = Parameters.TryGetValue("FileNameSuffix", out var sfxVal) ? ParameterHelper.GetString(sfxVal, "") : "";
+            string outputPath = Path.Combine(outputDir, $"{filenameNoExt}{suffix}{ext}");
+
+            bool isSameFileTarget = !isDryRun && string.Equals(Path.GetFullPath(outputPath), Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase);
+            string writeTargetPath = isSameFileTarget
+                ? Path.Combine(outputDir, $"{filenameNoExt}_tmp_{Guid.NewGuid():N[..6]}{ext}")
+                : outputPath;
 
             int origWidth = 0, origHeight = 0;
             int newWidth = 0, newHeight = 0;
@@ -286,20 +314,28 @@ public sealed class ImageOptimizerNode : IFlowNode
                 newWidth = image.Width;
                 newHeight = image.Height;
 
-                await using Stream outStream = await storage.OpenWriteAsync(outputPath, cancellationToken);
-                switch (formatStr.ToUpperInvariant())
+                await using (Stream outStream = await storage.OpenWriteAsync(writeTargetPath, cancellationToken))
                 {
-                    case "WEBP":
-                        await image.SaveAsWebpAsync(outStream, new WebpEncoder { Quality = quality }, cancellationToken);
-                        break;
-                    case "PNG":
-                        await image.SaveAsPngAsync(outStream, new PngEncoder(), cancellationToken);
-                        break;
-                    case "JPEG":
-                    case "JPG":
-                    default:
-                        await image.SaveAsJpegAsync(outStream, new JpegEncoder { Quality = quality }, cancellationToken);
-                        break;
+                    switch (formatStr.ToUpperInvariant())
+                    {
+                        case "WEBP":
+                            await image.SaveAsWebpAsync(outStream, new WebpEncoder { Quality = quality }, cancellationToken);
+                            break;
+                        case "PNG":
+                            await image.SaveAsPngAsync(outStream, new PngEncoder(), cancellationToken);
+                            break;
+                        case "JPEG":
+                        case "JPG":
+                        default:
+                            await image.SaveAsJpegAsync(outStream, new JpegEncoder { Quality = quality }, cancellationToken);
+                            break;
+                    }
+                }
+
+                if (isSameFileTarget && File.Exists(writeTargetPath))
+                {
+                    await storage.DeleteAsync(filePath, permanent: true, ct: cancellationToken);
+                    File.Move(writeTargetPath, outputPath);
                 }
             }
 
@@ -374,6 +410,18 @@ public sealed class ImageOptimizerNode : IFlowNode
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
+            if (passThroughNonImages)
+            {
+                string warnJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\", \"passedThrough\": true}}";
+                context.Log($"[Optimizador Imágenes] Archivo '{Path.GetFileName(filePath)}' no pudo decodificarse como imagen: {ex.Message}. Pasando original sin procesar a Out.", LogLevel.Warning, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: warnJson);
+                item.Metadata["IsImageOptimized"] = false;
+                item.Metadata["ImageOptimizationSkipped"] = true;
+                item.Metadata["SkipReason"] = ex.Message;
+                item.AddLog($"ImageOptimizerNode passed through original due to decode failure: {ex.Message}");
+                await context.EmitAsync("Out", item);
+                return;
+            }
+
             string errJson = $"{{\"error\": \"{ex.Message.Replace("\"", "\\\"")}\", \"file\": \"{filePath.Replace("\\", "\\\\")}\"}}";
             context.Log($"[Optimizador Imágenes] Error al optimizar imagen: {ex.Message}", LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds, detailsJson: errJson);
             item.AddLog($"ImageOptimizerNode failed: {ex.Message}");

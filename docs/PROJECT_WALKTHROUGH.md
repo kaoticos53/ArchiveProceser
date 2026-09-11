@@ -2,6 +2,48 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-11] - Soporte Universal de Decodificación y Visualización WebP en WPF y OCR (`WpfImageLoader` & `LocalOcrNode`)
+
+### 🎯 Objetivos y Alcance
+1. **Diagnóstico y Causa Raíz**:
+   - En Windows/.NET, el componente nativo de WPF `BitmapImage` delega en WIC (Windows Imaging Component), el cual carece de códec nativo para el formato `.webp` en la mayoría de instalaciones estándar de Windows. Al abrir o previsualizar imágenes WebP en el panel de inspección de FileFlow o en el deslizador de comparación antes/después (`ImageCompareSliderControl`), `BitmapImage` fallaba silenciosamente y la UI mostraba un recuadro vacío.
+   - En el nodo de OCR local ([`LocalOcrNode.cs`](file:///FileFlow.Plugin.AI/Nodes/Language/LocalOcrNode.cs)), Leptonica (librería C de bajo nivel de Tesseract) no admite directamente el formato WebP en crudo (`Pix.LoadFromMemory`), generando fallos al procesar documentos en este formato.
+2. **Implementación de `WpfImageLoader` en `FileFlow.App`**:
+   - [`WpfImageLoader.cs`](file:///FileFlow.App/Preview/Helpers/WpfImageLoader.cs): Cargador universal de imágenes para WPF que combina carga nativa rápida con fallback/decodificación completa vía ImageSharp (`Image.Load` $\rightarrow$ `MemoryStream` PNG a `BitmapSource`). Permite visualizar y comparar de forma 100% determinista y sin dependencias externas cualquier formato moderno (`WebP`, `TGA`, `TIFF`, etc.).
+   - [`ImagePreviewProvider.cs`](file:///FileFlow.App/Preview/Providers/ImagePreviewProvider.cs) e [`ImageCompareSliderControl.xaml.cs`](file:///FileFlow.App/Preview/Controls/ImageCompareSliderControl.xaml.cs): Migrados para consumir `WpfImageLoader.LoadBitmapSource`.
+3. **Soporte WebP en `LocalOcrNode` (`FileFlow.Plugin.AI`)**:
+   - [`LocalOcrNode.cs`](file:///FileFlow.Plugin.AI/Nodes/Language/LocalOcrNode.cs): Transcodificación transparente en memoria a PNG vía ImageSharp antes de invocar `Pix.LoadFromMemory`, permitiendo OCR local de alta precisión sobre archivos `.webp`.
+4. **Métricas de Calidad y Pruebas Unitarias**:
+   - [`ImageOptimizerNodeTests.cs`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs): Añadido test `ExecuteAsync_WhenInputIsWebP_ShouldDecodeAndOptimizeSuccessfully` validando la re-optimización y conversión bidireccional de WebP a PNG/WebP.
+   - [`FilePreviewerTests.cs`](file:///FileFlow.Tests/Unit/App/FilePreviewerTests.cs): Añadido test `WpfImageLoader_ShouldDecodeWebP_IntoValidBitmapSource` verificando la carga correcta de WebP en WPF `BitmapSource`.
+   - **831 / 831 pruebas unitarias e integración superadas al 100% con éxito (0 errores, 0 omitidas)**.
+   - Compilación estricta con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`.
+
+---
+
+## [2026-09-11] - Garantía de Cero Pérdida de Archivos en Empaquetado (Fan-In) y Passthrough Seguro en Optimizador de Imágenes
+
+### 🎯 Objetivos y Alcance
+1. **Erradicación de Ficheros Omitidos o Perdidos en Empaquetado Final**:
+   - En flujos de cómics (`.cbz`) y archivos comprimidos con contenidos heterogéneos (imágenes mixtas + archivos auxiliares como `ComicInfo.xml`, `metadata.json`, `.nfo`, etc.):
+     - Si un archivo no era imagen o fallaba su decodificación en `ImageOptimizerNode`, ImageSharp emitía a la salida `Error`, provocando que el archivo no llegara al `ArchiveFanInNode`. Esto dejaba incompleta la sesión (`ReceivedItems.Count < TotalEntries`) y hacía que el archivo comprimido final no se generara o perdiera todos los ficheros no-imagen.
+     - Si se seleccionaba `KeepOriginalIfLarger` en imágenes donde WebP no lograba mejor ratio de compresión, se conservaba el original pero se requería garantizar su inclusión íntegra en el empaquetado final sin colisiones de nombres ni omisiones.
+2. **Mejoras en `ImageOptimizerNode` (`FileFlow.Plugin.Images`)**:
+   - [`ImageOptimizerNode.cs`](file:///FileFlow.Plugin.Images/ImageOptimizerNode.cs):
+     - Incorporado parámetro `PassThroughNonImages` (por defecto `true`): los archivos no-imagen (`.xml`, `.json`, `.txt`, `.nfo`, etc.) o formatos no decodificables pasan directamente y de forma segura al puerto `Out` con el flag `IsImageOptimized = false`.
+     - Manejo de excepciones en decodificación: si un archivo dañado no puede ser decodificado, se registra un aviso detallado y se transfiere intacto a `Out` en lugar de romper el pipeline y abortar la sesión de compresión.
+3. **Robustez y Resiliencia en `ArchiveFanInNode` (`FileFlow.Plugin.Archives`)**:
+   - [`ArchiveFanInNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanInNode.cs):
+     - Implementado hook `OnWorkflowCompletedAsync` para finalizar y empaquetar cualquier sesión pendiente que haya recibido elementos aguas arriba.
+     - En `CompleteArchiveSessionAsync`: consolidación de entradas recibidas mapeando `Archive:RelativePath` con fallback automático hacia cualquier fichero extraído en `session.WorkingFolder` que no haya sido procesado o sustituido por downstream, asegurando que el 100% de los archivos del cómic/archivo original se preserven sin duplicados.
+4. **Métricas de Calidad y Pruebas Unitarias**:
+   - [`ArchiveFanOutFanInPipelineTests.cs`](file:///FileFlow.Tests/Unit/Plugins/ArchiveFanOutFanInPipelineTests.cs): Añadida prueba `DirectLinearPipeline_WhenPipingAllExtractedItemsDirectlyThroughOptimizer_ShouldPreserveAllEntriesAndNonImages` verificando la preservación del 100% de entradas (imágenes optimizadas, imágenes originales conservadas y ficheros `ComicInfo.xml` / `notes.txt`).
+   - [`ImageOptimizerNodeTests.cs`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs): Pruebas añadidas para verificar el comportamiento de `PassThroughNonImages` (true/false).
+   - **829 / 829 pruebas unitarias e integración superadas al 100% con éxito (0 errores, 0 omitidas)**.
+   - Compilación estricta sin advertencias (`<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`).
+
+---
+
 ## [2026-09-11] - Gestión de Ciclo de Vida y Limpieza Determinista del Espacio Temporal de Ejecución (Temp Workspace Lifecycle & Housekeeping)
 
 ### 🎯 Objetivos y Alcance
@@ -18,17 +60,18 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - [`WorkflowWorkspaceManager.cs`](file:///FileFlow.Core/Engine/WorkflowWorkspaceManager.cs): Gestor concurrente y seguro (`ConcurrentBag<string>`, `System.Threading.Lock`, `IDisposable`, `IAsyncDisposable`) que calcula tamaños liberados y purga todos los archivos y carpetas registrados.
    - [`WorkflowExecutionContext.cs`](file:///FileFlow.Core/Engine/WorkflowExecutionContext.cs): Vincula `TempWorkspace` directamente con el `WorkspaceManager` del ejecutor activo.
    - [`WorkflowExecutor.cs`](file:///FileFlow.Core/Engine/WorkflowExecutor.cs): Inicializa `WorkspaceManager` por cada ejecución con un `ExecutionId` dedicado y ejecuta la purga en bloques `finally` (garantizado ante éxito, cancelación o error fatal) si `AutoCleanIntermediateTempFiles == true`.
-4. **Optimización en Nodos de Plugins (`FileFlow.Plugin.Archives`)**:
+4. **Optimización en Nodos de Plugins (`FileFlow.Plugin.Archives` e `Images`)**:
    - [`ArchiveFanOutNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanOutNode.cs): Registra el directorio de sesión en `context.RegisterTemporaryDirectory` para limpieza preventiva si el pipeline aborta antes del Fan-In.
-   - [`ArchiveFanInNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanInNode.cs): Elimina los archivos temporales intermedios una vez copiados y sincronizados en el directorio de la sesión antes del empaquetado final.
+   - [`ArchiveFanInNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanInNode.cs): Empaqueta **única y exclusivamente las entradas recibidas en `session.ReceivedItems`**, mapeando sus rutas relativas actualizadas (`Archive:RelativePath`). Se elimina el escaneo ciego de archivos en disco en `session.WorkingFolder`, erradicando que convivan archivos originales e imágenes optimizadas duplicadas en el archivo final.
+   - [`ImageOptimizerNode.cs`](file:///FileFlow.Plugin.Images/ImageOptimizerNode.cs): Parámetro `FileNameSuffix` (por defecto `""`). Genera nombres limpios sin sufijo `_optimized` innecesario y gestiona escrituras en el mismo archivo con archivo temporal intermedio seguro.
 5. **Preferencias de Usuario e Interfaz Gráfica (`FileFlow.App`)**:
    - [`UserPreferencesData.cs`](file:///FileFlow.App/Services/UserPreferencesService.cs): Nuevas propiedades persistentes `AutoCleanIntermediateTempFiles` (por defecto `true`) y `CleanStaleTempOnStartup` (por defecto `true`).
    - [`App.xaml.cs`](file:///FileFlow.App/App.xaml.cs): Tarea en segundo plano no bloqueante al inicio que purga automáticamente ejecuciones huérfanas (> 2 horas).
    - [`WorkflowSettingsViewModel.cs`](file:///FileFlow.App/ViewModels/WorkflowSettingsViewModel.cs) y [`WorkflowSettingsWindow.xaml`](file:///FileFlow.App/Views/Components/WorkflowSettingsWindow.xaml): Nuevos controles en la pestaña de Almacenamiento y comando interactivo `CleanTemporaryFilesNowCommand` con reporte de MB liberados.
    - Recursos multilingües actualizados en [`Strings.resx`](file:///FileFlow.App/Resources/Strings.resx) y [`Strings.es.resx`](file:///FileFlow.App/Resources/Strings.es.resx).
 6. **Métricas de Calidad y Pruebas**:
-   - Creados [`TempWorkspaceManagerTests.cs`](file:///FileFlow.Tests/Unit/Sdk/TempWorkspaceManagerTests.cs), [`StaleTempHousekeeperTests.cs`](file:///FileFlow.Tests/Unit/Sdk/StaleTempHousekeeperTests.cs), [`WorkflowWorkspaceCleanupIntegrationTests.cs`](file:///FileFlow.Tests/Integration/WorkflowWorkspaceCleanupIntegrationTests.cs) y adaptados [`TemporaryDirectoryAndSizeVariablesTests.cs`](file:///FileFlow.Tests/Unit/Core/TemporaryDirectoryAndSizeVariablesTests.cs).
-   - **826 / 826 pruebas unitarias e integración superadas al 100% con éxito (0 errores, 0 omitidas)**.
+   - Creados [`TempWorkspaceManagerTests.cs`](file:///FileFlow.Tests/Unit/Sdk/TempWorkspaceManagerTests.cs), [`StaleTempHousekeeperTests.cs`](file:///FileFlow.Tests/Unit/Sdk/StaleTempHousekeeperTests.cs), [`WorkflowWorkspaceCleanupIntegrationTests.cs`](file:///FileFlow.Tests/Integration/WorkflowWorkspaceCleanupIntegrationTests.cs) y ampliados [`ArchiveFanOutFanInPipelineTests.cs`](file:///FileFlow.Tests/Unit/Plugins/ArchiveFanOutFanInPipelineTests.cs) con prueba de cero duplicados.
+   - **827 / 827 pruebas unitarias e integración superadas al 100% con éxito (0 errores, 0 omitidas)**.
    - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`: **0 advertencias, 0 errores**.
 
 ---
@@ -4460,6 +4503,31 @@ En pipelines donde se procesan imágenes u otros ficheros generando versiones in
 - **Nuevas Pruebas Unitarias:** `FileVersionAndSelectionTests.cs` (8 pruebas completas cubriendo registro de versiones, resolución de plantillas, autopurga de candidatos perdedores, inmutabilidad del original, y relocalización de fuentes intermedias).
 - **Compilación de la Solución:** **0 advertencias, 0 errores**.
 - **Suite Completa de Pruebas:** `.\test.ps1 -Mode all` $\rightarrow$ **544 / 544 pruebas unitarias, integración y rendimiento superadas al 100%**.
+
+---
+
+## [2026-09-11] - Preservación de Jerarquía de Subdirectorios en Fan-Out / Fan-In de Archivos y Soporte de Variables de Dominio Archive
+
+### 🎯 Problema y Necesidad
+Al procesar lotes de cómics o archivos comprimidos estructurados en subcarpetas de origen (ej. `Comics\Marvel\SpiderMan.cbz`, `Comics\DC\Batman.cbz` emitidos por `FolderSourceNode` de forma recursiva), `ArchiveFanOutNode` extraía los contenidos a una carpeta temporal (`%TEMP%\FileFlow_Sessions\...`). Esto provocaba que las variables de resolución de ruta `{RelativeDir}` y `{RelativePath}` apuntaran a la carpeta temporal interna en lugar de la estructura relativa respecto a `SourceRootPath`, perdiendo la jerarquía de subdirectorios al empaquetar en `ArchiveFanInNode` hacia `{GlobalOutputDir}`.
+
+### 🛠️ Solución Implementada
+1. **Propagación de Rutas Relativas de Archivo en `ArchiveFanOutNode.cs`:**
+   - Calcula la ruta y directorio relativo del archivo comprimido original respecto a `SourceRootPath` mediante `PathRelativeCalculator.CalculateRelativeDirectory` y `CalculateRelativeFilePath`.
+   - Inyecta en cada elemento hijo extraído la metadata: `Archive:OriginalArchivePath`, `Archive:OriginalArchiveFileName`, `Archive:OriginalArchiveRelativeDir`, `Archive:OriginalArchiveRelativePath` y `Archive:RelativeDir`.
+2. **Soporte de Dominio `{Archive:...}` en `DomainVariableResolver.cs`:**
+   - Añadido `case "archive":` con soporte para `{Archive:RelativeDir}`, `{Archive:OriginalArchiveRelativeDir}`, `{Archive:RelativeFilePath}`, `{Archive:OriginalArchiveRelativePath}`, `{Archive:OriginalArchivePath}`, `{Archive:OriginalArchiveFileName}`, `{Archive:OriginalArchiveFileNameNoExt}`, `{Archive:RelativePath}`, `{Archive:WorkingFolder}`, `{Archive:SessionId}`, etc.
+3. **Fallback en `SystemVariablesResolver.cs` y `ParameterHelper.cs`:**
+   - Al resolver `{RelativeDir}` o `{RelativeDirectory}` en contextos de sesión de archivo (elementos hijos de Fan-Out o TemplateItem en Fan-In), recurre de forma transparente a `Archive:OriginalArchiveRelativeDir` / `Archive:OriginalArchivePath` si `OriginalPath` es un temporal de sesión.
+   - En `ParameterHelper.ResolveOutputPath`, se reconocen los tokens de dominio `Archive` como patrones explícitamente relativos al origen.
+4. **Comportamiento en `ArchiveFanInNode`:**
+   - Si se configura `DestinationFolder = "{GlobalOutputDir}\{RelativeDir}"` o `"{GlobalOutputDir}\{Archive:RelativeDir}"`, los archivos empaquetados se guardan automáticamente respetando los subdirectorios originales (ej. `E:\Salida\Marvel\SpiderMan_01.cbz`).
+
+### 🧪 Verificación y Tests
+- **Nuevas Pruebas Unitarias:**
+  - `VariableTemplateResolverTests.Resolve_ShouldResolveArchiveDomainVariables_AndPreserveRelativeDirectory`: prueba la resolución de tokens `{Archive:RelativeDir}` y `{RelativeDir}` con metadata de sesión.
+  - `ArchiveFanOutFanInPipelineTests.ComicPipeline_WithNestedDirectories_ShouldPreserveDirectoryStructureInDestinationFolder`: test de integración de extremo a extremo que procesa un cómic en subcarpeta y valida la creación del archivo de salida en la subcarpeta correcta.
+- **Suite Completa:** `.\test.ps1` $\rightarrow$ **833 / 833 pruebas superadas al 100% (0 fallos, 0 advertencias, 0 errores)**.
 
 
 

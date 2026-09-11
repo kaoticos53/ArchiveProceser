@@ -3,6 +3,7 @@ using FileFlow.App.Preview.Core;
 using FileFlow.App.Preview.Providers;
 using FileFlow.App.Preview.ViewModels;
 using FluentAssertions;
+using SixLabors.ImageSharp;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
@@ -80,6 +81,21 @@ public class FilePreviewerTests : IDisposable
         vm.CurrentIndex.Should().Be(1);
         vm.CanNavigateNext.Should().BeFalse();
         vm.CanNavigatePrevious.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WpfImageLoader_ShouldDecodeWebP_IntoValidBitmapSource()
+    {
+        string sampleWebp = Path.Combine(_tempDir, "sample_preview.webp");
+        using (var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(150, 80))
+        {
+            await img.SaveAsWebpAsync(sampleWebp);
+        }
+
+        var bmpSource = FileFlow.App.Preview.Helpers.WpfImageLoader.LoadBitmapSource(sampleWebp);
+        bmpSource.Should().NotBeNull();
+        bmpSource!.PixelWidth.Should().Be(150);
+        bmpSource!.PixelHeight.Should().Be(80);
     }
 
     public void Dispose()

@@ -125,6 +125,24 @@ public sealed class ArchiveFanInNode : IFlowNode
         }
     }
 
+    public async Task OnWorkflowCompletedAsync(
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        List<ArchiveSessionState> remainingSessions;
+        lock (_lock)
+        {
+            remainingSessions = _activeSessions.Values.ToList();
+            _activeSessions.Clear();
+        }
+
+        foreach (var session in remainingSessions)
+        {
+            context.Log($"[Fan-In Archivo] Finalizando sesión pendiente al completar flujo: '{session.OriginalArchiveFileName}' ({session.ReceivedItems.Count}/{session.TotalEntries} elementos recibidos)", LogLevel.Information, session.TemplateItem);
+            await CompleteArchiveSessionAsync(session, context, cancellationToken);
+        }
+    }
+
     private async Task CompleteArchiveSessionAsync(
         ArchiveSessionState session,
         IFlowExecutionContext context,
@@ -183,58 +201,6 @@ public sealed class ArchiveFanInNode : IFlowNode
 
             string targetArchivePath = Path.Combine(destDir, archiveName);
 
-            // Sincronizar archivos externos a la carpeta de trabajo de la sesión si algún nodo los guardó fuera
-            if (!string.IsNullOrWhiteSpace(session.WorkingFolder) && Directory.Exists(session.WorkingFolder))
-            {
-                foreach (var recItem in session.ReceivedItems)
-                {
-                    string curPath = recItem.CurrentPath;
-                    if (!string.IsNullOrWhiteSpace(curPath) && File.Exists(curPath))
-                    {
-                        string fullCur = Path.GetFullPath(curPath);
-                        string fullWork = Path.GetFullPath(session.WorkingFolder);
-
-                        if (!fullCur.StartsWith(fullWork, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // El archivo fue generado en otra carpeta (ej. _optimized.webp en OutputDirectory externo)
-                            string relPath = recItem.Metadata.TryGetValue("Archive:RelativePath", out var rpVal) && rpVal != null
-                                ? rpVal.ToString()!
-                                : Path.GetFileName(curPath);
-
-                            // Cambiar la extensión en el destino si el archivo cambió de formato
-                            string targetInnerFile = Path.Combine(session.WorkingFolder, relPath);
-                            string? targetExt = Path.GetExtension(curPath);
-                            if (!string.IsNullOrEmpty(targetExt) && !string.Equals(Path.GetExtension(targetInnerFile), targetExt, StringComparison.OrdinalIgnoreCase))
-                            {
-                                targetInnerFile = Path.ChangeExtension(targetInnerFile, targetExt);
-                            }
-
-                            string? targetInnerDir = Path.GetDirectoryName(targetInnerFile);
-                            if (!string.IsNullOrEmpty(targetInnerDir) && !Directory.Exists(targetInnerDir))
-                            {
-                                Directory.CreateDirectory(targetInnerDir);
-                            }
-
-                            // Si había un original anterior en workingFolder con distinta extensión (ej. .jpg), eliminarlo
-                            string oldCandidate = Path.Combine(session.WorkingFolder, relPath);
-                            if (File.Exists(oldCandidate) && !string.Equals(oldCandidate, targetInnerFile, StringComparison.OrdinalIgnoreCase))
-                            {
-                                try { File.Delete(oldCandidate); } catch { }
-                            }
-
-                            File.Copy(curPath, targetInnerFile, overwrite: true);
-
-                            // Si el archivo origen era un temporal intermedio, eliminarlo para no acumular basura
-                            if (curPath.Contains(Path.GetTempPath(), StringComparison.OrdinalIgnoreCase) ||
-                                (recItem.Metadata.TryGetValue("IsTemporary", out var isTempObj) && isTempObj is true))
-                            {
-                                try { File.Delete(curPath); } catch { }
-                            }
-                        }
-                    }
-                }
-            }
-
             ArchiveType archiveType = targetFormat switch
             {
                 "TAR" => ArchiveType.Tar,
@@ -253,19 +219,66 @@ public sealed class ArchiveFanInNode : IFlowNode
                 _ => CompressionType.Deflate
             };
 
-            // Empaquetar
+            // Construir el mapa de entradas exactas a empaquetar a partir de los elementos recibidos.
+            // Esto garantiza que solo los archivos resultantes del pipeline (y no versiones originales descartadas o residuales)
+            // sean empaquetados en el archivo final.
+            var entriesToPack = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var processedOriginalRelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var recItem in session.ReceivedItems)
+            {
+                string curPath = recItem.CurrentPath;
+                if (string.IsNullOrWhiteSpace(curPath) || !File.Exists(curPath))
+                {
+                    continue;
+                }
+
+                string relPath = recItem.Metadata.TryGetValue("Archive:RelativePath", out var rpVal) && rpVal != null
+                    ? rpVal.ToString()!
+                    : Path.GetFileName(curPath);
+
+                string normRelPath = relPath.Replace('\\', '/').TrimStart('/');
+                processedOriginalRelPaths.Add(normRelPath);
+
+                string curExt = Path.GetExtension(curPath);
+                string origExt = Path.GetExtension(normRelPath);
+
+                string entryName;
+                if (!string.IsNullOrEmpty(curExt) && !string.Equals(curExt, origExt, StringComparison.OrdinalIgnoreCase))
+                {
+                    entryName = Path.ChangeExtension(normRelPath, curExt).Replace('\\', '/');
+                }
+                else
+                {
+                    entryName = normRelPath;
+                }
+
+                entriesToPack[entryName] = curPath;
+            }
+
+            // Fallback de seguridad: si hay archivos en la carpeta de descompresión temporal que no fueron
+            // modificados ni procesados por downstream (ej. metadatos u otros archivos omitidos), preservarlos
+            if (!string.IsNullOrWhiteSpace(session.WorkingFolder) && Directory.Exists(session.WorkingFolder))
+            {
+                var allDiskFiles = Directory.GetFiles(session.WorkingFolder, "*.*", SearchOption.AllDirectories);
+                foreach (var diskFile in allDiskFiles)
+                {
+                    string diskRelPath = Path.GetRelativePath(session.WorkingFolder, diskFile).Replace('\\', '/').TrimStart('/');
+                    if (!processedOriginalRelPaths.Contains(diskRelPath) && !entriesToPack.ContainsKey(diskRelPath))
+                    {
+                        entriesToPack[diskRelPath] = diskFile;
+                    }
+                }
+            }
+
+            // Empaquetar todas las entradas consolidadas
             await using (var stream = await storage.OpenWriteAsync(targetArchivePath, cancellationToken))
             using (var writer = WriterFactory.OpenWriter(stream, archiveType, new WriterOptions(compType)))
             {
-                if (!string.IsNullOrWhiteSpace(session.WorkingFolder) && Directory.Exists(session.WorkingFolder))
+                foreach (var (relativeEntryName, filePath) in entriesToPack)
                 {
-                    var filesToPack = Directory.GetFiles(session.WorkingFolder, "*.*", SearchOption.AllDirectories);
-                    foreach (var file in filesToPack)
-                    {
-                        string relativeEntryName = Path.GetRelativePath(session.WorkingFolder, file).Replace('\\', '/');
-                        await using var inStream = await storage.OpenReadAsync(file, cancellationToken);
-                        writer.Write(relativeEntryName, inStream);
-                    }
+                    await using var inStream = await storage.OpenReadAsync(filePath, cancellationToken);
+                    writer.Write(relativeEntryName, inStream);
                 }
             }
 

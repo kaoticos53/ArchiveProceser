@@ -27,16 +27,13 @@ public partial class ImageCompareSliderControl : UserControl
         {
             try
             {
-                var bmpOrig = new BitmapImage();
-                bmpOrig.BeginInit();
-                bmpOrig.CacheOption = BitmapCacheOption.OnLoad;
-                bmpOrig.UriSource = new Uri(originalPath);
-                bmpOrig.EndInit();
-                bmpOrig.Freeze();
-                OriginalImage.Source = bmpOrig;
-
-                long origSize = new FileInfo(originalPath).Length;
-                OriginalBadgeText.Text = $"Original ({origSize / 1024.0:F1} KB)";
+                var bmpOrig = Helpers.WpfImageLoader.LoadBitmapSource(originalPath);
+                if (bmpOrig != null)
+                {
+                    OriginalImage.Source = bmpOrig;
+                    long origSize = new FileInfo(originalPath).Length;
+                    OriginalBadgeText.Text = $"Original ({origSize / 1024.0:F1} KB)";
+                }
             }
             catch { }
         }
@@ -45,16 +42,13 @@ public partial class ImageCompareSliderControl : UserControl
         {
             try
             {
-                var bmpProc = new BitmapImage();
-                bmpProc.BeginInit();
-                bmpProc.CacheOption = BitmapCacheOption.OnLoad;
-                bmpProc.UriSource = new Uri(processedPath);
-                bmpProc.EndInit();
-                bmpProc.Freeze();
-                ProcessedImage.Source = bmpProc;
-
-                long procSize = new FileInfo(processedPath).Length;
-                ProcessedBadgeText.Text = $"Procesado ({procSize / 1024.0:F1} KB)";
+                var bmpProc = Helpers.WpfImageLoader.LoadBitmapSource(processedPath);
+                if (bmpProc != null)
+                {
+                    ProcessedImage.Source = bmpProc;
+                    long procSize = new FileInfo(processedPath).Length;
+                    ProcessedBadgeText.Text = $"Procesado ({procSize / 1024.0:F1} KB)";
+                }
             }
             catch { }
         }

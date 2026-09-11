@@ -93,6 +93,11 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
         CancellationToken cancellationToken)
     {
         string archivePath = item.CurrentPath;
+        string origArchivePath = !string.IsNullOrWhiteSpace(item.OriginalPath) ? item.OriginalPath : archivePath;
+        string? sourceRoot = item.Metadata.TryGetValue("SourceRootPath", out var srp) && srp != null ? srp.ToString() : null;
+        string archiveRelDir = FileFlow.Sdk.TemplateEngine.Resolvers.PathRelativeCalculator.CalculateRelativeDirectory(origArchivePath, sourceRoot);
+        string archiveRelFile = FileFlow.Sdk.TemplateEngine.Resolvers.PathRelativeCalculator.CalculateRelativeFilePath(origArchivePath, sourceRoot);
+
         string workingPattern = Parameters.TryGetValue("WorkingFolder", out var wfVal) ? ParameterHelper.GetString(wfVal, @"{TempDir}\FileFlow_Sessions") : @"{TempDir}\FileFlow_Sessions";
         string baseWorkingDir = ParameterHelper.ResolveOutputPath(workingPattern, item);
         bool cleanWrapper = Parameters.TryGetValue("CleanWrapper", out var cwVal) && ParameterHelper.GetBoolean(cwVal, false);
@@ -171,9 +176,12 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
                 }
 
                 childItem.Metadata["Archive:SessionId"] = sessionId;
-                childItem.Metadata["Archive:OriginalArchivePath"] = archivePath;
-                childItem.Metadata["Archive:OriginalArchiveFileName"] = Path.GetFileName(archivePath);
-                childItem.Metadata["Archive:OriginalArchiveFormat"] = Path.GetExtension(archivePath).TrimStart('.').ToUpperInvariant();
+                childItem.Metadata["Archive:OriginalArchivePath"] = origArchivePath;
+                childItem.Metadata["Archive:OriginalArchiveFileName"] = Path.GetFileName(origArchivePath);
+                childItem.Metadata["Archive:OriginalArchiveFormat"] = Path.GetExtension(origArchivePath).TrimStart('.').ToUpperInvariant();
+                childItem.Metadata["Archive:OriginalArchiveRelativeDir"] = archiveRelDir;
+                childItem.Metadata["Archive:OriginalArchiveRelativePath"] = archiveRelFile;
+                childItem.Metadata["Archive:RelativeDir"] = archiveRelDir;
                 childItem.Metadata["Archive:RelativePath"] = entryRel;
                 childItem.Metadata["Archive:EntryIndex"] = simIndex++;
                 childItem.Metadata["Archive:TotalEntries"] = totalSim;
@@ -298,9 +306,12 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
                     }
 
                     childItem.Metadata["Archive:SessionId"] = sessionId;
-                    childItem.Metadata["Archive:OriginalArchivePath"] = archivePath;
-                    childItem.Metadata["Archive:OriginalArchiveFileName"] = Path.GetFileName(archivePath);
-                    childItem.Metadata["Archive:OriginalArchiveFormat"] = Path.GetExtension(archivePath).TrimStart('.').ToUpperInvariant();
+                    childItem.Metadata["Archive:OriginalArchivePath"] = origArchivePath;
+                    childItem.Metadata["Archive:OriginalArchiveFileName"] = Path.GetFileName(origArchivePath);
+                    childItem.Metadata["Archive:OriginalArchiveFormat"] = Path.GetExtension(origArchivePath).TrimStart('.').ToUpperInvariant();
+                    childItem.Metadata["Archive:OriginalArchiveRelativeDir"] = archiveRelDir;
+                    childItem.Metadata["Archive:OriginalArchiveRelativePath"] = archiveRelFile;
+                    childItem.Metadata["Archive:RelativeDir"] = archiveRelDir;
                     childItem.Metadata["Archive:RelativePath"] = relPath;
                     childItem.Metadata["Archive:EntryIndex"] = index++;
                     childItem.Metadata["Archive:TotalEntries"] = totalCount;

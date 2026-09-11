@@ -8,19 +8,51 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Target Framework**: `.NET 9` (`net9.0` / `net9.0-windows` para WPF UI) con preparación para .NET 10.
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **826 / 826 Pruebas Pasadas con 100% de Éxito**.
+- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
+  --80. **Preservación de Estructura de Directorios de Origen en Fan-Out / Fan-In de Archivos y Soporte de Variables `{Archive:...}` (`ArchiveFanOutNode`, `ArchiveFanInNode`, `DomainVariableResolver`, `SystemVariablesResolver`)**:
+      - **Motivación y Diagnóstico**:
+        1. Al procesar cómics o archivos situados en subdirectorios de origen (ej. `Comics\Marvel\SpiderMan_01.cbz` emitidos por `FolderSourceNode`), `ArchiveFanOutNode` generaba items hijos con `OriginalPath` apuntando a carpetas temporales (`%TEMP%\FileFlow_Sessions\...`).
+        2. Al intentar usar `{RelativeDir}` o `{RelativePath}` en `ArchiveFanInNode` hacia `{GlobalOutputDir}`, la función calculaba la ruta respecto al directorio temporal interno perdiendo la estructura de subcarpetas relativas al origen (`SourceRootPath`).
+      - **Solución Implementada**:
+        1. *Cálculo y Propagación en `ArchiveFanOutNode`*: Calcula la ruta relativa del archivo comprimido original respecto a `SourceRootPath` e inyecta en cada item hijo `Archive:OriginalArchivePath`, `Archive:OriginalArchiveFileName`, `Archive:OriginalArchiveRelativeDir`, `Archive:OriginalArchiveRelativePath` y `Archive:RelativeDir`.
+        2. *Dominio `{Archive:...}` en `DomainVariableResolver`*: Soporte completo para `{Archive:RelativeDir}`, `{Archive:OriginalArchiveRelativeDir}`, `{Archive:OriginalArchiveRelativePath}`, `{Archive:OriginalArchivePath}`, `{Archive:OriginalArchiveFileName}`, etc.
+        3. *Fallback Transparente en `SystemVariablesResolver`*: `{RelativeDir}` y `{RelativeDirectory}` resuelven la ruta relativa de origen del archivo archivado automáticamente cuando se ejecutan en un contexto de sesión de archivo.
+        4. *Reconocimiento en `ParameterHelper.ResolveOutputPath`*: Reconoce los patrones de dominio `Archive` como rutas relativas al origen.
+        5. *Empaquetado en Destino*: Configurando `DestinationFolder = "{GlobalOutputDir}\{RelativeDir}"` o `"{GlobalOutputDir}\{Archive:RelativeDir}"`, los archivos empaquetados se guardan en sus subdirectorios respectivos (ej. `Salida\Marvel\SpiderMan_01.cbz`).
+      - **Validación**: Pruebas en `VariableTemplateResolverTests` y `ArchiveFanOutFanInPipelineTests`. **833 / 833 pruebas unitarias e integración superadas al 100% (0 errores, 0 advertencias)**.
+  --79. **Soporte Universal de Decodificación y Visualización WebP en WPF y OCR (`WpfImageLoader` & `LocalOcrNode`)**:
+      - **Motivación y Diagnóstico**:
+        1. En Windows, el componente nativo de WPF `BitmapImage` utiliza WIC (Windows Imaging Component), el cual carece de decodificador para `.webp` en la mayoría de configuraciones estándar. Esto provocaba que en el visor de vista previa (`ImagePreviewProvider`) y en el deslizador de comparación original/optimizado (`ImageCompareSliderControl`), los archivos `.webp` se mostraran vacíos o en negro.
+        2. En `LocalOcrNode`, Leptonica (`Pix.LoadFromMemory`) no soporta nativamente el formato WebP en crudo.
+      - **Solución Implementada**:
+        1. *Cargador Universal de Imágenes en WPF (`WpfImageLoader`)*: Combina carga nativa con decodificación mediante SixLabors.ImageSharp (`Image.Load` $\rightarrow$ `MemoryStream` PNG a `BitmapImage`), permitiendo visualizar WebP, TGA, TIFF y cualquier formato gráfico moderno en WPF de manera 100% autónoma y sin requerir códecs en el sistema operativo.
+        2. *Soporte WebP en `LocalOcrNode`*: Conversión en memoria a PNG antes de `Pix.LoadFromMemory`, permitiendo OCR inmediato sobre imágenes WebP.
+      - **Validación**: Creados tests en `ImageOptimizerNodeTests.cs` y `FilePreviewerTests.cs`. **831 / 831 pruebas superadas al 100% con 0 errores y 0 advertencias bajo `--warnaserror`**.
+  --78. **Garantía de Cero Pérdida de Archivos en Empaquetado (Fan-In) y Passthrough Seguro en Optimizador de Imágenes (`ImageOptimizerNode` & `ArchiveFanInNode`)**:
+      - **Motivación y Diagnóstico**:
+        1. Al procesar cómics (`.cbz`) o archivos comprimidos con imágenes y metadatos (`ComicInfo.xml`, `metadata.json`, `.nfo`, etc.), `ImageOptimizerNode` intentaba decodificar los archivos no-imagen con SixLabors.ImageSharp, arrojando `UnknownImageFormatException` y emitiendo a `Error`.
+        2. Al conectarse linealmente `ArchiveFanOutNode` $\rightarrow$ `ImageOptimizerNode` $\rightarrow$ `ArchiveFanInNode`, los archivos que iban a `Error` nunca llegaban a `ArchiveFanInNode`.
+        3. Esto provocaba que `session.ReceivedItems.Count` fuera menor que `session.TotalEntries`, dejando la sesión incompleta (el archivo final nunca se creaba o perdía los metadatos).
+        4. Al seleccionar `KeepOriginalIfLarger`, las imágenes originales conservadas necesitaban garantizarse sin colisiones de nombres.
+      - **Solución Implementada**:
+        1. *Parámetro `PassThroughNonImages` en `ImageOptimizerNode`* (por defecto `true`): los archivos con extensiones no-imagen (`.xml`, `.json`, `.txt`, `.nfo`, etc.) o archivos dañados que no puedan decodificarse se transfieren intactos y de forma segura al puerto `Out` con el flag `IsImageOptimized = false`.
+        2. *Hook `OnWorkflowCompletedAsync` en `ArchiveFanInNode`*: Si un flujo finaliza y quedan sesiones pendientes con items recibidos, se finalizan y empaquetan automáticamente sin quedarse bloqueadas en memoria.
+        3. *Fallback de Directorio de Sesión en `ArchiveFanInNode`*: Empaqueta todos los elementos recibidos (`session.ReceivedItems`) mapeando `Archive:RelativePath` y añade cualquier archivo extraído en `session.WorkingFolder` no cubierto ni reemplazado por downstream, garantizando la preservación del 100% de los ficheros del cómic/archivo original sin duplicados.
+      - **Validación**: Añadida prueba `DirectLinearPipeline_WhenPipingAllExtractedItemsDirectlyThroughOptimizer_ShouldPreserveAllEntriesAndNonImages` y pruebas de `PassThroughNonImages`. **829 / 829 pruebas unitarias e integración superadas al 100% con éxito (0 errores, 0 advertencias bajo `--warnaserror`)**.
   --77. **Gestión de Ciclo de Vida y Limpieza Determinista del Espacio Temporal de Ejecución (Temp Workspace Lifecycle & Housekeeping)**:
       - **Motivación y Diagnóstico**:
         1. En ejecuciones complejas (Fan-Out/Fan-In de cómics, optimizaciones sucesivas de imágenes, eliminación de fondo con IA), se generaban miles de carpetas aleatorias no rastreadas (`Guid.NewGuid()[..8]`) a través de `ParameterHelper.ResolveIntermediateOutputDir`, acumulando gigabytes de basura en `%TEMP%`.
         2. Si un flujo se cancelaba o fallaba en un nodo intermedio, los directorios de trabajo de sesión (`FileFlow_Sessions`) no se liberaban.
+        3. En `ArchiveFanInNode`, el empaquetado hacía un escaneo ciego de todo el directorio en disco en lugar de basarse en los items recibidos, provocando que los archivos originales reemplazados y las versiones optimizadas convivieran dentro del archivo final re-empaquetado.
       - **Solución Implementada**:
         1. *Espacio de Trabajo Temporal Acotado (`ITempWorkspaceManager` & `WorkflowWorkspaceManager`)*: Cada ejecución de flujo crea su propio subdirectorio aislado (`Runs/{ExecutionId}/`), registrando archivos y carpetas concurrentemente de forma thread-safe.
         2. *Limpieza Determinista en `WorkflowExecutor.finally`*: Se garantiza que al finalizar, cancelar o abortar un flujo por excepción, el espacio temporal y todos los recursos registrados se eliminan automáticamente si `AutoCleanIntermediateTempFiles == true`.
         3. *Eliminación de Subcarpetas Aleatorias No Rastreadas*: `ParameterHelper.ResolveIntermediateOutputDir` ahora delega en `context.TempWorkspace.CreateSubdirectory("intermediate")` o la carpeta de sesión del cómic/archivo, evitando fragmentación de carpetas en disco.
-        4. *Sincronización en Fan-Out / Fan-In*: En `ArchiveFanInNode`, los archivos temporales intermedios procesados se eliminan inmediatamente tras copiarse en la sesión antes del empaquetado final.
-        5. *Housekeeping de Temporales Huérfanos*: `AppPaths.CleanupStaleTempDirectories(TimeSpan? maxAge)` purga ejecuciones residuales (>2 horas) en segundo plano al iniciar la app (`App.xaml.cs`) y bajo demanda desde los ajustes de la app (`WorkflowSettingsViewModel.CleanTemporaryFilesNowCommand`).
-        6. *Preferencias de Usuario*: `AutoCleanIntermediateTempFiles` y `CleanStaleTempOnStartup` persistidas en `user_preferences.json`.
-      - **Validación**: Creados `TempWorkspaceManagerTests.cs`, `StaleTempHousekeeperTests.cs`, `WorkflowWorkspaceCleanupIntegrationTests.cs` y adaptados `TemporaryDirectoryAndSizeVariablesTests.cs`. **826 / 826 pruebas unitarias superadas al 100% (0 errores, 0 advertencias bajo `--warnaserror`)**.
+        4. *Empaquetado Estricto Anti-Duplicados en `ArchiveFanInNode`*: Empaqueta única y exclusivamente los elementos recibidos en `session.ReceivedItems` con sus rutas relativas actualizadas (`Archive:RelativePath`), ignorando originales obsoletos o archivos intermedios residuales en disco.
+        5. *Nombres Limpios en `ImageOptimizerNode`*: Parámetro `FileNameSuffix` (por defecto `""`) que evita agregar `_optimized` a menos que sea solicitado explícitamente.
+        6. *Housekeeping de Temporales Huérfanos*: `AppPaths.CleanupStaleTempDirectories(TimeSpan? maxAge)` purga ejecuciones residuales (>2 horas) en segundo plano al iniciar la app (`App.xaml.cs`) y bajo demanda desde los ajustes de la app (`WorkflowSettingsViewModel.CleanTemporaryFilesNowCommand`).
+        7. *Preferencias de Usuario*: `AutoCleanIntermediateTempFiles` y `CleanStaleTempOnStartup` persistidas en `user_preferences.json`.
+      - **Validación**: Creados `TempWorkspaceManagerTests.cs`, `StaleTempHousekeeperTests.cs`, `WorkflowWorkspaceCleanupIntegrationTests.cs` y ampliados `ArchiveFanOutFanInPipelineTests.cs`. **827 / 827 pruebas unitarias superadas al 100% (0 errores, 0 advertencias bajo `--warnaserror`)**.
   --76. **Motor de Descompresión Universal Multi-Estrategia (.NET 9 Zip, 7-Zip CLI Universal y SharpCompress Resiliente)**:
       - **Motivación y Diagnóstico**:
         1. En archivos comprimidos modernos, cómics (.cbz, .cbr, .cb7), paquetes RAR5 con diccionarios extensos (>128 MB) o archivos sólidos (*solid archives* en 7z/RAR), el acceso aleatorio de SharpCompress fallaba silenciosamente tras 1 o 2 entradas, provocando extracciones incompletas.

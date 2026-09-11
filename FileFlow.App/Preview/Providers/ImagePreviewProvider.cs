@@ -116,23 +116,20 @@ public class ImagePreviewProvider : IFilePreviewProvider
             IsHitTestVisible = false
         };
 
-        BitmapImage? bmp = null;
+        BitmapSource? bmp = null;
         try
         {
             if (File.Exists(context.CurrentPath))
             {
-                bmp = new BitmapImage();
-                bmp.BeginInit();
-                bmp.CacheOption = BitmapCacheOption.OnLoad;
-                bmp.UriSource = new Uri(context.CurrentPath);
-                bmp.EndInit();
-                bmp.Freeze();
-                img.Source = bmp;
-
-                img.Width = bmp.PixelWidth;
-                img.Height = bmp.PixelHeight;
-                overlayCanvas.Width = bmp.PixelWidth;
-                overlayCanvas.Height = bmp.PixelHeight;
+                bmp = Helpers.WpfImageLoader.LoadBitmapSource(context.CurrentPath);
+                if (bmp != null)
+                {
+                    img.Source = bmp;
+                    img.Width = bmp.PixelWidth;
+                    img.Height = bmp.PixelHeight;
+                    overlayCanvas.Width = bmp.PixelWidth;
+                    overlayCanvas.Height = bmp.PixelHeight;
+                }
             }
         }
         catch { }

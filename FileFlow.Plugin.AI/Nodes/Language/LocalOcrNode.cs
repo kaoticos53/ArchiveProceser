@@ -2,6 +2,7 @@ using System.IO;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
+using SixLabors.ImageSharp;
 using Tesseract;
 
 namespace FileFlow.Plugin.AI;
@@ -108,9 +109,38 @@ public sealed class LocalOcrNode : IFlowNode
             string fullText = await Task.Run(() =>
             {
                 using var engine = new TesseractEngine(Path.Combine(tessdataDir, "tessdata"), ocrLang, mode);
-                using var pix = Pix.LoadFromMemory(imageBytes);
-                using var page = engine.Process(pix);
-                return page.GetText();
+                Pix? pix = null;
+                try
+                {
+                    if (ext is ".webp" or ".tga" or ".pbm")
+                    {
+                        using var img = SixLabors.ImageSharp.Image.Load(imageBytes);
+                        using var pngMs = new MemoryStream();
+                        img.SaveAsPng(pngMs);
+                        pix = Pix.LoadFromMemory(pngMs.ToArray());
+                    }
+                    else
+                    {
+                        try
+                        {
+                            pix = Pix.LoadFromMemory(imageBytes);
+                        }
+                        catch
+                        {
+                            using var img = SixLabors.ImageSharp.Image.Load(imageBytes);
+                            using var pngMs = new MemoryStream();
+                            img.SaveAsPng(pngMs);
+                            pix = Pix.LoadFromMemory(pngMs.ToArray());
+                        }
+                    }
+
+                    using var page = engine.Process(pix);
+                    return page.GetText();
+                }
+                finally
+                {
+                    pix?.Dispose();
+                }
             }, cancellationToken).ConfigureAwait(false);
 
             fullText = fullText.Trim();

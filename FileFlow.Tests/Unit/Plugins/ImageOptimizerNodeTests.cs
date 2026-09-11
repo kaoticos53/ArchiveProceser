@@ -36,7 +36,7 @@ public class ImageOptimizerNodeTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ShouldEmitErrorAndNeverOut_WhenImageFileIsInvalidOrCorrupt()
+    public async Task ExecuteAsync_ShouldEmitErrorAndNeverOut_WhenImageFileIsInvalidOrCorrupt_AndPassThroughIsDisabled()
     {
         // Arrange
         string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_CorruptImg_" + Guid.NewGuid().ToString("N"));
@@ -48,6 +48,7 @@ public class ImageOptimizerNodeTests
         {
             var node = new ImageOptimizerNode();
             node.Parameters["OutputDirectory"] = Path.Combine(tempDir, "Out");
+            node.Parameters["PassThroughNonImages"] = false;
             var item = new FileItemContext(corruptFile, isDirectory: false);
 
             var mockContext = new Mock<IFlowExecutionContext>();
@@ -57,9 +58,47 @@ public class ImageOptimizerNodeTests
             // Act
             await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
 
-            // Assert: Must emit Error once and NEVER emit Out
+            // Assert: Must emit Error once and NEVER emit Out when PassThroughNonImages is false
             mockContext.Verify(c => c.EmitAsync("Error", item), Times.Once);
             mockContext.Verify(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()), Times.Never);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldPassThroughToOut_WhenImageFileIsInvalidOrCorrupt_AndPassThroughIsEnabled()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_CorruptPass_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string corruptFile = Path.Combine(tempDir, "corrupted.jpg");
+        await File.WriteAllTextAsync(corruptFile, "This is not an image file content.");
+
+        try
+        {
+            var node = new ImageOptimizerNode();
+            node.Parameters["OutputDirectory"] = Path.Combine(tempDir, "Out");
+            node.Parameters["PassThroughNonImages"] = true;
+            var item = new FileItemContext(corruptFile, isDirectory: false);
+
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+                       .Returns(Task.CompletedTask);
+
+            // Act
+            await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+            // Assert: Must emit Out with IsImageOptimized = false
+            mockContext.Verify(c => c.EmitAsync("Out", item), Times.Once);
+            mockContext.Verify(c => c.EmitAsync("Error", It.IsAny<FileItemContext>()), Times.Never);
+            item.Metadata.Should().ContainKey("IsImageOptimized");
+            item.Metadata["IsImageOptimized"].Should().Be(false);
         }
         finally
         {
@@ -379,5 +418,66 @@ public class ImageOptimizerNodeTests
             }
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenInputIsWebP_ShouldDecodeAndOptimizeSuccessfully()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_WebpTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string srcWebpFile = Path.Combine(tempDir, "input_source.webp");
+        string outDir = Path.Combine(tempDir, "OutWebp");
+
+        try
+        {
+            // Create a real WebP image (400x200)
+            using (var img = new Image<Rgba32>(400, 200))
+            {
+                for (int y = 0; y < 200; y++)
+                    for (int x = 0; x < 400; x++)
+                        img[x, y] = new Rgba32((byte)(x % 255), (byte)(y % 255), 100);
+
+                await img.SaveAsWebpAsync(srcWebpFile);
+            }
+
+            var node = new ImageOptimizerNode();
+            node.Parameters["Width"] = "200";
+            node.Parameters["Height"] = "";
+            node.Parameters["TargetFormat"] = "PNG";
+            node.Parameters["OutputDirectory"] = outDir;
+
+            var item = new FileItemContext(srcWebpFile, isDirectory: false)
+            {
+                FileSizeBytes = new FileInfo(srcWebpFile).Length
+            };
+
+            var emittedItems = new List<FileItemContext>();
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+                       .Callback<string, FileItemContext>((port, emItem) => emittedItems.Add(emItem))
+                       .Returns(Task.CompletedTask);
+
+            // Act: Process WebP input into PNG
+            await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+            // Assert
+            emittedItems.Should().HaveCount(1);
+            string generatedFile = emittedItems[0].CurrentPath;
+            File.Exists(generatedFile).Should().BeTrue();
+            generatedFile.Should().EndWith(".png");
+
+            using var resultImg = await Image.LoadAsync(generatedFile);
+            resultImg.Width.Should().Be(200);
+            resultImg.Height.Should().Be(100);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
 }
+
 

@@ -144,4 +144,35 @@ public class VariableTemplateResolverTests
         // Assert
         resolved.Should().Be(plainText);
     }
+
+    [Fact]
+    public void Resolve_ShouldResolveArchiveDomainVariables_AndPreserveRelativeDirectory()
+    {
+        // Arrange - Extracted file in temp session with archive metadata
+        var item = new FileItemContext(@"C:\Users\User\AppData\Local\Temp\FileFlow_Sessions\session123\01.webp", isDirectory: false)
+        {
+            OriginalPath = @"C:\Users\User\AppData\Local\Temp\FileFlow_Sessions\session123\01.webp"
+        };
+        item.Metadata["SourceRootPath"] = @"E:\Comics";
+        item.Metadata["GlobalOutputDir"] = @"E:\Salida";
+        item.Metadata["Archive:OriginalArchivePath"] = @"E:\Comics\Marvel\SpiderMan_01.cbz";
+        item.Metadata["Archive:OriginalArchiveFileName"] = "SpiderMan_01.cbz";
+        item.Metadata["Archive:OriginalArchiveRelativeDir"] = "Marvel";
+        item.Metadata["Archive:OriginalArchiveRelativePath"] = @"Marvel\SpiderMan_01.cbz";
+        item.Metadata["Archive:RelativeDir"] = "Marvel";
+
+        // Act
+        string relDir = VariableTemplateResolver.Resolve("{RelativeDir}", item);
+        string archRelDir = VariableTemplateResolver.Resolve("{Archive:RelativeDir}", item);
+        string archOrigRelDir = VariableTemplateResolver.Resolve("{Archive:OriginalArchiveRelativeDir}", item);
+        string archFileName = VariableTemplateResolver.Resolve("{Archive:OriginalArchiveFileName}", item);
+        string fullOutput = VariableTemplateResolver.Resolve(@"{GlobalOutputDir}\{RelativeDir}", item);
+
+        // Assert
+        relDir.Should().Be("Marvel");
+        archRelDir.Should().Be("Marvel");
+        archOrigRelDir.Should().Be("Marvel");
+        archFileName.Should().Be("SpiderMan_01.cbz");
+        fullOutput.Should().Be(@"E:\Salida\Marvel");
+    }
 }

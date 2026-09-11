@@ -232,6 +232,10 @@ public static class ParameterHelper
                                          targetPathPattern.Contains("{RelativeDirectory}", StringComparison.OrdinalIgnoreCase) ||
                                          targetPathPattern.Contains("{RelativePath}", StringComparison.OrdinalIgnoreCase) ||
                                          targetPathPattern.Contains("{RelativeFilePath}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{Archive:RelativeDir}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{Archive:OriginalArchiveRelativeDir}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{Archive:RelativeFilePath}", StringComparison.OrdinalIgnoreCase) ||
+                                         targetPathPattern.Contains("{Archive:OriginalArchiveRelativePath}", StringComparison.OrdinalIgnoreCase) ||
                                          targetPathPattern.Contains("{SourceDir}", StringComparison.OrdinalIgnoreCase) ||
                                          targetPathPattern.Contains("{OriginalDir}", StringComparison.OrdinalIgnoreCase);
 
