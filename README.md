@@ -54,7 +54,8 @@ dotnet test FileFlow.slnx
 
 ### 📚 Documentation
 
-- [System Specifications (SRS v2.0)](docs/ESPECIFICACIONES.md)
+- [System Architecture](docs/architecture.md)
+- [System Specifications (SRS v2.0 Archive)](docs/history/2026-08_srs_especificaciones.md)
 - [User Manual](docs/manual_de_usuario.md)
 - [Testing Guide](docs/guia_de_pruebas.md)
 - [Architecture](docs/architecture.md)
@@ -207,7 +208,8 @@ FileFlow Studio cuenta con una rigurosa suite de pruebas automatizadas con **100
 
 ## 📚 Documentación Adicional
 
-- 📄 [**Especificaciones Formales del Sistema (SRS v2.0)**](docs/ESPECIFICACIONES.md)
+- 🏛️ [**Arquitectura y Diseño Técnico**](docs/architecture.md)
+- 📄 [**Especificaciones Formales del Sistema (SRS v2.0 - Histórico)**](docs/history/2026-08_srs_especificaciones.md)
 - 📖 [**Manual de Usuario Completo**](docs/manual_de_usuario.md)
 - 🧪 [**Guía y Catálogo Exhaustivo de Pruebas**](docs/guia_de_pruebas.md)
 - 🏛️ [**Arquitectura y Diseño Técnico**](docs/architecture.md)
