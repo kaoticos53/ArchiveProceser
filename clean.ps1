@@ -9,10 +9,10 @@
 
 .DESCRIPTION
     Este script elimina:
-    - Directorios de salida de compilación: 'bin' y 'obj' en todos los proyectos.
-    - Artefactos de publicación: 'installer/publish' e 'installer/output'.
-    - Resultados de pruebas y cobertura: 'TestResults' y 'coverage-report'.
-    - Cachés de desarrollo y temporales: '.vs', '.dotnet_tmp', archivos '*.user', '*.suo' y 'crash.log'.
+    - Directorios de salida de compilación: 'bin' y 'obj' en todos los proyectos de la solución.
+    - Artefactos de distribución y empaquetado: 'dist/', 'installer/publish', 'installer/output', 'installer/temp_linux_build', 'release-assets/' y 'squashfs-root/'.
+    - Resultados de pruebas y cobertura: 'TestResults', 'coverage-report' y '.dotnet_tmp'.
+    - Cachés de desarrollo y temporales: '.vs', archivos '*.user', '*.suo', 'crash.log', 'l10n_findings.csv' y carpetas de prueba temporal.
     - Opcionalmente con -IncludePdfs: manuales PDF generados en 'docs/*.pdf'.
 
 .PARAMETER DryRun
@@ -62,7 +62,7 @@ if ($DryRun) {
     Write-Host "[MODO SIMULACION (DryRun)] No se eliminara ningun archivo.`n" -ForegroundColor Yellow
 }
 
-# 1. Cerrar instancias en ejecucion de FileFlow.App para liberar bloqueos de DLL/EXE
+# 1. Cerrar instancias en ejecución de FileFlow.App para liberar bloqueos de DLL/EXE
 if (-not $DryRun) {
     $runningProcesses = Get-Process -Name "FileFlow.App" -ErrorAction SilentlyContinue
     if ($runningProcesses) {
@@ -72,7 +72,7 @@ if (-not $DryRun) {
     }
 }
 
-# 2. Ejecutar dotnet clean sobre la solucion si no es DryRun
+# 2. Ejecutar dotnet clean sobre la solución si no es DryRun
 $slnPath = Join-Path $repoRoot "FileFlow.slnx"
 if ((-not $DryRun) -and (Test-Path $slnPath)) {
     Write-Host "==> Ejecutando dotnet clean..." -ForegroundColor Cyan
@@ -139,9 +139,9 @@ function Remove-TargetFiles([string]$searchPath, [string]$pattern, [string]$labe
     }
 }
 
-Write-Host "`n1. Limpiando directorios de compilacion (bin / obj)..." -ForegroundColor Cyan
+Write-Host "`n1. Limpiando directorios de compilacion (bin / obj) en todos los proyectos..." -ForegroundColor Cyan
 
-# Buscar todas las carpetas bin y obj de los proyectos
+# Buscar todas las carpetas bin y obj de los proyectos (App, Core, Sdk, Tests y todos los Plugins)
 $projectDirs = Get-ChildItem -Path $repoRoot -Directory -ErrorAction SilentlyContinue | Where-Object {
     $_.Name -like "FileFlow*"
 }
@@ -158,33 +158,34 @@ foreach ($pDir in $projectDirs) {
     }
 }
 
-Write-Host "`n2. Limpiando artefactos de publicacion e instalador..." -ForegroundColor Cyan
+Write-Host "`n2. Limpiando artefactos de distribucion, empaquetado e instaladores..." -ForegroundColor Cyan
+Remove-TargetDirectory (Join-Path $repoRoot "dist") "dist/ (Distribucion Multiplataforma)"
 Remove-TargetDirectory (Join-Path $repoRoot "installer\publish") "installer\publish"
 Remove-TargetDirectory (Join-Path $repoRoot "installer\output") "installer\output"
+Remove-TargetDirectory (Join-Path $repoRoot "installer\temp_linux_build") "installer\temp_linux_build"
+Remove-TargetDirectory (Join-Path $repoRoot "release-assets") "release-assets/"
+Remove-TargetDirectory (Join-Path $repoRoot "squashfs-root") "squashfs-root/ (Temporales AppImage)"
 
 Write-Host "`n3. Limpiando resultados de pruebas y cobertura..." -ForegroundColor Cyan
 Remove-TargetDirectory (Join-Path $repoRoot "TestResults") "TestResults"
 Remove-TargetDirectory (Join-Path $repoRoot "coverage-report") "coverage-report"
-
-Write-Host "`n4. Limpiando caches de IDE y archivos temporales..." -ForegroundColor Cyan
-Remove-TargetDirectory (Join-Path $repoRoot ".vs") ".vs (Cache Visual Studio)"
 Remove-TargetDirectory (Join-Path $repoRoot ".dotnet_tmp") ".dotnet_tmp"
 
-# Archivos de usuario / suo / crash.log
+Write-Host "`n4. Limpiando caches de IDE, logs y archivos temporales..." -ForegroundColor Cyan
+Remove-TargetDirectory (Join-Path $repoRoot ".vs") ".vs (Cache Visual Studio)"
+
+# Archivos de usuario / suo / crash.log / l10n_findings
 Remove-TargetFiles $repoRoot "*.user" "Archivos *.user"
 Remove-TargetFiles $repoRoot "*.suo" "Archivos *.suo"
+Remove-TargetFiles $repoRoot "crash.log" "crash.log"
+Remove-TargetFiles $repoRoot "l10n_findings.csv" "l10n_findings.csv"
 
-$crashLog = Join-Path $repoRoot "crash.log"
-if (Test-Path $crashLog) {
-    $item = Get-Item $crashLog
-    $global:cleanTotalBytes += $item.Length
-    $global:cleanDeletedCount++
-    if ($DryRun) {
-        Write-Host "  [SIMULADO] Archivo: crash.log" -ForegroundColor Yellow
-    } else {
-        Remove-Item $crashLog -Force -ErrorAction SilentlyContinue
-        Write-Host "  [ELIMINADO] Archivo: crash.log" -ForegroundColor Green
-    }
+# Carpetas de prueba o scratch temporales
+$scratchDirs = Get-ChildItem -Path $repoRoot -Directory -ErrorAction SilentlyContinue | Where-Object {
+    $_.Name -match "^(Directorio\s?Test|AI_Video_Upscaler_Pro_|temp_)"
+}
+foreach ($sDir in $scratchDirs) {
+    Remove-TargetDirectory $sDir.FullName "$($sDir.Name) (Directorio temporal)"
 }
 
 # 5. Opcional: PDFs generados

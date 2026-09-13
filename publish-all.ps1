@@ -27,27 +27,38 @@ New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
 $appProject = Join-Path $scriptDir "FileFlow.App\FileFlow.App.csproj"
 $coreProject = Join-Path $scriptDir "FileFlow.Core\FileFlow.Core.csproj"
+$sdkConfigDir = Join-Path $scriptDir "FileFlow.Sdk\Config"
 
 $isSelfContained = -not $FrameworkDependent
-$scArg = if ($isSelfContained) { "--self-contained true" } else { "--self-contained false" }
-$pdbArg = if ($KeepDebugPdb) { "" } else { "-p:DebugType=none -p:DebugSymbols=false" }
+$scBoolStr = $isSelfContained.ToString().ToLower()
+
+$pdbFlags = if ($KeepDebugPdb) { @() } else { @("-p:DebugType=none", "-p:DebugSymbols=false") }
 
 # --- 1. Publicación para Windows x64 ---
 if (-not $LinuxOnly) {
     $winDist = Join-Path $distDir "windows-x64"
     Write-Host "`n📦 Publicando FileFlow Studio para Windows x64 ($Configuration)..." -ForegroundColor Yellow
     
-    $singleFileArg = if ($isSelfContained) {
-        "-p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true"
-    } else {
-        "-p:PublishSingleFile=true"
-    }
+    $winArgs = @(
+        "publish", $appProject,
+        "-c", $Configuration,
+        "-r", "win-x64",
+        "--self-contained", $scBoolStr,
+        "-o", $winDist,
+        "-p:PublishSingleFile=true",
+        "-p:IncludeNativeLibrariesForSelfExtract=true",
+        "-p:EnableCompressionInSingleFile=true"
+    ) + $pdbFlags
     
-    $winCmd = "dotnet publish `"$appProject`" -c $Configuration -r win-x64 $scArg $singleFileArg $pdbArg -o `"$winDist`""
-    Write-Host "Ejecutando: $winCmd" -ForegroundColor DarkGray
-    Invoke-Expression $winCmd
+    & dotnet @winArgs
     if ($LASTEXITCODE -eq 0) {
-        # Limpieza de archivos de desarrollo no requeridos (.pdb, .lib)
+        # Asegurar Config/ en Windows
+        $winConfigDest = Join-Path $winDist "Config"
+        if (Test-Path $sdkConfigDir) {
+            if (-not (Test-Path $winConfigDest)) { New-Item -ItemType Directory -Path $winConfigDest -Force | Out-Null }
+            Copy-Item -Path "$sdkConfigDir\*" -Destination $winConfigDest -Recurse -Force
+        }
+
         if (-not $KeepDebugPdb) {
             Get-ChildItem -Path $winDist -Filter "*.pdb" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
             Get-ChildItem -Path $winDist -Filter "*.lib" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
@@ -65,22 +76,71 @@ if (-not $WindowsOnly) {
     $linuxDist = Join-Path $distDir "linux-x64"
     Write-Host "`n📦 Publicando componentes del Motor y Plugins de FileFlow para Linux x64 ($Configuration)..." -ForegroundColor Yellow
     
-    $linuxCmd = "dotnet publish `"$coreProject`" -c $Configuration -r linux-x64 $scArg $pdbArg -o `"$linuxDist/engine`""
-    Write-Host "Ejecutando: $linuxCmd" -ForegroundColor DarkGray
-    Invoke-Expression $linuxCmd
+    $linuxEngineDir = Join-Path $linuxDist "engine"
+    $linuxArgs = @(
+        "publish", $coreProject,
+        "-c", $Configuration,
+        "-r", "linux-x64",
+        "--self-contained", $scBoolStr,
+        "-o", $linuxEngineDir
+    ) + $pdbFlags
+    
+    & dotnet @linuxArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Fallo al compilar el motor para Linux." -ForegroundColor Red
         exit $LASTEXITCODE
     }
 
-    # Publicar plugins en carpeta Plugins/ de forma limpia (sin duplicar el BCL runtime en cada plugin)
+    # Copiar Config/ global a Linux (en raíz y en engine/)
+    $linuxConfigDest = Join-Path $linuxDist "Config"
+    $engineConfigDest = Join-Path $linuxEngineDir "Config"
+    if (Test-Path $sdkConfigDir) {
+        New-Item -ItemType Directory -Path $linuxConfigDest -Force | Out-Null
+        Copy-Item -Path "$sdkConfigDir\*" -Destination $linuxConfigDest -Recurse -Force
+        
+        New-Item -ItemType Directory -Path $engineConfigDest -Force | Out-Null
+        Copy-Item -Path "$sdkConfigDir\*" -Destination $engineConfigDest -Recurse -Force
+    }
+
+    # Publicar cada plugin en su carpeta dedicada Plugins/{PluginName}/
     $pluginsLinuxTarget = Join-Path $linuxDist "Plugins"
     New-Item -ItemType Directory -Path $pluginsLinuxTarget -Force | Out-Null
     
     $pluginProjects = Get-ChildItem -Path (Join-Path $scriptDir "FileFlow.Plugin.*") -Filter "*.csproj" -Recurse
     foreach ($plugin in $pluginProjects) {
-        Write-Host "  -> Publicando plugin $($plugin.BaseName)..." -ForegroundColor DarkGray
-        dotnet publish $plugin.FullName -c $Configuration -r linux-x64 --self-contained false $pdbArg -o $pluginsLinuxTarget | Out-Null
+        $pluginName = $plugin.BaseName
+        $pluginDest = Join-Path $pluginsLinuxTarget $pluginName
+        New-Item -ItemType Directory -Path $pluginDest -Force | Out-Null
+        
+        Write-Host "  -> Publicando plugin $pluginName..." -ForegroundColor DarkGray
+        $pluginArgs = @(
+            "publish", $plugin.FullName,
+            "-c", $Configuration,
+            "-r", "linux-x64",
+            "--self-contained", "false",
+            "-o", $pluginDest
+        ) + $pdbFlags
+        
+        & dotnet @pluginArgs | Out-Null
+
+        # Si el plugin contiene una carpeta Config/, asegurar copia
+        $pluginSrcConfig = Join-Path (Split-Path -Parent $plugin.FullName) "Config"
+        if (Test-Path $pluginSrcConfig) {
+            $pluginDestConfig = Join-Path $pluginDest "Config"
+            New-Item -ItemType Directory -Path $pluginDestConfig -Force | Out-Null
+            Copy-Item -Path "$pluginSrcConfig\*" -Destination $pluginDestConfig -Recurse -Force
+        }
+    }
+
+    # Copiar scripts y assets para Linux
+    $launcherSrc = Join-Path $scriptDir "installer\linux\fileflow.sh"
+    if (Test-Path $launcherSrc) {
+        Copy-Item $launcherSrc (Join-Path $linuxDist "fileflow.sh") -Force
+    }
+
+    $iconPng = Join-Path $scriptDir "assets\FileFlow.png"
+    if (Test-Path $iconPng) {
+        Copy-Item $iconPng (Join-Path $linuxDist "fileflow.png") -Force
     }
 
     # Limpieza de archivos .pdb en Linux si no se solicitaron

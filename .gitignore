@@ -1,6 +1,8 @@
-## Visual Studio / .NET
+## Visual Studio / .NET Core / C#
 [Bb]in/
 [Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
 [Ll]og/
 [Ll]ogs/
 .vs/
@@ -11,40 +13,46 @@
 *.sln.docstates
 *.suo
 *.cache
+*.log
+crash.log
 
-# Build outputs
+## Project Build Outputs (Explicit)
 FileFlow.App/bin/
 FileFlow.App/obj/
 FileFlow.Core/bin/
 FileFlow.Core/obj/
 FileFlow.Sdk/bin/
 FileFlow.Sdk/obj/
-FileFlow.Plugin.FileSystem/bin/
-FileFlow.Plugin.FileSystem/obj/
-FileFlow.Plugin.Archives/bin/
-FileFlow.Plugin.Archives/obj/
-FileFlow.Plugin.Images/bin/
-FileFlow.Plugin.Images/obj/
+FileFlow.Plugin.*/bin/
+FileFlow.Plugin.*/obj/
+FileFlow.Tests/bin/
+FileFlow.Tests/obj/
 
-# Local configuration & temporary folders
+## Local configuration & Antigravity IDE Memory
 .antigravity/*
 !.antigravity/knowledge/
 !.antigravity/knowledge/**
 !.antigravity/mcp.json
 !.antigravity/memory_store.json
 
-# Test data directories
+## Test Data Directories & Scratch Runs
 [Dd]irectorio [Tt]est/
 [Dd]irectorio[Tt]est/
+AI_Video_Upscaler_Pro_*/
+temp_*/
+l10n_findings.csv
 
-# Artefactos generados del instalador (binarios, publish intermedio y setup final)
+## Packaging & Multiplatform Distribution Artifacts (Windows & Linux)
+dist/
 installer/publish/
 installer/output/
-dist/
+installer/temp_linux_build/
+release-assets/
 squashfs-root/
+appimagetool*
+*.AppImage
 
-# Reportes de cobertura y resultados de pruebas
-coverage-report/
+## Test Results & Code Coverage Reports
 TestResults/
+coverage-report/
 .dotnet_tmp/
-

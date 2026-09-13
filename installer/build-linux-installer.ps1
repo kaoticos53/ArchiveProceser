@@ -38,14 +38,37 @@ Write-Host "`n[1/4] Compilando motor de FileFlow para Linux ($Configuration, $mo
 $coreProject = Join-Path $repoRoot "FileFlow.Core\FileFlow.Core.csproj"
 & dotnet publish $coreProject -c $Configuration -r linux-x64 @scParam @pdbParams -o "$appPayloadDir/engine" | Out-Null
 
+# Copiar Config/ global de SDK a la app payload
+$sdkConfigDir = Join-Path $repoRoot "FileFlow.Sdk\Config"
+if (Test-Path $sdkConfigDir) {
+    $appConfigDest = Join-Path $appPayloadDir "Config"
+    $engineConfigDest = Join-Path $appPayloadDir "engine\Config"
+    New-Item -ItemType Directory -Path $appConfigDest -Force | Out-Null
+    Copy-Item -Path "$sdkConfigDir\*" -Destination $appConfigDest -Recurse -Force
+    New-Item -ItemType Directory -Path $engineConfigDest -Force | Out-Null
+    Copy-Item -Path "$sdkConfigDir\*" -Destination $engineConfigDest -Recurse -Force
+}
+
 Write-Host "[2/4] Compilando plugins para Linux ($Configuration)..." -ForegroundColor Yellow
 $pluginsTarget = Join-Path $appPayloadDir "Plugins"
 New-Item -ItemType Directory -Path $pluginsTarget -Force | Out-Null
 
 $pluginProjects = Get-ChildItem -Path (Join-Path $repoRoot "FileFlow.Plugin.*") -Filter "*.csproj" -Recurse
 foreach ($plugin in $pluginProjects) {
-    Write-Host "  -> Publicando plugin $($plugin.BaseName)..." -ForegroundColor DarkGray
-    & dotnet publish $plugin.FullName -c $Configuration -r linux-x64 --self-contained false @pdbParams -o $pluginsTarget | Out-Null
+    $pluginName = $plugin.BaseName
+    $pluginDest = Join-Path $pluginsTarget $pluginName
+    New-Item -ItemType Directory -Path $pluginDest -Force | Out-Null
+    
+    Write-Host "  -> Publicando plugin $pluginName..." -ForegroundColor DarkGray
+    & dotnet publish $plugin.FullName -c $Configuration -r linux-x64 --self-contained false @pdbParams -o $pluginDest | Out-Null
+
+    # Copiar Config/ de cada plugin si existe
+    $pluginSrcConfig = Join-Path (Split-Path -Parent $plugin.FullName) "Config"
+    if (Test-Path $pluginSrcConfig) {
+        $pluginDestConfig = Join-Path $pluginDest "Config"
+        New-Item -ItemType Directory -Path $pluginDestConfig -Force | Out-Null
+        Copy-Item -Path "$pluginSrcConfig\*" -Destination $pluginDestConfig -Recurse -Force
+    }
 }
 
 # Limpieza de PDBs residuales

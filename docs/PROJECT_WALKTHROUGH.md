@@ -24,8 +24,8 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
    - Limpieza y verificación de ViewModels auxiliares ([`NodeInspectorViewModel.cs`](file:///FileFlow.App/ViewModels/NodeInspectorViewModel.cs), [`LogViewModel.cs`](file:///FileFlow.App/ViewModels/LogViewModel.cs), [`StatusBarViewModel.cs`](file:///FileFlow.App/ViewModels/StatusBarViewModel.cs), [`ControlBarViewModel.cs`](file:///FileFlow.App/ViewModels/ControlBarViewModel.cs), [`VirtualFileSystemExplorerViewModel.cs`](file:///FileFlow.App/ViewModels/VirtualFileSystemExplorerViewModel.cs), [`WorkflowMetricsDashboardViewModel.cs`](file:///FileFlow.App/ViewModels/WorkflowMetricsDashboardViewModel.cs), [`ThemeCustomizerViewModel.cs`](file:///FileFlow.App/ViewModels/ThemeCustomizerViewModel.cs) y [`TextEditorDialogViewModel.cs`](file:///FileFlow.App/ViewModels/TextEditorDialogViewModel.cs)).
 6. **Automatización de Compilación Cruzada y Publicación Dual (Fase 6)**:
    - Creación de [`publish-all.ps1`](file:///publish-all.ps1) y [`publish-all.bat`](file:///publish-all.bat) para compilar y empaquetar de forma unificada y automatizada en un solo comando:
-     - `dist/windows-x64/`: Aplicación de escritorio autoincluida (Self-Contained / Single-File) para Windows.
-     - `dist/linux-x64/`: Motor y el 100% de los plugins compilados de forma nativa para Linux x64 (`engine/` + `Plugins/`).
+     - `dist/windows-x64/`: Aplicación de escritorio autoincluida (Self-Contained / Single-File) para Windows con carpeta `Config/`.
+     - `dist/linux-x64/`: Motor (`engine/` con `Config/`), lanzador `fileflow.sh`, `fileflow.png` y el 100% de los 11 plugins en sus carpetas dedicadas (`Plugins/FileFlow.Plugin.*/`) conteniendo sus binarios, dependencias de dominio, diccionarios de localización (`es/`) y presets de configuración (`Config/*.json`).
 7. **Generador de Instaladores, AppImage y Paquetes Nativos para Linux**:
    - Creación de herramientas de empaquetado e instalación en [`installer/linux/`](file:///installer/linux/):
      - [`fileflow.desktop`](file:///installer/linux/fileflow.desktop): Entrada estándar FreeDesktop XDG con categorías, mimetype y soporte de iconos.
@@ -35,10 +35,10 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
      - [`install.sh`](file:///installer/linux/install.sh): Script universal de instalación con soporte para instalación a nivel de sistema (`/opt/fileflow` y `/usr/local/bin/fileflow`) y modo usuario (`$HOME/.local/share/fileflow` y `$HOME/.local/bin/fileflow`) con auto-creación de accesos directos de escritorio.
      - [`uninstall.sh`](file:///installer/linux/uninstall.sh): Desinstalador limpio para purgar binarios, enlaces y archivos de escritorio.
    - Creación de [`installer/build-linux-installer.ps1`](file:///installer/build-linux-installer.ps1), [`installer/build-linux-installer.bat`](file:///installer/build-linux-installer.bat), [`installer/build-all.ps1`](file:///installer/build-all.ps1) y [`installer/build-all.bat`](file:///installer/build-all.bat):
-     - Generación del ejecutable único universal `FileFlow-v{Version}-x86_64.AppImage` (69.9 MB).
+     - Generación del ejecutable único universal `FileFlow-v{Version}-x86_64.AppImage` (70.4 MB) con el 100% de plugins y configuraciones integradas.
      - Generación automatizada del bundle `fileflow-linux-x64-v{Version}.tar.gz` con scripts de instalación.
      - Generación del paquete árbol Debian/Ubuntu `fileflow_{Version}_amd64_deb_tree.tar.gz` listo para compilar con `dpkg-deb -b`.
-     - Soporte para el flag `-FrameworkDependent` en todas las herramientas para generar distribuibles ultraligeros de ~6-10 MB para sistemas con .NET 9 instalado, reduciendo el conteo de ficheros en `dist/` de 224 a 35 archivos.
+     - Soporte para el flag `-FrameworkDependent` en todas las herramientas para generar distribuibles ultraligeros para sistemas con .NET 9 instalado.
 8. **Automatización de GitHub Actions CI/CD Multiplataforma**:
    - Actualización de [`.github/workflows/release.yml`](file:///.github/workflows/release.yml):
      - Pipeline orquestado en 4 fases (`resolve-version`, `build-windows`, `build-linux`, `publish-release`).
@@ -46,7 +46,10 @@ Este documento registra cronológicamente todos los cambios, mejoras, correccion
      - Generación automática de sumas criptográficas SHA-256 (`checksums.txt`) agregadas para todos los distribuibles y publicación en GitHub Releases.
    - Actualización de [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml):
      - Validación continua de compilación y pruebas en Windows junto con validación de empaquetado del motor y plugins en Linux (`ubuntu-latest`).
-9. **Métricas de Calidad y Pruebas**:
+9. **Mantenimiento y Limpieza del Repositorio (`.gitignore` & `clean.ps1`)**:
+   - Actualización integral de [`.gitignore`](file:///.gitignore) incorporando todos los 11 plugins (`FileFlow.Plugin.*/`), artefactos de distribución multiplataforma (`dist/`, `installer/temp_linux_build/`, `squashfs-root/`, `*.AppImage`), cachés de IDE y carpetas de prueba.
+   - Actualización de [`clean.ps1`](file:///clean.ps1) y [`clean.bat`](file:///clean.bat) con detección exhaustiva de carpetas `bin`/`obj` de los 14 proyectos, artefactos de distribución, temporales y modo simulación `-DryRun`.
+10. **Métricas de Calidad y Pruebas**:
    - **833 / 833 pruebas unitarias e integración superadas al 100% con éxito**.
    - Compilación limpia bajo `--warnaserror` (0 advertencias, 0 errores).
 

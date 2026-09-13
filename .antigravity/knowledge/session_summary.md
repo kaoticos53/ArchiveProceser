@@ -30,6 +30,8 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
         9. *Automatización en GitHub Actions (CI/CD Multiplataforma)*:
            - `.github/workflows/release.yml`: Pipeline multi-job (`resolve-version`, `build-windows`, `build-linux`, `publish-release`) para compilar en paralelo los instaladores de Windows (`.exe`, `.zip`) en `windows-latest` y los paquetes de Linux (`.AppImage`, `.deb`, `.tar.gz`) en `ubuntu-latest`, publicando en GitHub Releases con sumas SHA-256 agregadas en `checksums.txt`.
            - `.github/workflows/ci.yml`: Validación continua con jobs simultáneos para Windows y Linux.
+        10. *Mantenimiento y Limpieza del Repositorio (`.gitignore` & `clean.ps1`)*:
+           - `.gitignore` y `clean.ps1` actualizados para cubrir todos los 11 plugins (`FileFlow.Plugin.*/`), artefactos multiplataforma (`dist/`, `installer/temp_linux_build/`, `squashfs-root/`), cachés de IDE y carpetas de prueba con soporte de simulación `-DryRun`.
       - **Validación**: 833 / 833 pruebas unitarias superadas al 100% con compilación limpia (`--warnaserror`).
   --80. **Preservación de Estructura de Directorios de Origen en Fan-Out / Fan-In de Archivos y Soporte de Variables `{Archive:...}` (`ArchiveFanOutNode`, `ArchiveFanInNode`, `DomainVariableResolver`, `SystemVariablesResolver`)**:
       - **Motivación y Diagnóstico**:
