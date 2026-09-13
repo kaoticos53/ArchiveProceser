@@ -246,10 +246,12 @@ public partial class RegexHelperViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void ApplyAndClose(Window window)
+    public void ApplyAndClose(object? windowParam)
     {
-        window.DialogResult = true;
-        window.Close();
+        if (windowParam is Avalonia.Controls.Window window)
+        {
+            window.Close();
+        }
     }
 
     private void LoadLibrary()

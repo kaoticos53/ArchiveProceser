@@ -111,7 +111,7 @@ public class ThemeCustomizerViewModelTests : IDisposable
 
         // Assert
         vm.LivePreviewResources.Should().NotBeNull();
-        vm.LivePreviewResources.Contains("AppBackgroundBrush").Should().BeTrue();
+        vm.LivePreviewResources.ContainsKey("AppBackgroundBrush").Should().BeTrue();
     }
 
     [Fact]

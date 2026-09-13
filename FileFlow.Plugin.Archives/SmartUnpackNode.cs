@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using FileFlow.Plugin.Archives.Services;
 using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Sdk;
@@ -66,21 +67,20 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         {
             string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
             var window = new PasswordManagerWindow(currentPasswords);
-            if (context is Window ownerWindow)
+            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+            var owner = context as Window ?? lifetime?.MainWindow;
+            if (owner != null)
             {
-                window.Owner = ownerWindow;
-            }
-            else if (Application.Current?.MainWindow != null)
-            {
-                window.Owner = Application.Current.MainWindow;
-            }
-
-            if (window.ShowDialog() == true)
-            {
-                lock (_lock)
+                _ = window.ShowDialog<bool>(owner).ContinueWith(t =>
                 {
-                    Parameters["PasswordList"] = window.PasswordsText;
-                }
+                    if (t.IsCompletedSuccessfully && t.Result)
+                    {
+                        lock (_lock)
+                        {
+                            Parameters["PasswordList"] = window.PasswordsText;
+                        }
+                    }
+                }, TaskScheduler.Default);
             }
         }
     }

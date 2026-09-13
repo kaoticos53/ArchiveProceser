@@ -1,44 +1,74 @@
-using Microsoft.Win32;
+using System;
+using System.IO;
+using System.Linq;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Implementación nativa de WPF para el servicio de diálogos de archivos.
+/// Implementación multiplataforma de Avalonia para el servicio de diálogos de archivos y carpetas.
 /// </summary>
 public class FileDialogService : IFileDialogService
 {
+    private static IStorageProvider? GetStorageProvider()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        {
+            var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
+            return topLevel?.StorageProvider;
+        }
+        return null;
+    }
+
     public string? ShowOpenFileDialog(string title, string filter, string defaultExt = "")
     {
-        var dialog = new OpenFileDialog
+        var sp = GetStorageProvider();
+        if (sp == null) return null;
+
+        var options = new FilePickerOpenOptions
         {
             Title = title,
-            Filter = filter,
-            DefaultExt = defaultExt
+            AllowMultiple = false
         };
 
-        return dialog.ShowDialog() == true ? dialog.FileName : null;
+        var task = sp.OpenFilePickerAsync(options);
+        var result = task.GetAwaiter().GetResult();
+        return result?.FirstOrDefault()?.TryGetLocalPath();
     }
 
     public string? ShowSaveFileDialog(string title, string filter, string defaultExt = "", string defaultFileName = "")
     {
-        var dialog = new SaveFileDialog
+        var sp = GetStorageProvider();
+        if (sp == null) return null;
+
+        var options = new FilePickerSaveOptions
         {
             Title = title,
-            Filter = filter,
-            DefaultExt = defaultExt,
-            FileName = defaultFileName
+            DefaultExtension = defaultExt.TrimStart('.'),
+            SuggestedFileName = defaultFileName
         };
 
-        return dialog.ShowDialog() == true ? dialog.FileName : null;
+        var task = sp.SaveFilePickerAsync(options);
+        var result = task.GetAwaiter().GetResult();
+        return result?.TryGetLocalPath();
     }
 
     public string? ShowFolderBrowserDialog(string title)
     {
-        var dialog = new OpenFolderDialog
+        var sp = GetStorageProvider();
+        if (sp == null) return null;
+
+        var options = new FolderPickerOpenOptions
         {
-            Title = title
+            Title = title,
+            AllowMultiple = false
         };
 
-        return dialog.ShowDialog() == true ? dialog.FolderName : null;
+        var task = sp.OpenFolderPickerAsync(options);
+        var result = task.GetAwaiter().GetResult();
+        return result?.FirstOrDefault()?.TryGetLocalPath();
     }
 }

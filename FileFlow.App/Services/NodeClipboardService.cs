@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Windows;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
@@ -152,19 +151,7 @@ public sealed class NodeClipboardService : INodeClipboardService
         {
             string json = JsonSerializer.Serialize(package, new JsonSerializerOptions { WriteIndented = false });
             string clipboardPayload = $"{ClipboardHeaderPrefix}\n{json}";
-
-            for (int attempt = 0; attempt < 3; attempt++)
-            {
-                try
-                {
-                    Clipboard.SetText(clipboardPayload);
-                    break;
-                }
-                catch
-                {
-                    Thread.Sleep(20);
-                }
-            }
+            LogViewModel.SafeSetClipboardText(clipboardPayload);
         }
         catch (Exception ex)
         {
@@ -184,13 +171,10 @@ public sealed class NodeClipboardService : INodeClipboardService
 
         try
         {
-            if (Clipboard.ContainsText())
+            string? text = GetClipboardText();
+            if (!string.IsNullOrWhiteSpace(text) && text.Contains(ClipboardHeaderPrefix))
             {
-                string text = Clipboard.GetText();
-                if (!string.IsNullOrWhiteSpace(text) && text.Contains(ClipboardHeaderPrefix))
-                {
-                    return true;
-                }
+                return true;
             }
         }
         catch
@@ -354,18 +338,15 @@ public sealed class NodeClipboardService : INodeClipboardService
     {
         try
         {
-            if (Clipboard.ContainsText())
+            string? text = GetClipboardText();
+            if (!string.IsNullOrWhiteSpace(text) && text.Contains(ClipboardHeaderPrefix))
             {
-                string text = Clipboard.GetText();
-                if (!string.IsNullOrWhiteSpace(text) && text.Contains(ClipboardHeaderPrefix))
+                int index = text.IndexOf(ClipboardHeaderPrefix, StringComparison.Ordinal);
+                string json = text[(index + ClipboardHeaderPrefix.Length)..].Trim();
+                var package = JsonSerializer.Deserialize<NodeClipboardPackage>(json);
+                if (package != null && package.Nodes.Count > 0)
                 {
-                    int index = text.IndexOf(ClipboardHeaderPrefix, StringComparison.Ordinal);
-                    string json = text[(index + ClipboardHeaderPrefix.Length)..].Trim();
-                    var package = JsonSerializer.Deserialize<NodeClipboardPackage>(json);
-                    if (package != null && package.Nodes.Count > 0)
-                    {
-                        return package;
-                    }
+                    return package;
                 }
             }
         }
@@ -377,6 +358,19 @@ public sealed class NodeClipboardService : INodeClipboardService
         lock (_lock)
         {
             return _inMemoryFallback;
+        }
+    }
+
+    private static string? GetClipboardText()
+    {
+        try
+        {
+            var task = App.MainWindow?.Clipboard?.GetTextAsync();
+            return task != null ? task.GetAwaiter().GetResult() : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

@@ -1,5 +1,7 @@
+using System;
 using System.Diagnostics;
-using System.Windows.Threading;
+using System.Threading.Tasks;
+using Avalonia.Threading;
 
 namespace FileFlow.App.Services;
 
@@ -30,10 +32,6 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
     private DateTime _lastSampleTime;
     private bool _disposed;
     private bool _isSampling;
-
-    private List<PerformanceCounter>? _gpuCounters;
-    private DateTime _lastGpuScan = DateTime.MinValue;
-    private bool _gpuCategoryAvailable = true;
 
     public event Action<PerformanceMetrics>? PerformanceUpdated;
 
@@ -66,7 +64,6 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
-            // Ignore transient performance counter exceptions
             System.Diagnostics.Debug.WriteLine($"[SystemPerformanceMonitor] Transient sampling exception: {ex.Message}");
         }
         finally
@@ -94,98 +91,12 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
             cpuPercent = Math.Clamp(cpuPercent, 0, 100);
         }
 
-        double gpuPercent = SampleGpuUsage();
-
         return new PerformanceMetrics
         {
             WorkingSetBytes = _currentProcess.WorkingSet64,
             CpuPercentage = cpuPercent,
-            GpuPercentage = gpuPercent
+            GpuPercentage = 0
         };
-    }
-
-    private double SampleGpuUsage()
-    {
-        if (!_gpuCategoryAvailable) return 0;
-
-        try
-        {
-            var now = DateTime.UtcNow;
-            if (_gpuCounters == null || (now - _lastGpuScan).TotalSeconds > 8)
-            {
-                _lastGpuScan = now;
-                RefreshGpuCounters();
-            }
-
-            if (_gpuCounters == null || _gpuCounters.Count == 0)
-                return 0;
-
-            float totalGpu = 0;
-            foreach (var counter in _gpuCounters)
-            {
-                try
-                {
-                    totalGpu += counter.NextValue();
-                }
-                catch
-                {
-                    // Instance may have closed
-                }
-            }
-
-            return Math.Clamp((double)totalGpu, 0, 100);
-        }
-        catch
-        {
-            return 0;
-        }
-    }
-
-    private void RefreshGpuCounters()
-    {
-        if (_gpuCounters != null)
-        {
-            foreach (var c in _gpuCounters)
-            {
-                try { c.Dispose(); } catch { }
-            }
-            _gpuCounters.Clear();
-        }
-        else
-        {
-            _gpuCounters = new List<PerformanceCounter>();
-        }
-
-        try
-        {
-            if (!PerformanceCounterCategory.Exists("GPU Engine"))
-            {
-                _gpuCategoryAvailable = false;
-                return;
-            }
-
-            var category = new PerformanceCounterCategory("GPU Engine");
-            string pidPrefix = $"pid_{_currentProcess.Id}_";
-            var instanceNames = category.GetInstanceNames();
-
-            foreach (var name in instanceNames)
-            {
-                if (name.StartsWith(pidPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", name, readOnly: true);
-                        counter.NextValue(); // Initial sample
-                        _gpuCounters.Add(counter);
-                    }
-                    catch { }
-                }
-            }
-        }
-        catch
-        {
-            _gpuCategoryAvailable = false;
-        }
     }
 
     public void Dispose()
@@ -194,17 +105,6 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
         {
             _timer.Stop();
             _currentProcess.Dispose();
-
-            if (_gpuCounters != null)
-            {
-                foreach (var c in _gpuCounters)
-                {
-                    try { c.Dispose(); } catch { }
-                }
-                _gpuCounters.Clear();
-                _gpuCounters = null;
-            }
-
             _disposed = true;
         }
     }

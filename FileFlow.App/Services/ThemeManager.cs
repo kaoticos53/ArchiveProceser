@@ -1,6 +1,7 @@
-using System.Windows;
+using System;
+using Avalonia;
+using Avalonia.Controls;
 using FileFlow.App.Themes;
-using Microsoft.Win32;
 
 namespace FileFlow.App.Services;
 
@@ -26,7 +27,7 @@ public class ThemeManager : IThemeService
     {
         AppTheme.Light => false,
         AppTheme.Pastel => false,
-        AppTheme.System => !IsWindowsInLightMode(),
+        AppTheme.System => !IsOperatingSystemInLightMode(),
         _ => true
     });
 
@@ -35,13 +36,6 @@ public class ThemeManager : IThemeService
 
     private ThemeManager()
     {
-        SystemEvents.UserPreferenceChanged += (s, e) =>
-        {
-            if (CurrentTheme == AppTheme.System)
-            {
-                ApplySystemTheme();
-            }
-        };
     }
 
     public void SetTheme(AppTheme theme)
@@ -69,14 +63,6 @@ public class ThemeManager : IThemeService
                 return;
             }
 
-            string themeUri = theme switch
-            {
-                AppTheme.Light => "Themes/LightTheme.xaml",
-                AppTheme.Pastel => "Themes/PastelTheme.xaml",
-                AppTheme.Cyber => "Themes/CyberTheme.xaml",
-                _ => "Themes/DarkTheme.xaml"
-            };
-            ApplyThemeResource(themeUri);
             CurrentThemeId = themeId;
         }
         ThemeChanged?.Invoke(CurrentTheme);
@@ -112,7 +98,6 @@ public class ThemeManager : IThemeService
         ActiveThemeDefinition = theme.Clone();
         CurrentThemeId = theme.Id;
 
-        // Mapear al enum clásico aproximado si coincide
         CurrentTheme = theme.Id.ToLowerInvariant() switch
         {
             "light_studio" or "light" => AppTheme.Light,
@@ -130,7 +115,7 @@ public class ThemeManager : IThemeService
 
     private void ApplySystemTheme()
     {
-        bool isLight = IsWindowsInLightMode();
+        bool isLight = IsOperatingSystemInLightMode();
         string themeId = isLight ? "light_studio" : "dark_fluent";
         var themeDef = CustomThemeService.Instance.GetThemeById(themeId);
         if (themeDef != null)
@@ -139,55 +124,47 @@ public class ThemeManager : IThemeService
             ApplyResourceDictionary(dict);
             ActiveThemeDefinition = themeDef;
         }
-        else
-        {
-            ApplyThemeResource(isLight ? "Themes/LightTheme.xaml" : "Themes/DarkTheme.xaml");
-        }
     }
+
+    private static readonly System.Threading.Lock _resourceLock = new();
 
     public static void ApplyResourceDictionary(ResourceDictionary newThemeDict)
     {
         var app = Application.Current;
         if (app == null) return;
 
-        var merged = app.Resources.MergedDictionaries;
-        if (merged.Count > 0)
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
         {
-            merged[0] = newThemeDict;
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(() => ApplyResourceDictionary(newThemeDict));
+            return;
         }
-        else
+
+        lock (_resourceLock)
         {
-            merged.Add(newThemeDict);
+            foreach (var key in newThemeDict.Keys)
+            {
+                app.Resources[key] = newThemeDict[key];
+            }
         }
     }
 
-    private static void ApplyThemeResource(string themeRelativeUri)
-    {
-        var app = Application.Current;
-        if (app == null) return;
-
-        var newThemeDict = new ResourceDictionary
-        {
-            Source = new Uri(themeRelativeUri, UriKind.RelativeOrAbsolute)
-        };
-
-        ApplyResourceDictionary(newThemeDict);
-    }
-
-    private static bool IsWindowsInLightMode()
+    private static bool IsOperatingSystemInLightMode()
     {
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var val = key?.GetValue("AppsUseLightTheme");
-            if (val is int intVal)
+            if (OperatingSystem.IsWindows())
             {
-                return intVal != 0;
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+                var val = key?.GetValue("AppsUseLightTheme");
+                if (val is int intVal)
+                {
+                    return intVal != 0;
+                }
             }
         }
         catch
         {
-            // Fallback to dark if registry cannot be read
+            // Fallback to dark
         }
         return false;
     }

@@ -1,31 +1,34 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Data;
+using Avalonia.Controls;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
 
 namespace FileFlow.App.Converters;
 
 public class InverseBooleanToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool boolValue = value is bool b && b;
-        return boolValue ? Visibility.Collapsed : Visibility.Visible;
+        return !boolValue;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value is Visibility v && v != Visibility.Visible;
+        return value is bool b && !b;
     }
 }
 
 public class InverseBooleanConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value is bool b && !b;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value is bool b && !b;
     }
@@ -33,35 +36,34 @@ public class InverseBooleanConverter : IValueConverter
 
 public class NullToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value != null ? Visibility.Visible : Visibility.Collapsed;
+        return value != null;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class InverseNullToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value == null ? Visibility.Visible : Visibility.Collapsed;
+        return value == null;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class BooleanToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        bool b = value is bool flag && flag;
-        return b ? Visibility.Visible : Visibility.Collapsed;
+        return value is bool flag && flag;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value is Visibility v && v == Visibility.Visible;
+        return value is bool flag && flag;
     }
 }
 
@@ -69,7 +71,7 @@ public class BooleanToGridLengthConverter : IValueConverter
 {
     public double DefaultWidth { get; set; } = 360;
 
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool isVisible = value is bool b && b;
         if (!isVisible)
@@ -85,7 +87,7 @@ public class BooleanToGridLengthConverter : IValueConverter
         return new GridLength(DefaultWidth, GridUnitType.Pixel);
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is GridLength gl)
         {
@@ -97,36 +99,30 @@ public class BooleanToGridLengthConverter : IValueConverter
 
 public class StringEqualsToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         string? valStr = value?.ToString();
         string? paramStr = parameter?.ToString();
-
-        if (string.Equals(valStr, paramStr, StringComparison.OrdinalIgnoreCase))
-        {
-            return Visibility.Visible;
-        }
-
-        return Visibility.Collapsed;
+        return string.Equals(valStr, paramStr, StringComparison.OrdinalIgnoreCase);
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class StringNotEmptyToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         string? str = value?.ToString();
-        return !string.IsNullOrWhiteSpace(str) ? Visibility.Visible : Visibility.Collapsed;
+        return !string.IsNullOrWhiteSpace(str);
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class EnumToBooleanConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null || parameter == null) return false;
         string checkValue = value.ToString()!;
@@ -134,7 +130,7 @@ public class EnumToBooleanConverter : IValueConverter
         return string.Equals(checkValue, targetValue, StringComparison.OrdinalIgnoreCase);
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is bool isChecked && isChecked && parameter != null)
         {
@@ -144,31 +140,29 @@ public class EnumToBooleanConverter : IValueConverter
             }
             return parameter;
         }
-        return Binding.DoNothing;
+        return BindingOperations.DoNothing;
     }
 }
 
 public class StringEqualsToBooleanConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         string? valStr = value?.ToString();
         string? paramStr = parameter?.ToString();
         return string.Equals(valStr, paramStr, StringComparison.OrdinalIgnoreCase);
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class StringsEqualMultiConverter : IMultiValueConverter
 {
-    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(IList<object?>? values, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (values == null || values.Length < 2) return false;
+        if (values == null || values.Count < 2) return false;
         string? first = values[0]?.ToString();
         string? second = values[1]?.ToString();
         return string.Equals(first, second, StringComparison.OrdinalIgnoreCase);
     }
-
-    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) => [];
 }

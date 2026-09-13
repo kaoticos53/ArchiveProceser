@@ -1,87 +1,77 @@
+using System;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Data;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
 
 namespace FileFlow.App.Converters;
 
 public class LogLevelToBrushConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is FileFlow.Sdk.LogLevel level)
         {
             return level switch
             {
-                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error =>
-                    Application.Current?.TryFindResource("AccentErrorBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68)),
-                FileFlow.Sdk.LogLevel.Warning =>
-                    Application.Current?.TryFindResource("AccentWarningBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 158, 11)),
-                FileFlow.Sdk.LogLevel.Information =>
-                    Application.Current?.TryFindResource("AccentCyanBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248)),
-                FileFlow.Sdk.LogLevel.Debug =>
-                    Application.Current?.TryFindResource("AccentPurpleBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(192, 132, 252)),
-                _ => Application.Current?.TryFindResource("TextSecondaryBrush") ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184))
+                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error => new SolidColorBrush(Color.FromRgb(239, 68, 68)),
+                FileFlow.Sdk.LogLevel.Warning => new SolidColorBrush(Color.FromRgb(245, 158, 11)),
+                FileFlow.Sdk.LogLevel.Information => new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+                FileFlow.Sdk.LogLevel.Debug => new SolidColorBrush(Color.FromRgb(192, 132, 252)),
+                _ => new SolidColorBrush(Color.FromRgb(148, 163, 184))
             };
         }
-        return System.Windows.Media.Brushes.Gray;
+        return Brushes.Gray;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class LogLevelToBadgeBackgroundConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is FileFlow.Sdk.LogLevel level)
         {
             return level switch
             {
-                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(45, 239, 68, 68)),
-                FileFlow.Sdk.LogLevel.Warning =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(45, 245, 158, 11)),
-                FileFlow.Sdk.LogLevel.Information =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 56, 189, 248)),
-                FileFlow.Sdk.LogLevel.Debug =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 192, 132, 252)),
-                _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(30, 148, 163, 184))
+                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error => new SolidColorBrush(Color.FromArgb(45, 239, 68, 68)),
+                FileFlow.Sdk.LogLevel.Warning => new SolidColorBrush(Color.FromArgb(45, 245, 158, 11)),
+                FileFlow.Sdk.LogLevel.Information => new SolidColorBrush(Color.FromArgb(40, 56, 189, 248)),
+                FileFlow.Sdk.LogLevel.Debug => new SolidColorBrush(Color.FromArgb(40, 192, 132, 252)),
+                _ => new SolidColorBrush(Color.FromArgb(30, 148, 163, 184))
             };
         }
-        return System.Windows.Media.Brushes.Transparent;
+        return Brushes.Transparent;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class LogLevelToBadgeForegroundConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is FileFlow.Sdk.LogLevel level)
         {
             return level switch
             {
-                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 113, 113)),
-                FileFlow.Sdk.LogLevel.Warning =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 191, 36)),
-                FileFlow.Sdk.LogLevel.Information =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(56, 189, 248)),
-                FileFlow.Sdk.LogLevel.Debug =>
-                    new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(216, 180, 254)),
-                _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(148, 163, 184))
+                FileFlow.Sdk.LogLevel.Critical or FileFlow.Sdk.LogLevel.Error => new SolidColorBrush(Color.FromRgb(248, 113, 113)),
+                FileFlow.Sdk.LogLevel.Warning => new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+                FileFlow.Sdk.LogLevel.Information => new SolidColorBrush(Color.FromRgb(56, 189, 248)),
+                FileFlow.Sdk.LogLevel.Debug => new SolidColorBrush(Color.FromRgb(216, 180, 254)),
+                _ => new SolidColorBrush(Color.FromRgb(148, 163, 184))
             };
         }
-        return System.Windows.Media.Brushes.LightGray;
+        return Brushes.LightGray;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class LogLevelToBadgeConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is FileFlow.Sdk.LogLevel level)
         {
@@ -99,25 +89,25 @@ public class LogLevelToBadgeConverter : IValueConverter
         return "LOG";
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class LoggingToBrushConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool isLoggingEnabled = value is not bool b || b;
         return isLoggingEnabled 
-            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(6, 182, 212)) // Cyan brillante (#06B6D4)
-            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(80, 148, 163, 184)); // Semi-transparent Slate
+            ? new SolidColorBrush(Color.FromRgb(6, 182, 212)) // Cyan (#06B6D4)
+            : new SolidColorBrush(Color.FromArgb(80, 148, 163, 184)); // Semi-transparent Slate
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
 public class LoggingToTooltipConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool isLoggingEnabled = value is not bool b || b;
         return isLoggingEnabled
@@ -125,17 +115,12 @@ public class LoggingToTooltipConverter : IValueConverter
             : FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("LoggingDisabledToolTip", "Logs: Silenciados (clic para activar)");
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
 }
 
-/// <summary>
-/// Converts a numeric duration value (in milliseconds, as double or long) to a
-/// human-readable string with automatic unit scaling: µs → ms → s → min.
-/// An optional ConverterParameter string is prepended as a prefix (e.g. "⚡ ").
-/// </summary>
 public class DurationMsToTextConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         double ms = value switch
         {
@@ -161,18 +146,13 @@ public class DurationMsToTextConverter : IValueConverter
         return prefix + formatted;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => BindingOperations.DoNothing;
 }
 
-/// <summary>
-/// Converts a byte count (long or int) to a human-readable size string with
-/// automatic unit scaling: B → KB → MB → GB.
-/// An optional ConverterParameter string is prepended as a prefix (e.g. "💾 ").
-/// </summary>
 public class BytesToTextConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         long bytes = value switch
         {
@@ -187,15 +167,15 @@ public class BytesToTextConverter : IValueConverter
 
         string formatted = bytes switch
         {
-            >= 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
-            >= 1024L * 1024        => $"{bytes / (1024.0 * 1024):F1} MB",
-            >= 1024L               => $"{bytes / 1024.0:F0} KB",
-            _                      => $"{bytes} B"
+            < 1024 => $"{bytes} B",
+            < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024.0):F2} MB",
+            _ => $"{bytes / (1024.0 * 1024.0 * 1024.0):F2} GB"
         };
 
         return prefix + formatted;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => DependencyProperty.UnsetValue;
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => BindingOperations.DoNothing;
 }

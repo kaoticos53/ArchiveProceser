@@ -35,7 +35,7 @@ public class MultimodalVisionLlmNodeTests : IDisposable
         }
     }
 
-    private static void FillImage(Image<Rgba32> img, Color color)
+    private static void FillImage(Image<Rgba32> img, SixLabors.ImageSharp.Color color)
     {
         var px = color.ToPixel<Rgba32>();
         img.ProcessPixelRows(accessor =>

@@ -1,5 +1,5 @@
+using System;
 using System.IO;
-using System.Windows;
 using FileFlow.Core.Telemetry;
 
 namespace FileFlow.App.Services;
@@ -14,19 +14,17 @@ public static class LogExportService
     /// </summary>
     public static async Task<string?> ExportLogsWithDialogAsync(IDialogService? dialogService = null)
     {
-        var dialog = new Microsoft.Win32.SaveFileDialog
-        {
-            Filter = "Archivos de Log (*.log;*.txt)|*.log;*.txt|Todos los archivos (*.*)|*.*",
-            DefaultExt = ".log",
-            FileName = $"fileflow_execution_{DateTime.Now:yyyyMMdd_HHmmss}.log"
-        };
+        var fileDialog = new FileDialogService();
+        string? targetPath = fileDialog.ShowSaveFileDialog(
+            "Exportar Logs",
+            "Archivos de Log (*.log;*.txt)|*.log;*.txt|Todos los archivos (*.*)|*.*",
+            ".log",
+            $"fileflow_execution_{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
-        if (dialog.ShowDialog() != true)
+        if (string.IsNullOrEmpty(targetPath))
         {
             return null;
         }
-
-        string targetPath = dialog.FileName;
         try
         {
             await Task.Run(async () =>

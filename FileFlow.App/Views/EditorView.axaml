@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:nodify="https://miroiu.github.io/nodify"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+             xmlns:components="clr-namespace:FileFlow.App.Views.Components"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=vm:EditorViewModel}"
+             x:Class="FileFlow.App.Views.EditorView">
+
+    <Grid Background="{DynamicResource BgEditorBrush}">
+        <!-- Lienzo del Editor de Nodos Modularizado -->
+        <nodify:NodifyEditor x:Name="NodifyCanvas"
+                             ItemsSource="{Binding Nodes}"
+                             Connections="{Binding Connections}"
+                             Decorators="{Binding CanvasDecorators}"
+                             PendingConnection="{Binding PendingConnection}"
+                             SelectedItems="{Binding SelectedNodes}"
+                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
+                             ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
+                             MinViewportZoom="0.2"
+                             MaxViewportZoom="2.5"
+                             Background="Transparent">
+
+            <!-- Menú contextual en el área vacía del lienzo -->
+            <nodify:NodifyEditor.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PasteNodes]}"
+                              InputGesture="Ctrl+V"
+                              Command="{Binding PasteNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📋" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddAnnotation], FallbackValue='✨ Añadir Nota'}"
+                              Command="{Binding AddNewAnnotationCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✨" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddGroup], FallbackValue='📦 Añadir Grupo'}"
+                              Command="{Binding AddNewGroupCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📦" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomFit], FallbackValue='🔍 Ajustar al Lienzo'}"
+                              Command="{Binding FitToScreenCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🔍" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </nodify:NodifyEditor.ContextMenu>
+
+            <!-- Plantilla de la Tarjeta del Nodo -->
+            <nodify:NodifyEditor.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:NodeViewModel}">
+                    <components:NodeCardView />
+                </DataTemplate>
+            </nodify:NodifyEditor.ItemTemplate>
+
+            <!-- Plantilla Polimórfica de Decoradores -->
+            <nodify:NodifyEditor.DecoratorTemplate>
+                <DataTemplate>
+                    <ContentControl Content="{Binding}">
+                        <ContentControl.DataTemplates>
+                            <DataTemplate DataType="{x:Type vm:AnnotationViewModel}">
+                                <components:AnnotationCardView />
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type vm:GroupViewModel}">
+                                <components:GroupCardView />
+                            </DataTemplate>
+                        </ContentControl.DataTemplates>
+                    </ContentControl>
+                </DataTemplate>
+            </nodify:NodifyEditor.DecoratorTemplate>
+
+            <!-- Curva de Conexión Pendiente -->
+            <nodify:NodifyEditor.PendingConnectionTemplate>
+                <DataTemplate DataType="{x:Type vm:PendingConnectionViewModel}">
+                    <nodify:PendingConnection StartedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
+                                               CompletedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
+                                               Source="{Binding Source.Anchor}"
+                                               Target="{Binding TargetLocation, Mode=TwoWay}"
+                                               Direction="Forward"
+                                               Stroke="{DynamicResource AccentGlowBrush}"
+                                               StrokeThickness="2.5"
+                                               StrokeDashArray="5,3" />
+                </DataTemplate>
+            </nodify:NodifyEditor.PendingConnectionTemplate>
+
+            <!-- Conectores / Cables con Menú contextual -->
+            <nodify:NodifyEditor.ConnectionTemplate>
+                <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
+                    <nodify:Connection Source="{Binding Source.Anchor}"
+                                       Target="{Binding Target.Anchor}"
+                                       Stroke="{DynamicResource ConnectionWireBrush}"
+                                       StrokeThickness="3"
+                                       Direction="Forward">
+                        <nodify:Connection.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
+                                          Command="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="🗑" FontSize="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </nodify:Connection.ContextMenu>
+                    </nodify:Connection>
+                </DataTemplate>
+            </nodify:NodifyEditor.ConnectionTemplate>
+        </nodify:NodifyEditor>
+
+        <!-- Barra de Migas de Pan (Breadcrumbs) -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,16,0,0"
+                Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="8,4"
+                IsVisible="{Binding Breadcrumbs.Count}">
+            <ItemsControl ItemsSource="{Binding Breadcrumbs}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{Binding Name}"
+                                    Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).NavigateBreadcrumbCommand}"
+                                    CommandParameter="{Binding}"
+                                    FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AccentGlowBrush}" />
+                            <TextBlock Text=" ❯ " Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="2,0" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- Barra Flotante de Zoom Modularizada -->
+        <components:EditorZoomBarView />
+    </Grid>
+</UserControl>

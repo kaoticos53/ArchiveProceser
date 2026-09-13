@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using System.Windows;
+using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
@@ -92,7 +92,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         _clipboardService = clipboardService ?? new Services.NodeClipboardService(_pluginLoader);
         _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
         _loc = localizationService ?? LocalizationManager.Instance;
-        _dialogService = dialogService ?? WpfDialogService.Instance;
+        _dialogService = dialogService ?? AvaloniaDialogService.Instance;
         _globalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
         _preferencesChangedHandler = () =>
         {
@@ -474,16 +474,13 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public void OpenWorkflowSettings()
+    public async Task OpenWorkflowSettings()
     {
         try
         {
             var win = new Views.Components.WorkflowSettingsWindow(GlobalOutputDir);
-            if (Application.Current?.MainWindow != null)
-            {
-                win.Owner = Application.Current.MainWindow;
-            }
-            if (win.ShowDialog() == true)
+            var result = App.MainWindow != null ? await win.ShowDialog<bool>(App.MainWindow) : false;
+            if (result)
             {
                 GlobalOutputDir = win.GlobalOutputDir;
             }
@@ -499,15 +496,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void BrowseGlobalOutputDir()
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog
+        var fileDialogService = new FileDialogService();
+        var selectedFolder = fileDialogService.ShowFolderBrowserDialog("Seleccionar Ruta de Salida Global");
+        if (!string.IsNullOrWhiteSpace(selectedFolder))
         {
-            Title = "Seleccionar Ruta de Salida Global",
-            InitialDirectory = GlobalOutputDir
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            GlobalOutputDir = dialog.FolderName;
+            GlobalOutputDir = selectedFolder;
         }
     }
 

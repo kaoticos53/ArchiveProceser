@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
@@ -137,7 +136,7 @@ public partial class TextEditorDialogViewModel : ObservableObject
         var groups = _parameter?.AvailableVariables;
         if ((groups == null || groups.Count == 0) && _parameter?.NodeOwner != null)
         {
-            if (Application.Current?.MainWindow?.DataContext is MainViewModel mainVm)
+            if (App.MainWindow?.DataContext is MainViewModel mainVm)
             {
                 _parameter.RefreshAvailableVariables(mainVm.Editor);
                 groups = _parameter.AvailableVariables;
@@ -148,7 +147,7 @@ public partial class TextEditorDialogViewModel : ObservableObject
         {
             if (_parameter?.NodeOwner != null)
             {
-                var editor = (Application.Current?.MainWindow?.DataContext as MainViewModel)?.Editor;
+                var editor = (App.MainWindow?.DataContext as MainViewModel)?.Editor;
                 if (editor != null)
                 {
                     groups = _variableDiscoveryService.GetAvailableVariables(_parameter.NodeOwner, editor.Connections);

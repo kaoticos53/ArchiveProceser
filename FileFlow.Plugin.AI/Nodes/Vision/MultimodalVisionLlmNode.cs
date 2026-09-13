@@ -6,7 +6,8 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using FileFlow.Plugin.AI.Management;
 using FileFlow.Plugin.AI.UI;
 using FileFlow.Plugin.AI.ViewModels;
@@ -101,15 +102,16 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
         {
             var vm = new MultimodalVlmConfigViewModel(this);
             var window = new MultimodalVlmConfigWindow(vm);
-            if (context is Window ownerWindow)
+            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+            var owner = context as Window ?? lifetime?.MainWindow;
+            if (owner != null)
             {
-                window.Owner = ownerWindow;
+                window.ShowDialog(owner);
             }
-            else if (Application.Current?.MainWindow != null)
+            else
             {
-                window.Owner = Application.Current.MainWindow;
+                window.Show();
             }
-            window.ShowDialog();
         }
     }
 
@@ -329,7 +331,7 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
                 Log(context, $"👁️ Codificando imagen para inferencia HTTP: '{item.FileName}'...", LogLevel.Debug, item);
                 await using (var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
                 {
-                    using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
+                    using var image = await SixLabors.ImageSharp.Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
                     base64Uri = MultimodalVlmClientEngine.PrepareImageAsBase64Jpeg(image, maxImageDimension);
                 }
             }

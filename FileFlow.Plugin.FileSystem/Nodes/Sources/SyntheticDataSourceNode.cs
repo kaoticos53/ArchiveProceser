@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Plugin.FileSystem.UI.Services;
 using FileFlow.Plugin.FileSystem.UI.Views;
@@ -18,14 +19,14 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Name", "Generador de Datos de Prueba");
     public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Desc", "Emite archivos de prueba categorizados (Películas, Series, Cómics, Música o Personalizados) para pruebas y depuración de pipelines sin requerir archivos reales.");
+    public string Description => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Desc", "Emite streams de archivos sintéticos y virtuales precargados para testeo de pipelines sin tocar disco físico.");
 
     public IReadOnlyList<NodePort> Inputs { get; } = Array.Empty<NodePort>();
 
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
+    public IReadOnlyList<NodePort> Outputs { get; } = new[]
+    {
         new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    ];
+    };
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -34,24 +35,22 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
         ["MaxItems"] = 0,
         ["EmissionDelayMs"] = 0,
         ["EmitDirectories"] = false,
-        ["CustomItems"] = "",
-        ["OutputFolder"] = ""
+        ["CustomItems"] = string.Empty
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("Category", ParameterEditorType.Dropdown, DefaultValue: "Películas", DisplayOrder: 1, Options: ["Todas", "Películas", "Series", "Cómics y Manga", "Música", "Fotos", "Documentos", "Personalizada"]),
-        new("EmissionMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", DisplayOrder: 2, Options: ["Virtual", "PhysicalMock"]),
-        new("MaxItems", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 3, Min: 0, Max: 1000),
-        new("EmissionDelayMs", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 4, Min: 0, Max: 10000),
-        new("EmitDirectories", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 5),
-        new("CustomItems", ParameterEditorType.MultiLineText, DefaultValue: "", DisplayOrder: 6),
-        new("OutputFolder", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 7)
+        new("Category", ParameterEditorType.Dropdown, DefaultValue: "Películas", Options: ["Películas", "Series de TV", "Música", "Comics / Manga", "Personalizado"], DisplayOrder: 1, HelpText: "Colección temática de archivos sintéticos predefinidos."),
+        new("EmissionMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", Options: ["Virtual", "PhysicalTemp"], DisplayOrder: 2, HelpText: "Virtual emite descriptores en memoria sin crear ficheros reales en disco; PhysicalTemp genera archivos temporales físicos vacíos."),
+        new("MaxItems", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 3, HelpText: "Límite de elementos a emitir (0 = emitir todos los del dataset seleccionado)."),
+        new("EmissionDelayMs", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 4, HelpText: "Retardo en milisegundos entre la emisión de cada elemento (útil para simulación visual en vivo)."),
+        new("EmitDirectories", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 5, HelpText: "Si se activa, emite primero las carpetas contenedor antes de sus archivos hijos."),
+        new("CustomItems", ParameterEditorType.MultiLineText, DefaultValue: "", DisplayOrder: 6, HelpText: "Lista personalizada de rutas de archivos (uno por línea o en formato JSON). Solo aplica si la categoría es 'Personalizado'.")
     ];
 
     public IReadOnlyList<NodeActionDescriptor> CustomActions =>
     [
-        new("OpenDataSetDesigner", "📊 Diseñador de Datasets...", "📊", "Abrir el Diseñador Visual de Datasets Sintéticos para crear, editar o importar conjuntos de datos ficticios")
+        new("OpenDataSetDesigner", "🎨 Diseñador de Datos...", "🎨", "Abre el diseñador visual de datasets sintéticos y plantillas de prueba")
     ];
 
     public void ExecuteCustomAction(string actionId, object? context = null)
@@ -59,15 +58,16 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
             var window = new SyntheticDataSetDesignerWindow();
-            if (context is Window ownerWindow)
+            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+            var owner = context as Window ?? lifetime?.MainWindow;
+            if (owner != null)
             {
-                window.Owner = ownerWindow;
+                window.ShowDialog(owner);
             }
-            else if (Application.Current?.MainWindow != null)
+            else
             {
-                window.Owner = Application.Current.MainWindow;
+                window.Show();
             }
-            window.ShowDialog();
         }
     }
 

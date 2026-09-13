@@ -1,4 +1,4 @@
-using System.Windows.Media;
+using Avalonia.Media;
 
 namespace FileFlow.App.Services;
 
@@ -22,11 +22,14 @@ public static class NodeCategoryStyling
     {
         try
         {
-            var color = (Color)ColorConverter.ConvertFromString(accentHex);
-            byte r = (byte)(color.R * 0.25);
-            byte g = (byte)(color.G * 0.25);
-            byte b = (byte)(color.B * 0.25);
-            return $"#{r:X2}{g:X2}{b:X2}";
+            if (Color.TryParse(accentHex, out var color))
+            {
+                byte r = (byte)(color.R * 0.25);
+                byte g = (byte)(color.G * 0.25);
+                byte b = (byte)(color.B * 0.25);
+                return $"#{r:X2}{g:X2}{b:X2}";
+            }
+            return "#202430";
         }
         catch
         {
@@ -34,3 +37,4 @@ public static class NodeCategoryStyling
         }
     }
 }
+

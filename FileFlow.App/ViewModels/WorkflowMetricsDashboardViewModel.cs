@@ -249,13 +249,14 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
     {
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "CSV Files (*.csv)|*.csv",
-                FileName = $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
-            };
+            var fileDialog = new FileDialogService();
+            string? filePath = fileDialog.ShowSaveFileDialog(
+                "Exportar CSV",
+                "CSV Files (*.csv)|*.csv",
+                ".csv",
+                $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
-            if (dialog.ShowDialog() == true)
+            if (!string.IsNullOrEmpty(filePath))
             {
                 var sb = new StringBuilder();
                 sb.AppendLine("NodeId,Title,Category,Invocations,Errors,AvgDurationMs,RollingAvgDurationMs,AvgAllocatedBytes,PeakAllocatedBytes,AvgCpuPercentage,IsGpuAccelerated,IsBottleneck,BottleneckRatio");
@@ -263,7 +264,7 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
                 {
                     sb.AppendLine($"\"{row.NodeId}\",\"{row.Title}\",\"{row.Category}\",{row.ExecutionCount},{row.ErrorCount},{row.AvgDurationMs:F3},{row.RollingAvgDurationMs:F3},{row.AvgAllocatedBytes},{row.PeakAllocatedBytes},{row.AvgCpuPercentage:F2},{row.IsGpuAccelerated},{row.IsBottleneck},{row.RelativeBottleneckRatio:F4}");
                 }
-                File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
+                File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
                 _dialogService.ShowInformation(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a CSV."), "FileFlow Studio");
             }
         }
@@ -280,13 +281,14 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
     {
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "JSON Files (*.json)|*.json",
-                FileName = $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-            };
+            var fileDialog = new FileDialogService();
+            string? filePath = fileDialog.ShowSaveFileDialog(
+                "Exportar JSON",
+                "JSON Files (*.json)|*.json",
+                ".json",
+                $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.json");
 
-            if (dialog.ShowDialog() == true)
+            if (!string.IsNullOrEmpty(filePath))
             {
                 var exportData = new
                 {
@@ -305,7 +307,7 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
                 };
 
                 var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(dialog.FileName, json, Encoding.UTF8);
+                File.WriteAllText(filePath, json, Encoding.UTF8);
                 _dialogService.ShowInformation(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a JSON."), "FileFlow Studio");
             }
         }

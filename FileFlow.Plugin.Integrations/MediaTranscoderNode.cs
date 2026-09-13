@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Windows;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Common;
@@ -53,15 +54,16 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         if (actionId.Equals("ManageMediaPresets", StringComparison.OrdinalIgnoreCase))
         {
             var window = new MediaPresetManagerWindow();
-            if (context is Window ownerWindow)
+            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+            var owner = context as Window ?? lifetime?.MainWindow;
+            if (owner != null)
             {
-                window.Owner = ownerWindow;
+                window.ShowDialog(owner);
             }
-            else if (Application.Current?.MainWindow != null)
+            else
             {
-                window.Owner = Application.Current.MainWindow;
+                window.Show();
             }
-            window.ShowDialog();
         }
     }
 

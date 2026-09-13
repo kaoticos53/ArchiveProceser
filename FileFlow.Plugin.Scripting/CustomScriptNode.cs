@@ -132,19 +132,22 @@ await EmitAsync(""Out"");",
             string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
 
             var window = new ScriptStudioWindow(language, code, inputsStr, outputsStr);
-            if (System.Windows.Application.Current?.MainWindow != null)
+            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+            var owner = context as Avalonia.Controls.Window ?? lifetime?.MainWindow;
+            if (owner != null)
             {
-                window.Owner = System.Windows.Application.Current.MainWindow;
-            }
+                _ = window.ShowDialog<bool>(owner).ContinueWith(t =>
+                {
+                    if (t.IsCompletedSuccessfully && t.Result)
+                    {
+                        Parameters["Language"] = window.SelectedLanguage;
+                        Parameters["ScriptCode"] = window.ScriptCode;
+                        Parameters["InputPorts"] = window.InputPortsString;
+                        Parameters["OutputPorts"] = window.OutputPortsString;
 
-            if (window.ShowDialog() == true)
-            {
-                Parameters["Language"] = window.SelectedLanguage;
-                Parameters["ScriptCode"] = window.ScriptCode;
-                Parameters["InputPorts"] = window.InputPortsString;
-                Parameters["OutputPorts"] = window.OutputPortsString;
-
-                SyncPortsFromParameters();
+                        SyncPortsFromParameters();
+                    }
+                }, TaskScheduler.Default);
             }
         }
     }
