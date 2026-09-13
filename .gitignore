@@ -40,6 +40,8 @@ FileFlow.Plugin.Images/obj/
 # Artefactos generados del instalador (binarios, publish intermedio y setup final)
 installer/publish/
 installer/output/
+dist/
+squashfs-root/
 
 # Reportes de cobertura y resultados de pruebas
 coverage-report/

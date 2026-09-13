@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# AppRun script for FileFlow Studio AppImage
+set -e
+
+HERE="$(dirname "$(readlink -f "${0}")")"
+export APPDIR="${HERE}"
+export PATH="${HERE}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/lib/fileflow:${LD_LIBRARY_PATH}"
+export DOTNET_ROOT="${HERE}/usr/lib/fileflow/engine"
+
+# Si existe un binario o script de ejecución dentro de AppDir
+if [ -f "${HERE}/usr/lib/fileflow/fileflow.sh" ]; then
+    exec "${HERE}/usr/lib/fileflow/fileflow.sh" "$@"
+elif [ -f "${HERE}/usr/bin/fileflow" ]; then
+    exec "${HERE}/usr/bin/fileflow" "$@"
+else
+    echo "Error: No se encontró el ejecutable principal en ${HERE}" >&2
+    exit 1
+fi

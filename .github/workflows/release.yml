@@ -1,4 +1,4 @@
-name: Build, Package & Release Installer
+name: Build, Package & Release Multiplatform Installers
 
 on:
   workflow_dispatch:
@@ -34,22 +34,22 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  build-and-release:
-    name: 🚀 Compilar, Empaquetar y Publicar Release
-    runs-on: windows-latest
-
+  # -------------------------------------------------------------------------
+  # 1. Job para Resolver y Sanitizar la Versión
+  # -------------------------------------------------------------------------
+  resolve-version:
+    name: 🏷️ Resolver Versión
+    runs-on: ubuntu-latest
+    outputs:
+      clean_version: ${{ steps.get_version.outputs.clean_version }}
+      tag_version: ${{ steps.get_version.outputs.tag_version }}
     steps:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: 🏷️ Determinar y Sanitizar Versión de la Release
+      - name: 🏷️ Determinar y Sanitizar Versión
         id: get_version
         shell: pwsh
         run: |
@@ -60,7 +60,6 @@ jobs:
             }
           }
 
-          # Si no hay versión manual ni tag git específico, auto-detectar desde version.props y .build_number
           if ([string]::IsNullOrWhiteSpace($rawVersion) -or $rawVersion -eq "main" -or $rawVersion -eq "master") {
             Write-Host "==> Auto-detectando versión desde version.props y .build_number..." -ForegroundColor Cyan
             
@@ -86,21 +85,38 @@ jobs:
             $rawVersion = "$maj.$min.$pat$preSuffix+build.$buildNum"
           }
           
-          # Sanitizar: Eliminar espacios y caracteres ilegales en Git tags
           $sanitized = $rawVersion.Trim() -replace '\s+', '-' -replace '[^a-zA-Z0-9\.\+\-_]', '-'
           $cleanVersion = $sanitized.TrimStart('v')
           $tagVersion = "v$cleanVersion"
 
-          Write-Host "Versión resuelta para instalador: $cleanVersion"
-          Write-Host "Etiqueta Git para Release: $tagVersion"
+          Write-Host "Versión resuelta: $cleanVersion"
+          Write-Host "Tag Git resuelto: $tagVersion"
 
           "clean_version=$cleanVersion" >> $env:GITHUB_OUTPUT
           "tag_version=$tagVersion" >> $env:GITHUB_OUTPUT
 
+  # -------------------------------------------------------------------------
+  # 2. Job de Compilación y Empaquetado para Windows (Inno Setup + Portable)
+  # -------------------------------------------------------------------------
+  build-windows:
+    name: 🪟 Empaquetar para Windows
+    needs: resolve-version
+    runs-on: windows-latest
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Configurar .NET 9.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
       - name: 📦 Restaurar dependencias
         run: dotnet restore FileFlow.slnx
 
-      - name: 🧪 Ejecutar suite de pruebas unitarias y de integración
+      - name: 🧪 Ejecutar suite de pruebas
         if: ${{ github.event.inputs.run_tests != 'false' }}
         run: dotnet test FileFlow.slnx -c Release --no-restore --verbosity normal
 
@@ -117,23 +133,96 @@ jobs:
       - name: 🏗️ Compilar aplicación y generar instalador .exe
         shell: pwsh
         run: |
-          $ver = "${{ steps.get_version.outputs.clean_version }}"
-          Write-Host "Generando instalador para versión $ver..."
+          $ver = "${{ needs.resolve-version.outputs.clean_version }}"
+          Write-Host "Generando instalador de Windows para versión $ver..."
           .\installer\build-installer.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
 
       - name: 🗜️ Generar paquete portable autónomo .zip
         shell: pwsh
         run: |
-          $ver = "${{ steps.get_version.outputs.clean_version }}"
+          $ver = "${{ needs.resolve-version.outputs.clean_version }}"
           Write-Host "Generando paquete portable autónomo para versión $ver..."
           .\installer\build-portable.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
 
-      - name: 🔐 Generar sumas de verificación SHA-256
+      - name: 📤 Subir artefactos de Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: installer/output/*
+          if-no-files-found: error
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # 3. Job de Compilación y Empaquetado para Linux (AppImage, Tar.gz, .deb)
+  # -------------------------------------------------------------------------
+  build-linux:
+    name: 🐧 Empaquetar para Linux (AppImage, Tar.gz, .deb)
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Configurar .NET 9.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: 🛠️ Instalar herramientas de empaquetado de Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 file curl wget tar dpkg
+
+      - name: 🏗️ Compilar motor, plugins y generar instaladores de Linux
         shell: pwsh
         run: |
-          $outputDir = "installer/output"
-          $checksumFile = "$outputDir/checksums.txt"
-          $files = Get-ChildItem -Path $outputDir -File | Where-Object { $_.Extension -in @(".exe", ".zip", ".pdf") }
+          $ver = "${{ needs.resolve-version.outputs.clean_version }}"
+          Write-Host "Generando paquetes e instaladores de Linux para versión $ver..."
+          .\installer\build-linux-installer.ps1 -Version "$ver" -Configuration "Release"
+
+      - name: 📤 Subir artefactos de Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: installer/output/*
+          if-no-files-found: error
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # 4. Job de Publicación Unificada en GitHub Releases
+  # -------------------------------------------------------------------------
+  publish-release:
+    name: 🚀 Publicar GitHub Release Multiplataforma
+    needs: [resolve-version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar repositorio (para templates y metadata)
+        uses: actions/checkout@v4
+
+      - name: 📥 Descargar artefactos de Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-packages
+          path: release-assets
+
+      - name: 📥 Descargar artefactos de Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: release-assets
+
+      - name: 🔐 Generar sumas de verificación SHA-256 unificadas
+        shell: pwsh
+        run: |
+          $assetsDir = "release-assets"
+          $checksumFile = "$assetsDir/checksums.txt"
+          
+          # Filtrar todos los binarios, paquetes y documentos relevantes
+          $files = Get-ChildItem -Path $assetsDir -File | Where-Object { 
+            $_.Extension -in @(".exe", ".zip", ".AppImage", ".deb", ".pdf") -or $_.Name.EndsWith(".tar.gz") 
+          }
 
           $checksums = foreach ($file in $files) {
             $hash = (Get-FileHash -Path $file.FullName -Algorithm SHA256).Hash.ToLower()
@@ -141,62 +230,72 @@ jobs:
           }
 
           $checksums | Out-File -FilePath $checksumFile -Encoding utf8
-          Write-Host "Checksums generados:"
+          Write-Host "=========================================================="
+          Write-Host "Checksums SHA-256 generados para el lanzamiento:"
+          Write-Host "=========================================================="
           Get-Content $checksumFile
 
-      - name: 📤 Subir artefactos de la compilación
-        uses: actions/upload-artifact@v4
-        with:
-          name: FileFlowStudio-Packages-${{ steps.get_version.outputs.clean_version }}
-          path: installer/output/*
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: 🚀 Publicar GitHub Release
+      - name: 🚀 Publicar Release en GitHub
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.get_version.outputs.tag_version }}
+          tag_name: ${{ needs.resolve-version.outputs.tag_version }}
           target_commitish: ${{ github.sha }}
-          name: FileFlow Studio ${{ steps.get_version.outputs.tag_version }}
+          name: FileFlow Studio ${{ needs.resolve-version.outputs.tag_version }}
           draft: ${{ github.event.inputs.draft == 'true' || false }}
           prerelease: ${{ github.event.inputs.prerelease == 'true' || false }}
           generate_release_notes: true
           body: |
-            ## ⚡ FileFlow Studio ${{ steps.get_version.outputs.tag_version }}
+            ## ⚡ FileFlow Studio ${{ needs.resolve-version.outputs.tag_version }}
 
-            Bienvenido a la versión **${{ steps.get_version.outputs.tag_version }}** de **FileFlow Studio**, el motor visual interactivo de automatización y procesamiento masivo de archivos basado en Grafos Dirigidos Acíclicos (DAG) para Windows.
+            Bienvenido a la versión **${{ needs.resolve-version.outputs.tag_version }}** de **FileFlow Studio**, la plataforma interactiva de automatización, inferencia de IA y procesamiento masivo de archivos basada en Grafos Dirigidos Acíclicos (DAG) para Windows y Linux.
 
             ---
 
             ### 📦 Descargas Disponibles / Available Downloads
-            - 💻 **Instalador para Windows / Windows Setup:** `FileFlowStudio-Setup-${{ steps.get_version.outputs.clean_version }}.exe`
-              - *Asistente de instalación bilingüe (ES/EN) con manuales en PDF y accesos directos / Bilingual installer with PDF guides.*
-            - 🗜️ **Versión Portable (.ZIP Autónomo):** `FileFlowStudio-Portable-v${{ steps.get_version.outputs.clean_version }}-win-x64.zip`
-              - *Zero-installation standalone package with `portable.dat`, isolated `data/` folders, and `docs/` PDF manuals.*
-            - 📖 **Manuales Oficiales en Español (PDF):**
-              - `FileFlowStudio-Manual-de-Usuario.pdf` (Referencia técnica completa y catálogo de nodos)
-              - `FileFlowStudio-Guia-Principiantes.pdf` (Guía didáctica paso a paso sin tecnicismos)
-              - `FileFlowStudio-Manual-Scripting.pdf` (Manual de desarrollo de scripts en C# y JavaScript)
-            - 📘 **Official Guides in English (PDF):**
-              - `FileFlowStudio-User-Manual.pdf` (Comprehensive technical reference & node catalog)
-              - `FileFlowStudio-Beginners-Guide.pdf` (Step-by-step jargon-free automation guide)
-              - `FileFlowStudio-Scripting-Manual.pdf` (C# & JavaScript custom scripting manual)
-            - 🔐 **Sumas de Verificación / Checksums:** Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de todos los binarios y documentos.
+
+            #### 🪟 Windows (x64)
+            - 💻 **Instalador Asistido / Setup Installer:** `FileFlowStudio-Setup-${{ needs.resolve-version.outputs.clean_version }}.exe`
+              - *Asistente de instalación bilingüe (ES/EN) con manuales en PDF y accesos directos.*
+            - 🗜️ **Versión Portable (.ZIP Autónomo):** `FileFlowStudio-Portable-v${{ needs.resolve-version.outputs.clean_version }}-win-x64.zip`
+              - *Paquete portable autónomo sin instalación con aislamiento en carpeta `data/`.*
+
+            #### 🐧 Linux (x86_64)
+            - 🚀 **Ejecutable Único / Standalone AppImage:** `FileFlow-v${{ needs.resolve-version.outputs.clean_version }}-x86_64.AppImage`
+              - *Formato de un solo archivo ejecutable compatible con Ubuntu, Debian, Fedora, Arch, etc. (`chmod +x && ./FileFlow...AppImage`).*
+            - 📦 **Paquete Debian / Ubuntu (.deb):** `fileflow_${{ needs.resolve-version.outputs.clean_version }}_amd64.deb`
+              - *Instalación nativa con resolución de dependencias (`sudo dpkg -i fileflow...deb`).*
+            - 🗜️ **Bundle Universal Linux (.tar.gz):** `fileflow-linux-x64-v${{ needs.resolve-version.outputs.clean_version }}.tar.gz`
+              - *Incluye scripts `install.sh` (soporta `/opt/fileflow` o modo usuario `--user`) y `uninstall.sh`.*
+            - 📁 **Estructura AppDir (.tar.gz):** `fileflow-linux-x64-v${{ needs.resolve-version.outputs.clean_version }}.AppDir.tar.gz`
+
+            #### 📚 Documentación y Manuales Oficiales (PDF)
+            - 📖 `FileFlowStudio-Manual-de-Usuario.pdf` (Referencia técnica completa y catálogo de nodos)
+            - 📖 `FileFlowStudio-Guia-Principiantes.pdf` (Guía paso a paso sin tecnicismos)
+            - 📖 `FileFlowStudio-Manual-Scripting.pdf` (Manual de desarrollo de scripts en C# y JavaScript)
+            - 📘 `FileFlowStudio-User-Manual.pdf` (Comprehensive technical reference & node catalog)
+            - 📘 `FileFlowStudio-Beginners-Guide.pdf` (Step-by-step jargon-free automation guide)
+            - 📘 `FileFlowStudio-Scripting-Manual.pdf` (C# & JavaScript custom scripting manual)
+
+            #### 🔐 Sumas de Verificación / Checksums
+            Consulte `checksums.txt` para verificar la integridad criptográfica SHA-256 de todos los binarios y documentos.
 
             ---
 
             ### 🌟 Características Destacadas de esta Versión
             - 🎨 **Lienzo DAG Interactivo:** Diseño de flujos mediante nodos visuales con validación topológica y prevención de ciclos en tiempo real.
-            - ⚡ **Script Studio Integrado:** Nodo de scripting dinámico con motor dual C# (Roslyn JIT en memoria) y JavaScript (Jint Sandbox en .NET 9).
-            - 💾 **Soporte Nativo de Modo Portable (`AppPaths`):** Aislamiento de datos en la carpeta `data/` local al ejecutable sin alterar `%AppData%` ni el registro.
-            - 🌐 **Localización Dinámica 100% (i18n):** Cambio de idioma instantáneo en caliente entre Español e Inglés sin reiniciar la app.
+            - 🤖 **Inferencia Local de IA:** Nodos integrados con modelos ONNX para clasificación de imágenes, OCR de alta precisión y modelos multimodales Vision-LLM.
+            - ⚡ **Script Studio Integrado:** Motor dinámico dual C# (Roslyn JIT en memoria) y JavaScript (Jint Sandbox en .NET 9).
+            - 🌐 **Soporte Multiplataforma Nativo:** Binarios optimizados para Windows y Linux con empaquetado universal.
             - 📋 **Reportes Visuales de Operaciones (`OperationReportNode`):** Generación de informes en **HTML Interactivo**, **Markdown**, **Árbol ASCII**, **JSON** y **CSV**.
             - ⚡ **Motor Asíncrono de Alto Rendimiento:** Procesamiento concurrente mediante `Channel<T>` con telemetría SQLite In-Memory (>82.000 logs/s).
             - 🛡️ **Inmutabilidad de Archivos de Origen y Simulación (*Dry Run*):** Procesamiento no destructivo por defecto y previsualización determinista.
           files: |
-            installer/output/*.exe
-            installer/output/*.zip
-            installer/output/*.pdf
-            installer/output/checksums.txt
+            release-assets/*.exe
+            release-assets/*.zip
+            release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/*.tar.gz
+            release-assets/*.pdf
+            release-assets/checksums.txt

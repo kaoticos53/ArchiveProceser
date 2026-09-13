@@ -6,6 +6,7 @@ using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Platform;
+using FileFlow.Sdk.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FileFlow.App.Services;
@@ -40,6 +41,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IThemeService>(_ => ThemeManager.Instance);
         services.AddSingleton<IUserPreferencesService>(_ => UserPreferencesService.Instance);
         services.AddSingleton<IDialogService, WpfDialogService>();
+        services.AddSingleton<IUiDispatcher>(_ => WpfUiDispatcher.Instance);
+        services.AddSingleton<IClipboardService>(_ => WpfClipboardService.Instance);
         services.AddSingleton<IProcessLauncherService, ProcessLauncherService>();
 
         // 4. ViewModels (Ciclo de vida Singleton en el ámbito de aplicación de escritorio)

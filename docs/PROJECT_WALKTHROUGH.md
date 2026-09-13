@@ -2,6 +2,56 @@
 
 Este documento registra cronológicamente todos los cambios, mejoras, correcciones y nuevas funcionalidades implementadas en el proyecto **FileFlow Studio**.
 
+## [2026-09-13] - Plan de Migración Multiplataforma a Avalonia UI, Publicación Dual y Generador de Instaladores Linux y Windows
+
+### 🎯 Objetivos y Alcance
+1. **Plan de Migración Multiplataforma a Avalonia UI (Estrategia A)**:
+   - Elaboración del plan integral por fases para migrar la capa de presentación de `FileFlow.App` (WPF `net9.0-windows`) hacia **Avalonia UI (`net9.0`)**, habilitando la ejecución nativa en **Windows (10/11), Linux (X11 / Wayland) y macOS**.
+   - Aprobación formal del artefacto de arquitectura y hoja de ruta en 7 fases (`implementation_plan.md`).
+2. **Abstracciones de UI en `FileFlow.Sdk` y `FileFlow.App` (Fase 1)**:
+   - [`IUiDispatcher.cs`](file:///FileFlow.Sdk/Services/IUiDispatcher.cs) y [`NullUiDispatcher.cs`](file:///FileFlow.Sdk/Services/NullUiDispatcher.cs): Contratos e implementaciones nulas para desacoplar el despacho a hilos de UI (`Post`, `InvokeAsync`, `CheckAccess`) de `System.Windows.Application.Current.Dispatcher`.
+   - [`IClipboardService.cs`](file:///FileFlow.Sdk/Services/IClipboardService.cs) y [`NullClipboardService.cs`](file:///FileFlow.Sdk/Services/NullClipboardService.cs): Abstracciones de acceso al portapapeles del sistema operativo de forma asíncrona y segura.
+   - [`WpfUiDispatcher.cs`](file:///FileFlow.App/Services/WpfUiDispatcher.cs) y [`WpfClipboardService.cs`](file:///FileFlow.App/Services/WpfClipboardService.cs): Adaptadores de infraestructura enlazados a WPF registrados en el contenedor IoC ([`ServiceCollectionExtensions.cs`](file:///FileFlow.App/Services/ServiceCollectionExtensions.cs)).
+3. **Estructura y Compatibilidad de Temas y Conversores (Fase 2)**:
+   - Verificación de la compatibilidad del catálogo de paquetes NuGet (`NodifyAvalonia` v6.6.0, `Avalonia` 11.x/12.x).
+   - Comprobación de neutralidad de los modelos de datos de temas ([`ThemeDefinition.cs`](file:///FileFlow.App/Themes/ThemeDefinition.cs)) y contratos de servicio ([`IThemeService.cs`](file:///FileFlow.App/Services/IThemeService.cs)).
+   - Análisis de adaptación de conversores de datos ([`BooleanConverters.cs`](file:///FileFlow.App/Converters/BooleanConverters.cs), [`TelemetryConverters.cs`](file:///FileFlow.App/Converters/TelemetryConverters.cs)) hacia `Avalonia.Data.Converters.IValueConverter` y la propiedad nativa `IsVisible`.
+4. **Desacoplamiento y Portabilidad del Lienzo DAG (Fase 3)**:
+   - Eliminación de directivas de UI no utilizadas en [`NodeViewModel.cs`](file:///FileFlow.App/ViewModels/NodeViewModel.cs) y verificación de paridad geométrica `Point`/`Size` entre WPF y `NodifyAvalonia`.
+   - Validación de los 25+ tests de interacción de nodos en [`FileFlow.Tests`](file:///FileFlow.Tests/).
+5. **Alineación de Paneles de Diagnóstico y Desacoplamiento de Plugins (Fases 4 y 5)**:
+   - Desacoplamiento de llamadas de Dispatcher en [`MultimodalVlmConfigViewModel.cs`](file:///FileFlow.Plugin.AI/ViewModels/MultimodalVlmConfigViewModel.cs) mediante inyección de `IUiDispatcher`.
+   - Limpieza y verificación de ViewModels auxiliares ([`NodeInspectorViewModel.cs`](file:///FileFlow.App/ViewModels/NodeInspectorViewModel.cs), [`LogViewModel.cs`](file:///FileFlow.App/ViewModels/LogViewModel.cs), [`StatusBarViewModel.cs`](file:///FileFlow.App/ViewModels/StatusBarViewModel.cs), [`ControlBarViewModel.cs`](file:///FileFlow.App/ViewModels/ControlBarViewModel.cs), [`VirtualFileSystemExplorerViewModel.cs`](file:///FileFlow.App/ViewModels/VirtualFileSystemExplorerViewModel.cs), [`WorkflowMetricsDashboardViewModel.cs`](file:///FileFlow.App/ViewModels/WorkflowMetricsDashboardViewModel.cs), [`ThemeCustomizerViewModel.cs`](file:///FileFlow.App/ViewModels/ThemeCustomizerViewModel.cs) y [`TextEditorDialogViewModel.cs`](file:///FileFlow.App/ViewModels/TextEditorDialogViewModel.cs)).
+6. **Automatización de Compilación Cruzada y Publicación Dual (Fase 6)**:
+   - Creación de [`publish-all.ps1`](file:///publish-all.ps1) y [`publish-all.bat`](file:///publish-all.bat) para compilar y empaquetar de forma unificada y automatizada en un solo comando:
+     - `dist/windows-x64/`: Aplicación de escritorio autoincluida (Self-Contained / Single-File) para Windows.
+     - `dist/linux-x64/`: Motor y el 100% de los plugins compilados de forma nativa para Linux x64 (`engine/` + `Plugins/`).
+7. **Generador de Instaladores, AppImage y Paquetes Nativos para Linux**:
+   - Creación de herramientas de empaquetado e instalación en [`installer/linux/`](file:///installer/linux/):
+     - [`fileflow.desktop`](file:///installer/linux/fileflow.desktop): Entrada estándar FreeDesktop XDG con categorías, mimetype y soporte de iconos.
+     - [`fileflow.sh`](file:///installer/linux/fileflow.sh): Lanzador de bash con resolución automática de rutas y flags de compatibilidad Wayland/X11.
+     - [`AppRun`](file:///installer/linux/AppRun): Punto de entrada estándar para el bundle ejecutable AppImage.
+     - [`build-appimage.sh`](file:///installer/linux/build-appimage.sh): Script de construcción automatizado de `.AppImage` mediante `appimagetool` con soporte para ejecución en WSL y entornos Linux nativos.
+     - [`install.sh`](file:///installer/linux/install.sh): Script universal de instalación con soporte para instalación a nivel de sistema (`/opt/fileflow` y `/usr/local/bin/fileflow`) y modo usuario (`$HOME/.local/share/fileflow` y `$HOME/.local/bin/fileflow`) con auto-creación de accesos directos de escritorio.
+     - [`uninstall.sh`](file:///installer/linux/uninstall.sh): Desinstalador limpio para purgar binarios, enlaces y archivos de escritorio.
+   - Creación de [`installer/build-linux-installer.ps1`](file:///installer/build-linux-installer.ps1), [`installer/build-linux-installer.bat`](file:///installer/build-linux-installer.bat), [`installer/build-all.ps1`](file:///installer/build-all.ps1) y [`installer/build-all.bat`](file:///installer/build-all.bat):
+     - Generación del ejecutable único universal `FileFlow-v{Version}-x86_64.AppImage` (69.9 MB).
+     - Generación automatizada del bundle `fileflow-linux-x64-v{Version}.tar.gz` con scripts de instalación.
+     - Generación del paquete árbol Debian/Ubuntu `fileflow_{Version}_amd64_deb_tree.tar.gz` listo para compilar con `dpkg-deb -b`.
+     - Soporte para el flag `-FrameworkDependent` en todas las herramientas para generar distribuibles ultraligeros de ~6-10 MB para sistemas con .NET 9 instalado, reduciendo el conteo de ficheros en `dist/` de 224 a 35 archivos.
+8. **Automatización de GitHub Actions CI/CD Multiplataforma**:
+   - Actualización de [`.github/workflows/release.yml`](file:///.github/workflows/release.yml):
+     - Pipeline orquestado en 4 fases (`resolve-version`, `build-windows`, `build-linux`, `publish-release`).
+     - Generación paralela de instaladores de Windows (`.exe` Inno Setup, `.zip` portable) en `windows-latest` y paquetes de Linux (`.AppImage`, `.deb`, `.tar.gz`) en `ubuntu-latest`.
+     - Generación automática de sumas criptográficas SHA-256 (`checksums.txt`) agregadas para todos los distribuibles y publicación en GitHub Releases.
+   - Actualización de [`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml):
+     - Validación continua de compilación y pruebas en Windows junto con validación de empaquetado del motor y plugins en Linux (`ubuntu-latest`).
+9. **Métricas de Calidad y Pruebas**:
+   - **833 / 833 pruebas unitarias e integración superadas al 100% con éxito**.
+   - Compilación limpia bajo `--warnaserror` (0 advertencias, 0 errores).
+
+---
+
 ## [2026-09-11] - Soporte Universal de Decodificación y Visualización WebP en WPF y OCR (`WpfImageLoader` & `LocalOcrNode`)
 
 ### 🎯 Objetivos y Alcance

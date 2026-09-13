@@ -125,4 +125,11 @@ $bw.Flush()
 $bw.Close()
 $fs.Close()
 
-Write-Host "Icono generado en: $OutputPath" -ForegroundColor Green
+# Guardar icono PNG de 256x256 para Linux (.deb, .desktop, etc.)
+$pngPath = [System.IO.Path]::ChangeExtension($OutputPath, ".png")
+$bmp256 = New-FileFlowBitmap -Size 256
+$bmp256.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+$bmp256.Dispose()
+
+Write-Host "Icono Windows (.ico) generado en: $OutputPath" -ForegroundColor Green
+Write-Host "Icono Linux (.png) generado en: $pngPath" -ForegroundColor Green

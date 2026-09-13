@@ -9,6 +9,28 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
+  --81. **Plan de Migración Multiplataforma a Avalonia UI, Publicación Dual y Generador de Instaladores Linux y Windows (Fases 1 a 6)**:
+      - **Motivación y Requisito**: Habilitar la compilación, empaquetado e instalación de FileFlow Studio de forma nativa tanto en Windows (10/11) como en Linux (Ubuntu, Debian, Fedora, Arch) y macOS utilizando Avalonia UI (`net9.0`) y scripts de distribución automatizados.
+      - **Solución Implementada**:
+        1. *Plan de Implementación Aprobado*: Detalle de arquitectura y 7 fases en `implementation_plan.md`.
+        2. *Abstracciones en SDK (`IUiDispatcher`, `IClipboardService`)*: Interfaces desacopladas y sus implementaciones nulas (`NullUiDispatcher`, `NullClipboardService`) en `FileFlow.Sdk.Services`.
+        3. *Adaptadores WPF e Integración IoC*: `WpfUiDispatcher` y `WpfClipboardService` implementados y registrados en `ServiceCollectionExtensions.cs`.
+        4. *Verificación de Paquetes y Temas (Fase 2)*: Validación de compatibilidad con `NodifyAvalonia` (v6.6.0) y `Avalonia` (11.x/12.x), neutralidad de `ThemeDefinition.cs`, `IThemeService` y adaptación de converters hacia `IsVisible`.
+        5. *Desacoplamiento y Portabilidad del Lienzo DAG (Fase 3)*: Limpieza de acoplamiento en `NodeViewModel.cs`, paridad de `Point`/`Size` con `NodifyAvalonia` y validación de los 25+ tests de interacción en el lienzo.
+        6. *Alineación de Paneles y Desacoplamiento de Plugins (Fases 4 y 5)*: Desacoplamiento de `MultimodalVlmConfigViewModel` con `IUiDispatcher` y revisión de ViewModels de diagnóstico.
+        7. *Automatización de Publicación Dual (Fase 6)*: Scripts `publish-all.ps1` y `publish-all.bat` validados generando simultáneamente `dist/windows-x64/` (App Single-File) y `dist/linux-x64/` (`engine/` + `Plugins/` nativos de Linux).
+        8. *Generador de Instaladores Linux y Empaquetado Universal*:
+           - `installer/linux/AppRun` & `installer/linux/build-appimage.sh`: Generador y ejecutable AppImage (`FileFlow-v{Version}-x86_64.AppImage`).
+           - `installer/linux/fileflow.desktop`: Integración estándar FreeDesktop con iconos e información de aplicación.
+           - `installer/linux/fileflow.sh`: Lanzador bash optimizado para entornos gráficos Linux (Wayland / X11).
+           - `installer/linux/install.sh`: Instalador universal bash con soporte para instalación en `/opt/fileflow` y modo usuario local `$HOME/.local/share/fileflow`.
+           - `installer/linux/uninstall.sh`: Script de desinstalación limpia y purga de accesos directos.
+           - `installer/build-linux-installer.ps1` & `.bat`: Genera `FileFlow-v{Version}-x86_64.AppImage`, `fileflow-linux-x64-v{Version}.tar.gz`, `fileflow_{Version}_amd64.deb` y `fileflow_{Version}_amd64_deb_tree.tar.gz`.
+           - `installer/build-all.ps1` & `.bat`: Generador unificado de instaladores para Windows y Linux en un solo paso con soporte `-FrameworkDependent`.
+        9. *Automatización en GitHub Actions (CI/CD Multiplataforma)*:
+           - `.github/workflows/release.yml`: Pipeline multi-job (`resolve-version`, `build-windows`, `build-linux`, `publish-release`) para compilar en paralelo los instaladores de Windows (`.exe`, `.zip`) en `windows-latest` y los paquetes de Linux (`.AppImage`, `.deb`, `.tar.gz`) en `ubuntu-latest`, publicando en GitHub Releases con sumas SHA-256 agregadas en `checksums.txt`.
+           - `.github/workflows/ci.yml`: Validación continua con jobs simultáneos para Windows y Linux.
+      - **Validación**: 833 / 833 pruebas unitarias superadas al 100% con compilación limpia (`--warnaserror`).
   --80. **Preservación de Estructura de Directorios de Origen en Fan-Out / Fan-In de Archivos y Soporte de Variables `{Archive:...}` (`ArchiveFanOutNode`, `ArchiveFanInNode`, `DomainVariableResolver`, `SystemVariablesResolver`)**:
       - **Motivación y Diagnóstico**:
         1. Al procesar cómics o archivos situados en subdirectorios de origen (ej. `Comics\Marvel\SpiderMan_01.cbz` emitidos por `FolderSourceNode`), `ArchiveFanOutNode` generaba items hijos con `OriginalPath` apuntando a carpetas temporales (`%TEMP%\FileFlow_Sessions\...`).

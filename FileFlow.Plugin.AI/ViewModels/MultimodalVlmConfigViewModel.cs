@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.AI.Management;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 
 namespace FileFlow.Plugin.AI.ViewModels;
 
@@ -22,6 +23,7 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
     private readonly VlmConfigurationStorageService _storageService;
     private readonly MultimodalVisionLlmNode? _targetNode;
     private readonly HttpClient _httpClient;
+    private readonly IUiDispatcher _dispatcher;
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -80,11 +82,13 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
     public MultimodalVlmConfigViewModel(
         MultimodalVisionLlmNode? targetNode = null,
         VlmConfigurationStorageService? storageService = null,
-        HttpClient? customHttpClient = null)
+        HttpClient? customHttpClient = null,
+        IUiDispatcher? uiDispatcher = null)
     {
         _targetNode = targetNode;
         _storageService = storageService ?? VlmConfigurationStorageService.Instance;
         _httpClient = customHttpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(6) };
+        _dispatcher = uiDispatcher ?? NullUiDispatcher.Instance;
 
         LoadConfiguration();
 
@@ -700,15 +704,7 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
                 SampleExecutionStatus = string.Format(statusTemplate, result.DurationMs, result.TotalTokens, flattened.Count);
             }
 
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
-            if (dispatcher != null && !dispatcher.CheckAccess())
-            {
-                dispatcher.Invoke(ApplySuccessUi);
-            }
-            else
-            {
-                ApplySuccessUi();
-            }
+            _dispatcher.Post(ApplySuccessUi);
         }
         catch (Exception ex)
         {
@@ -718,15 +714,7 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
                 SampleExecutionStatus = string.Format(errorTemplate, ex.Message);
             }
 
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
-            if (dispatcher != null && !dispatcher.CheckAccess())
-            {
-                dispatcher.Invoke(ApplyErrorUi);
-            }
-            else
-            {
-                ApplyErrorUi();
-            }
+            _dispatcher.Post(ApplyErrorUi);
         }
         finally
         {
@@ -735,15 +723,7 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
                 IsExecutingSample = false;
             }
 
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
-            if (dispatcher != null && !dispatcher.CheckAccess())
-            {
-                dispatcher.Invoke(ApplyFinallyUi);
-            }
-            else
-            {
-                ApplyFinallyUi();
-            }
+            _dispatcher.Post(ApplyFinallyUi);
         }
     }
 

@@ -14,8 +14,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  # -------------------------------------------------------------------------
+  # 1. Compilación, Pruebas y Cobertura en Windows
+  # -------------------------------------------------------------------------
   build-and-test:
-    name: 🧪 Compilar y Ejecutar Pruebas
+    name: 🧪 Compilar y Ejecutar Pruebas (Windows)
     runs-on: windows-latest
 
     steps:
@@ -81,3 +84,29 @@ jobs:
           name: code-coverage-cobertura
           path: '**/TestResults/**/coverage.cobertura.xml'
           retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # 2. Verificación de Compilación y Empaquetado en Linux
+  # -------------------------------------------------------------------------
+  build-linux-validation:
+    name: 🐧 Validar Compilación y Empaquetado Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar .NET 9.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: 🛠️ Instalar herramientas de Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 file curl wget tar dpkg
+
+      - name: 🏗️ Validar generación de instaladores de Linux
+        shell: pwsh
+        run: |
+          .\installer\build-linux-installer.ps1 -Version "1.0.0-ci" -Configuration "Release"
