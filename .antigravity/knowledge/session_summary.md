@@ -15,6 +15,12 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
 - **Hitos Activos y Recientes (Septiembre 2026)**:
+  - **83. Arquitectura Multiplataforma y Web (Photino.NET + React Flow)**:
+    - Creación de la rama experimental `feature/crossplatform-photino-react` sincronizada con GitHub `origin`.
+    - Cliente web moderno `FileFlow.Web` con React 19, TypeScript y `@xyflow/react` (React Flow v12) con estética oscura **Estilo B** (ComfyUI / Linear con tarjetas translúcidas, glowing handles, conexiones bezier animadas y minimapa).
+    - Backend ligero y streaming `FileFlow.Server` (ASP.NET Core Minimal API + SignalR Hub `/hub/workflow`) con autodescubrimiento de nodos y servicio estático de SPA.
+    - Contenedor de escritorio nativo para Linux y macOS `FileFlow.App.Photino` (`Photino.NET`) ejecutando el servidor en memoria.
+    - Script automatizado `build-web.ps1` para compilación y despliegue a `wwwroot`. Preservación 100% íntegra de `FileFlow.App` (WPF) y 833/833 tests superados.
   - **82. Reversión de Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)**:
     - Reversión íntegra de la migración a Avalonia; restauración del 100% del entorno nativo WPF (`net9.0-windows`, `Nodify`, XAML estándar).
     - `StatusBarView.xaml` actualizado con enlaces dinámicos (`BgHeaderBrush`, `BgSurfaceBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `TextSecondaryBrush`). Fondo idéntico al de `ControlBarView.xaml` y texto con contraste óptimo en temas claros y oscuros.

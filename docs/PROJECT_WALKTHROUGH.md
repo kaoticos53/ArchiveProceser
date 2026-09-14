@@ -9,6 +9,31 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 
 ---
 
+## [2026-09-14] - Arquitectura Multiplataforma y Web: Photino.NET, React Flow y ASP.NET Core API
+
+### 🎯 Objetivos y Alcance
+1. **Creación y Aislamiento en Rama Experimental de GitHub**:
+   - Creación de la rama `feature/crossplatform-photino-react` publicada en el remoto `origin`.
+   - Preservación íntegra y sin alteraciones del cliente nativo de Windows `FileFlow.App` (WPF `net9.0-windows` con Nodify).
+2. **Frontend Web Moderno con React Flow (`FileFlow.Web`)**:
+   - Inicialización con Vite 8, React 19, TypeScript y `@xyflow/react` (React Flow v12).
+   - Implementación del **Estilo B** (inspirado en ComfyUI / Linear): tarjetas translúcidas en modo oscuro con `backdrop-filter: blur(20px)`, puertos magnéticos coloreados por tipo de dato, conexiones bezier animadas en tiempo real durante la ejecución, controles flotantes glassmorphic y minimapa interactivo.
+   - Componentes modulares: `FlowNode` (nodo canónico reactivo), `ControlBar` (barra superior de acciones y telemetría en vivo), `NodeLibraryDrawer` (catálogo lateral categorizado con buscador), `InspectorDrawer` (editor interactivo de parámetros de nodos seleccionados) y `LogConsole` (consola de registro en vivo).
+   - Script de compilación automatizada [`build-web.ps1`](file:///build-web.ps1) que ejecuta el empaquetado de producción con Vite y sincroniza los assets con `FileFlow.Server/wwwroot/`.
+3. **Backend Ligero y Hub SignalR (`FileFlow.Server`)**:
+   - Proyecto ASP.NET Core `net9.0` con Minimal APIs y SignalR Hub (`/hub/workflow`).
+   - Servicio estático para servir la SPA de React Flow en la raíz `/` de forma transparente.
+   - Endpoints REST de autodescubrimiento: `/api/health`, `/api/nodes/catalog`, `/api/nodes/categories` y `/api/workflows/validate`.
+   - Clase desacoplada [`FileFlowServerRunner.cs`](file:///FileFlow.Server/FileFlowServerRunner.cs) reutilizable tanto en modo servidor autónomo como embebido en aplicaciones de escritorio.
+4. **Shell de Escritorio Nativo para Linux y macOS (`FileFlow.App.Photino`)**:
+   - Aplicación de escritorio .NET 9 utilizando `Photino.NET` para levantar una ventana nativa de alto rendimiento (WebKitGTK en Linux, WebKit en macOS) ejecutando el servidor y motor en segundo plano sin dependencias de Node.js en tiempo de ejecución.
+5. **Integración en Solución y Pruebas Unitarias**:
+   - Incorporación de `FileFlow.Server` y `FileFlow.App.Photino` en [`FileFlow.slnx`](file:///FileFlow.slnx).
+   - Compilación general de los 17 proyectos de la solución: **0 Advertencias, 0 Errores**.
+   - Verificación de la suite de pruebas unitarias e integración: **833 / 833 superadas (100% de éxito)**.
+
+---
+
 ## [2026-09-14] - Reversión de Migración a Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)
 
 ### 🎯 Objetivos y Alcance
