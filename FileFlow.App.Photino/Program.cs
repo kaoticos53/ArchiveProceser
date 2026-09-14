@@ -1,21 +1,42 @@
 using FileFlow.Server;
 using Photino.NET;
 
-const int serverPort = 5000;
-var serverUrl = $"http://127.0.0.1:{serverPort}";
+namespace FileFlow.App.Photino;
 
-Console.WriteLine($"[FileFlow.Photino] Iniciando motor en segundo plano ({serverUrl})...");
-var app = FileFlowServerRunner.BuildServer(args, serverUrl);
-_ = Task.Run(() => app.RunAsync());
+public static class Program
+{
+    public static async Task Main(string[] args)
+    {
+        const int serverPort = 5000;
+        var listenUrl = $"http://127.0.0.1:{serverPort}";
 
-await Task.Delay(400);
+        Console.WriteLine($"[FileFlow.Photino] Iniciando motor y servidor ({listenUrl})...");
+        var app = FileFlowServerRunner.BuildServer(args, listenUrl);
 
-Console.WriteLine("[FileFlow.Photino] Abriendo ventana nativa de escritorio...");
-var window = new PhotinoWindow()
-    .SetTitle("FileFlow Studio - Visual Workflow Engine")
-    .SetUseOsDefaultSize(false)
-    .SetSize(1440, 920)
-    .Center()
-    .Load(new Uri(serverUrl));
+        try
+        {
+            await app.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FileFlow.Photino] Error al iniciar servidor en {listenUrl}: {ex.Message}. Reintentando en puerto dinamico...");
+            app = FileFlowServerRunner.BuildServer(args, "http://127.0.0.1:0");
+            await app.StartAsync();
+        }
 
-window.WaitForClose();
+        var serverUrl = app.Urls.FirstOrDefault() ?? listenUrl;
+        Console.WriteLine($"[FileFlow.Photino] Servidor activo y escuchando en: {serverUrl}");
+
+        Console.WriteLine("[FileFlow.Photino] Abriendo ventana nativa de escritorio...");
+        var window = new PhotinoWindow()
+            .SetTitle("FileFlow Studio - Visual Workflow Engine")
+            .SetUseOsDefaultSize(false)
+            .SetSize(1440, 920)
+            .Center()
+            .Load(new Uri(serverUrl));
+
+        window.WaitForClose();
+
+        await app.StopAsync();
+    }
+}

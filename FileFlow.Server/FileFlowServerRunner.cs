@@ -52,17 +52,26 @@ public static class FileFlowServerRunner
         app.UseCors("AllowLocalClient");
 
         // 2. Servir la SPA de React Flow (FileFlow.Web/dist o wwwroot)
-        var wwwrootDir = Path.Combine(AppContext.BaseDirectory, "wwwroot");
-        var webDistDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "FileFlow.Web", "dist"));
+        var baseDir = AppContext.BaseDirectory;
+        var candidatePaths = new[]
+        {
+            Path.Combine(baseDir, "wwwroot"),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "FileFlow.Web", "dist")),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "FileFlow.Server", "wwwroot")),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "FileFlow.Server", "wwwroot")),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "FileFlow.Server", "wwwroot")),
+            Path.GetFullPath(Path.Combine(baseDir, "dist")),
+        };
 
         string? staticDir = null;
-        if (Directory.Exists(wwwrootDir) && Directory.GetFiles(wwwrootDir).Length > 0)
+        foreach (var path in candidatePaths)
         {
-            staticDir = wwwrootDir;
-        }
-        else if (Directory.Exists(webDistDir))
-        {
-            staticDir = webDistDir;
+            if (Directory.Exists(path) && File.Exists(Path.Combine(path, "index.html")))
+            {
+                staticDir = path;
+                Console.WriteLine($"[FileFlow.Server] Servidor estatico sirviendo desde: {staticDir}");
+                break;
+            }
         }
 
         if (staticDir != null)

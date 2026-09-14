@@ -62,4 +62,6 @@ node_modules/
 **/node_modules/
 FileFlow.Web/dist/
 FileFlow.Server/wwwroot/
+FileFlow.App.Photino/wwwroot/
+**/wwwroot/
 
