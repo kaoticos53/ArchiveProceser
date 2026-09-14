@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>13</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
+    <ProjectReference Include="..\FileFlow.Core\FileFlow.Core.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.FileSystem\FileFlow.Plugin.FileSystem.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Archives\FileFlow.Plugin.Archives.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Images\FileFlow.Plugin.Images.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Logic\FileFlow.Plugin.Logic.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Scripting\FileFlow.Plugin.Scripting.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Documents\FileFlow.Plugin.Documents.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Network\FileFlow.Plugin.Network.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
+  </ItemGroup>
+</Project>

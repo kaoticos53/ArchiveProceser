@@ -56,3 +56,10 @@ appimagetool*
 TestResults/
 coverage-report/
 .dotnet_tmp/
+
+## Node.js & Web UI Artifacts
+node_modules/
+**/node_modules/
+FileFlow.Web/dist/
+FileFlow.Server/wwwroot/
+

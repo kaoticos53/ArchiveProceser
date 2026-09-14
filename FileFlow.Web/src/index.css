@@ -1,0 +1,316 @@
+@import '@xyflow/react/dist/style.css';
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Colores Base y Glassmorphism */
+  --bg-app: #080a0f;
+  --bg-canvas: #0c0f17;
+  --bg-panel: rgba(15, 19, 30, 0.85);
+  --bg-panel-solid: #111624;
+  --bg-node: rgba(18, 23, 38, 0.88);
+  --bg-node-hover: rgba(23, 30, 48, 0.94);
+  --bg-node-selected: rgba(26, 35, 58, 0.96);
+  --bg-input: rgba(10, 13, 22, 0.7);
+
+  /* Bordes y Separadores */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-active: #3b82f6;
+  --border-node: rgba(255, 255, 255, 0.1);
+
+  /* Acentos y Señalética */
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-purple: #a855f7;
+  --accent-indigo: #6366f1;
+
+  /* Tipografía */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  /* Sombras y Efectos Glow */
+  --shadow-node: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.35);
+  --shadow-emerald: 0 0 18px rgba(16, 185, 129, 0.35);
+  --shadow-running: 0 0 25px rgba(59, 130, 246, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === React Flow Overrides (ComfyUI / Linear Dark Aesthetic) === */
+.react-flow {
+  background-color: var(--bg-canvas) !important;
+}
+
+.react-flow__background-pattern dots {
+  fill: rgba(255, 255, 255, 0.08) !important;
+}
+
+.react-flow__controls {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 10px !important;
+  background: var(--bg-panel) !important;
+  backdrop-filter: blur(16px) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls-button {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  color: var(--text-muted) !important;
+  fill: var(--text-muted) !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-main) !important;
+  fill: var(--text-main) !important;
+}
+
+.react-flow__minimap {
+  background-color: rgba(10, 14, 24, 0.85) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(14px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* === Aristas y Conexiones Fluidas con Glow === */
+.react-flow__edge-path {
+  stroke: rgba(148, 163, 184, 0.45) !important;
+  stroke-width: 2.5 !important;
+  transition: stroke 0.25s ease, stroke-width 0.25s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--accent-blue) !important;
+  stroke-width: 3.5 !important;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7));
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke: var(--accent-cyan) !important;
+  stroke-dasharray: 6 !important;
+  animation: flow-dash 1s linear infinite !important;
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8)) !important;
+}
+
+@keyframes flow-dash {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* === Puertos / Handles Magnéticos con Halos === */
+.react-flow__handle {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  border: 2px solid var(--bg-app) !important;
+  background-color: var(--accent-blue) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.45) !important;
+  box-shadow: 0 0 10px var(--accent-blue) !important;
+}
+
+.react-flow__handle-left {
+  left: -6px !important;
+}
+
+.react-flow__handle-right {
+  right: -6px !important;
+}
+
+/* === Tarjeta de Nodo Personalizada (Style B: Translucent / Linear) === */
+.flow-node-card {
+  min-width: 250px;
+  max-width: 320px;
+  background: var(--bg-node);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-node);
+  border-radius: 12px;
+  box-shadow: var(--shadow-node);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-node-card:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-node-hover);
+}
+
+.flow-node-card.selected {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-glow);
+}
+
+.flow-node-card.running {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-running);
+  animation: pulse-border 2s infinite ease-in-out;
+}
+
+.flow-node-card.completed {
+  border-color: var(--accent-emerald);
+  box-shadow: var(--shadow-emerald);
+}
+
+.flow-node-card.faulted {
+  border-color: var(--accent-rose);
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.7);
+  }
+}
+
+.flow-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(25, 33, 52, 0.75);
+  border-bottom: 1px solid var(--border-subtle);
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
+.flow-node-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--accent-blue);
+}
+
+.flow-node-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-node-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-node-category {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.flow-node-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--text-dim);
+}
+
+.flow-node-status-dot.running {
+  background-color: var(--accent-blue);
+  box-shadow: 0 0 8px var(--accent-blue);
+  animation: blink 1s infinite alternate;
+}
+
+.flow-node-status-dot.completed {
+  background-color: var(--accent-emerald);
+  box-shadow: 0 0 6px var(--accent-emerald);
+}
+
+.flow-node-status-dot.faulted {
+  background-color: var(--accent-rose);
+  box-shadow: 0 0 6px var(--accent-rose);
+}
+
+@keyframes blink {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+.flow-node-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-node-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  max-height: 38px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.flow-node-ports {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.flow-port-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}

@@ -1,5 +1,7 @@
 <Solution>
   <Project Path="FileFlow.App/FileFlow.App.csproj" />
+  <Project Path="FileFlow.App.Photino/FileFlow.App.Photino.csproj" />
+  <Project Path="FileFlow.Server/FileFlow.Server.csproj" />
   <Project Path="FileFlow.Core/FileFlow.Core.csproj" />
   <Project Path="FileFlow.Plugin.AI/FileFlow.Plugin.AI.csproj" />
   <Project Path="FileFlow.Plugin.Archives/FileFlow.Plugin.Archives.csproj" />
