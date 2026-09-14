@@ -1,12 +1,8 @@
-using System;
-using System.IO;
-using System.Linq;
-using Avalonia.Controls;
-using Avalonia.Interactivity;
-using AvaloniaEdit;
-using AvaloniaEdit.Highlighting;
+using System.Windows;
+using System.Windows.Controls;
 using FileFlow.Plugin.Scripting.UI.ViewModels;
 using FileFlow.Sdk.Services;
+using ICSharpCode.AvalonEdit.Highlighting;
 
 namespace FileFlow.Plugin.Scripting.UI.Views;
 
@@ -16,8 +12,6 @@ public partial class ScriptStudioWindow : Window
     private readonly IDialogService _dialogService;
     private bool _isUpdatingTextFromCode;
 
-    private TextEditor? CodeEditor => this.FindControl<TextEditor>("CodeEditor");
-
     public string SelectedLanguage => _viewModel.SelectedLanguage;
     public string ScriptCode => _viewModel.ScriptCode;
     public string InputPortsString => string.Join(", ", _viewModel.InputPorts);
@@ -26,28 +20,23 @@ public partial class ScriptStudioWindow : Window
     public ScriptStudioWindow(string initialLanguage, string initialCode, string initialInputs, string initialOutputs, IDialogService? dialogService = null)
     {
         _dialogService = dialogService ?? NullDialogService.Instance;
+        InitializeComponent();
 
         _viewModel = new ScriptStudioViewModel(initialLanguage, initialCode, initialInputs, initialOutputs);
         DataContext = _viewModel;
 
-        if (CodeEditor != null)
-        {
-            UpdateSyntaxHighlighting(_viewModel.SelectedLanguage);
-            _isUpdatingTextFromCode = true;
-            CodeEditor.Text = _viewModel.ScriptCode ?? string.Empty;
-            _isUpdatingTextFromCode = false;
-            CodeEditor.TextChanged += CodeEditor_TextChanged;
-        }
+        UpdateSyntaxHighlighting(_viewModel.SelectedLanguage);
+
+        _isUpdatingTextFromCode = true;
+        CodeEditor.Text = _viewModel.ScriptCode ?? string.Empty;
+        _isUpdatingTextFromCode = false;
 
         _viewModel.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(ScriptStudioViewModel.ScriptCode) && !_isUpdatingTextFromCode)
             {
                 _isUpdatingTextFromCode = true;
-                if (CodeEditor != null)
-                {
-                    CodeEditor.Text = _viewModel.ScriptCode ?? string.Empty;
-                }
+                CodeEditor.Text = _viewModel.ScriptCode ?? string.Empty;
                 _isUpdatingTextFromCode = false;
             }
             else if (e.PropertyName == nameof(ScriptStudioViewModel.SelectedLanguage))
@@ -59,12 +48,11 @@ public partial class ScriptStudioWindow : Window
 
     private void UpdateSyntaxHighlighting(string language)
     {
-        if (CodeEditor == null) return;
         string syntaxName = language.Equals("JavaScript", StringComparison.OrdinalIgnoreCase) ? "JavaScript" : "C#";
         CodeEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition(syntaxName);
     }
 
-    private void Language_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void Language_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CodeEditor != null && _viewModel != null)
         {
@@ -74,7 +62,7 @@ public partial class ScriptStudioWindow : Window
 
     private void CodeEditor_TextChanged(object? sender, EventArgs e)
     {
-        if (!_isUpdatingTextFromCode && _viewModel != null && CodeEditor != null)
+        if (!_isUpdatingTextFromCode && _viewModel != null)
         {
             _isUpdatingTextFromCode = true;
             _viewModel.ScriptCode = CodeEditor.Text;
@@ -82,16 +70,14 @@ public partial class ScriptStudioWindow : Window
         }
     }
 
-    private void ApplyAndClose_Click(object? sender, RoutedEventArgs e)
+    private void ApplyAndClose_Click(object sender, RoutedEventArgs e)
     {
-        if (CodeEditor != null)
-        {
-            _viewModel.ScriptCode = CodeEditor.Text;
-        }
-        Close(true);
+        _viewModel.ScriptCode = CodeEditor.Text;
+        DialogResult = true;
+        Close();
     }
 
-    private void OpenManual_Click(object? sender, RoutedEventArgs e)
+    private void OpenManual_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -137,8 +123,9 @@ public partial class ScriptStudioWindow : Window
         }
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        Close(false);
+        DialogResult = false;
+        Close();
     }
 }

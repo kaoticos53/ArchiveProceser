@@ -1,14 +1,10 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Avalonia.Controls;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Preview.Core;
-using FileFlow.App.ViewModels;
 
 namespace FileFlow.App.Preview.ViewModels;
 
@@ -20,7 +16,7 @@ public partial class FilePreviewerViewModel : ObservableObject
     private FilePreviewContext? _currentContext;
 
     [ObservableProperty]
-    private Control? _activeVisualElement;
+    private FrameworkElement? _activeVisualElement;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -159,7 +155,7 @@ public partial class FilePreviewerViewModel : ObservableObject
     {
         if (CurrentContext != null)
         {
-            LogViewModel.SafeSetClipboardText(CurrentContext.CurrentPath);
+            Clipboard.SetText(CurrentContext.CurrentPath);
         }
     }
 }

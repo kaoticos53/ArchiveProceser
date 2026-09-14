@@ -1,6 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using Avalonia.Controls;
+using System.Windows;
 
 namespace FileFlow.App.Preview.Core;
 
@@ -14,5 +12,5 @@ public interface IFilePreviewProvider
 
     bool CanHandle(FilePreviewContext context);
 
-    Task<Control> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken);
+    Task<FrameworkElement> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken);
 }

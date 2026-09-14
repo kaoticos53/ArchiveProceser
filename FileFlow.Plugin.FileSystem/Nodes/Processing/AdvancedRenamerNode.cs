@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
+using System.Windows;
 using FileFlow.Plugin.FileSystem.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
@@ -65,16 +64,15 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
         {
             var window = new AdvancedRenamerEditorWindow(this);
-            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-            var owner = context as Window ?? lifetime?.MainWindow;
-            if (owner != null)
+            if (context is Window ownerWindow)
             {
-                window.ShowDialog(owner);
+                window.Owner = ownerWindow;
             }
-            else
+            else if (Application.Current?.MainWindow != null)
             {
-                window.Show();
+                window.Owner = Application.Current.MainWindow;
             }
+            window.ShowDialog();
         }
     }
 

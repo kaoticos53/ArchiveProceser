@@ -1,6 +1,5 @@
 using System;
-using Avalonia.Controls;
-using Avalonia.Interactivity;
+using System.Windows;
 using FileFlow.Plugin.AI.ViewModels;
 
 namespace FileFlow.Plugin.AI.UI;
@@ -16,16 +15,40 @@ public partial class MultimodalVlmConfigWindow : Window
 
     public MultimodalVlmConfigWindow(MultimodalVlmConfigViewModel? viewModel = null)
     {
+        InitializeComponentSafe();
         _viewModel = viewModel ?? new MultimodalVlmConfigViewModel();
         _viewModel.RequestClose = () =>
         {
+            DialogResult = true;
             Close();
         };
         DataContext = _viewModel;
     }
 
-    private void CancelButton_Click(object? sender, RoutedEventArgs e)
+    private void InitializeComponentSafe()
     {
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MultimodalVlmConfigWindow] Primary InitializeComponent failed, trying fallback: {ex.Message}");
+            try
+            {
+                var uri = new Uri("/FileFlow.Plugin.AI;component/ui/multimodalvlmconfigwindow.xaml", UriKind.Relative);
+                Application.LoadComponent(this, uri);
+            }
+            catch (Exception fallbackEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MultimodalVlmConfigWindow] Fallback LoadComponent failed: {fallbackEx.Message}");
+            }
+        }
+    }
+
+    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
         Close();
     }
 }

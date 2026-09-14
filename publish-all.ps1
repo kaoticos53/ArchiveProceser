@@ -20,7 +20,7 @@ Write-Host "==========================================================" -Foregro
 
 $distDir = Join-Path $scriptDir "dist"
 if ($Clean -and (Test-Path $distDir)) {
-    Write-Host ("Limpiando directorio de distribución anterior ({0})..." -f $distDir) -ForegroundColor Gray
+    Write-Host "Limpiando directorio de distribución anterior ($distDir)..." -ForegroundColor Gray
     Remove-Item -Recurse -Force $distDir -ErrorAction SilentlyContinue
 }
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
@@ -37,7 +37,7 @@ $pdbFlags = if ($KeepDebugPdb) { @() } else { @("-p:DebugType=none", "-p:DebugSy
 # --- 1. Publicación para Windows x64 ---
 if (-not $LinuxOnly) {
     $winDist = Join-Path $distDir "windows-x64"
-    Write-Host ("`n📦 Publicando FileFlow Studio para Windows x64 ({0})..." -f $Configuration) -ForegroundColor Yellow
+    Write-Host "`n📦 Publicando FileFlow Studio para Windows x64 ($Configuration)..." -ForegroundColor Yellow
     
     $winArgs = @(
         "publish", $appProject,
@@ -64,37 +64,42 @@ if (-not $LinuxOnly) {
             Get-ChildItem -Path $winDist -Filter "*.lib" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
         }
         $winFilesCount = (Get-ChildItem -Path $winDist -Recurse -File).Count
-        Write-Host ("✅ Binarios de Windows generados con éxito en: {0} ({1} archivos)" -f $winDist, $winFilesCount) -ForegroundColor Green
+        Write-Host "✅ Binarios de Windows generados con éxito en: $winDist ($winFilesCount archivos)" -ForegroundColor Green
     } else {
         Write-Host "❌ Fallo al compilar versión de Windows." -ForegroundColor Red
         exit $LASTEXITCODE
     }
 }
 
-# --- 2. Publicación de Aplicación, Motor y Plugins para Linux x64 ---
+# --- 2. Publicación de Motor y Plugins para Linux x64 ---
 if (-not $WindowsOnly) {
     $linuxDist = Join-Path $distDir "linux-x64"
-    Write-Host ("`n📦 Publicando FileFlow Studio y Plugins para Linux x64 ({0})..." -f $Configuration) -ForegroundColor Yellow
+    Write-Host "`n📦 Publicando componentes del Motor y Plugins de FileFlow para Linux x64 ($Configuration)..." -ForegroundColor Yellow
     
+    $linuxEngineDir = Join-Path $linuxDist "engine"
     $linuxArgs = @(
-        "publish", $appProject,
+        "publish", $coreProject,
         "-c", $Configuration,
         "-r", "linux-x64",
         "--self-contained", $scBoolStr,
-        "-o", $linuxDist
+        "-o", $linuxEngineDir
     ) + $pdbFlags
     
     & dotnet @linuxArgs
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Fallo al compilar la aplicación para Linux." -ForegroundColor Red
+        Write-Host "❌ Fallo al compilar el motor para Linux." -ForegroundColor Red
         exit $LASTEXITCODE
     }
 
-    # Copiar Config/ global a Linux
+    # Copiar Config/ global a Linux (en raíz y en engine/)
     $linuxConfigDest = Join-Path $linuxDist "Config"
+    $engineConfigDest = Join-Path $linuxEngineDir "Config"
     if (Test-Path $sdkConfigDir) {
         New-Item -ItemType Directory -Path $linuxConfigDest -Force | Out-Null
         Copy-Item -Path "$sdkConfigDir\*" -Destination $linuxConfigDest -Recurse -Force
+        
+        New-Item -ItemType Directory -Path $engineConfigDest -Force | Out-Null
+        Copy-Item -Path "$sdkConfigDir\*" -Destination $engineConfigDest -Recurse -Force
     }
 
     # Publicar cada plugin en su carpeta dedicada Plugins/{PluginName}/
@@ -144,11 +149,11 @@ if (-not $WindowsOnly) {
     }
 
     $linuxFilesCount = (Get-ChildItem -Path $linuxDist -Recurse -File).Count
-    Write-Host ("✅ Binarios de Linux generados con éxito en: {0} ({1} archivos)" -f $linuxDist, $linuxFilesCount) -ForegroundColor Green
+    Write-Host "✅ Binarios de Linux generados con éxito en: $linuxDist ($linuxFilesCount archivos)" -ForegroundColor Green
 }
 
 $totalFiles = (Get-ChildItem -Path $distDir -Recurse -File).Count
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host "  Proceso de publicación completado con éxito!             " -ForegroundColor Green
-Write-Host ("  Salida generada en: {0} ({1} archivos totales) " -f $distDir, $totalFiles) -ForegroundColor Green
+Write-Host "  Salida generada en: $distDir ($totalFiles archivos totales) " -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green

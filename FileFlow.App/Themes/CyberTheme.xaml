@@ -1,0 +1,42 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:nodify="clr-namespace:Nodify;assembly=Nodify">
+
+    <!-- Cyber / Neon Glow Vibrant Color Palette -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0B0E17" />
+    <SolidColorBrush x:Key="BgDarkBrush" Color="#0B0E17" />
+    <SolidColorBrush x:Key="BgEditorBrush" Color="#0F1322" />
+    <SolidColorBrush x:Key="BgCardBrush" Color="#151B2E" />
+    <SolidColorBrush x:Key="BgSurfaceBrush" Color="#181F36" />
+    <SolidColorBrush x:Key="BgHeaderBrush" Color="#1E2745" />
+    <SolidColorBrush x:Key="BgHoverBrush" Color="#28345C" />
+    
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#06B6D4" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#0891B2" />
+    <SolidColorBrush x:Key="AccentGlowBrush" Color="#22D3EE" />
+    <SolidColorBrush x:Key="AccentSuccessBrush" Color="#10B981" />
+    <SolidColorBrush x:Key="AccentWarningBrush" Color="#FBBF24" />
+    <SolidColorBrush x:Key="AccentErrorBrush" Color="#F43F5E" />
+    <SolidColorBrush x:Key="AccentCyanBrush" Color="#06B6D4" />
+    <SolidColorBrush x:Key="AccentPurpleBrush" Color="#D946EF" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="BorderDarkBrush" Color="#2A385E" />
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="GridLineBrush" Color="#161E36" />
+
+    <!-- Scrollbar Brushes -->
+    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#384C7A" />
+    <SolidColorBrush x:Key="ScrollbarThumbHoverBrush" Color="#06B6D4" />
+
+    <!-- Cyber Neon Connection Wire Gradient Brush -->
+    <LinearGradientBrush x:Key="ConnectionWireBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#06B6D4" Offset="0.0" />
+        <GradientStop Color="#8B5CF6" Offset="0.5" />
+        <GradientStop Color="#EC4899" Offset="1.0" />
+    </LinearGradientBrush>
+
+    <!-- Node Drop Shadow & Glow Effect -->
+    <DropShadowEffect x:Key="NodeShadowEffect" BlurRadius="28" ShadowDepth="4" Direction="270" Color="#06B6D4" Opacity="0.22" />
+</ResourceDictionary>

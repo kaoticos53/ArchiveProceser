@@ -99,7 +99,7 @@ public sealed class WorkflowExecutionCoordinator
 
             _activeDebugSession.NodeStatusChanged += (nodeId, status, details) =>
             {
-                Dispatcher.UIThread.InvokeAsync(() =>
+                Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
                     if (node != null)
@@ -121,7 +121,7 @@ public sealed class WorkflowExecutionCoordinator
 
             _activeDebugSession.SnapshotRecorded += (snapshot) =>
             {
-                Dispatcher.UIThread.InvokeAsync(() =>
+                Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(snapshot.NodeId, StringComparison.OrdinalIgnoreCase));
                     node?.AddSnapshot(snapshot);
@@ -291,7 +291,7 @@ public sealed class WorkflowExecutionCoordinator
                 }
             }
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            Application.Current?.Dispatcher.InvokeAsync(() =>
             {
                 foreach (var node in _editorViewModel.Nodes)
                 {

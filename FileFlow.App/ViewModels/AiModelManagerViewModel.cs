@@ -1,9 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using Avalonia.Threading;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
-
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.AI;
 using FileFlow.Sdk.Localization;
@@ -236,11 +235,16 @@ public partial class AiModelManagerViewModel : ObservableObject
 
         var progressReporter = new Progress<double>(p =>
         {
-            Dispatcher.UIThread.Post(() =>
+            void UpdateProgress()
             {
                 item.Progress = Math.Clamp(p, 0.0, 100.0);
                 item.ProgressText = $"{item.Progress:F0}%";
-            });
+            }
+
+            if (Application.Current?.Dispatcher != null)
+                _ = Application.Current.Dispatcher.InvokeAsync(UpdateProgress);
+            else
+                UpdateProgress();
         });
 
         string? lastErrorCaptured = null;
@@ -252,14 +256,19 @@ public partial class AiModelManagerViewModel : ObservableObject
                 progressReporter,
                 statusLogger: msg =>
                 {
-                    Dispatcher.UIThread.Post(() =>
+                    void UpdateText()
                     {
                         item.ProgressText = msg;
                         if (msg.StartsWith("❌") || msg.Contains("Error", StringComparison.OrdinalIgnoreCase))
                         {
                             lastErrorCaptured = msg;
                         }
-                    });
+                    }
+
+                    if (Application.Current?.Dispatcher != null)
+                        _ = Application.Current.Dispatcher.InvokeAsync(UpdateText);
+                    else
+                        UpdateText();
                 },
                 cancellationToken: _downloadCts.Token
             );
@@ -399,15 +408,21 @@ public partial class AiModelManagerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public async Task ConfigureUrls(AiModelItemViewModel? item)
+    public void ConfigureUrls(AiModelItemViewModel? item)
     {
         if (item == null) return;
 
-        var dialog = new Views.Components.AiModelUrlsConfigDialog(item.ModelId);
-        var result = App.MainWindow != null ? await dialog.ShowDialog<bool>(App.MainWindow) : false;
-        if (result)
+        if (Application.Current != null)
         {
-            item.RefreshState();
+            var dialog = new Views.Components.AiModelUrlsConfigDialog(item.ModelId)
+            {
+                Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                item.RefreshState();
+            }
         }
     }
 }

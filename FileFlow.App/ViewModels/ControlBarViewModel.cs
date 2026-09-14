@@ -115,17 +115,14 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public async Task OpenThemeCustomizer()
+    public void OpenThemeCustomizer()
     {
         var win = new Views.Components.ThemeCustomizerWindow();
-        if (App.MainWindow != null)
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
         {
-            await win.ShowDialog(App.MainWindow);
+            win.Owner = Application.Current.MainWindow;
         }
-        else
-        {
-            win.Show();
-        }
+        win.ShowDialog();
 
         LoadAvailableThemes();
         SelectedTheme = _themeService.CurrentThemeId;
@@ -153,7 +150,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
         _themeService = themeService ?? ThemeManager.Instance;
         _loc = localizationService ?? LocalizationManager.Instance;
-        _dialogService = dialogService ?? AvaloniaDialogService.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
         _processLauncher = processLauncher ?? ProcessLauncherService.Instance;
 
         _executionCoordinator = new WorkflowExecutionCoordinator(
@@ -183,10 +180,10 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     public NodeInspectorViewModel NodeInspector => _nodeInspectorViewModel;
 
     [RelayCommand]
-    public async Task OpenWorkflowSettings()
+    public void OpenWorkflowSettings()
     {
         IsMenuOpen = false;
-        await _editorViewModel.OpenWorkflowSettings();
+        _editorViewModel.OpenWorkflowSettings();
     }
 
     [RelayCommand]
@@ -491,15 +488,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         var store = _lastVirtualFileSystem ?? _executionCoordinator.LastVirtualFileSystem;
         if (store != null)
         {
-            var win = new Views.Components.VirtualFileSystemExplorerWindow(store);
-            if (App.MainWindow != null)
+            var win = new Views.Components.VirtualFileSystemExplorerWindow(store)
             {
-                win.Show(App.MainWindow);
-            }
-            else
-            {
-                win.Show();
-            }
+                Owner = Application.Current?.MainWindow
+            };
+            win.Show();
         }
         else
         {
@@ -516,7 +509,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             .FirstOrDefault(t => t.Name.Equals("SyntheticDataSourceNode", StringComparison.OrdinalIgnoreCase));
         if (syntheticNodeType != null && Activator.CreateInstance(syntheticNodeType) is INodeCustomActionProvider provider)
         {
-            provider.ExecuteCustomAction("OpenDataSetDesigner", App.MainWindow);
+            provider.ExecuteCustomAction("OpenDataSetDesigner", Application.Current?.MainWindow);
         }
     }
 
@@ -636,11 +629,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IsMenuOpen = false;
         try
         {
-            var aboutDialog = new Views.AboutDialogWindow();
-            if (App.MainWindow != null)
-                _ = aboutDialog.ShowDialog(App.MainWindow);
-            else
-                aboutDialog.Show();
+            var aboutDialog = new Views.AboutDialogWindow
+            {
+                Owner = Application.Current?.MainWindow
+            };
+            aboutDialog.ShowDialog();
         }
         catch (Exception ex)
         {
@@ -657,11 +650,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         try
         {
             var dashboardVm = new WorkflowMetricsDashboardViewModel(_editorViewModel);
-            var dashboardWindow = new Views.Components.WorkflowMetricsDashboardWindow(dashboardVm);
-            if (App.MainWindow != null)
-                _ = dashboardWindow.ShowDialog(App.MainWindow);
-            else
-                dashboardWindow.Show();
+            var dashboardWindow = new Views.Components.WorkflowMetricsDashboardWindow(dashboardVm)
+            {
+                Owner = Application.Current?.MainWindow
+            };
+            dashboardWindow.ShowDialog();
         }
         catch (Exception ex)
         {

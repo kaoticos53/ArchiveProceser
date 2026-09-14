@@ -15,8 +15,8 @@ public class WindowsShellFileRecycler : IFileRecycler
     public bool Recycle(string path) => SendToRecycleBin(path);
 
     /// <summary>
-    /// Envía un archivo o directorio a la Papelera de reciclaje mediante el adaptador de plataforma detectado.
+    /// Envía un archivo o directorio a la Papelera de reciclaje de Windows sin solicitar confirmación interactiva.
     /// </summary>
     public static bool SendToRecycleBin(string path) =>
-        OsPlatformServiceFactory.Instance.MoveToTrash(path);
+        WindowsPlatformService.Instance.MoveToTrash(path);
 }

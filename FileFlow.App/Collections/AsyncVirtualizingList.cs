@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using Avalonia.Threading;
+using System.Windows;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Telemetry;
@@ -102,10 +102,13 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
                 }
             }
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            if (Application.Current != null)
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
-            });
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
+                }, System.Windows.Threading.DispatcherPriority.Background);
+            }
         }
         catch
         {
@@ -128,12 +131,15 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
             _count = total;
         }
 
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        if (Application.Current != null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
-            CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-        });
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
+                CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            });
+        }
     }
 
     public void UpdateCount(int newCount)
@@ -148,13 +154,13 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
             }
         }
 
-        if (changed)
+        if (changed && Application.Current != null)
         {
-            Dispatcher.UIThread.Post(() =>
+            Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
-            });
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
     }
 

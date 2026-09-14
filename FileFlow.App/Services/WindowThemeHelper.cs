@@ -1,7 +1,6 @@
-using System;
 using System.Runtime.InteropServices;
-using Avalonia.Controls;
-using Avalonia.Styling;
+using System.Windows;
+using System.Windows.Interop;
 
 namespace FileFlow.App.Services;
 
@@ -18,26 +17,50 @@ public static class WindowThemeHelper
         if (window == null) return;
 
         bool isDarkTheme = ThemeManager.Instance.IsCurrentThemeDark;
-        window.RequestedThemeVariant = isDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
 
-        if (OperatingSystem.IsWindows())
+        if (window.IsLoaded)
         {
-            try
+            SetWindowDarkMode(window, isDarkTheme);
+        }
+        else
+        {
+            window.Loaded += (s, e) => SetWindowDarkMode(window, isDarkTheme);
+        }
+    }
+
+    private static void SetWindowDarkMode(Window window, bool isDarkTheme)
+    {
+        try
+        {
+            IntPtr hwnd = new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero) return;
+
+            int useDarkMode = isDarkTheme ? 1 : 0;
+            if (DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDarkMode, sizeof(int)) != 0)
             {
-                var handle = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-                if (handle != IntPtr.Zero)
-                {
-                    int useDarkMode = isDarkTheme ? 1 : 0;
-                    if (DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref useDarkMode, sizeof(int)) != 0)
-                    {
-                        DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref useDarkMode, sizeof(int));
-                    }
-                }
-            }
-            catch
-            {
-                // Ignored
+                DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref useDarkMode, sizeof(int));
             }
         }
+        catch
+        {
+            // Ignore if OS does not support DWM dark mode attribute
+        }
+    }
+
+    private static bool IsWindowsInLightMode()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            var val = key?.GetValue("AppsUseLightTheme");
+            if (val is int intVal)
+            {
+                return intVal != 0;
+            }
+        }
+        catch
+        {
+        }
+        return false;
     }
 }

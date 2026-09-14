@@ -15,14 +15,6 @@ namespace FileFlow.Tests.Unit.App;
 
 public class DependencyInjectionAndPortsTests
 {
-    static DependencyInjectionAndPortsTests()
-    {
-        try
-        {
-            FileFlow.App.Program.BuildAvaloniaApp().SetupWithoutStarting();
-        }
-        catch { }
-    }
     [Fact]
     public void ServiceCollectionExtensions_RegistersAllRequiredServicesAndPorts()
     {
@@ -140,9 +132,6 @@ public class DependencyInjectionAndPortsTests
     [Fact]
     public void StatusBarViewModel_UpdateAiModelCount_ShouldUseMaxBetweenCanvasAndRegistry()
     {
-        // Clear static registry to avoid cross-test pollution
-        ModelSessionRegistry.ResetForTesting();
-
         var pluginLoader = new PluginLoader();
         var editor = new EditorViewModel(pluginLoader);
         var log = new LogViewModel();

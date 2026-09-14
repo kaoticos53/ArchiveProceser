@@ -214,7 +214,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(ActiveVersionTag));
             }
 
-            UpdateList();
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
+            {
+                dispatcher.InvokeAsync(UpdateList);
+            }
+            else
+            {
+                UpdateList();
+            }
         }
         finally
         {
@@ -249,7 +257,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                provider.ExecuteCustomAction("ManageMediaPresets", App.MainWindow);
+                provider.ExecuteCustomAction("ManageMediaPresets", Application.Current?.MainWindow);
             }
         }
         catch (Exception ex)
@@ -272,7 +280,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                provider.ExecuteCustomAction("ManagePasswords", App.MainWindow);
+                provider.ExecuteCustomAction("ManagePasswords", Application.Current?.MainWindow);
                 if (NodeOwner.NodeInstance.Parameters.TryGetValue(Key, out var updatedVal))
                 {
                     Value = updatedVal;
@@ -317,7 +325,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsDropdown));
         }
 
-        Apply();
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
+        {
+            dispatcher.InvokeAsync(Apply);
+        }
+        else
+        {
+            Apply();
+        }
     }
 
     partial void OnKeyChanged(string? oldValue, string newValue)
@@ -377,7 +393,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (string.IsNullOrEmpty(EvaluatedValue)) return;
         try
         {
-            LogViewModel.SafeSetClipboardText(EvaluatedValue);
+            Clipboard.SetText(EvaluatedValue);
             IsCopied = true;
             await Task.Delay(1500);
             IsCopied = false;
@@ -397,7 +413,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null)
     {
         _loc = localizationService ?? LocalizationManager.Instance;
-        _dialogService = dialogService ?? AvaloniaDialogService.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
         _key = key;
         _value = value;
         NodeOwner = nodeOwner;
@@ -451,7 +467,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         _loc.LanguageChanged += _languageChangedHandler;
     }
 
-    private EditorViewModel? ResolveEditor(Control? element = null)
+    private EditorViewModel? ResolveEditor(FrameworkElement? element = null)
     {
         if (element?.Tag is EditorViewModel evm)
         {
@@ -465,8 +481,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             return NodeOwner.ParentEditor;
         }
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop &&
-            desktop.MainWindow?.DataContext is MainViewModel mainVm)
+        if (Application.Current?.MainWindow?.DataContext is MainViewModel mainVm)
         {
             return mainVm.Editor;
         }
@@ -476,7 +491,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void OpenVariablePicker(object? targetObject)
     {
-        var element = targetObject as Control;
+        var element = targetObject as FrameworkElement;
         var editor = ResolveEditor(element);
 
         if (NodeOwner != null && editor != null)
@@ -484,45 +499,45 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             RefreshAvailableVariables(editor);
         }
 
-        var cm = new ContextMenu
+        var cm = new System.Windows.Controls.ContextMenu
         {
             MaxHeight = 500
         };
+        System.Windows.Controls.ScrollViewer.SetVerticalScrollBarVisibility(cm, System.Windows.Controls.ScrollBarVisibility.Auto);
 
         // 1. Catálogo completo como primera opción destacada
-        var miFullCatalog = new MenuItem
+        var miFullCatalog = new System.Windows.Controls.MenuItem
         {
             Header = _loc.GetString("VarPicker_OpenFullCatalog", "🔍 Abrir Catálogo Completo de Variables..."),
-            FontWeight = FontWeight.Bold,
+            FontWeight = FontWeights.Bold,
             Command = OpenVariableCatalogCommand,
             CommandParameter = element
         };
         cm.Items.Add(miFullCatalog);
-        cm.Items.Add(new Separator());
+        cm.Items.Add(new System.Windows.Controls.Separator());
 
         // 2. Grupos organizados en submenús para que la lista no se corte por abajo
         foreach (var group in AvailableVariables)
         {
             if (group.Variables.Count == 0) continue;
 
-            var subMenu = new MenuItem
+            var subMenu = new System.Windows.Controls.MenuItem
             {
                 Header = $"{group.GroupName} ({group.Variables.Count})",
-                FontWeight = group.IsUpstream ? FontWeight.SemiBold : FontWeight.Normal
+                FontWeight = group.IsUpstream ? FontWeights.SemiBold : FontWeights.Normal,
+                MaxHeight = 360
             };
+            System.Windows.Controls.ScrollViewer.SetVerticalScrollBarVisibility(subMenu, System.Windows.Controls.ScrollBarVisibility.Auto);
 
             foreach (var v in group.Variables)
             {
-                var mi = new MenuItem
+                var mi = new System.Windows.Controls.MenuItem
                 {
                     Header = $"{v.Token}  —  {v.Description}",
                     Command = InsertVariableTokenCommand,
-                    CommandParameter = v.Token
+                    CommandParameter = v.Token,
+                    ToolTip = !string.IsNullOrEmpty(v.SampleValue) ? $"Ejemplo: {v.SampleValue}" : null
                 };
-                if (!string.IsNullOrEmpty(v.SampleValue))
-                {
-                    ToolTip.SetTip(mi, $"Ejemplo: {v.SampleValue}");
-                }
                 subMenu.Items.Add(mi);
             }
 
@@ -531,14 +546,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
         if (element != null)
         {
-            cm.Open(element);
+            cm.PlacementTarget = element;
         }
+        cm.IsOpen = true;
     }
 
     [RelayCommand]
     public void OpenVariableCatalog(object? targetObject)
     {
-        var element = targetObject as Control;
+        var element = targetObject as FrameworkElement;
         var editor = ResolveEditor(element);
 
         if (NodeOwner != null && editor != null)
@@ -547,21 +563,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
 
         var previewContext = (editor?.VariableDiscoveryService ?? Services.VariableDiscoveryService.Instance).CreatePreviewItem(NodeOwner);
-        var owner = (element != null ? TopLevel.GetTopLevel(element) as Window : null) ?? App.MainWindow;
-        var dialog = new Views.Components.VariablePickerWindow(AvailableVariables, NodeOwner, previewContext, _loc);
-
-        if (owner != null)
+        var owner = (element != null ? Window.GetWindow(element) : null) ?? Application.Current?.MainWindow;
+        var dialog = new Views.Components.VariablePickerWindow(AvailableVariables, NodeOwner, previewContext, _loc)
         {
-            _ = dialog.ShowDialog<bool>(owner).ContinueWith(t =>
-            {
-                if (t.IsCompletedSuccessfully && t.Result && !string.IsNullOrEmpty(dialog.SelectedToken))
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        InsertVariableToken(dialog.SelectedToken);
-                    });
-                }
-            }, TaskScheduler.Default);
+            Owner = owner
+        };
+
+        if (dialog.ShowDialog() == true && !string.IsNullOrEmpty(dialog.SelectedToken))
+        {
+            InsertVariableToken(dialog.SelectedToken);
         }
     }
 
@@ -582,37 +592,32 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public async Task BrowsePathAsync()
+    public void BrowsePath()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        if (IsFolderPath)
         {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.StorageProvider != null)
+            var dialog = new Microsoft.Win32.OpenFolderDialog
             {
-                if (IsFolderPath)
-                {
-                    var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
-                    {
-                        Title = $"Seleccionar directorio para '{Key}'",
-                        AllowMultiple = false
-                    });
-                    if (folders != null && folders.Count > 0)
-                    {
-                        Value = folders[0].Path.LocalPath;
-                    }
-                }
-                else if (IsFilePath)
-                {
-                    var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                    {
-                        Title = $"Seleccionar archivo para '{Key}'",
-                        AllowMultiple = false
-                    });
-                    if (files != null && files.Count > 0)
-                    {
-                        Value = files[0].Path.LocalPath;
-                    }
-                }
+                Title = $"Seleccionar directorio para '{Key}'",
+                InitialDirectory = Value?.ToString()
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                Value = dialog.FolderName;
+            }
+        }
+        else if (IsFilePath)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = $"Seleccionar archivo para '{Key}'",
+                Filter = "Todos los archivos (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                Value = dialog.FileName;
             }
         }
     }
@@ -658,21 +663,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void OpenTextEditor(object? targetObject)
     {
-        var owner = (targetObject is Control c ? TopLevel.GetTopLevel(c) as Window : null) ?? App.MainWindow;
-        var dialog = new Views.Components.TextEditorDialogWindow(this);
-
-        if (owner != null)
+        var owner = (targetObject is FrameworkElement fe ? Window.GetWindow(fe) : null) ?? Application.Current?.MainWindow;
+        var dialog = new Views.Components.TextEditorDialogWindow(this)
         {
-            _ = dialog.ShowDialog<bool>(owner).ContinueWith(t =>
-            {
-                if (t.IsCompletedSuccessfully && t.Result)
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                    {
-                        Value = dialog.ResultText;
-                    });
-                }
-            }, TaskScheduler.Default);
+            Owner = owner
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            Value = dialog.ResultText;
         }
     }
 

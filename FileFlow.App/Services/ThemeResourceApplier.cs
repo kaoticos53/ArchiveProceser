@@ -1,24 +1,18 @@
-using System;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Media;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
 using FileFlow.App.Themes;
 
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Generador de diccionarios de recursos Avalonia (Brushes, Dropshadows, Tipografías) a partir de definiciones de temas.
+/// Generador de diccionarios de recursos WPF (Brushes, Dropshadows, Tipografías) a partir de definiciones de temas.
 /// </summary>
 public static class ThemeResourceApplier
 {
     public static ResourceDictionary BuildResourceDictionary(ThemeDefinition theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
-
-        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
-        {
-            return Avalonia.Threading.Dispatcher.UIThread.Invoke(() => BuildResourceDictionary(theme));
-        }
 
         var dict = new ResourceDictionary();
 
@@ -27,14 +21,16 @@ public static class ThemeResourceApplier
             try
             {
                 if (string.IsNullOrWhiteSpace(hex)) hex = fallbackHex;
-                var color = Color.Parse(hex);
+                var color = (Color)ColorConverter.ConvertFromString(hex);
                 var brush = new SolidColorBrush(color);
+                brush.Freeze();
                 dict[key] = brush;
             }
             catch
             {
-                var fallbackColor = Color.Parse(fallbackHex);
+                var fallbackColor = (Color)ColorConverter.ConvertFromString(fallbackHex);
                 var fallbackBrush = new SolidColorBrush(fallbackColor);
+                fallbackBrush.Freeze();
                 dict[key] = fallbackBrush;
             }
         }
@@ -68,14 +64,14 @@ public static class ThemeResourceApplier
         // Gradient connection wire brush
         try
         {
-            var colStart = Color.Parse(string.IsNullOrWhiteSpace(theme.WireColorStart) ? "#818CF8" : theme.WireColorStart);
-            var colMid = Color.Parse(string.IsNullOrWhiteSpace(theme.WireColorMid) ? "#6366F1" : theme.WireColorMid);
-            var colEnd = Color.Parse(string.IsNullOrWhiteSpace(theme.WireColorEnd) ? "#C084FC" : theme.WireColorEnd);
+            var colStart = (Color)ColorConverter.ConvertFromString(string.IsNullOrWhiteSpace(theme.WireColorStart) ? "#818CF8" : theme.WireColorStart);
+            var colMid = (Color)ColorConverter.ConvertFromString(string.IsNullOrWhiteSpace(theme.WireColorMid) ? "#6366F1" : theme.WireColorMid);
+            var colEnd = (Color)ColorConverter.ConvertFromString(string.IsNullOrWhiteSpace(theme.WireColorEnd) ? "#C084FC" : theme.WireColorEnd);
 
             var gradBrush = new LinearGradientBrush
             {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 0),
                 GradientStops =
                 {
                     new GradientStop(colStart, 0.0),
@@ -83,7 +79,26 @@ public static class ThemeResourceApplier
                     new GradientStop(colEnd, 1.0)
                 }
             };
+            gradBrush.Freeze();
             dict["ConnectionWireBrush"] = gradBrush;
+        }
+        catch
+        {
+        }
+
+        // DropShadowEffect
+        try
+        {
+            var shadow = new DropShadowEffect
+            {
+                BlurRadius = Math.Max(0, theme.NodeShadowBlur),
+                ShadowDepth = 4,
+                Direction = 270,
+                Color = Colors.Black,
+                Opacity = Math.Clamp(theme.NodeShadowOpacity, 0.0, 1.0)
+            };
+            shadow.Freeze();
+            dict["NodeShadowEffect"] = shadow;
         }
         catch
         {

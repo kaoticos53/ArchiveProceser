@@ -113,7 +113,7 @@ public partial class VirtualFileSystemExplorerViewModel : ObservableObject
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _processLauncher = processLauncher ?? App.Services?.GetService(typeof(IProcessLauncherService)) as IProcessLauncherService ?? new ProcessLauncherService();
-        _dialogService = dialogService ?? App.Services?.GetService(typeof(IDialogService)) as IDialogService ?? AvaloniaDialogService.Instance;
+        _dialogService = dialogService ?? App.Services?.GetService(typeof(IDialogService)) as IDialogService ?? new WpfDialogService();
         _loc = localizationService ?? LocalizationManager.Instance;
 
         RefreshData();
@@ -171,7 +171,7 @@ public partial class VirtualFileSystemExplorerViewModel : ObservableObject
         try
         {
             string tree = !string.IsNullOrWhiteSpace(AsciiTreeText) ? AsciiTreeText : _store.GenerateAsciiTree();
-            LogViewModel.SafeSetClipboardText(tree);
+            Clipboard.SetText(tree);
             _dialogService.ShowInformation(
                 _loc.GetString("VfsExplorer_TreeCopied", "Árbol ASCII copiado al portapapeles con éxito."),
                 _loc.GetString("VfsExplorer_Title", "Explorador de Archivos Virtual"));

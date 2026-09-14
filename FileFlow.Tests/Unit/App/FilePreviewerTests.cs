@@ -12,15 +12,6 @@ public class FilePreviewerTests : IDisposable
 {
     private readonly string _tempDir;
 
-    static FilePreviewerTests()
-    {
-        try
-        {
-            FileFlow.App.Program.BuildAvaloniaApp().SetupWithoutStarting();
-        }
-        catch { }
-    }
-
     public FilePreviewerTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_Preview_Test_" + Guid.NewGuid().ToString("N"));
@@ -93,7 +84,7 @@ public class FilePreviewerTests : IDisposable
     }
 
     [Fact]
-    public async Task AvaloniaImageLoader_ShouldDecodeWebP_IntoValidBitmap()
+    public async Task WpfImageLoader_ShouldDecodeWebP_IntoValidBitmapSource()
     {
         string sampleWebp = Path.Combine(_tempDir, "sample_preview.webp");
         using (var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(150, 80))
@@ -101,10 +92,10 @@ public class FilePreviewerTests : IDisposable
             await img.SaveAsWebpAsync(sampleWebp);
         }
 
-        var bmpSource = FileFlow.App.Preview.Helpers.AvaloniaImageLoader.LoadBitmap(sampleWebp);
+        var bmpSource = FileFlow.App.Preview.Helpers.WpfImageLoader.LoadBitmapSource(sampleWebp);
         bmpSource.Should().NotBeNull();
-        bmpSource!.PixelSize.Width.Should().Be(150);
-        bmpSource!.PixelSize.Height.Should().Be(80);
+        bmpSource!.PixelWidth.Should().Be(150);
+        bmpSource!.PixelHeight.Should().Be(80);
     }
 
     public void Dispose()

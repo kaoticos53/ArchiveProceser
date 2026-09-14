@@ -1,6 +1,4 @@
-using System;
-using Avalonia.Controls;
-using Avalonia.Interactivity;
+using System.Windows;
 using FileFlow.Plugin.FileSystem.UI.ViewModels;
 
 namespace FileFlow.Plugin.FileSystem.UI.Views;
@@ -14,17 +12,33 @@ public partial class RegexHelperWindow : Window
 
     public RegexHelperWindow(string initialPattern = "", string initialReplacement = "", string initialSampleText = "")
     {
+        InitializeComponentSafe();
         _viewModel = new RegexHelperViewModel(initialPattern, initialReplacement, initialSampleText);
         DataContext = _viewModel;
     }
 
-    private void Apply_Click(object? sender, RoutedEventArgs e)
+    private void InitializeComponentSafe()
     {
-        Close(true);
+        try
+        {
+            InitializeComponent();
+        }
+        catch (System.Exception)
+        {
+            var uri = new System.Uri("/FileFlow.Plugin.FileSystem;component/ui/views/regexhelperwindow.xaml", System.UriKind.Relative);
+            System.Windows.Application.LoadComponent(this, uri);
+        }
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    private void Apply_Click(object sender, RoutedEventArgs e)
     {
-        Close(false);
+        DialogResult = true;
+        Close();
+    }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+        Close();
     }
 }

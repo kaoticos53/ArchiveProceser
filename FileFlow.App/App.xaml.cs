@@ -1,0 +1,162 @@
+using System.IO;
+using System.Resources;
+using System.Windows;
+using FileFlow.App.Services;
+using FileFlow.App.Views;
+using FileFlow.Sdk.Localization;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FileFlow.App;
+
+public partial class App : Application
+{
+    public static IServiceProvider Services { get; private set; } = null!;
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        {
+            LogCrashToFile(args.ExceptionObject);
+            try
+            {
+                MessageBox.Show($"Error no controlado en la aplicación:\n{args.ExceptionObject}", "Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch { }
+        };
+
+        DispatcherUnhandledException += (s, args) =>
+        {
+            LogCrashToFile(args.Exception);
+            try
+            {
+                MessageBox.Show($"Error de interfaz (XAML/UI):\n{args.Exception.Message}\n\n{args.Exception.InnerException?.Message}", "Error UI", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch { }
+            args.Handled = true;
+        };
+
+        TaskScheduler.UnobservedTaskException += (s, args) =>
+        {
+            LogCrashToFile(args.Exception);
+            System.Diagnostics.Debug.WriteLine($"Unobserved Task Exception: {args.Exception.Message}");
+            args.SetObserved();
+        };
+
+        base.OnStartup(e);
+
+        // Si se pasan argumentos de CLI (--run, -r, --help, -h), ejecutar en modo Headless
+        if (e.Args.Length > 0 && (e.Args.Any(a => a.Equals("--run", StringComparison.OrdinalIgnoreCase) ||
+                                                 a.Equals("-r", StringComparison.OrdinalIgnoreCase) ||
+                                                 a.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+                                                 a.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+                                                 (File.Exists(a) && a.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))))
+        {
+            var cliOptions = FileFlow.Core.Engine.WorkflowCliOptions.Parse(e.Args);
+            int exitCode = await FileFlow.Core.Engine.WorkflowCliRunner.RunAsync(cliOptions);
+            Shutdown(exitCode);
+            return;
+        }
+
+        // Modo Interactivo con UI: Mostrar pantalla de carga atractiva
+        var splash = new SplashScreenWindow();
+        splash.Show();
+
+        try
+        {
+            splash.UpdateStatus("Iniciando servicios de localización y recursos...", 15);
+            await Task.Delay(40);
+
+            var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
+            LocalizationManager.Instance.RegisterResourceManager(resourceManager);
+
+            splash.UpdateStatus("Configurando contenedor de Inversión de Control (IoC)...", 30);
+            await Task.Delay(40);
+
+            var serviceCollection = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+            serviceCollection.AddFileFlowServices();
+            Services = serviceCollection.BuildServiceProvider();
+
+            splash.UpdateStatus("Cargando preferencias de usuario y temas...", 50);
+            await Task.Delay(40);
+
+            var prefsService = Services.GetRequiredService<IUserPreferencesService>();
+            prefsService.Load();
+            string savedLang = prefsService.Preferences.Language;
+            LocalizationManager.Instance.SetCulture(!string.IsNullOrWhiteSpace(savedLang) ? savedLang : "es-ES");
+            _ = Services.GetRequiredService<FileFlow.Sdk.Services.IExternalToolsService>().Config;
+
+            var themeService = Services.GetRequiredService<IThemeService>();
+            string savedTheme = prefsService.Preferences.ActiveTheme;
+            if (Enum.TryParse<AppTheme>(savedTheme, out var themeEnum))
+            {
+                themeService.SetTheme(themeEnum);
+            }
+
+            if (prefsService.Preferences.CleanStaleTempOnStartup)
+            {
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        FileFlow.Sdk.Storage.AppPaths.CleanupStaleTempDirectories(TimeSpan.FromHours(2));
+                    }
+                    catch
+                    {
+                        // Best effort background housekeeping
+                    }
+                });
+            }
+
+            splash.UpdateStatus("Cargando plugins y motor de nodos...", 70);
+            await Task.Delay(40);
+
+            splash.UpdateStatus("Construyendo espacio de trabajo y lienzo Nodify...", 85);
+            await Task.Delay(40);
+
+            var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
+            var mainWindow = new MainWindow(mainVm);
+
+            splash.UpdateStatus("¡Listo! Iniciando FileFlow Studio...", 100);
+            await Task.Delay(180);
+
+            mainWindow.Show();
+            MainWindow = mainWindow;
+
+            await splash.CloseWithFadeAsync();
+        }
+        catch (Exception ex)
+        {
+            LogCrashToFile(ex);
+            splash.Close();
+            MessageBox.Show($"Error al iniciar la aplicación:\n{ex.Message}", "Error de Inicialización", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            FileFlow.Core.Telemetry.SqliteLogStore.Instance.Dispose();
+        }
+        catch
+        {
+            // Limpieza defensiva en apagado
+        }
+
+        base.OnExit(e);
+        Environment.Exit(e.ApplicationExitCode);
+    }
+
+    private static void LogCrashToFile(object exception)
+    {
+        try
+        {
+            FileFlow.Sdk.Storage.AppPaths.EnsureDirectories();
+            string crashFile = FileFlow.Sdk.Storage.AppPaths.CrashLogFile;
+            string logText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Unhandled Exception:\n{exception}\n\n";
+            System.IO.File.AppendAllText(crashFile, logText);
+        }
+        catch { }
+    }
+}

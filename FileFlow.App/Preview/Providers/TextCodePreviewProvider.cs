@@ -1,13 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Media;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using FileFlow.App.Preview.Core;
+using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Highlighting;
 
 namespace FileFlow.App.Preview.Providers;
 
@@ -27,23 +25,34 @@ public class TextCodePreviewProvider : IFilePreviewProvider
         return _supportedExtensions.Contains(context.Extension);
     }
 
-    public async Task<Control> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken)
+    public async Task<FrameworkElement> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken)
     {
-        var grid = new Grid { Background = new SolidColorBrush(Color.Parse("#0F1117")) };
+        var grid = new Grid { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0F1117")) };
 
-        var editor = new TextBox
+        var editor = new TextEditor
         {
             IsReadOnly = true,
-            FontFamily = new FontFamily("Consolas, Cascadia Code, Courier New, monospace"),
+            ShowLineNumbers = true,
+            FontFamily = new FontFamily("Consolas, Cascadia Code, Courier New"),
             FontSize = 13,
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush(Color.Parse("#E1E4EA")),
-            AcceptsReturn = true,
-            TextWrapping = TextWrapping.NoWrap,
-            Padding = new Thickness(12)
+            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E1E4EA")),
+            LineNumbersForeground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5C6370")),
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Padding = new Thickness(8)
         };
 
+        // Asignar resaltador sintáctico según extensión
         string ext = context.Extension.ToLowerInvariant();
+        editor.SyntaxHighlighting = ext switch
+        {
+            ".cs" => HighlightingManager.Instance.GetDefinition("C#"),
+            ".js" => HighlightingManager.Instance.GetDefinition("JavaScript"),
+            ".html" or ".htm" => HighlightingManager.Instance.GetDefinition("HTML"),
+            ".xml" or ".config" => HighlightingManager.Instance.GetDefinition("XML"),
+            _ => null
+        };
 
         if (File.Exists(context.CurrentPath))
         {

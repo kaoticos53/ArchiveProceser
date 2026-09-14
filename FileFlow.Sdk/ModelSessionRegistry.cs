@@ -80,17 +80,4 @@ public static class ModelSessionRegistry
 
         NotifySessionStateChanged();
     }
-
-    /// <summary>
-    /// Restablece el estado estático del registro para aislamiento de pruebas unitarias.
-    /// No debe utilizarse en código de producción.
-    /// </summary>
-    public static void ResetForTesting()
-    {
-        lock (_lock)
-        {
-            _sessionCountProviders.Clear();
-            _sessionClearActions.Clear();
-        }
-    }
 }

@@ -23,8 +23,8 @@ Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host "   FileFlow Studio - Suite de Pruebas    " -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 
-# 0. Cerrar instancias de FileFlow.App y testhost en ejecución para evitar bloqueos de archivos DLL
-Get-Process -Name "FileFlow.App", "testhost" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+# 0. Cerrar instancias de FileFlow.App en ejecución para evitar bloqueos de archivos DLL
+Get-Process -Name "FileFlow.App" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 $testProject = "FileFlow.Tests/FileFlow.Tests.csproj"
 $sw = [System.Diagnostics.Stopwatch]::StartNew()

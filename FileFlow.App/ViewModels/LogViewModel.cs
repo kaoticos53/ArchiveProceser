@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
-using Avalonia.Threading;
+using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Collections;
 using FileFlow.App.Services;
@@ -95,7 +95,7 @@ public partial class LogViewModel : ObservableObject
     {
         _logStore = logStore ?? SqliteLogStore.Instance;
         _loc = localizationService ?? LocalizationManager.Instance;
-        _dialogService = dialogService ?? AvaloniaDialogService.Instance;
+        _dialogService = dialogService ?? WpfDialogService.Instance;
 
         _statusMessage = _loc["StatusReady"];
         _loc.LanguageChanged += (_, _) =>
@@ -167,9 +167,9 @@ public partial class LogViewModel : ObservableObject
     {
         if (_isClearingLogs) return;
 
-        if (!Dispatcher.UIThread.CheckAccess())
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
         {
-            _ = Dispatcher.UIThread.InvokeAsync(FlushPendingLogs);
+            _ = Application.Current.Dispatcher.InvokeAsync(FlushPendingLogs);
             return;
         }
 
@@ -332,9 +332,9 @@ public partial class LogViewModel : ObservableObject
 
     private async Task RunOnUiAsync(Action action)
     {
-        if (!Dispatcher.UIThread.CheckAccess())
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
         {
-            await Dispatcher.UIThread.InvokeAsync(action);
+            await Application.Current.Dispatcher.InvokeAsync(action);
         }
         else
         {
@@ -364,11 +364,14 @@ public partial class LogViewModel : ObservableObject
 
     public void ReportProgress(double percentage, string statusMessage)
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
+        if (Application.Current != null)
         {
-            ProgressPercentage = percentage;
-            StatusMessage = statusMessage;
-        });
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ProgressPercentage = percentage;
+                StatusMessage = statusMessage;
+            }, DispatcherPriority.Normal);
+        }
     }
 
     [RelayCommand]
@@ -376,33 +379,14 @@ public partial class LogViewModel : ObservableObject
     {
         if (_isClearingLogs) return;
 
-        IsLiveMode = true;
-        SearchFilter = string.Empty;
-
-        switch (filterName)
+        ActiveFilter = filterName.ToLowerInvariant() switch
         {
-            case "All":
-                ActiveFilter = LogFilterLevel.All;
-                break;
-            case "Errors":
-                ActiveFilter = LogFilterLevel.ErrorsOnly;
-                break;
-            case "Warnings":
-                ActiveFilter = LogFilterLevel.WarningsOnly;
-                break;
-            case "Info":
-                ActiveFilter = LogFilterLevel.InfoOnly;
-                break;
-            case "Debug":
-                ActiveFilter = LogFilterLevel.DebugOnly;
-                break;
-            default:
-                ActiveFilter = LogFilterLevel.All;
-                break;
-        }
-
-        _ = LoadQueryResultsAsync();
-        OnFilterChanged?.Invoke();
+            "errors" => LogFilterLevel.ErrorsOnly,
+            "warnings" => LogFilterLevel.WarningsOnly,
+            "info" => LogFilterLevel.InfoOnly,
+            "debug" => LogFilterLevel.DebugOnly,
+            _ => LogFilterLevel.All
+        };
     }
 
     [RelayCommand]
@@ -415,49 +399,41 @@ public partial class LogViewModel : ObservableObject
     [RelayCommand]
     public async Task ClearLogs()
     {
-        if (_isClearingLogs) return;
         _isClearingLogs = true;
-
         try
         {
-            Logs.Clear();
-            await _logStore.ClearAsync();
-            ErrorCount = 0;
-            WarningCount = 0;
-            InfoCount = 0;
-            DebugCount = 0;
-            TotalLogsCount = 0;
-            SelectedLog = null;
+            // 1. Descartar cualquier log en la cola en memoria
+            while (_pendingLogs.TryDequeue(out _)) { }
+
+            // 2. Limpiar la base de datos SQLite en memoria primero
+            await SqliteLogStore.Instance.ClearAsync().ConfigureAwait(false);
+
+            // 3. Limpiar y resetear el estado en el hilo de UI
+            await RunOnUiAsync(() =>
+            {
+                while (_pendingLogs.TryDequeue(out _)) { }
+                Logs.Clear();
+                SelectedLog = null;
+                ErrorCount = 0;
+                WarningCount = 0;
+                InfoCount = 0;
+                DebugCount = 0;
+                TotalLogsCount = 0;
+                ProgressPercentage = 0;
+                StatusMessage = LocalizationManager.Instance["StatusReady"];
+                IsLiveMode = true;
+                ActiveFilter = LogFilterLevel.All;
+                SearchFilter = string.Empty;
+                SortColumn = "Id";
+                IsSortAscending = true;
+            });
+
             OnLogsCleared?.Invoke();
         }
         finally
         {
             _isClearingLogs = false;
         }
-    }
-
-    public async Task SearchAsync(string filter)
-    {
-        if (_isClearingLogs) return;
-        SearchFilter = filter;
-        if (string.IsNullOrWhiteSpace(filter))
-        {
-            IsLiveMode = true;
-        }
-        else
-        {
-            IsLiveMode = false;
-        }
-        await LoadQueryResultsAsync();
-        OnFilterChanged?.Invoke();
-    }
-
-    public async Task FilterByNodeName(string? nodeName)
-    {
-        if (string.IsNullOrWhiteSpace(nodeName) || _isClearingLogs) return;
-        IsLiveMode = false;
-        SearchFilter = nodeName.Trim();
-        await LoadQueryResultsAsync();
     }
 
     [RelayCommand]
@@ -473,18 +449,30 @@ public partial class LogViewModel : ObservableObject
     {
         if (string.IsNullOrEmpty(text)) return;
 
-        Dispatcher.UIThread.Post(async () =>
+        void SetClipboard()
         {
-            try
+            for (int i = 0; i < 5; i++)
             {
-                var clipboard = App.MainWindow?.Clipboard;
-                if (clipboard != null)
+                try
                 {
-                    await clipboard.SetTextAsync(text);
+                    Clipboard.SetDataObject(text, true);
+                    return;
+                }
+                catch
+                {
+                    Thread.Sleep(25);
                 }
             }
-            catch { }
-        });
+        }
+
+        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(SetClipboard);
+        }
+        else
+        {
+            SetClipboard();
+        }
     }
 
     [RelayCommand]
@@ -613,7 +601,7 @@ public partial class LogViewModel : ObservableObject
         }
 
         var win = new FileFlow.App.Preview.Views.FilePreviewerWindow();
-        _ = win.ShowPreviewAsync(ctx, owner: App.MainWindow);
+        _ = win.ShowPreviewAsync(ctx, owner: Application.Current.MainWindow);
     }
 
     [RelayCommand]

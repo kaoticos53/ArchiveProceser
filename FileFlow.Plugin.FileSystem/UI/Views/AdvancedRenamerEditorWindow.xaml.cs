@@ -1,9 +1,5 @@
-using System;
-using System.Linq;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Interactivity;
-using Avalonia.Media;
+using System.Windows;
+using System.Windows.Controls;
 using FileFlow.Plugin.FileSystem.UI.ViewModels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
@@ -14,28 +10,36 @@ public partial class AdvancedRenamerEditorWindow : Window
 {
     private readonly AdvancedRenamerEditorViewModel _viewModel;
 
-    private Control? PanelNewName => this.FindControl<Control>("PanelNewName");
-    private Control? PanelSearchReplace => this.FindControl<Control>("PanelSearchReplace");
-    private Control? PanelInsert => this.FindControl<Control>("PanelInsert");
-    private Control? PanelRemove => this.FindControl<Control>("PanelRemove");
-    private Control? PanelCaseConversion => this.FindControl<Control>("PanelCaseConversion");
-    private Control? PanelNumbering => this.FindControl<Control>("PanelNumbering");
-    private Control? PanelReplaceList => this.FindControl<Control>("PanelReplaceList");
-    private Control? PanelTrimClean => this.FindControl<Control>("PanelTrimClean");
-    private Control? PanelNormalizeNumbers => this.FindControl<Control>("PanelNormalizeNumbers");
-
-    private TextBox? TxtSearchPattern => this.FindControl<TextBox>("TxtSearchPattern");
-    private TextBox? TxtReplacePattern => this.FindControl<TextBox>("TxtReplacePattern");
-    private TextBox? TxtNumberRegexPattern => this.FindControl<TextBox>("TxtNumberRegexPattern");
-
     public AdvancedRenamerEditorWindow(IFlowNode node)
     {
+        InitializeComponentSafe();
         _viewModel = new AdvancedRenamerEditorViewModel(node);
         DataContext = _viewModel;
         UpdateVisibleFormPanels();
     }
 
-    private void StepsListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void InitializeComponentSafe()
+    {
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[InitializeComponentSafe] Primary InitializeComponent failed, trying fallback: {ex.Message}");
+            try
+            {
+                var uri = new System.Uri("/FileFlow.Plugin.FileSystem;component/ui/views/advancedrenamereditorwindow.xaml", System.UriKind.Relative);
+                System.Windows.Application.LoadComponent(this, uri);
+            }
+            catch (Exception fallbackEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[InitializeComponentSafe] Fallback LoadComponent failed: {fallbackEx.Message}");
+            }
+        }
+    }
+
+    private void StepsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         UpdateVisibleFormPanels();
         _viewModel.GenerateLivePreview();
@@ -45,59 +49,59 @@ public partial class AdvancedRenamerEditorWindow : Window
     {
         if (PanelNewName == null) return;
 
-        PanelNewName.IsVisible = false;
-        if (PanelSearchReplace != null) PanelSearchReplace.IsVisible = false;
-        if (PanelInsert != null) PanelInsert.IsVisible = false;
-        if (PanelRemove != null) PanelRemove.IsVisible = false;
-        if (PanelCaseConversion != null) PanelCaseConversion.IsVisible = false;
-        if (PanelNumbering != null) PanelNumbering.IsVisible = false;
-        if (PanelReplaceList != null) PanelReplaceList.IsVisible = false;
-        if (PanelTrimClean != null) PanelTrimClean.IsVisible = false;
-        if (PanelNormalizeNumbers != null) PanelNormalizeNumbers.IsVisible = false;
+        PanelNewName.Visibility = Visibility.Collapsed;
+        PanelSearchReplace.Visibility = Visibility.Collapsed;
+        PanelInsert.Visibility = Visibility.Collapsed;
+        PanelRemove.Visibility = Visibility.Collapsed;
+        PanelCaseConversion.Visibility = Visibility.Collapsed;
+        PanelNumbering.Visibility = Visibility.Collapsed;
+        PanelReplaceList.Visibility = Visibility.Collapsed;
+        PanelTrimClean.Visibility = Visibility.Collapsed;
+        PanelNormalizeNumbers.Visibility = Visibility.Collapsed;
 
         if (_viewModel.SelectedStep == null) return;
 
         switch (_viewModel.SelectedStep.MethodType)
         {
             case RenameMethodType.NewName:
-                PanelNewName.IsVisible = true;
+                PanelNewName.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.SearchReplace:
-                if (PanelSearchReplace != null) PanelSearchReplace.IsVisible = true;
+                PanelSearchReplace.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.Insert:
-                if (PanelInsert != null) PanelInsert.IsVisible = true;
+                PanelInsert.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.Remove:
-                if (PanelRemove != null) PanelRemove.IsVisible = true;
+                PanelRemove.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.CaseConversion:
-                if (PanelCaseConversion != null) PanelCaseConversion.IsVisible = true;
+                PanelCaseConversion.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.Numbering:
-                if (PanelNumbering != null) PanelNumbering.IsVisible = true;
+                PanelNumbering.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.ReplaceList:
-                if (PanelReplaceList != null) PanelReplaceList.IsVisible = true;
+                PanelReplaceList.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.TrimClean:
-                if (PanelTrimClean != null) PanelTrimClean.IsVisible = true;
+                PanelTrimClean.Visibility = Visibility.Visible;
                 break;
             case RenameMethodType.NormalizeNumbers:
-                if (PanelNormalizeNumbers != null) PanelNormalizeNumbers.IsVisible = true;
+                PanelNormalizeNumbers.Visibility = Visibility.Visible;
                 break;
         }
     }
 
-    private void AddMethod_NewName_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.NewName);
-    private void AddMethod_SearchReplace_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.SearchReplace);
-    private void AddMethod_Insert_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.Insert);
-    private void AddMethod_Remove_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.Remove);
-    private void AddMethod_Case_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.CaseConversion);
-    private void AddMethod_Numbering_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.Numbering);
-    private void AddMethod_ReplaceList_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.ReplaceList);
-    private void AddMethod_TrimClean_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.TrimClean);
-    private void AddMethod_NormalizeNumbers_Click(object? sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.NormalizeNumbers);
+    private void AddMethod_NewName_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.NewName);
+    private void AddMethod_SearchReplace_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.SearchReplace);
+    private void AddMethod_Insert_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.Insert);
+    private void AddMethod_Remove_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.Remove);
+    private void AddMethod_Case_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.CaseConversion);
+    private void AddMethod_Numbering_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.Numbering);
+    private void AddMethod_ReplaceList_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.ReplaceList);
+    private void AddMethod_TrimClean_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.TrimClean);
+    private void AddMethod_NormalizeNumbers_Click(object sender, RoutedEventArgs e) => AddAndSelect(RenameMethodType.NormalizeNumbers);
 
     private void AddAndSelect(RenameMethodType type)
     {
@@ -105,7 +109,7 @@ public partial class AdvancedRenamerEditorWindow : Window
         UpdateVisibleFormPanels();
     }
 
-    private void PresetComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void PresetComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_viewModel.SelectedPreset != null)
         {
@@ -113,24 +117,24 @@ public partial class AdvancedRenamerEditorWindow : Window
         }
     }
 
-    private void FormInput_Changed(object? sender, TextChangedEventArgs e)
+    private void FormInput_Changed(object sender, TextChangedEventArgs e)
     {
         _viewModel?.GenerateLivePreview();
     }
 
-    private void FormCombo_Changed(object? sender, SelectionChangedEventArgs e)
+    private void FormCombo_Changed(object sender, SelectionChangedEventArgs e)
     {
         _viewModel?.GenerateLivePreview();
     }
 
-    private void StepCheckbox_Changed(object? sender, RoutedEventArgs e)
+    private void StepCheckbox_Changed(object sender, RoutedEventArgs e)
     {
         _viewModel?.GenerateLivePreview();
     }
 
-    private void OpenVariablesMenu_Click(object? sender, RoutedEventArgs e)
+    private void OpenVariablesMenu_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Control button)
+        if (sender is FrameworkElement button)
         {
             TextBox? targetTextBox = null;
             bool isReplaceListTarget = false;
@@ -143,7 +147,7 @@ public partial class AdvancedRenamerEditorWindow : Window
             {
                 isReplaceListTarget = true;
             }
-            else if (button.Tag is string elementName && this.FindControl<TextBox>(elementName) is TextBox foundTb)
+            else if (button.Tag is string elementName && FindName(elementName) is TextBox foundTb)
             {
                 targetTextBox = foundTb;
             }
@@ -156,7 +160,7 @@ public partial class AdvancedRenamerEditorWindow : Window
                 var categoryItem = new MenuItem
                 {
                     Header = group.Key,
-                    FontWeight = FontWeight.SemiBold
+                    FontWeight = FontWeights.SemiBold
                 };
 
                 foreach (var tag in group)
@@ -183,6 +187,9 @@ public partial class AdvancedRenamerEditorWindow : Window
                                 targetTextBox.CaretIndex = targetTextBox.Text.Length;
                             }
                             targetTextBox.Focus();
+
+                            var binding = targetTextBox.GetBindingExpression(TextBox.TextProperty);
+                            binding?.UpdateSource();
                         }
                         else if (isReplaceListTarget && _viewModel.SelectedStep != null)
                         {
@@ -204,64 +211,62 @@ public partial class AdvancedRenamerEditorWindow : Window
                 cm.Items.Add(categoryItem);
             }
 
-            cm.Placement = PlacementMode.Bottom;
-            cm.Open(button);
+            cm.PlacementTarget = button;
+            cm.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            cm.IsOpen = true;
         }
     }
 
-    private void OpenRegexHelper_SearchReplace_Click(object? sender, RoutedEventArgs e)
+    private void OpenRegexHelper_SearchReplace_Click(object sender, RoutedEventArgs e)
     {
         if (_viewModel.SelectedStep == null) return;
         string initialPattern = _viewModel.SelectedStep.SearchText ?? string.Empty;
         string initialReplacement = _viewModel.SelectedStep.ReplaceText ?? string.Empty;
         string sampleText = "video_temporada_01_capitulo_05_1080p.mkv\nDocumento_Final (v2) [2026].pdf\n[Fansub] Anime 01.mp4";
 
-        var regexWindow = new RegexHelperWindow(initialPattern, initialReplacement, sampleText);
-        _ = regexWindow.ShowDialog<bool>(this).ContinueWith(t =>
+        var regexWindow = new RegexHelperWindow(initialPattern, initialReplacement, sampleText)
         {
-            if (t.IsCompletedSuccessfully && t.Result)
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    _viewModel.SelectedStep.SearchText = regexWindow.ResultPattern;
-                    _viewModel.SelectedStep.ReplaceText = regexWindow.ResultReplacement;
-                    _viewModel.SelectedStep.UseRegex = true;
-                    if (TxtSearchPattern != null) TxtSearchPattern.Text = regexWindow.ResultPattern;
-                    if (TxtReplacePattern != null) TxtReplacePattern.Text = regexWindow.ResultReplacement;
-                    _viewModel.GenerateLivePreview();
-                });
-            }
-        }, TaskScheduler.Default);
+            Owner = this
+        };
+
+        if (regexWindow.ShowDialog() == true)
+        {
+            _viewModel.SelectedStep.SearchText = regexWindow.ResultPattern;
+            _viewModel.SelectedStep.ReplaceText = regexWindow.ResultReplacement;
+            _viewModel.SelectedStep.UseRegex = true;
+            if (TxtSearchPattern != null) TxtSearchPattern.Text = regexWindow.ResultPattern;
+            if (TxtReplacePattern != null) TxtReplacePattern.Text = regexWindow.ResultReplacement;
+            _viewModel.GenerateLivePreview();
+        }
     }
 
-    private void OpenRegexHelper_NormalizeNumbers_Click(object? sender, RoutedEventArgs e)
+    private void OpenRegexHelper_NormalizeNumbers_Click(object sender, RoutedEventArgs e)
     {
         if (_viewModel.SelectedStep == null) return;
         string initialPattern = _viewModel.SelectedStep.NumberRegexPattern ?? string.Empty;
         string sampleText = "serie_1x2_720p.mkv\ncapitulo_5.mp4\ntrack 3 - cancion.mp3";
 
-        var regexWindow = new RegexHelperWindow(initialPattern, string.Empty, sampleText);
-        _ = regexWindow.ShowDialog<bool>(this).ContinueWith(t =>
+        var regexWindow = new RegexHelperWindow(initialPattern, string.Empty, sampleText)
         {
-            if (t.IsCompletedSuccessfully && t.Result)
-            {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-                {
-                    _viewModel.SelectedStep.NumberRegexPattern = regexWindow.ResultPattern;
-                    if (TxtNumberRegexPattern != null) TxtNumberRegexPattern.Text = regexWindow.ResultPattern;
-                    _viewModel.GenerateLivePreview();
-                });
-            }
-        }, TaskScheduler.Default);
+            Owner = this
+        };
+
+        if (regexWindow.ShowDialog() == true)
+        {
+            _viewModel.SelectedStep.NumberRegexPattern = regexWindow.ResultPattern;
+            if (TxtNumberRegexPattern != null) TxtNumberRegexPattern.Text = regexWindow.ResultPattern;
+            _viewModel.GenerateLivePreview();
+        }
     }
 
-    private void Save_Click(object? sender, RoutedEventArgs e)
+    private void Save_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.SaveAndCloseCommand.Execute(this);
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        Close(false);
+        DialogResult = false;
+        Close();
     }
 }

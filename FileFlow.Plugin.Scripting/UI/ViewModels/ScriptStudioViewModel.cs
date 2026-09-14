@@ -166,14 +166,14 @@ public sealed partial class ScriptStudioViewModel : ObservableObject
 
         var mockFlowContext = new TestFlowExecutionContext((port, item) =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 TestEmittedPorts.Add($"⚡ Emitido por '{port}' ({item.FileName})");
             });
         },
         (msg, lvl) =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 TestLogs.Add($"[{lvl}] {msg}");
             });

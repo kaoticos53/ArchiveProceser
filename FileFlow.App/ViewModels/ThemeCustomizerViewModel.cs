@@ -1,17 +1,13 @@
-using System;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Platform.Storage;
+using System.Windows;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
-using FileFlow.App.Themes;
 using FileFlow.Sdk.Localization;
-using FileFlow.Sdk.Services;
+using FileFlow.App.Themes;
+using Microsoft.Win32;
 
 namespace FileFlow.App.ViewModels;
 
@@ -48,7 +44,7 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     public ThemeCustomizerViewModel(CustomThemeService themeService, IDialogService? dialogService = null)
     {
         _themeService = themeService;
-        _dialogService = dialogService ?? NullDialogService.Instance;
+        _dialogService = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
 
         LoadFontLists();
         LoadThemes();
@@ -64,6 +60,21 @@ public partial class ThemeCustomizerViewModel : ObservableObject
         foreach (var font in curatedFonts)
         {
             AvailableFontFamilies.Add(font);
+        }
+
+        try
+        {
+            foreach (var font in Fonts.SystemFontFamilies)
+            {
+                string name = font.Source;
+                if (!AvailableFontFamilies.Contains(name) && !string.IsNullOrWhiteSpace(name))
+                {
+                    AvailableFontFamilies.Add(name);
+                }
+            }
+        }
+        catch
+        {
         }
 
         var curatedCodeFonts = new[] { "Cascadia Code, Consolas, monospace", "Cascadia Code", "Consolas", "Fira Code", "Courier New", "monospace" };
@@ -196,77 +207,64 @@ public partial class ThemeCustomizerViewModel : ObservableObject
 
         if (window != null)
         {
-            window.Close(true);
+            window.DialogResult = true;
+            window.Close();
         }
     }
 
     [RelayCommand]
-    public async Task ExportThemeAsync()
+    public void ExportTheme()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        var sfd = new SaveFileDialog
         {
-            var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.StorageProvider != null)
-            {
-                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-                {
-                    Title = "Exportar Tema Visual",
-                    DefaultExtension = "json",
-                    SuggestedFileName = $"{SanitizeFileName(EditingTheme.Name)}_theme.json"
-                });
+            Filter = "Archivo de Tema FileFlow (*.json)|*.json",
+            FileName = $"{SanitizeFileName(EditingTheme.Name)}_theme.json",
+            Title = "Exportar Tema Visual"
+        };
 
-                if (file != null)
-                {
-                    try
-                    {
-                        string json = _themeService.ExportThemeToJson(EditingTheme);
-                        await File.WriteAllTextAsync(file.Path.LocalPath, json);
-                        StatusMessage = $"Tema exportado con éxito a '{Path.GetFileName(file.Path.LocalPath)}'.";
-                        string successMsg = LocalizationManager.Instance.GetString("Msg_ThemeExportSuccess", "Tema exportado correctamente.");
-                        string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
-                        _dialogService.ShowInformation(successMsg, title);
-                    }
-                    catch (Exception ex)
-                    {
-                        _dialogService.ShowError($"Error: {ex.Message}", "Error");
-                    }
-                }
+        if (sfd.ShowDialog() == true)
+        {
+            try
+            {
+                string json = _themeService.ExportThemeToJson(EditingTheme);
+                File.WriteAllText(sfd.FileName, json);
+                StatusMessage = $"Tema exportado con éxito a '{Path.GetFileName(sfd.FileName)}'.";
+                string successMsg = LocalizationManager.Instance.GetString("Msg_ThemeExportSuccess", "Tema exportado correctamente.");
+                string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
+                _dialogService.ShowInformation(successMsg, title);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Error: {ex.Message}", "Error");
             }
         }
     }
 
     [RelayCommand]
-    public async Task ImportThemeAsync()
+    public void ImportTheme()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        var ofd = new OpenFileDialog
         {
-            var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.StorageProvider != null)
-            {
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = "Importar Tema Visual",
-                    AllowMultiple = false
-                });
+            Filter = "Archivo de Tema FileFlow (*.json)|*.json",
+            Title = "Importar Tema Visual"
+        };
 
-                if (files != null && files.Count > 0)
-                {
-                    try
-                    {
-                        string json = await File.ReadAllTextAsync(files[0].Path.LocalPath);
-                        var imported = _themeService.ImportThemeFromJson(json);
-                        LoadThemes();
-                        SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == imported.Id);
-                        StatusMessage = $"Tema '{imported.Name}' importado con éxito.";
-                        string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ThemeImportSuccess", "Tema '{0}' importado y añadido a tus temas personalizados."), imported.Name);
-                        string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
-                        _dialogService.ShowInformation(successMsg, title);
-                    }
-                    catch (Exception ex)
-                    {
-                        _dialogService.ShowError($"Error: {ex.Message}", "Error");
-                    }
-                }
+        if (ofd.ShowDialog() == true)
+        {
+            try
+            {
+                string json = File.ReadAllText(ofd.FileName);
+                var imported = _themeService.ImportThemeFromJson(json);
+                LoadThemes();
+                SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == imported.Id);
+                StatusMessage = $"Tema '{imported.Name}' importado con éxito.";
+                string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ThemeImportSuccess", "Tema '{0}' importado y añadido a tus temas personalizados."), imported.Name);
+                string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
+                _dialogService.ShowInformation(successMsg, title);
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Error: {ex.Message}", "Error");
             }
         }
     }

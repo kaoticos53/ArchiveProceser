@@ -1,18 +1,19 @@
 using System;
 using System.Globalization;
-using Avalonia.Data.Converters;
-using Avalonia.Media;
+using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media;
 
 namespace FileFlow.Plugin.AI.UI.Converters;
 
 public sealed class InverseBooleanConverter : IValueConverter
 {
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value is bool b && !b;
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return value is bool b && !b;
     }
@@ -20,26 +21,26 @@ public sealed class InverseBooleanConverter : IValueConverter
 
 public sealed class InverseBooleanToVisibilityConverter : IValueConverter
 {
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         bool b = value is bool flag && flag;
-        return !b;
+        return b ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value is bool b && !b;
+        return value is Visibility vis && vis != Visibility.Visible;
     }
 }
 
 public sealed class NullToVisibilityConverter : IValueConverter
 {
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return value != null;
+        return value == null ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotSupportedException();
     }
@@ -51,7 +52,7 @@ public sealed class ConnectionStatusColorConverter : IValueConverter
     private static readonly SolidColorBrush ErrorBrush = new(Color.FromRgb(239, 68, 68));     // #EF4444 Red
     private static readonly SolidColorBrush NeutralBrush = new(Color.FromRgb(156, 163, 175)); // #9CA3AF Gray
 
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is bool b)
         {
@@ -60,7 +61,7 @@ public sealed class ConnectionStatusColorConverter : IValueConverter
         return NeutralBrush;
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotSupportedException();
     }
