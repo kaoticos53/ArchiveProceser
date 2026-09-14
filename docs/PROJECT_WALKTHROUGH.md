@@ -7,6 +7,29 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 > El registro histórico completo correspondiente a fases anteriores (Fases 1 a 8, Sprints de Agosto 2026 y desarrollos fundacionales) ha sido consolidado y archivado para optimización de contexto en:
 > 📄 [**`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`**](file:///docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md)
 
+## [2026-09-14] - Lanzador Unificado Interactivo Multiplataforma y Scripts de Ejecución Directa
+
+### 🎯 Objetivos y Alcance
+1. **Lanzador Unificado Interactivo (`run.ps1` y `run.bat`)**:
+   - Menú interactivo enriquecido por consola con opciones para todas las modalidades y versiones del proyecto:
+     - `[1]` WPF (Escritorio Windows Nativo) - Con compilación **[POR DEFECTO - Enter directo]**
+     - `[2]` WPF (Escritorio Windows) - Modo rápido (Sin compilar)
+     - `[3]` Web Server (ASP.NET Core + React) - Compilación completa
+     - `[4]` Web Server (ASP.NET Core + React) - Modo rápido (Sin compilar)
+     - `[5]` Web Server + Frontend Dev (Vite Hot-Reload en vivo)
+     - `[6]` Photino (Escritorio Híbrido Web) - Compilación completa
+     - `[7]` Photino (Escritorio Híbrido Web) - Modo rápido (Sin compilar)
+     - `[8]` Frontend Web Dev (Solo Vite Dev Server)
+     - `[9]` Salir
+   - Soporte para parámetros no interactivos (`-Target wpf|web|photino|webdev`, `-NoMenu`, `-NoBuild`, `-Fast`, `-DevFrontend`, `-Configuration Debug|Release`) y tuberías (pipeline input).
+   - Delegación completa desde `run.bat` para ofrecer la misma experiencia interactiva y accesibilidad por doble clic.
+2. **Scripts Dedicados por Destino**:
+   - `run-web.ps1` / `run-web.bat`: Compilación de frontend React, servidor .NET y despliegue en `http://localhost:5002`.
+   - `run-photino.ps1` / `run-photino.bat`: Compilación de frontend React, empaquetado a `wwwroot` de Photino y arranque del ejecutable de escritorio híbrido.
+   - `run-webdev.ps1` / `run-webdev.bat`: Arranque inmediato del dev server de Vite con hot-reload para desarrollo web.
+3. **Actualización de Documentación (`AGENTS.md`)**:
+   - Mapeo completo de todos los scripts ejecutables y modos de uso rápido y desarrollo.
+
 ---
 
 ## [2026-09-14] - Barra de Menú Completa, Diálogos Modales Especializados y Parámetros Ricos en la Edición Multiplataforma (Web & Photino)

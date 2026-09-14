@@ -15,6 +15,10 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
 - **Hitos Activos y Recientes (Septiembre 2026)**:
+  - **85. Lanzador Unificado Interactivo Multiplataforma y Scripts de Ejecución Directa**:
+    - Menú interactivo enriquecido en `run.ps1` y `run.bat` con todas las opciones de compilación y ejecución para WPF (nativa Windows, opción por defecto en Enter directo), Web Server (ASP.NET Core + React), Photino (Escritorio Híbrido) y WebDev (Vite dev server con hot-reload).
+    - Scripts directos modulares creados: `run-web.ps1`, `run-web.bat`, `run-photino.ps1`, `run-photino.bat`, `run-webdev.ps1` y `run-webdev.bat`.
+    - Documentación y catálogo de scripts actualizado en `AGENTS.md`.
   - **84. Barra de Menú Completa, Diálogos Modales Especializados y Parámetros Ricos en la Edición Multiplataforma (Web & Photino)**:
     - Implementación de la barra de menú superior (`MenuBar.tsx`) con menús desplegables multinivel (Archivo, Editar, Ver, Ejecutar, Herramientas, Ayuda) y atajos de teclado globales (F5, F10, Shift+F5, Ctrl+S, Ctrl+O, Ctrl+N, Ctrl+B, Ctrl+I, Ctrl+J, Ctrl+0, Supr).
     - Suite de 11 diálogos modales especializados: `AdvancedRenamerModal.tsx` (estudio de 7 métodos de renombrado masivo acumulativo con tokens y vista previa reactiva en tiempo real), `SyntheticDataDesignerModal.tsx` (diseñador de lotes y datasets de archivos ficticios), `RegexHelperModal.tsx` (asistente interactivo con evaluación .NET 9 y extracción de grupos nombrados), `ScriptEditorModal.tsx` (editor de código C# 13 Roslyn y Python 3.12 con consola de simulación), `VlmTesterModal.tsx` (probador de inferencia visual multimodal Ollama/OpenAI/ONNX), `SettingsModal.tsx` (concurrencia, almacenamiento y aceleración ONNX DirectML/CUDA), `VfsExplorerModal.tsx` (explorador de archivos virtuales en RAM y exportación física), `ShortcutsModal.tsx`, `AboutModal.tsx`, `UserManualModal.tsx` y `TelemetryModal.tsx`.

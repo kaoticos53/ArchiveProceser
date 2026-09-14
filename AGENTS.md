@@ -98,11 +98,25 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 # Ejecutar pruebas y generar reporte de cobertura de código
 .\coverage.ps1
 
-# Compilar y ejecutar la aplicación WPF
-.\run.ps1
+# --- Lanzadores por versión de aplicación ---
 
-# Ejecutar la aplicación WPF directamente sin compilar
-.\run-fast.ps1   # o .\run.ps1 -NoBuild
+# Compilar y ejecutar la aplicación WPF (escritorio nativo)
+.\run.ps1                       # compila + lanza
+.\run-fast.ps1                  # lanza sin compilar (o .\run.ps1 -NoBuild)
+
+# Compilar y ejecutar el servidor web (ASP.NET + React)
+.\run-web.ps1                   # compila frontend + backend + lanza en http://localhost:5002
+.\run-web.ps1 -NoBuild          # lanza sin compilar
+.\run-web.ps1 -DevFrontend      # además arranca Vite dev server con hot-reload
+
+# Compilar y ejecutar la versión Photino (escritorio híbrido con UI web)
+.\run-photino.ps1               # compila frontend + .NET Photino + lanza
+.\run-photino.ps1 -NoBuild      # lanza sin compilar
+.\run-photino.ps1 -SkipWeb      # compila solo .NET sin recompilar el frontend
+
+# Solo desarrollo del frontend web (Vite hot-reload)
+.\run-webdev.ps1                # arranca Vite dev server en FileFlow.Web
+.\run-webdev.ps1 -WithServer    # además arranca FileFlow.Server en segundo plano
 
 # Limpiar todos los artefactos de compilación, binarios y temporales
 .\clean.ps1
