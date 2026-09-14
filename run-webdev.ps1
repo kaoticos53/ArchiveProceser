@@ -14,7 +14,8 @@ Write-Host "=============================================" -ForegroundColor Cyan
 $webDir = Join-Path $scriptDir "FileFlow.Web"
 
 # Instalar dependencias si faltan
-if (-not (Test-Path (Join-Path $webDir "node_modules"))) {
+$needsInstall = (-not (Test-Path (Join-Path $webDir "node_modules\.bin\vite.cmd"))) -and (-not (Test-Path (Join-Path $webDir "node_modules\.bin\vite")))
+if ($needsInstall) {
     Write-Host "`n  -> Instalando dependencias de Node.js..." -ForegroundColor DarkGray
     Push-Location $webDir
     & npm install

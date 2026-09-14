@@ -24,7 +24,8 @@ $webDistDir = Join-Path $webDir "dist"
 $skipBuild = $NoBuild -or $Fast
 
 if (-not $DevFrontend -and -not $skipBuild) {
-    if (-not (Test-Path (Join-Path $webDir "node_modules"))) {
+    $needsInstall = (-not (Test-Path (Join-Path $webDir "node_modules\.bin\tsc.cmd"))) -and (-not (Test-Path (Join-Path $webDir "node_modules\.bin\tsc")))
+    if ($needsInstall) {
         Write-Host "`n  -> Instalando dependencias de Node.js..." -ForegroundColor DarkGray
         Push-Location $webDir
         & npm install

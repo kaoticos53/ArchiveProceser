@@ -7,6 +7,28 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 > El registro histórico completo correspondiente a fases anteriores (Fases 1 a 8, Sprints de Agosto 2026 y desarrollos fundacionales) ha sido consolidado y archivado para optimización de contexto en:
 > 📄 [**`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`**](file:///docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md)
 
+## [2026-09-14] - Corrección de Detección de Dependencias Web (TypeScript / tsc) en Scripts de Ejecución
+
+### 🎯 Problema y Causa Raíz
+- Al ejecutar la opción Photino (`.\run-photino.ps1` o la opción `[6]` de `run.ps1`), el proceso fallaba con:
+  ```text
+  "tsc" no se reconoce como un comando interno o externo, programa o archivo por lotes ejecutable.
+  [ERROR] Fallo al compilar FileFlow.Web.
+  ```
+- **Causa raíz:** La verificación de instalación de dependencias en los scripts PowerShell (`run-photino.ps1`, `run-web.ps1`, `run-webdev.ps1`, `build-web.ps1`) únicamente comprobaba la existencia de la carpeta `node_modules` (`Test-Path ... "node_modules"`). Si la carpeta existía de forma incompleta o sin binarios en `.bin/`, se omitía el paso `npm install`, lo que provocaba que `npm run build` (`tsc -b && vite build`) no encontrase el binario local de `tsc`.
+
+### 🛠️ Solución Implementada
+- **Instalación de paquetes de Node.js**: Ejecución de `npm install` en `FileFlow.Web`, restaurando los binarios correspondientes en `node_modules/.bin` (`tsc.cmd`, `vite.cmd`, `oxlint.cmd`, etc.).
+- **Verificación Robusta de Binarios CLI**:
+  - Se actualizaron los scripts `run-photino.ps1`, `run-web.ps1`, `run-webdev.ps1` y `build-web.ps1` para verificar la existencia explícita de `node_modules/.bin/tsc.cmd` / `node_modules/.bin/vite.cmd`.
+  - Si los ejecutables CLI no se encuentran, los scripts ahora ejecutan automáticamente `npm install` antes de iniciar la compilación o el servidor de desarrollo.
+- **Validación**:
+  - `npm run build` en `FileFlow.Web` completa al 100% sin errores.
+  - `build-web.ps1` empaqueta y copia los artefactos correctamente a `FileFlow.Server/wwwroot` y `FileFlow.App.Photino/wwwroot`.
+  - `FileFlow.App.Photino.csproj` compila exitosamente con 0 advertencias y 0 errores.
+
+---
+
 ## [2026-09-14] - Lanzador Unificado Interactivo Multiplataforma y Scripts de Ejecución Directa
 
 ### 🎯 Objetivos y Alcance

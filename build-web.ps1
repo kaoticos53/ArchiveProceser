@@ -11,7 +11,8 @@ $serverWwwroot = Join-Path $scriptDir "FileFlow.Server\wwwroot"
 
 Write-Host "Compilando FileFlow.Web (React 19 + Vite + React Flow)..." -ForegroundColor Cyan
 
-if ($InstallDeps -or (-not (Test-Path (Join-Path $webDir "node_modules")))) {
+$needsInstall = $InstallDeps -or (-not (Test-Path (Join-Path $webDir "node_modules\.bin\tsc.cmd")) -and -not (Test-Path (Join-Path $webDir "node_modules\.bin\tsc")))
+if ($needsInstall) {
     Write-Host "  -> Instalando dependencias de Node.js en FileFlow.Web..." -ForegroundColor DarkGray
     Push-Location $webDir
     & npm install

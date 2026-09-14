@@ -15,6 +15,10 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx --warnaserror` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
 - **Hitos Activos y Recientes (Septiembre 2026)**:
+  - **86. Robustez en Detección y Restauración de Dependencias Web (TypeScript / tsc)**:
+    - Corrección del fallo de comando no reconocido `tsc` al compilar la opción Photino (`run-photino.ps1`) y Web Server (`run-web.ps1`).
+    - Restauración completa de dependencias en `FileFlow.Web` mediante `npm install`, restableciendo los binarios en `node_modules/.bin` (`tsc`, `vite`, `oxlint`).
+    - Actualización de los scripts de ejecución y empaquetado (`run-photino.ps1`, `run-web.ps1`, `run-webdev.ps1`, `build-web.ps1`) para verificar explícitamente la presencia de `node_modules/.bin/tsc.cmd` / `node_modules/.bin/vite.cmd` en lugar de una simple carpeta vacía, ejecutando auto-instalación transparente de paquetes si faltan los ejecutables.
   - **85. Lanzador Unificado Interactivo Multiplataforma y Scripts de Ejecución Directa**:
     - Menú interactivo enriquecido en `run.ps1` y `run.bat` con todas las opciones de compilación y ejecución para WPF (nativa Windows, opción por defecto en Enter directo), Web Server (ASP.NET Core + React), Photino (Escritorio Híbrido) y WebDev (Vite dev server con hot-reload).
     - Scripts directos modulares creados: `run-web.ps1`, `run-web.bat`, `run-photino.ps1`, `run-photino.bat`, `run-webdev.ps1` y `run-webdev.bat`.
