@@ -9,6 +9,38 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 
 ---
 
+## [2026-09-14] - Barra de Menú Completa, Diálogos Modales Especializados y Parámetros Ricos en la Edición Multiplataforma (Web & Photino)
+
+### 🎯 Objetivos y Alcance
+1. **Barra de Menú Completa de la Aplicación (`MenuBar.tsx`)**:
+   - Implementación de la barra de menú superior clásica/moderna con menús desplegables multinivel accesibles tanto por ratón como por atajos de teclado globales:
+     - **Archivo**: Nuevo Flujo (Ctrl+N), Abrir Flujo JSON (Ctrl+O), Guardar Flujo (Ctrl+S), Exportar DAG como JSON, Plantillas de Ejemplo (Clasificador por Extensión, Renombrado Inteligente con Tokens, Descompresión y Limpieza, Inferencia Visual VLM) y Salir.
+     - **Editar**: Deshacer (Ctrl+Z), Rehacer (Ctrl+Y), Cortar (Ctrl+X), Copiar (Ctrl+C), Pegar (Ctrl+V), Duplicar Selección (Ctrl+D), Seleccionar Todo (Ctrl+A), Eliminar Selección (Supr) y Limpiar Lienzo.
+     - **Ver**: Alternar Biblioteca de Nodos (Ctrl+B), Alternar Inspector de Parámetros (Ctrl+I), Alternar Consola de Logs (Ctrl+J), Ajustar Vista a Pantalla (Ctrl+0 / FitView), Acercar Zoom (Ctrl++), Alejar Zoom (Ctrl+-) y Pantalla Completa (F11).
+     - **Ejecutar**: Ejecutar Flujo DAG (F5), Depuración Paso a Paso (F10), Modo Simulación / Dry Run (Toggle), Modo Vigilante Activo (Watcher), Pausar / Continuar y Detener Ejecución (Shift+F5).
+     - **Herramientas**: Ajustes Generales del Flujo (⚙️), Explorador de Archivos Virtuales VFS (🗂️), Diseñador de Datasets Sintéticos (📊), Estudio de Renombrado Avanzado (🏷️), Asistente de Expresiones Regulares (🔍), Editor de Scripts C# y Python (💻), Probador de Inferencia Visual VLM (👁️) y Monitor de Telemetría (📈).
+     - **Ayuda**: Atajos de Teclado (⌨️), Manual de Usuario y Guía de Nodos (📖) y Acerca de FileFlow Studio (ℹ️).
+2. **Suite Completa de Diálogos Modales de Configuración Interna e Interfaz (`src/components/modals/`)**:
+   - **`AdvancedRenamerModal.tsx`**: Estudio visual completo de 7 métodos acumulativos (Plantillas con tokens `{FileName}`, `{Extension}`, `{Date:yyyy-MM-dd}`, `{Counter:3}`, `{ParentDir}`, `{Exif:...}`, Buscar/Reemplazar con Regex, Capitalización, Numeración Secuencial, Recorte, Normalización diacrítica y cambio de extensión) con tabla de previsualización reactiva en tiempo real sobre archivos de prueba y sincronización directa con los parámetros del nodo en el flujo.
+   - **`SyntheticDataDesignerModal.tsx`**: Diseñador visual de conjuntos de datos y archivos ficticios con selector de categorías (Películas, Series, Cómics y Manga, Música, Fotos, Documentos o Personalizada), sliders de volumen y retardo, emisión virtual vs disco físico y editor interactivo de ítems.
+   - **`RegexHelperModal.tsx`**: Asistente interactivo de expresiones regulares compatibles con .NET 9 Regex, con evaluador multilínea en vivo, extracción de grupos de captura con nombre (`(?<name>...)`), biblioteca de patrones frecuentes y flags de compilación.
+   - **`ScriptEditorModal.tsx`**: Editor de código integrado para scripts en C# 13 (Roslyn .NET 9) y Python 3.12, con plantillas predefinidas de filtrado por tamaño o inyección de metadatos y consola de simulación de ejecución en tiempo real.
+   - **`VlmTesterModal.tsx`**: Probador interactivo de prompts y modelos de visión multimodal (Ollama local, OpenAI, ONNX DirectML) con previsualización de imágenes y simulación de respuestas estructuradas en JSON.
+   - **`SettingsModal.tsx`**: Panel de ajustes generales del motor (concurrencia máxima por canales, proveedor de almacenamiento disco/memoria/híbrido, aceleración ONNX CPU/DirectML/CUDA y autolimpieza de temporales).
+   - **`VfsExplorerModal.tsx`**: Explorador del sistema de archivos virtuales en memoria con árbol de directorios, visualizador de metadatos clave/valor y exportación a disco físico.
+   - **`ShortcutsModal.tsx`**, **`AboutModal.tsx`**, **`UserManualModal.tsx`** y **`TelemetryModal.tsx`**: Diálogos de documentación interactiva, atajos de teclado clasificados, identidad de la versión y telemetría de rendimiento en vivo (archivos/segundo y tiempos por nodo).
+3. **Parámetros Ricos y Acciones Personalizadas en el Inspector (`InspectorDrawer.tsx`)**:
+   - Soporte exhaustivo para todos los tipos de editores canónicos: `text`, `number`, `slider` con badges numéricos, `toggle` interactivo, `select` desplegable, `folderpath`/`filepath` con botón de exploración, `multilinetext` y selectores de versión.
+   - Integración de botones destacados de **"Diseñadores y Asistentes"** para nodos complejos (`AdvancedRenamerNode`, `SyntheticDataSourceNode`, `RegexFilterNode`, `CustomScriptNode`, `MultimodalVisionLlmNode` y cualquier nodo con `CustomActions`).
+4. **Backend API (`FileFlow.Server`)**:
+   - Actualización de `/api/nodes/catalog` en [`FileFlowServerRunner.cs`](file:///FileFlow.Server/FileFlowServerRunner.cs) para serializar exhaustivamente los `ParameterDescriptors` (con tipos de control, límites min/max, opciones y orden de despliegue) y los `CustomActions` expuestos por el SDK.
+5. **Validación Integral**:
+   - Empaquetado de producción de `FileFlow.Web` sin errores: **0 errores TypeScript / Vite**.
+   - Compilación exitosa de `FileFlow.Server` y `FileFlow.App.Photino`: **0 Advertencias, 0 Errores**.
+   - Suite completa de pruebas unitarias: **833 / 833 superadas al 100%**.
+
+---
+
 ## [2026-09-14] - Arquitectura Multiplataforma y Web: Photino.NET, React Flow y ASP.NET Core API
 
 ### 🎯 Objetivos y Alcance

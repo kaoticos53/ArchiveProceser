@@ -49,21 +49,58 @@ const MASTER_CATALOG: NodeTemplateItem[] = [
   },
   {
     id: 'SyntheticDataSourceNode',
-    name: 'Generador Sintético',
+    name: 'Generador Sintético de Datos',
     category: 'Entrada',
-    description: 'Genera lotes de archivos y datos simulados para pruebas de estrés.',
+    description: 'Emite archivos de prueba categorizados (Películas, Series, Cómics, Música o Personalizados) para pruebas y depuración de pipelines sin requerir archivos reales.',
     iconName: 'input',
     template: {
       title: 'Generador Sintético',
       category: 'Entrada',
-      description: 'Genera archivos de prueba sintéticos.',
+      description: 'Emite archivos de prueba categorizados para testing sin tocar el disco.',
       iconName: 'input',
       status: 'idle',
       inputs: [],
       outputs: [{ id: 'out', name: 'Archivo', type: 'FileItem', direction: 'output' }],
       parameters: [
-        { key: 'FileCount', displayName: 'Cantidad de Archivos', type: 'number', value: 10, min: 1, max: 1000 },
-        { key: 'FileSizeKb', displayName: 'Tamaño (KB)', type: 'number', value: 50, min: 1, max: 10000 },
+        { key: 'Category', displayName: 'Categoría', type: 'select', value: 'Películas', options: ['Todas', 'Películas', 'Series', 'Cómics y Manga', 'Música', 'Fotos', 'Documentos', 'Personalizada'] },
+        { key: 'EmissionMode', displayName: 'Modo de Emisión', type: 'select', value: 'Virtual', options: ['Virtual', 'PhysicalMock'] },
+        { key: 'MaxItems', displayName: 'Límite de Ítems (0 = todos)', type: 'number', value: 10, min: 0, max: 1000 },
+        { key: 'EmissionDelayMs', displayName: 'Retardo por Ítem (ms)', type: 'number', value: 0, min: 0, max: 10000 },
+        { key: 'EmitDirectories', displayName: 'Emitir Directorios', type: 'boolean', value: false },
+        { key: 'CustomItems', displayName: 'Ítems Personalizados', type: 'multiline', value: '' },
+        { key: 'OutputFolder', displayName: 'Carpeta de Salida', type: 'path', value: '' }
+      ],
+      customActions: [
+        { actionId: 'OpenDataSetDesigner', title: '📊 Diseñador de Datasets...', icon: '📊', tooltip: 'Abrir el Diseñador Visual de Datasets Sintéticos' }
+      ]
+    }
+  },
+  {
+    id: 'AdvancedRenamerNode',
+    name: 'Renombrador Avanzado con Tokens',
+    category: 'Archivos',
+    description: 'Renombra archivos y carpetas masivamente aplicando un pipeline acumulativo de métodos secuenciales (plantillas, regex, mayúsculas, numeración y normalización).',
+    iconName: 'file',
+    template: {
+      title: 'Renombrador Avanzado',
+      category: 'Archivos',
+      description: 'Pipeline secuencial de 7 métodos de renombrado con resolución de colisiones.',
+      iconName: 'file',
+      status: 'idle',
+      inputs: [{ id: 'in', name: 'Entrada', type: 'FileItem', direction: 'input' }],
+      outputs: [
+        { id: 'out', name: 'Renombrado', type: 'FileItem', direction: 'output' },
+        { id: 'skipped', name: 'Omitido', type: 'FileItem', direction: 'output' },
+        { id: 'error', name: 'Error', type: 'FileItem', direction: 'output' }
+      ],
+      parameters: [
+        { key: 'PipelineName', displayName: 'Nombre del Pipeline', type: 'string', value: 'Pipeline Predeterminado' },
+        { key: 'RenameMode', displayName: 'Modo de Ejecución', type: 'select', value: 'Virtual', options: ['Virtual', 'DirectInPlace'] },
+        { key: 'CollisionStrategy', displayName: 'Estrategia de Colisión', type: 'select', value: 'AutoIncrement', options: ['AutoIncrement', 'Overwrite', 'Skip', 'Fail'] },
+        { key: 'MethodSteps', displayName: 'Pasos de Renombrado (JSON)', type: 'multiline', value: '' }
+      ],
+      customActions: [
+        { actionId: 'OpenRenamerPipeline', title: '🏷️ Pipeline de Métodos...', icon: '🏷️', tooltip: 'Abrir el Estudio de Renombrado Avanzado con 7 métodos y vista previa' }
       ]
     }
   },
@@ -633,7 +670,8 @@ export const NodeLibraryDrawer: React.FC<NodeLibraryDrawerProps> = ({
                 status: 'idle',
                 inputs: d.inputs || [{ id: 'in', name: 'Entrada', type: 'FileItem', direction: 'input' }],
                 outputs: d.outputs || [{ id: 'out', name: 'Salida', type: 'FileItem', direction: 'output' }],
-                parameters: d.parameters || []
+                parameters: d.parameters || [],
+                customActions: d.customActions || []
               }
             }));
             setCatalogItems(serverItems);

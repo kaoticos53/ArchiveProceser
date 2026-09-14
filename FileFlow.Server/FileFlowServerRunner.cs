@@ -128,13 +128,68 @@ public static class FileFlowServerRunner
                             direction = "output"
                         });
 
-                        var parameters = instance.Parameters.Select(kv => new
+                        var parameters = new List<object>();
+                        var processedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                        // 1. Descriptores formales de parámetros
+                        var descriptors = instance.ParameterDescriptors ?? Array.Empty<NodeParameterDescriptor>();
+                        foreach (var d in descriptors.OrderBy(d => d.DisplayOrder))
                         {
-                            key = kv.Key,
-                            displayName = kv.Key,
-                            type = kv.Value is bool ? "boolean" : (kv.Value is int or double or float ? "number" : "string"),
-                            value = kv.Value
-                        });
+                            processedKeys.Add(d.Key);
+                            object? val = instance.Parameters.TryGetValue(d.Key, out var cv) ? cv : d.DefaultValue;
+
+                            string typeString = d.EditorType switch
+                            {
+                                ParameterEditorType.Toggle => "boolean",
+                                ParameterEditorType.Number or ParameterEditorType.Slider => "number",
+                                ParameterEditorType.Dropdown or ParameterEditorType.EditableDropdown => "select",
+                                ParameterEditorType.FolderPath or ParameterEditorType.FilePath => "path",
+                                ParameterEditorType.MultiLineText => "multiline",
+                                _ => "string"
+                            };
+
+                            parameters.Add(new
+                            {
+                                key = d.Key,
+                                displayName = d.Key,
+                                editorType = d.EditorType.ToString().ToLowerInvariant(),
+                                type = typeString,
+                                value = val,
+                                defaultValue = d.DefaultValue,
+                                options = d.Options,
+                                min = d.Min,
+                                max = d.Max,
+                                step = d.Step,
+                                helpText = d.HelpText,
+                                dependsOnKey = d.DependsOnKey,
+                                dependsOnValues = d.DependsOnValues
+                            });
+                        }
+
+                        // 2. Parámetros adicionales del diccionario sin descriptor explícito
+                        foreach (var (k, v) in instance.Parameters)
+                        {
+                            if (!processedKeys.Contains(k))
+                            {
+                                parameters.Add(new
+                                {
+                                    key = k,
+                                    displayName = k,
+                                    editorType = v is bool ? "toggle" : (v is int or double or float ? "number" : "text"),
+                                    type = v is bool ? "boolean" : (v is int or double or float ? "number" : "string"),
+                                    value = v,
+                                    defaultValue = v
+                                });
+                            }
+                        }
+
+                        var customActions = (instance.CustomActions ?? Array.Empty<NodeActionDescriptor>()).Select(a => new
+                        {
+                            actionId = a.ActionId,
+                            title = a.Title,
+                            icon = a.Icon,
+                            tooltip = a.Tooltip
+                        }).ToList();
 
                         catalog.Add(new
                         {
@@ -145,7 +200,8 @@ public static class FileFlowServerRunner
                             description = description,
                             inputs = inputs.ToList(),
                             outputs = outputs.ToList(),
-                            parameters = parameters.ToList()
+                            parameters = parameters,
+                            customActions = customActions
                         });
                     }
                 }

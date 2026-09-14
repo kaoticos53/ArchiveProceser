@@ -9,15 +9,41 @@ export interface FlowPort {
   direction: 'input' | 'output';
 }
 
+export type ParameterEditorType = 
+  | 'text' 
+  | 'number' 
+  | 'slider' 
+  | 'dropdown' 
+  | 'editabledropdown' 
+  | 'toggle' 
+  | 'folderpath' 
+  | 'filepath' 
+  | 'multilinetext' 
+  | 'passwordlist' 
+  | 'mediapreset' 
+  | 'fileversionselector';
+
+export interface NodeActionDescriptor {
+  actionId: string;
+  title: string;
+  icon: string;
+  tooltip?: string;
+}
+
 export interface NodeParameter {
   key: string;
   displayName: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'path';
+  editorType?: string;
+  type: 'string' | 'number' | 'boolean' | 'select' | 'path' | 'multiline';
   value: any;
+  defaultValue?: any;
   options?: string[];
   min?: number;
   max?: number;
-  description?: string;
+  step?: number;
+  helpText?: string;
+  dependsOnKey?: string;
+  dependsOnValues?: string[];
 }
 
 export interface FlowNodeData extends Record<string, unknown> {
@@ -26,9 +52,11 @@ export interface FlowNodeData extends Record<string, unknown> {
   description: string;
   iconName: string;
   status: NodeStatus;
+  nodeType?: string;
   inputs: FlowPort[];
   outputs: FlowPort[];
   parameters: NodeParameter[];
+  customActions?: NodeActionDescriptor[];
   durationMs?: number;
   processedCount?: number;
 }
@@ -39,4 +67,15 @@ export interface WorkflowTelemetry {
   totalFiles: number;
   elapsedMs: number;
   throughput: number; // files/sec
+}
+
+export interface WorkflowSettings {
+  maxConcurrency: number;
+  storageProvider: 'LocalDisk' | 'VirtualMemory' | 'Hybrid';
+  tempDirectory: string;
+  onnxProvider: 'CPU' | 'DirectML' | 'CUDA';
+  autoCleanupTemp: boolean;
+  telemetryPollingIntervalMs: number;
+  dryRunMode: boolean;
+  watchMode: boolean;
 }
