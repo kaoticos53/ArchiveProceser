@@ -31,6 +31,10 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
    - Incorporación de `FileFlow.Server` y `FileFlow.App.Photino` en [`FileFlow.slnx`](file:///FileFlow.slnx).
    - Compilación general de los 17 proyectos de la solución: **0 Advertencias, 0 Errores**.
    - Verificación de la suite de pruebas unitarias e integración: **833 / 833 superadas (100% de éxito)**.
+6. **Resolución de Incidencias Críticas en el Cliente Multiplataforma**:
+   - **Arranque Determinista en Photino**: Sustituido el temporizador arbitrario por `await app.StartAsync()` y fallback a puerto dinámico `http://127.0.0.1:0` en caso de colisión, garantizando que WebView2 nunca cargue antes de que el servidor Kestrel esté activo y escuchando (eliminando la ventana negra).
+   - **Arquitectura Nodal Multicanal y Cables Exactos**: En `FlowNode.tsx`, cada puerto de entrada y salida se estructuró en su propia fila independiente (`.node-port-row`) con su respectivo `<Handle>` posicionado en el borde de la fila. Se eliminó `overflow: hidden` en la tarjeta sustituyéndolo por `overflow: visible !important`, permitiendo a React Flow calcular las coordenadas exactas de cada conector y erradicando el anclaje central erróneo de las conexiones bezier.
+   - **Catálogo Exhaustivo de 40+ Nodos**: Ampliada la biblioteca con los más de 40 nodos de la suite repartidos en sus 10 categorías reales con todas sus entradas, salidas y parámetros, con sincronización automática vía `/api/nodes/catalog` y fallback local completo.
 
 ---
 
