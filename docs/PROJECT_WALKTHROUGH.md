@@ -9,6 +9,23 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 
 ---
 
+## [2026-09-14] - Reversión de Migración a Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)
+
+### 🎯 Objetivos y Alcance
+1. **Reversión Integral de la Migración a Avalonia UI**:
+   - Reversión limpia del commit `15e32ec` restaurando el 100% de la arquitectura nativa WPF (`net9.0-windows`, `<UseWPF>true</UseWPF>`, Nodify nativo WPF, Vistas XAML y recursos WPF en `FileFlow.App` y plugins satélite).
+   - Eliminación de dependencias transitorias y archivos huérfanos `.axaml`.
+   - Verificación de arranque nativo sin errores a través de `run.ps1` y `run-fast.ps1`.
+2. **Corrección de Temas y Legibilidad en la Barra de Estado (`StatusBarView.xaml`)**:
+   - Sustitución de colores oscuros fijos (`#0C101B`, `#111827`, `#1E293B`, `#1F2937`) por recursos dinámicos de tema (`BgHeaderBrush`, `BgSurfaceBrush`, `BorderDarkBrush`).
+   - Sincronización visual del fondo de la barra de estado con la barra superior de control (`ControlBarView.xaml`).
+   - Sustitución de etiquetas fijas en gris bajo contraste (`#94A3B8`) y valores (`#F8FAFC`, `#E2E8F0`) por `TextPrimaryBrush`, `TextSecondaryBrush` y acentos semánticos (`AccentCyanBrush`, `AccentSuccessBrush`, `AccentPurpleBrush`), garantizando contraste y legibilidad óptima tanto en temas claros (`LightTheme`, `PastelTheme`) como oscuros (`DarkTheme`, `CyberTheme`).
+3. **Validación y Métricas**:
+   - Compilación completa con `dotnet build FileFlow.slnx --warnaserror`: **0 Advertencias, 0 Errores**.
+   - Ejecución de pruebas unitarias de UI (`FileFlow.Tests.Unit.App`): **175 / 175 superadas con éxito**.
+
+---
+
 ## [2026-09-13] - Plan de Migración Multiplataforma a Avalonia UI, Publicación Dual y Generador de Instaladores Linux y Windows
 
 ### 🎯 Objetivos y Alcance
