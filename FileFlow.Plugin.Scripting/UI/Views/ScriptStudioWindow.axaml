@@ -1,0 +1,167 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:avalonEdit="https://github.com/avaloniaui/avaloniaedit"
+        xmlns:vm="using:FileFlow.Plugin.Scripting.UI.ViewModels"
+        xmlns:services="using:FileFlow.Plugin.Scripting.Services"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.Plugin.Scripting.UI.Views.ScriptStudioWindow"
+        x:DataType="vm:ScriptStudioViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_Title]}"
+        Width="1100" Height="750"
+        MinHeight="600" MinWidth="850"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgDarkBrush}" 
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="12" RowDefinitions="Auto,*,Auto">
+        <!-- Cabecera y Barra de Herramientas -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_Engine]}" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
+                    <ComboBox Width="140" SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}" SelectionChanged="Language_SelectionChanged">
+                        <x:String>CSharp</x:String>
+                        <x:String>JavaScript</x:String>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_ManualPdf]}" Click="OpenManual_Click" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="Bold" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_Templates]}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <ComboBox Width="250" ItemsSource="{Binding Presets}" DisplayMemberBinding="{Binding Name}" SelectedItem="{Binding SelectedPreset, Mode=TwoWay}" />
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_LoadTemplate]}" Command="{Binding LoadSelectedPresetCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Cuerpo Principal: Editor central y Panel lateral de Puertos/Pruebas -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,8,340">
+            <!-- Editor de Código AvalonEdit -->
+            <Border Grid.Column="0" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="4">
+                <avalonEdit:TextEditor x:Name="CodeEditor"
+                                       FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                                       FontSize="13.5"
+                                       Background="{DynamicResource BgSurfaceBrush}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       ShowLineNumbers="True"
+                                       LineNumbersForeground="{DynamicResource TextSecondaryBrush}"
+                                       TextChanged="CodeEditor_TextChanged" />
+            </Border>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Width="8" Background="Transparent" HorizontalAlignment="Stretch" />
+
+            <!-- Panel Lateral Derecho: Puertos y Probador -->
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                <TabControl Background="Transparent" BorderThickness="0">
+                    <!-- Pestaña 1: Puertos Dinámicos -->
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_TabPorts]}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_InputPorts]}" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                <ItemsControl ItemsSource="{Binding InputPorts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,2">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="{Binding}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1" Content="✕" Padding="4,1" Foreground="{DynamicResource AccentErrorBrush}"
+                                                            Command="{Binding $parent[Window].((vm:ScriptStudioViewModel)DataContext).RemoveInputPortCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,12">
+                                    <TextBox Text="{Binding NewInputPortName, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_AddPort]}" Command="{Binding AddInputPortCommand}" Margin="4,0,0,0" />
+                                </Grid>
+
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_OutputPorts]}" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" Margin="0,8,0,0" />
+                                <ItemsControl ItemsSource="{Binding OutputPorts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,2">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="{Binding}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1" Content="✕" Padding="4,1" Foreground="{DynamicResource AccentErrorBrush}"
+                                                            Command="{Binding $parent[Window].((vm:ScriptStudioViewModel)DataContext).RemoveOutputPortCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                    <TextBox Text="{Binding NewOutputPortName, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_AddPort]}" Command="{Binding AddOutputPortCommand}" Margin="4,0,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Pestaña 2: Probador en Vivo -->
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_TabTest]}">
+                        <Grid Margin="0,8,0,0" RowDefinitions="Auto,Auto,*">
+                            <StackPanel Grid.Row="0" Spacing="4">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_TestFileName]}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                                <TextBox Text="{Binding TestFileName, Mode=TwoWay}" Margin="0,2,0,6" />
+                                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_RunTest]}" Command="{Binding RunTestCommand}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="Bold" Padding="8,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="1" Text="{Binding TestStatus}" FontWeight="Bold" Foreground="{DynamicResource AccentWarningBrush}" Margin="0,8,0,4" />
+
+                            <!-- Consola de Resultados y Emisiones -->
+                            <Border Grid.Row="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Spacing="4">
+                                        <ItemsControl ItemsSource="{Binding TestEmittedPorts}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" Foreground="{DynamicResource AccentSuccessBrush}" FontWeight="Bold" FontSize="11" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Border Height="1" Background="{DynamicResource BorderDarkBrush}" Margin="0,4" />
+                                        <ItemsControl ItemsSource="{Binding TestLogs}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextWrapping="Wrap" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Pestaña 3: Guardar en Mis Scripts -->
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_TabSave]}">
+                        <StackPanel Margin="0,8,0,0" Spacing="6">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_ScriptName]}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                            <TextBox Text="{Binding NewPresetName, Mode=TwoWay}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_ScriptDesc]}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                            <TextBox Text="{Binding NewPresetDescription, Mode=TwoWay}" Height="50" TextWrapping="Wrap" AcceptsReturn="True" />
+                            <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_SaveToMyScripts]}" Command="{Binding SaveCurrentAsPresetCommand}" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" FontWeight="Bold" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+
+        <!-- Pie de Ventana: Aceptar / Cancelar -->
+        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,10,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_Tip]}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_Apply]}" Click="ApplyAndClose_Click" Background="{DynamicResource AccentSuccessBrush}" Foreground="#FFFFFF" FontWeight="Bold" Padding="16,6" CornerRadius="4" />
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ScriptStudio_Cancel]}" Click="Cancel_Click" Padding="12,6" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

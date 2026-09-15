@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             x:Class="FileFlow.App.Views.Components.GroupCardView"
+             x:DataType="vm:GroupViewModel"
+             Width="{Binding Width, Mode=TwoWay}"
+             Height="{Binding Height, Mode=TwoWay}"
+             MinWidth="220" MinHeight="140"
+             MaxWidth="2500" MaxHeight="2500">
+
+    <UserControl.Styles>
+        <Style Selector="Button.group-color-circle">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="BorderBrush" Value="#80FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Border Frame -->
+        <Border BorderBrush="{Binding Color}"
+                BorderThickness="2"
+                CornerRadius="12"
+                Background="#08808080"
+                IsHitTestVisible="False" />
+
+        <Grid RowDefinitions="Auto,*">
+            <!-- Interactive Header -->
+            <Border Grid.Row="0" Background="{Binding Color}" Opacity="0.95" CornerRadius="10,10,0,0" Padding="10,6">
+                <Grid>
+                    <!-- Drag Thumb -->
+                    <Thumb DragDelta="HeaderThumb_DragDelta" Cursor="SizeAll">
+                        <Thumb.Template>
+                            <ControlTemplate>
+                                <Border Background="Transparent" />
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" IsHitTestVisible="True">
+                        <TextBlock Grid.Column="0" Text="🔲" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+
+                        <!-- Title -->
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding Title, Mode=TwoWay}"
+                                 FontWeight="Bold"
+                                 FontSize="12"
+                                 Foreground="#FFFFFF"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0"
+                                 VerticalAlignment="Center" />
+
+                        <!-- Group Palette -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                            <Button Classes="group-color-circle" Background="#3B82F6"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#3B82F6" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Blue]}" />
+                            <Button Classes="group-color-circle" Background="#10B981"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#10B981" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Emerald]}" />
+                            <Button Classes="group-color-circle" Background="#8B5CF6"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#8B5CF6" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Violet]}" />
+                            <Button Classes="group-color-circle" Background="#F59E0B"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#F59E0B" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Amber]}" />
+                            <Button Classes="group-color-circle" Background="#EF4444"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#EF4444" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Red]}" />
+                            <Button Classes="group-color-circle" Background="#64748B"
+                                    Command="{Binding ChangeColorCommand}" CommandParameter="#64748B" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Color_Slate]}" />
+                        </StackPanel>
+
+                        <!-- Delete Button -->
+                        <Button Grid.Column="3"
+                                Command="{Binding DeleteCommand}"
+                                Content="✕"
+                                Foreground="#FFFFFF"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                FontSize="11"
+                                FontWeight="Bold"
+                                Padding="4,0"
+                                Cursor="Hand"
+                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Group_DeleteToolTip]}"
+                                VerticalAlignment="Center" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Resize Thumb -->
+            <Thumb Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Width="20" Height="20" Cursor="BottomRightCorner" Margin="0,0,3,3"
+                   DragDelta="ResizeThumb_DragDelta">
+                <Thumb.Template>
+                    <ControlTemplate>
+                        <Border Background="Transparent">
+                            <Path Data="M 14,2 L 14,14 L 2,14 Z M 14,7 L 14,14 L 7,14 Z M 14,11 L 14,14 L 11,14 Z"
+                                  Fill="{Binding Color}" Stretch="Uniform" Margin="2" />
+                        </Border>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
+        </Grid>
+    </Grid>
+</UserControl>

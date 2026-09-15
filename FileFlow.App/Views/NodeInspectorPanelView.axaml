@@ -1,0 +1,217 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             xmlns:conv="using:FileFlow.App.Converters"
+             x:Class="FileFlow.App.Views.NodeInspectorPanelView"
+             x:DataType="vm:NodeInspectorViewModel">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://FileFlow.App/Themes/Templates/InspectorTemplates.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource BgSurfaceBrush}" 
+            BorderBrush="{DynamicResource BorderDarkBrush}" 
+            BorderThickness="1,0,0,0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <!-- State 1: No Node Selected -->
+            <Grid IsVisible="{Binding InspectedNode, Converter={StaticResource InverseNullToVisibilityConverter}}" RowDefinitions="Auto,*">
+                <Button Grid.Row="0" Command="{Binding ClosePanelCommand}" 
+                        HorizontalAlignment="Right" Margin="12,12,12,0" Padding="8,4" 
+                        ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ClosePanelToolTip]}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="✕ " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_CloseBtn]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+                </Button>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" Spacing="8">
+                    <Border Background="{DynamicResource BgHoverBrush}" Width="64" Height="64" CornerRadius="32" HorizontalAlignment="Center">
+                        <TextBlock Text="🔍" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorTitle]}" 
+                               FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorNoSelection]}" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" FontSize="12.5" MaxWidth="280" />
+                </StackPanel>
+            </Grid>
+
+            <!-- State 2: Node Selected -->
+            <Grid IsVisible="{Binding InspectedNode, Converter={StaticResource NullToVisibilityConverter}}" RowDefinitions="Auto,Auto,*">
+                <!-- Inspector Header -->
+                <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="14,12">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding InspectedNode.Title}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding InspectedNode.ExecutionStatus}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding InspectedNode.Category}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Action Buttons -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="0,0,8,0">
+                            <Button Command="{Binding OpenQuickPreviewCommand}" 
+                                    Padding="10,5" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_PreviewToolTip]}">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_PreviewButton]}" FontSize="11" FontWeight="SemiBold" Foreground="#00E5FF" />
+                            </Button>
+                            <Button Command="{Binding TestNodeWithCustomFileCommand}" 
+                                    Padding="10,5" 
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestNodeToolTip]}">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TestBtn]}" FontSize="11" FontWeight="SemiBold" />
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Close Button -->
+                        <Button Grid.Column="2" Command="{Binding ClosePanelCommand}" Padding="8,4" ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ClosePanelToolTip]}">
+                            <TextBlock Text="✕" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Error Alert Banner -->
+                <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentErrorBrush}" BorderThickness="0,0,0,1" Padding="12"
+                        IsVisible="{Binding InspectedNode.LastErrorDetails, Converter={StaticResource NullToVisibilityConverter}}">
+                    <StackPanel Spacing="4">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="⚠️ " FontSize="13" Foreground="{DynamicResource AccentErrorBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorErrorTitle]}" 
+                                       FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" FontSize="12.5" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding InspectedNode.LastErrorDetails}" Foreground="{DynamicResource AccentErrorBrush}" TextWrapping="Wrap" FontSize="11" FontFamily="Cascadia Code, Consolas, monospace" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Inspector Tabs -->
+                <TabControl Grid.Row="2" Margin="12,10,12,12">
+                    <!-- TAB 1: Parameters -->
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabParameters]}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                            <StackPanel Spacing="10">
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_NodeDescription]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding InspectedNode.Description}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11.5" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Custom Actions -->
+                                <ItemsControl ItemsSource="{Binding InspectedNode.CustomActions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:NodeActionViewModel">
+                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1.5" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                                <StackPanel Spacing="4">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                    <TextBlock Text="{Binding Tooltip}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap" />
+                                                    <Button Command="{Binding ExecuteCommand}" Padding="12,6" HorizontalAlignment="Left" Margin="0,4,0,0">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <TextBlock Text="{Binding Icon}" />
+                                                            <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="Bold" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Parameters List -->
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ParametersConfig]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                
+                                <ItemsControl ItemsSource="{Binding InspectedNode.Parameters}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:NodeParameterViewModel">
+                                            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                                                    IsVisible="{Binding IsVisible}">
+                                                <StackPanel Spacing="4">
+                                                    <TextBlock Text="{Binding DisplayName}" ToolTip.Tip="{Binding Key}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                    
+                                                    <!-- ComboBox for options -->
+                                                    <ComboBox ItemsSource="{Binding Options}"
+                                                              SelectedItem="{Binding Value, Mode=TwoWay}"
+                                                              IsVisible="{Binding HasOptionsAndNotEditable}"
+                                                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                              BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="12" Padding="8,5"
+                                                              HorizontalAlignment="Stretch" />
+
+                                                    <!-- CheckBox for Booleans -->
+                                                    <CheckBox IsChecked="{Binding Value, Mode=TwoWay}"
+                                                              IsVisible="{Binding IsBooleanAndNoOptions}"
+                                                              Foreground="{DynamicResource TextPrimaryBrush}"
+                                                              FontSize="12" Margin="2,4,0,4" />
+
+                                                    <!-- Browse Path -->
+                                                    <Grid IsVisible="{Binding HasBrowseButton}" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
+                                                        <TextBox Grid.Column="0" Text="{Binding Value, Mode=TwoWay}"
+                                                                 Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="12" />
+                                                        <Button Grid.Column="1" Command="{Binding BrowsePathCommand}" Content="📁" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" BorderThickness="0" Padding="10,5" FontSize="12" Cursor="Hand" Margin="4,0,0,0" ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}" />
+                                                    </Grid>
+
+                                                    <!-- Multiline text -->
+                                                    <TextBox Text="{Binding Value, Mode=TwoWay}"
+                                                             AcceptsReturn="True"
+                                                             TextWrapping="Wrap"
+                                                             MinHeight="60" MaxHeight="140"
+                                                             IsVisible="{Binding IsMultiLine}"
+                                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="11.5" Padding="8,6" />
+
+                                                    <!-- Standard text input -->
+                                                    <TextBox Text="{Binding Value, Mode=TwoWay}"
+                                                             IsVisible="{Binding IsStandardInput}"
+                                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                             BorderBrush="{DynamicResource BorderDarkBrush}" FontSize="12" Padding="8,5" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- TAB 2: Live Snapshots -->
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabSnapshots]}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                            <StackPanel Spacing="6">
+                                <ItemsControl ItemsSource="{Binding InspectedNode.OutputSnapshots}" ItemTemplate="{StaticResource SnapshotExpanderTemplate}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- TAB 3: Telemetry & Metrics -->
+                    <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TabTelemetry]}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,4,0,0">
+                            <StackPanel Spacing="8">
+                                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ExecutionMetrics]}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_TotalDuration]}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding InspectedNode.CurrentStats.TotalTimeMs, Converter={StaticResource DurationMsToTextConverter}}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_ProcessedBytes]}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding InspectedNode.CurrentStats.PeakAllocatedBytes, Converter={StaticResource BytesToTextConverter}}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

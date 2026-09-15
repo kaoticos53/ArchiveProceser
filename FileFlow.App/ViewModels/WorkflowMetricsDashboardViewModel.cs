@@ -40,6 +40,13 @@ public partial class NodeMetricsRowViewModel : ObservableObject
     public string BottleneckPercentageText { get; set; } = "-";
     public string BottleneckBarBrush { get; set; } = "#38BDF8";
     public required IReadOnlyList<double> RecentDurations { get; init; }
+
+    public string NodeTitle => Title;
+    public double DurationMs => AvgDurationMs;
+    public long ItemsProcessed => ExecutionCount;
+    public string ProcessedBytesText => FormattedAvgRam;
+    public string TimePercentageText => BottleneckPercentageText;
+    public string Status => IsBottleneck ? "Bottleneck ⚠️" : "OK ✅";
 }
 
 public partial class WorkflowMetricsDashboardViewModel : ObservableObject
@@ -80,8 +87,18 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
 
     public ObservableCollection<NodeMetricsRowViewModel> NodeRows { get; } = [];
     public ObservableCollection<NodeMetricsRowViewModel> FilteredNodeRows { get; } = [];
+    public ObservableCollection<NodeMetricsRowViewModel> NodeMetrics => FilteredNodeRows;
     public ObservableCollection<NodeDistributionBarViewModel> TimeDistributionBars { get; } = [];
     public ObservableCollection<NodeDistributionBarViewModel> RamDistributionBars { get; } = [];
+
+    public string TotalWorkflowDurationText => FormattedTotalDuration;
+    public string TotalBytesProcessedText => FormattedTotalRam;
+    public long TotalItemsProcessedCount => TotalInvocations;
+    public string SlowestNodeName => NodeRows.FirstOrDefault()?.Title ?? "-";
+    public string ProfilingStatusMessage => $"{TotalNodesCount} {LocalizationManager.Instance.GetString("Metrics_NodesProfiled", "nodos analizados")}. {BottleneckNodesCount} {LocalizationManager.Instance.GetString("Metrics_BottlenecksFound", "cuello(s) de botella")}.";
+
+    [RelayCommand]
+    public void ExportReportCsv() => ExportCsv();
 
     partial void OnSearchFilterChanged(string value)
     {
@@ -90,11 +107,13 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
 
     private readonly EditorViewModel _editorViewModel;
     private readonly IDialogService _dialogService;
+    private readonly IFileDialogService _fileDialogService;
 
-    public WorkflowMetricsDashboardViewModel(EditorViewModel editorViewModel, IDialogService? dialogService = null)
+    public WorkflowMetricsDashboardViewModel(EditorViewModel editorViewModel, IDialogService? dialogService = null, IFileDialogService? fileDialogService = null)
     {
         _editorViewModel = editorViewModel;
         _dialogService = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
+        _fileDialogService = fileDialogService ?? (App.Services?.GetService(typeof(IFileDialogService)) as IFileDialogService) ?? new AvaloniaFileDialogService();
         RefreshMetrics();
     }
 
@@ -249,13 +268,13 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
     {
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "CSV Files (*.csv)|*.csv",
-                FileName = $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
-            };
+            var fileName = _fileDialogService.ShowSaveFileDialog(
+                "Export CSV",
+                "CSV Files (*.csv)|*.csv",
+                "csv",
+                $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
-            if (dialog.ShowDialog() == true)
+            if (!string.IsNullOrEmpty(fileName))
             {
                 var sb = new StringBuilder();
                 sb.AppendLine("NodeId,Title,Category,Invocations,Errors,AvgDurationMs,RollingAvgDurationMs,AvgAllocatedBytes,PeakAllocatedBytes,AvgCpuPercentage,IsGpuAccelerated,IsBottleneck,BottleneckRatio");
@@ -263,7 +282,7 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
                 {
                     sb.AppendLine($"\"{row.NodeId}\",\"{row.Title}\",\"{row.Category}\",{row.ExecutionCount},{row.ErrorCount},{row.AvgDurationMs:F3},{row.RollingAvgDurationMs:F3},{row.AvgAllocatedBytes},{row.PeakAllocatedBytes},{row.AvgCpuPercentage:F2},{row.IsGpuAccelerated},{row.IsBottleneck},{row.RelativeBottleneckRatio:F4}");
                 }
-                File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
+                File.WriteAllText(fileName, sb.ToString(), Encoding.UTF8);
                 _dialogService.ShowInformation(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a CSV."), "FileFlow Studio");
             }
         }
@@ -280,13 +299,13 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
     {
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "JSON Files (*.json)|*.json",
-                FileName = $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-            };
+            var fileName = _fileDialogService.ShowSaveFileDialog(
+                "Export JSON",
+                "JSON Files (*.json)|*.json",
+                "json",
+                $"FileFlow_Metrics_{DateTime.Now:yyyyMMdd_HHmmss}.json");
 
-            if (dialog.ShowDialog() == true)
+            if (!string.IsNullOrEmpty(fileName))
             {
                 var exportData = new
                 {
@@ -305,7 +324,7 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
                 };
 
                 var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(dialog.FileName, json, Encoding.UTF8);
+                File.WriteAllText(fileName, json, Encoding.UTF8);
                 _dialogService.ShowInformation(LocalizationManager.Instance.GetString("Metrics_ExportSuccess", "Métricas exportadas exitosamente a JSON."), "FileFlow Studio");
             }
         }

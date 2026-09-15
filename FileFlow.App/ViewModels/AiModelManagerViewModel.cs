@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.AI;
 using FileFlow.Sdk.Localization;
@@ -235,16 +236,11 @@ public partial class AiModelManagerViewModel : ObservableObject
 
         var progressReporter = new Progress<double>(p =>
         {
-            void UpdateProgress()
+            Dispatcher.UIThread.Post(() =>
             {
                 item.Progress = Math.Clamp(p, 0.0, 100.0);
                 item.ProgressText = $"{item.Progress:F0}%";
-            }
-
-            if (Application.Current?.Dispatcher != null)
-                _ = Application.Current.Dispatcher.InvokeAsync(UpdateProgress);
-            else
-                UpdateProgress();
+            });
         });
 
         string? lastErrorCaptured = null;
@@ -256,19 +252,14 @@ public partial class AiModelManagerViewModel : ObservableObject
                 progressReporter,
                 statusLogger: msg =>
                 {
-                    void UpdateText()
+                    Dispatcher.UIThread.Post(() =>
                     {
                         item.ProgressText = msg;
                         if (msg.StartsWith("❌") || msg.Contains("Error", StringComparison.OrdinalIgnoreCase))
                         {
                             lastErrorCaptured = msg;
                         }
-                    }
-
-                    if (Application.Current?.Dispatcher != null)
-                        _ = Application.Current.Dispatcher.InvokeAsync(UpdateText);
-                    else
-                        UpdateText();
+                    });
                 },
                 cancellationToken: _downloadCts.Token
             );
@@ -408,21 +399,15 @@ public partial class AiModelManagerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void ConfigureUrls(AiModelItemViewModel? item)
+    public async Task ConfigureUrls(AiModelItemViewModel? item)
     {
         if (item == null) return;
 
-        if (Application.Current != null)
+        var dialog = new Views.Components.AiModelUrlsConfigDialog(item.ModelId);
+        var result = App.MainWindow != null ? await dialog.ShowDialog<bool>(App.MainWindow) : false;
+        if (result)
         {
-            var dialog = new Views.Components.AiModelUrlsConfigDialog(item.ModelId)
-            {
-                Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                item.RefreshState();
-            }
+            item.RefreshState();
         }
     }
 }

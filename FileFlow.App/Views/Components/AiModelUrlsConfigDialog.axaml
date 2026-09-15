@@ -1,0 +1,80 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        x:Class="FileFlow.App.Views.Components.AiModelUrlsConfigDialog"
+        x:DataType="vm:AiModelUrlsConfigViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelUrls_Title]}"
+        Height="560" Width="700" MinHeight="480" MinWidth="580"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgSurfaceBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" 
+                BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,3">
+                        <Border Background="{DynamicResource AccentGlowBrush}" CornerRadius="3" Padding="5,1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Category}" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                        </Border>
+                        <TextBlock Text="{Binding ModelName}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelUrls_Subtitle]}" 
+                               FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                </StackPanel>
+
+                <Border Grid.Column="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" 
+                        BorderThickness="1" CornerRadius="6" Padding="8,5" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding StatusBadgeText}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- URLs Editor -->
+        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" 
+                BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <Grid Grid.Row="0" Margin="0,0,0,6" ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelUrls_UrlsLabel]}" 
+                               FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding UrlsCountText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                </Grid>
+
+                <TextBox Grid.Row="1" Text="{Binding UrlsText, Mode=TwoWay}" AcceptsReturn="True"
+                         TextWrapping="NoWrap"
+                         Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,6" FontSize="11"
+                         FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <Button Command="{Binding TestUrlsCommand}" Padding="10,5">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelUrls_TestBtn]}" FontSize="10.5" />
+                    </Button>
+                    <Button Command="{Binding ResetToDefaultsCommand}" Padding="10,5">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelUrls_ResetBtn]}" FontSize="10.5" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Test Results Panel -->
+        <Border Grid.Row="2" IsVisible="{Binding HasTestResults}"
+                Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" 
+                BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10" MaxHeight="110">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBlock Text="{Binding TestResultsText}" FontSize="10" TextWrapping="Wrap" 
+                           FontFamily="Cascadia Code, Consolas, Courier New, monospace" />
+            </ScrollViewer>
+        </Border>
+
+        <!-- Footer -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding SaveCommand}" Content="Guardar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
+                <Button Click="Close_Click" Content="Cancelar" Padding="14,6" CornerRadius="6" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

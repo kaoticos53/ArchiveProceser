@@ -1,0 +1,117 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:components="using:FileFlow.App.Views.Components"
+        x:Class="FileFlow.App.Views.Components.ThemeCustomizerWindow"
+        x:DataType="vm:ThemeCustomizerViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_WindowTitle]}"
+        Height="760" Width="1200"
+        MinHeight="620" MinWidth="980"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+        <!-- Header Banner -->
+        <Grid Grid.Row="0" Margin="0,0,0,14" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="🎨" FontSize="20" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderTitle]}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderSubtitle]}" 
+                           FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="28,2,0,0" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button Command="{Binding ImportThemeCommand}" Padding="10,5">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="📥" FontSize="12" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ImportBtn]}" FontSize="11.5" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding ExportThemeCommand}" Padding="10,5">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="📤" FontSize="12" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ExportBtn]}" FontSize="11.5" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content (Themes List | Editor Controls | Live Preview Mockup) -->
+        <Grid Grid.Row="1" Margin="0,0,0,12" ColumnDefinitions="240,390,*">
+            <!-- Column 0: Themes List -->
+            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,10,0">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_AvailableThemes]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8" />
+
+                    <ListBox Grid.Row="1" ItemsSource="{Binding AvailableThemes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                             Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,2">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                        <Border Grid.Column="1" Background="{DynamicResource BgHoverBrush}" CornerRadius="4" Padding="4,1" Margin="4,0,0,0">
+                                            <TextBlock Text="{Binding BaseType}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Action buttons -->
+                    <StackPanel Grid.Row="2" Spacing="4" Margin="0,8,0,0">
+                        <Button Command="{Binding CreateNewThemeCommand}" Content="+ Nuevo Tema" HorizontalAlignment="Stretch" Padding="8,5" />
+                        <Button Command="{Binding DuplicateThemeCommand}" Content="📑 Duplicar" HorizontalAlignment="Stretch" Padding="8,5" />
+                        <Button Command="{Binding DeleteThemeCommand}" Content="🗑 Eliminar" HorizontalAlignment="Stretch" Padding="8,5" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Column 1: Color Properties Editor -->
+            <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,10,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Propiedades de Color" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBox Text="{Binding CurrentThemeName, Mode=TwoWay}" PlaceholderText="Nombre del tema..." Padding="8,5" />
+                        
+                        <components:ColorPickerButton SelectedColorHex="{Binding AccentPrimary, Mode=TwoWay}" Label="Acento Primario" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding AccentGlow, Mode=TwoWay}" Label="Brillo de Acento" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding BgApp, Mode=TwoWay}" Label="Fondo de Aplicación" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding BgSurface, Mode=TwoWay}" Label="Fondo de Superficie" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding BgCard, Mode=TwoWay}" Label="Fondo de Tarjetas" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding BgHeader, Mode=TwoWay}" Label="Fondo de Encabezados" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding TextPrimary, Mode=TwoWay}" Label="Texto Primario" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding TextSecondary, Mode=TwoWay}" Label="Texto Secundario" />
+                        <components:ColorPickerButton SelectedColorHex="{Binding BorderDark, Mode=TwoWay}" Label="Borde Oscuro" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Column 2: Live Preview -->
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Vista Previa en Vivo" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Ejemplo de Tarjeta de Nodo" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="Demostración de contraste y colores de la paleta actual." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <Button Content="Botón de Prueba" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" Padding="10,5" CornerRadius="4" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer Actions -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding ApplyAndSaveThemeCommand}" Content="Guardar y Aplicar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
+                <Button Click="Close_Click" Content="Cerrar" Padding="14,6" CornerRadius="6" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

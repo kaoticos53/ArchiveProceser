@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows;
 using FileFlow.Plugin.Archives.Services;
 using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Sdk;
@@ -18,40 +17,37 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
     private readonly Lock _lock = new();
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Name", "Desempaquetador de Archivo (Fan-Out)");
+    public string Name => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Name", "Archive Stream Unpack (Fan-Out)");
     public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Desc", "Descomprime un archivo en una sesión de trabajo temporal y emite cada elemento interno individualmente con metadatos de correlación de sesión.");
+    public string Description => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Desc", "Extrae el contenido de un archivo comprimido y emite CADA elemento extraído como un ítem de flujo individual (Fan-Out 1:N).");
 
     public IReadOnlyList<NodePort> Inputs { get; } =
     [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos comprimidos")
     ];
 
     public IReadOnlyList<NodePort> Outputs { get; } =
     [
-        new NodePort("ItemOut", typeof(FileItemContext), PortDirection.Output, "ItemOut"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos individuales extraídos (Fan-Out)")
     ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public Dictionary<string, object?> Parameters { get; } = new()
     {
-        ["WorkingFolder"] = @"{TempDir}\FileFlow_Sessions",
-        ["CleanWrapper"] = false,
-        ["DeleteOriginalArchive"] = false,
-        ["ExtractionEngine"] = "Auto",
-        ["CustomSevenZipPath"] = "",
+        ["OutputDirectory"] = "",
+        ["ArchiveFormat"] = "Auto",
+        ["PreserveDirectoryStructure"] = true,
+        ["FilterPattern"] = "*.*",
         ["PasswordList"] = "",
         ["PasswordFile"] = ""
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("WorkingFolder", ParameterEditorType.FolderPath, DefaultValue: @"{TempDir}\FileFlow_Sessions", DisplayOrder: 1, HelpText: "Carpeta temporal base para las sesiones de descompresión."),
-        new("ExtractionEngine", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "SevenZip", "DotNetZip", "SharpCompress"], DisplayOrder: 2, HelpText: "Motor de descompresión utilizado (Auto selecciona la mejor opción disponible)."),
-        new("CleanWrapper", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3, HelpText: "Elimina la carpeta envoltorio redundante si el archivo contiene una única raíz coincidente con el nombre."),
-        new("DeleteOriginalArchive", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 4, HelpText: "Elimina el archivo comprimido original tras la extracción exitosa."),
-        new("CustomSevenZipPath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 5, HelpText: "Ruta opcional al ejecutable 7z.exe."),
-        new("PasswordList", ParameterEditorType.PasswordList, DefaultValue: "", DisplayOrder: 6),
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 1),
+        new("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "Auto", DisplayOrder: 2, Options: ["Auto", "Zip", "Rar", "7Zip", "Tar", "GZip"]),
+        new("PreserveDirectoryStructure", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
+        new("FilterPattern", ParameterEditorType.Text, DefaultValue: "*.*", DisplayOrder: 4),
+        new("PasswordList", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 5),
         new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 7)
     ];
 
@@ -60,23 +56,31 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
         new("ManagePasswords", "🔑 Claves...", "🔑", "Gestionar lista de contraseñas para descompresión de archivos cifrados")
     ];
 
-    public void ExecuteCustomAction(string actionId, object? context = null)
+    public async void ExecuteCustomAction(string actionId, object? context = null)
     {
         if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
             actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
         {
             string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
             var window = new PasswordManagerWindow(currentPasswords);
-            if (context is Window ownerWindow)
+
+            Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
+            if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             {
-                window.Owner = ownerWindow;
-            }
-            else if (Application.Current?.MainWindow != null)
-            {
-                window.Owner = Application.Current.MainWindow;
+                owner = desktop.MainWindow;
             }
 
-            if (window.ShowDialog() == true)
+            bool result = false;
+            if (owner != null)
+            {
+                result = await window.ShowDialog<bool>(owner);
+            }
+            else
+            {
+                window.Show();
+            }
+
+            if (result)
             {
                 lock (_lock)
                 {

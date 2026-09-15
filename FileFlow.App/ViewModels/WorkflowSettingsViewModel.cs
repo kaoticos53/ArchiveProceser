@@ -26,8 +26,12 @@ public partial class WorkflowSettingsViewModel : ObservableObject
     public AiModelManagerViewModel AiModelManager { get; }
 
     public ObservableCollection<ThemeDefinition> Themes { get; } = new();
+    public ObservableCollection<ThemeDefinition> AvailableThemes => Themes;
 
     public event Action<bool>? RequestClose;
+
+    [ObservableProperty]
+    private string _selectedLanguage = "es-ES";
 
     [ObservableProperty]
     private string _globalOutputDir = string.Empty;
@@ -52,6 +56,17 @@ public partial class WorkflowSettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _selectedThemeId = "dark_fluent";
+
+    [ObservableProperty]
+    private ThemeDefinition? _selectedTheme;
+
+    partial void OnSelectedThemeChanged(ThemeDefinition? value)
+    {
+        if (value != null)
+        {
+            SelectedThemeId = value.Id;
+        }
+    }
 
     [ObservableProperty]
     private bool _isCompactToolbox;
@@ -131,6 +146,7 @@ public partial class WorkflowSettingsViewModel : ObservableObject
 
         // Tab 2: Appearance
         ReloadThemes(prefs.ActiveTheme);
+        SelectedLanguage = !string.IsNullOrWhiteSpace(prefs.Language) ? prefs.Language : "es-ES";
         IsCompactToolbox = prefs.IsCompactToolbox;
         AutoScrollConsole = prefs.AutoScrollConsole;
         MaxLogEntries = prefs.MaxLogEntries >= 0 ? prefs.MaxLogEntries : 1000;
@@ -177,6 +193,9 @@ public partial class WorkflowSettingsViewModel : ObservableObject
         SelectedThemeId = Themes.Any(t => string.Equals(t.Id, mappedId, StringComparison.OrdinalIgnoreCase))
             ? mappedId
             : Themes.FirstOrDefault()?.Id ?? "dark_fluent";
+
+        SelectedTheme = Themes.FirstOrDefault(t => string.Equals(t.Id, SelectedThemeId, StringComparison.OrdinalIgnoreCase))
+            ?? Themes.FirstOrDefault();
     }
 
     [RelayCommand]
@@ -291,6 +310,12 @@ public partial class WorkflowSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void SaveSettings() => Save();
+
+    [RelayCommand]
+    public void CancelSettings() => Cancel();
+
+    [RelayCommand]
     public void Save()
     {
         _preferencesService.UpdatePreferences(prefs =>
@@ -301,6 +326,7 @@ public partial class WorkflowSettingsViewModel : ObservableObject
             prefs.EnableAutoSave = EnableAutoSave;
             prefs.AutoSaveIntervalMinutes = AutoSaveIntervalMinutes > 0 ? AutoSaveIntervalMinutes : 5;
 
+            prefs.Language = SelectedLanguage;
             prefs.ActiveTheme = SelectedThemeId;
             prefs.IsCompactToolbox = IsCompactToolbox;
             prefs.AutoScrollConsole = AutoScrollConsole;
@@ -314,6 +340,11 @@ public partial class WorkflowSettingsViewModel : ObservableObject
             prefs.AutoCleanIntermediateTempFiles = AutoCleanIntermediateTempFiles;
             prefs.CleanStaleTempOnStartup = CleanStaleTempOnStartup;
         });
+
+        if (!string.IsNullOrWhiteSpace(SelectedLanguage))
+        {
+            _loc.SetCulture(SelectedLanguage);
+        }
 
         var toolsConfig = new ExternalToolsConfig
         {

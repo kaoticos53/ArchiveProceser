@@ -1,0 +1,273 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:FileFlow.App.Views"
+        xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+        mc:Ignorable="d"
+        x:Class="FileFlow.App.MainWindow"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AppTitle]}"
+        Height="850" Width="1340"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBackgroundBrush}"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}">
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="F5" Command="{Binding ControlBar.ContinueWorkflowCommand}" />
+        <KeyBinding Gesture="F10" Command="{Binding ControlBar.StepNextCommand}" />
+        <KeyBinding Gesture="Shift+F5" Command="{Binding ControlBar.StopWorkflowCommand}" />
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding ControlBar.SaveWorkflowCommand}" />
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding ControlBar.LoadWorkflowCommand}" />
+        <KeyBinding Gesture="Ctrl+N" Command="{Binding ControlBar.NewWorkflowCommand}" />
+        <KeyBinding Gesture="Ctrl+C" Command="{Binding Editor.CopySelectedNodesCommand}" />
+        <KeyBinding Gesture="Ctrl+V" Command="{Binding Editor.PasteNodesCommand}" />
+        <KeyBinding Gesture="Ctrl+X" Command="{Binding Editor.CutSelectedNodesCommand}" />
+        <KeyBinding Gesture="Ctrl+D" Command="{Binding Editor.DuplicateSelectedNodesCommand}" />
+        <KeyBinding Gesture="Delete" Command="{Binding Editor.DeleteSelectedNodesCommand}" />
+        <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding Editor.ZoomInCommand}" />
+        <KeyBinding Gesture="Ctrl+Add" Command="{Binding Editor.ZoomInCommand}" />
+        <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding Editor.ZoomOutCommand}" />
+        <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding Editor.ZoomOutCommand}" />
+        <KeyBinding Gesture="Ctrl+D0" Command="{Binding Editor.FitToScreenCommand}" />
+        <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding Editor.FitToScreenCommand}" />
+    </Window.KeyBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="200" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="200" MinHeight="60" MaxHeight="550" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Top Control Bar -->
+        <views:ControlBarView Grid.Row="0" DataContext="{Binding ControlBar}" />
+
+        <!-- Main Workspace (Toolbox + Resizer + Canvas Editor + Resizer + Inspector Panel) -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" MinWidth="180" MaxWidth="480" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="300" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="360" MinWidth="0" MaxWidth="750" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: Node Toolbox -->
+            <views:NodeToolboxView Grid.Column="0" DataContext="{Binding Toolbox}" />
+
+            <!-- Vertical Resizer Bar for Toolbox -->
+            <GridSplitter Grid.Column="1" 
+                          Width="5" 
+                          Background="{DynamicResource BgSurfaceBrush}" 
+                          ResizeDirection="Columns" />
+
+            <!-- Main Canvas Editor -->
+            <views:EditorView Grid.Column="2" DataContext="{Binding Editor}" />
+
+            <!-- Vertical Resizer Bar for Inspector Panel -->
+            <GridSplitter Grid.Column="3" 
+                          Width="5" 
+                          Background="{DynamicResource BgSurfaceBrush}" 
+                          ResizeDirection="Columns"
+                          IsVisible="{Binding NodeInspector.IsOpen}" />
+
+            <!-- Right Panel: Node Data Inspector (Collapsible & Auto-Sizing) -->
+            <views:NodeInspectorPanelView Grid.Column="4" 
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          DataContext="{Binding NodeInspector}"
+                                          IsVisible="{Binding IsOpen}" />
+        </Grid>
+
+        <!-- Horizontal Resizer Bar for Bottom Execution Log Console -->
+        <GridSplitter Grid.Row="2" 
+                      Height="5" 
+                      Background="{DynamicResource BgSurfaceBrush}" 
+                      ResizeDirection="Rows" />
+
+        <!-- Bottom Realtime Execution Console -->
+        <views:LogView Grid.Row="3" DataContext="{Binding LogConsole}" />
+
+        <!-- Bottom Interactive Status Bar -->
+        <views:StatusBarView Grid.Row="4" DataContext="{Binding StatusBar}" />
+
+        <!-- Semi-Transparent Backdrop Overlay for Side Navigation Drawer -->
+        <Border Grid.RowSpan="5"
+                ZIndex="99"
+                Background="#60000000"
+                IsVisible="{Binding ControlBar.IsMenuOpen}"
+                PointerPressed="DrawerBackdrop_PointerPressed" />
+
+        <!-- Modern Side Navigation Drawer Panel (Supports Theme DynamicResources) -->
+        <Border Grid.RowSpan="5"
+                ZIndex="100"
+                HorizontalAlignment="Left"
+                Width="320"
+                Background="{DynamicResource BgSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="0,0,1,0"
+                IsVisible="{Binding ControlBar.IsMenuOpen}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Drawer Header -->
+                <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="18,16">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="8" Width="34" Height="34" Margin="0,0,12,0">
+                                <TextBlock Text="⚡" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="FileFlow Studio" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppSubtitle]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Command="{Binding ControlBar.ToggleMenuCommand}" 
+                                HorizontalAlignment="Right" 
+                                VerticalAlignment="Center"
+                                Padding="8,4"
+                                Width="30" Height="30">
+                            <TextBlock Text="✕" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Drawer Content Actions -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,14">
+                        <!-- Section: Flow Management -->
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_FlowManagement]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <Button Command="{Binding ControlBar.NewWorkflowCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📄" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_NewWorkflow]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.LoadWorkflowCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📂" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LoadWorkflow]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.SaveWorkflowCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💾" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_SaveWorkflow]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Section: Theme & Language Customization -->
+                        <Separator Margin="4,12,4,12" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppearanceLanguage]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <!-- Theme Selector in Drawer -->
+                        <Grid Margin="4,6,4,8">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ThemeLabel]}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding ControlBar.AvailableThemes}"
+                                      SelectedItem="{Binding ControlBar.SelectedThemeObject, Mode=TwoWay}"
+                                      DisplayMemberBinding="{Binding Name}"
+                                      HorizontalAlignment="Right"
+                                      Width="175"
+                                      Padding="6,4" />
+                        </Grid>
+
+                        <!-- Language Selector in Drawer -->
+                        <Grid Margin="4,4,4,8">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <ComboBox SelectedValue="{Binding ControlBar.SelectedLanguage, Mode=TwoWay}"
+                                      HorizontalAlignment="Right"
+                                      Width="140">
+                                <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
+                                <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
+                            </ComboBox>
+                        </Grid>
+
+                        <!-- Theme Studio Button in Drawer -->
+                        <Button Command="{Binding ControlBar.OpenThemeCustomizerCommand}" HorizontalAlignment="Stretch" Margin="0,2,0,4">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🎨" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_CustomizeTheme]}" FontSize="13.5" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Section: Panels & Tools -->
+                        <Separator Margin="4,12,4,12" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_PanelsTools]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <Button Command="{Binding ControlBar.ToggleInspectorCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔍" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_DataInspector]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.OpenMetricsDashboardCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_MetricsDashboard], FallbackValue='Métricas y Rendimiento'}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.OpenVirtualFileSystemExplorerCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🗂️" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_HeaderTitle], FallbackValue='Explorador Virtual (VFS)'}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.OpenWorkflowSettingsCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_Settings]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Section: Help & Resources -->
+                        <Separator Margin="4,12,4,12" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_HelpResources]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+
+                        <Button Command="{Binding ControlBar.OpenUserManualCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📖" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_UserManual]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.OpenExamplesFolderCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💡" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ExampleFlows]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ControlBar.OpenAboutDialogCommand}" HorizontalAlignment="Stretch" Margin="0,2">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ℹ️" FontSize="16" Margin="0,0,12,0" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_About]}" FontSize="14" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Drawer Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,10">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding AppVersionDisplay}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="© RGLara" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,116 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.App.Views.Components.WorkflowSettingsWindow"
+        x:DataType="vm:WorkflowSettingsViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_WindowTitle]}"
+        Height="580" Width="700" MinHeight="520" MinWidth="650"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgSurfaceBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,12" Spacing="3">
+            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_HeaderTitle]}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}" />
+            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_HeaderSubtitle]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- TabControl -->
+        <TabControl Grid.Row="1" Background="Transparent">
+            <!-- Tab 1: Storage & Paths -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabStorage]}" Padding="10,4">
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,10,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="10">
+                            <!-- Global Output Directory -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_GlobalOutputDirTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_GlobalOutputDirDesc]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Text="{Binding GlobalOutputDir, Mode=TwoWay}" 
+                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                             BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="11" />
+                                    <Button Grid.Column="1" Command="{Binding BrowseGlobalOutputCommand}" Padding="10,5" Margin="6,0,0,0">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" FontSize="11" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Temp Working Directory -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TempWorkingDirTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TempWorkingDirDesc]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Text="{Binding TempWorkingDir, Mode=TwoWay}" 
+                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                             BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="11" />
+                                    <Button Grid.Column="1" Command="{Binding BrowseTempWorkingDirCommand}" Padding="10,5" Margin="6,0,0,0">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" FontSize="11" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Conflict Resolution -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictStrategyTitle]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <ComboBox SelectedValue="{Binding SelectedConflictStrategy, Mode=TwoWay}" 
+                                          SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                                          Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="11">
+                                    <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictRename]}" Tag="RenameIncremental" />
+                                    <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictOverwrite]}" Tag="Overwrite" />
+                                    <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictSkip]}" Tag="Skip" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Auto-Save -->
+                            <CheckBox IsChecked="{Binding EnableAutoSave, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableAutoSave]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <Grid Margin="20,0,0,0" ColumnDefinitions="Auto,80,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoSaveInterval]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBox Grid.Column="1" Text="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="11" />
+                                <TextBlock Grid.Column="2" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MinutesLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
+
+            <!-- Tab 2: General Preferences -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabGeneral]}" Padding="10,4">
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,10,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="12">
+                            <!-- Language -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" 
+                                          SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                                          Width="160" HorizontalAlignment="Left">
+                                    <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
+                                    <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Theme -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ThemeLabel]}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <ComboBox ItemsSource="{Binding AvailableThemes}" 
+                                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                                          DisplayMemberBinding="{Binding Name}"
+                                          Width="200" HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
+        </TabControl>
+
+        <!-- Bottom Buttons -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding SaveSettingsCommand}" Content="Guardar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
+                <Button Command="{Binding CancelSettingsCommand}" Content="Cancelar" Padding="14,6" CornerRadius="6" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

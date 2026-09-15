@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             x:Class="FileFlow.App.Views.Components.ColorPickerButton">
+    <Grid Margin="0,3">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="110" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Color Label and Caption -->
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+            <TextBlock x:Name="TxtLabel" Text="Color" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock x:Name="TxtDesc" Text="" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="False" />
+        </StackPanel>
+
+        <!-- Color Swatch Button with Palette Flyout -->
+        <Button x:Name="BtnSwatch" Grid.Column="1" Padding="2" Margin="0,0,6,0" 
+                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}">
+            <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="4" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Background="#6366F1" />
+            <Button.Flyout>
+                <Flyout Placement="Bottom">
+                    <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="4">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            
+                            <!-- Predefined Swatches Grid -->
+                            <UniformGrid Columns="6" Width="180">
+                                <Button Click="ColorSwatch_Click" Tag="#0D1117" ToolTip.Tip="#0D1117 (Dark Fluent)" Background="#0D1117" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#161B22" ToolTip.Tip="#161B22 (Card Dark)" Background="#161B22" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#000000" ToolTip.Tip="#000000 (OLED Black)" Background="#000000" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#2E3440" ToolTip.Tip="#2E3440 (Nord Dark)" Background="#2E3440" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#282A36" ToolTip.Tip="#282A36 (Dracula Dark)" Background="#282A36" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#061A14" ToolTip.Tip="#061A14 (Forest Dark)" Background="#061A14" Height="24" Margin="2" />
+
+                                <Button Click="ColorSwatch_Click" Tag="#6366F1" ToolTip.Tip="#6366F1 (Indigo)" Background="#6366F1" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#8B5CF6" ToolTip.Tip="#8B5CF6 (Purple)" Background="#8B5CF6" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#D946EF" ToolTip.Tip="#D946EF (Magenta)" Background="#D946EF" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#EC4899" ToolTip.Tip="#EC4899 (Pink)" Background="#EC4899" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#3B82F6" ToolTip.Tip="#3B82F6 (Blue)" Background="#3B82F6" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#06B6D4" ToolTip.Tip="#06B6D4 (Cyan)" Background="#06B6D4" Height="24" Margin="2" />
+
+                                <Button Click="ColorSwatch_Click" Tag="#10B981" ToolTip.Tip="#10B981 (Emerald Green)" Background="#10B981" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#84CC16" ToolTip.Tip="#84CC16 (Lime)" Background="#84CC16" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#F59E0B" ToolTip.Tip="#F59E0B (Amber)" Background="#F59E0B" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#EF4444" ToolTip.Tip="#EF4444 (Red)" Background="#EF4444" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#F8FAFC" ToolTip.Tip="#F8FAFC (White/Light)" Background="#F8FAFC" Height="24" Margin="2" />
+                                <Button Click="ColorSwatch_Click" Tag="#FFFFFF" ToolTip.Tip="#FFFFFF (Pure White)" Background="#FFFFFF" Height="24" Margin="2" />
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+
+        <!-- HEX Input Box -->
+        <TextBox x:Name="TxtHex" Grid.Column="2" 
+                 FontFamily="Cascadia Code, Consolas, monospace" 
+                 FontSize="11.5" 
+                 Padding="6,4" 
+                 VerticalContentAlignment="Center" />
+    </Grid>
+</UserControl>

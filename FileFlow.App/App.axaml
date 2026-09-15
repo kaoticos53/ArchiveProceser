@@ -1,0 +1,35 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:FileFlow.App.Converters"
+             x:Class="FileFlow.App.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+            <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+            <converters:InverseNullToVisibilityConverter x:Key="InverseNullToVisibilityConverter" />
+            <converters:NodeExecutionStatusToBrushConverter x:Key="NodeExecutionStatusToBrushConverter" />
+            <converters:DiffChangeTypeToBrushConverter x:Key="DiffChangeTypeToBrushConverter" />
+            <converters:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
+            <converters:BooleanToGridLengthConverter x:Key="BooleanToGridLengthConverter" />
+            <converters:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
+            <converters:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
+            <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter" />
+            <converters:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
+            <converters:LogLevelToBadgeConverter x:Key="LogLevelToBadgeConverter" />
+            <converters:StringsEqualMultiConverter x:Key="StringsEqualMultiConverter" />
+            <converters:StringEqualsToBooleanConverter x:Key="StringEqualsToBooleanConverter" />
+
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Nodify/Theme.axaml" />
+                <ResourceInclude Source="/Themes/DarkTheme.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

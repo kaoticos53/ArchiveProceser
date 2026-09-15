@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Windows;
 using FileFlow.Plugin.FileSystem.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
@@ -25,28 +24,26 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
     private readonly ConcurrentDictionary<string, byte> _claimedTargetPaths = new(StringComparer.OrdinalIgnoreCase);
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Avanzado con Tokens");
+    public string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Inteligente");
     public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Desc", "Renombra archivos y carpetas masivamente aplicando un pipeline acumulativo de métodos secuenciales (plantillas, regex, mayúsculas, numeración, sustitución y normalización) con resolución de colisiones.");
+    public string Description => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Desc", "Renombra archivos por lotes mediante transformaciones avanzadas, patrones basados en tokens, fechas y números secuenciales.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
-    {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+    public IReadOnlyList<NodePort> Inputs { get; } =
+    [
+        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos de entrada")
+    ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Skipped", typeof(FileItemContext), PortDirection.Output, "Skipped"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+    public IReadOnlyList<NodePort> Outputs { get; } =
+    [
+        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos renombrados")
+    ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public Dictionary<string, object?> Parameters { get; } = new()
     {
         ["PipelineName"] = "Pipeline Predeterminado",
-        ["RenameMode"] = "Virtual",             // "Virtual" (no modifica el archivo original) o "DirectInPlace" (renombra en disco)
-        ["CollisionStrategy"] = "AutoIncrement", // Overwrite, Skip, AutoIncrement, Fail
-        ["MethodSteps"] = string.Empty          // JSON serializado de List<RenameMethodStep>
+        ["RenameMode"] = "Virtual",
+        ["CollisionStrategy"] = "AutoIncrement",
+        ["MethodSteps"] = ""
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
@@ -64,15 +61,18 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
         {
             var window = new AdvancedRenamerEditorWindow(this);
-            if (context is Window ownerWindow)
+            if (context is Avalonia.Controls.Window ownerWindow)
             {
-                window.Owner = ownerWindow;
+                window.ShowDialog(ownerWindow);
             }
-            else if (Application.Current?.MainWindow != null)
+            else if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
             {
-                window.Owner = Application.Current.MainWindow;
+                window.ShowDialog(desktop.MainWindow);
             }
-            window.ShowDialog();
+            else
+            {
+                window.Show();
+            }
         }
     }
 

@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows;
 using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Plugin.FileSystem.UI.Services;
 using FileFlow.Plugin.FileSystem.UI.Views;
@@ -24,29 +23,29 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
 
     public IReadOnlyList<NodePort> Outputs { get; } =
     [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos generados")
     ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public Dictionary<string, object?> Parameters { get; } = new()
     {
         ["Category"] = "Películas",
         ["EmissionMode"] = "Virtual",
         ["MaxItems"] = 0,
         ["EmissionDelayMs"] = 0,
         ["EmitDirectories"] = false,
-        ["CustomItems"] = "",
-        ["OutputFolder"] = ""
+        ["CustomItems"] = ""
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
-        new("Category", ParameterEditorType.Dropdown, DefaultValue: "Películas", DisplayOrder: 1, Options: ["Todas", "Películas", "Series", "Cómics y Manga", "Música", "Fotos", "Documentos", "Personalizada"]),
-        new("EmissionMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", DisplayOrder: 2, Options: ["Virtual", "PhysicalMock"]),
-        new("MaxItems", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 3, Min: 0, Max: 1000),
-        new("EmissionDelayMs", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 4, Min: 0, Max: 10000),
+        new("Category", ParameterEditorType.Dropdown, DefaultValue: "Películas", DisplayOrder: 1,
+            Options: ["Películas", "Series de TV", "Anime", "Música", "Cómics / Manga", "Documentos y Libros", "Descargas Web", "Fotografía", "Personalizado"]),
+        new("EmissionMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", DisplayOrder: 2,
+            Options: ["Virtual", "PhysicalTempFiles"]),
+        new("MaxItems", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 3),
+        new("EmissionDelayMs", ParameterEditorType.Number, DefaultValue: 0, DisplayOrder: 4),
         new("EmitDirectories", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 5),
-        new("CustomItems", ParameterEditorType.MultiLineText, DefaultValue: "", DisplayOrder: 6),
-        new("OutputFolder", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 7)
+        new("CustomItems", ParameterEditorType.MultiLineText, DefaultValue: "", DisplayOrder: 6)
     ];
 
     public IReadOnlyList<NodeActionDescriptor> CustomActions =>
@@ -59,15 +58,18 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
             var window = new SyntheticDataSetDesignerWindow();
-            if (context is Window ownerWindow)
+            if (context is Avalonia.Controls.Window ownerWindow)
             {
-                window.Owner = ownerWindow;
+                window.ShowDialog(ownerWindow);
             }
-            else if (Application.Current?.MainWindow != null)
+            else if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
             {
-                window.Owner = Application.Current.MainWindow;
+                window.ShowDialog(desktop.MainWindow);
             }
-            window.ShowDialog();
+            else
+            {
+                window.Show();
+            }
         }
     }
 

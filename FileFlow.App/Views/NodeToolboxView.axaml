@@ -1,0 +1,183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:models="using:FileFlow.App.Models"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             x:Class="FileFlow.App.Views.NodeToolboxView"
+             x:DataType="vm:ToolboxViewModel">
+
+    <Border Background="{DynamicResource BgCardBrush}" 
+            BorderBrush="{DynamicResource BorderDarkBrush}" 
+            BorderThickness="0,0,1,0" 
+            Padding="12,10">
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+            <!-- Header Title & View Mode Toggle -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding [NodeToolboxTitle], Source={x:Static loc:LocalizationManager.Instance}}" 
+                           FontSize="13.5" 
+                           FontWeight="Bold" 
+                           Foreground="{DynamicResource TextPrimaryBrush}" 
+                           VerticalAlignment="Center" />
+
+                <!-- Toggle Perspective (Domain vs Pipeline Stage) -->
+                <Button Grid.Column="1"
+                        Command="{Binding TogglePerspectiveCommand}"
+                        Background="Transparent"
+                        BorderBrush="{DynamicResource BorderDarkBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="6,3"
+                        Margin="0,0,6,0"
+                        Cursor="Hand"
+                        ToolTip.Tip="{Binding [TogglePerspectiveToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                    <TextBlock Text="{Binding PerspectiveButtonText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" />
+                </Button>
+
+                <!-- Toggle Compact / Detailed View Mode -->
+                <Button Grid.Column="2" 
+                        Command="{Binding ToggleViewModeCommand}"
+                        Background="Transparent" 
+                        BorderBrush="{DynamicResource BorderDarkBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="6,3"
+                        Cursor="Hand"
+                        ToolTip.Tip="{Binding [Toolbox_ToggleCompactToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                    <TextBlock Text="☰" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Button>
+            </Grid>
+
+            <!-- Search Bar -->
+            <Grid Grid.Row="1" Margin="0,0,0,8">
+                <TextBox Text="{Binding SearchText, Mode=TwoWay}" 
+                         PlaceholderText="{Binding [SearchNodesPlaceholder], Source={x:Static loc:LocalizationManager.Instance}}"
+                         Padding="8,6" 
+                         FontSize="12"
+                         Background="{DynamicResource BgSurfaceBrush}"
+                         BorderBrush="{DynamicResource BorderDarkBrush}"
+                         CornerRadius="6" />
+            </Grid>
+
+            <!-- Category Filter Selector -->
+            <Grid Grid.Row="2" Margin="0,0,0,10">
+                <ComboBox ItemsSource="{Binding AvailableCategories}"
+                          SelectedItem="{Binding SelectedCategoryItem, Mode=TwoWay}"
+                          Background="{DynamicResource BgSurfaceBrush}"
+                          BorderBrush="{DynamicResource BorderDarkBrush}"
+                          CornerRadius="6"
+                          Padding="8,5"
+                          FontSize="11.5"
+                          HorizontalAlignment="Stretch"
+                          Cursor="Hand">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ToolboxCategoryFilterItem">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1">
+                                <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <Border Grid.Column="2" Background="#20808080" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Count}" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </Grid>
+
+            <!-- Categorized Nodes List -->
+            <ScrollViewer Grid.Row="3">
+                <ItemsControl ItemsSource="{Binding CategoryGroups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ToolboxCategoryGroup">
+                            <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,0,0,8">
+                                <Expander.Header>
+                                    <TextBlock Text="{Binding CategoryName}" 
+                                               Foreground="{DynamicResource AccentGlowBrush}" 
+                                               FontWeight="Bold" 
+                                               FontSize="12" 
+                                               VerticalAlignment="Center" />
+                                </Expander.Header>
+                                <ItemsControl ItemsSource="{Binding Items}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:NodeToolboxItem">
+                                            <Border Background="{DynamicResource BgSurfaceBrush}" 
+                                                    BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                                    BorderThickness="1" 
+                                                    CornerRadius="6" 
+                                                    Padding="8,5" 
+                                                    Margin="0,2" 
+                                                    Cursor="Hand"
+                                                    PointerPressed="NodeItem_PointerPressed">
+
+                                                <!-- ToolTip Rico con Descripción -->
+                                                <ToolTip.Tip>
+                                                    <Border Background="{DynamicResource BgCardBrush}" 
+                                                            BorderBrush="{DynamicResource BorderDarkBrush}" 
+                                                            BorderThickness="1.5" CornerRadius="8" Padding="12,10" Width="260">
+                                                        <StackPanel Spacing="4">
+                                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                <TextBlock Text="{Binding Icon}" FontSize="13" />
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                            </StackPanel>
+                                                            <Border Background="#18808080" CornerRadius="4" Padding="5,1.5" HorizontalAlignment="Left">
+                                                                <TextBlock Text="{Binding RoleBadge}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                            </Border>
+                                                            <Separator Background="{DynamicResource BorderDarkBrush}" Margin="0,2" />
+                                                            <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </ToolTip.Tip>
+
+                                                <StackPanel>
+                                                    <!-- Fila de Icono, Título del Nodo y Botón Favorito -->
+                                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                                        <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" 
+                                                                   FontWeight="SemiBold" 
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                   FontSize="11.5" 
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Center" />
+
+                                                        <!-- Star Button for Favorites -->
+                                                        <Button Grid.Column="2"
+                                                                Command="{Binding $parent[UserControl].((vm:ToolboxViewModel)DataContext).ToggleFavoriteCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Padding="4,0"
+                                                                Margin="4,0,0,0"
+                                                                Cursor="Hand"
+                                                                ToolTip.Tip="{Binding [Toolbox_FavoriteToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                                                            <TextBlock Text="{Binding IsFavorite, Converter={x:Static StringConverters.IsNullOrEmpty}, ConverterParameter='☆'}" 
+                                                                       FontSize="12" 
+                                                                       Foreground="{DynamicResource AccentWarningBrush}" 
+                                                                       VerticalAlignment="Center" />
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <!-- Role Badge + Description (visible en modo detallado) -->
+                                                    <StackPanel IsVisible="{Binding !$parent[UserControl].((vm:ToolboxViewModel)DataContext).IsCompactMode}">
+                                                        <Border Background="#14808080" CornerRadius="4" Padding="4,1" Margin="0,4,0,2" HorizontalAlignment="Left">
+                                                            <TextBlock Text="{Binding RoleBadge}" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Description}" 
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}" 
+                                                                   FontSize="10.5" 
+                                                                   TextWrapping="Wrap" 
+                                                                   Margin="0,2,0,0" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

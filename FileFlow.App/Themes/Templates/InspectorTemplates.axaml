@@ -1,0 +1,101 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sdk="using:FileFlow.Sdk"
+                    xmlns:conv="using:FileFlow.App.Converters"
+                    xmlns:loc="using:FileFlow.Sdk.Localization"
+                    xmlns:vm="using:FileFlow.App.ViewModels">
+
+    <!-- Snapshot Item DataTemplate -->
+    <DataTemplate x:Key="SnapshotExpanderTemplate" DataType="sdk:NodeDataSnapshot">
+        <Border Background="{DynamicResource BgCardBrush}" 
+                BorderBrush="{DynamicResource BorderDarkBrush}" 
+                BorderThickness="1" 
+                CornerRadius="6"
+                Margin="0,2">
+            <Expander IsExpanded="False" Padding="8,6">
+                <Expander.Header>
+                    <Grid HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <!-- Header Row 1: Port + Timestamp -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="{Binding IsInput, Converter={StaticResource InputOutputBulletConverter}}" FontSize="11" />
+                            <TextBlock Text="{Binding PortName}" FontWeight="Bold" 
+                                       Foreground="{Binding IsInput, Converter={StaticResource InputOutputBrushConverter}}" FontSize="12" />
+                            <TextBlock Text=" • " Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                        </StackPanel>
+                        <!-- Header Row 2: Current Path -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding ItemSnapshot.CurrentPath}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                   FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" ToolTip.Tip="{Binding ItemSnapshot.CurrentPath}" />
+
+                        <!-- Preview Button -->
+                        <Button Grid.RowSpan="2" Grid.Column="1"
+                                Command="{Binding $parent[UserControl].((vm:NodeInspectorViewModel)DataContext).PreviewSpecificSnapshotCommand}"
+                                CommandParameter="{Binding}"
+                                Padding="8,4" Margin="8,0,4,0" VerticalAlignment="Center"
+                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_InspectFileToolTip]}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="👁️" FontSize="11" Foreground="#00E5FF" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_InspectFileBtn]}" FontSize="10.5" FontWeight="SemiBold" Foreground="#00E5FF" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Expander.Header>
+
+                <!-- Expandable Content: Full Metadata, Paths & Tags -->
+                <Border Background="{DynamicResource BgSurfaceBrush}" 
+                        BorderBrush="{DynamicResource BorderDarkBrush}" 
+                        BorderThickness="0,1,0,0" 
+                        Padding="10,8" 
+                        Margin="-4,6,-4,-4">
+                    <StackPanel Spacing="6">
+                        <!-- Original Path -->
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_OriginalPath]}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBox Text="{Binding ItemSnapshot.OriginalPath, Mode=OneWay}" 
+                                 IsReadOnly="True" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,1,0,2" />
+
+                        <!-- File Size & IsDirectory -->
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_SizeLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding ItemSnapshot.FileSizeBytes}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_BytesLabel]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,12,0" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_Folder]}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding ItemSnapshot.IsDirectory}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <!-- Metadata Dictionary -->
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_AssociatedMetadata]}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <ItemsControl ItemsSource="{Binding ItemSnapshot.Metadata}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,1">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Bold" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" MinWidth="90" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="10.5" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" FontFamily="Cascadia Code, Consolas, monospace" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Tags -->
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Inspector_Tags]}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <ItemsControl ItemsSource="{Binding ItemSnapshot.Tags}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentPurpleBrush}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="2">
+                                        <TextBlock Text="{Binding}" FontSize="10" Foreground="{DynamicResource AccentPurpleBrush}" FontWeight="Medium" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Expander>
+        </Border>
+    </DataTemplate>
+</ResourceDictionary>

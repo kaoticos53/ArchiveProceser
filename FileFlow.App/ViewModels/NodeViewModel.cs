@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Windows;
+using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -246,7 +246,6 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     {
         if (_nodeInstance is not IModelLifecycleNode lifecycleNode) return;
 
-        var dispatcher = Application.Current?.Dispatcher;
         void Action()
         {
             IsModelLoaded = lifecycleNode.IsModelLoaded;
@@ -256,25 +255,18 @@ public partial class NodeViewModel : ObservableObject, IDisposable
                 : LocalizationManager.Instance.GetString("Node_ModelUnloaded_ToolTip", "El modelo de IA no está cargado en memoria. Haz clic para precargarlo en memoria.");
         }
 
-        if (dispatcher == null || dispatcher.CheckAccess())
+        if (Dispatcher.UIThread.CheckAccess())
         {
             Action();
         }
         else
         {
-            dispatcher.InvokeAsync(Action);
+            Dispatcher.UIThread.InvokeAsync(Action);
         }
     }
 
     public void UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher != null && !dispatcher.CheckAccess() && !dispatcher.HasShutdownStarted)
-        {
-            dispatcher.InvokeAsync(() => UpdateTelemetryStats(stats));
-            return;
-        }
-
         CurrentStats = stats;
         if (stats.ProcessedCount > 0)
         {
@@ -489,7 +481,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     {
         if (_nodeInstance is INodeCustomActionProvider provider)
         {
-            provider.ExecuteCustomAction(actionId, Application.Current?.MainWindow);
+            provider.ExecuteCustomAction(actionId, App.MainWindow);
 
             // Sincronizar descriptores y parámetros modificados por el diálogo (plantillas nuevas, opciones, etc.)
             var updatedDescriptors = _nodeInstance.ParameterDescriptors?.ToDictionary(d => d.Key, StringComparer.OrdinalIgnoreCase);
@@ -695,17 +687,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public void AddSnapshot(NodeDataSnapshot snapshot)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher == null || dispatcher.HasShutdownStarted) return;
-
-        if (dispatcher.CheckAccess())
-        {
-            ApplySnapshotInternal(snapshot);
-        }
-        else
-        {
-            dispatcher.InvokeAsync(() => ApplySnapshotInternal(snapshot));
-        }
+        ApplySnapshotInternal(snapshot);
     }
 
     private void ApplySnapshotInternal(NodeDataSnapshot snapshot)
@@ -728,57 +710,17 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public void SetExecutionStatus(NodeExecutionStatus status, string? errorDetails = null)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher == null || dispatcher.HasShutdownStarted)
-        {
-            ExecutionStatus = status;
-            LastErrorDetails = errorDetails;
-            return;
-        }
-
-        if (dispatcher.CheckAccess())
-        {
-            ExecutionStatus = status;
-            LastErrorDetails = errorDetails;
-        }
-        else
-        {
-            dispatcher.InvokeAsync(() =>
-            {
-                ExecutionStatus = status;
-                LastErrorDetails = errorDetails;
-            });
-        }
+        ExecutionStatus = status;
+        LastErrorDetails = errorDetails;
     }
 
     public void ClearDebugData()
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher == null || dispatcher.HasShutdownStarted)
-        {
-            ExecutionStatus = NodeExecutionStatus.Idle;
-            LastErrorDetails = null;
-            InputSnapshots.Clear();
-            OutputSnapshots.Clear();
-            return;
-        }
-
-        if (dispatcher.CheckAccess())
-        {
-            ExecutionStatus = NodeExecutionStatus.Idle;
-            LastErrorDetails = null;
-            InputSnapshots.Clear();
-            OutputSnapshots.Clear();
-        }
-        else
-        {
-            dispatcher.InvokeAsync(() =>
-            {
-                ExecutionStatus = NodeExecutionStatus.Idle;
-                LastErrorDetails = null;
-                InputSnapshots.Clear();
-                OutputSnapshots.Clear();
-            });
-        }
+        ExecutionStatus = NodeExecutionStatus.Idle;
+        LastErrorDetails = null;
+        InputSnapshots.Clear();
+        OutputSnapshots.Clear();
     }
 }
+
+

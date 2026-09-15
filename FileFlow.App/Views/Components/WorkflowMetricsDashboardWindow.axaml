@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.App.Views.Components.WorkflowMetricsDashboardWindow"
+        x:DataType="vm:WorkflowMetricsDashboardViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MetricsDashboard_Title]}"
+        Width="1080" Height="700"
+        MinWidth="880" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgDarkBrush}">
+
+    <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" CornerRadius="10,10,0,0" Padding="16,12" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1">
+                        <TextBlock Text="📊" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MetricsDashboard_Title]}"
+                               FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding RefreshMetricsCommand}" Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="🔄" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Refresh]}" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExportReportCsvCommand}" Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="📥" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportCSV]}" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+                    <Button Click="Close_Click" Padding="8,6">
+                        <TextBlock Text="✕" FontSize="12" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- KPI Cards -->
+        <UniformGrid Grid.Row="1" Columns="4" Margin="0,12">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalWorkflowDuration]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding TotalWorkflowDurationText}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalBytesProcessed]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding TotalBytesProcessedText}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
+                </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalItemsProcessed]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding TotalItemsProcessedCount}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" />
+                </StackPanel>
+            </Border>
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_SlowestNodeLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding SlowestNodeName}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- DataGrid Metrics Table -->
+        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="4">
+            <DataGrid ItemsSource="{Binding NodeMetrics}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      GridLinesVisibility="Horizontal"
+                      CanUserReorderColumns="True"
+                      CanUserResizeColumns="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Nodo" Binding="{Binding NodeTitle}" Width="*" />
+                    <DataGridTextColumn Header="Categoría" Binding="{Binding Category}" Width="130" />
+                    <DataGridTextColumn Header="Duración (ms)" Binding="{Binding DurationMs}" Width="110" />
+                    <DataGridTextColumn Header="Items" Binding="{Binding ItemsProcessed}" Width="80" />
+                    <DataGridTextColumn Header="Datos" Binding="{Binding ProcessedBytesText}" Width="100" />
+                    <DataGridTextColumn Header="% Tiempo" Binding="{Binding TimePercentageText}" Width="90" />
+                    <DataGridTextColumn Header="Estado" Binding="{Binding Status}" Width="100" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Footer -->
+        <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding ProfilingStatusMessage}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Click="Close_Click" Content="Cerrar" Padding="16,6" CornerRadius="6" />
+        </Grid>
+    </Grid>
+</Window>

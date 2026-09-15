@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        x:Class="FileFlow.App.Views.Components.VariablePickerWindow"
+        x:DataType="vm:VariablePickerViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_WindowTitle]}"
+        Height="620" Width="840" MinHeight="500" MinWidth="680"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgAppBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{}{x} " FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_HeaderTitle]}" 
+                                   FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_HeaderSubtitle]}" 
+                               FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                    <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4">
+                        <TextBlock Text="{Binding TargetNodeTitle, StringFormat='Nodo: {0}'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Search Bar -->
+        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,10">
+            <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Buscar variable..." Padding="8,5" />
+        </Border>
+
+        <!-- Variables List DataGrid -->
+        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="4">
+            <DataGrid ItemsSource="{Binding FilteredVariables}"
+                      SelectedItem="{Binding SelectedVariable, Mode=TwoWay}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Variable" Binding="{Binding FullExpression}" Width="2*" />
+                    <DataGridTextColumn Header="Categoría" Binding="{Binding CategoryName}" Width="120" />
+                    <DataGridTextColumn Header="Descripción" Binding="{Binding Description}" Width="3*" />
+                    <DataGridTextColumn Header="Ejemplo" Binding="{Binding ExampleValue}" Width="130" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Footer Actions -->
+        <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding InsertPreviewText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding InsertSelectedCommand}" Content="Insertar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
+                <Button Click="Close_Click" Content="Cancelar" Padding="14,6" CornerRadius="6" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

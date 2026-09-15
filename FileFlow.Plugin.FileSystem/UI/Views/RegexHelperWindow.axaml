@@ -1,0 +1,80 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels"
+        xmlns:sdk="using:FileFlow.Sdk.Renaming"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.Plugin.FileSystem.UI.Views.RegexHelperWindow"
+        x:DataType="vm:RegexHelperViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RegexHelper_WindowTitle], FallbackValue='Asistente y Probador de Expresiones Regulares'}"
+        Height="720" Width="1020" MinHeight="600" MinWidth="850"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgDarkBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <StackPanel Spacing="3">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RegexHelper_HeaderTitle], FallbackValue='Asistente de Regex en Vivo'}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                        <TextBlock Text="Live Tester &amp; Presets" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RegexHelper_HeaderSubtitle], FallbackValue='Prueba patrones en tiempo real y selecciona plantillas predefinidas.'}"
+                           FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="380,12,*">
+            <!-- Left: Library -->
+            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RegexHelper_PatternLibrary], FallbackValue='Biblioteca de Patrones'}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                    <ListBox Grid.Row="1" ItemsSource="{Binding BuiltInPatterns}" SelectedItem="{Binding SelectedLibraryItem, Mode=TwoWay}" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="sdk:RegexPatternItem">
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,2">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding Pattern}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Right: Tester & Replace -->
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Expresión Regular" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBox Text="{Binding Pattern, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Padding="8,6" />
+
+                        <TextBlock Text="Reemplazo (Opcional)" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBox Text="{Binding Replacement, Mode=TwoWay}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Padding="8,6" />
+
+                        <TextBlock Text="Texto de Prueba" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBox Text="{Binding TestInput, Mode=TwoWay}" AcceptsReturn="True" MinHeight="80" TextWrapping="Wrap" Padding="8,6" />
+
+                        <TextBlock Text="Resultado en Vivo" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                            <TextBlock Text="{Binding ReplacementResult}" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12" Foreground="{DynamicResource AccentSuccessBrush}" TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding ApplyAndCloseCommand}" CommandParameter="{Binding $parent[Window]}" Content="Aplicar y Cerrar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
+                <Button Click="Close_Click" Content="Cerrar" Padding="14,6" CornerRadius="6" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

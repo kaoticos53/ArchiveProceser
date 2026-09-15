@@ -1,0 +1,121 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             x:Class="FileFlow.App.Views.ControlBarView"
+             x:DataType="vm:ControlBarViewModel">
+    <Border Background="{DynamicResource BgHeaderBrush}" 
+            BorderBrush="{DynamicResource BorderDarkBrush}" 
+            BorderThickness="0,0,0,1" 
+            Padding="14,8">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+            <!-- App Brand & Hamburger Side Drawer Toggle -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Command="{Binding ToggleMenuCommand}" 
+                        Padding="10,6"
+                        Margin="0,0,12,0"
+                        ToolTip.Tip="{Binding [ControlBar_MenuToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="☰" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [MenuBtn], Source={x:Static loc:LocalizationManager.Instance}}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="6" Width="28" Height="28" Margin="0,0,10,0">
+                    <TextBlock Text="⚡" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                </Border>
+                <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Workflow Execution Controls -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+
+                <!-- Compact Dry Run Toggle Button -->
+                <ToggleButton Content="{Binding [DryRun], Source={x:Static loc:LocalizationManager.Instance}}" 
+                              IsChecked="{Binding IsDryRun}" 
+                              Padding="8,5" 
+                              ToolTip.Tip="{Binding [ControlBar_DryRunToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+
+                <!-- VFS Explorer Button (Visible when VFS results exist) -->
+                <Button Command="{Binding OpenVirtualFileSystemExplorerCommand}"
+                        Padding="8,5"
+                        IsVisible="{Binding HasVirtualFiles}"
+                        ToolTip.Tip="{Binding [ControlBar_VfsToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="🗂️" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding VirtualFilesCount, StringFormat='VFS ({0})'}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Watch Mode Button -->
+                <Button Command="{Binding ToggleWatchModeCommand}" 
+                        Padding="8,5" 
+                        ToolTip.Tip="{Binding [ControlBar_WatchModeToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="👁️" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [ControlBar_Watcher], Source={x:Static loc:LocalizationManager.Instance}}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Run Normal -->
+                <Button Content="{Binding [RunFlow], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding ExecuteWorkflowCommand}" 
+                        Background="{DynamicResource AccentSuccessBrush}" 
+                        Foreground="#FFFFFF"
+                        FontWeight="Bold"
+                        IsVisible="{Binding !IsRunning}" />
+
+                <!-- Start Debugging -->
+                <Button Content="{Binding [DebugFlow], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding DebugWorkflowCommand}" 
+                        Background="{DynamicResource AccentPurpleBrush}" 
+                        Foreground="#FFFFFF"
+                        FontWeight="Bold"
+                        IsVisible="{Binding !IsRunning}" />
+
+                <!-- Debug Stepping Controls (visible during debugging) -->
+                <Button Content="{Binding [StepNext], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding StepNextCommand}" 
+                        Background="{DynamicResource AccentWarningBrush}" 
+                        Foreground="#FFFFFF"
+                        IsVisible="{Binding IsDebugging}" 
+                        ToolTip.Tip="{Binding [ControlBar_StepNextToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+
+                <Button Content="{Binding [ContinueFlow], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding ContinueWorkflowCommand}" 
+                        Background="{DynamicResource AccentSuccessBrush}" 
+                        Foreground="#FFFFFF"
+                        IsVisible="{Binding IsDebugging}" 
+                        ToolTip.Tip="{Binding [ControlBar_ContinueToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+
+                <!-- Pause / Resume Button -->
+                <Button Content="{Binding [Pause], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding TogglePauseCommand}" 
+                        IsVisible="{Binding IsRunning}" 
+                        ToolTip.Tip="{Binding [ControlBar_PauseToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+
+                <!-- Stop Execution / Debugging -->
+                <Button Content="{Binding [Stop], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding StopWorkflowCommand}" 
+                        Background="{DynamicResource AccentErrorBrush}" 
+                        Foreground="#FFFFFF"
+                        FontWeight="Bold"
+                        IsVisible="{Binding IsRunning}" 
+                        ToolTip.Tip="{Binding [ControlBar_StopToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+
+                <!-- Rollback / Undo Button -->
+                <Button Content="{Binding [RollbackBtn], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding RollbackLastExecutionCommand}" 
+                        Margin="6,0,0,0" 
+                        ToolTip.Tip="{Binding [ControlBar_RollbackToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+
+                <!-- Toggle Inspector Panel Button -->
+                <Button Content="{Binding [InspectorBtn], Source={x:Static loc:LocalizationManager.Instance}}" 
+                        Command="{Binding ToggleInspectorCommand}" 
+                        Margin="6,0,0,0" 
+                        ToolTip.Tip="{Binding [ControlBar_InspectorToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

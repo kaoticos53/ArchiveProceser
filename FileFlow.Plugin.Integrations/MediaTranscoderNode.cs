@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Windows;
 using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Common;
@@ -18,30 +17,38 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
     public string Category => "AudioVoice";
-    public string Description => LocalizationManager.Instance.GetString("MediaTranscoderNode_Desc", "Transcodifica archivos de audio y vídeo mediante presets o comandos externos FFmpeg.");
+    public string Description => LocalizationManager.Instance.GetString("MediaTranscoderNode_Desc", "Transcodifica archivos de audio y video a múltiples formatos mediante FFmpeg.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
-    {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+    public IReadOnlyList<NodePort> Inputs { get; } =
+    [
+        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos multimedia")
+    ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
-        new NodePort(WellKnownPorts.Error, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Error)
-    };
+    public IReadOnlyList<NodePort> Outputs { get; } =
+    [
+        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos transcodificados"),
+        new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos con error de transcodificación")
+    ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public Dictionary<string, object?> Parameters { get; } = new()
     {
-        ["Preset"] = "Convertir 1080p H.264 (Universal MP4)",
-        ["DestinationDirectory"] = @"{RelativeDir}\Transcoded",
-        ["CustomArguments"] = "-c:v libx264 -crf 22 -preset medium -c:a aac -b:a 192k"
+        ["Preset"] = "MP4 - H.264 / AAC",
+        ["OutputExtension"] = ".mp4",
+        ["OutputFolder"] = "",
+        ["CustomArguments"] = "",
+        ["CustomFfmpegPath"] = "",
+        ["HardwareAcceleration"] = "Auto"
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
-        new("Preset", ParameterEditorType.MediaPreset, DefaultValue: "Convertir 1080p H.264 (Universal MP4)", DisplayOrder: 1),
-        new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Transcoded", DisplayOrder: 2),
-        new("CustomArguments", ParameterEditorType.Text, DefaultValue: "-c:v libx264 -crf 22 -preset medium -c:a aac -b:a 192k", DisplayOrder: 3)
+        new("Preset", ParameterEditorType.Dropdown, DefaultValue: "MP4 - H.264 / AAC", DisplayOrder: 1,
+            Options: ["MP4 - H.264 / AAC", "MP4 - H.265 / HEVC", "WebM - VP9 / Opus", "MP3 - 320kbps", "FLAC - Lossless", "WAV - PCM 16-bit", "GIF Animado", "Extraer Audio"]),
+        new("OutputExtension", ParameterEditorType.Text, DefaultValue: ".mp4", DisplayOrder: 2),
+        new("OutputFolder", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 3),
+        new("CustomArguments", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 4),
+        new("CustomFfmpegPath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 5),
+        new("HardwareAcceleration", ParameterEditorType.Dropdown, DefaultValue: "Auto", DisplayOrder: 6,
+            Options: ["Auto", "None", "cuda", "nvenc", "qsv", "vaapi", "dxva2", "d3d11va"])
     ];
 
     public IReadOnlyList<NodeActionDescriptor> CustomActions => [
@@ -53,15 +60,18 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         if (actionId.Equals("ManageMediaPresets", StringComparison.OrdinalIgnoreCase))
         {
             var window = new MediaPresetManagerWindow();
-            if (context is Window ownerWindow)
+            if (context is Avalonia.Controls.Window ownerWindow)
             {
-                window.Owner = ownerWindow;
+                window.ShowDialog(ownerWindow);
             }
-            else if (Application.Current?.MainWindow != null)
+            else if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
             {
-                window.Owner = Application.Current.MainWindow;
+                window.ShowDialog(desktop.MainWindow);
             }
-            window.ShowDialog();
+            else
+            {
+                window.Show();
+            }
         }
     }
 

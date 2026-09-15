@@ -1,0 +1,129 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:nodify="using:NodifyM.Avalonia.Controls"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             xmlns:components="using:FileFlow.App.Views.Components"
+             x:Class="FileFlow.App.Views.EditorView"
+             x:DataType="vm:EditorViewModel">
+
+    <Grid Background="{DynamicResource BgEditorBrush}">
+        <!-- Nodify DAG Canvas -->
+        <nodify:NodifyEditor x:Name="NodifyCanvas"
+                             ItemsSource="{Binding Nodes}"
+                             Connections="{Binding Connections}"
+                             PendingConnection="{Binding PendingConnection}"
+                             SelectedItems="{Binding SelectedNodes}"
+                             Zoom="{Binding ViewportZoom, Mode=TwoWay}"
+                             OffsetX="{Binding ViewportLocation.X, Mode=TwoWay}"
+                             OffsetY="{Binding ViewportLocation.Y, Mode=TwoWay}"
+                             Background="Transparent">
+
+            <!-- Context menu on canvas background -->
+            <nodify:NodifyEditor.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PasteNodes]}"
+                              InputGesture="Ctrl+V"
+                              Command="{Binding PasteNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📋" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddAnnotation]}"
+                              Command="{Binding AddNewAnnotationCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✨" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddGroup]}"
+                              Command="{Binding AddNewGroupCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📦" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomFit]}"
+                              Command="{Binding FitToScreenCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🔍" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </nodify:NodifyEditor.ContextMenu>
+
+            <!-- Node Card Template -->
+            <nodify:NodifyEditor.ItemTemplate>
+                <DataTemplate x:DataType="vm:NodeViewModel">
+                    <components:NodeCardView />
+                </DataTemplate>
+            </nodify:NodifyEditor.ItemTemplate>
+
+            <!-- Pending Connection Line -->
+            <nodify:NodifyEditor.PendingConnectionTemplate>
+                <DataTemplate x:DataType="vm:PendingConnectionViewModel">
+                    <nodify:PendingConnection StartedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
+                                               CompletedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
+                                               Source="{Binding Source.Anchor}"
+                                               Target="{Binding TargetLocation, Mode=TwoWay}"
+                                               Direction="Forward"
+                                               Stroke="{DynamicResource AccentGlowBrush}"
+                                               StrokeThickness="2.5"
+                                               StrokeDashArray="5,3" />
+                </DataTemplate>
+            </nodify:NodifyEditor.PendingConnectionTemplate>
+
+            <!-- Connection Wires -->
+            <nodify:NodifyEditor.ConnectionTemplate>
+                <DataTemplate x:DataType="vm:ConnectionViewModel">
+                    <nodify:Connection Source="{Binding Source.Anchor}"
+                                       Target="{Binding Target.Anchor}"
+                                       Stroke="{DynamicResource ConnectionWireBrush}"
+                                       StrokeThickness="3"
+                                       Direction="Forward">
+                        <nodify:Connection.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
+                                          Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="🗑" FontSize="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </nodify:Connection.ContextMenu>
+                    </nodify:Connection>
+                </DataTemplate>
+            </nodify:NodifyEditor.ConnectionTemplate>
+        </nodify:NodifyEditor>
+
+        <!-- Sub-workflow Breadcrumbs Navigation -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,16,0,0"
+                Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="8,4"
+                IsVisible="{Binding Breadcrumbs.Count}">
+            <ItemsControl ItemsSource="{Binding Breadcrumbs}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Content="{Binding Name}"
+                                    Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).NavigateBreadcrumbCommand}"
+                                    CommandParameter="{Binding}"
+                                    FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AccentGlowBrush}"
+                                    Background="Transparent" BorderThickness="0" Padding="4,2" />
+                            <TextBlock Text=" ❯ " Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- Floating Zoom Bar -->
+        <components:EditorZoomBarView />
+    </Grid>
+</UserControl>

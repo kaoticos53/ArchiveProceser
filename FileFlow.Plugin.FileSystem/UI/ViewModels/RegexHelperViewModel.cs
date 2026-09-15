@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
-using System.Windows;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.FileSystem.UI.Services;
@@ -248,8 +248,7 @@ public partial class RegexHelperViewModel : ObservableObject
     [RelayCommand]
     public void ApplyAndClose(Window window)
     {
-        window.DialogResult = true;
-        window.Close();
+        window.Close(true);
     }
 
     private void LoadLibrary()

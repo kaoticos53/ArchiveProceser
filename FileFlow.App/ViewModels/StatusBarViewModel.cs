@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
 using FileFlow.Sdk.Localization;
@@ -72,7 +73,7 @@ public partial class StatusBarViewModel : ObservableObject
         _performanceMonitor = performanceMonitor;
         _logViewModel = logViewModel;
         _loc = localizationService ?? LocalizationManager.Instance;
-        _dialogService = dialogService ?? WpfDialogService.Instance;
+        _dialogService = dialogService ?? AvaloniaDialogService.Instance;
         _processLauncher = processLauncher ?? ProcessLauncherService.Instance;
 
         // Subscripciones a eventos de EditorViewModel
@@ -121,7 +122,7 @@ public partial class StatusBarViewModel : ObservableObject
                     HookNode(node);
                 }
             }
-            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+            Dispatcher.UIThread.InvokeAsync(UpdateAiModelCount);
         };
         _editorViewModel.Connections.CollectionChanged += (s, e) => ConnectionCount = _editorViewModel.Connections.Count;
 
@@ -158,7 +159,7 @@ public partial class StatusBarViewModel : ObservableObject
         {
             if (e.PropertyName == nameof(LogViewModel.StatusMessage))
             {
-                Application.Current?.Dispatcher.InvokeAsync(() =>
+                Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (_controlBarViewModel.IsRunning)
                     {
@@ -175,7 +176,7 @@ public partial class StatusBarViewModel : ObservableObject
         // Rendimiento en tiempo real
         _performanceMonitor.PerformanceUpdated += (metrics) =>
         {
-            Application.Current?.Dispatcher.InvokeAsync(() =>
+            Dispatcher.UIThread.InvokeAsync(() =>
             {
                 RamText = metrics.RamFormatted;
                 CpuText = metrics.CpuFormatted;
@@ -186,11 +187,11 @@ public partial class StatusBarViewModel : ObservableObject
         // Estado de modelos de IA en memoria
         FileFlow.Sdk.ModelSessionRegistry.SessionStateChanged += () =>
         {
-            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+            Dispatcher.UIThread.InvokeAsync(UpdateAiModelCount);
         };
         _loc.LanguageChanged += (s, e) =>
         {
-            Application.Current?.Dispatcher.InvokeAsync(() =>
+            Dispatcher.UIThread.InvokeAsync(() =>
             {
                 UpdateAiModelCount();
                 UpdateSelectedNodeInfo();
@@ -215,7 +216,7 @@ public partial class StatusBarViewModel : ObservableObject
     {
         if (e.PropertyName == nameof(NodeViewModel.IsModelLoaded))
         {
-            Application.Current?.Dispatcher.InvokeAsync(UpdateAiModelCount);
+            Dispatcher.UIThread.InvokeAsync(UpdateAiModelCount);
         }
     }
 
@@ -300,9 +301,9 @@ public partial class StatusBarViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void OpenWorkflowSettings()
+    public async Task OpenWorkflowSettings()
     {
-        _editorViewModel.OpenWorkflowSettings();
+        await _editorViewModel.OpenWorkflowSettings();
     }
 
     [RelayCommand]

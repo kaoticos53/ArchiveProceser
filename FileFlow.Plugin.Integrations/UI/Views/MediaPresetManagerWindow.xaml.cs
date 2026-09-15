@@ -1,5 +1,7 @@
-using System.Windows;
-using System.Windows.Controls;
+using System;
+using System.Linq;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
 using FileFlow.Plugin.Integrations.UI.Services;
 using FileFlow.Sdk.Services;
 
@@ -10,46 +12,62 @@ public partial class MediaPresetManagerWindow : Window
     private readonly IDialogService _dialogService;
     private MediaPreset? _selectedPreset;
 
+    private ListBox? LstPresets => this.FindControl<ListBox>("LstPresets");
+    private TextBox? TxtName => this.FindControl<TextBox>("TxtName");
+    private TextBox? TxtDescription => this.FindControl<TextBox>("TxtDescription");
+    private TextBox? TxtExtension => this.FindControl<TextBox>("TxtExtension");
+    private TextBox? TxtFfmpegArgs => this.FindControl<TextBox>("TxtFfmpegArgs");
+    private ComboBox? CmbCategory => this.FindControl<ComboBox>("CmbCategory");
+
     public MediaPresetManagerWindow(IDialogService? dialogService = null)
     {
         _dialogService = dialogService ?? NullDialogService.Instance;
-        InitializeComponent();
         LoadPresetsList();
     }
 
     private void LoadPresetsList()
     {
         var presets = MediaPresetManagerService.Instance.GetPresets();
-        LstPresets.ItemsSource = presets;
-
-        if (presets.Count > 0)
+        if (LstPresets != null)
         {
-            LstPresets.SelectedIndex = 0;
+            LstPresets.ItemsSource = presets;
+            if (presets.Count > 0)
+            {
+                LstPresets.SelectedIndex = 0;
+            }
         }
     }
 
-    private void LstPresets_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void LstPresets_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (LstPresets.SelectedItem is MediaPreset preset)
+        if (LstPresets?.SelectedItem is MediaPreset preset)
         {
             _selectedPreset = preset;
-            TxtName.Text = preset.Name;
-            TxtDescription.Text = preset.Description;
-            TxtExtension.Text = preset.OutputExtension;
-            TxtFfmpegArgs.Text = preset.FfmpegArguments;
+            if (TxtName != null) TxtName.Text = preset.Name;
+            if (TxtDescription != null) TxtDescription.Text = preset.Description;
+            if (TxtExtension != null) TxtExtension.Text = preset.OutputExtension;
+            if (TxtFfmpegArgs != null) TxtFfmpegArgs.Text = preset.FfmpegArguments;
 
-            foreach (ComboBoxItem item in CmbCategory.Items)
+            if (CmbCategory != null)
             {
-                if (item.Content.ToString()?.Equals(preset.Category, StringComparison.OrdinalIgnoreCase) == true)
+                foreach (var item in CmbCategory.Items)
                 {
-                    CmbCategory.SelectedItem = item;
-                    break;
+                    if (item is ComboBoxItem cbi && cbi.Content?.ToString()?.Equals(preset.Category, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        CmbCategory.SelectedItem = cbi;
+                        break;
+                    }
+                    else if (item?.ToString()?.Equals(preset.Category, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        CmbCategory.SelectedItem = item;
+                        break;
+                    }
                 }
             }
         }
     }
 
-    private void NewPreset_Click(object sender, RoutedEventArgs e)
+    private void NewPreset_Click(object? sender, RoutedEventArgs e)
     {
         var newPreset = new MediaPreset
         {
@@ -65,26 +83,26 @@ public partial class MediaPresetManagerWindow : Window
         LoadPresetsList();
 
         var created = MediaPresetManagerService.Instance.GetPresets().FirstOrDefault(p => p.Id == newPreset.Id);
-        if (created != null)
+        if (created != null && LstPresets != null)
         {
             LstPresets.SelectedItem = created;
         }
     }
 
-    private void SaveCurrent_Click(object sender, RoutedEventArgs e)
+    private void SaveCurrent_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedPreset == null) return;
 
-        string category = (CmbCategory.SelectedItem as ComboBoxItem)?.Content.ToString() ?? "Video";
+        string category = (CmbCategory?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? CmbCategory?.SelectedItem?.ToString() ?? "Video";
 
-        _selectedPreset.Name = TxtName.Text.Trim();
-        _selectedPreset.Description = TxtDescription.Text.Trim();
-        _selectedPreset.OutputExtension = TxtExtension.Text.Trim();
+        _selectedPreset.Name = (TxtName?.Text ?? string.Empty).Trim();
+        _selectedPreset.Description = (TxtDescription?.Text ?? string.Empty).Trim();
+        _selectedPreset.OutputExtension = (TxtExtension?.Text ?? string.Empty).Trim();
         if (!_selectedPreset.OutputExtension.StartsWith('.'))
         {
             _selectedPreset.OutputExtension = "." + _selectedPreset.OutputExtension;
         }
-        _selectedPreset.FfmpegArguments = TxtFfmpegArgs.Text.Trim();
+        _selectedPreset.FfmpegArguments = (TxtFfmpegArgs?.Text ?? string.Empty).Trim();
         _selectedPreset.Category = category;
 
         MediaPresetManagerService.Instance.SavePreset(_selectedPreset);
@@ -94,7 +112,7 @@ public partial class MediaPresetManagerWindow : Window
         _dialogService.ShowInformation(successMsg, title);
     }
 
-    private void DeletePreset_Click(object sender, RoutedEventArgs e)
+    private void DeletePreset_Click(object? sender, RoutedEventArgs e)
     {
         if (_selectedPreset == null) return;
 
@@ -116,7 +134,7 @@ public partial class MediaPresetManagerWindow : Window
         }
     }
 
-    private void ResetDefaults_Click(object sender, RoutedEventArgs e)
+    private void ResetDefaults_Click(object? sender, RoutedEventArgs e)
     {
         string resetMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_MsgResetConfirm", "¿Deseas restablecer todos los presets a los valores por defecto del sistema?");
         string resetTitle = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PresetManager_ResetBtn", "Restablecer");
@@ -128,9 +146,8 @@ public partial class MediaPresetManagerWindow : Window
         }
     }
 
-    private void Close_Click(object sender, RoutedEventArgs e)
+    private void Close_Click(object? sender, RoutedEventArgs e)
     {
-        DialogResult = true;
-        Close();
+        Close(true);
     }
 }

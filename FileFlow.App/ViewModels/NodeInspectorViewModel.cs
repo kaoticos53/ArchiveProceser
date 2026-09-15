@@ -404,7 +404,7 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
         }
 
         var win = new FileFlow.App.Preview.Views.FilePreviewerWindow();
-        _ = win.ShowPreviewAsync(previewCtx, siblings: siblingsList.Count > 0 ? siblingsList : null, owner: Application.Current.MainWindow);
+        _ = win.ShowPreviewAsync(previewCtx, siblings: siblingsList.Count > 0 ? siblingsList : null, owner: App.MainWindow);
     }
 
     private class MockFlowExecutionContext : IFlowExecutionContext

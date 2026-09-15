@@ -1,0 +1,122 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="using:FileFlow.Plugin.Integrations.UI.Converters"
+        xmlns:services="using:FileFlow.Plugin.Integrations.UI.Services"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.Plugin.Integrations.UI.Views.MediaPresetManagerWindow"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_WindowTitle]}"
+        Height="540" Width="780"
+        MinHeight="480" MinWidth="680"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgSurfaceBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Window.Resources>
+        <conv:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter" />
+    </Window.Resources>
+
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_HeaderTitle]}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_HeaderSubtitle]}" 
+                           FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0" />
+            </StackPanel>
+
+            <Button Grid.Column="1" Click="ResetDefaults_Click" Padding="10,4" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_ResetBtn]}" FontSize="11" />
+            </Button>
+        </Grid>
+
+        <!-- Main Body: List + Edit Form -->
+        <Grid Grid.Row="1" ColumnDefinitions="260,12,*">
+            <!-- Left Column: Preset List & Quick Actions -->
+            <Grid Grid.Column="0" RowDefinitions="*,Auto">
+                <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="6">
+                    <ListBox x:Name="LstPresets" 
+                             SelectionChanged="LstPresets_SelectionChanged"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{DynamicResource TextPrimaryBrush}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="services:MediaPreset">
+                                <StackPanel Margin="4,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🎬 " FontSize="11" IsVisible="{Binding Category, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=Video}" />
+                                        <TextBlock Text="🎵 " FontSize="11" IsVisible="{Binding Category, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=Audio}" />
+                                        <TextBlock Text="🎞️ " FontSize="11" IsVisible="{Binding Category, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=Animation}" />
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding OutputExtension}" FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="0,1,0,0" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0" Spacing="6">
+                    <Button Click="NewPreset_Click" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="10,5">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_NewBtn]}" FontSize="11" />
+                    </Button>
+                    <Button Click="DeletePreset_Click" Padding="10,5">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_DeleteBtn]}" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Right Column: Edit Preset Details Form -->
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="PnlForm" Margin="4" Spacing="10">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_FormTitle]}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                        <!-- Preset Name -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_PresetName]}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBox x:Name="TxtName" Padding="6,4" FontSize="11.5" />
+                        </StackPanel>
+
+                        <!-- Category & Extension -->
+                        <Grid ColumnDefinitions="*,10,*">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_Category]}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <ComboBox x:Name="CmbCategory" Padding="6,4" FontSize="11" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Audio" IsSelected="True" />
+                                    <ComboBoxItem Content="Video" />
+                                    <ComboBoxItem Content="Animation" />
+                                    <ComboBoxItem Content="Custom" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_OutputExt]}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBox x:Name="TxtExtension" Padding="6,4" FontSize="11.5" Text=".mp4" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Description -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_Description]}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBox x:Name="TxtDescription" Padding="6,4" FontSize="11" TextWrapping="Wrap" Height="45" AcceptsReturn="True" />
+                        </StackPanel>
+
+                        <!-- FFmpeg CLI Arguments -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_FfmpegArgs]}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBox x:Name="TxtFfmpegArgs" Padding="6,4" FontSize="11" FontFamily="Cascadia Code, Consolas, monospace" TextWrapping="Wrap" Height="60" AcceptsReturn="True" />
+                        </StackPanel>
+
+                        <Button Click="SaveCurrent_Click" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="14,6" HorizontalAlignment="Right">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PresetManager_SavePreset]}" FontSize="11.5" />
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Click="Close_Click" Padding="16,6" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close]}" FontSize="11.5" />
+        </StackPanel>
+    </Grid>
+</Window>

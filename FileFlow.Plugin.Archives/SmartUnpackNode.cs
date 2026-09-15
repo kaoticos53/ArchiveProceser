@@ -1,6 +1,5 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows;
 using FileFlow.Plugin.Archives.Services;
 using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Sdk;
@@ -19,39 +18,40 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SmartUnpackNode_Name", "Smart Unpack");
     public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("SmartUnpackNode_Desc", "Inspects archive structure and extracts intelligently, supporting password lists, multi-engine extraction (.NET 9, 7-Zip, SharpCompress) and multipart archives.");
+    public string Description => LocalizationManager.Instance.GetString("SmartUnpackNode_Desc", "Extrae archivos comprimidos eliminando carpetas redundantes y resolviendo contraseñas automáticamente.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
-    {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+    public IReadOnlyList<NodePort> Inputs { get; } =
+    [
+        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos comprimidos de entrada")
+    ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+    public IReadOnlyList<NodePort> Outputs { get; } =
+    [
+        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos extraídos"),
+        new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos con error de descompresión")
+    ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public Dictionary<string, object?> Parameters { get; } = new()
     {
-        ["DestinationFolder"] = @"{RelativeDir}\Unpacked",
-        ["CleanWrapper"] = true,
-        ["AutoDeleteAfterExtraction"] = false,
-        ["RecursiveUnpack"] = true,
-        ["ExtractionEngine"] = "Auto",
-        ["CustomSevenZipPath"] = "",
+        ["OutputDirectory"] = "",
+        ["ArchiveFormat"] = "Auto",
+        ["PreserveDirectoryStructure"] = true,
+        ["FilterPattern"] = "*.*",
         ["PasswordList"] = "",
+        ["CleanRedundantFolder"] = true,
+        ["DeleteArchiveAfterExtraction"] = false,
         ["PasswordFile"] = ""
     };
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
-        new("DestinationFolder", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Unpacked", DisplayOrder: 1),
-        new("ExtractionEngine", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "SevenZip", "DotNetZip", "SharpCompress"], DisplayOrder: 2),
-        new("CleanWrapper", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
-        new("AutoDeleteAfterExtraction", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 4),
-        new("RecursiveUnpack", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 5),
-        new("CustomSevenZipPath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 6),
-        new("PasswordList", ParameterEditorType.PasswordList, DefaultValue: "", DisplayOrder: 7),
+    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    [
+        new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 1),
+        new("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "Auto", DisplayOrder: 2, Options: ["Auto", "Zip", "Rar", "7Zip", "Tar", "GZip"]),
+        new("PreserveDirectoryStructure", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
+        new("FilterPattern", ParameterEditorType.Text, DefaultValue: "*.*", DisplayOrder: 4),
+        new("PasswordList", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 5),
+        new("CleanRedundantFolder", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 6),
+        new("DeleteArchiveAfterExtraction", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 7),
         new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 8)
     ];
 
@@ -59,23 +59,31 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         new("ManagePasswords", "🔑 Claves...", "🔑", "Gestionar lista de contraseñas para descompresión de archivos cifrados")
     ];
 
-    public void ExecuteCustomAction(string actionId, object? context = null)
+    public async void ExecuteCustomAction(string actionId, object? context = null)
     {
         if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
             actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
         {
             string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
             var window = new PasswordManagerWindow(currentPasswords);
-            if (context is Window ownerWindow)
+
+            Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
+            if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             {
-                window.Owner = ownerWindow;
-            }
-            else if (Application.Current?.MainWindow != null)
-            {
-                window.Owner = Application.Current.MainWindow;
+                owner = desktop.MainWindow;
             }
 
-            if (window.ShowDialog() == true)
+            bool result = false;
+            if (owner != null)
+            {
+                result = await window.ShowDialog<bool>(owner);
+            }
+            else
+            {
+                window.Show();
+            }
+
+            if (result)
             {
                 lock (_lock)
                 {

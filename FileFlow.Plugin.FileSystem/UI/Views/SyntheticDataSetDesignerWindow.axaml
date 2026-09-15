@@ -1,0 +1,95 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.Plugin.FileSystem.UI.Views.SyntheticDataSetDesignerWindow"
+        x:DataType="vm:SyntheticDataSetDesignerViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_WindowTitle], FallbackValue='Diseñador de Conjuntos de Datos Sintéticos'}"
+        Height="780" Width="1180"
+        MinHeight="620" MinWidth="920"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgDarkBrush}">
+
+    <Grid Margin="14" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <TextBlock Text="📊" FontSize="20" VerticalAlignment="Center" />
+                    <StackPanel>
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_HeaderTitle], FallbackValue='Diseñador de Datasets Sintéticos'}"
+                                   FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_HeaderDesc], FallbackValue='Crea y estructura colecciones de prueba sintéticas para simulación de flujos.'}"
+                                   FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <Button Content="💾 Guardar Dataset" Command="{Binding SaveCommand}"
+                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF"
+                            FontWeight="SemiBold" Padding="14,6" CornerRadius="6" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="330,6,*">
+            <!-- Left Panel -->
+            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="10">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <TextBox Grid.Row="0" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Buscar datasets..." Padding="8,5" Margin="0,0,0,8" />
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
+                        <Button Content="➕ Nuevo" Command="{Binding NewDataSetCommand}" Padding="8,4" />
+                        <Button Content="📋 Duplicar" Command="{Binding DuplicateDataSetCommand}" Padding="8,4" />
+                        <Button Content="🗑️" Command="{Binding DeleteDataSetCommand}" Padding="8,4" />
+                    </StackPanel>
+                    <ListBox Grid.Row="2" ItemsSource="{Binding FilteredDataSets}" SelectedItem="{Binding SelectedDataSet, Mode=TwoWay}" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,2">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding Category}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- GridSplitter -->
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent" />
+
+            <!-- Right Panel: Dataset Details & Items -->
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="10" IsVisible="{Binding SelectedDataSet, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Text="Propiedades del Dataset" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBox Text="{Binding DataSetName, Mode=TwoWay}" PlaceholderText="Nombre..." Padding="8,5" />
+                        <TextBox Text="{Binding DataSetCategory, Mode=TwoWay}" PlaceholderText="Categoría..." Padding="8,5" />
+                        <TextBox Text="{Binding DataSetDescription, Mode=TwoWay}" PlaceholderText="Descripción..." AcceptsReturn="True" MinHeight="50" Padding="8,5" />
+
+                        <TabControl SelectedIndex="{Binding SelectedTabIndex}" Margin="0,8,0,0">
+                            <TabItem Header="Definición DSL">
+                                <TextBox Text="{Binding DslText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="260" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11.5" Padding="8,6" Margin="0,8,0,0" />
+                            </TabItem>
+                            <TabItem Header="Definición JSON">
+                                <TextBox Text="{Binding JsonText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="260" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11.5" Padding="8,6" Margin="0,8,0,0" />
+                            </TabItem>
+                        </TabControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Click="Close_Click" Content="Cerrar" Padding="16,6" CornerRadius="6" />
+        </Grid>
+    </Grid>
+</Window>

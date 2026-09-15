@@ -1,0 +1,357 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:nodify="using:NodifyM.Avalonia.Controls"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:sdk="using:FileFlow.Sdk"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             xmlns:conv="using:FileFlow.App.Converters"
+             x:Class="FileFlow.App.Views.Components.NodeCardView"
+             x:DataType="vm:NodeViewModel"
+             HorizontalAlignment="Stretch">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://FileFlow.App/Themes/Templates/NodeParameterTemplates.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid HorizontalAlignment="Stretch">
+        <!-- Outer Selection Glow -->
+        <Border BorderBrush="{DynamicResource AccentPrimaryBrush}" 
+                BorderThickness="2" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False"
+                IsVisible="{Binding IsSelected}"
+                BoxShadow="0 0 8 0 #704F46E5" />
+
+        <!-- Outer Execution Glow -->
+        <Border BorderBrush="#10B981" 
+                BorderThickness="2" CornerRadius="11" Margin="-1.5" IsHitTestVisible="False"
+                IsVisible="{Binding ExecutionStatus, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Running}"
+                BoxShadow="0 0 12 0 #D010B981" />
+
+        <nodify:Node Header="{Binding}" 
+                     HorizontalAlignment="Stretch"
+                     HorizontalContentAlignment="Stretch"
+                     Background="{DynamicResource BgCardBrush}"
+                     BorderBrush="{DynamicResource BorderDarkBrush}"
+                     BorderThickness="1.5"
+                     CornerRadius="10">
+            
+            <!-- Context Menu -->
+            <nodify:Node.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorTitle]}"
+                              Command="{Binding InspectNodeCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🔍" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[RenameNode]}"
+                              InputGesture="F2"
+                              Command="{Binding StartRenamingCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✏️" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}"
+                              Command="{Binding ToggleBreakpointCommand}">
+                        <MenuItem.Icon>
+                            <Ellipse Width="12" Height="12" Fill="#EF4444" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LoggingToggle]}"
+                              Command="{Binding ToggleLoggingCommand}">
+                        <MenuItem.Icon>
+                            <Border Width="12" Height="12" CornerRadius="2" Background="#06B6D4">
+                                <TextBlock Text="≡" FontSize="8" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <Separator />
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CopyNode]}"
+                              InputGesture="Ctrl+C"
+                              Command="{Binding $parent[UserControl;1].((vm:EditorViewModel)DataContext).CopySelectedNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📋" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CutNode]}"
+                              InputGesture="Ctrl+X"
+                              Command="{Binding $parent[UserControl;1].((vm:EditorViewModel)DataContext).CutSelectedNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="✂" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DuplicateNode]}"
+                              InputGesture="Ctrl+D"
+                              Command="{Binding $parent[UserControl;1].((vm:EditorViewModel)DataContext).DuplicateSelectedNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="📑" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+
+                    <Separator />
+
+                    <!-- Quick Color Menu -->
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ChangeColor]}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🎨" FontSize="12" />
+                        </MenuItem.Icon>
+
+                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorEmerald]}"
+                                  Command="{Binding ChangeColorCommand}" CommandParameter="#10B981">
+                            <MenuItem.Icon>
+                                <Ellipse Width="14" Height="14" Fill="#10B981" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorCyan]}"
+                                  Command="{Binding ChangeColorCommand}" CommandParameter="#06B6D4">
+                            <MenuItem.Icon>
+                                <Ellipse Width="14" Height="14" Fill="#06B6D4" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPurple]}"
+                                  Command="{Binding ChangeColorCommand}" CommandParameter="#A855F7">
+                            <MenuItem.Icon>
+                                <Ellipse Width="14" Height="14" Fill="#A855F7" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorAmber]}"
+                                  Command="{Binding ChangeColorCommand}" CommandParameter="#F59E0B">
+                            <MenuItem.Icon>
+                                <Ellipse Width="14" Height="14" Fill="#F59E0B" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorRed]}"
+                                  Command="{Binding ChangeColorCommand}" CommandParameter="#EF4444">
+                            <MenuItem.Icon>
+                                <Ellipse Width="14" Height="14" Fill="#EF4444" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+
+                        <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorIndigo]}"
+                                  Command="{Binding ChangeColorCommand}" CommandParameter="#818CF8">
+                            <MenuItem.Icon>
+                                <Ellipse Width="14" Height="14" Fill="#818CF8" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </MenuItem>
+
+                    <Separator />
+
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteNode]}"
+                              InputGesture="Del"
+                              Command="{Binding $parent[UserControl;1].((vm:EditorViewModel)DataContext).DeleteSelectedNodesCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🗑" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </nodify:Node.ContextMenu>
+
+            <!-- Node Header Template -->
+            <nodify:Node.HeaderTemplate>
+                <DataTemplate DataType="vm:NodeViewModel">
+                    <Border Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" CornerRadius="8.5,8.5,0,0" Padding="10,8">
+                        <StackPanel>
+                            <!-- Top Accent Bar -->
+                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="8.5,8.5,0,0" Margin="-10,-8,-10,6" />
+
+                            <!-- Header Main Row -->
+                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                                <!-- Breakpoint Button -->
+                                <Button Grid.Column="0" Command="{Binding ToggleBreakpointCommand}" 
+                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,5,0"
+                                        Cursor="Hand" ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}">
+                                    <Ellipse Width="11" Height="11" 
+                                             Fill="{Binding HasBreakpoint, Converter={StaticResource BreakpointToBrushConverter}}" 
+                                             Stroke="{DynamicResource BorderDarkBrush}" StrokeThickness="1.5" />
+                                </Button>
+
+                                <!-- Toggle Logging Button -->
+                                <Button Grid.Column="1" Command="{Binding ToggleLoggingCommand}" 
+                                        Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,6,0"
+                                        Cursor="Hand" ToolTip.Tip="{Binding IsLoggingEnabled, Converter={StaticResource LoggingToTooltipConverter}}">
+                                    <Border Width="13" Height="13" CornerRadius="3"
+                                            Background="{Binding IsLoggingEnabled, Converter={StaticResource LoggingToBrushConverter}}"
+                                            BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
+                                        <TextBlock Text="≡" FontSize="8.5" FontWeight="Bold" Foreground="White" 
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                                    </Border>
+                                </Button>
+
+                                <!-- Execution LED Indicator -->
+                                <Border Grid.Column="2" Width="9" Height="9" CornerRadius="4.5" Margin="0,0,7,0" VerticalAlignment="Center"
+                                        Background="{Binding ExecutionStatus, Converter={StaticResource NodeExecutionStatusToBrushConverter}}"
+                                        BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1.2"
+                                        ToolTip.Tip="{Binding ExecutionStatus}" />
+
+                                <!-- Title Display / In-place Rename Box -->
+                                <Grid Grid.Column="3" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" 
+                                               FontWeight="Bold" 
+                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                               FontSize="13" 
+                                               VerticalAlignment="Center" 
+                                               TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding !IsEditingTitle}" />
+
+                                    <TextBox x:Name="TitleEditBox"
+                                             Text="{Binding EditingTitleText, Mode=TwoWay}"
+                                             FontWeight="Bold"
+                                             FontSize="12"
+                                             Background="{DynamicResource BgSurfaceBrush}"
+                                             Foreground="{DynamicResource TextPrimaryBrush}"
+                                             CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                             BorderBrush="{DynamicResource AccentPrimaryBrush}"
+                                             BorderThickness="1"
+                                             Padding="2,1"
+                                             Margin="-2,0,0,0"
+                                             VerticalAlignment="Center"
+                                             IsVisible="{Binding IsEditingTitle}" />
+                                </Grid>
+                                
+                                <!-- Toggle Parameters Button -->
+                                <ToggleButton Grid.Column="4"
+                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                              Content="⚙"
+                                              Foreground="{DynamicResource TextSecondaryBrush}"
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              Padding="6,2"
+                                              Margin="6,0,0,0"
+                                              Cursor="Hand"
+                                              ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToggleParametersToolTip]}" />
+                            </Grid>
+
+                            <!-- Progress Bar -->
+                            <Grid Margin="0,6,0,0" IsVisible="{Binding IsProgressActive}" RowDefinitions="Auto,Auto">
+                                <ProgressBar Grid.Row="0" Value="{Binding ProgressPercentage}" Minimum="0" Maximum="100" Height="4" 
+                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource AccentSuccessBrush}" BorderThickness="0" />
+                                <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="9" Margin="0,2,0,0" 
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </nodify:Node.HeaderTemplate>
+
+            <!-- Node Body: Ports, Parameters & Status Footer -->
+            <Grid RowDefinitions="*,Auto">
+                <StackPanel Grid.Row="0" Margin="0,4">
+                    <!-- Ports Row (Inputs & Outputs) -->
+                    <Grid ColumnDefinitions="*,16,*">
+                        <!-- Input Ports -->
+                        <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:PortViewModel">
+                                    <nodify:NodeInput Header="{Binding}" 
+                                                      IsConnected="True" 
+                                                      Anchor="{Binding Anchor, Mode=OneWayToSource}" 
+                                                      HorizontalAlignment="Left"
+                                                      Background="Transparent"
+                                                      BorderBrush="Transparent"
+                                                      BorderThickness="0"
+                                                      Margin="-7,3,0,3">
+                                        <nodify:NodeInput.HeaderTemplate>
+                                            <DataTemplate DataType="vm:PortViewModel">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                                                    <!-- Input Port Pin -->
+                                                    <Border Width="14" Height="14" CornerRadius="7" 
+                                                            Background="{Binding PortColor}" 
+                                                            BorderBrush="{DynamicResource BgCardBrush}" 
+                                                            BorderThickness="2"
+                                                            ToolTip.Tip="{Binding DisplayName}">
+                                                    </Border>
+                                                    <!-- Input Port Name -->
+                                                    <TextBlock Text="{Binding DisplayName}" 
+                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                               FontSize="11" FontWeight="SemiBold" 
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </nodify:NodeInput.HeaderTemplate>
+                                    </nodify:NodeInput>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Output Ports -->
+                        <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputPorts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:PortViewModel">
+                                    <nodify:NodeOutput Header="{Binding}" 
+                                                       IsConnected="True" 
+                                                       Anchor="{Binding Anchor, Mode=OneWayToSource}" 
+                                                       HorizontalAlignment="Right"
+                                                       Background="Transparent"
+                                                       BorderBrush="Transparent"
+                                                       BorderThickness="0"
+                                                       Margin="0,3,-7,3">
+                                        <nodify:NodeOutput.HeaderTemplate>
+                                            <DataTemplate DataType="vm:PortViewModel">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                                                    <!-- Output Port Name -->
+                                                    <TextBlock Text="{Binding DisplayName}" 
+                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                               FontSize="11" FontWeight="SemiBold" 
+                                                               VerticalAlignment="Center" />
+                                                    <!-- Output Port Pin -->
+                                                    <Border Width="14" Height="14" CornerRadius="7" 
+                                                            Background="{Binding PortColor}" 
+                                                            BorderBrush="{DynamicResource BgCardBrush}" 
+                                                            BorderThickness="2"
+                                                            ToolTip.Tip="{Binding DisplayName}">
+                                                    </Border>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </nodify:NodeOutput.HeaderTemplate>
+                                    </nodify:NodeOutput>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+
+                    <!-- Inline Parameters Area -->
+                    <Border Margin="10,6,10,2" IsVisible="{Binding IsExpanded}">
+                        <ItemsControl ItemsSource="{Binding Parameters}"
+                                      ItemTemplate="{StaticResource NodeParameterItemTemplate}" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Footer Resize Handle & Telemetry summary -->
+                <Border Grid.Row="1" Background="{DynamicResource BgHeaderBrush}" CornerRadius="0,0,8.5,8.5" Padding="8,3" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding ExecutionDuration, Converter={StaticResource DurationMsToTextConverter}}" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
+                            <TextBlock Text="•" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
+                            <TextBlock Text="{Binding ProcessedBytes, Converter={StaticResource BytesToTextConverter}}" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
+                        </StackPanel>
+                        <!-- Resize Thumb -->
+                        <Thumb Grid.Column="1" Width="12" Height="12" Cursor="SizeWestEast" DragDelta="ResizeThumb_DragDelta">
+                            <Thumb.Template>
+                                <ControlTemplate>
+                                    <Border Background="Transparent">
+                                        <TextBlock Text="⇲" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Grid>
+                </Border>
+            </Grid>
+        </nodify:Node>
+    </Grid>
+</UserControl>

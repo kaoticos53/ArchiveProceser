@@ -1,0 +1,72 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        x:Class="FileFlow.App.Views.Components.VirtualFileSystemExplorerWindow"
+        x:DataType="vm:VirtualFileSystemExplorerViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_Title]}"
+        Height="720" Width="1100" MinHeight="550" MinWidth="850"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgAppBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,Auto,*">
+        <!-- Header & KPIs -->
+        <Grid Grid.Row="0" Margin="0,0,0,14" ColumnDefinitions="*,Auto">
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <TextBlock Text="🗂️" FontSize="24" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_HeaderTitle]}"
+                               FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_HeaderSubtitle]}"
+                           FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="34,2,0,0" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,8">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="📄 Archivos" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding TotalFiles}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,8">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_KpiSource]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding TotalSourceFiles}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,8">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_KpiDestination]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding TotalDestinationFiles}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- Toolbar -->
+        <Grid Grid.Row="1" Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+            <TextBox Grid.Column="0" Text="{Binding SearchFilter, Mode=TwoWay}" PlaceholderText="Buscar archivos en el sistema virtual..." Padding="8,6" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="8,0,0,0">
+                <Button Command="{Binding RefreshCommand}" Content="🔄 Actualizar" Padding="10,6" />
+                <Button Command="{Binding ExportSnapshotCommand}" Content="📤 Exportar" Padding="10,6" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Main Content (Files DataGrid) -->
+        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="4">
+            <DataGrid ItemsSource="{Binding FilteredFiles}"
+                      SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Nombre" Binding="{Binding Name}" Width="2*" />
+                    <DataGridTextColumn Header="Ruta Virtual" Binding="{Binding VirtualPath}" Width="3*" />
+                    <DataGridTextColumn Header="Tamaño" Binding="{Binding SizeText}" Width="100" />
+                    <DataGridTextColumn Header="Nodo Creador" Binding="{Binding CreatorNode}" Width="150" />
+                    <DataGridTextColumn Header="Modificado" Binding="{Binding ModifiedTimestamp}" Width="140" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</Window>
