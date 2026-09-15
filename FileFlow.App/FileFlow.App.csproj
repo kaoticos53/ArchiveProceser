@@ -32,7 +32,6 @@
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="FluentAvaloniaUI" Version="2.2.0" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <PackageReference Include="Nodify.Avalonia" Version="2.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />

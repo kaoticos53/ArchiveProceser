@@ -16,12 +16,12 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
 - **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
 - **Hitos Activos y Recientes (Septiembre 2026)**:
-  - **83. Migración Integral Multiplataforma a Avalonia 12 UI + FluentAvaloniaUI (WinUI 3)**:
+  - **83. Migración Integral Multiplataforma a Avalonia 12 UI + FluentTheme**:
     - Migración del 100% de la solución a Avalonia 12 y .NET 9 multiplataforma, eliminando cualquier residuo de WPF.
-    - Integración de controles modernos FluentAvaloniaUI (WinUI 3), lienzo Nodify.Avalonia 2.0.0 y editor AvaloniaEdit.
-    - Vistas y temas AXAML adaptados con paridad visual exacta y cambio dinámico de tema y localización i18n.
+    - Integración de FluentTheme nativo Avalonia 12 (WinUI 3/Fluent v2), lienzo Nodify.Avalonia 2.0.0 y editor AvaloniaEdit.
+    - Vistas y temas AXAML adaptados con paridad visual exacta, registro de converters globales en `App.axaml` y cambio dinámico de tema y localización i18n.
     - Actualización de scripts de ejecución (`run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`) a la ruta `net9.0` y purga de binarios WPF antiguos.
-    - Suite de 833 pruebas unitarias e integración aprobadas al 100%.
+    - Suite de 833 pruebas unitarias e integración aprobadas al 100% y arranque de ventana verificado.
   - **82. Reversión de Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)**:
     - Reversión íntegra de la migración a Avalonia; restauración del 100% del entorno nativo WPF (`net9.0-windows`, `Nodify`, XAML estándar).
     - `StatusBarView.xaml` actualizado con enlaces dinámicos (`BgHeaderBrush`, `BgSurfaceBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `TextSecondaryBrush`). Fondo idéntico al de `ControlBarView.xaml` y texto con contraste óptimo en temas claros y oscuros.

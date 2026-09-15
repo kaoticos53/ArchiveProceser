@@ -14,7 +14,6 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="FluentAvaloniaUI" Version="2.2.0" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
     <Using Include="System.IO" />
   </ItemGroup>

@@ -1,11 +1,10 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:sty="using:FluentAvalonia.Styling"
              xmlns:converters="clr-namespace:FileFlow.App.Converters"
              x:Class="FileFlow.App.App"
              RequestedThemeVariant="Dark">
     <Application.Styles>
-        <sty:FluentAvaloniaTheme PreferUserAccentColor="True" />
+        <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     </Application.Styles>
 
@@ -23,8 +22,16 @@
             <converters:InputOutputBulletConverter x:Key="InputOutputBulletConverter" />
             <converters:InputOutputBrushConverter x:Key="InputOutputBrushConverter" />
             <converters:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter" />
+            <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
+            <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
             <converters:LogLevelToBrushConverter x:Key="LogLevelToBrushConverter" />
             <converters:LogLevelToBadgeConverter x:Key="LogLevelToBadgeConverter" />
+            <converters:LogLevelToBadgeBackgroundConverter x:Key="LogLevelToBadgeBackgroundConverter" />
+            <converters:LogLevelToBadgeForegroundConverter x:Key="LogLevelToBadgeForegroundConverter" />
+            <converters:LoggingToBrushConverter x:Key="LoggingToBrushConverter" />
+            <converters:LoggingToTooltipConverter x:Key="LoggingToTooltipConverter" />
+            <converters:DurationMsToTextConverter x:Key="DurationMsToTextConverter" />
+            <converters:BytesToTextConverter x:Key="BytesToTextConverter" />
             <converters:StringsEqualMultiConverter x:Key="StringsEqualMultiConverter" />
             <converters:StringEqualsToBooleanConverter x:Key="StringEqualsToBooleanConverter" />
 
