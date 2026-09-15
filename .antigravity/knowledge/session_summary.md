@@ -20,6 +20,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
     - Migración del 100% de la solución a Avalonia 12 y .NET 9 multiplataforma, eliminando cualquier residuo de WPF.
     - Integración de controles modernos FluentAvaloniaUI (WinUI 3), lienzo Nodify.Avalonia 2.0.0 y editor AvaloniaEdit.
     - Vistas y temas AXAML adaptados con paridad visual exacta y cambio dinámico de tema y localización i18n.
+    - Actualización de scripts de ejecución (`run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`) a la ruta `net9.0` y purga de binarios WPF antiguos.
     - Suite de 833 pruebas unitarias e integración aprobadas al 100%.
   - **82. Reversión de Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)**:
     - Reversión íntegra de la migración a Avalonia; restauración del 100% del entorno nativo WPF (`net9.0-windows`, `Nodify`, XAML estándar).

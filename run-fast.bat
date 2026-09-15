@@ -5,18 +5,18 @@ echo   FileFlow Studio - Fast Launch (NoBuild)
 echo =========================================
 echo.
 
-set EXE_DEBUG=FileFlow.App\bin\Debug\net9.0-windows\FileFlow.App.exe
-set EXE_RELEASE=FileFlow.App\bin\Release\net9.0-windows\FileFlow.App.exe
+set EXE_DEBUG=FileFlow.App\bin\Debug\net9.0\FileFlow.App.exe
+set EXE_RELEASE=FileFlow.App\bin\Release\net9.0\FileFlow.App.exe
 
 if exist "%EXE_DEBUG%" (
     echo [OK] Iniciando FileFlow Studio (Debug)...
-    start "" /d "FileFlow.App\bin\Debug\net9.0-windows" "%EXE_DEBUG%" %*
+    start "" /d "FileFlow.App\bin\Debug\net9.0" "%EXE_DEBUG%" %*
     exit /b 0
 )
 
 if exist "%EXE_RELEASE%" (
     echo [OK] Iniciando FileFlow Studio (Release)...
-    start "" /d "FileFlow.App\bin\Release\net9.0-windows" "%EXE_RELEASE%" %*
+    start "" /d "FileFlow.App\bin\Release\net9.0" "%EXE_RELEASE%" %*
     exit /b 0
 )
 

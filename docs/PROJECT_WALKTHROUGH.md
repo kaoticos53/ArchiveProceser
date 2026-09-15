@@ -22,7 +22,10 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
    - Preservación íntegra de los 4 temas visuales (`DarkTheme`, `LightTheme`, `CyberTheme`, `PastelTheme`) con soporte de personalización en caliente vía `ThemeResourceApplier` y `CustomThemeService`.
    - Conversión de todos los converters de valores a `Avalonia.Data.Converters.IValueConverter`.
    - Desacoplamiento del Clipboard mediante `Avalonia.Input.Platform.IClipboard` y diálogos mediante `TopLevel.StorageProvider`.
-3. **Validación Exhaustiva y Suite de Tests**:
+3. **Actualización de Scripts de Lanzamiento y Automatización (`run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`)**:
+   - Corrección de la ruta del ejecutable de salida de `net9.0-windows` a `net9.0` puro multiplataforma.
+   - Purga completa de binarios residuales de compilaciones previas mediante `clean.ps1`.
+4. **Validación Exhaustiva y Suite de Tests**:
    - Compilación limpia de los 14 proyectos en `FileFlow.slnx`: **0 Advertencias, 0 Errores**.
    - Suite completa de pruebas unitarias (`.\test.ps1` / `dotnet test`): **833 / 833 superadas al 100% (0 errores, 0 fallos, 0 omitidas)**.
 
