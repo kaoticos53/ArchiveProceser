@@ -9,6 +9,25 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 
 ---
 
+## [2026-09-15] - Migración Integral Multiplataforma a Avalonia 12 UI + FluentAvaloniaUI (WinUI 3)
+
+### 🎯 Objetivos y Alcance
+1. **Migración Completa de la Solución a Avalonia 12 (`net9.0`)**:
+   - Conversión de `FileFlow.App` y todos los plugins a Avalonia 12.1.2 puro (`TargetFramework: net9.0`), eliminando por completo `<UseWPF>true</UseWPF>` y `net9.0-windows`.
+   - Adopción de **FluentAvaloniaUI 2.2.0 (WinUI 3)** para controles modernos y soporte completo de estilo Fluent v2 / WinUI 3.
+   - Integración de **`Nodify.Avalonia 2.0.0`** para el renderizado del lienzo DAG de nodos visuales con zoom, pan y conexiones reactivas.
+   - Reemplazo del editor de código por **`Avalonia.AvaloniaEdit 12.0.0`**.
+2. **Conversión y Modernización de Vistas (`.axaml`)**:
+   - Migración de todas las vistas principales y componentes: `MainWindow`, `EditorView`, `ControlBarView`, `StatusBarView`, `LogConsoleView`, `NodeInspectorView`, `ToolboxView`, `NodeCardView`, `ThemeCustomizerWindow`, `VariablePickerWindow`, `VirtualFileSystemExplorerWindow`, etc.
+   - Preservación íntegra de los 4 temas visuales (`DarkTheme`, `LightTheme`, `CyberTheme`, `PastelTheme`) con soporte de personalización en caliente vía `ThemeResourceApplier` y `CustomThemeService`.
+   - Conversión de todos los converters de valores a `Avalonia.Data.Converters.IValueConverter`.
+   - Desacoplamiento del Clipboard mediante `Avalonia.Input.Platform.IClipboard` y diálogos mediante `TopLevel.StorageProvider`.
+3. **Validación Exhaustiva y Suite de Tests**:
+   - Compilación limpia de los 14 proyectos en `FileFlow.slnx`: **0 Advertencias, 0 Errores**.
+   - Suite completa de pruebas unitarias (`.\test.ps1` / `dotnet test`): **833 / 833 superadas al 100% (0 errores, 0 fallos, 0 omitidas)**.
+
+---
+
 ## [2026-09-14] - Reversión de Migración a Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)
 
 ### 🎯 Objetivos y Alcance

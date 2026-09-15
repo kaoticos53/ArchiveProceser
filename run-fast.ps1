@@ -7,12 +7,12 @@ param (
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
 
-$exePath = Join-Path $scriptDir "FileFlow.App\bin\$Configuration\net9.0-windows\FileFlow.App.exe"
+$exePath = Join-Path $scriptDir "FileFlow.App\bin\$Configuration\net9.0\FileFlow.App.exe"
 
 # Si no se encuentra en la configuracion solicitada, probar la otra configuracion (Debug/Release)
 if (-not (Test-Path $exePath)) {
     $fallbackConfig = if ($Configuration -eq "Debug") { "Release" } else { "Debug" }
-    $fallbackPath = Join-Path $scriptDir "FileFlow.App\bin\$fallbackConfig\net9.0-windows\FileFlow.App.exe"
+    $fallbackPath = Join-Path $scriptDir "FileFlow.App\bin\$fallbackConfig\net9.0\FileFlow.App.exe"
     if (Test-Path $fallbackPath) {
         $exePath = $fallbackPath
         $Configuration = $fallbackConfig

@@ -42,9 +42,9 @@ public class ModularRefactoringComponentsTests
 
         // Assert
         resources.Should().NotBeNull();
-        resources.Contains("AppBackgroundBrush").Should().BeTrue();
-        resources.Contains("AccentPrimaryBrush").Should().BeTrue();
-        resources.Contains("AppFontFamily").Should().BeTrue();
+        resources.ContainsKey("AppBackgroundBrush").Should().BeTrue();
+        resources.ContainsKey("AccentPrimaryBrush").Should().BeTrue();
+        resources.ContainsKey("AppFontFamily").Should().BeTrue();
     }
 
     [Fact]

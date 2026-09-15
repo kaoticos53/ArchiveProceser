@@ -176,8 +176,8 @@ public static class SemanticEmbeddingEngine
                     string englishText = TranslateConceptToEnglish(text);
                     long[] clipTokens = TokenizeForClip(englishText);
 
-                    var inputIdsTensor = new DenseTensor<long>(clipTokens, [1, clipTokens.Length]);
-                    var maskTensor = new DenseTensor<long>(Enumerable.Repeat(1L, clipTokens.Length).ToArray(), [1, clipTokens.Length]);
+                    var inputIdsTensor = new DenseTensor<long>(clipTokens, [1, 77]);
+                    var maskTensor = new DenseTensor<long>(clipTokens.Select(t => t != 0L ? 1L : 0L).ToArray(), [1, 77]);
                     var zeroPixels = new DenseTensor<float>([1, 3, 224, 224]);
 
                     var inputs = new List<NamedOnnxValue>
@@ -224,26 +224,11 @@ public static class SemanticEmbeddingEngine
 
     private static List<NamedOnnxValue> BuildTextInputs(InferenceSession session, long[] tokens)
     {
-        int seqLen = Math.Max(1, tokens.Length);
-        long[] normalizedTokens = tokens.Length == seqLen ? tokens : tokens.Take(seqLen).ToArray();
-        var attentionMask = Enumerable.Repeat(1L, seqLen).ToArray();
-        var tokenTypeIds = new long[seqLen];
-
-        string primaryInputName = session.InputNames.FirstOrDefault() ?? "input_ids";
-        var primaryInputTensor = new DenseTensor<long>(normalizedTokens, [1, seqLen]);
-        var inputs = new List<NamedOnnxValue>
-        {
-            NamedOnnxValue.CreateFromTensor(primaryInputName, primaryInputTensor)
-        };
+        var inputs = new List<NamedOnnxValue>();
 
         foreach (var kv in session.InputMetadata)
         {
             string name = kv.Key;
-            if (name.Equals(primaryInputName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
             if (name.Contains(".weight", StringComparison.OrdinalIgnoreCase) ||
                 name.Contains(".bias", StringComparison.OrdinalIgnoreCase) ||
                 name.Contains("running_mean", StringComparison.OrdinalIgnoreCase) ||
@@ -253,26 +238,37 @@ public static class SemanticEmbeddingEngine
                 continue;
             }
 
+            int[] dims = kv.Value.Dimensions;
+            int batch = dims.Length > 0 && dims[0] > 0 ? dims[0] : 1;
+            int seqLen = dims.Length > 1 && dims[1] > 0 ? dims[1] : Math.Max(1, tokens.Length);
+
             if (kv.Value.ElementType == typeof(long))
             {
-                long[] values = name.Contains("attention_mask", StringComparison.OrdinalIgnoreCase)
-                    ? attentionMask
+                long[] rawValues = name.Contains("attention_mask", StringComparison.OrdinalIgnoreCase)
+                    ? Enumerable.Repeat(1L, seqLen).ToArray()
                     : name.Contains("token_type", StringComparison.OrdinalIgnoreCase)
-                        ? tokenTypeIds
-                        : normalizedTokens;
+                        ? new long[seqLen]
+                        : tokens.Take(seqLen).Concat(Enumerable.Repeat(0L, Math.Max(0, seqLen - tokens.Length))).ToArray();
 
-                var tensor = new DenseTensor<long>(values, [1, seqLen]);
+                var tensor = new DenseTensor<long>(rawValues, [batch, seqLen]);
                 inputs.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
-                continue;
             }
-
-            if (kv.Value.ElementType == typeof(float) &&
-                (name.Contains("pixel", StringComparison.OrdinalIgnoreCase) ||
-                 name.Contains("image", StringComparison.OrdinalIgnoreCase) ||
-                 name.Contains("vision", StringComparison.OrdinalIgnoreCase)))
+            else if (kv.Value.ElementType == typeof(int))
             {
-                int[] dims = kv.Value.Dimensions;
-                int batch = dims.Length > 0 && dims[0] > 0 ? dims[0] : 1;
+                int[] rawValues = name.Contains("attention_mask", StringComparison.OrdinalIgnoreCase)
+                    ? Enumerable.Repeat(1, seqLen).ToArray()
+                    : name.Contains("token_type", StringComparison.OrdinalIgnoreCase)
+                        ? new int[seqLen]
+                        : tokens.Take(seqLen).Select(t => (int)t).Concat(Enumerable.Repeat(0, Math.Max(0, seqLen - tokens.Length))).ToArray();
+
+                var tensor = new DenseTensor<int>(rawValues, [batch, seqLen]);
+                inputs.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
+            }
+            else if (kv.Value.ElementType == typeof(float) &&
+                     (name.Contains("pixel", StringComparison.OrdinalIgnoreCase) ||
+                      name.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+                      name.Contains("vision", StringComparison.OrdinalIgnoreCase)))
+            {
                 int channels = dims.Length > 1 && dims[1] > 0 ? dims[1] : 3;
                 int height = dims.Length > 2 && dims[2] > 0 ? dims[2] : 224;
                 int width = dims.Length > 3 && dims[3] > 0 ? dims[3] : 224;
@@ -314,8 +310,15 @@ public static class SemanticEmbeddingEngine
                 // Caso 1: Modelo CLIP multimodal (requiere pixel_values e inputs auxiliares de texto)
                 if (session.InputMetadata.ContainsKey("pixel_values") && session.InputMetadata.ContainsKey("input_ids"))
                 {
-                    var dummyTokens = new DenseTensor<long>(new long[] { 49406, 49407 }, [1, 2]);
-                    var dummyMask = new DenseTensor<long>(new long[] { 1, 1 }, [1, 2]);
+                    var dummyTokenArray = new long[77];
+                    dummyTokenArray[0] = 49406L;
+                    dummyTokenArray[1] = 49407L;
+                    var dummyMaskArray = new long[77];
+                    dummyMaskArray[0] = 1L;
+                    dummyMaskArray[1] = 1L;
+
+                    var dummyTokens = new DenseTensor<long>(dummyTokenArray, [1, 77]);
+                    var dummyMask = new DenseTensor<long>(dummyMaskArray, [1, 77]);
 
                     var inputs = new List<NamedOnnxValue>
                     {
@@ -434,7 +437,11 @@ public static class SemanticEmbeddingEngine
         }
 
         tokens.Add(Eot);
-        return tokens.ToArray();
+        while (tokens.Count < 77)
+        {
+            tokens.Add(0L);
+        }
+        return tokens.Take(77).ToArray();
     }
 
     private static readonly Dictionary<string, long[]> ClipVocab = new(StringComparer.OrdinalIgnoreCase)

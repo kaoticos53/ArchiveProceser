@@ -1,5 +1,6 @@
 using System.IO;
-using System.Windows;
+using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using FileFlow.Core.Telemetry;
 
 namespace FileFlow.App.Services;
@@ -14,19 +15,30 @@ public static class LogExportService
     /// </summary>
     public static async Task<string?> ExportLogsWithDialogAsync(IDialogService? dialogService = null)
     {
-        var dialog = new Microsoft.Win32.SaveFileDialog
-        {
-            Filter = "Archivos de Log (*.log;*.txt)|*.log;*.txt|Todos los archivos (*.*)|*.*",
-            DefaultExt = ".log",
-            FileName = $"fileflow_execution_{DateTime.Now:yyyyMMdd_HHmmss}.log"
-        };
-
-        if (dialog.ShowDialog() != true)
+        var topLevel = App.MainWindow != null ? TopLevel.GetTopLevel(App.MainWindow) : null;
+        if (topLevel == null)
         {
             return null;
         }
 
-        string targetPath = dialog.FileName;
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Exportar Registros de Logs",
+            SuggestedFileName = $"fileflow_execution_{DateTime.Now:yyyyMMdd_HHmmss}.log",
+            DefaultExtension = "log",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Archivos de Log (*.log;*.txt)") { Patterns = ["*.log", "*.txt"] },
+                new FilePickerFileType("Todos los archivos (*.*)") { Patterns = ["*.*"] }
+            ]
+        });
+
+        if (file == null)
+        {
+            return null;
+        }
+
+        string targetPath = file.Path.LocalPath;
         try
         {
             await Task.Run(async () =>

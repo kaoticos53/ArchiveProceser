@@ -1,6 +1,6 @@
 using System.IO;
-using System.Windows;
-using System.Windows.Media;
+using Avalonia;
+using Avalonia.Media;
 using FileFlow.App.Services;
 using FileFlow.App.Themes;
 using FluentAssertions;
@@ -156,15 +156,14 @@ public class CustomThemeServiceTests : IDisposable
 
         // Assert
         dict.Should().NotBeNull();
-        dict.Contains("AppBackgroundBrush").Should().BeTrue();
+        dict.ContainsKey("AppBackgroundBrush").Should().BeTrue();
         dict["AppBackgroundBrush"].Should().BeOfType<SolidColorBrush>();
 
-        dict.Contains("AccentPrimaryBrush").Should().BeTrue();
-        dict.Contains("ConnectionWireBrush").Should().BeTrue();
+        dict.ContainsKey("AccentPrimaryBrush").Should().BeTrue();
+        dict.ContainsKey("ConnectionWireBrush").Should().BeTrue();
         dict["ConnectionWireBrush"].Should().BeOfType<LinearGradientBrush>();
 
-        dict.Contains("NodeShadowEffect").Should().BeTrue();
-        dict.Contains("AppFontFamily").Should().BeTrue();
+        dict.ContainsKey("AppFontFamily").Should().BeTrue();
         dict["AppFontSize"].Should().Be(13.5);
         dict["AppCornerRadius"].Should().Be(new CornerRadius(8.0));
     }

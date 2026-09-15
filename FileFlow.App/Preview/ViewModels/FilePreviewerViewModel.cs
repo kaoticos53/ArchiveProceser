@@ -1,10 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
-using System.Windows;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Preview.Core;
+using FileFlow.App.Services;
 
 namespace FileFlow.App.Preview.ViewModels;
 
@@ -16,7 +20,7 @@ public partial class FilePreviewerViewModel : ObservableObject
     private FilePreviewContext? _currentContext;
 
     [ObservableProperty]
-    private FrameworkElement? _activeVisualElement;
+    private Control? _activeVisualElement;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -151,11 +155,11 @@ public partial class FilePreviewerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void CopyPathToClipboard()
+    public async Task CopyPathToClipboardAsync()
     {
         if (CurrentContext != null)
         {
-            Clipboard.SetText(CurrentContext.CurrentPath);
+            await AvaloniaClipboardService.Instance.SetTextAsync(CurrentContext.CurrentPath);
         }
     }
 }

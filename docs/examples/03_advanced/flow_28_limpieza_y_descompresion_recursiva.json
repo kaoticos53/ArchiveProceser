@@ -17,8 +17,7 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "RecursiveUnpack": true,
-        "CleanWrapper": true
+        "CleanRedundantFolder": true
       }
     },
     {

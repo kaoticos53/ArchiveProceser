@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Windows;
+using Avalonia.Threading;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Telemetry;
@@ -102,12 +102,25 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
                 }
             }
 
-            if (Application.Current != null)
+            void NotifyItem()
             {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
+            }
+
+            try
+            {
+                if (Dispatcher.UIThread.CheckAccess())
                 {
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
-                }, System.Windows.Threading.DispatcherPriority.Background);
+                    NotifyItem();
+                }
+                else
+                {
+                    Dispatcher.UIThread.Post(NotifyItem, DispatcherPriority.Background);
+                }
+            }
+            catch
+            {
+                NotifyItem();
             }
         }
         catch
@@ -131,14 +144,27 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
             _count = total;
         }
 
-        if (Application.Current != null)
+        void Notify()
         {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
+            CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
+
+        try
+        {
+            if (Dispatcher.UIThread.CheckAccess())
             {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
-                CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-            });
+                Notify();
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(Notify);
+            }
+        }
+        catch
+        {
+            Notify();
         }
     }
 
@@ -154,13 +180,29 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
             }
         }
 
-        if (changed && Application.Current != null)
+        if (changed)
         {
-            Application.Current.Dispatcher.InvokeAsync(() =>
+            void NotifyCount()
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
-            }, System.Windows.Threading.DispatcherPriority.Background);
+            }
+
+            try
+            {
+                if (Dispatcher.UIThread.CheckAccess())
+                {
+                    NotifyCount();
+                }
+                else
+                {
+                    Dispatcher.UIThread.Post(NotifyCount, DispatcherPriority.Background);
+                }
+            }
+            catch
+            {
+                NotifyCount();
+            }
         }
     }
 

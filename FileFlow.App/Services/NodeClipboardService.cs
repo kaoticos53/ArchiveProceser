@@ -1,5 +1,6 @@
 using System.Text.Json;
-using System.Windows;
+using Avalonia;
+using Avalonia.Input.Platform;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
@@ -153,17 +154,10 @@ public sealed class NodeClipboardService : INodeClipboardService
             string json = JsonSerializer.Serialize(package, new JsonSerializerOptions { WriteIndented = false });
             string clipboardPayload = $"{ClipboardHeaderPrefix}\n{json}";
 
-            for (int attempt = 0; attempt < 3; attempt++)
+            var topLevel = App.MainWindow != null ? Avalonia.Controls.TopLevel.GetTopLevel(App.MainWindow) : null;
+            if (topLevel?.Clipboard != null)
             {
-                try
-                {
-                    Clipboard.SetText(clipboardPayload);
-                    break;
-                }
-                catch
-                {
-                    Thread.Sleep(20);
-                }
+                _ = topLevel.Clipboard.SetTextAsync(clipboardPayload);
             }
         }
         catch (Exception ex)
@@ -184,9 +178,10 @@ public sealed class NodeClipboardService : INodeClipboardService
 
         try
         {
-            if (Clipboard.ContainsText())
+            var topLevel = App.MainWindow != null ? Avalonia.Controls.TopLevel.GetTopLevel(App.MainWindow) : null;
+            if (topLevel?.Clipboard != null)
             {
-                string text = Clipboard.GetText();
+                string? text = topLevel.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
                 if (!string.IsNullOrWhiteSpace(text) && text.Contains(ClipboardHeaderPrefix))
                 {
                     return true;
@@ -354,9 +349,10 @@ public sealed class NodeClipboardService : INodeClipboardService
     {
         try
         {
-            if (Clipboard.ContainsText())
+            var topLevel = App.MainWindow != null ? Avalonia.Controls.TopLevel.GetTopLevel(App.MainWindow) : null;
+            if (topLevel?.Clipboard != null)
             {
-                string text = Clipboard.GetText();
+                string? text = topLevel.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
                 if (!string.IsNullOrWhiteSpace(text) && text.Contains(ClipboardHeaderPrefix))
                 {
                     int index = text.IndexOf(ClipboardHeaderPrefix, StringComparison.Ordinal);

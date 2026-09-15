@@ -1,4 +1,4 @@
-using System.Windows.Media;
+using Avalonia.Media;
 
 namespace FileFlow.App.Services;
 
@@ -22,7 +22,7 @@ public static class NodeCategoryStyling
     {
         try
         {
-            var color = (Color)ColorConverter.ConvertFromString(accentHex);
+            var color = Color.Parse(accentHex);
             byte r = (byte)(color.R * 0.25);
             byte g = (byte)(color.G * 0.25);
             byte b = (byte)(color.B * 0.25);

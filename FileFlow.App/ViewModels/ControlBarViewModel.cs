@@ -179,7 +179,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     public void OpenWorkflowSettings()
     {
         IsMenuOpen = false;
-        _ = _editorViewModel.OpenWorkflowSettingsAsync();
+        _ = _editorViewModel.OpenWorkflowSettings();
     }
 
     [RelayCommand]

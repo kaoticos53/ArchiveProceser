@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Windows;
+using Avalonia;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Telemetry;

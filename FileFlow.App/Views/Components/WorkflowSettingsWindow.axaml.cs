@@ -24,7 +24,7 @@ public partial class WorkflowSettingsWindow : Window
                 FileFlow.Core.Services.ExternalToolsService.Instance,
                 ThemeManager.Instance,
                 FileFlow.Sdk.Localization.LocalizationManager.Instance,
-                new AvaloniaFileDialogService(),
+                new FileDialogService(),
                 new AvaloniaDialogService(),
                 App.Services?.GetService<AiModelManagerViewModel>() ?? new AiModelManagerViewModel());
 

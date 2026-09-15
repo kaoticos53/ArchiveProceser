@@ -1,0 +1,270 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FileFlow.Plugin.AI.ViewModels"
+        xmlns:management="using:FileFlow.Plugin.AI.Management"
+        xmlns:conv="using:FileFlow.Plugin.AI.UI.Converters"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        x:Class="FileFlow.Plugin.AI.UI.MultimodalVlmConfigWindow"
+        x:DataType="vm:MultimodalVlmConfigViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_WindowTitle], FallbackValue='Configuraci├│n Avanzada de IA Multimodal (VLM)'}"
+        Height="720" Width="1060"
+        MinHeight="580" MinWidth="860"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BgDarkBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+        <!-- 0. Header Card -->
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                    <TextBlock Text="­ƒæü´©Å" FontSize="22" VerticalAlignment="Center" />
+                    <StackPanel>
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_HeaderTitle], FallbackValue='Configuraci├│n de IA Multimodal (Vision-Language)'}"
+                                   FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_HeaderSubtitle], FallbackValue='Administra servidores de inferencia locales y remotos, y gestiona plantillas y directrices de an├ílisis visual.'}"
+                                   FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_BtnSaveAll], FallbackValue='­ƒÆ¥ Guardar Todo'}"
+                            Command="{Binding SaveAllCommand}"
+                            Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                            BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1"
+                            Padding="12,6" />
+                    <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_BtnApplyAndClose], FallbackValue='Ô£ö Aplicar y Cerrar'}"
+                            Command="{Binding ApplyAndCloseCommand}"
+                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF"
+                            FontWeight="SemiBold" Padding="14,6" CornerRadius="4" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 1. Main Workspace TabControl -->
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent" BorderThickness="0">
+            <!-- PESTA├æA 1: PROVEEDORES DE IA -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_TabProviders], FallbackValue='­ƒöî Proveedores de Inferencia'}">
+                <Grid Margin="0,12,0,0" ColumnDefinitions="280,12,*">
+                    <!-- Lista de Proveedores -->
+                    <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="8">
+                        <Grid RowDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_SelectProviderLabel], FallbackValue='Proveedores Disponibles'}"
+                                       FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" Margin="6,4,6,8" />
+
+                            <ListBox Grid.Row="1" ItemsSource="{Binding Providers}" SelectedItem="{Binding SelectedProvider, Mode=TwoWay}"
+                                     Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="management:VlmProviderProfile">
+                                        <Border Padding="8,6" Margin="0,2" CornerRadius="6" Background="{DynamicResource BgSurfaceBrush}">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding EndpointUrl}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1" CornerRadius="4" Padding="4,2" Margin="6,0,0,0" VerticalAlignment="Top"
+                                                        Background="{DynamicResource BgDarkBrush}"
+                                                        IsVisible="{Binding IsBuiltIn}">
+                                                    <TextBlock Text="SISTEMA" FontSize="9.5" FontWeight="Bold" Foreground="#10B981" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- ToolBar de Proveedores -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center" Spacing="6">
+                                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_BtnNewProvider], FallbackValue='Ô×ò Nuevo'}"
+                                        Command="{Binding NewProviderCommand}" Padding="8,5" FontSize="11.5" />
+                                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_BtnDuplicateProvider], FallbackValue='­ƒôï Duplicar'}"
+                                        Command="{Binding DuplicateProviderCommand}" Padding="8,5" FontSize="11.5" />
+                                <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_BtnDeleteProvider], FallbackValue='­ƒùæ´©Å'}"
+                                        Command="{Binding DeleteProviderCommand}" Padding="8,5" FontSize="11.5" Foreground="{DynamicResource AccentErrorBrush}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Detalle del Proveedor Seleccionado -->
+                    <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="14">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="12" IsVisible="{Binding SelectedProvider, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="{Binding SelectedProvider.DisplayName}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}" />
+
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="4">
+                                        <TextBlock Text="Nombre del Perfil:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBox Text="{Binding SelectedProvider.DisplayName, Mode=TwoWay}" Padding="8,6" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="4">
+                                        <TextBlock Text="Identificador / Clave:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBox Text="{Binding SelectedProvider.ProviderId, Mode=TwoWay}" Padding="8,6" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Endpoint URL (Servidor API):" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Text="{Binding SelectedProvider.EndpointUrl, Mode=TwoWay}" Padding="8,6" FontFamily="Cascadia Code, Consolas, monospace" />
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="4">
+                                        <TextBlock Text="Modelo VLM (Vision-Language Model):" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBox Text="{Binding SelectedProvider.ModelName, Mode=TwoWay}" Padding="8,6" FontFamily="Cascadia Code, Consolas, monospace" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding RefreshModelsCommand}" Content="­ƒöì Detectar Modelos" VerticalAlignment="Bottom" Padding="10,6" Margin="6,0,0,0" />
+                                </Grid>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="API Key (Opcional / Tokens Locales):" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Text="{Binding SelectedProvider.ApiKey, Mode=TwoWay}" PasswordChar="●" Padding="8,6" />
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <StackPanel Grid.Column="0" Margin="0,0,4,0" Spacing="4">
+                                        <TextBlock Text="Temperatura:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <NumericUpDown Value="{Binding SelectedProvider.Temperature, Mode=TwoWay}" Minimum="0" Maximum="2" Increment="0.05" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="4,0,4,0" Spacing="4">
+                                        <TextBlock Text="Max Tokens:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <NumericUpDown Value="{Binding SelectedProvider.MaxTokens, Mode=TwoWay}" Minimum="128" Maximum="32768" Increment="128" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="4,0,0,0" Spacing="4">
+                                        <TextBlock Text="Dimensi├│n M├íxima (px):" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <NumericUpDown Value="{Binding SelectedProvider.MaxImageDimension, Mode=TwoWay}" Minimum="512" Maximum="4096" Increment="256" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Conexi├│n y Diagn├│stico -->
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,4">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Button Grid.Column="0" Command="{Binding TestConnectionCommand}" Content="ÔÜí Probar Conexi├│n" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="12,6" />
+                                        <TextBlock Grid.Column="1" Text="{Binding ConnectionTestStatus}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" />
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- PESTA├æA 2: BIBLIOTECA DE PLANTILLAS -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_TabTemplates], FallbackValue='­ƒôï Biblioteca de Plantillas'}">
+                <Grid Margin="0,12,0,0" ColumnDefinitions="280,12,*">
+                    <!-- Lista de Plantillas -->
+                    <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="8">
+                        <Grid RowDefinitions="Auto,*,Auto">
+                            <TextBlock Grid.Row="0" Text="Plantillas de An├ílisis Visual" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" Margin="6,4,6,8" />
+
+                            <ListBox Grid.Row="1" ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate, Mode=TwoWay}"
+                                     Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="management:VlmTemplateDefinition">
+                                        <Border Padding="8,6" Margin="0,2" CornerRadius="6" Background="{DynamicResource BgSurfaceBrush}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Description}" FontSize="10.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center" Spacing="6">
+                                <Button Content="Ô×ò Nueva" Command="{Binding NewTemplateCommand}" Padding="8,5" FontSize="11.5" />
+                                <Button Content="­ƒôï Duplicar" Command="{Binding DuplicateTemplateCommand}" Padding="8,5" FontSize="11.5" />
+                                <Button Content="­ƒùæ´©Å" Command="{Binding DeleteTemplateCommand}" Padding="8,5" FontSize="11.5" Foreground="{DynamicResource AccentErrorBrush}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Detalle de la Plantilla -->
+                    <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="14">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="10" IsVisible="{Binding SelectedTemplate, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="{Binding SelectedTemplate.Name}" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}" />
+
+                                <Grid ColumnDefinitions="*,*">
+                                    <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="4">
+                                        <TextBlock Text="Nombre de la Plantilla:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBox Text="{Binding SelectedTemplate.Name, Mode=TwoWay}" Padding="8,6" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="4">
+                                        <TextBlock Text="Idioma Objetivo:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBox Text="{Binding SelectedTemplate.TargetLanguage, Mode=TwoWay}" Padding="8,6" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Descripci├│n:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Text="{Binding SelectedTemplate.Description, Mode=TwoWay}" Padding="8,6" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Prompt del Sistema (System Prompt):" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Text="{Binding SelectedTemplate.SystemPrompt, Mode=TwoWay}" AcceptsReturn="True" MinHeight="70" Padding="8,6" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11.5" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Prompt de Usuario (User Prompt / Directiva):" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBox Text="{Binding SelectedTemplate.UserPrompt, Mode=TwoWay}" AcceptsReturn="True" MinHeight="80" Padding="8,6" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11.5" />
+                                </StackPanel>
+
+                                <CheckBox Content="Forzar salida en formato JSON estructurado" IsChecked="{Binding SelectedTemplate.ForceJsonOutput, Mode=TwoWay}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- PESTA├æA 3: PROBADOR INTERACTIVO -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_TabTester], FallbackValue='­ƒº¬ Probador Interactivo (1 Ciclo)'}">
+                <Grid Margin="0,12,0,0" ColumnDefinitions="*,12,*">
+                    <!-- Entrada de Prueba -->
+                    <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="14">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Entrada de Imagen de Prueba" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Text="{Binding SampleFilePath, Mode=TwoWay}" PlaceholderText="Ruta de imagen..." Padding="8,6" />
+                                    <Button Grid.Column="1" Command="{Binding SelectSampleFileCommand}" Content="Examinar..." Margin="6,0,0,0" Padding="10,6" />
+                                </Grid>
+
+                                <TextBlock Text="Directiva Adicional / Prompt de Prueba:" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBox Text="{Binding PreviewAdditionalPrompt, Mode=TwoWay}" AcceptsReturn="True" MinHeight="80" Padding="8,6" FontFamily="Cascadia Code, Consolas, monospace" />
+
+                                <Button Command="{Binding RunSampleInferenceCommand}" Content="­ƒÜÇ Ejecutar Prueba (1 Ciclo)" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" FontWeight="Bold" Padding="14,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+
+                                <TextBlock Text="{Binding SampleExecutionStatus}" Foreground="{DynamicResource AccentPrimaryBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Salida de Inferencia -->
+                    <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="14">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Resultado de Inferencia VLM" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBox Text="{Binding SampleRawResponse, Mode=OneWay}" IsReadOnly="True" AcceptsReturn="True" MinHeight="260" Padding="8,6" FontFamily="Cascadia Code, Consolas, monospace" FontSize="11.5" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- 2. Footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close], FallbackValue='Cerrar'}"
+                    Click="CancelButton_Click" Padding="16,6" CornerRadius="4" />
+        </Grid>
+    </Grid>
+</Window>

@@ -1,6 +1,6 @@
 using System.IO;
 using System.Text.Json;
-using System.Windows;
+using Avalonia.Controls;
 using FileFlow.Sdk.Storage;
 using FileFlow.App.Themes;
 
@@ -136,7 +136,7 @@ public class CustomThemeService
     }
 
     /// <summary>
-    /// Genera el diccionario de recursos WPF correspondiente al tema indicado.
+    /// Genera el diccionario de recursos correspondiente al tema indicado.
     /// </summary>
     public static ResourceDictionary BuildResourceDictionary(ThemeDefinition theme)
     {

@@ -17,8 +17,8 @@
       "y": 150,
       "hasBreakpoint": false,
       "parameters": {
-        "DestinationFolder": "{RelativeDir}\\Unpacked",
-        "CleanWrapper": true
+        "OutputDirectory": "{RelativeDir}\\Unpacked",
+        "CleanRedundantFolder": true
       }
     },
     {

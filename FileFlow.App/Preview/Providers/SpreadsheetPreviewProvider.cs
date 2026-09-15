@@ -1,8 +1,13 @@
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
 using FileFlow.App.Preview.Core;
 using MiniExcelLibs;
 
@@ -23,24 +28,24 @@ public class SpreadsheetPreviewProvider : IFilePreviewProvider
         return _supportedExtensions.Contains(context.Extension);
     }
 
-    public async Task<FrameworkElement> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken)
+    public async Task<Control> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken)
     {
-        var rootGrid = new Grid { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#111318")) };
+        var rootGrid = new Grid { Background = new SolidColorBrush(Color.Parse("#111318")) };
         rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         var headerBorder = new Border
         {
-            Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1A1D24")),
+            Background = new SolidColorBrush(Color.Parse("#1A1D24")),
             Padding = new Thickness(12, 8, 12, 8),
-            BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2A2D35")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#2A2D35")),
             BorderThickness = new Thickness(0, 0, 0, 1)
         };
 
         var headerText = new TextBlock
         {
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00E5FF")),
-            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.Parse("#00E5FF")),
+            FontWeight = FontWeight.SemiBold,
             FontSize = 12,
             Text = $"📊 {context.FileName}"
         };
@@ -48,57 +53,33 @@ public class SpreadsheetPreviewProvider : IFilePreviewProvider
         Grid.SetRow(headerBorder, 0);
         rootGrid.Children.Add(headerBorder);
 
-        var dataGrid = new DataGrid
+        var listBox = new ListBox
         {
-            IsReadOnly = true,
-            AutoGenerateColumns = true,
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E1E4EA")),
-            RowBackground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#14161D")),
-            AlternatingRowBackground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#181B22")),
-            GridLinesVisibility = DataGridGridLinesVisibility.All,
-            HorizontalGridLinesBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#23262F")),
-            VerticalGridLinesBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#23262F")),
+            Foreground = new SolidColorBrush(Color.Parse("#E1E4EA")),
             BorderThickness = new Thickness(0),
-            EnableRowVirtualization = true,
-            EnableColumnVirtualization = true,
-            CanUserSortColumns = true,
-            HeadersVisibility = DataGridHeadersVisibility.Column
+            Padding = new Thickness(12)
         };
 
         try
         {
             if (File.Exists(context.CurrentPath))
             {
-                var dataTable = new DataTable();
                 var rows = (await MiniExcel.QueryAsync(context.CurrentPath, useHeaderRow: true).ConfigureAwait(false)).Take(500).ToList();
 
                 if (rows.Count > 0)
                 {
-                    var firstRow = rows[0] as IDictionary<string, object>;
-                    if (firstRow != null)
+                    var lines = new List<string>();
+                    foreach (var rowObj in rows)
                     {
-                        foreach (var colKey in firstRow.Keys)
+                        if (rowObj is IDictionary<string, object> rowDict)
                         {
-                            dataTable.Columns.Add(colKey, typeof(string));
-                        }
-
-                        foreach (var rowObj in rows)
-                        {
-                            if (rowObj is IDictionary<string, object> rowDict)
-                            {
-                                var dr = dataTable.NewRow();
-                                foreach (var (k, v) in rowDict)
-                                {
-                                    dr[k] = v?.ToString() ?? string.Empty;
-                                }
-                                dataTable.Rows.Add(dr);
-                            }
+                            lines.Add(string.Join(" | ", rowDict.Select(kv => $"{kv.Key}: {kv.Value}")));
                         }
                     }
 
-                    dataGrid.ItemsSource = dataTable.DefaultView;
-                    headerText.Text = $"📊 {context.FileName} — {dataTable.Rows.Count} filas cargadas ({dataTable.Columns.Count} columnas)";
+                    listBox.ItemsSource = lines;
+                    headerText.Text = $"📊 {context.FileName} — {lines.Count} filas cargadas";
                 }
             }
         }
@@ -107,8 +88,8 @@ public class SpreadsheetPreviewProvider : IFilePreviewProvider
             headerText.Text = $"⚠️ Error cargando tabla: {ex.Message}";
         }
 
-        Grid.SetRow(dataGrid, 1);
-        rootGrid.Children.Add(dataGrid);
+        Grid.SetRow(listBox, 1);
+        rootGrid.Children.Add(listBox);
 
         return rootGrid;
     }

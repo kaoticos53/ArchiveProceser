@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
+using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -166,13 +167,6 @@ public partial class LogViewModel : ObservableObject
     public void FlushAllPendingLogs()
     {
         if (_isClearingLogs) return;
-
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            _ = Dispatcher.UIThread.InvokeAsync(FlushPendingLogs);
-            return;
-        }
-
         FlushPendingLogs();
     }
 
@@ -330,16 +324,10 @@ public partial class LogViewModel : ObservableObject
         }
     }
 
-    private async Task RunOnUiAsync(Action action)
+    private Task RunOnUiAsync(Action action)
     {
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            await Dispatcher.UIThread.InvokeAsync(action);
-        }
-        else
-        {
-            action();
-        }
+        action();
+        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -364,11 +352,8 @@ public partial class LogViewModel : ObservableObject
 
     public void ReportProgress(double percentage, string statusMessage)
     {
-        Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            ProgressPercentage = percentage;
-            StatusMessage = statusMessage;
-        });
+        ProgressPercentage = percentage;
+        StatusMessage = statusMessage;
     }
 
     [RelayCommand]
@@ -477,10 +462,10 @@ public partial class LogViewModel : ObservableObject
         {
             try
             {
-                var clipboard = App.MainWindow?.Clipboard;
-                if (clipboard != null)
+                var topLevel = App.MainWindow != null ? Avalonia.Controls.TopLevel.GetTopLevel(App.MainWindow) : null;
+                if (topLevel?.Clipboard != null)
                 {
-                    await clipboard.SetTextAsync(text);
+                    await topLevel.Clipboard.SetTextAsync(text);
                 }
             }
             catch { }

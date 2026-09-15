@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
+    <TargetFramework>net9.0</TargetFramework>
     <LangVersion>13</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageReference Include="FluentAvaloniaUI" Version="2.2.0" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
     <Using Include="System.IO" />
   </ItemGroup>

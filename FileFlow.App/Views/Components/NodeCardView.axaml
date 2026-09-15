@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:nodify="using:NodifyM.Avalonia.Controls"
+             xmlns:nodify="using:Nodify.Avalonia.Nodes"
              xmlns:vm="using:FileFlow.App.ViewModels"
              xmlns:sdk="using:FileFlow.Sdk"
              xmlns:loc="using:FileFlow.Sdk.Localization"

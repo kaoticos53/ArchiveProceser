@@ -43,7 +43,7 @@ public class PerformanceStressTests
     {
         // Arrange
         var mockNode = new MockFlowNode();
-        var nodeVm = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new System.Windows.Point(0, 0));
+        var nodeVm = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new Avalonia.Point(0, 0));
 
         // Act - Add 1,000 snapshots (exceeding MaxRecordedSnapshots of 500)
         for (int i = 0; i < 1_000; i++)

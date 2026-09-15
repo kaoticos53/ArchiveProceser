@@ -1,16 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
+    <TargetFramework>net9.0</TargetFramework>
     <LangVersion>13</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
-    <!-- Reduce carpetas de idioma satelite (cs/de/fr/it/ja/ko/pl/pt-BR/ru/tr/zh-Hans/zh-Hant) generadas por WPF/.NET -->
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
     <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
     <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1903;NU1902</WarningsNotAsErrors>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,8 +29,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageReference Include="FluentAvaloniaUI" Version="2.2.0" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageReference Include="Nodify.Avalonia" Version="2.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Nodify" Version="3.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
   </ItemGroup>
@@ -46,11 +50,11 @@
     </PropertyGroup>
     <MakeDir Directories="$(PluginsTargetFolder)" />
     <ItemGroup>
-      <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.FileSystem.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Archives.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Integrations.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Scripting\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.Scripting.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.AI\bin\$(Configuration)\net9.0-windows\FileFlow.Plugin.AI.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0\FileFlow.Plugin.FileSystem.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0\FileFlow.Plugin.Archives.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0\FileFlow.Plugin.Integrations.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Scripting\bin\$(Configuration)\net9.0\FileFlow.Plugin.Scripting.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.AI\bin\$(Configuration)\net9.0\FileFlow.Plugin.AI.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Documents\bin\$(Configuration)\net9.0\FileFlow.Plugin.Documents.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Network\bin\$(Configuration)\net9.0\FileFlow.Plugin.Network.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Data\bin\$(Configuration)\net9.0\FileFlow.Plugin.Data.*" />

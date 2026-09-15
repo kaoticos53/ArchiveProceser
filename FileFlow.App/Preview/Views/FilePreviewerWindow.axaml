@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:controls="clr-namespace:FileFlow.App.Preview.Controls"
+        xmlns:views="clr-namespace:FileFlow.App.Preview.Views"
+        xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+        mc:Ignorable="d"
+        Title="Vista Previa de Archivo — FileFlow Studio" 
+        Height="700" Width="1050" MinWidth="600" MinHeight="450"
+        WindowStartupLocation="CenterOwner"
+        Background="#0B0D14" Foreground="#E1E4EA"
+        x:Class="FileFlow.App.Preview.Views.FilePreviewerWindow">
+
+    <Window.Resources>
+        <views:AddOneConverter x:Key="AddOneConverter" />
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="46" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Barra Superior Flotante Compacta -->
+        <Border Grid.Row="0" Background="#141720" BorderBrush="#202533" BorderThickness="0,0,0,1" Padding="14,0">
+            <Grid>
+                <!-- Navegación Anterior / Siguiente -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Button Content="◀" Command="{Binding NavigatePreviousCommand}" IsEnabled="{Binding CanNavigatePrevious}"
+                            Width="30" Height="28" Margin="0,0,4,0" Cursor="Hand" />
+                    <Button Content="▶" Command="{Binding NavigateNextCommand}" IsEnabled="{Binding CanNavigateNext}"
+                            Width="30" Height="28" Margin="0,0,12,0" Cursor="Hand" />
+                    
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Foreground="#8F95A3" FontSize="12" Text="{Binding CurrentIndex, Converter={StaticResource AddOneConverter}}" />
+                        <TextBlock Foreground="#8F95A3" FontSize="12" Text=" de " />
+                        <TextBlock Foreground="#8F95A3" FontSize="12" Text="{Binding TotalItemsCount}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Título Central -->
+                <TextBlock Text="{Binding CurrentContext.FileName}" Foreground="#00E5FF" FontWeight="Bold" FontSize="14"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="500" />
+
+                <!-- Botón de Cerrar -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="Cerrar" Click="CloseButton_Click" Padding="12,4" Background="#1F2430" Foreground="#E1E4EA" Cursor="Hand" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Contenedor del Previewer Control -->
+        <controls:FilePreviewerControl Grid.Row="1" />
+    </Grid>
+</Window>

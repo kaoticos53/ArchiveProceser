@@ -573,19 +573,30 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
     private bool _canApplyVariables;
 
     [RelayCommand]
-    public void SelectSampleFile()
+    public async Task SelectSampleFileAsync()
     {
         try
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
             {
-                Title = LocalizationManager.Instance.GetString("VlmConfig_SelectSampleFileTitle", "Seleccionar Archivo de Imagen o Documento de Muestra"),
-                Filter = "Archivos de Imagen y Documentos (*.jpg;*.jpeg;*.png;*.webp;*.pdf;*.txt)|*.jpg;*.jpeg;*.png;*.webp;*.pdf;*.txt|Todos los archivos (*.*)|*.*"
-            };
+                var files = await desktop.MainWindow.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+                {
+                    Title = LocalizationManager.Instance.GetString("VlmConfig_SelectSampleFileTitle", "Seleccionar Archivo de Imagen o Documento de Muestra"),
+                    AllowMultiple = false,
+                    FileTypeFilter =
+                    [
+                        new Avalonia.Platform.Storage.FilePickerFileType("Imágenes y Documentos")
+                        {
+                            Patterns = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.pdf", "*.txt"]
+                        },
+                        Avalonia.Platform.Storage.FilePickerFileTypes.All
+                    ]
+                });
 
-            if (dlg.ShowDialog() == true)
-            {
-                SampleFilePath = dlg.FileName;
+                if (files.Count > 0)
+                {
+                    SampleFilePath = files[0].Path.LocalPath;
+                }
             }
         }
         catch

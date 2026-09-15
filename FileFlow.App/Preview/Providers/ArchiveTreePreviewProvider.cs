@@ -1,7 +1,11 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
 using FileFlow.App.Preview.Core;
 using SharpCompress.Archives;
 
@@ -22,24 +26,24 @@ public class ArchiveTreePreviewProvider : IFilePreviewProvider
         return _supportedExtensions.Contains(context.Extension);
     }
 
-    public Task<FrameworkElement> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken)
+    public Task<Control> CreateVisualElementAsync(FilePreviewContext context, CancellationToken cancellationToken)
     {
-        var rootGrid = new Grid { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#111318")) };
+        var rootGrid = new Grid { Background = new SolidColorBrush(Color.Parse("#111318")) };
         rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         var headerBorder = new Border
         {
-            Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1A1D24")),
+            Background = new SolidColorBrush(Color.Parse("#1A1D24")),
             Padding = new Thickness(12, 8, 12, 8),
-            BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2A2D35")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#2A2D35")),
             BorderThickness = new Thickness(0, 0, 0, 1)
         };
 
         var headerText = new TextBlock
         {
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00E5FF")),
-            FontWeight = FontWeights.SemiBold,
+            Foreground = new SolidColorBrush(Color.Parse("#00E5FF")),
+            FontWeight = FontWeight.SemiBold,
             FontSize = 12,
             Text = $"📦 {context.FileName}"
         };
@@ -47,13 +51,15 @@ public class ArchiveTreePreviewProvider : IFilePreviewProvider
         Grid.SetRow(headerBorder, 0);
         rootGrid.Children.Add(headerBorder);
 
-        var treeView = new TreeView
+        var listBox = new ListBox
         {
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E1E4EA")),
+            Foreground = new SolidColorBrush(Color.Parse("#E1E4EA")),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(12)
         };
+
+        var items = new List<string>();
 
         try
         {
@@ -68,13 +74,7 @@ public class ArchiveTreePreviewProvider : IFilePreviewProvider
                     if (entry.IsDirectory) continue;
                     count++;
                     totalUncompressed += entry.Size;
-
-                    var item = new TreeViewItem
-                    {
-                        Header = $"📄 {entry.Key} ({entry.Size / 1024.0:F1} KB)",
-                        Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D0D5DD"))
-                    };
-                    treeView.Items.Add(item);
+                    items.Add($"📄 {entry.Key} ({entry.Size / 1024.0:F1} KB)");
                 }
 
                 headerText.Text = $"📦 {context.FileName} — {count} archivos ({totalUncompressed / 1024.0:F1} KB descomprimidos)";
@@ -85,9 +85,10 @@ public class ArchiveTreePreviewProvider : IFilePreviewProvider
             headerText.Text = $"⚠️ Error leyendo archivo comprimido: {ex.Message}";
         }
 
-        Grid.SetRow(treeView, 1);
-        rootGrid.Children.Add(treeView);
+        listBox.ItemsSource = items;
+        Grid.SetRow(listBox, 1);
+        rootGrid.Children.Add(listBox);
 
-        return Task.FromResult<FrameworkElement>(rootGrid);
+        return Task.FromResult<Control>(rootGrid);
     }
 }

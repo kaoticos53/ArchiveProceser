@@ -40,9 +40,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISystemPerformanceMonitor, SystemPerformanceMonitor>();
         services.AddSingleton<IThemeService>(_ => ThemeManager.Instance);
         services.AddSingleton<IUserPreferencesService>(_ => UserPreferencesService.Instance);
-        services.AddSingleton<IDialogService, WpfDialogService>();
-        services.AddSingleton<IUiDispatcher>(_ => WpfUiDispatcher.Instance);
-        services.AddSingleton<IClipboardService>(_ => WpfClipboardService.Instance);
+        services.AddSingleton<IDialogService, AvaloniaDialogService>();
+        services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
+        services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
         services.AddSingleton<IProcessLauncherService, ProcessLauncherService>();
 
         // 4. ViewModels (Ciclo de vida Singleton en el ámbito de aplicación de escritorio)

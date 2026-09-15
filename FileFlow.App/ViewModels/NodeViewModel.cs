@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Avalonia;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -246,23 +247,11 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     {
         if (_nodeInstance is not IModelLifecycleNode lifecycleNode) return;
 
-        void Action()
-        {
-            IsModelLoaded = lifecycleNode.IsModelLoaded;
-            ModelIdentifier = lifecycleNode.ModelIdentifier;
-            ModelStatusToolTip = IsModelLoaded
-                ? LocalizationManager.Instance.GetString("Node_ModelLoaded_ToolTip", "El modelo de IA está cargado en memoria (RAM/VRAM). Haz clic para descargarlo y liberar memoria.")
-                : LocalizationManager.Instance.GetString("Node_ModelUnloaded_ToolTip", "El modelo de IA no está cargado en memoria. Haz clic para precargarlo en memoria.");
-        }
-
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            Action();
-        }
-        else
-        {
-            Dispatcher.UIThread.InvokeAsync(Action);
-        }
+        IsModelLoaded = lifecycleNode.IsModelLoaded;
+        ModelIdentifier = lifecycleNode.ModelIdentifier;
+        ModelStatusToolTip = IsModelLoaded
+            ? LocalizationManager.Instance.GetString("Node_ModelLoaded_ToolTip", "El modelo de IA está cargado en memoria (RAM/VRAM). Haz clic para descargarlo y liberar memoria.")
+            : LocalizationManager.Instance.GetString("Node_ModelUnloaded_ToolTip", "El modelo de IA no está cargado en memoria. Haz clic para precargarlo en memoria.");
     }
 
     public void UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)

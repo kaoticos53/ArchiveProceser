@@ -113,7 +113,7 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
     {
         _editorViewModel = editorViewModel;
         _dialogService = dialogService ?? (App.Services?.GetService(typeof(IDialogService)) as IDialogService) ?? NullDialogService.Instance;
-        _fileDialogService = fileDialogService ?? (App.Services?.GetService(typeof(IFileDialogService)) as IFileDialogService) ?? new AvaloniaFileDialogService();
+        _fileDialogService = fileDialogService ?? (App.Services?.GetService(typeof(IFileDialogService)) as IFileDialogService) ?? new FileDialogService();
         RefreshMetrics();
     }
 

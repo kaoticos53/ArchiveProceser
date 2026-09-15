@@ -1,5 +1,6 @@
 using System.Globalization;
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
 using FluentAssertions;
 using FileFlow.App.Converters;
 using FileFlow.Sdk;
@@ -49,8 +50,8 @@ public class ValueConvertersExhaustiveTests
         var converter = new InverseBooleanToVisibilityConverter();
 
         // Act & Assert
-        converter.Convert(true, typeof(Visibility), null!, CultureInfo.InvariantCulture).Should().Be(Visibility.Collapsed);
-        converter.Convert(false, typeof(Visibility), null!, CultureInfo.InvariantCulture).Should().Be(Visibility.Visible);
+        converter.Convert(true, typeof(bool), null!, CultureInfo.InvariantCulture).Should().Be(false);
+        converter.Convert(false, typeof(bool), null!, CultureInfo.InvariantCulture).Should().Be(true);
     }
 
     [Fact]
@@ -60,10 +61,10 @@ public class ValueConvertersExhaustiveTests
         var converter = new BooleanToGridLengthConverter { DefaultWidth = 320 };
 
         // Act & Assert
-        var visibleLength = (GridLength)converter.Convert(true, typeof(GridLength), null!, CultureInfo.InvariantCulture);
+        var visibleLength = (GridLength)converter.Convert(true, typeof(GridLength), null!, CultureInfo.InvariantCulture)!;
         visibleLength.Value.Should().Be(320);
 
-        var collapsedLength = (GridLength)converter.Convert(false, typeof(GridLength), null!, CultureInfo.InvariantCulture);
+        var collapsedLength = (GridLength)converter.Convert(false, typeof(GridLength), null!, CultureInfo.InvariantCulture)!;
         collapsedLength.Value.Should().Be(0);
     }
 }

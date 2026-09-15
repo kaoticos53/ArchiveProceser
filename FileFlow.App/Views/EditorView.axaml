@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:nodify="using:NodifyM.Avalonia.Controls"
+             xmlns:nodify="using:Nodify.Avalonia"
+             xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
              xmlns:vm="using:FileFlow.App.ViewModels"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              xmlns:components="using:FileFlow.App.Views.Components"
@@ -12,11 +13,12 @@
         <nodify:NodifyEditor x:Name="NodifyCanvas"
                              ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
+                             Decorators="{Binding CanvasDecorators}"
                              PendingConnection="{Binding PendingConnection}"
-                             SelectedItems="{Binding SelectedNodes}"
-                             Zoom="{Binding ViewportZoom, Mode=TwoWay}"
-                             OffsetX="{Binding ViewportLocation.X, Mode=TwoWay}"
-                             OffsetY="{Binding ViewportLocation.Y, Mode=TwoWay}"
+                             ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
+                             ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
+                             MinViewportZoom="0.2"
+                             MaxViewportZoom="2.5"
                              Background="Transparent">
 
             <!-- Context menu on canvas background -->
@@ -62,26 +64,26 @@
             <!-- Pending Connection Line -->
             <nodify:NodifyEditor.PendingConnectionTemplate>
                 <DataTemplate x:DataType="vm:PendingConnectionViewModel">
-                    <nodify:PendingConnection StartedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
-                                               CompletedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
-                                               Source="{Binding Source.Anchor}"
-                                               Target="{Binding TargetLocation, Mode=TwoWay}"
-                                               Direction="Forward"
-                                               Stroke="{DynamicResource AccentGlowBrush}"
-                                               StrokeThickness="2.5"
-                                               StrokeDashArray="5,3" />
+                    <nodifyConn:PendingConnection StartedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
+                                                CompletedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
+                                                Source="{Binding Source.Anchor}"
+                                                Target="{Binding TargetLocation, Mode=TwoWay}"
+                                                Direction="Forward"
+                                                Stroke="{DynamicResource AccentGlowBrush}"
+                                                StrokeThickness="2.5"
+                                                StrokeDashArray="5,3" />
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
 
             <!-- Connection Wires -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
-                    <nodify:Connection Source="{Binding Source.Anchor}"
-                                       Target="{Binding Target.Anchor}"
-                                       Stroke="{DynamicResource ConnectionWireBrush}"
-                                       StrokeThickness="3"
-                                       Direction="Forward">
-                        <nodify:Connection.ContextMenu>
+                    <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                        Target="{Binding Target.Anchor}"
+                                        Stroke="{DynamicResource ConnectionWireBrush}"
+                                        StrokeThickness="3"
+                                        Direction="Forward">
+                        <nodifyConn:Connection.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
                                           Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
@@ -91,8 +93,8 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
-                        </nodify:Connection.ContextMenu>
-                    </nodify:Connection>
+                        </nodifyConn:Connection.ContextMenu>
+                    </nodifyConn:Connection>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
         </nodify:NodifyEditor>

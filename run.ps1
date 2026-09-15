@@ -28,11 +28,11 @@ if (-not $skipBuild) {
     Write-Host "`n[Modo Rápido] Omitiendo compilación (-NoBuild)..." -ForegroundColor Yellow
 }
 
-$exePath = Join-Path $scriptDir "FileFlow.App\bin\$Configuration\net9.0-windows\FileFlow.App.exe"
+$exePath = Join-Path $scriptDir "FileFlow.App\bin\$Configuration\net9.0\FileFlow.App.exe"
 
 if (-not (Test-Path $exePath)) {
     $fallbackConfig = if ($Configuration -eq "Debug") { "Release" } else { "Debug" }
-    $fallbackPath = Join-Path $scriptDir "FileFlow.App\bin\$fallbackConfig\net9.0-windows\FileFlow.App.exe"
+    $fallbackPath = Join-Path $scriptDir "FileFlow.App\bin\$fallbackConfig\net9.0\FileFlow.App.exe"
     if (Test-Path $fallbackPath) {
         $exePath = $fallbackPath
         $Configuration = $fallbackConfig

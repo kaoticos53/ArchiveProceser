@@ -4,6 +4,7 @@ using System.Linq;
 using System.Resources;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using FileFlow.App.Services;

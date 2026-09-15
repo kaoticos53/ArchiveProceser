@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
-using System.Windows;
-using System.Windows.Threading;
+using Avalonia.Threading;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
@@ -99,7 +98,7 @@ public sealed class WorkflowExecutionCoordinator
 
             _activeDebugSession.NodeStatusChanged += (nodeId, status, details) =>
             {
-                Application.Current?.Dispatcher.InvokeAsync(() =>
+                Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
                     if (node != null)
@@ -121,7 +120,7 @@ public sealed class WorkflowExecutionCoordinator
 
             _activeDebugSession.SnapshotRecorded += (snapshot) =>
             {
-                Application.Current?.Dispatcher.InvokeAsync(() =>
+                Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(snapshot.NodeId, StringComparison.OrdinalIgnoreCase));
                     node?.AddSnapshot(snapshot);
@@ -291,7 +290,7 @@ public sealed class WorkflowExecutionCoordinator
                 }
             }
 
-            Application.Current?.Dispatcher.InvokeAsync(() =>
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 foreach (var node in _editorViewModel.Nodes)
                 {
