@@ -83,8 +83,11 @@ public sealed class RoslynCSharpEngine : IScriptExecutionEngine
                 // LOW-01: Evicción LRU si se supera el límite de caché
                 if (_cachedRunners.Count > MaxCachedScripts)
                 {
-                    var oldest = _cachedRunners.OrderBy(kv => kv.Value.LastUsedTicks).First();
-                    _cachedRunners.TryRemove(oldest.Key, out _);
+                    var oldest = _cachedRunners.OrderBy(kv => kv.Value.LastUsedTicks).FirstOrDefault();
+                    if (!string.IsNullOrEmpty(oldest.Key))
+                    {
+                        _cachedRunners.TryRemove(oldest.Key, out _);
+                    }
                 }
             }
             else

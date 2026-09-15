@@ -3,7 +3,7 @@
                     xmlns:sdk="using:FileFlow.Sdk"
                     xmlns:conv="using:FileFlow.App.Converters"
                     xmlns:loc="using:FileFlow.Sdk.Localization"
-                    xmlns:vm="using:FileFlow.App.ViewModels">
+                    xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App">
 
     <!-- Snapshot Item DataTemplate -->
     <DataTemplate x:Key="SnapshotExpanderTemplate" DataType="sdk:NodeDataSnapshot">

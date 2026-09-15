@@ -13,18 +13,18 @@ public sealed class ThemeDefinition
     public bool IsDark { get; set; } = true;
 
     // --- Paleta de Fondos y Contenedores ---
-    public string AppBackground { get; set; } = "#0D1117";
-    public string BgDark { get; set; } = "#0D1117";
-    public string BgEditor { get; set; } = "#10131B";
-    public string BgCard { get; set; } = "#161B22";
-    public string BgSurface { get; set; } = "#131720";
-    public string BgHeader { get; set; } = "#1A1F29";
-    public string BgHover { get; set; } = "#21262D";
+    public string AppBackground { get; set; } = "#1E1E1E";
+    public string BgDark { get; set; } = "#1E1E1E";
+    public string BgEditor { get; set; } = "#202020";
+    public string BgCard { get; set; } = "#282828";
+    public string BgSurface { get; set; } = "#1E1E1E";
+    public string BgHeader { get; set; } = "#323232";
+    public string BgHover { get; set; } = "#383838";
 
     // --- Colores de Acento y Estados ---
-    public string AccentPrimary { get; set; } = "#6366F1";
-    public string AccentHover { get; set; } = "#4F46E5";
-    public string AccentGlow { get; set; } = "#818CF8";
+    public string AccentPrimary { get; set; } = "#568AF2";
+    public string AccentHover { get; set; } = "#3D72D9";
+    public string AccentGlow { get; set; } = "#709EFF";
     public string AccentSuccess { get; set; } = "#10B981";
     public string AccentWarning { get; set; } = "#F59E0B";
     public string AccentError { get; set; } = "#EF4444";
@@ -32,11 +32,11 @@ public sealed class ThemeDefinition
     public string AccentPurple { get; set; } = "#A855F7";
 
     // --- Textos y Bordes ---
-    public string TextPrimary { get; set; } = "#F0F6FC";
-    public string TextSecondary { get; set; } = "#8B949E";
-    public string BorderDark { get; set; } = "#30363D";
-    public string BorderSubtle { get; set; } = "#21262D";
-    public string GridLine { get; set; } = "#1A202C";
+    public string TextPrimary { get; set; } = "#EAEAEA";
+    public string TextSecondary { get; set; } = "#9E9E9E";
+    public string BorderDark { get; set; } = "#3C3C3C";
+    public string BorderSubtle { get; set; } = "#2D2D2D";
+    public string GridLine { get; set; } = "#282828";
 
     // --- Barras de Desplazamiento ---
     public string ScrollbarThumb { get; set; } = "#384152";

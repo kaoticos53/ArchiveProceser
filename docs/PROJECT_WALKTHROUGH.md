@@ -7,9 +7,153 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 > El registro histórico completo correspondiente a fases anteriores (Fases 1 a 8, Sprints de Agosto 2026 y desarrollos fundacionales) ha sido consolidado y archivado para optimización de contexto en:
 > 📄 [**`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`**](file:///docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md)
 
+## [2026-09-15] - Modernización Integral de Vistas AXAML, Agrupación Ergonómica e i18n
+
+### 🎯 Cambios Implementados
+1. **Estandarización de Temas Dinámicos (`DynamicResource`)**:
+   - **`AboutDialogWindow.axaml`**: Migrados todos los colores estáticos `#HEX` a recursos dinámicos (`BgCardBrush`, `BgSurfaceBrush`, `AccentPrimaryBrush`, `BorderDarkBrush`, etc.), garantizando compatibilidad con todos los temas de la aplicación (Dark, Light, Cyber, Pastel).
+   - **`FilePreviewerControl.axaml` y `ImageCompareSliderControl.axaml`**: Eliminados fondos fijos (`#0B0D14`, `#111318`), integrando `BgEditorBrush`, `BgSurfaceBrush`, `AccentCyanBrush` y soporte i18n para etiquetas de metadatos, insignias y botones de explorador.
+2. **Localización e Internacionalización Completa**:
+   - **`WorkflowMetricsDashboardWindow.axaml`**: Cabeceras de `DataGrid` ("Nodo", "Categoría", "Duración", "Items", "Datos", "% Tiempo", "Estado") y botón de cierre vinculados dinámicamente a `LocalizationManager.Instance`.
+3. **Rediseño Ergonómico de la Barra Superior ([ControlBarView.axaml](file:///FileFlow.App/Views/ControlBarView.axaml))**:
+   - Reorganizados los controles en **3 islas/píldoras semánticas**:
+     - *Isla 1 (Modos)*: Dry Run con indicador LED, Modo Observador y VFS Explorer con badge de archivos.
+     - *Isla 2 (Ciclo de Vida)*: Botones primarios `▶ Ejecutar` / `🐞 Depurar`, controles de paso a paso `⏭` / `▶▶`, y botones de emergencia `⏸` / `⏹`.
+     - *Isla 3 (Herramientas)*: `↶ Rollback` e `🔍 Inspector`.
+4. **Microinteracciones y Polish en [MainWindow.axaml](file:///FileFlow.App/MainWindow.axaml)**:
+   - `GridSplitter` actualizados con cursores dedicados (`SizeWestEast`, `SizeNorthSouth`) y sombras de elevación `BoxShadow="8 0 32 0 #70000000"` para el Drawer de navegación lateral.
+5. **Validación Exhaustiva**:
+   - Suite completa de pruebas ejecutada con éxito: **839 / 839 pruebas superadas al 100% (0 fallos, 0 errores)**.
+
 ---
 
-## [2026-09-15] - Migración Integral Multiplataforma a Avalonia 12 UI + FluentAvaloniaUI (WinUI 3)
+## [2026-09-15] - Rediseño Visual Integral del Lienzo de Nodos (ComfyUI & Blender Studio Edition)
+
+### 🎯 Cambios Implementados
+1. **Rediseño Completo de Tarjetas de Nodo ([NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml))**:
+   - **Formato Compacto por Defecto con Expansión Dinámica**: Las tarjetas de nodo se inician en un formato compacto y elegante (ancho base de 220px) mostrando la cabecera, conectores de entrada y salida, y la telemetría mínima.
+   - **Botón de Expansión/Colapso en Cabecera (`▼` / `▶`)**: Botón interactivo tipo pastilla con icono de engranaje y chevron para desplegar u ocultar el panel de parámetros de configuración y acciones personalizadas en caliente.
+   - **Puertos de Entrada y Salida Justo al Borde Exterior**: Conectores alineados en el contorno exacto de la tarjeta (`Margin="-7,3,0,3"` para entradas a la izquierda y `Margin="0,3,-7,3"` para salidas a la derecha) de modo que el centro geométrico de cada socket (Círculo, Cuadrado, Triángulo, Diamante) se sitúa directamente sobre la línea perimetral exterior del nodo, fiel al estándar visual de ComfyUI y Blender.
+   - **Barra de Acento Superior por Categoría**: Tira de color neón superior integrada (`AccentColor`) en la cabecera con esquinas redondeadas de 6px.
+   - **Soporte de Modelos de IA en Tarjeta**: Botón directo de carga/descarga en memoria (RAM/VRAM) con indicador de estado circular integrado en la cabecera para nodos que gestionan pesos de redes neuronales.
+2. **Widgets y Parámetros Estilo Blender 4.x ([NodeParameterTemplates.axaml](file:///FileFlow.App/Themes/Templates/NodeParameterTemplates.axaml))**:
+   - Campos de texto, autocompletados, sliders numéricos y selectores de ruta encapsulados dentro de un panel inset oscuro (`#16171B`) con borde sutil (`#2D313C`) y botones acoplados `{x}` para inserción de variables en tiempo real.
+   - Botones de acciones personalizadas (`CustomActions`) formateados como pastillas interactivas con esquinas redondeadas.
+3. **Paleta Studio Dark Refinada ([DarkTheme.axaml](file:///FileFlow.App/Themes/DarkTheme.axaml))**:
+   - Nuevos tokens armónicos para el editor de nodos (`BgEditorBrush`: `#13151A`, `BgCardBrush`: `#1C1E24`, `BgHeaderBrush`: `#232630`, `BgSurfaceBrush`: `#16171B`).
+4. **Validación Exhaustiva**:
+   - Suite completa de pruebas ejecutada con éxito: **839 / 839 pruebas superadas al 100% (0 fallos, 0 errores)**.
+
+---
+
+## [2026-09-15] - Animación de Cable en Conexión Pendiente y Modernización UI/UX (Nodify.Playground Style)
+
+### 🎯 Cambios Implementados
+1. **Animación y Renderizado de Conexión Pendiente al Arrastrar Cable ([EditorView.axaml](file:///FileFlow.App/Views/EditorView.axaml) y [PendingConnectionViewModel.cs](file:///FileFlow.App/ViewModels/PendingConnectionViewModel.cs))**:
+   - **Causa Raíz de no visualización**: `PendingConnection` en Nodify.Avalonia enlaza la posición dinámica del cursor mediante `TargetAnchor` (un `Point`) y el conector de origen mediante `SourceAnchor`/`Source`. En la plantilla XAML se estaba enlazando la propiedad `Target` (tipo `Object`) en lugar de `TargetAnchor`, y el valor local de `StrokeThickness` sobreescribía la animación de Avalonia.
+   - **Solución Completa**:
+     - Configurado `TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"` y `SourceAnchor="{Binding Source.Anchor}"` en [EditorView.axaml](file:///FileFlow.App/Views/EditorView.axaml) junto con `EnablePreview="True"`, `EnableSnapping="True"` y `IsVisible="{Binding IsVisible}"`.
+     - Enriquecido [PendingConnectionViewModel.cs](file:///FileFlow.App/ViewModels/PendingConnectionViewModel.cs) con notificación de cambios en `WireColor`, `Target` e `IsVisible`.
+     - Definida la animación en `UserControl.Styles` y `NodifyEditor.Styles` oscilando continuamente `Opacity` (0.55 $\leftrightarrow$ 1.0) y `StrokeThickness` (3.0 $\leftrightarrow$ 4.5) con `Duration="0:0:0.8"`, creando un efecto de respiración y flujo de energía en tiempo real al arrastrar el cable.
+2. **Modernización UI/UX Estilo Blender 4.x / Nodify.Playground**:
+   - **HUD de Telemetría Flotante**: Añadido panel HUD semitransparente superior derecho en el lienzo visual mostrando estadísticas reactivas (`Selected: X / N`, `Connections: C`, `Location: X, Y`, `Zoom: Zx`) con colores neón.
+   - **Sockets Geométricos Tipados**: Nuevas formas de pin en [PortViewModel.cs](file:///FileFlow.App/ViewModels/PortViewModel.cs) y [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml) (cuadrados para archivos, círculos para imágenes, triángulos para hashes y diamantes para colecciones/otros).
+   - **Paleta Studio Dark**: Ajuste refinado de tonalidades oscuras en [DarkTheme.axaml](file:///FileFlow.App/Themes/DarkTheme.axaml) y [ThemeDefinition.cs](file:///FileFlow.App/Themes/ThemeDefinition.cs) inspiradas en Blender 4.x y ComfyUI.
+   - **Barra de Búsqueda con Icono**: Añadido icono de lupa `🔍` y placeholder enriquecido en la caja de búsqueda de nodos de [NodeToolboxView.axaml](file:///FileFlow.App/Views/NodeToolboxView.axaml).
+3. **Validación Exhaustiva**:
+   - Resueltas colisiones de paralelismo en xUnit marcando los tests de `AiModelManager` con `[Collection("AiModelDownloadSequential")]`.
+   - Suite completa de pruebas ejecutada con éxito: **839 / 839 pruebas superadas al 100% (0 fallos, 0 errores)**.
+
+---
+
+## [2026-09-15] - Corrección de Conexiones por Arrastre (ValueTuple Handling) y Menú Contextual de Nodos
+
+### 🎯 Problemas Identificados y Solucionados
+1. **Creación de Conexiones por Arrastre y Soltado (`FinishConnection` y `StartConnection`)**:
+   - **Causa Raíz**: En `Nodify.Avalonia`, cuando el usuario suelta el cable sobre un conector destino, el evento `PendingConnectionCompletedEvent` pasa un parámetro empaquetado de tipo `ValueTuple<object, object>` conteniendo `(SourcePort, TargetPort)`. Al intentar castear directamente `target is PortViewModel`, la condición fallaba silenciosamente en runtime porque las estructuras genéricas `ValueTuple<T1, T2>` no son covariantes y no coincidían con `PortViewModel`.
+   - **Solución**: En [EditorViewModel.cs](file:///FileFlow.App/ViewModels/EditorViewModel.cs), se implementó el método extractor `ExtractPortsFromParameter(object? param)` utilizando la interfaz `System.Runtime.CompilerServices.ITuple` (compatible con todas las variantes de tuplas por valor y por referencia de .NET 9). Ahora `StartConnection`, `FinishConnection` y `DisconnectConnector` desempaquetan correctamente tanto puertos individuales como pares `(Source, Target)` o tuplas compuestas, creando la conexión de forma inmediata al soltar el conector.
+2. **Menú Contextual de Tarjetas de Nodo ([NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml))**:
+   - **Causa Raíz**: El menú contextual estaba declarado únicamente a nivel de `<nodify:Node.ContextMenu>`. Al hacer clic derecho sobre los bordes, cabecera o áreas intermedias del nodo, el evento de menú contextual no se activaba en el `UserControl` raíz.
+   - **Solución**: Se elevó la definición del menú contextual al nivel superior `<UserControl.ContextMenu>` en [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml), permitiendo abrir el menú contextual con clic derecho sobre cualquier parte de la tarjeta del nodo (inspeccionar, renombrar, pausar, alternar logs, copiar, cortar, duplicar, cambiar color y eliminar).
+3. **Validación Exhaustiva**:
+   - Creada la prueba unitaria `NodifyConnectionCommands_ShouldHandleValueTuplesAndDirectPorts` en [EditorViewLayoutTests.cs](file:///FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs) cubriendo el ciclo completo de creación, finalización mediante tuplas y desconexión.
+   - Suite completa de 839 pruebas pasando al 100%: **839 / 839 superadas (0 fallos, 0 errores)**.
+
+---
+
+## [2026-09-15] - Estilizado Visual de Nodos y Conexiones Estilo ComfyUI (Canvas, Sockets y Splines)
+
+### 🎯 Cambios Visuales y Arquitectura de Estilos
+1. **Conexiones y Cables Estilo ComfyUI / LiteGraph**:
+   - En [EditorView.axaml](file:///FileFlow.App/Views/EditorView.axaml): Se implementaron cables de conexión Bézier suaves con `StrokeThickness="3.5"`, `Spacing="45"` y color dinámico enlazado a `Stroke="{Binding WireColor}"`.
+   - En [ConnectionViewModel.cs](file:///FileFlow.App/ViewModels/ConnectionViewModel.cs) y [PendingConnectionViewModel.cs](file:///FileFlow.App/ViewModels/PendingConnectionViewModel.cs): Se implementó la propiedad reactiva `WireColor` que refleja fielmente el color del tipo de dato del puerto de origen (`Source.PortColor`), permitiendo distinguir visualmente flujos de imágenes, metadatos, archivos, hashes, colecciones y números idéntico a ComfyUI.
+2. **Pines y Sockets Circulares con Estado Conectado / Desconectado**:
+   - En [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml): Se rediseñaron los pines de entrada y salida (`NodeInput` y `NodeOutput`) como sockets circulares de 14x14px que sobresalen del borde de la tarjeta con `Margin="-7,3,0,3"` y `Margin="0,3,-7,3"`.
+   - En [PortViewModel.cs](file:///FileFlow.App/ViewModels/PortViewModel.cs): Se configuraron `SocketFillColor` y `SocketBorderColor` de modo que los sockets libres se muestran como anillos huecos con borde coloreado (`#181A22` relleno, `PortColor` borde) y los sockets activos se llenan sólidamente con el color del tipo de datos (`PortColor` relleno y borde).
+3. **Validación Exhaustiva**:
+   - Suite completa de 838 pruebas pasando al 100%: **838 / 838 superadas (0 fallos, 0 errores)**.
+
+---
+
+## [2026-09-15] - Corrección de Redimensionado de Nodos y Creación de Conexiones en Lienzo Nodify
+
+### 🎯 Problemas Identificados y Solucionados
+1. **Conexiones Interactivas entre Nodos en el Lienzo Nodify**:
+   - **Causa Raíz**: En [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml), tanto `<nodify:NodeInput>` como `<nodify:NodeOutput>` tenían la propiedad `IsConnected="True"` hardcodeada en XAML. En Nodify, cuando un conector tiene `IsConnected = true`, el gesto de arrastre se interpreta como una desconexión en lugar de la creación de una nueva conexión pendiente (`ConnectionStartedCommand`). Además, `<nodify:NodifyEditor>` en [EditorView.axaml](file:///FileFlow.App/Views/EditorView.axaml) no tenía enlazados los comandos de editor `ConnectionStartedCommand`, `ConnectionCompletedCommand` y `DisconnectConnectorCommand`.
+   - **Solución**: Se enlazó reactivamente `IsConnected="{Binding IsConnected, Mode=TwoWay}"` en ambos conectores (consumiendo el estado real de `PortViewModel.IsConnected`), y se configuraron los comandos `ConnectionStartedCommand="{Binding StartConnectionCommand}"`, `ConnectionCompletedCommand="{Binding FinishConnectionCommand}"` y `DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"` en el lienzo `NodifyEditor`.
+2. **Redimensionado de Nodos (`Width`) con Tirador de Redimensión (`Thumb`)**:
+   - **Causa Raíz**: Aunque el tirador `Thumb` de la tarjeta ejecutaba `node.UpdateWidth(...)` correctamente en `ResizeThumb_DragDelta`, ni el contenedor de elemento (`nodify|ItemContainer`), ni el control raíz `NodeCardView`, ni `<nodify:Node>` tenían enlazada la propiedad `Width`. Por ende, el ancho visual del nodo permanecía estático en el lienzo.
+   - **Solución**: Se configuraron enlaces bidireccionales `Width="{Binding Width, Mode=TwoWay}"` tanto en el estilo `nodify|ItemContainer` de [EditorView.axaml](file:///FileFlow.App/Views/EditorView.axaml) como en [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml) (`UserControl` y `<nodify:Node>`), permitiendo redimensionar los nodos de forma fluida arrastrando el tirador inferior derecho (`⇲`).
+3. **Validación Exhaustiva**:
+   - Creados tests unitarios dedicados en [EditorViewLayoutTests.cs](file:///FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs) (`Node_UpdateWidth_ShouldClampAndNotify` y `Ports_ConnectionState_ShouldUpdateCorrectlyOnConnectAndDisconnect`).
+   - Suite completa de 838 pruebas pasando al 100%: **838 / 838 superadas (0 fallos, 0 errores)**.
+
+---
+
+## [2026-09-15] - Auditoría Exhaustiva de Seguridad, Rendimiento, Concurrencia y Robustez (QA & Security Fixes)
+
+### 🎯 Problemas Identificados y Solucionados
+1. **Seguridad e Inyección de Comandos en CLI y Redes**:
+   - En [FfmpegMediaTranscoderService.cs](file:///FileFlow.Core/Services/FfmpegMediaTranscoderService.cs): Reemplazada la concatenación e interpolación de comandos `ProcessStartInfo.Arguments` por `ProcessStartInfo.ArgumentList` con tokenización segura (`TokenizeArguments`), mitigando inyección de comandos arbitrarios en argumentos FFmpeg.
+   - En [HttpTransportStrategy.cs](file:///FileFlow.Plugin.Network/Transports/HttpTransportStrategy.cs): Validación estricta del esquema de URI (`http` / `https`) tanto en descargas (`DownloadAsync`) como en subidas (`UploadAsync`), previniendo SSRF y protocolos no autorizados (`file://`, `ftp://`, etc.).
+   - En [JintJavaScriptEngine.cs](file:///FileFlow.Plugin.Scripting/Engines/JintJavaScriptEngine.cs): Añadido límite de recursión (`LimitRecursion(1000)`) y aislamiento estricto de memoria para proteger contra desbordamientos de pila o bucles recursivos hostiles.
+2. **Concurrencia, Procesos Huérfanos y Sincronización**:
+   - En [WorkflowExecutor.cs](file:///FileFlow.Core/Engine/WorkflowExecutor.cs): Blindado el ajuste dinámico de `MaxDegreeOfParallelism` contra `ObjectDisposedException` mediante comprobación de `_disposed` antes de recrear el `SemaphoreSlim` del worker pool.
+   - En [SevenZipCliRunner.cs](file:///FileFlow.Plugin.Archives/Services/SevenZipCliRunner.cs): Añadido `process.Kill(entireProcessTree: true)` al capturar `OperationCanceledException` durante `WaitForExitAsync`, previniendo procesos zombis de 7-Zip en disco tras cancelaciones de usuario.
+   - En [RoslynCSharpEngine.cs](file:///FileFlow.Plugin.Scripting/Engines/RoslynCSharpEngine.cs): Corregida la política de evicción de caché LRU multihilo usando `FirstOrDefault()` y comprobación de clave no nula en lugar de `.First()`, eliminando `InvalidOperationException` en condiciones de carrera de compilación.
+3. **Manejo Seguro de Excepciones y Ciclo de Vida**:
+   - En [CustomScriptNode.cs](file:///FileFlow.Plugin.Scripting/CustomScriptNode.cs), [SmartUnpackNode.cs](file:///FileFlow.Plugin.Archives/SmartUnpackNode.cs) y [ArchiveFanOutNode.cs](file:///FileFlow.Plugin.Archives/ArchiveFanOutNode.cs): Encapsulados todos los métodos `async void ExecuteCustomAction(...)` en bloques `try { ... } catch (Exception ex) { ... }`, impidiendo que errores de UI o apertura de modales desestabilicen el SynchronizationContext o cuelguen la aplicación.
+   - En [OnnxSessionManager.cs](file:///FileFlow.Plugin.AI/Inference/OnnxSessionManager.cs): Manejo resiliente de inicialización diferida `Lazy<InferenceSession>`, desalojando del `ConcurrentDictionary` cualquier entrada que lance una excepción durante `lazy.Value` para permitir reintentos inmediatos sin reiniciar la app.
+   - En [LogViewModel.cs](file:///FileFlow.App/ViewModels/LogViewModel.cs): Implementada la interfaz `IDisposable` para detener de forma limpia el `DispatcherTimer` de volcado de logs periódicos (`_flushTimer`).
+   - En [SystemPerformanceMonitor.cs](file:///FileFlow.App/Services/SystemPerformanceMonitor.cs): Desvinculado el manejador de eventos `_timer.Tick -= OnTimerTick` en `Dispose()` para prevenir referencias circulares en el GC.
+   - En [OperationReportNode.cs](file:///FileFlow.Plugin.FileSystem/Nodes/Processing/OperationReportNode.cs): Reemplazada la apertura de reportes temporales por comandos multiplataforma (`Process.Start` con `UseShellExecute` en Windows, `open` en macOS, `xdg-open` en Linux).
+   - En [ToolboxViewModel.cs](file:///FileFlow.App/ViewModels/ToolboxViewModel.cs): Notificación reactiva de `PerspectiveButtonText` e `IsPipelineRolePerspective` mediante `[NotifyPropertyChangedFor]` y en `RefreshToolbox()`.
+4. **Validación Exhaustiva**:
+   - Compilación completa de 14 proyectos en .NET 9: **0 Errores, 0 Advertencias**.
+   - Suite completa de pruebas unitarias e integración: **836 / 836 superadas al 100% (0 errores, 0 fallos, 0 omitidas)** en 19.5 segundos.
+
+---
+
+## [2026-09-15] - Corrección de Congelamiento (Freeze) y Renderizado de Nodos en Lienzo Nodify / Drag & Drop
+
+### 🎯 Problemas Identificados y Solucionados
+1. **Error de parseo XAML en KeyGesture `InputGesture="Del"` en [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml)**:
+   - En Avalonia 12, `Key.Delete` es el identificador válido en lugar de `Del` (WPF). Se corrigió a `InputGesture="Delete"`, evitando la excepción `ArgumentException: Requested value 'Del' was not found` al instanciar tarjetas de nodos.
+2. **Auto-encapsulación de Convertidores de Valores en [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml)**:
+   - Se declararon explícitamente todos los converters de valores (`StringEqualsToBooleanConverter`, `BreakpointToBrushConverter`, `LoggingToBrushConverter`, `LoggingToTooltipConverter`, `NodeExecutionStatusToBrushConverter`, `DurationMsToTextConverter`, `BytesToTextConverter`) en `<UserControl.Resources>`, garantizando resolución inmediata sin dependencia de jerarquía visual al compilarse dentro del `DataTemplate` de Nodify.
+   - Conexión de `Anchor="{Binding Anchor, Mode=OneWayToSource}"` en `NodeInput` y `NodeOutput` para sincronizar los pines con los cables de conexión del lienzo.
+3. **Manejo Seguro de Drag & Drop en [NodeToolboxView.axaml.cs](file:///FileFlow.App/Views/NodeToolboxView.axaml.cs) y [NodeToolboxView.axaml](file:///FileFlow.App/Views/NodeToolboxView.axaml)**:
+   - Se eliminó el inicio síncrono/inmediato de `DragDrop.DoDragDropAsync` en el evento `PointerPressed` básico (que causaba bloqueos del hilo de UI e interceptaba clics simples y botones como la estrella de favoritos).
+   - Se implementó detección de umbral de desplazamiento (> 6 píxeles) en `PointerMoved` con retención de `PointerPressedEventArgs`, así como la propiedad computada `FavoriteIcon` (`"★"` / `"☆"`) en `NodeToolboxItem` para evitar conversiones booleanas inválidas en `TextBlock.Text`.
+   - Marcado explícito de `e.Handled = true` en `Editor_DragOver` y `Editor_Drop` en [EditorView.axaml.cs](file:///FileFlow.App/Views/EditorView.axaml.cs).
+4. **Aislamiento de Descargas en [AiModelDownloader.cs](file:///FileFlow.Plugin.AI/Management/AiModelDownloader.cs)**:
+   - Uso de nombres temporales únicos con GUID para evitar colisiones de bloqueo de archivo (`.downloading`) en ejecuciones concurrentes.
+5. **Validación Exhaustiva**:
+   - Suite completa de 836 pruebas unitarias e integración pasando al 100% (**836 / 836 superadas, 0 errores, 0 fallos**).
+
+---
+
+## [2026-09-15] - Migración Integral Multiplataforma a Avalonia 12 UI + FluentAvaloniaUI (WinUI 3) & Corrección de Type Resolution en Bindings
 
 ### 🎯 Objetivos y Alcance
 1. **Migración Completa de la Solución a Avalonia 12 (`net9.0`)**:
@@ -17,15 +161,23 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
    - Adopción de **`Avalonia.Themes.Fluent` (FluentTheme nativo Avalonia 12)** para estilos Fluent v2 / WinUI 3 puros y diálogos modales nativos multiplataforma en `AvaloniaDialogService`.
    - Integración de **`Nodify.Avalonia 2.0.0`** para el renderizado del lienzo DAG de nodos visuales con zoom, pan y conexiones reactivas.
    - Reemplazo del editor de código por **`Avalonia.AvaloniaEdit 12.0.0`**.
-2. **Conversión y Modernización de Vistas (`.axaml`)**:
+2. **Corrección de Resolución de Tipos y Expresiones en ReflectionBinding**:
+   - Corrección de sintaxis no válida de enlace relativo en [NodeCardView.axaml](file:///FileFlow.App/Views/Components/NodeCardView.axaml) reemplazando `$parent[UserControl;1]` por `$parent[views:EditorView].((vm:EditorViewModel)DataContext)` para comandos de copiar, cortar, duplicar y eliminar.
+   - Sustitución de sintaxis `using:...` por `clr-namespace:...;assembly=...` en todas las vistas y templates con enlace dinámico (`NodeToolboxView.axaml`, `EditorView.axaml`, `NodeCardView.axaml`, `GroupCardView.axaml`, `AnnotationCardView.axaml`, `InspectorTemplates.axaml`, `ScriptStudioWindow.axaml`).
+   - Eliminación del atributo obsoleto de WPF `SharedSizeGroup` en [NodeParameterTemplates.axaml](file:///FileFlow.App/Themes/Templates/NodeParameterTemplates.axaml).
+3. **Restauración de Renderizado de Nodos y Drag & Drop en el Lienzo Nodify (`NodifyEditor`)**:
+   - Inclusión obligatoria del tema de controles de Nodify en [App.axaml](file:///FileFlow.App/App.axaml): `<StyleInclude Source="avares://Nodify.Avalonia/Themes/Controls.xaml" />`.
+   - Definición de selectores de estilo en [EditorView.axaml](file:///FileFlow.App/Views/EditorView.axaml) para `nodify|ItemContainer` (enlazando `Location` y `IsSelected` bidireccionalmente en `NodeViewModel`) y `nodify|DecoratorContainer` (enlazando notas adhesivas y grupos).
+   - Corrección del controlador de recepción de arrastre (*drop*) en [EditorView.axaml.cs](file:///FileFlow.App/Views/EditorView.axaml.cs) utilizando la API de Avalonia 12 `e.DataTransfer.TryGetText()` y proyectando las coordenadas de pantalla al espacio de viewport con zoom y desplazamiento del lienzo.
+4. **Conversión y Modernización de Vistas (`.axaml`)**:
    - Migración de todas las vistas principales y componentes: `MainWindow`, `EditorView`, `ControlBarView`, `StatusBarView`, `LogConsoleView`, `NodeInspectorView`, `ToolboxView`, `NodeCardView`, `ThemeCustomizerWindow`, `VariablePickerWindow`, `VirtualFileSystemExplorerWindow`, etc.
    - Preservación íntegra de los 4 temas visuales (`DarkTheme`, `LightTheme`, `CyberTheme`, `PastelTheme`) con soporte de personalización en caliente vía `ThemeResourceApplier` y `CustomThemeService`.
    - Conversión y registro global en `App.axaml` de todos los converters de valores (`DurationMsToTextConverter`, `BytesToTextConverter`, `LoggingToBrushConverter`, `LoggingToTooltipConverter`, `LogLevelToBadgeBackgroundConverter`, etc.).
    - Desacoplamiento del Clipboard mediante `Avalonia.Input.Platform.IClipboard` y diálogos mediante `TopLevel.StorageProvider`.
-3. **Actualización de Scripts de Lanzamiento y Automatización (`run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`)**:
+4. **Actualización de Scripts de Lanzamiento y Automatización (`run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`)**:
    - Corrección de la ruta del ejecutable de salida de `net9.0-windows` a `net9.0` puro multiplataforma.
    - Purga completa de binarios residuales de compilaciones previas mediante `clean.ps1`.
-4. **Validación Exhaustiva y Suite de Tests**:
+5. **Validación Exhaustiva y Suite de Tests**:
    - Compilación limpia de los 14 proyectos en `FileFlow.slnx`: **0 Advertencias, 0 Errores**.
    - Suite completa de pruebas unitarias (`.\test.ps1` / `dotnet test`): **833 / 833 superadas al 100% (0 errores, 0 fallos, 0 omitidas)**.
    - Verificación de arranque en caliente de la ventana principal `MainWindow`.
@@ -593,6 +745,87 @@ Este documento registra cronológicamente los hitos, cambios, mejoras y correcci
 5. **Pruebas y Validación**:
    - Creados 8 tests unitarios exhaustivos en `FileFlow.Tests/Unit/AI/ImageTypeClassifierNodeTests.cs` evaluando documentos sintéticos, recibos térmicos, capturas de pantalla de interfaz, umbrales de confianza y motor directo de análisis.
    - **736 / 736 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)** (+8 nuevos tests).
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-15] - Integración de SplashScreenWindow y Corrección de Crash en Inicialización de Vistas
+
+### 🎯 Diagnóstico y Resolución
+1. **Diagnóstico del Bloqueo en Inicio**:
+   - Inspección del fichero de volcado de excepciones [`%APPDATA%/FileFlow/logs/crash.log`](file:///%APPDATA%/FileFlow/logs/crash.log): se identificó una excepción silenciosa `KeyNotFoundException: Static resource 'BooleanToBrushConverter' not found` lanzada durante la inicialización XAML de [`ControlBarView.axaml`](file:///e:/Users/kaoti/Documentos/GitHub/FileFlow.WT/avalonia/FileFlow.App/Views/ControlBarView.axaml#L55).
+2. **Implementación de `BooleanToBrushConverter`**:
+   - Creado [`BooleanToBrushConverter`](file:///e:/Users/kaoti/Documentos/GitHub/FileFlow.WT/avalonia/FileFlow.App/Converters/BooleanConverters.cs) con soporte para brochas activa (`#10B981`) y reposo (`#64748B`) y registrado globalmente en [`App.axaml`](file:///e:/Users/kaoti/Documentos/GitHub/FileFlow.WT/avalonia/FileFlow.App/App.axaml).
+3. **Activación de `SplashScreenWindow` durante el Arranque**:
+   - Conectado [`SplashScreenWindow.axaml`](file:///e:/Users/kaoti/Documentos/GitHub/FileFlow.WT/avalonia/FileFlow.App/Views/SplashScreenWindow.axaml) en el ciclo de vida de [`App.axaml.cs`](file:///e:/Users/kaoti/Documentos/GitHub/FileFlow.WT/avalonia/FileFlow.App/App.axaml.cs) mostrando el progreso en tiempo real de carga de localización, servicios de inyección de dependencias, preferencias, temas, autodescubrimiento de plugins y nodos DAG, antes de realizar la transición suave a `MainWindow`.
+   - Ajustada la ventana de SplashScreen a `WindowDecorations="None"`, `CanResize="False"` y bordes translúcidos con sombra.
+4. **Validación**:
+   - **839 / 839 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+   - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-15] - Modernización Integral de Vistas AXAML y Sistema Spotlight Quick-Add (Shift+A / Espacio / Doble Clic)
+
+### 🎯 Objetivos y Alcance
+1. **Auditoría e Implementación de Modernización de Vistas AXAML**:
+   - **`AboutDialogWindow.axaml`**: Migración de colores hardcodeados a tokens de recursos dinámicos (`BgCardBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `TextSecondaryBrush`), espaciado simétrico y botones táctiles.
+   - **`FilePreviewerControl.axaml` & `ImageCompareSliderControl.axaml`**: Estilización de controles de previsualización e inspección de imágenes con tokens semánticos Fluent y tipografía Cascadia Code.
+   - **`WorkflowMetricsDashboardWindow.axaml`**: Localización dinámica de todas las cabeceras de columnas del DataGrid mediante `LocalizationManager.Instance` (`RunTimeHeader`, `TotalTimeHeader`, `SuccessCountHeader`, `FailureCountHeader`, `MemoryUsageHeader`).
+   - **`ControlBarView.axaml`**: Reorganización ergonómica en tres islas semánticas bien delimitadas (Modos de Ejecución con indicadores LED, Acciones de Ciclo de Vida en bloques destacados, y Herramientas/Ajustes de Workflow).
+   - **`MainWindow.axaml`**: GridSplitters refinados con cursor táctil y sombras de elevación Fluent en el Drawer lateral.
+
+2. **Sistema Spotlight Quick-Add de Nodos (ComfyUI / Blender Style)**:
+   - **Atajos de Invocación Rápida**: Invocable en el lienzo DAG mediante `Shift+A`, tecla `Espacio`, doble clic en el fondo del lienzo o mediante el menú contextual "Añadir Nodo...".
+   - **Posicionamiento Inteligente**: El nodo creado se sitúa exactamente bajo el cursor del ratón en coordenadas del lienzo teniendo en cuenta el nivel de Zoom y el desplazamiento de la cámara.
+   - **Búsqueda Multicriterio Reactiva**: Filtra en tiempo real por título localizado, categoría, descripción y etiquetas de nodo (`Tags`).
+   - **Navegación con Teclado**: Teclas `↑`/`↓` para ciclar resultados, `Enter` para instanciar en el lienzo y `Esc` para descartar.
+   - **Tarjeta Flotante Estilizada**: Radio de 10px, sombra de elevación `BoxShadow="0 16 48 0 #A0000000"`, badges de categoría e iconos por nodo.
+
+3. **Pruebas y Validación**:
+   - **839 / 839 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
+   - Compilación estricta con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>`: **0 advertencias y 0 errores**.
+
+---
+
+## [2026-09-15] - Rediseño Visual Completo (Blender Dark Studio + ComfyUI + Nodify.Playground) y Correcciones de Interacción en el Editor DAG
+
+### 🎯 Objetivos y Alcance
+1. **Adopción Estética y Funcional de Nodify.Playground**:
+   - **HUD de Telemetría en Tiempo Real**: Superposición translúcida en la base del lienzo DAG (`#9914161C`) con métricas reactivas en colores neón:
+     - Izquierda: `Selected: X / N` (verde neón `#10B981`), `Connections: C` (ámbar neón `#F59E0B`).
+     - Derecha: `Location: X, Y` (naranja neón `#FB923C`), `Zoom: Zx` (azul cian `#06B6D4`) en tipografía monoespaciada.
+   - **Pines y Conectores Geométricos Tipados**: En lugar de círculos homogéneos, cada puerto dibuja una forma geométrica distintiva según la naturaleza de sus datos (`SocketShape` en `PortViewModel.cs`):
+     - 🟣 **Cuadrado**: Archivos, Streams binarios y Colecciones (`FileItemContext`, `byte[]`, `Stream`, `IEnumerable`).
+     - 🔵 **Círculo**: Texto y Cadenas (`string`, tipos genéricos).
+     - 🔺 **Triángulo**: Lógica condicional, booleanos y flujo de control (`bool`).
+     - 🔶 **Rombo**: Valores numéricos y transformaciones de datos (`int`, `long`, `double`, `float`).
+     - Estados interactivos: **anillo / contorno hueco** cuando el puerto está desconectado y **figura sólida rellena** cuando está conectado.
+
+2. **Rediseño Visual de Tarjetas de Nodos (ComfyUI + Blender Studio Aesthetic)**:
+   - Tarjetas compactas con fondo neutro carbón `#282828`, bordes nítidos `#3C3C3C` y radio de curvatura de 6px.
+   - Cabeceras estilizadas (`#323232`) con barra superior de acento según categoría (`Height="3"`), indicador LED de ejecución, y botones de punto de interrupción y registro de traza.
+   - Controles de parámetros embebidos como pastillas oscuras inset (`#1E1E1E`) con bordes sutiles y radio de 4px (`NodeParameterTemplates.axaml`).
+
+3. **Paleta y Tema Global (Blender 4.x Dark Studio)**:
+   - Fondo general de la app `#1E1E1E` y lienzo de edición `#1A1D24` con rejilla técnica `#2A2E3B`.
+   - Barra de control superior estilizada con botones compactos y badges de estado claros.
+   - Panel de herramientas (Toolbox) e Inspector de propiedades con esquinas de 4px y tipografía optimizada.
+   - Sincronización completa de tokens en `DarkTheme.axaml` y `ThemeDefinition.cs`.
+
+4. **Correcciones Funcionales en Interacción DAG**:
+   - Corrección en el desempaquetado de tuplas de conexión (`(Source, Target)`) en `EditorViewModel.cs` mediante `System.Runtime.CompilerServices.ITuple` para permitir arrastrar y soltar conexiones fluidamente en Nodify.Avalonia.
+   - Elevación del menú contextual en las tarjetas de nodos (`NodeCardView.axaml`) para apertura confiable con clic derecho en cualquier punto del nodo.
+   - Cables de conexión con curvas Bézier suaves (`Spacing="45"`, grosor `3.5`) y colores dinámicos por tipo de datos.
+
+5. **Modernización UI/UX y Principios Fluent Design de Windows 11**:
+   - Escala tipográfica unificada con `Segoe UI Variable Text` / `Segoe UI Variable Display` para la interfaz y `Cascadia Code` / `JetBrains Mono` para telemetría y consola.
+   - Sistema de espaciado estándar en rejilla de múltiplos de 4px / 8px (`padding: 4, 8, 12, 16px`).
+   - Barra de búsqueda del Toolbox mejorada con icono de lupa (`🔍`) y controles interactivos consistentes.
+   - Micro-sombras y elevaciones en tooltips y ventanas flotantes de zoom.
+
+6. **Pruebas y Validación**:
+   - **839 / 839 pruebas unitarias e integración superadas al 100% (0 errores, 0 omitidas)**.
    - Compilación con `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` limpia: **0 advertencias y 0 errores**.
 
 ---

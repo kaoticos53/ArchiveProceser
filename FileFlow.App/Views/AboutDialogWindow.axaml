@@ -11,11 +11,11 @@
         ExtendClientAreaToDecorationsHint="True">
 
     <Grid Margin="16">
-        <Border CornerRadius="16"
-                Background="#0F172A"
-                BorderBrush="#334155"
+        <Border CornerRadius="14"
+                Background="{DynamicResource BgCardBrush}"
+                BorderBrush="{DynamicResource BorderDarkBrush}"
                 BorderThickness="1"
-                BoxShadow="0 0 30 0 #406366F1">
+                BoxShadow="0 8 32 0 #50000000">
             <Grid ClipToBounds="True">
                 <!-- Close Button -->
                 <Button Click="Close_Click"
@@ -23,54 +23,55 @@
                         VerticalAlignment="Top"
                         Margin="0,16,18,0"
                         Width="28" Height="28"
-                        Background="#1E293B"
-                        BorderBrush="#475569"
+                        Background="{DynamicResource BgSurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderDarkBrush}"
                         BorderThickness="1"
-                        Foreground="#94A3B8"
+                        Foreground="{DynamicResource TextSecondaryBrush}"
                         Cursor="Hand"
                         CornerRadius="14">
-                    <TextBlock Text="✕" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Text="✕" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
 
                 <Grid Margin="28,24,28,20" RowDefinitions="Auto,Auto,*,Auto">
                     <!-- Header -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="14">
-                        <Border Width="50" Height="50" CornerRadius="12" Background="#6366F1">
-                            <TextBlock Text="⚡" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
+                        <Border Width="48" Height="48" CornerRadius="12" Background="{DynamicResource AccentPrimaryBrush}">
+                            <TextBlock Text="⚡" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
                         </Border>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="FileFlow Studio" FontSize="20" FontWeight="Bold" Foreground="White" />
-                            <TextBlock x:Name="TxtVersion" Text="v1.0.0 (net9.0 - Avalonia 12)" FontSize="12" Foreground="#94A3B8" />
+                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="FileFlow Studio" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock x:Name="TxtVersion" Text="v1.0.0 (net9.0 - Avalonia 12)" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Badges -->
                     <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,8">
-                        <Border Background="#1E293B" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text=".NET 9.0" FontSize="11" Foreground="#38BDF8" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text=".NET 9.0" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
                         </Border>
-                        <Border Background="#1E293B" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text="Avalonia UI 12" FontSize="11" Foreground="#A78BFA" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text="Avalonia UI 12" FontSize="11" Foreground="{DynamicResource AccentPurpleBrush}" FontWeight="SemiBold" />
                         </Border>
-                        <Border Background="#1E293B" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text="Cross-Platform" FontSize="11" Foreground="#4ADE80" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text="Cross-Platform" FontSize="11" Foreground="{DynamicResource AccentSuccessBrush}" FontWeight="SemiBold" />
                         </Border>
-                        <Border Background="#1E293B" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text="DAG Flow Engine" FontSize="11" Foreground="#FBBF24" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text="DAG Flow Engine" FontSize="11" Foreground="{DynamicResource AccentWarningBrush}" FontWeight="SemiBold" />
                         </Border>
                     </WrapPanel>
 
                     <!-- Description -->
                     <TextBlock Grid.Row="2" 
-                               Text="Motor visual avanzado y desacoplado para automatización de procesamiento por lotes, pipelines de archivos, transformaciones IA, OCR, transcodificación y compresión multiformato."
-                               TextWrapping="Wrap" FontSize="12" Foreground="#CBD5E1" LineHeight="18" Margin="0,8,0,0" />
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[About_Description], FallbackValue='Motor visual avanzado y desacoplado para automatización de procesamiento por lotes, pipelines de archivos, transformaciones IA, OCR, transcodificación y compresión multiformato.'}"
+                               TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" LineHeight="18" Margin="0,8,0,0" />
 
                     <!-- Footer -->
-                    <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="© 2026 RGLara. MIT License." FontSize="11" Foreground="#64748B" />
+                            <TextBlock Text="© 2026 RGLara. MIT License." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
-                        <Button Grid.Column="1" Click="Close_Click" Content="Aceptar" Padding="16,6" Background="#6366F1" Foreground="White" CornerRadius="6" Cursor="Hand" />
+                        <Button Grid.Column="1" Click="Close_Click" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Accept], FallbackValue='Aceptar'}" 
+                                Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" CornerRadius="6" Cursor="Hand" FontWeight="SemiBold" />
                     </Grid>
                 </Grid>
             </Grid>

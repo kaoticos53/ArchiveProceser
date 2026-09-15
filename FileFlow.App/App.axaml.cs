@@ -40,8 +40,13 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            SplashScreenWindow? splash = null;
             try
             {
+                splash = new SplashScreenWindow();
+                splash.Show();
+                splash.UpdateStatus("Iniciando localización y servicios...", 15);
+
                 var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
                 LocalizationManager.Instance.RegisterResourceManager(resourceManager);
 
@@ -49,6 +54,7 @@ public partial class App : Application
                 serviceCollection.AddFileFlowServices();
                 Services = serviceCollection.BuildServiceProvider();
 
+                splash.UpdateStatus("Cargando preferencias y tema...", 35);
                 var prefsService = Services.GetRequiredService<IUserPreferencesService>();
                 prefsService.Load();
                 string savedLang = prefsService.Preferences.Language;
@@ -61,6 +67,10 @@ public partial class App : Application
                 {
                     themeService.SetTheme(themeEnum);
                 }
+
+                splash.UpdateStatus("Descubriendo módulos y plugins...", 60);
+                var pluginLoader = Services.GetRequiredService<FileFlow.Core.Plugins.PluginLoader>();
+                splash.SetNodeCount(pluginLoader.DiscoveredNodeTypes.Count);
 
                 if (prefsService.Preferences.CleanStaleTempOnStartup)
                 {
@@ -77,16 +87,22 @@ public partial class App : Application
                     });
                 }
 
+                splash.UpdateStatus("Inicializando lienzo DAG...", 85);
                 var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
                 var mainWindow = new MainWindow
                 {
                     DataContext = mainVm
                 };
 
+                splash.UpdateStatus("¡Listo!", 100);
                 desktop.MainWindow = mainWindow;
+                mainWindow.Show();
+
+                _ = splash.CloseWithFadeAsync();
             }
             catch (Exception ex)
             {
+                splash?.Close();
                 LogCrashToFile(ex);
                 throw;
             }

@@ -16,6 +16,8 @@ public partial class ConnectionViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasItems;
 
+    public string WireColor => Source?.PortColor ?? "#818CF8";
+
     public ConnectionViewModel(PortViewModel source, PortViewModel target)
     {
         _source = source;

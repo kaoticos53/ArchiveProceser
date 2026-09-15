@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Models;
 using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
@@ -32,6 +34,25 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public ObservableCollection<AnnotationViewModel> Annotations { get; } = [];
     public ObservableCollection<GroupViewModel> Groups { get; } = [];
     public ObservableCollection<object> CanvasDecorators { get; } = [];
+
+    // --- Spotlight Quick-Add Search ---
+    [ObservableProperty]
+    private bool _isSpotlightOpen;
+
+    [ObservableProperty]
+    private string _spotlightSearchText = string.Empty;
+
+    [ObservableProperty]
+    private Point _spotlightScreenPosition = new(200, 200);
+
+    [ObservableProperty]
+    private Point _spotlightCanvasPosition = new(200, 200);
+
+    [ObservableProperty]
+    private NodeToolboxItem? _selectedSpotlightItem;
+
+    public ObservableCollection<NodeToolboxItem> FilteredSpotlightItems { get; } = [];
+    private readonly List<NodeToolboxItem> _allSpotlightItems = [];
 
     [ObservableProperty]
     private string _currentWorkflowTitle = "Root Workflow";
@@ -77,6 +98,32 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ViewportLocation = location;
     }
 
+    [ObservableProperty]
+    private bool _showGrid = true;
+
+    [ObservableProperty]
+    private int _selectedNodesCount;
+
+    public int TotalNodesCount => Nodes.Count;
+    public int ConnectionsCount => Connections.Count;
+    public string FormattedLocation => $"{ViewportLocation.X:F1}, {ViewportLocation.Y:F1}";
+    public string FormattedZoom => $"{ViewportZoom:F2}x";
+
+    partial void OnViewportLocationChanged(Point value)
+    {
+        OnPropertyChanged(nameof(FormattedLocation));
+    }
+
+    partial void OnViewportZoomChanged(double value)
+    {
+        OnPropertyChanged(nameof(FormattedZoom));
+    }
+
+    public void UpdateSelectedCount()
+    {
+        SelectedNodesCount = Nodes.Count(n => n.IsSelected);
+    }
+
     private readonly Dictionary<string, List<ConnectionViewModel>> _connectionLookup = new(StringComparer.OrdinalIgnoreCase);
 
     public EditorViewModel(
@@ -104,11 +151,27 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             RebuildConnectionLookup();
             UpdatePortConnectionStates();
             RefreshAllNodeFileVersions();
+            OnPropertyChanged(nameof(ConnectionsCount));
         };
         Nodes.CollectionChanged += (s, e) =>
         {
+            if (e.NewItems != null)
+            {
+                foreach (NodeViewModel node in e.NewItems)
+                {
+                    node.PropertyChanged += (ns, ne) =>
+                    {
+                        if (ne.PropertyName == nameof(NodeViewModel.IsSelected))
+                        {
+                            UpdateSelectedCount();
+                        }
+                    };
+                }
+            }
             UpdatePortConnectionStates();
             RefreshAllNodeFileVersions();
+            OnPropertyChanged(nameof(TotalNodesCount));
+            UpdateSelectedCount();
         };
     }
 
@@ -173,10 +236,29 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Connections.Add(new ConnectionViewModel(outputPort, inputPort));
     }
 
+    private static (PortViewModel? Source, PortViewModel? Target) ExtractPortsFromParameter(object? param)
+    {
+        if (param is PortViewModel singlePort)
+        {
+            return (null, singlePort);
+        }
+
+        if (param is System.Runtime.CompilerServices.ITuple tuple && tuple.Length > 0)
+        {
+            PortViewModel? p1 = tuple[0] as PortViewModel;
+            PortViewModel? p2 = tuple.Length > 1 ? tuple[1] as PortViewModel : null;
+            return (p1, p2);
+        }
+
+        return (null, null);
+    }
+
     [RelayCommand]
     public void StartConnection(object? source)
     {
-        if (source is PortViewModel port)
+        var (p1, p2) = ExtractPortsFromParameter(source);
+        var port = p1 ?? p2;
+        if (port != null)
         {
             PendingConnection = new PendingConnectionViewModel(port);
         }
@@ -185,9 +267,26 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void FinishConnection(object? target)
     {
-        if (PendingConnection?.Source != null && target is PortViewModel targetPort)
+        var (p1, p2) = ExtractPortsFromParameter(target);
+        PortViewModel? sourcePort = p1 ?? PendingConnection?.Source;
+        PortViewModel? targetPort = p2;
+
+        if (p1 != null && p2 == null)
         {
-            CreateConnection(PendingConnection.Source, targetPort);
+            if (PendingConnection?.Source != null && PendingConnection.Source != p1)
+            {
+                sourcePort = PendingConnection.Source;
+                targetPort = p1;
+            }
+            else
+            {
+                targetPort = p1;
+            }
+        }
+
+        if (sourcePort != null && targetPort != null && sourcePort != targetPort)
+        {
+            CreateConnection(sourcePort, targetPort);
         }
         PendingConnection = null;
     }
@@ -201,7 +300,20 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void DisconnectConnector(object? connector)
     {
-        if (connector is PortViewModel port)
+        var (p1, p2) = ExtractPortsFromParameter(connector);
+        var port = p1 ?? p2;
+
+        if (p1 != null && p2 != null)
+        {
+            var specificConn = Connections.FirstOrDefault(c => (c.Source == p1 && c.Target == p2) || (c.Source == p2 && c.Target == p1));
+            if (specificConn != null)
+            {
+                Connections.Remove(specificConn);
+                return;
+            }
+        }
+
+        if (port != null)
         {
             var removeList = Connections.Where(c => c.Source == port || c.Target == port).ToList();
             foreach (var conn in removeList)
@@ -625,6 +737,114 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             {
                 conn.UpdateCount(count);
             }
+        }
+    }
+
+    public void PopulateSpotlightItems()
+    {
+        _allSpotlightItems.Clear();
+        var types = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
+        foreach (var type in types)
+        {
+            string typeName = type.FullName ?? type.Name;
+            IFlowNode? sampleInstance = null;
+            try
+            {
+                sampleInstance = _pluginLoader.CreateNodeInstance(typeName);
+            }
+            catch { }
+
+            var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
+            string name = _loc.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
+            if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Name))
+            {
+                name = sampleInstance.Name;
+            }
+
+            string category = sampleInstance?.Category ?? defAttr?.Category ?? "General";
+            string locCategory = _loc.GetString($"Category_{category}", category);
+
+            string description = _loc.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
+            if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Description))
+            {
+                description = sampleInstance.Description;
+            }
+
+            string icon = NodeIconResolver.GetIconForNodeType(typeName);
+            var role = defAttr?.Role ?? PipelineRole.Transform;
+            var tags = defAttr?.Tags ?? Array.Empty<string>();
+            var subCategory = defAttr?.SubCategory ?? string.Empty;
+            string localizedRole = _loc.GetString($"Role_{role}", role.ToString());
+
+            var item = new NodeToolboxItem(
+                name,
+                locCategory,
+                description,
+                typeName,
+                icon,
+                false,
+                0,
+                role,
+                tags,
+                subCategory,
+                localizedRole
+            );
+            _allSpotlightItems.Add(item);
+        }
+        UpdateFilteredSpotlightItems();
+    }
+
+    partial void OnSpotlightSearchTextChanged(string value)
+    {
+        UpdateFilteredSpotlightItems();
+    }
+
+    private void UpdateFilteredSpotlightItems()
+    {
+        FilteredSpotlightItems.Clear();
+        var query = SpotlightSearchText?.Trim() ?? string.Empty;
+        var matches = string.IsNullOrEmpty(query)
+            ? _allSpotlightItems
+            : _allSpotlightItems.Where(i =>
+                i.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                i.Category.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                i.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (i.Tags != null && i.Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase))));
+
+        foreach (var item in matches.Take(30))
+        {
+            FilteredSpotlightItems.Add(item);
+        }
+
+        SelectedSpotlightItem = FilteredSpotlightItems.FirstOrDefault();
+    }
+
+    [RelayCommand]
+    public void OpenSpotlight(Point? canvasPosition = null)
+    {
+        PopulateSpotlightItems();
+        SpotlightCanvasPosition = canvasPosition ?? new Point(
+            ViewportLocation.X + (ViewportSize.Width > 0 ? (ViewportSize.Width / (2 * (ViewportZoom > 0 ? ViewportZoom : 1.0))) : 200),
+            ViewportLocation.Y + (ViewportSize.Height > 0 ? (ViewportSize.Height / (2 * (ViewportZoom > 0 ? ViewportZoom : 1.0))) : 200)
+        );
+        SpotlightSearchText = string.Empty;
+        IsSpotlightOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseSpotlight()
+    {
+        IsSpotlightOpen = false;
+        SpotlightSearchText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void ConfirmSpotlightSelection()
+    {
+        if (SelectedSpotlightItem != null)
+        {
+            AddNode(SelectedSpotlightItem.TypeName, SpotlightCanvasPosition);
+            CloseSpotlight();
         }
     }
 

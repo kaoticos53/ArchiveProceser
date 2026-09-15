@@ -14,14 +14,84 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 - **Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`), Nullable activado de forma estricta (`<Nullable>enable</Nullable>`).
 - **Framework de UI**: **Avalonia 12.1.2** con **FluentAvaloniaUI 2.2.0 (WinUI 3)**, **Nodify.Avalonia 2.0.0** y **Avalonia.AvaloniaEdit 12.0.0**.
 - **Estado de Compilación**: `dotnet build FileFlow.slnx` $\rightarrow$ **0 Advertencias, 0 Errores**.
-- **Suite de Pruebas**: `.\test.ps1` / `dotnet test` → **833 / 833 Pruebas Pasadas con 100% de Éxito**.
-- **Hitos Activos y Recientes (Septiembre 2026)**:
+  - **94. Integración de SplashScreenWindow y Resolución de Bloqueo en Inicio**:
+    - **Diagnóstico y Corrección de Crash Silencioso**: Identificada y corregida la excepción `KeyNotFoundException: Static resource 'BooleanToBrushConverter' not found` mediante la implementación de `BooleanToBrushConverter` en `BooleanConverters.cs` y su registro en `App.axaml`.
+    - **Pantalla de Carga Fluida (`SplashScreenWindow`)**: Conectada en `App.OnFrameworkInitializationCompleted()` con reporte de progreso secuencial en tiempo real (servicios, localización, preferencias, temas, autodescubrimiento de nodos DAG y módulos) y transición suave a `MainWindow`.
+    - **Diseño Moderno sin Bordes**: Configurado con `WindowDecorations="None"`, `CanResize="False"` y bordes estilizados en modo oscuro.
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (**839/839 superadas, 0 fallos, 0 errores**).
+  - **93. Sistema Spotlight Quick-Add Search de Nodos (ComfyUI / Blender Style)**:
+    - **Invocación Rápida Multimodal**: Invocación del buscador flotante en el lienzo DAG con `Shift+A`, tecla `Espacio`, doble clic en el fondo del lienzo o mediante el menú contextual "Añadir Nodo...".
+    - **Spawn Preciso en Coordenadas de Canvas**: Colocación del nuevo nodo exactamente bajo la posición del ratón considerando el zoom del viewport y el desplazamiento de cámara.
+    - **Filtro Reactivo con Navegación por Teclado**: Búsqueda en tiempo real por título localizado, categoría, descripción y tags; control fluido con flechas `↑`/`↓`, instanciación con `Enter` y descarte con `Esc`.
+    - **Tarjeta Flotante Estilizada**: Radio redondeado de 10px, elevación con sombra profunda, badges de categoría con colores acentuados e iconos por tipo de nodo.
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (**839/839 superadas, 0 fallos, 0 errores**).
+  - **92. Modernización Integral de Vistas AXAML, Agrupación Ergonómica e i18n**:
+    - **Temas Dinámicos Puros (`DynamicResource`)**: Eliminación completa de colores `#HEX` fijos en `AboutDialogWindow.axaml`, `FilePreviewerControl.axaml` e `ImageCompareSliderControl.axaml`, asegurando compatibilidad visual con temas Dark, Light, Cyber y Pastel.
+    - **Internacionalización Completa**: Localización dinámica de cabeceras de DataGrid en `WorkflowMetricsDashboardWindow.axaml` y etiquetas del visor de archivos con `LocalizationManager.Instance`.
+    - **Barra de Control Ergonómica en 3 Islas**: Reorganización de `ControlBarView.axaml` en islas de Modos (con LEDs reactivos), Ciclo de Vida (con botones primarios `▶`/`🐞` y paso a paso) y Herramientas (`↶`/`🔍`).
+    - **Microinteracciones en MainWindow**: `GridSplitter` táctiles con cursores dedicados y sombra de elevación en el Drawer de navegación lateral.
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (**839/839 superadas, 0 fallos, 0 errores**).
+  - **91. Rediseño Visual Integral del Lienzo de Nodos (ComfyUI & Blender Studio Edition)**:
+    - **Tarjetas Compactas con Expansión Dinámica**: Formato base de 220px por defecto mostrando cabecera estilizada, puertos en bordes perimetrales y telemetría mínima. Botón interactivo `▼`/`▶` en la cabecera para expandir/colapsar el panel de parámetros con suavidad.
+    - **Puertos de Entrada y Salida Justo al Borde**: Conectores alineados al contorno perimetral exacto sobresaliendo 7px a la izquierda (`Margin="-7,3,0,3"`) y derecha (`Margin="0,3,-7,3"`) de forma que el centro geométrico del socket (Círculo, Cuadrado, Triángulo, Diamante) descansa exactamente sobre el borde de la tarjeta del nodo.
+    - **Widgets de Parámetros Estilo Blender**: Entradas de texto, sliders numéricos, autocompletado y botones `{x}` encapsulados en panel inset oscuro (`#16171B`) con acciones personalizadas (`CustomActions`) integradas.
+    - **Paleta Studio Dark Refinada**: Nuevos tokens armónicos en `DarkTheme.axaml` (`#13151A`, `#1C1E24`, `#232630`, `#16171B`).
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (**839/839 superadas, 0 fallos, 0 errores**).
+  - **90. Animación de Cable en Conexión Pendiente (Active Dragging) y Modernización UI/UX**:
+    - **Animación y Renderizado en Conexión Pendiente**: Implementada corrección de enlaces XAML en `EditorView.axaml` (`TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"`, `SourceAnchor="{Binding Source.Anchor}"`, `EnablePreview="True"`, `EnableSnapping="True"`) y estilos reactivos en Avalonia UI con `<Style.Animations>` (`Duration="0:0:0.8"`, `IterationCount="Infinite"`, `PlaybackDirection="Alternate"`), modulando dinámicamente `Opacity` (0.55 $\leftrightarrow$ 1.0) y `StrokeThickness` (3.0 $\leftrightarrow$ 4.5) para generar un efecto visible de pulso luminoso y onda de energía en tiempo real mientras se arrastra el cable entre puertos.
+    - **Nodify.Playground & Blender Dark Studio Aesthetic**:
+      - **HUD de Telemetría Flotante**: Superposición translúcida en la base del lienzo DAG (`#9914161C`) con métricas reactivas en colores neón: `Selected: X / N` (verde `#10B981`), `Connections: C` (ámbar `#F59E0B`), `Location: X, Y` (naranja `#FB923C`), `Zoom: Zx` (cian `#06B6D4`).
+      - **Pines y Conectores Geométricos Tipados**: Formas geométricas según tipo de datos (`SocketShape` en `PortViewModel.cs`): Cuadrados (Archivos/Streams/Colecciones), Círculos (Texto/Strings), Triángulos (Booleanos/Lógica), Rombos (Numéricos), con estados hueco (desconectado) y relleno sólido (conectado).
+      - **Búsqueda Rápida**: Caja de búsqueda con icono `🔍` y placeholder interactivo en `NodeToolboxView.axaml`.
+    - **Aislamiento de Tests en Paralelo**: Configurado `[Collection("AiModelDownloadSequential")]` en `AiModelManagerViewModelTests` y `AiModelUrlsConfigViewModelTests` para garantizar aislamiento en pruebas concurrentes de xUnit.
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (**839/839 superadas, 0 fallos, 0 errores**).
+  - **89. Rediseño Visual Completo (Blender Dark Studio + ComfyUI + Nodify.Playground) y Refinamiento del Editor DAG**:
+    - **Nodify.Playground Aesthetic**:
+      - **HUD de Telemetría en Tiempo Real**: Superposición translúcida en la base del lienzo DAG (`#9914161C`) con métricas reactivas en colores neón: `Selected: X / N` (verde `#10B981`), `Connections: C` (ámbar `#F59E0B`), `Location: X, Y` (naranja `#FB923C`), `Zoom: Zx` (cian `#06B6D4`).
+      - **Pines y Conectores Geométricos Tipados**: Formas geométricas según tipo de datos (`SocketShape` en `PortViewModel.cs`): Cuadrados (Archivos/Streams/Colecciones), Círculos (Texto/Strings), Triángulos (Booleanos/Lógica), Rombos (Numéricos), con estados hueco (desconectado) y relleno sólido (conectado).
+    - **Blender Dark Studio**: Aplicación de la paleta en `DarkTheme.axaml` y `ThemeDefinition.cs` (`#1E1E1E`, `#1A1D24`, `#282828`, `#323232`, `#3C3C3C`, `#EAEAEA`).
+    - **ComfyUI**: Esquinas redondeadas de 6px en nodos, cabeceras estilizadas con barra superior de acento según categoría (`Height="3"`), indicadores de ejecución y logging, y parámetros embebidos como pastillas oscuras inset (`#1E1E1E`) con esquinas de 4px (`NodeParameterTemplates.axaml`).
+    - **Conexiones**: Curvas Bézier suaves (`Spacing="45"`, `StrokeThickness="3.5"`) y colores reactivos al tipo de datos.
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (839/839 superadas, 0 errores).
+  - **88. Corrección de Conexiones por Arrastre (ValueTuple Handling) y Menú Contextual de Nodos**:
+    - Conexiones interactivas corregidas en `EditorViewModel.cs`: implementación del extractor polimórfico `ExtractPortsFromParameter` mediante `System.Runtime.CompilerServices.ITuple`, permitiendo a `StartConnection`, `FinishConnection` y `DisconnectConnector` desempaquetar las tuplas `ValueTuple<object, object>` `(Source, Target)` emitidas por `PendingConnectionCompletedEvent` en Nodify.Avalonia.
+    - Menú contextual de nodos elevado a `<UserControl.ContextMenu>` en `NodeCardView.axaml`, permitiendo abrir el menú contextual con clic derecho sobre cualquier parte de la tarjeta.
+    - Suite de 839 pruebas unitarias e integración aprobadas al 100% (839/839 superadas).
+  - **87. Estilizado Visual de Nodos y Conexiones Estilo ComfyUI (Canvas, Sockets y Splines)**:
+    - Cables y conexiones en estilo ComfyUI/LiteGraph: curvas Bézier fluidas con `StrokeThickness="3.5"`, `Spacing="45"` y color dinámico enlazado a `WireColor` según el tipo de datos de salida del puerto (`Source.PortColor`).
+    - Pines circulares en bordes de tarjetas con distinción visual conectado/desconectado: anillo hueco con borde coloreado para puertos libres (`SocketFillColor` = `#181A22`, `SocketBorderColor` = `PortColor`) y círculo sólido relleno para puertos conectados (`SocketFillColor` = `PortColor`).
+    - Suite de 838 pruebas unitarias e integración aprobadas al 100% (838/838 superadas).
+  - **86. Corrección de Redimensionado de Nodos y Creación de Conexiones en Lienzo Nodify**:
+    - Restauración de creación interactiva de conexiones entre pines: eliminación de `IsConnected="True"` hardcodeado en `NodeCardView.axaml` (que causaba que Nodify interpretara el arrastre como desconexión), enlazando `IsConnected="{Binding IsConnected, Mode=TwoWay}"` dinámicamente con `PortViewModel.IsConnected`.
+    - Enlace de comandos de conexión en `NodifyEditor` (`ConnectionStartedCommand="{Binding StartConnectionCommand}"`, `ConnectionCompletedCommand="{Binding FinishConnectionCommand}"`, `DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"`).
+    - Enlace bidireccional de `Width` en `nodify|ItemContainer`, `NodeCardView` y `nodify:Node`, permitiendo redimensionar los nodos libremente mediante el tirador `Thumb` de la esquina inferior derecha.
+    - Tests añadidos en `EditorViewLayoutTests.cs` validando redimensión con clamping de ancho y ciclo de vida de conexión/desconexión de puertos (838/838 superados).
+  - **85. Auditoría Exhaustiva de Seguridad, Rendimiento, Concurrencia y Robustez (QA & Security Fixes)**:
+    - Inyección de comandos CLI mitigada en `FfmpegMediaTranscoderService.cs` utilizando `ProcessStartInfo.ArgumentList` y tokenización segura.
+    - Validación estricta de esquemas de protocolo (`http` / `https`) en `HttpTransportStrategy.cs` previniendo SSRF y vectores de red inseguros.
+    - Prevención de desbordamientos de pila en scripts mediante `LimitRecursion(1000)` en `JintJavaScriptEngine.cs`.
+    - Eliminación de procesos zombis de 7-Zip (`process.Kill(entireProcessTree: true)`) en cancelaciones de usuario en `SevenZipCliRunner.cs`.
+    - Blindaje de concurrencia en `WorkflowExecutor.cs` contra `ObjectDisposedException` al reconfigurar el paralelismo.
+    - Robustez en caché LRU multihilo de scripts C# en `RoslynCSharpEngine.cs` evitando excepciones de colección vacía o concurrente.
+    - Encapsulación segura de `async void ExecuteCustomAction` en `CustomScriptNode.cs`, `SmartUnpackNode.cs` y `ArchiveFanOutNode.cs` para evitar crashes en el SynchronizationContext.
+    - Desalojo automático de excepciones cacheadas por `Lazy<InferenceSession>` en `OnnxSessionManager.cs` permitiendo recuperación inmediata tras fallos.
+    - Liberación determinista de recursos en `LogViewModel.cs` (`IDisposable`), `SystemPerformanceMonitor.cs` (desvinculación de Tick) y lanzador multiplataforma en `OperationReportNode.cs`.
+    - Reactividad y sincronización de perspectiva en `ToolboxViewModel.cs` mediante `[NotifyPropertyChangedFor]` en `CurrentPerspective`.
+    - Validación de 836/836 pruebas unitarias e integración superadas al 100% (0 errores, 0 fallos).
+  - **84. Corrección de Congelamiento (Freeze) y Renderizado de Nodos en Lienzo Nodify / Drag & Drop**:
+    - Corrección de excepción en parsing XAML `InputGesture="Del"` $\rightarrow$ `InputGesture="Delete"` en `NodeCardView.axaml`.
+    - Auto-encapsulación de convertidores de valores en `<UserControl.Resources>` de `NodeCardView.axaml` y restauración de `Anchor` en `NodeInput`/`NodeOutput`.
+    - Detección de arrastre con umbral (> 6px) en `PointerMoved` y retención de eventos en `NodeToolboxView.axaml.cs`, eliminando bloqueos de hilo de UI y permitiendo interacción normal con favoritos y elementos.
+    - Manejo seguro de descargas paralelas temporales en `AiModelDownloader.cs`.
+    - Cobertura con tests en `EditorViewLayoutTests.cs` validando adición de nodos, conexiones, serialización y convertidores.
   - **83. Migración Integral Multiplataforma a Avalonia 12 UI + FluentTheme**:
     - Migración del 100% de la solución a Avalonia 12 y .NET 9 multiplataforma, eliminando cualquier residuo de WPF.
-    - Integración de FluentTheme nativo Avalonia 12 (WinUI 3/Fluent v2), lienzo Nodify.Avalonia 2.0.0 y editor AvaloniaEdit.
+    - Integración de FluentTheme nativo Avalonia 12 (WinUI 3/Fluent v2), lienzo Nodify.Avalonia 2.0.0 (con `<StyleInclude Source="avares://Nodify.Avalonia/Themes/Controls.xaml" />` y `ItemContainer` enlazando `Location` bidireccional) y editor AvaloniaEdit.
+    - Corrección de recepción de Drag & Drop en `EditorView.axaml.cs` con `e.DataTransfer.TryGetText()` y proyección matemática de coordenadas de pantalla a coordenadas del lienzo (ViewportLocation / Zoom).
+    - Corrección de `ArgumentException` y bloqueos en resolución de tipos XAML en tiempo de ejecución: uso de `clr-namespace:...;assembly=...` en lugar de `using:` en vistas con casteo de `DataContext` (`NodeToolboxView`, `EditorView`, `NodeCardView`, `GroupCardView`, `AnnotationCardView`, `InspectorTemplates`, `ScriptStudioWindow`) y reemplazo de sintaxis de enlace `$parent[UserControl;1]` por `$parent[views:EditorView]`.
     - Vistas y temas AXAML adaptados con paridad visual exacta, registro de converters globales en `App.axaml` y cambio dinámico de tema y localización i18n.
     - Actualización de scripts de ejecución (`run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`) a la ruta `net9.0` y purga de binarios WPF antiguos.
-    - Suite de 833 pruebas unitarias e integración aprobadas al 100% y arranque de ventana verificado.
+    - Suite de 836 pruebas unitarias e integración aprobadas al 100% (836/836) y arranque de ventana verificado.
   - **82. Reversión de Avalonia UI y Adaptación Dinámica de Temas en Barra de Estado (WPF)**:
     - Reversión íntegra de la migración a Avalonia; restauración del 100% del entorno nativo WPF (`net9.0-windows`, `Nodify`, XAML estándar).
     - `StatusBarView.xaml` actualizado con enlaces dinámicos (`BgHeaderBrush`, `BgSurfaceBrush`, `BorderDarkBrush`, `TextPrimaryBrush`, `TextSecondaryBrush`). Fondo idéntico al de `ControlBarView.xaml` y texto con contraste óptimo en temas claros y oscuros.

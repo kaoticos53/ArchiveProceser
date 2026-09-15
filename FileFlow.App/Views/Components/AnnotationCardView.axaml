@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              x:Class="FileFlow.App.Views.Components.AnnotationCardView"
              x:DataType="vm:AnnotationViewModel"

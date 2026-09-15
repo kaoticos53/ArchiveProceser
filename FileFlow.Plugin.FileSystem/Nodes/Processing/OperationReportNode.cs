@@ -300,7 +300,19 @@ public sealed class OperationReportNode : IFlowNode
             }
             string tempFile = Path.Combine(tempDir, fileName);
             File.WriteAllText(tempFile, content, System.Text.Encoding.UTF8);
-            Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
+
+            if (OperatingSystem.IsWindows())
+            {
+                Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                Process.Start("open", tempFile);
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                Process.Start("xdg-open", tempFile);
+            }
         }
         catch (Exception ex)
         {

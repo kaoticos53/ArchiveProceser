@@ -121,7 +121,7 @@ public static class AiModelDownloader
             if (!string.IsNullOrWhiteSpace(parentDir))
                 Directory.CreateDirectory(parentDir);
 
-            string tempPath = targetPath + ".downloading";
+            string tempPath = $"{targetPath}.{Guid.NewGuid():N}.downloading";
             var errors = new List<string>();
 
             for (int mirrorIndex = 0; mirrorIndex < urls.Count; mirrorIndex++)

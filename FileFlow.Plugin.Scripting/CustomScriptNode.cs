@@ -124,39 +124,46 @@ await EmitAsync(""Out"");",
 
     public async void ExecuteCustomAction(string actionId, object? context = null)
     {
-        if (actionId.Equals("OpenScriptStudio", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            string language = Parameters.TryGetValue("Language", out var lVal) ? ParameterHelper.GetString(lVal, "CSharp") : "CSharp";
-            string code = Parameters.TryGetValue("ScriptCode", out var cVal) ? ParameterHelper.GetString(cVal, "") : "";
-            string inputsStr = Parameters.TryGetValue("InputPorts", out var inVal) ? ParameterHelper.GetString(inVal, "In") : "In";
-            string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
-
-            var window = new ScriptStudioWindow(language, code, inputsStr, outputsStr);
-            Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
-            if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            if (actionId.Equals("OpenScriptStudio", StringComparison.OrdinalIgnoreCase))
             {
-                owner = desktop.MainWindow;
-            }
+                string language = Parameters.TryGetValue("Language", out var lVal) ? ParameterHelper.GetString(lVal, "CSharp") : "CSharp";
+                string code = Parameters.TryGetValue("ScriptCode", out var cVal) ? ParameterHelper.GetString(cVal, "") : "";
+                string inputsStr = Parameters.TryGetValue("InputPorts", out var inVal) ? ParameterHelper.GetString(inVal, "In") : "In";
+                string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
 
-            bool result = false;
-            if (owner != null)
-            {
-                result = await window.ShowDialog<bool>(owner);
-            }
-            else
-            {
-                window.Show();
-            }
+                var window = new ScriptStudioWindow(language, code, inputsStr, outputsStr);
+                Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
+                if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    owner = desktop.MainWindow;
+                }
 
-            if (result)
-            {
-                Parameters["Language"] = window.SelectedLanguage;
-                Parameters["ScriptCode"] = window.ScriptCode;
-                Parameters["InputPorts"] = window.InputPortsString;
-                Parameters["OutputPorts"] = window.OutputPortsString;
+                bool result = false;
+                if (owner != null)
+                {
+                    result = await window.ShowDialog<bool>(owner);
+                }
+                else
+                {
+                    window.Show();
+                }
 
-                SyncPortsFromParameters();
+                if (result)
+                {
+                    Parameters["Language"] = window.SelectedLanguage;
+                    Parameters["ScriptCode"] = window.ScriptCode;
+                    Parameters["InputPorts"] = window.InputPortsString;
+                    Parameters["OutputPorts"] = window.OutputPortsString;
+
+                    SyncPortsFromParameters();
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CustomScriptNode] Error executing custom action '{actionId}': {ex}");
         }
     }
 }

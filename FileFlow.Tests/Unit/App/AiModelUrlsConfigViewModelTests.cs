@@ -7,6 +7,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+[Collection("AiModelDownloadSequential")]
 public class AiModelUrlsConfigViewModelTests
 {
     private readonly Mock<IDialogService> _dialogMock = new();

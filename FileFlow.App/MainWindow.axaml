@@ -62,7 +62,8 @@
             <GridSplitter Grid.Column="1" 
                           Width="5" 
                           Background="{DynamicResource BgSurfaceBrush}" 
-                          ResizeDirection="Columns" />
+                          ResizeDirection="Columns"
+                          Cursor="SizeWestEast" />
 
             <!-- Main Canvas Editor -->
             <views:EditorView Grid.Column="2" DataContext="{Binding Editor}" />
@@ -72,6 +73,7 @@
                           Width="5" 
                           Background="{DynamicResource BgSurfaceBrush}" 
                           ResizeDirection="Columns"
+                          Cursor="SizeWestEast"
                           IsVisible="{Binding NodeInspector.IsOpen}" />
 
             <!-- Right Panel: Node Data Inspector (Collapsible & Auto-Sizing) -->
@@ -86,7 +88,8 @@
         <GridSplitter Grid.Row="2" 
                       Height="5" 
                       Background="{DynamicResource BgSurfaceBrush}" 
-                      ResizeDirection="Rows" />
+                      ResizeDirection="Rows"
+                      Cursor="SizeNorthSouth" />
 
         <!-- Bottom Realtime Execution Console -->
         <views:LogView Grid.Row="3" DataContext="{Binding LogConsole}" />
@@ -109,6 +112,7 @@
                 Background="{DynamicResource BgSurfaceBrush}"
                 BorderBrush="{DynamicResource BorderDarkBrush}"
                 BorderThickness="0,0,1,0"
+                BoxShadow="8 0 32 0 #70000000"
                 IsVisible="{Binding ControlBar.IsMenuOpen}">
             <Grid>
                 <Grid.RowDefinitions>

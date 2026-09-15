@@ -25,7 +25,7 @@ public enum LogFilterLevel
     DebugOnly
 }
 
-public partial class LogViewModel : ObservableObject
+public partial class LogViewModel : ObservableObject, IDisposable
 {
     private const int MaxLiveBufferSize = 2000;
     public FastObservableRingBuffer<StructuredLogRecord> Logs { get; } = new(MaxLiveBufferSize);
@@ -611,5 +611,10 @@ public partial class LogViewModel : ObservableObject
         {
             AddLog(LogLevel.Information, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetFormattedString("Log_ExportSuccess", "Log exportado exitosamente en: {0}", exportedPath));
         }
+    }
+
+    public void Dispose()
+    {
+        _flushTimer.Stop();
     }
 }

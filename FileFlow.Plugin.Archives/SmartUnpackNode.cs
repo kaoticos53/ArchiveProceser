@@ -61,35 +61,42 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
 
     public async void ExecuteCustomAction(string actionId, object? context = null)
     {
-        if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
-            actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
-            var window = new PasswordManagerWindow(currentPasswords);
+            if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
+                actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
+            {
+                string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+                var window = new PasswordManagerWindow(currentPasswords);
 
-            Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
-            if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                owner = desktop.MainWindow;
-            }
-
-            bool result = false;
-            if (owner != null)
-            {
-                result = await window.ShowDialog<bool>(owner);
-            }
-            else
-            {
-                window.Show();
-            }
-
-            if (result)
-            {
-                lock (_lock)
+                Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
+                if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
                 {
-                    Parameters["PasswordList"] = window.PasswordsText;
+                    owner = desktop.MainWindow;
+                }
+
+                bool result = false;
+                if (owner != null)
+                {
+                    result = await window.ShowDialog<bool>(owner);
+                }
+                else
+                {
+                    window.Show();
+                }
+
+                if (result)
+                {
+                    lock (_lock)
+                    {
+                        Parameters["PasswordList"] = window.PasswordsText;
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SmartUnpackNode] Error executing custom action '{actionId}': {ex}");
         }
     }
 

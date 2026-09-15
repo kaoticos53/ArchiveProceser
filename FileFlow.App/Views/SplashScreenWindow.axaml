@@ -7,6 +7,8 @@
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
         Topmost="True"
+        CanResize="False"
+        WindowDecorations="None"
         ExtendClientAreaToDecorationsHint="True">
 
     <Grid Margin="16">

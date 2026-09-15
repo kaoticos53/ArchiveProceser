@@ -166,3 +166,18 @@ public class StringsEqualMultiConverter : IMultiValueConverter
         return string.Equals(first, second, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+public class BooleanToBrushConverter : IValueConverter
+{
+    public Avalonia.Media.IBrush TrueBrush { get; set; } = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#10B981"));
+    public Avalonia.Media.IBrush FalseBrush { get; set; } = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#64748B"));
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        bool flag = value is bool b && b;
+        return flag ? TrueBrush : FalseBrush;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => BindingOperations.DoNothing;
+}
+

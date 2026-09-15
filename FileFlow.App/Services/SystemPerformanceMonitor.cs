@@ -104,6 +104,7 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
         if (!_disposed)
         {
             _timer.Stop();
+            _timer.Tick -= OnTimerTick;
             _currentProcess.Dispose();
             _disposed = true;
         }

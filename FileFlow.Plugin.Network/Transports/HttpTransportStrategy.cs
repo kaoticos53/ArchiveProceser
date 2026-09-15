@@ -29,9 +29,11 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
         CancellationToken cancellationToken)
     {
         string targetUrl = NetworkTemplateHelper.ResolveRemotePath(request.SourceUrl, item);
-        if (string.IsNullOrWhiteSpace(targetUrl) || !Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri))
+        if (string.IsNullOrWhiteSpace(targetUrl) || 
+            !Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
-            context.Log($"URL de descarga HTTP inválida: '{targetUrl}'", LogLevel.Error, item.CurrentPath);
+            context.Log($"URL de descarga HTTP inválida o esquema no permitido: '{targetUrl}'", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
             return;
         }
@@ -99,9 +101,11 @@ public sealed class HttpTransportStrategy : INetworkTransportStrategy
         string targetUrl = NetworkTemplateHelper.ResolveRemotePath(request.TargetUrl, item);
         string httpMethod = request.HttpMethod.ToUpperInvariant();
 
-        if (string.IsNullOrWhiteSpace(targetUrl) || !Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri))
+        if (string.IsNullOrWhiteSpace(targetUrl) || 
+            !Uri.TryCreate(targetUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
-            context.Log($"URL de subida HTTP inválida: '{targetUrl}'", LogLevel.Error, item.CurrentPath);
+            context.Log($"URL de subida HTTP inválida o esquema no permitido: '{targetUrl}'", LogLevel.Error, item.CurrentPath);
             await context.EmitAsync("Error", item);
             return;
         }

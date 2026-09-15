@@ -91,8 +91,11 @@ public class WorkflowExecutor
                 if (_maxDegreeOfParallelism != newCap)
                 {
                     _maxDegreeOfParallelism = newCap;
-                    _concurrencyThrottle?.Dispose();
-                    _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
+                    if (!_isRunning)
+                    {
+                        _concurrencyThrottle?.Dispose();
+                        _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
+                    }
                 }
             }
         }
@@ -177,7 +180,12 @@ public class WorkflowExecutor
         foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
         _telemetryTracker.Reset();
-        _isRunning = true;
+        lock (_lock)
+        {
+            _concurrencyThrottle?.Dispose();
+            _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
+            _isRunning = true;
+        }
         _taskTracker.Clear();
 
         try

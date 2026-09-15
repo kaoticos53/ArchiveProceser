@@ -27,4 +27,17 @@ public static class AvaloniaTestHelper
             _initialized = true;
         }
     }
+
+    public static void RunOnUI(Action action)
+    {
+        EnsureInitialized();
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+        }
+        else
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(action);
+        }
+    }
 }

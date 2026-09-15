@@ -2,11 +2,45 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:nodify="using:Nodify.Avalonia"
              xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
-             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
+             xmlns:views="clr-namespace:FileFlow.App.Views;assembly=FileFlow.App"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              xmlns:components="using:FileFlow.App.Views.Components"
+             xmlns:models="using:FileFlow.App.Models"
              x:Class="FileFlow.App.Views.EditorView"
              x:DataType="vm:EditorViewModel">
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:AnnotationViewModel">
+            <components:AnnotationCardView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:GroupViewModel">
+            <components:GroupCardView />
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Styles>
+        <!-- Animated Pulsating Glow & Energy Wave Effect for Pending Connections while dragging -->
+        <Style Selector="nodifyConn|PendingConnection">
+            <Setter Property="StrokeThickness" Value="3.5" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.8" IterationCount="Infinite">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0.55" />
+                        <Setter Property="StrokeThickness" Value="3.0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="Opacity" Value="1.0" />
+                        <Setter Property="StrokeThickness" Value="4.5" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="0.55" />
+                        <Setter Property="StrokeThickness" Value="3.0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
 
     <Grid Background="{DynamicResource BgEditorBrush}">
         <!-- Nodify DAG Canvas -->
@@ -15,15 +49,64 @@
                              Connections="{Binding Connections}"
                              Decorators="{Binding CanvasDecorators}"
                              PendingConnection="{Binding PendingConnection}"
+                             ConnectionStartedCommand="{Binding StartConnectionCommand}"
+                             ConnectionCompletedCommand="{Binding FinishConnectionCommand}"
+                             DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
                              MinViewportZoom="0.2"
                              MaxViewportZoom="2.5"
                              Background="Transparent">
 
+            <!-- Item Container, Decorator & Connection Animation Styles -->
+            <nodify:NodifyEditor.Styles>
+                <Style Selector="nodify|ItemContainer" x:DataType="vm:NodeViewModel">
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
+                </Style>
+                <Style Selector="nodify|DecoratorContainer">
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                </Style>
+                <!-- Animated Pulsating Glow & Energy Wave Effect for Pending Connections while dragging -->
+                <Style Selector="nodifyConn|PendingConnection">
+                    <Style.Animations>
+                        <Animation Duration="0:0:0.8" IterationCount="Infinite">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="StrokeThickness" Value="3.0" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1.0" />
+                                <Setter Property="StrokeThickness" Value="4.5" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="StrokeThickness" Value="3.0" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </nodify:NodifyEditor.Styles>
+
+            <!-- Decorator Template -->
+            <nodify:NodifyEditor.DecoratorTemplate>
+                <DataTemplate>
+                    <ContentControl Content="{Binding}" />
+                </DataTemplate>
+            </nodify:NodifyEditor.DecoratorTemplate>
+
             <!-- Context menu on canvas background -->
             <nodify:NodifyEditor.ContextMenu>
                 <ContextMenu>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddNode_Spotlight], FallbackValue='Añadir Nodo...'}"
+                              InputGesture="Shift+A"
+                              Command="{Binding OpenSpotlightCommand}">
+                        <MenuItem.Icon>
+                            <TextBlock Text="➕" FontSize="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[PasteNodes]}"
                               InputGesture="Ctrl+V"
                               Command="{Binding PasteNodesCommand}">
@@ -64,13 +147,17 @@
             <!-- Pending Connection Line -->
             <nodify:NodifyEditor.PendingConnectionTemplate>
                 <DataTemplate x:DataType="vm:PendingConnectionViewModel">
-                    <nodifyConn:PendingConnection StartedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
-                                                CompletedCommand="{Binding $parent[nodify:NodifyEditor].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
+                    <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
+                                                StartedCommand="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
+                                                CompletedCommand="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
                                                 Source="{Binding Source.Anchor}"
-                                                Target="{Binding TargetLocation, Mode=TwoWay}"
+                                                SourceAnchor="{Binding Source.Anchor}"
+                                                TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"
+                                                EnablePreview="True"
+                                                EnableSnapping="True"
+                                                AllowOnlyConnectors="True"
                                                 Direction="Forward"
-                                                Stroke="{DynamicResource AccentGlowBrush}"
-                                                StrokeThickness="2.5"
+                                                Stroke="{Binding WireColor}"
                                                 StrokeDashArray="5,3" />
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
@@ -80,13 +167,14 @@
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
                     <nodifyConn:Connection Source="{Binding Source.Anchor}"
                                         Target="{Binding Target.Anchor}"
-                                        Stroke="{DynamicResource ConnectionWireBrush}"
-                                        StrokeThickness="3"
+                                        Spacing="45"
+                                        Stroke="{Binding WireColor}"
+                                        StrokeThickness="3.5"
                                         Direction="Forward">
                         <nodifyConn:Connection.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
-                                          Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
+                                          Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
                                           CommandParameter="{Binding}">
                                     <MenuItem.Icon>
                                         <TextBlock Text="🗑" FontSize="12" />
@@ -114,7 +202,7 @@
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <Button Content="{Binding Name}"
-                                    Command="{Binding $parent[UserControl].((vm:EditorViewModel)DataContext).NavigateBreadcrumbCommand}"
+                                    Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).NavigateBreadcrumbCommand}"
                                     CommandParameter="{Binding}"
                                     FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AccentGlowBrush}"
                                     Background="Transparent" BorderThickness="0" Padding="4,2" />
@@ -127,5 +215,118 @@
 
         <!-- Floating Zoom Bar -->
         <components:EditorZoomBarView />
+
+        <!-- Canvas HUD Telemetry Overlay (Nodify Playground Style) -->
+        <Border HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+                Background="#9914161C" 
+                BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,6"
+                IsHitTestVisible="False">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Left Telemetry: Selected Nodes & Connections -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Selected:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding SelectedNodesCount}" FontSize="11" FontWeight="Bold" Foreground="#10B981" />
+                        <TextBlock Text="/" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding TotalNodesCount}" FontSize="11" FontWeight="Bold" Foreground="#10B981" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Connections:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding ConnectionsCount}" FontSize="11" FontWeight="Bold" Foreground="#F59E0B" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right Telemetry: Location & Zoom -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Location:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedLocation}" FontSize="11" FontWeight="Bold" Foreground="#FB923C" FontFamily="JetBrains Mono, Cascadia Code, Consolas" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Zoom:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedZoom}" FontSize="11" FontWeight="Bold" Foreground="#06B6D4" FontFamily="JetBrains Mono, Cascadia Code, Consolas" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Spotlight Quick-Add Search Popup (ComfyUI / Blender Shift+A Style) -->
+        <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                Width="360" MaxHeight="440"
+                Background="{DynamicResource BgCardBrush}"
+                BorderBrush="{DynamicResource AccentPrimaryBrush}"
+                BorderThickness="1.5"
+                CornerRadius="10"
+                BoxShadow="0 16 48 0 #A0000000"
+                IsVisible="{Binding IsSpotlightOpen}"
+                ZIndex="50">
+            <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+                <!-- Search Box Header -->
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <TextBox x:Name="SpotlightSearchBox"
+                             Text="{Binding SpotlightSearchText, Mode=TwoWay}"
+                             PlaceholderText="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[SearchNodesPlaceholder], FallbackValue='Buscar nodo por nombre o categoría...'}"
+                             Background="{DynamicResource BgSurfaceBrush}"
+                             Foreground="{DynamicResource TextPrimaryBrush}"
+                             BorderBrush="{DynamicResource BorderDarkBrush}"
+                             BorderThickness="1"
+                             CornerRadius="6"
+                             Padding="8,6"
+                             FontSize="12"
+                             KeyDown="SpotlightSearchBox_KeyDown">
+                        <TextBox.InnerLeftContent>
+                            <TextBlock Text="🔍" FontSize="11" Margin="8,0,4,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </TextBox.InnerLeftContent>
+                    </TextBox>
+                </Grid>
+
+                <!-- Filtered Nodes List -->
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding FilteredSpotlightItems}"
+                         SelectedItem="{Binding SelectedSpotlightItem, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         CornerRadius="6"
+                         MaxHeight="290"
+                         DoubleTapped="SpotlightList_DoubleTapped"
+                         KeyDown="SpotlightList_KeyDown">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:NodeToolboxItem">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,3">
+                                <!-- Icon -->
+                                <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4" Background="{DynamicResource BgSurfaceBrush}" Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding Icon}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- Title & Description -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                </StackPanel>
+
+                                <!-- Category Badge -->
+                                <Border Grid.Column="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="5,1.5" VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <TextBlock Text="{Binding Category}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentGlowBrush}" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Footer Hints -->
+                <Border Grid.Row="2" Margin="0,8,0,0" Padding="4,6,4,0" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="↑↓ Navegar  •  Enter Crear  •  Esc Cerrar" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Command="{Binding CloseSpotlightCommand}" Background="Transparent" BorderThickness="0" Padding="4,1" Cursor="Hand">
+                            <TextBlock Text="✕" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

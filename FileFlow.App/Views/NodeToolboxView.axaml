@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
              xmlns:models="using:FileFlow.App.Models"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              x:Class="FileFlow.App.Views.NodeToolboxView"
@@ -49,15 +49,19 @@
                 </Button>
             </Grid>
 
-            <!-- Search Bar -->
+            <!-- Search Bar with Search Icon -->
             <Grid Grid.Row="1" Margin="0,0,0,8">
                 <TextBox Text="{Binding SearchText, Mode=TwoWay}" 
                          PlaceholderText="{Binding [SearchNodesPlaceholder], Source={x:Static loc:LocalizationManager.Instance}}"
-                         Padding="8,6" 
-                         FontSize="12"
+                         Padding="8,5" 
+                         FontSize="11.5"
                          Background="{DynamicResource BgSurfaceBrush}"
                          BorderBrush="{DynamicResource BorderDarkBrush}"
-                         CornerRadius="6" />
+                         CornerRadius="4">
+                    <TextBox.InnerLeftContent>
+                        <TextBlock Text="🔍" FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </TextBox.InnerLeftContent>
+                </TextBox>
             </Grid>
 
             <!-- Category Filter Selector -->
@@ -66,8 +70,8 @@
                           SelectedItem="{Binding SelectedCategoryItem, Mode=TwoWay}"
                           Background="{DynamicResource BgSurfaceBrush}"
                           BorderBrush="{DynamicResource BorderDarkBrush}"
-                          CornerRadius="6"
-                          Padding="8,5"
+                          CornerRadius="4"
+                          Padding="8,4"
                           FontSize="11.5"
                           HorizontalAlignment="Stretch"
                           Cursor="Hand">
@@ -104,11 +108,13 @@
                                             <Border Background="{DynamicResource BgSurfaceBrush}" 
                                                     BorderBrush="{DynamicResource BorderDarkBrush}" 
                                                     BorderThickness="1" 
-                                                    CornerRadius="6" 
-                                                    Padding="8,5" 
+                                                    CornerRadius="4" 
+                                                    Padding="8,4" 
                                                     Margin="0,2" 
                                                     Cursor="Hand"
-                                                    PointerPressed="NodeItem_PointerPressed">
+                                                    PointerPressed="NodeItem_PointerPressed"
+                                                    PointerReleased="NodeItem_PointerReleased"
+                                                    PointerMoved="NodeItem_PointerMoved">
 
                                                 <!-- ToolTip Rico con Descripción -->
                                                 <ToolTip.Tip>
@@ -117,7 +123,7 @@
                                                             BorderThickness="1.5" CornerRadius="8" Padding="12,10" Width="260">
                                                         <StackPanel Spacing="4">
                                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                <TextBlock Text="{Binding Icon}" FontSize="13" />
+                                                                 <TextBlock Text="{Binding Icon}" FontSize="13" />
                                                                 <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
                                                             </StackPanel>
                                                             <Border Background="#18808080" CornerRadius="4" Padding="5,1.5" HorizontalAlignment="Left">
@@ -150,7 +156,7 @@
                                                                 Margin="4,0,0,0"
                                                                 Cursor="Hand"
                                                                 ToolTip.Tip="{Binding [Toolbox_FavoriteToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                                                            <TextBlock Text="{Binding IsFavorite, Converter={x:Static StringConverters.IsNullOrEmpty}, ConverterParameter='☆'}" 
+                                                            <TextBlock Text="{Binding FavoriteIcon}" 
                                                                        FontSize="12" 
                                                                        Foreground="{DynamicResource AccentWarningBrush}" 
                                                                        VerticalAlignment="Center" />

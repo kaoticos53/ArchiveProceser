@@ -1,14 +1,14 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Fluent Dark Color Palette (GitHub/Windows 11 Dark Mode) -->
-    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0D1117" />
-    <SolidColorBrush x:Key="BgDarkBrush" Color="#0D1117" />
-    <SolidColorBrush x:Key="BgEditorBrush" Color="#10131B" />
-    <SolidColorBrush x:Key="BgCardBrush" Color="#161B22" />
-    <SolidColorBrush x:Key="BgSurfaceBrush" Color="#131720" />
-    <SolidColorBrush x:Key="BgHeaderBrush" Color="#1A1F29" />
-    <SolidColorBrush x:Key="BgHoverBrush" Color="#21262D" />
+    <!-- Blender & ComfyUI Dark Studio Color Palette -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#13151A" />
+    <SolidColorBrush x:Key="BgDarkBrush" Color="#13151A" />
+    <SolidColorBrush x:Key="BgEditorBrush" Color="#13151A" />
+    <SolidColorBrush x:Key="BgCardBrush" Color="#1C1E24" />
+    <SolidColorBrush x:Key="BgSurfaceBrush" Color="#16171B" />
+    <SolidColorBrush x:Key="BgHeaderBrush" Color="#232630" />
+    <SolidColorBrush x:Key="BgHoverBrush" Color="#282C37" />
     
     <SolidColorBrush x:Key="AccentPrimaryBrush" Color="#6366F1" />
     <SolidColorBrush x:Key="AccentHoverBrush" Color="#4F46E5" />
@@ -19,22 +19,23 @@
     <SolidColorBrush x:Key="AccentCyanBrush" Color="#06B6D4" />
     <SolidColorBrush x:Key="AccentPurpleBrush" Color="#A855F7" />
 
-    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F0F6FC" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8B949E" />
-    <SolidColorBrush x:Key="BorderDarkBrush" Color="#30363D" />
-    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#21262D" />
-    <SolidColorBrush x:Key="GridLineBrush" Color="#1A202C" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F1F5F9" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#64748B" />
+    <SolidColorBrush x:Key="BorderDarkBrush" Color="#2D313C" />
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#22252E" />
+    <SolidColorBrush x:Key="GridLineBrush" Color="#1C1F27" />
 
     <!-- Scrollbar Brushes -->
-    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#384152" />
-    <SolidColorBrush x:Key="ScrollbarThumbHoverBrush" Color="#4F5B73" />
+    <SolidColorBrush x:Key="ScrollbarThumbBrush" Color="#333846" />
+    <SolidColorBrush x:Key="ScrollbarThumbHoverBrush" Color="#474E61" />
 
     <!-- Connection Wire Gradient Brush -->
     <LinearGradientBrush x:Key="ConnectionWireBrush" StartPoint="0%,0%" EndPoint="100%,0%">
         <GradientStop Color="#818CF8" Offset="0.0" />
         <GradientStop Color="#6366F1" Offset="0.5" />
-        <GradientStop Color="#C084FC" Offset="1.0" />
+        <GradientStop Color="#A855F7" Offset="1.0" />
     </LinearGradientBrush>
 
-    <BoxShadows x:Key="NodeShadowEffect">0 4 24 0 #88000000</BoxShadows>
+    <BoxShadows x:Key="NodeShadowEffect">0 8 24 0 #AA0B0C0F, 0 1 4 0 #44000000</BoxShadows>
 </ResourceDictionary>

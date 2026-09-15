@@ -44,17 +44,28 @@ public class FfmpegMediaTranscoderService : IMediaTranscoderService
             Directory.CreateDirectory(destDir);
         }
 
-        string fullArgs = $"-y -i \"{inputPath}\" {arguments} \"{outputPath}\"";
-
         var startInfo = new ProcessStartInfo
         {
             FileName = ffmpegExe,
-            Arguments = fullArgs,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardError = true,
             RedirectStandardOutput = true
         };
+
+        startInfo.ArgumentList.Add("-y");
+        startInfo.ArgumentList.Add("-i");
+        startInfo.ArgumentList.Add(inputPath);
+
+        if (!string.IsNullOrWhiteSpace(arguments))
+        {
+            foreach (var token in TokenizeArguments(arguments))
+            {
+                startInfo.ArgumentList.Add(token);
+            }
+        }
+
+        startInfo.ArgumentList.Add(outputPath);
 
         using var process = new Process { StartInfo = startInfo };
         try
@@ -80,6 +91,40 @@ public class FfmpegMediaTranscoderService : IMediaTranscoderService
         catch
         {
             return false;
+        }
+    }
+
+    private static IEnumerable<string> TokenizeArguments(string args)
+    {
+        if (string.IsNullOrWhiteSpace(args)) yield break;
+
+        var sb = new System.Text.StringBuilder();
+        bool inQuotes = false;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            char c = args[i];
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (char.IsWhiteSpace(c) && !inQuotes)
+            {
+                if (sb.Length > 0)
+                {
+                    yield return sb.ToString();
+                    sb.Clear();
+                }
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+
+        if (sb.Length > 0)
+        {
+            yield return sb.ToString();
         }
     }
 }

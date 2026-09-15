@@ -99,6 +99,8 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     private bool _isCompactMode = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPipelineRolePerspective))]
+    [NotifyPropertyChangedFor(nameof(PerspectiveButtonText))]
     private ToolboxPerspective _currentPerspective = ToolboxPerspective.ByCategory;
 
     public bool IsPipelineRolePerspective => CurrentPerspective == ToolboxPerspective.ByPipelineRole;
@@ -159,6 +161,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             _isRefreshing = true;
             try
             {
+                OnPropertyChanged(nameof(PerspectiveButtonText));
                 IsCompactMode = _userPreferencesService.Preferences.IsCompactToolbox;
 
                 var prefs = _userPreferencesService;

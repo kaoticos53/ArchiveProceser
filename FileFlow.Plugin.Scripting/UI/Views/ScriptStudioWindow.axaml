@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:avalonEdit="https://github.com/avaloniaui/avaloniaedit"
-        xmlns:vm="using:FileFlow.Plugin.Scripting.UI.ViewModels"
+        xmlns:vm="clr-namespace:FileFlow.Plugin.Scripting.UI.ViewModels;assembly=FileFlow.Plugin.Scripting"
         xmlns:services="using:FileFlow.Plugin.Scripting.Services"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         x:Class="FileFlow.Plugin.Scripting.UI.Views.ScriptStudioWindow"

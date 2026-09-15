@@ -4,42 +4,43 @@
              xmlns:loc="using:FileFlow.Sdk.Localization"
              x:Class="FileFlow.App.Views.Components.EditorZoomBarView"
              x:DataType="vm:EditorViewModel">
-    <Border Background="{DynamicResource BgCardBrush}"
+    <Border Background="#C01E1E1E"
             BorderBrush="{DynamicResource BorderDarkBrush}"
             BorderThickness="1"
-            CornerRadius="8"
-            Padding="8,4"
+            CornerRadius="6"
+            Padding="6,3"
             HorizontalAlignment="Right"
             VerticalAlignment="Bottom"
-            Margin="0,0,16,16"
-            BoxShadow="0 2 12 0 #40000000">
+            Margin="0,0,16,38"
+            BoxShadow="0 4 16 0 #60000000">
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="4">
             <!-- Zoom Out Button -->
             <Button Command="{Binding ZoomOutCommand}" 
-                    Padding="6,2" Width="28" Height="24"
+                    Padding="6,2" Width="26" Height="24" CornerRadius="4"
                     ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Zoom_OutToolTip]}">
-                <TextBlock Text="−" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
+                <TextBlock Text="−" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
             </Button>
             
             <!-- Zoom Slider -->
-            <Slider Width="90" Minimum="0.2" Maximum="2.0" Value="{Binding ViewportZoom, Mode=TwoWay}"
+            <Slider Width="80" Minimum="0.2" Maximum="2.0" Value="{Binding ViewportZoom, Mode=TwoWay}"
                     SmallChange="0.05" LargeChange="0.05" VerticalAlignment="Center" Margin="4,0" />
             
             <!-- Zoom In Button -->
             <Button Command="{Binding ZoomInCommand}" 
-                    Padding="6,2" Width="28" Height="24"
+                    Padding="6,2" Width="26" Height="24" CornerRadius="4"
                     ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Zoom_InToolTip]}">
-                <TextBlock Text="+" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
+                <TextBlock Text="+" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
             </Button>
             
             <!-- Zoom Percentage Label -->
             <TextBlock Text="{Binding ViewportZoom, StringFormat={}{0:P0}}" 
-                       FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" 
-                       VerticalAlignment="Center" Width="40" TextAlignment="Center" Margin="2,0"/>
+                       FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" 
+                       FontFamily="JetBrains Mono, Cascadia Code, Consolas"
+                       VerticalAlignment="Center" Width="42" TextAlignment="Center" Margin="2,0"/>
             
             <!-- Fit To Screen Button -->
             <Button Command="{Binding FitToScreenCommand}" 
-                    Padding="6,2" Height="24"
+                    Padding="7,2" Height="24" CornerRadius="4"
                     ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Zoom_FitToolTip]}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="⛶" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center"/>
@@ -49,7 +50,7 @@
 
             <!-- Add Note Button -->
             <Button Command="{Binding AddNewAnnotationCommand}" 
-                    Padding="6,2" Height="24"
+                    Padding="7,2" Height="24" CornerRadius="4"
                     ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Zoom_AddNoteToolTip]}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="📝" FontSize="11" VerticalAlignment="Center"/>
@@ -59,7 +60,7 @@
 
             <!-- Add Group Button -->
             <Button Command="{Binding GroupSelectedNodesCommand}" 
-                    Padding="6,2" Height="24"
+                    Padding="7,2" Height="24" CornerRadius="4"
                     ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Zoom_GroupToolTip]}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="🔲" FontSize="11" VerticalAlignment="Center"/>

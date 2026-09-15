@@ -174,12 +174,13 @@ public class ToolboxViewModelTests
         using var toolbox = new ToolboxViewModel(loader);
 
         // Assert
-        toolbox.CategoryGroups.Should().NotBeEmpty();
-        var freqGroup = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
+        var groups = toolbox.CategoryGroups.ToList();
+        groups.Should().NotBeEmpty();
+        var freqGroup = groups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
         freqGroup.Should().NotBeNull("Frequent category should exist when there are used nodes");
         freqGroup!.IsExpanded.Should().BeTrue("Only the 'Frequent' category must be expanded by default");
 
-        var otherGroups = toolbox.CategoryGroups.Where(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase)).ToList();
+        var otherGroups = groups.Where(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase)).ToList();
         otherGroups.Should().NotBeEmpty();
         otherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("All categories other than 'Frequent' must be collapsed by default"));
     }
@@ -198,11 +199,12 @@ public class ToolboxViewModelTests
         FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FolderSourceNode).FullName!);
 
         using var toolbox = new ToolboxViewModel(loader);
-        var freqGroup = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
+        var initialGroups = toolbox.CategoryGroups.ToList();
+        var freqGroup = initialGroups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
         freqGroup.Should().NotBeNull();
         freqGroup!.IsExpanded.Should().BeTrue();
 
-        var nonFreqGroup = toolbox.CategoryGroups.FirstOrDefault(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
+        var nonFreqGroup = initialGroups.FirstOrDefault(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
         nonFreqGroup.Should().NotBeNull();
         nonFreqGroup!.IsExpanded.Should().BeFalse();
 
@@ -213,7 +215,7 @@ public class ToolboxViewModelTests
         nonFreqGroup.IsExpanded.Should().BeTrue();
         freqGroup.IsExpanded.Should().BeFalse("Opening another category must automatically collapse 'Frequent'");
 
-        var allOtherGroups = toolbox.CategoryGroups.Where(g => g != nonFreqGroup).ToList();
+        var allOtherGroups = toolbox.CategoryGroups.ToList().Where(g => g != nonFreqGroup).ToList();
         allOtherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("Accordion mode requires all other categories to be collapsed"));
     }
 
@@ -233,22 +235,22 @@ public class ToolboxViewModelTests
         using var toolbox = new ToolboxViewModel(loader);
 
         // Seleccionamos una categoría específica, por ejemplo 'Files', y la expandimos
-        var filesGroup = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase));
+        var filesGroup = toolbox.CategoryGroups.ToList().FirstOrDefault(g => g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase));
         filesGroup.Should().NotBeNull();
         filesGroup!.IsExpanded = true;
 
-        var otherGroupsBefore = toolbox.CategoryGroups.Where(g => g != filesGroup).ToList();
+        var otherGroupsBefore = toolbox.CategoryGroups.ToList().Where(g => g != filesGroup).ToList();
         otherGroupsBefore.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse());
 
         // Act - Simula la colocación de un nuevo nodo en el lienzo de trabajo
         FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FileFlow.Plugin.Documents.PdfMergeNode).FullName!);
 
         // Assert - Comprueba que 'Files' sigue abierta y las demás siguen colapsadas
-        var filesGroupAfter = toolbox.CategoryGroups.FirstOrDefault(g => g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase));
+        var filesGroupAfter = toolbox.CategoryGroups.ToList().FirstOrDefault(g => g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase));
         filesGroupAfter.Should().NotBeNull();
         filesGroupAfter!.IsExpanded.Should().BeTrue("The user's opened category must remain expanded after placing a node");
 
-        var otherGroupsAfter = toolbox.CategoryGroups.Where(g => !g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase)).ToList();
+        var otherGroupsAfter = toolbox.CategoryGroups.ToList().Where(g => !g.CategoryKey.Equals("Files", StringComparison.OrdinalIgnoreCase)).ToList();
         otherGroupsAfter.Should().NotBeEmpty();
         otherGroupsAfter.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("All other categories must remain collapsed"));
     }
@@ -269,14 +271,15 @@ public class ToolboxViewModelTests
         toolbox.SearchText = "Folder";
 
         // Assert - Todos los grupos con resultados de búsqueda deben estar expandidos
-        toolbox.CategoryGroups.Should().NotBeEmpty();
-        toolbox.CategoryGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeTrue("Categories with search results must be expanded"));
+        var searchGroups = toolbox.CategoryGroups.ToList();
+        searchGroups.Should().NotBeEmpty();
+        searchGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeTrue("Categories with search results must be expanded"));
 
         // Act - Limpia la búsqueda
         toolbox.SearchText = string.Empty;
 
         // Assert - Solo 1 categoría (o la de Frequent si existe) queda expandida
-        var expandedCount = toolbox.CategoryGroups.Count(g => g.IsExpanded);
+        var expandedCount = toolbox.CategoryGroups.ToList().Count(g => g.IsExpanded);
         expandedCount.Should().BeLessThanOrEqualTo(1, "Clearing search text should return to accordion mode");
     }
 }

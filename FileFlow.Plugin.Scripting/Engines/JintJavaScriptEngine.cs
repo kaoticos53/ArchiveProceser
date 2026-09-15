@@ -25,6 +25,7 @@ public sealed class JintJavaScriptEngine : IScriptExecutionEngine
             cfg.TimeoutInterval(TimeSpan.FromSeconds(30));
             cfg.LimitMemory(64 * 1024 * 1024); // 64 MB max memory
             cfg.MaxStatements(500_000);
+            cfg.LimitRecursion(1000);
         });
 
         // Configurar objetos y funciones globales de JavaScript

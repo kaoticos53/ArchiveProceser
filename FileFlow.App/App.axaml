@@ -6,6 +6,21 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+        <StyleInclude Source="avares://Nodify.Avalonia/Themes/Controls.xaml" />
+
+        <!-- Global Fluent Typography & Control Styles -->
+        <Style Selector="Window">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="ToolTip">
+            <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="FontSize" Value="11.5" />
+        </Style>
     </Application.Styles>
 
     <Application.Resources>
@@ -34,6 +49,7 @@
             <converters:BytesToTextConverter x:Key="BytesToTextConverter" />
             <converters:StringsEqualMultiConverter x:Key="StringsEqualMultiConverter" />
             <converters:StringEqualsToBooleanConverter x:Key="StringEqualsToBooleanConverter" />
+            <converters:BooleanToBrushConverter x:Key="BooleanToBrushConverter" />
 
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="/Themes/DarkTheme.axaml" />

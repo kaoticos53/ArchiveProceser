@@ -40,7 +40,12 @@ public partial class PortViewModel : ObservableObject
     private bool _hasMetadataVariables;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SocketFillColor))]
+    [NotifyPropertyChangedFor(nameof(SocketBorderColor))]
     private bool _isConnected;
+
+    public string SocketFillColor => IsConnected ? PortColor : "#181A22";
+    public string SocketBorderColor => PortColor;
 
     [ObservableProperty]
     private string _connectionStatusText = "Puerto libre (Sin conexión)";
@@ -51,6 +56,8 @@ public partial class PortViewModel : ObservableObject
     public NodeViewModel NodeOwner { get; }
 
     public string PortColor => GetColorForDataType(DataType);
+
+    public string SocketShape => GetShapeForDataType(DataType);
 
     public string DataTypeDescription => GetDescriptionForDataType(DataType);
 
@@ -114,6 +121,17 @@ public partial class PortViewModel : ObservableObject
         if (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) && type != typeof(string))
             return "#F43F5E";                                  // Rose: Colecciones / Lotes
         return "#8B5CF6";                                      // Purple Default
+    }
+
+    public static string GetShapeForDataType(Type type)
+    {
+        if (type == typeof(FileItemContext)) return "Square";
+        if (type == typeof(bool)) return "Triangle";
+        if (type == typeof(byte[]) || typeof(System.IO.Stream).IsAssignableFrom(type) || (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) && type != typeof(string)))
+            return "Square";
+        if (type == typeof(int) || type == typeof(long) || type == typeof(double) || type == typeof(float) || type == typeof(decimal))
+            return "Diamond";
+        return "Circle";
     }
 
     public static string GetDescriptionForDataType(Type type)

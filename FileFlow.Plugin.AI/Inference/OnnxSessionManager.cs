@@ -102,12 +102,20 @@ public static class OnnxSessionManager
             return session;
         }));
 
-        var instance = lazy.Value;
-        if (isNew)
+        try
         {
-            SessionStateChanged?.Invoke();
+            var instance = lazy.Value;
+            if (isNew)
+            {
+                SessionStateChanged?.Invoke();
+            }
+            return instance;
         }
-        return instance;
+        catch
+        {
+            _sessionCache.TryRemove(modelPath, out _);
+            throw;
+        }
     }
 
     /// <summary>

@@ -25,6 +25,8 @@ public record NodeToolboxItem(
     string LocalizedRole = ""
 )
 {
+    public string FavoriteIcon => IsFavorite ? "★" : "☆";
+
     public string RoleBadge => Role switch
     {
         PipelineRole.Source => LocalizationManager.Instance.GetString("Role_Source", "Source"),

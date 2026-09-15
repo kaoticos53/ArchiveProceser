@@ -79,13 +79,13 @@
                       CanUserReorderColumns="True"
                       CanUserResizeColumns="True">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Nodo" Binding="{Binding NodeTitle}" Width="*" />
-                    <DataGridTextColumn Header="Categoría" Binding="{Binding Category}" Width="130" />
-                    <DataGridTextColumn Header="Duración (ms)" Binding="{Binding DurationMs}" Width="110" />
-                    <DataGridTextColumn Header="Items" Binding="{Binding ItemsProcessed}" Width="80" />
-                    <DataGridTextColumn Header="Datos" Binding="{Binding ProcessedBytesText}" Width="100" />
-                    <DataGridTextColumn Header="% Tiempo" Binding="{Binding TimePercentageText}" Width="90" />
-                    <DataGridTextColumn Header="Estado" Binding="{Binding Status}" Width="100" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColNode], FallbackValue='Nodo'}" Binding="{Binding NodeTitle}" Width="*" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColCategory], FallbackValue='Categoría'}" Binding="{Binding Category}" Width="130" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColDuration], FallbackValue='Duración (ms)'}" Binding="{Binding DurationMs}" Width="110" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColItems], FallbackValue='Items'}" Binding="{Binding ItemsProcessed}" Width="80" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColBytes], FallbackValue='Datos'}" Binding="{Binding ProcessedBytesText}" Width="100" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColTimePercent], FallbackValue='% Tiempo'}" Binding="{Binding TimePercentageText}" Width="90" />
+                    <DataGridTextColumn Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColStatus], FallbackValue='Estado'}" Binding="{Binding Status}" Width="100" />
                 </DataGrid.Columns>
             </DataGrid>
         </Border>
@@ -93,7 +93,7 @@
         <!-- Footer -->
         <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto">
             <TextBlock Grid.Column="0" Text="{Binding ProfilingStatusMessage}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Click="Close_Click" Content="Cerrar" Padding="16,6" CornerRadius="6" />
+            <Button Grid.Column="1" Click="Close_Click" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close], FallbackValue='Cerrar'}" Padding="16,6" CornerRadius="6" />
         </Grid>
     </Grid>
 </Window>
