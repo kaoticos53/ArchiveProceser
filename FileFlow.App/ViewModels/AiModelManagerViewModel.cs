@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.AI;
 using FileFlow.Sdk.Localization;
+using Material.Icons;
 
 namespace FileFlow.App.ViewModels;
 
@@ -46,7 +47,7 @@ public partial class AiModelItemViewModel : ObservableObject
     private string _progressText = string.Empty;
 
     [ObservableProperty]
-    private string _statusIcon = "⏳";
+    private MaterialIconKind _statusIcon = MaterialIconKind.TimerSandComplete;
 
     [ObservableProperty]
     private string _statusText = string.Empty;
@@ -79,7 +80,7 @@ public partial class AiModelItemViewModel : ObservableObject
             ErrorMessage = null;
             HasError = false;
             ProgressText = string.Empty;
-            StatusIcon = "✅";
+            StatusIcon = MaterialIconKind.CheckCircle;
             StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusInstalled", "Descargado");
             long? size = AiModelManager.GetModelDiskSizeBytes(ModelId);
             if (size.HasValue)
@@ -95,12 +96,12 @@ public partial class AiModelItemViewModel : ObservableObject
         {
             if (HasError && !string.IsNullOrEmpty(ErrorMessage))
             {
-                StatusIcon = "❌";
+                StatusIcon = MaterialIconKind.CloseCircle;
                 StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusError", "Error");
             }
             else
             {
-                StatusIcon = "⏳";
+                StatusIcon = MaterialIconKind.TimerSandComplete;
                 StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusMissing", "No descargado");
                 ProgressText = string.Empty;
             }
@@ -227,7 +228,7 @@ public partial class AiModelManagerViewModel : ObservableObject
         item.IsDownloading = true;
         item.ErrorMessage = null;
         item.HasError = false;
-        item.StatusIcon = "⬇️";
+        item.StatusIcon = MaterialIconKind.Download;
         item.StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusDownloading", "Descargando...");
         item.Progress = 0;
         item.ProgressText = "Conectando...";
@@ -275,7 +276,7 @@ public partial class AiModelManagerViewModel : ObservableObject
                 string err = lastErrorCaptured ?? AiModelManager.LastError ?? "Error desconocido en la descarga del modelo.";
                 item.ErrorMessage = err;
                 item.HasError = true;
-                item.StatusIcon = "❌";
+                item.StatusIcon = MaterialIconKind.CloseCircle;
                 item.StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusError", "Error");
                 item.ProgressText = err;
 
@@ -292,7 +293,7 @@ public partial class AiModelManagerViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            item.StatusIcon = "⏳";
+            item.StatusIcon = MaterialIconKind.TimerSandComplete;
             item.StatusText = "Cancelado";
             item.ProgressText = "Descarga cancelada por el usuario.";
         }
@@ -301,7 +302,7 @@ public partial class AiModelManagerViewModel : ObservableObject
             string err = $"Excepción: {ex.Message}";
             item.ErrorMessage = err;
             item.HasError = true;
-            item.StatusIcon = "❌";
+            item.StatusIcon = MaterialIconKind.CloseCircle;
             item.StatusText = LocalizationManager.Instance.GetString("AiModelManager_StatusError", "Error");
             item.ProgressText = err;
 

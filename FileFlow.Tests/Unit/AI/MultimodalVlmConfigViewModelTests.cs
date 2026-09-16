@@ -13,6 +13,8 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+[Collection(OnnxInferenceCollection.Name)]
+
 public sealed class MultimodalVlmConfigViewModelTests : IDisposable
 {
     private readonly string _tempDir;

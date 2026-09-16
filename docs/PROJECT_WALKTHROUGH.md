@@ -1,11 +1,626 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-16] - Resolución Definitiva de Listas Desplegables (ComboBox / AutoCompleteBox) en Canvas e Inspector (Hito 117)
+
+### 🎯 Diagnóstico y Causa Raíz
+1. **Invalidación de Árbol Visual y Pérdida de Captura en `NodeCardView.axaml.cs`**:
+   - `NodeCardView` se suscribía incondicionalmente a `PointerPressed += NodeCardView_PointerPressed;` llamando a `EditorViewModel.BringToFront(Node)`.
+   - Al pulsar sobre un `ComboBox` o `AutoCompleteBox` en la tarjeta del nodo, el evento de puntero burbujeaba inmediatamente hacia `NodeCardView`.
+   - `BringToFront` modificaba el `ZIndex` del nodo, obligando a Nodify / Avalonia a reordenar los hijos del lienzo en pleno clic, lo cual destruía de inmediato la captura de puntero del popup antes de que pudiera abrirse o recibir la selección.
+2. **Requisito de Prefijo en `AutoCompleteBox`**:
+   - Por defecto, `AutoCompleteBox` utilizaba `MinimumPrefixLength = 1`, provocando que los desplegables editables no mostraran sugerencias ni abrieran el desplegable al hacer clic sin haber escrito antes caracteres.
+3. **Sobrescrituras de Estilo de Popup en `Inputs.axaml` para FluentTheme**:
+   - Se requerían selectores de plantilla explícitos para el contenedor del popup (`Popup#PART_SuggestionsContainer`, `Border#PopupBorder`), límites de altura (`MaxDropDownHeight`) y estilos de hover/selección en `ComboBoxItem` (`PART_ContentPresenter`).
+
+### 🎯 Correcciones Implementadas
+1. **`NodeCardView.axaml.cs`**:
+   - Inspección del tipo visual de origen del evento de puntero (`e.Source`). Si el clic proviene de un control interactivo (`ComboBox`, `AutoCompleteBox`, `TextBox`, `Slider`, `ToggleSwitch`, `Button`, `NumericUpDown` o elementos popup), se omite la llamada a `BringToFront`, garantizando la captura de puntero ininterrumpida.
+2. **`EditorViewModel.cs`**:
+   - Protección en `BringToFront`: `if (node.ZIndex == _maxZIndex && _maxZIndex > 0) return;`, evitando reordenamientos innecesarios y sobrecarga en el árbol visual cuando el nodo ya se encuentra al frente.
+3. **`Inputs.axaml`**:
+   - Añadido `MaxDropDownHeight="320"` a `ComboBox`.
+   - Estilizado de `Border#PopupBorder` con tokens (`BgCardBrush`, `BorderDarkBrush`, `RadiusXs`, `Elev3`).
+   - Sobrescrituras completas de hover (`BgHoverBrush`), selección (`AccentPrimaryBrush`, `TextOnAccentBrush`) y hover seleccionado (`AccentHoverBrush`) en `ComboBoxItem`.
+   - Estilo completo para `AutoCompleteBox` con `MinimumPrefixLength="0"` y `MaxDropDownHeight="280"`.
+4. **`NodeParameterTemplates.axaml` y `NodeInspectorPanelView.axaml`**:
+   - Configurados `ComboBox` y `AutoCompleteBox` con `MinimumPrefixLength="0"`, `FilterMode="None"` y `MaxDropDownHeight`.
+5. **`NodeParameterViewModelTests.cs`**:
+   - Añadidas pruebas unitarias `DropdownParameter_ShouldRecognizeDropdownAndMatchOption` y `EditableDropdownParameter_ShouldBeMarkedAsEditable`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- Pruebas visuales y de estilo (`UiStyleLintTests`, `NodeCardVisualContractTests`, `VisualRegressionTests`): **48 / 48 superadas al 100%**.
+- Suite completa de pruebas: **1011 superadas, 1 omitida, 0 fallos, 1012 total**.
+
+---
+
+### 🎯 Diagnóstico y Causa Raíz
+En el componente de tarjeta de nodo ([`NodeCardView.axaml`](file:///E:/Users/kaoti/Documentos/GitHub/FileFlow.WT/avalonia/FileFlow.App/Views/Components/NodeCardView.axaml)), la barra inferior de métricas y telemetría (pie de tarjeta) no llegaba hasta los bordes laterales e inferior de la caja del nodo:
+1. `NodeCardView.axaml` no definía `Padding="0"` en `<nodify:Node>`, por lo que el padding por defecto de la plantilla de Nodify creaba un margen alrededor del contenido del cuerpo.
+2. El pie de métricas estaba incrustado en una fila (`Grid.Row="1"`) dentro del `Content` general del nodo en lugar de utilizar el slot dedicado `nodify:Node.FooterTemplate` / `Footer="{Binding}"`.
+3. Al redimensionar o expandir la tarjeta en vertical, el pie quedaba flotando debajo de los puertos/parámetros en vez de anclarse de forma perimetral al borde inferior del nodo.
+
+### 🎯 Correcciones Implementadas
+1. **`NodeCardView.axaml`**:
+   - Asignado `Padding="0"`, `VerticalAlignment="Stretch"` y `VerticalContentAlignment="Stretch"` en `<nodify:Node>`.
+   - Movida la barra de métricas y el tirador de redimensionado a `<nodify:Node.FooterTemplate>` con binding `Footer="{Binding}"`, dejando el cuerpo del nodo (`StackPanel` de puertos y parámetros) en el slot de contenido central.
+   - El contenedor del pie (`Border`) abarca el 100% del ancho del nodo (de borde izquierdo a derecho) y se ancla al borde inferior con redondeo `CornerRadius="0,0,6,6"`, división superior `BorderThickness="0,1,0,0"` y fondo `BgHeaderBrush`.
+2. **Líneas Base Visuales**:
+   - Actualizadas las líneas base de regresión visual `node-card-dark.png` y `panel-editor-dark.png`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- `UiStyleLintTests` & `NodeCardVisualContractTests`: **14 / 14 superadas**.
+- `VisualRegressionTests` & `AppShellVisualRegressionTests`: **21 / 21 superadas al 100%**.
+- Suite completa de pruebas: **1009 superadas, 1 omitida, 0 fallos, 1010 total**.
+
+---
+
+## [2026-09-16] - Corrección Integral y Modernización de Controles de Lista Desplegable (ComboBox / Dropdowns)
+
+### 🎯 Diagnóstico y Causas Raíz
+Al interactuar con los controles de lista desplegable (`ComboBox` y `AutoCompleteBox`) en la aplicación (drawer de ajustes, tarjetas de nodos en el lienzo DAG e inspector de nodos), los desplegables no respondían o no aplicaban sus cambios:
+1. **Selector de Tema en el Drawer (`MainWindow.axaml`)**:
+   - El `ComboBox` vinculaba `SelectedItem="{Binding ControlBar.SelectedThemeObject}"`.
+   - `SelectedThemeObject` no existía en `ControlBarViewModel`, impidiendo la sincronización bidireccional y el cambio de tema desde el menú desplegable.
+2. **Selector de Idioma en el Drawer (`MainWindow.axaml`)**:
+   - Los elementos `<ComboBoxItem Tag="es-ES">` y `<ComboBoxItem Tag="en-US">` no especificaban `SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"`.
+   - Avalonia asignaba el objeto visual `ComboBoxItem` en lugar de la cadena de texto con la cultura (`"es-ES"` / `"en-US"`), rompiendo la llamada al cambio de idioma.
+3. **Estilos de Plantilla de ComboBox en Avalonia 11/12 (`FileFlow.App/Styles/Inputs.axaml`)**:
+   - Había selectores de plantilla heredados tipo `/template/ Border#Background`, `TextBlock#PlaceholderTextBlock` y `PathIcon#DropDownGlyph` que rompían el renderizado en FluentTheme de Avalonia 11/12.
+4. **Plantillas de Parámetros de Nodo e Inspector (`NodeParameterTemplates.axaml` y `NodeInspectorPanelView.axaml`)**:
+   - La condición de visibilidad del `ComboBox` estándar dependía de variables que podían evaluarse en falso negativo ante opciones dinámicas.
+   - En el inspector de nodos no se contemplaba el `AutoCompleteBox` editable para parámetros `IsEditableDropdown`.
+
+### 🎯 Correcciones Implementadas
+1. **`MainWindow.axaml`**:
+   - Corregido el selector de tema vinculando `SelectedValue="{Binding ControlBar.SelectedTheme, Mode=TwoWay}"`, con `SelectedValueBinding="{Binding Id}"` y `DisplayMemberBinding="{Binding Name}"`.
+   - Corregido el selector de idioma especificando `SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"`.
+2. **`FileFlow.App/Styles/Inputs.axaml`**:
+   - Modernizados los estilos de `ComboBox`, `ComboBox:pointerover`, `ComboBox:focus`, `ComboBoxItem`, `ComboBoxItem:pointerover` y `ComboBoxItem:selected` con tokens de diseño (`RadiusXs`, `BgSurfaceBrush`, `AccentPrimaryBrush`, `Pad1`, `MinHeight="28"`).
+3. **`NodeParameterTemplates.axaml` y `NodeInspectorPanelView.axaml`**:
+   - Ajustadas las plantillas de `IsDropdown` para soportar de manera fluida tanto `ComboBox` nativo (`!IsEditableDropdown`) como `AutoCompleteBox` editable con botón de variables dinámicas `{x}` y tokens de redondeo visual.
+4. **Líneas Base Visuales**:
+   - Actualizada la línea base de regresión visual `panel-toolbox-dark.png`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- Suite completa de pruebas: **1009 superadas, 1 omitida, 0 fallos, 1010 total**.
+- Pruebas visuales y de estilo: **26 / 26 superadas**.
+
+---
+
+## [2026-09-16] - Corrección de Error del Previsualizador de Vistas y Diálogos en el IDE (Avalonia Previewer)
+
+### 🎯 Diagnóstico
+Al abrir el previsualizador XAML de Avalonia en el IDE (Visual Studio / JetBrains Rider / VS Code con Avalonia Extension), el proceso `PreviewerProcess` se cerraba con la excepción:
+```
+System.AggregateException: One or more errors occurred. (Unable to resolve type DesignInstance from namespace http://schemas.microsoft.com/expression/blend/2008 Line 15, position 9.)
+```
+**Causa raíz**:
+- `MainWindow.axaml` declaraba `d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}"`.
+- `d:DesignInstance` es una extensión de marcado legacy de WPF / Microsoft Expression Blend (`http://schemas.microsoft.com/expression/blend/2008`) que no existe en el compilador XAML en tiempo de ejecución de Avalonia (`AvaloniaXamlIlRuntimeCompiler`).
+- Al analizar el documento XAML para la previsualización del diseño, el parser intentaba resolver `DesignInstance` en el namespace `d:`, fallando e impidiendo el renderizado visual de la ventana y diálogos dependientes.
+
+### 🎯 Corrección
+- **`MainWindow.axaml`**: Eliminada la extensión `d:DesignInstance` y los namespaces `xmlns:d` y `xmlns:mc`. Sustituido por el atributo nativo tipado de Avalonia: `x:DataType="vm:MainViewModel"`.
+- **`FilePreviewerWindow.axaml`**, **`FilePreviewerControl.axaml`**, **`ImageCompareSliderControl.axaml`**: Limpiados los namespaces heredados de Blend (`xmlns:d` / `xmlns:mc`), migrando a las propiedades adjuntas canónicas de Avalonia: `Design.DesignWidth` y `Design.DesignHeight`.
+
+### 🧪 Validación
+- Compilación `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- Suite completa de pruebas: **1009 superadas, 1 omitida, 0 fallos, 1010 total**.
+- Pruebas visuales y de estilo: **26 / 26 superadas**.
+
+---
+
+## [2026-09-16] - Rediseño Moderno y Adaptativo de Formularios y Parámetros de Nodos
+
+### 🎯 Diagnóstico y Problemas Resueltos
+1. **Problema de Visibilidad Multilínea Fantasma**:
+   - En `NodeParameterTemplates.axaml`, existía `<Grid IsVisible="{Binding IsMultilineRow}">`, pero `IsMultilineRow` no existía en `NodeParameterViewModel.cs`.
+   - Debido al fallback de Avalonia cuando falta la propiedad vinculada, todos los parámetros estándar (incluyendo booleanos que mostraban `0` o `False`) renderizaban un TextBox multilínea gigante y vacío debajo de cada fila, saturando visualmente las tarjetas de nodos y el inspector.
+2. **Controles Poco Adaptados al Tipo de Dato**:
+   - Parámetros booleanos usaban cajas de texto en vez de interruptores interactivos.
+   - Parámetros numéricos continuos o acotados carecían de deslizadores o controles numéricos con formato.
+   - Selectores de archivo y rutas carecían de integración elegante con botones de exploración y botones de variables del sistema `{x}`.
+
+### 🎯 Cambios Implementados
+1. **`NodeParameterViewModel.cs`**:
+   - Añadida la propiedad `IsMultilineRow => !IsVariableInjectorNode && IsMultiLine;` e independizada `IsStandardRow => !IsVariableInjectorNode && !IsMultiLine;`.
+   - Añadida la propiedad booleana `ValueAsBool` con soporte bidireccional y parseo tolerante (`bool`, `0`/`1`, `"0"`/`"1"`, `"true"`/`"false"`).
+   - Añadida `SliderValue` y `SliderDisplayValue` para rangos interactivos continuos con badge de valor.
+   - Añadida propiedad `IsNumber` para detectar enteros y coma flotante.
+   - Corregido `DetectIsFileVersion` para evitar falsos positivos en propiedades de ruta como `SourcePath`.
+2. **`NodeParameterTemplates.axaml` (Tarjetas de Nodos en Canvas DAG)**:
+   - Controles diferenciados por tipo: `ToggleSwitch` moderno para booleanos, `Slider` interactivo para rangos con badge dinámico, `NumericUpDown` para valores numéricos, `ComboBox` y `AutoCompleteBox` estilizados para enumeraciones y listas desplegables.
+   - Integración compacta en inputs de texto con botones embebidos para explorador de carpetas/archivos y selector de variables dinámicas (`{x}`).
+   - Chips interactivos para selectores de versión de archivo (`FileVersionSelector`).
+3. **`NodeInspectorPanelView.axaml` (Panel de Inspección Lateral)**:
+   - Modernizado con la misma jerarquía de controles adaptados al tipo de dato, respetando tokens de diseño (`RadiusXs`, `FontSizeBody`, `Pad1`, `Pad2`).
+4. **Cumplimiento de Linter y Regresión Visual**:
+   - 0 violaciones de literales de forma/color en `UiStyleLintTests`.
+   - Baselines visuales de regresión actualizados con los nuevos componentes renderizados.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- `UiStyleLintTests`: **5 / 5 superadas al 100%**.
+- `AppShellVisualRegressionTests` & `VisualSnapshots`: **21 / 21 superadas al 100%**.
+- Suite completa de pruebas: **1009 superadas, 1 omitida, 0 fallos, 1010 total**.
+
+---
+
+## [2026-09-16] - Corrección de Colapso del Panel Inspector en el Canvas de Nodos
+
+### 🎯 Diagnóstico
+Al ocultar o cerrar el panel del Inspector de Nodos (`NodeInspector.IsOpen = false`), la columna 4 del Grid principal en `MainWindow.axaml` mantenía un ancho fijo asignado (`Width="360"`), provocando que el `Grid` reservara 360 px en el extremo derecho. Como resultado, la columna central con el lienzo del editor DAG (`views:EditorView`, con `Width="*"`) se quedaba recortada y comprimida a la izquierda con un espacio vacío a la derecha, comportándose como si el inspector siguiera ocupando su espacio físico.
+
+### 🎯 Corrección
+- Vinculada la propiedad `ColumnDefinition.Width` de la columna 4 al estado `NodeInspector.IsOpen` mediante `BooleanToGridLengthConverter` con `ConverterParameter=360`:
+  - Cuando `NodeInspector.IsOpen` es `false`: la columna colapsa a `GridLength(0, Pixel)`, permitiendo que el lienzo del editor `EditorView` (`Width="*"`) ocupe el 100% del ancho disponible de la ventana.
+  - Cuando `NodeInspector.IsOpen` es `true`: la columna se dimensiona a `GridLength(360, Pixel)`.
+- El `GridSplitter` adyacente (columna 3, con `Width="Auto"` e `IsVisible="{Binding NodeInspector.IsOpen}"`) colapsa también a 0 de forma coordinada.
+- Añadida cobertura de pruebas unitarias para `BooleanToGridLengthConverter` con parámetros y conversión bidireccional en `ValueConvertersExhaustiveTests`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- Suite completa de pruebas: **1009 superadas, 1 omitida, 0 fallos, 1010 total**.
+
+## [2026-09-16] - Corrección de Cierre Silencioso al Arrancar la Aplicación
+
+
+### 🎯 Diagnóstico
+La aplicación aparecía brevemente en el administrador de procesos y terminaba antes de mostrar la ventana. La ejecución real con `dotnet run` y el `crash.log` identificaron la excepción exacta: Avalonia 12 no tiene un animador registrado para `RenderTransform`, y las animaciones declaradas en `FileFlow.App/Styles/Ports.axaml` se aplicaban al construir el splash window.
+
+### 🎯 Corrección
+- Sustituidas las animaciones de escala sobre `RenderTransform` en los sockets compatibles por animaciones de `Opacity`, que sí tienen animador soportado en Avalonia 12.
+- Conservado el `RenderTransform` estático del socket rombo; sólo se elimina de los keyframes animados, preservando su orientación visual.
+- La animación de energía de cables y el pulso de conexiones siguen funcionando porque no animan `RenderTransform`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.App/FileFlow.App.csproj`: **0 advertencias / 0 errores**.
+- Ejecución de la aplicación durante 12 s: el proceso permanece activo y no produce excepciones ni stderr; antes terminaba con `No animator registered for the property RenderTransform`.
+- Guardias headless relevantes: **13/13**; las guardias visuales asociadas también quedan en verde.
+- Suite completa: **1009 superadas, 1 omitida, 0 fallos, 1010 total**.
+
+### 📌 Regla para el futuro
+En Avalonia 12 no declarar animaciones de estilo sobre `RenderTransform` salvo que se registre explícitamente un animador compatible; preferir `Opacity` u otras propiedades soportadas y mantener una prueba de arranque de ventana real.
+
+
 Este documento registra cronológicamente los hitos, cambios, mejoras y correcciones activas del proyecto **FileFlow Studio**.
 
 > [!NOTE]
 > **Historial Consolidado y Fases Previas**:
 > El registro histórico completo correspondiente a fases anteriores (Fases 1 a 8, Sprints de Agosto 2026 y desarrollos fundacionales) ha sido consolidado y archivado para optimización de contexto en:
 > 📄 [**`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`**](file:///docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md)
+
+## [2026-09-16] - Mejoras xUnit P1/P2/P5: Esperas Deterministas, MemberData y Naming
+
+### 🎯 Objetivos y Alcance
+Aplicar tres mejoras priorizadas de la auditoría contra `csharp-xunit`: cerrar el silent-skip de inferencia opcional, convertir el catálogo de modelos IA en una prueba data-driven y corregir el naming del test de CLIP.
+
+### 🎯 Cambios Implementados
+- **P1**: el test opcional de CLIP ya no retorna silenciosamente cuando falta el modelo; queda marcado como skip explícito con motivo visible en el resultado de xUnit. Las esperas ciegas ya habían sido sustituidas por `AsyncTestWaiter` en el hito anterior.
+- **P2**: `AiModelManager_GetDefaultUrls_ShouldReturnWorkingUrlsForCatalogModel` usa `[Theory]` + `[MemberData]`, generando un caso independiente y ordenado por cada id del catálogo; el caso específico de YOLOv8 queda como test separado.
+- **P5**: `ClipModel_Diagnostic_Test` renombrado a `SemanticEmbeddingEngine_ClassifyZeroShot_WithClipModel_ShouldScoreEnglishAndSpanishCategories`, describiendo método, escenario y resultado.
+
+### 🧪 Validación incremental
+- Después de P1: **984 superadas, 1 omitida, 0 fallos, 985 total**.
+- Después de P2: **1008 superadas, 1 omitida, 0 fallos, 1009 total**.
+- Después de P5: **1008 superadas, 1 omitida, 0 fallos, 1009 total**.
+- Cada etapa incluyó build/test de la suite completa; no se regeneraron líneas base.
+
+### 📌 Notas para la próxima sesión
+El skip de CLIP es deliberadamente explícito porque xUnit 2.9 no soporta skip condicional dinámico de forma fiable; si el modelo pasa a ser un artefacto obligatorio de CI, debe eliminarse el skip y promoverse a aserción.
+
+## [2026-09-16] - Sondeo Determinista para Pruebas Asíncronas
+
+### 🎯 Objetivos y Alcance
+Eliminar esperas ciegas basadas en `Task.Delay` de `AsyncVirtualizingListTests` y `WorkflowFolderWatcherTests`, sustituyéndolas por sondeo de estado observable con límite de tiempo.
+
+### 🎯 Cambios Implementados
+- Añadido `FileFlow.Tests/TestHelpers/AsyncTestWaiter`: `WaitForAsync` evalúa la condición inmediatamente y después con polling configurable, timeout obligatorio, cancelación cooperativa y mensajes de diagnóstico con la descripción de la condición.
+- Migrados los dos accesos asíncronos de `AsyncVirtualizingListTests`: ahora esperan el mensaje/valor de duración realmente cargado, no una pausa arbitraria de 100 ms.
+- Migrados los dos escenarios de `WorkflowFolderWatcherTests`: esperan los dos eventos descubiertos y el contador del nodo downstream, manteniendo límites máximos explícitos de 3 s y 6 s.
+- Añadidos tres tests unitarios para éxito, timeout diagnosticable y cancelación del helper.
+
+### 🧪 Validación
+- Tests relevantes: **9/9** (`AsyncTestWaiterTests`, `AsyncVirtualizingListTests`, `WorkflowFolderWatcherTests`).
+- Compilación de `FileFlow.Tests`: **0 advertencias / 0 errores**.
+
+### 📌 Notas para la próxima sesión
+Usar `AsyncTestWaiter.WaitForAsync` para nuevas condiciones asíncronas observables; reservar `Task.Delay` únicamente para probar explícitamente el paso del tiempo o temporizadores.
+
+## [2026-09-16] - Patrón Calibrado Compartido y Sustitución del Benchmark Falso del Motor
+
+### 🎯 Objetivos y Alcance
+Extender el análisis de determinismo (hito 107) a los otros dos ficheros de `Performance/`: `PerformanceStressTests` y `EngineParallelStressTests`, factorizando el patrón calibrado en un helper compartido.
+
+### 🔬 Hallazgos
+- **`EngineParallelStressTests` era un benchmark falso**: construía un `WorkflowExecutor`, **nunca invocaba `ExecuteAsync`** y medía un `Task.WhenAll` sobre lambdas locales con `Task.Yield()` — el umbral de 20 s no comparaba nada del motor. La prueba verde era teatro.
+- **`PerformanceStressTests` tenía el mismo umbral fijo** (1 s para 10.000 interpolaciones del resolvedor) y su test de snapshots creaba un `NodeViewModel` **sin llamar `Cleanup()`**: dejaba el suscriptor eterno de `LocalizationManager.LanguageChanged` vivo para siempre — el mismo patrón zombi eliminado en los hitos 103/105.
+
+### 🎯 Cambios Implementados
+1. **`TestHelpers/CalibratedBenchmark`**: el esqueleto del hito 107 (calibración en línea, mediana de 3 mediciones, factor ×40 sobre la calibración, informe al TRX con cifras de diagnóstico) extraído a helper compartido y documentado como contrato del suite (qué se mide, qué no se asierta —GC/memoria—, cuándo elevar el factor).
+2. **`PerformanceBenchmarkSuiteTests` refactorizado** para delegar en el helper (misma conducta, cero duplicación).
+3. **`PerformanceStressTests`**: umbral calibrado en el resolvedor; el test de snapshots guarda el VM y llama `Cleanup()` en el `Dispose` de la clase de pruebas (higiene de zombis); `IDisposable` documentado.
+4. **`EngineParallelStressTests` reescrito**: ejecuta el DAG **real** (origen de carpeta → sumidero de destino sobre 100 ficheros en disco, `MaxDegreeOfParallelism` = núcleos) con contrato doble: **corrección** (el destino recibe exactamente las 100 fichas — determinista) y **regresión** (tiempo calibrado con factor ×80, elevado por la varianza estructural del I/O de disco; el destino se limpia entre mediciones para que cada pasada mida el mismo trabajo).
+
+### 🧪 Validación
+- Clúster de rendimiento completo: **15/15** (los 5 benchmarks + el test real del motor en 1,07 s + el resto).
+- **982 / 982 pruebas superadas en paralelo en dos ejecuciones (24 s / 22 s)**. Compilación: 0 advertencias / 0 errores.
+
+### 📌 Notas para la próxima sesión
+- El patrón ya tiene hogar canónico (`CalibratedBenchmark`): cualquier benchmark nuevo del suite debe usarlo; el lint futuro de umbrales de tiempo fijos (propuesto en el hito 107) tiene ahora una clase que prohibir.
+
+## [2026-09-16] - Análisis y Determinismo de PerformanceBenchmarkSuiteTests
+
+### 🎯 Objetivos y Alcance
+Analizar `PerformanceBenchmarkSuiteTests` como se hizo con el clúster IA: qué testea, si sus aserciones de tiempo son flaky bajo contención y cómo hacerlo determinista.
+
+### 🔬 Análisis
+- **Qué testea** (5 pruebas, sin colección — corren en paralelo con todo el suite): throughput del resolvedor de plantillas (50k interpolaciones), clonado profundo con capacidad exacta (20k), ingesta de telemetría paralela (50k fichas, SQLite en memoria), letterbox SIMD (50 imágenes 720p→640×640) y hashing SHA256 en streaming (100 MB, I/O real). Cuatro con aserción de tiempo de reloj de pared de umbral **fijo**; la de telemetría, sin ninguna.
+- **Riesgo de flakiness medido, no teórico**: los umbrales fijos tenían margen estrecho contra la **corrida en frío** — `HashCalculator` 67 MB/s vs umbral 50 (×1,35) y `TemplateResolver` 1,97 s vs 2,5 s (×1,27) en la primera pasada del proceso. En la máquina de 28 núcleos, ni el suite paralelo ni contención extrema inducida (28 spinners, 100% CPU sostenido) los derribaron — pero en una máquina de CI más lenta o un portátil a batería, esos márgenes son un fallo intermitente esperando turno. Añadido: los recuentos del GC y el delta de memoria se reportaban pero **no** eran atribuibles en un proceso paralelo (ninguna aserción sobre ellos, correctamente).
+- **Hueco de contratos**: la prueba de telemetría medía throughput sin afirmar **corrección** (todas las fichas encoladas deben llegar), y su bucle incluía el flush dentro del tiempo medido.
+
+### 🎯 Cambios Implementados
+1. **Umbrales relativos con calibración en línea**: cada prueba mide primero la velocidad de la máquina (`WarmupIterations` ejecuciones de la carga, que precalientan el JIT) y aplica `TimeLimitFactor = 40` sobre esa calibración — el mismo factor detecta la regresión real en cualquier equipo, insensible a lo lenta que sea la máquina de turno. Mensaje de fallo con cifras completas (calibración, mediana, peor repetición, umbral).
+2. **Mediana de repeticiones** (`RepeatMeasurements = 3`): la medición contaminada por otra colección paralela es una muestra, no el resultado — demostrado en la primera corrida (una medición de DeepClone salió ×2,8 manchada; la mediana la absorbió).
+3. **Aserción de corrección en telemetría**: las 50.000 fichas de N productores concurrentes deben llegar exactas a `GetTotalCountAsync` (determinista por naturaleza); el flush se excluye del tiempo medido (lo que se testea es la ingesta).
+4. **Dejas de reportarse como aserción** los contadores de GC y memoria (quedan como diagnóstico); consumo del resultado del letterbox para que el JIT no elimine la llamada; documentación de la clase explicando el contrato (detección de regresión, no benchmarking).
+
+### 🧪 Validación
+- Clase aislada ×2, bajo suite paralelo completo y bajo **contención extrema inducida (28 spinners, 100% CPU)**: 5/5 en todas. El diseño calibrado aguanta lo que el umbral fijo ponía en riesgo en frío (×1,35 de margen).
+- **982 / 982 pruebas superadas en paralelo (22 s, sin coste neto tras recortar el calentamiento a 3 pasadas)**. Compilación: 0 advertencias / 0 errores.
+
+### 📌 Notas para la próxima sesión
+- El factor ×40 es un trinquete deliberadamente holgado: si un día se quiere detección fina, bajarlo a ×5-10 tras medir la varianza real en CI — nunca apostar por umbrales fijos.
+- `EngineParallelStressTests` y `PerformanceStressTests` viven en la misma carpeta sin colección: candidatos a la misma revisión si algún día muestran inestabilidad.
+
+## [2026-09-16] - Coste de VisualSnapshots: Fixture por Clase y Cortocircuito de Tema por Captura
+
+### 🎯 Objetivos y Alcance
+Reducir el coste de la colección `VisualSnapshots` (~5,6 s medidos en la suite completa) creando la `AppVisualFixture` una vez por clase en lugar de una por captura, sin perder el aislamiento entre pruebas.
+
+### 🔬 Hallazgos de la medición (base para las decisiones)
+- **La fixture por captura NO era el coste**: `Create()` en caliente cuesta 5-17 ms (sonda por etapas). El peso real es el **arranque en frío del proceso**: el primer `Create()` cuesta ~8 s (3,7 s en `CreateConfiguredLoader` — registro por reflexión de 11 ensamblados de plugins — y 4,0 s en el primer `ToolboxViewModel`, que instancia cada tipo de nodo). La suite completa paga esos 8 s una sola vez, en la clase que llegue primero.
+- Descomposición de la colección: `AppShellVisualRegressionTests` 3,53 s · `ModalVisualRegressionTests` 1,33 s · `LocalizationManagerTests` 0,52 s · el resto <0,25 s. La suma no cuelga: son ~21 capturas reales (XAML + render + comparación píxel a píxel) más el frío compartido del proceso.
+
+### 🎯 Cambios Implementados
+1. **`AppVisualFixture.EnsureFrozen`**: el congelado de la muestra se hace público e idempotente (recarga el grafo vía `LoadFromGraphModel` → `ClearGraph`, que dispone los nodos viejos; vacía y vuelve a sembrar la consola; re-afija la barra de estado; reabre el inspector). `Freeze` queda como alias privado para `Create`.
+2. **`SharedAppVisualFixture` + `IClassFixture`** en `AppShellVisualRegressionTests`: la fixture se construye una vez por clase (marshaling al hilo de UI en el constructor del wrapper, que xUnit ejecuta antes de la primera prueba) y se dispone al finalizar la clase — mismo contrato de limpieza que antes, pero ×1 en vez de ×9. Cada captura llama `EnsureFrozen` dentro de la fábrica de captura, de modo que la imagen parte del estado congelado aunque la prueba anterior hubiera tocado view models. El test de datos usa la fixture compartida con `EnsureFrozen` en `RunOnUI` (la guardia de hilo lo exigió, como debe).
+3. **Cortocircuito del tema en `VisualSnapshot`**: nueva `ApplyCaptureTheme` aplica el preset salvo que el activo sea **semánticamente idéntico** (comparación por serialización de la definición, no por referencia ni por id: `ResolveTheme` devuelve instancias nuevas y una prueba puede haber mutado el tema activo), y `RestoreCaptureTheme` sólo restaura si el id cambió de verdad. En una tanda de capturas sobre el mismo preset se elimina el doble `SetTheme` completo (diccionario de recursos + publicación del cambio a toda la app) por captura.
+
+### 🧪 Validación
+- Las **21 capturas** de las tres clases visuales quedan **idénticas a sus líneas base** sin regenerar nada (aislamiento preservado).
+- Corrida filtrada de `AppShellVisualRegressionTests`: contador de VSTest de 11 s a 3 s (el frío queda ahora atribuido al constructor del fixture de clase, que VSTest no contabiliza en ninguna prueba; reloj de pared ~24 s en ambos casos).
+- **982 / 982 pruebas superadas en paralelo en dos ejecuciones consecutivas (21-22 s)**. Compilación: 0 advertencias / 0 errores.
+
+### 📌 Notas para la próxima sesión
+- Para rebajar la colección de verdad habría que atacar el frío del proceso: cachear un `PluginLoader` configurado por proceso en `PluginRegistryHelper` (los tests ya tratan el registro como idempotente en su mayoría) o precachear instancias de nodos del toolbox. Es una decisión de diseño (compartir registro entre fixtures), no una microoptimización local.
+- `ModalVisualRegressionTests` mantiene su fixture por captura (ventanas distintas por superficie, no comparten estado): no aplicar ahí el patrón sin una razón.
+
+## [2026-09-16] - Relay Débil en Nodos de IA, Líneas Base de Modales y Cierre Definitivo de los Bindings Zombi
+
+### 🎯 Objetivos y Alcance
+Eliminar la suscripción eterna de `AiFlowNodeBase` y sus 13 nodos derivados al evento estático `SessionStateChanged` (limpieza determinista o WeakEvent), dotar de líneas base visuales a las ventanas modales (host y plugins) y dejar la suite completa corriendo en paralelo al 100%, incluida la colección de capturas.
+
+### 🎯 Cambios Implementados
+1. **`WeakModelStatusRelay` (`FileFlow.Plugin.AI/Common/`)**: cada nodo envuelve su lambda de reenvío (`() => ModelStatusChanged?.Invoke()`) en un relay que guarda la suscripción al evento estático **sólo detrás de una referencia débil** al lambda; autolimpieza en el primer disparo tras la recolección del nodo y `Dispose()` determinista. Sin registro global: 13 constructores migrados mecánicamente, `InternalsVisibleTo` ya existente. Guardias en `WeakModelStatusRelayTests` (5): reenvío, autolimpieza verificada con GC y barrido de ambos eventos (`OnnxSessionManager` **y** `AudioInferenceEngine` — los nodos de audio escuchan el segundo), dispose determinista y guardia de fuente que prohíbe volver al patrón de suscripción eterna.
+2. **Líneas base visuales de 9 modales** (`ModalVisualFixture` + `ModalVisualRegressionTests`): About (además en claro), VariablePicker, AiModelManager, AiModelUrls, WorkflowSettings, MultimodalVlm (plugin IA), PasswordManager (Archives), RegexHelper (FileSystem) y MediaPresetManager (Integrations) — dobles de puertos en todas (almacenamiento VLM temporal, IDs de modelo falsos, constructores de prueba), 10 líneas base nuevas (12+10 en `VisualBaselines/`). Nueva API `VisualSnapshot.CaptureWindow(factory, themeId)`: muestra la ventana real headless (su XAML raíz, bindings de ventana y tamaño), normaliza escala 1:1 y fondo opaco cuando la modal es transparente/acrílico, y purga+cierra dentro de su propio despacho. Regla headless descubierta: **ventana y captura deben vivir en el mismo despacho** (construir en uno y mostrar en otro devuelve frame `null`). La fixture registra además los recursos de localización de los plugins por ambas ramas de `PluginLoader` (clase generada **y** recursos embebidos del manifiesto — el plugin IA no tiene `Strings.Designer.cs`), imitando a producción.
+3. **Unificación de colecciones exclusivas**: `Localization` desaparece y sus 10 clases pasan a `VisualSnapshots`. Motivo: dos colecciones exclusivas distintas **sí corren a la vez entre sí**, y ambas mutan la misma variable global de proceso (cultura/idioma) — la carrera era estructural, no de implementación. Actualizados analizador de la guardia, auto-tests, mapa de `TestAssemblyParallelism.cs` y comentarios.
+4. **`LogViewModel` con dispose determinista**: guarda su handler de `LanguageChanged` (convención ya existente en `NodeParameterViewModel`/`ToolboxViewModel`) y se desuscribe en `Dispose` (antes sólo paraba el timer). Además se eliminó de `ModalVisualFixture` una variable muerta que instanciaba el VM sin usarlo (resto de una iteración): su constructor suscribía eternamente el evento del singleton y su handler tocaba código con afinidad de hilo.
+5. **Marshaling de cultura en pruebas (`AvaloniaTestHelper.SetCultureOnUI`)**: el cierre de raíz de los bindings zombi. La purga de árboles (visual + lógico) es efectiva (verificado control por control, 0 errores), pero Avalonia retiene vinculaciones del *chrome* de la ventana tras `Close` hasta que el GC recolecta el objetivo — y una notificación de cultura disparada desde el hilo del runner reevalúa esos bindings contra controles propiedad del hilo de UI: `InvalidOperationException` que mataba al test ajeno que la provocaba. En producción la cultura sólo cambia desde la UI, así que las 31 llamadas de 5 clases de test (`PortSemanticsTests`, `LocalizationManagerTests`, `NodeParameterViewModelTests`, `ToolboxOrganizationTests` — cuyo setter de `CurrentCulture` **también** dispara `PropertyChanged` —, y restos) se marshaling al hilo de la sesión vía el nuevo helper. Borrada la sonda temporal `ZombieProbeTests`.
+
+### 🧪 Validación
+- Compilación: **0 advertencias / 0 errores**.
+- Clúster IA: 28/28 con el relay migrado. Par problemático (modales + localización): 49/49.
+- **982 / 982 pruebas superadas en paralelo en dos ejecuciones consecutivas (23 s cada una)**, sin `SetCulture` desde el hilo runner en ningún test.
+
+### 📌 Notas para la próxima sesión
+- Regla de oro para pruebas nuevas: **toda mutación de cultura/idioma del proceso pasa por `AvaloniaTestHelper.SetCultureOnUI`** (nunca `SetCulture` ni `CurrentCulture` desde el hilo del runner), y las clases que la usan pertenecen a `VisualSnapshots`.
+- `VisualSnapshot.CaptureWindow` exige fábrica (construcción+captura en el mismo despacho); no reintroducir sobrecargas con ventana ya construida.
+
+## [2026-09-16] - Guardia del Contrato de Colecciones del Suite Paralelo
+
+### 🎯 Objetivos y Alcance
+Crear un test de guardia que falle cuando una clase de test toque `ModelSessionRegistry`, `OnnxSessionManager`, `UserPreferencesService` real o la sesión headless de Avalonia sin pertenecer a su colección exclusiva — convirtiendo el contrato documentado en `TestAssemblyParallelism.cs` en un test que se ejecuta en cada pasada.
+
+### 🎯 Cambios Implementados
+1. **Analizador puro** (`TestHelpers/TestCollectionContractAnalyzer.cs`): reglas estado→patrones (el singleton real de preferencias, no los dobles), resolución del atributo `[Collection]` por literal y por constante **cualificada** (`FileFlow.Tests.Unit.Views.VisualSnapshotsCollection.Name`), separación de atributo/clase a través de comentarios XML de documentación (patrón real del repo), análisis **por clase** y exclusión de infraestructura (`TestHelpers`) y de ficheros auto-referenciales (los auto-tests contienen los patrones en sus snippets sintéticos; sin la exclusión, la guardia se encontraría a sí misma).
+2. **Regla de aceptación por exclusividad**: basta con declarar **cualquier** colección exclusiva — `DisableParallelization = true` ejecuta la colección en exclusividad total, así que una clase en `OnnxInference` que además muta las preferencias reales es correcta (`ModelLifecycleAndMemoryTests`). Lo que el contrato no perdona es tocar el estado desde una clase sin colección o en una paralela.
+3. **Guardia** (`Unit/App/TestCollectionContractGuardTests.cs`): el barrido del árbol real + 15 auto-tests de la lógica (cada estado, cada forma de tocar la sesión, análisis por clase, ficheros no-test, y una prueba de infracción plantada en directorio temporal).
+4. **Infractor real corregido**: `ThemeStudioVisualContractTests` (colección paralela `ThemeTokens`) llamaba a `AvaloniaTestHelper.EnsureInitialized()` — arrancaba la sesión headless fuera de la colección exclusiva `VisualSnapshots`. Recolocada a `VisualSnapshots`.
+
+### 🧪 Validación
+- 15/15 pruebas de la guardia; verificación negativa de extremo a extremo: quitar la colección a `ModelLifecycleAndMemoryTests` pone el barrido en rojo señalando el estado y la colección canónica; restaurado, vuelve al verde.
+- Compilación: **0 advertencias / 0 errores**. **975 / 975 pruebas superadas en paralelo (19 s)** con la guardia incluida.
+
+### 📌 Notas para la próxima sesión
+- Al añadir un estado global nuevo, añade su regla a `TestCollectionContractAnalyzer.Rules` y su colección a `ExclusiveCollections`: la guardia y la documentación de `TestAssemblyParallelism.cs` deben moverse juntas.
+
+## [2026-09-16] - Rendimiento del Clúster IA y Estabilidad del Paralelismo
+
+### 🎯 Objetivos y Alcance
+Investigar si los tests del clúster IA pueden compartir la sesión ONNX real de forma segura y si hay clases etiquetadas en `OnnxInference` que no ejecuten inferencia y puedan salir de la colección (corren en serie y son la parte más lenta del suite).
+
+### 🎯 Cambios Implementados
+1. **Clasificación fina por medición (TRX por prueba)**: de las 16 clases de `OnnxInference`, la «ballena» `MultimodalVisionLlmNodeTests` (8,7 s de 13,6 s) **no ejecuta inferencia nativa**: es política de reintentos HTTP contra handlers de Moq inyectados vía `CustomHttpClient` — 7,1 s eran esperas reales (`Task.Delay`) del backoff (1,5 s/2 s por intento) y del *cooldown* de 250 ms para endpoints locales en `MultimodalVlmClientEngine`.
+2. **Costura de escala de pruebas** en `MultimodalVlmClientEngine`: `RetryBackoffScalePercent` (`internal static`, por defecto **100** = producción intacta); los tests lo fijan a 0. La clase pasa de **9,3 s a 0,8 s** sin tocar la política de reintento que se prueba. Requirió `<InternalsVisibleTo Include="FileFlow.Tests" />` en el csproj del plugin: los tests compilan contra la ref assembly, que Roslyn sólo rellena de internos si existe esa línea (sin ella, CS0117 fantasma con la DLL de implementación correcta).
+3. **`MultimodalVisionLlmNodeTests` sale de `OnnxInference`** y corre en paralelo: sin registros de sesión (motor cliente no consulta `OnnxSessionManager`; `CustomHttpClient` inyectado, ni puertos ocupa).
+4. **El resto de la colección se queda**, verificado que sí alcanza estado nativo global: los nodos de visión/audio heredan de `AiFlowNodeBase` (consulta `OnnxSessionManager`), `SemanticEmbeddingEngine` y `AudioInferenceEngine` tienen cachés de sesión **propias** (el fallback lexical de `ClassifyZeroShot(null,…)` evita sesión pero no garantiza la clase), y `AiNodesTests` puede abrir sesiones reales si hay modelos en disco. **Compartir la sesión ONNX entre colecciones: descartado** — los registros son estáticos del proceso y la exclusividad de la colección ya es el mecanismo seguro de compartición; el ahorro restante (~4 s) no justifica el riesgo.
+5. **Carrera real descubierta y cerrada**: bindings zombi. Las vistas enlazan con `{Binding [Clave], Source={x:Static loc:LocalizationManager.Instance}}`; los árboles de las capturas sobrevivían al test y, al cambiar `Localization` la cultura desde otro hilo, un binding zombi escribía una propiedad animable de un control propiedad del Dispatcher de la sesión ya apagada → 'The calling thread cannot access this object' en pruebas ajenas (11-12 fallos intermitentes). Cierre determinista: `VisualSnapshot.PurgeBindings` (barrido de `ClearValue` sobre todas las propiedades registradas + `DataContext = null`, de abajo arriba; Avalonia no tiene el `ClearAllBindings` de WPF) tras cada captura, `VisualSnapshot.DetachTree` en las ventanas de humo, `AppVisualFixture.Dispose` (desuscribe los VMs de los singletons y para el `DispatcherTimer` de la consola) y `ThemeCustomizerViewModelTests` a `Localization` (sufijo de duplicado dependiente del idioma).
+
+### 🧪 Validación
+- Compilación: **0 advertencias / 0 errores**.
+- **960 / 960 pruebas superadas en paralelo en cuatro ejecuciones consecutivas (21 / 15 / 15 / 20 s)**, clúster IA/ONNX incluido. Suite VLM: 22/22 en **0,8 s** (antes 9,3 s).
+
+### 📌 Notas para la próxima sesión
+- El mapa de colecciones de `TestAssemblyParallelism.cs` queda actualizado: `OnnxInference` ya no es «todo Unit/AI» — `MultimodalVisionLlmNodeTests` corre fuera, sin colección. Cualquier prueba nueva del plugin de IA que toque `OnnxSessionManager`/`ModelSessionRegistry` o los motores con caché va en `OnnxInference`; la que sea HTTP simulado sin registros, puede correr libre.
+
+## [2026-09-16] - Suite en Paralelo: Aislamiento del Clúster ONNX en Colecciones Exclusivas
+
+### 🎯 Objetivos y Alcance
+Reactivar el paralelismo de xUnit —suspendido el 15/09 como *workaround* contra el cuelgue histórico del suite— confinando cada foco de estado global de proceso en su propia colección no paralelizable. Objetivo: que `dotnet test` siga siendo fiable sin renunciar al paralelismo de la parte del suite que no comparte nada.
+
+### 🎯 Cambios Implementados
+1. **Paralelismo reactivado** (`TestAssemblyParallelism.cs`): `DisableTestParallelization = false`, con el mapa completo de colecciones exclusivas y el estado que confinan documentado en el propio fichero.
+2. **Nueva colección exclusiva `OnnxInference`** (`Unit/AI/OnnxInferenceCollection.cs`, `DisableParallelization`): las 16 clases que ejercitan el clúster de IA — todo `Unit/AI` (excepto `AiModelManagerConfigTests`, que descarga modelos y va en su colección propia) y `Unit/Plugins/AI/AiNodesTests` (puede crear sesiones nativas si hay modelos descargados en disco). Registros de sesiones (`ModelSessionRegistry`, `OnnxSessionManager`, `AiPluginInitializer`), motores nativos y las cachés que abortan el host (`0xC0000005`) al cargar/descargar assemblies nativos en paralelo. Se descartó etiquetar el resto de `Unit/Plugins` (archivos, red, datos): lógica pura sin estado nativo.
+3. **`ModelLifecycleAndMemoryTests` recolocada** en `OnnxInference` (estaba en `Localization`): vacía cachés de `OnnxSessionManager`/`AudioInferenceEngine` y muta el singleton real de `UserPreferencesService`; no era estado de localización.
+4. **`AiModelDownloadSequential` definida de forma explícita** (`AiModelDownloadSequentialCollection.cs`): era una colección implícita (3 clases serializadas entre sí pero en paralelo con el resto) y descarga modelos reales por red con escritura en el perfil del usuario.
+5. **`Localization` definida de forma explícita** (`Unit/Sdk/LocalizationCollection.cs`): cultura e idioma del proceso (`LocalizationManager`, `CultureInfo.CurrentCulture`) y el singleton real de `UserPreferencesService` (mutado con restauración). Nuevo miembro: `SystemVariablesResolverExhaustiveTests`, que muta la cultura y estaba fuera de cualquier colección.
+6. **Por qué es seguro**: `DisableParallelization = true` (xUnit 2.9.2) ejecuta la colección en **exclusividad total** — mientras corre, no corre ninguna otra colección, ni siquiera las no relacionadas. El resto del suite es lógica pura, lints de texto sobre .axaml o catálogos sin estado compartido. La sesión headless de Avalonia arranca bajo `lock` y despacha en serie, y sólo la consume la colección `VisualSnapshots` (también exclusiva).
+
+### 🧪 Validación
+- Compilación: **0 advertencias / 0 errores**.
+- **960 / 960 pruebas superadas en paralelo en tres ejecuciones consecutivas (30 s / 23 s / 22 s)** con `dotnet test FileFlow.Tests/FileFlow.Tests.csproj` sin filtros y con el clúster IA/ONNX incluido (142/142 también en aislamiento).
+- El cuelgue histórico de `dotnet test` queda resuelto **por confinamiento de estado, no por serialización**: la suite corre en paralelo y termina de forma reproducible.
+
+### 📌 Notas para la próxima sesión
+- Cualquier prueba nueva debe declararse en: `OnnxInference` (inferencia nativa, sesiones ONNX, nodos del plugin de IA, `UserPreferencesService` real), `AiModelDownloadSequential` (descargas de modelos), `Localization` (cultura/idioma) o `VisualSnapshots` (sesión headless de Avalonia). El comentario de `TestAssemblyParallelism.cs` es el mapa de referencia.
+
+---
+
+## [2026-09-15] - Infraestructura Headless Fiable y Red de Seguridad Visual (Capturas de las Vistas Clave)
+
+### 🎯 Objetivos y Alcance
+Convertir las pruebas de interfaz en una **medida fiable** y añadir la red que faltaba: **capturas renderizadas de las vistas clave** comparadas píxel a píxel contra líneas base en el repositorio. El punto de partida era incómodo: la inicialización de Avalonia era correcta pero **frágil por diseño** —cualquier prueba que construyera controles desde el hilo del runner "funcionaba" por casualidad—, y el suite completo no terminaba de forma fiable.
+
+### 🎯 Cambios Implementados
+1. **Contrato de hilo explícito en la sesión headless** (`AvaloniaTestHelper`):
+   - Marca `[ThreadStatic]` de «este hilo es el de la sesión» (no `Dispatcher.UIThread.CheckAccess()`, que **antes de arrancar** dice que sí sobre el hilo del runner) y `RequireUIThread(operación)`, que lanza un mensaje accionable en lugar de dejar que el fallo aparezca tres capas más abajo como `Unable to locate IWindowingPlatform` o como «el token no existe».
+   - **Despacho reentrante**: una llamada anidada (público usado desde dentro de una fábrica u otro despacho) se ejecuta **en línea**; antes habría encolado y bloqueado el bucle que tenía que atenderla (interbloqueo silencioso hasta el *timeout* del runner).
+   - **Registro de recursos no destructivo**: se elimina el `ClearResourceManagers()` global que borraba los diccionarios registrados por los plugins y hacía fallar pruebas de localización **de otras clases** (sólo al ejecutar el suite entero). El idioma se fija únicamente si no lo estaba ya, para no disparar `LanguageChanged` sin motivo.
+2. **Serialización de todo el suite** (`[assembly: CollectionBehavior(DisableTestParallelization = true)]`, `FileFlow.Tests/TestAssemblyParallelism.cs`): los tests comparten estado de proceso (sesión y Dispatcher de Avalonia, tema y diccionario de recursos, cultura y diccionarios de `LocalizationManager`, registro de sesiones ONNX). En paralelo los fallos aparecían **en la prueba equivocada** y sin ser reproducibles: cultura inesperada, tema no aplicado, `TaskCanceledException` de `DispatcherOperation.Wait` por un `Dispatcher.UIThread.Invoke` que expira mientras otro hilo tiene ocupado el bucle. Consecuencia directa: **`dotnet test` (el comando de `AGENTS.md`) ya no se cuelga y pasa al 100% en ~30 s**, incluido el clúster IA/ONNX.
+3. **API de captura imposible de usar mal** (`VisualSnapshot`):
+   - `Capture` recibe una **fábrica** de contenido y la invoca **dentro del hilo de UI**; ya no existe la sobrecarga que aceptaba un control ya construido, que era exactamente la trampa.
+   - Nueva `CaptureNaturalHeight` para barras: la altura sale del `DesiredSize` **con los estilos aplicados**, así que un cambio de densidad o de tipografía no recorta la captura (antes se fijaba a mano).
+   - Comprobaciones propias: la captura debe salir a escala **1:1** y con el tamaño exacto pedido (si no, la línea base dependería de la máquina); la codificación PNG deja atrás la API obsoleta.
+   - `ResolveToken<T>` sustituye a los ayudantes locales de cada test y exige el hilo de UI (preguntar fuera de él devolvía un `null` que parecía «el token no existe»).
+4. **Muestra determinista de la aplicación** (`AppVisualFixture` + dobles `InMemoryUserPreferencesService`, `FrozenPerformanceMonitor`, `InMemoryLogStore`, `NullFileDialogService`, `InMemoryWorkflowStorageService`):
+   - Los view models son los **reales**, pero sus puertos son dobles: sin el fichero de preferencias del desarrollador (favoritos, contadores de uso, tema, idioma), sin el monitor de rendimiento que cambiaría las cifras de CPU/RAM/GPU en cada ejecución y sin tocar la base de datos SQLite de logs ni la carpeta de flujos del usuario.
+   - El grafo de ejemplo (origen de carpeta → filtro lógico → destino, con conexiones, nota y grupo) se **carga desde el modelo de datos** (`LoadFromGraphModel`) en lugar de con `AddNode`, que escribe contadores de uso en las preferencias reales.
+   - La consola se siembra por la vía real (`AddStructuredLog` + `FlushAllPendingLogs`) con **marcas de tiempo fijas**, y la barra de estado se declara **sin modelos de IA cargados**: el registro de sesiones es un singleton del proceso y, si una prueba anterior cargó un modelo, la isla de «modelos en memoria» aparecía y la captura dejaba de ser reproducible (fallaba sólo al ejecutar el suite entero).
+5. **Capturas de las vistas clave con líneas base (8 nuevas, 12 en total en `FileFlow.Tests/VisualBaselines`)**:
+   - `app-shell-dark` / `app-shell-light` (**la ventana principal completa**, extrayendo el contenido real de `MainWindow`, con los seis paneles y el inspector abierto sobre un nodo).
+   - `panel-editor-dark` (lienzo con el grafo), `panel-toolbox-dark`, `panel-inspector-dark`, `panel-log-console-dark`, `panel-status-bar-dark` y `panel-control-bar-dark`.
+   - Cada una se acompaña de sondas que impiden una línea base «verde» inútil: **todo panel pinta más de cuatro colores distintos** (no un lienzo plano ni un control invisible) y la muestra del shell debe contener sus 3 nodos, 2 conexiones, registros y el inspector abierto.
+   - Regeneración documentada: `FILEFLOW_UPDATE_VISUALS=1`; una línea base que no existe se crea y **falla a propósito**, para que ninguna imagen se bendiga sin revisarla. Los fallos escriben `actual`/`expected`/`diff` en el directorio temporal y el mensaje indica la zona afectada.
+6. **Defectos reales encontrados por el camino**:
+   - **`FilePreviewerTests.AvaloniaImageLoader_ShouldDecodeWebP_IntoValidBitmap` no probaba nada**: pasaba sólo porque el helper antiguo inicializaba Avalonia en el hilo del runner. Con la sesión, decodificar desde el hilo de test devuelve `null` **sin lanzar** (el cargador se lo traga y su plan B también falla). Ahora se despacha al hilo de UI y se afirma el tamaño real (150×80), y una guardia nueva (`Session_ShouldDecodeImagesOnTheUiThread`) fija dónde se puede decodificar.
+   - **Sondas mal situadas en las pruebas de token**: la de radios comparaba **fondo contra fondo** (el `StackPanel` alineaba las cajas al centro, así que ningún muestreo caía dentro) y la de elevación muestreaba **dentro** de la caja. Reescritas: la primera alinea explícitamente y exige que la caja sin radio esté rellena; la segunda contrasta la sombra contra el fondo de la aplicación.
+7. **Guardias de la propia infraestructura (11, antes 6)**: aplicación única con Skia real y fotogramas capturables, arranque idempotente bajo concurrencia, despacho serializado entre hilos, **despacho anidado sin interbloqueo**, estilos sin animaciones, recursos del host y idioma fijados, ventanas reales renderizables, **construir controles fuera del hilo falla con un mensaje que dice qué hacer**, **resolver un token fuera del hilo también**, **la fábrica de una captura corre dentro de la sesión** (y el píxel capturado es el del token), una fábrica vacía se rechaza y la sesión decodifica imágenes. Verificado que las guardias fallan ante regresiones reales introducidas a propósito.
+8. **Colección serializada** (`VisualSnapshotsCollection`, `DisableParallelization`): propiedad explícita de la sesión headless para que cualquier prueba nueva que la use se declare aquí, y documentación de por qué estos tests no pueden convivir con otros.
+
+### 🧪 Validación
+- Compilación: **0 advertencias / 0 errores**.
+- **960 / 960 pruebas superadas al 100%** con `dotnet test FileFlow.Tests/FileFlow.Tests.csproj` (sin filtros) **en dos ejecuciones completas consecutivas (~30 s)**, incluido el clúster IA/ONNX (`142/142` también en aislamiento). El cuelgue histórico del suite en paralelo queda resuelto por la serialización, no por filtros.
+- Las 12 capturas se generaron y revisaron, y las comparaciones pasan en ejecuciones posteriores del suite completo (determinismo comprobado entre dos procesos distintos).
+
+### 📌 Notas para la próxima sesión
+- Cualquier vista nueva que merezca vigilancia visual se añade como superficie en `AppVisualFixture` (o como composición propia) y se captura con `VisualSnapshot.Capture`; el primer run crea la línea base y falla para forzar la revisión.
+- Las líneas base viven en `FileFlow.Tests/VisualBaselines/` y **no están ignoradas por git**: forman parte del repositorio.
+
+---
+
+## [2026-09-15] - Fase 1: Set de Tokens Completo y Theme Studio Funcional (Radios, Tipografía y Sombras)
+
+### 🎯 Objetivos y Alcance
+Cierre de la **Fase 1** de [`docs/ui_redesign_plan.md`](file:///docs/ui_redesign_plan.md): completar el conjunto de tokens del tema (radios, espaciado, elevación y escala tipográfica) y conseguir que **el Theme Studio personalice de verdad esa geometría en toda la interfaz**, no sólo el color. El plan de la fase partía de una queja concreta de la auditoría: el usuario movía el radio o el tamaño de fuente en el Studio y **no pasaba nada**, porque los tokens no existían o las vistas usaban literales.
+
+### 🎯 Cambios Implementados
+1. **Set de tokens completo (`ThemeDefinition`, `ThemeResourceApplier`, `DarkTheme.axaml`, presets JSON)**:
+   - **Radios**: escala simétrica `RadiusXs` → `RadiusXxl` derivada de `CornerRadius` (antes sólo existían en el baseline, sin origen en el tema).
+   - **Tipografía**: `FontSizeMicro` → `FontSizeDisplay` (7 escalones) derivados de `BaseFontSize`; `AppFontFamily`/`CodeFontFamily` conectados a la interfaz y al código.
+   - **Espaciado**: `Space1`..`Space9` (valores sueltos) y `Pad1`..`Pad9` (los mismos como `Thickness`) derivados de `SpacingUnit`: un único ajuste cambia la densidad de la interfaz.
+   - **Elevación**: `Elev1`..`Elev4` (tarjeta → panel → superposición → modal) más `ElevGlowAccent`/`ElevGlowSuccess`/`ElevGlowError`, todos derivados de `NodeShadowBlur` y `NodeShadowOpacity`, y `ElevPanelLeft` para el panel de navegación (una sombra vertical no sirve en un panel a sangre completa).
+   - **Velos y tintes nuevos**: `ScrimBrush`/`ScrimStrongBrush` (capas modales) y `ChipBrush`/`ChipStrongBrush`/`TintFaintBrush`, derivados de `TextSecondary` para que los chips se lean igual sobre superficies oscuras y claras.
+   - Cada paso de la escalera se redondea a 0.5 px y los valores por defecto del baseline siguen siendo **espejo exacto** del preset `dark_fluent` (`ThemeTokenCompletenessTests` lo verifica en ambos sentidos).
+2. **Los tokens ahora llegan a la UI (la parte que pedía el usuario)**:
+   - Migración automatizada de **400 tamaños de fuente literales, 154 radios literales y 7 sombras escritas a mano** en **31 ficheros AXAML** (host y plugins) a los tokens del tema. Se conservan a propósito los radios **asimétricos** (`4,0,0,4`, `9,9,0,0`) y el `0` deliberado, que la escala simétrica no puede expresar, y `●` de `PasswordChar` (no es un icono).
+   - Tras la migración, **la inmensa mayoría de las vistas desaparece de la línea base de `UiStyleLintTests`**: los literales de forma/tipografía bajan de ~370 a 15 y los ficheros vigilados de 24 a 14 (y sólo por color inline o radios asimétricos).
+3. **Theme Studio reconstruido (generado desde un catálogo, no escrito a mano)**:
+   - **`ThemeSettingCatalog`** es la fuente única de verdad de «qué se puede personalizar»: 9 secciones y **34 ajustes** con tipo de control, rango, paso, opciones y clave de localización, más `NotEditableYet` con el motivo de las 5 propiedades que no se editan (identidad y variante).
+   - **Filas tipadas por reflexión** (`ThemeColorRowViewModel`, `ThemeNumberRowViewModel`, `ThemeChoiceRowViewModel` sobre `ThemeSettingRowViewModel`): el editor se construye recorriendo el catálogo, así que **añadir un token y exponerlo aquí es suficiente**; ya no puede haber un control que no escriba en el tema porque la fila escribe sobre la propiedad declarada.
+   - **Vista previa en vivo real**: `LivePreviewResources` es una **instancia estable** que se actualiza en el sitio y que la vista previa engancha una sola vez (`PreviewHost.Resources = …` en el code-behind), de modo que sus `DynamicResource` resuelven contra el **tema en edición** mientras el resto de la ventana sigue mostrando el tema activo. El panel demuestra las tres escalas: radios (`RadiusXs`..`RadiusXxl`, `RadiusPill`), densidad (`Space1`..`Space9`) y profundidad (`Elev1`..`Elev4`, `ElevGlowAccent`), además de una tarjeta de nodo, botones, campos y tabla de muestra.
+   - **Ventana reescrita a 100% declarativo** con la capa de estilos (`card`, `chromeTop`, `chromeBottom`, `brandLg`, `badge`/`badgeAccent`, `led*`, `dividerH`, `primary`/`ghost`) y **cero literal de color, radio, tamaño o sombra**: es la vista de referencia del rediseño. Se añade estilo de `NumericUpDown` a `Inputs.axaml` para los ajustes numéricos.
+   - **Bugs del Studio antiguo corregidos**: la ventana enlazaba comandos y propiedades inexistentes (`CreateNewThemeCommand`, `ApplyAndSaveThemeCommand`, `BaseType`, `BgApp`, `AccentPrimary` sobre el view model) y **todo su texto estaba en español fijo**, así que en inglés la mitad de la interfaz no se traducía.
+4. **Localización y limpieza**: 66 claves nuevas en `Strings.resx` **y** `Strings.es.resx` (847 en ambos, sin duplicados y con paridad verificada); 6 etiquetas que ahora acompañan a un icono vectorial pierden el emoji (`New`, `Duplicate`, `Delete theme`, `Live preview`, `Test in app`, `Save & apply`).
+5. **Defectos preexistentes detectados y corregidos**:
+   - **Emojis residuales que la guardia no veía**: `ℹ️` (U+2139) en `MainWindow` y `👁️` en el plugin de IA se escapaban porque el rango de pictogramas cubría los bloques principales pero no los signos con presentación emoji. La guardia ahora los enumera uno a uno (sin vetar signos tipográficos legítimos como `©` o `®`) y la lista quedó a cero.
+   - **Texto corrupto (doble codificación) en `FileFlow.Plugin.AI/UI/MultimodalVlmConfigWindow.axaml`**: los bytes UTF-8 interpretados como CP437 dejaban `PESTA├æA`, `Configuraci├│n` y botones con basura visible (`ƒöì Detectar Modelos`). Ya estaba así en el commit inicial (verificado con `git show HEAD`), no lo introdujo este trabajo. Recuperado el texto por punto de código (encode CP437 → decode UTF-8), reconstruido lo irrecuperable (los pictogramas perdidos) y sustituido el icono de cabecera por una placa temática.
+6. **Guardias nuevas (19 pruebas)** y trinquete bajado:
+   - `ThemeStudioCatalogTests` (11): **toda propiedad visual del tema está en el catálogo o declarada como no editable**, cada entrada apunta a una propiedad real y sin duplicados, ninguna sección vacía, claves de rótulo y sección en ambos idiomas, y —lo más importante— **cada ajuste mueve de verdad los tokens que declara** (un control inerte hace fallar la suite), con comprobaciones independientes de las escalas completas de radio, tipografía, espaciado y elevación, y del efecto de `NodeShadowOpacity`/`NodeShadowBlur` en **toda** la escala.
+   - `ThemeStudioVisualContractTests` (6): **cada binding de la ventana se valida contra el `x:DataType` de su propia plantilla**, el editor debe estar generado por el catálogo (y sin bindings manuales a propiedades del tema, el patrón que quedaba muerto), cero literales de forma/tipografía/color en la ventana, la previsualización demuestra todas las escalas, el code-behind engancha `LivePreviewResources`, y una prueba de comportamiento comprueba que **un descendiente de la previsualización resuelve los tokens del tema en edición y sigue los cambios en caliente** (se ejecuta sin Dispatcher a propósito: ejercitar el bucle de mensajes bloqueaba al resto de la suite).
+   - `UiStyleLintTests` (+2): **cero tolerancia con `FontSize` y `BoxShadow` literales** en todas las vistas, y el Theme Studio no puede volver a la línea base.
+   - Trinquete actualizado a la nueva realidad (14 ficheros, 130 colores inline + 15 radios asimétricos).
+
+### 🧪 Pruebas y Validación
+- Compilación `dotnet build FileFlow.slnx` → **0 advertencias / 0 errores**.
+- **929 / 929 pruebas superadas al 100%** con `dotnet test … -- xUnit.ParallelizeTestCollections=false` (876 previas + 19 nuevas + 34 de la Fase 6 = 929).
+- Verificado en dos mitades estables: **787 / 787** (sin `Unit.AI`) y **142 / 142** (`Unit.AI` en aislamiento), ambas en dos ejecuciones consecutivas.
+- **Cuelgue detectado en la ejecución paralela por defecto**: la suite completa (`dotnet test` sin argumentos) se queda colgada sin llegar a publicar resultados. Aislado el origen: cada mitad pasa por separado y el conjunto pasa con las colecciones serializadas, de modo que es la **concurrencia preexistente del clúster de inferencia ONNX** con el resto de pruebas (documentada en las fases anteriores), no los cambios de esta fase. Workaround documentado: `dotnet test FileFlow.Tests/FileFlow.Tests.csproj -- xUnit.ParallelizeTestCollections=false`.
+- Se comprobó que las guardias nuevas **fallan ante regresiones reales** introducidas a propósito: ajuste que no mueve sus tokens, ajuste sin declarar qué tokens mueve y `FontSize` literal en una vista.
+- `git diff` de 39 AXAML con finales de línea normalizados para no mezclar LF/CRLF.
+
+### 📌 Notas y Pendientes
+- **Fase 2 (resto de vistas)**: quedan los 14 ficheros de la línea base de estilo; el siguiente paso natural es bajar el trinquete en cada uno (drawer/toolbox, inspector, diálogos) usando el Theme Studio como referencia.
+- **Espaciado**: `Space*`/`Pad*` existen y se consumen en la capa de estilos y en el Studio, pero la migración masiva de `Padding`/`Margin` literales a la escala de densidad queda para la Fase 2 (esta fase se centró en radios, tipografía y sombras, que es lo que el usuario pidió).
+- **Tokens con consumidor único**: `AppFontSize`/`AppCornerRadius` se mantienen como alias históricos del tamaño y el radio base (los consumen la capa de estilos y los diccionarios propios); conviene decidir si se consolidan en `FontSize*`/`Radius*` o se documentan como API estable.
+- **Los 3 `Themes/*.axaml` manuales eliminados** (`LightTheme`, `CyberTheme`, `PastelTheme`) siguen apareciendo como borrados en el árbol de trabajo de una fase anterior: los presets viven en `Resources/builtin_themes.json`.
+
+## [2026-09-15] - Fase 6 (I): Rediseño de la Tarjeta de Nodo, Semántica de Puertos y Flujo de Energía en Cables
+
+### 🎯 Objetivos y Alcance
+Primera entrega de la **Fase 6** de [`docs/ui_redesign_plan.md`](file:///docs/ui_redesign_plan.md): lenguaje visual del lienzo. La tarjeta de nodo pasa a tener jerarquía explícita de cabecera y telemetría, los sockets comunican el **tipo de dato** por forma y color, el arrastre de un cable resalta los destinos válidos y los cables muestran **flujo de energía animado** durante la ejecución.
+
+### 🎯 Cambios Implementados
+1. **Jerarquía de la Tarjeta (`NodeCardView.axaml`)**:
+   - **Cabecera en dos líneas**: (1) identidad — placa de icono vectorial sobre el acento de su categoría, **título dominante** tipado con la escala del tema (`bodySm strong primaryText`), botón de modelo IA, plegado de parámetros, breakpoint y logging; (2) contexto — badge de categoría, indicador de estado de ejecución con su texto y badge de cuello de botella.
+   - **Pie de telemetría reescrito**: métricas con **icono vectorial + valor crudo formateado por convertidor** (`CurrentStats.ProcessedCount`, `RollingLatencyMs`, `CurrentStats.RollingAvgAllocatedBytes`), con la fila oculta hasta que el nodo se ha ejecutado (`HasTelemetry`/`HasRamTelemetry`). El pie sigue alojando el tirador de redimensionado.
+   - **Bug corregido — bindings muertos**: el pie enlazaba `ExecutionDuration` y `ProcessedBytes`, **propiedades que no existen en `NodeViewModel`**; con bindings por reflexión no falla la compilación y el pie aparecía vacío. Ahora se enlazan datos reales de `CurrentStats`.
+   - **Bug corregido — botones de acción sin texto**: las acciones personalizadas del nodo enlazaban `{Binding Label}` y `{Binding Description}` sobre `NodeActionViewModel`, cuyos miembros reales son `Title` y `Tooltip`; los botones se dibujaban **sin etiqueta**.
+   - **Emojis fuera de la telemetría inline**: `LatencyText`/`RollingRamText` (`⚡ 3.1 ms`, `💾 12 MB`) se eliminan del view model; el icono vectorial ya comunica la magnitud y el valor se formatea en la vista. El texto del tooltip detallado de métricas sí conserva su formato (es telemetría de texto, no iconografía).
+   - **Radios y tipografías por token** (`RadiusMd`, `RadiusSm`, `RadiusXs`, `RadiusPill`, `FontSizeMicro`): la tarjeta participa del Theme Studio y baja de **44 a 4 literales de forma/tipografía y 0 de tamaño de fuente** (antes 8 valores distintos de `FontSize`). El LED de "modelo IA cargado" usa la clase temática `led`/`led.onSuccess` en lugar de un convertidor con color fijo.
+2. **Semántica de Tipo en los Sockets (`PortViewModel`, `Styles/Ports.axaml`)**:
+   - **Familia de dato** (`PortTypeKind`: Files/Text/Boolean/Number/Binary/Collection/Any) y **forma del socket** (`PortSocketShape`): círculo = texto, cuadrado = archivo/colección, triángulo = booleano, rombo = numérico. El color sale de los **tokens del tema** por clases de estilo (verde, cian, ámbar, primario, púrpura, error, glow), nunca del view model.
+   - `SocketToolTip` describe nombre, **dirección**, familia, tipo real y estado: es la vía para descubrir la semántica sin abrir el inspector.
+   - **Un único `PortSocketTemplate`** compartido por entradas y salidas, para que no puedan divergir.
+3. **Resaltado de Puertos Compatibles al Arrastrar**:
+   - `PortViewModel.ApplyDragHighlight` clasifica cada puerto en **origen**, **compatible** (latido verde), **advertencia de tipo** (ámbar: el cable puede crearse pero los tipos no encajan sin conversión) o **atenuado**; `CanConnect` cubre las reglas estructurales (puerto distinto, nodo distinto, direcciones opuestas) y `AreTypesCompatible` trata `object` como comodín.
+   - Cableado desde `EditorViewModel` en `StartConnection` / `FinishConnection` / `CancelConnection`, con clases de estilo que atenúan también la **etiqueta** del puerto, no sólo el socket.
+   - **Triángulo y rombo ahora también resaltan**: el socket booleano es un `Path` (no un `Border`) y el rombo necesita conservar su rotación dentro de la animación; ambos tenían estados propios incompletos.
+4. **Flujo de Energía Animado en los Cables (`EditorView.axaml`, `ConnectionViewModel`)**:
+   - La plantilla de cable superpone una **capa de energía** (`Classes="energy"`, guiones en movimiento con `StrokeDashOffset` animado) sobre el cable base, visible sólo mientras `IsExecuting` está activo y sin capturar el ratón (`IsHitTestVisible="False"`). El trazo base no se anima nunca, para no perder legibilidad en grafos densos.
+   - Color de energía por familia de tipo (`Connection.energy.wire*`), coherente con el cable en reposo.
+   - **Menú contextual reubicado**: colgaba de la capa de energía (no interactiva), así que el clic derecho sobre un cable no llegaba nunca al menú; ahora cuelga del cable base.
+   - `PulseConnectionEnergy` con **generación por pulso**: un temporizador antiguo no puede apagar la energía de un pulso más reciente (ráfagas de datos). `CompleteConnectionPulse(connection, generation)` extrae esa regla para poder verificarla sin depender de un temporizador ni del Dispatcher.
+5. **Localización de lo nuevo**: claves `Port_Type_*`, `Port_Direction_*`, `Port_Status_*`, `Port_Item*`, `Port_Desc_*`, `Node_BottleneckPercent` y los `NodeStatus_*` (que **faltaban** en ambos diccionarios: el estado de ejecución de la tarjeta se mostraba siempre con el literal en español del código) en `Strings.resx` y `Strings.es.resx`. `PortViewModel` y `NodeViewModel` componen sus textos **al vuelo** y se refrescan en caliente vía `OnLanguageChanged`.
+6. **Guardias nuevas (34 pruebas)** y correcciones de guardias existentes:
+   - `PortSemanticsTests` (14): clasificación de familias de tipo, forma por tipo, **exactamente una** clase de forma y **exactamente una** clase de tipo activas por socket (dos activas = color/forma mentirosos), reglas de conexión, comodín `object`, los tres estados del resaltado, reposo tras el arrastre y texto localizado del socket.
+   - `ConnectionEnergyTests` (7): encendido del cable con incremento de generación, apagado al vencer el pulso, **un pulso obsoleto no apaga uno nuevo**, `durationMs <= 0`, apagado global y despacho real (`UpdateEdgeDispatched` energiza sólo los cables de esa salida).
+   - `NodeCardVisualContractTests` (9): valida **cada binding de la tarjeta contra el `x:DataType` de su propia plantilla** (no contra un conjunto de candidatos: así se detecta una ruta que existe en otro view model), contrato del pie y del socket, capa de energía y menú contextual del cable, y **paridad de claves es/en** de todo texto localizado del view model (con lista blanca documentada para `Node_BottleneckPercent` y `NodeStatus_Faulted`).
+   - `UiIconographyTests` corregido: los tramos comentados se descartan **por posición**, de modo que las tablas de documentación con flechas no son falsos positivos pero un pictograma real antes de un comentario en la misma línea sí se detecta.
+   - Verificado que las guardias **fallan ante una regresión real**: con `HasTelemetryTypo`, `Classes="energia"` y `compatibleWarining` las cuatro guardias implicadas fallan con mensaje accionable (fichero, línea, ruta y tipo de contexto).
+7. **Pruebas y Validación**:
+   - Compilación `dotnet build FileFlow.slnx` → **0 advertencias / 0 errores**.
+   - **910 / 910 pruebas superadas al 100% en dos ejecuciones completas consecutivas** (876 previas + 34 nuevas). Además, **768 / 768 en 5 ejecuciones consecutivas** excluyendo el clúster de IA/ONNX, para aislar la inestabilidad del punto siguiente.
+   - **Inestabilidad preexistente detectada y acotada (dos frentes)**: (a) las pruebas de `Unit.AI` que ejecutan inferencia ONNX real abortan el host de forma intermitente (`0xC0000005` en `onnxruntime`, `testhost bloqueado`) al correr en paralelo con el resto; verificado que ocurre **también sin los tests nuevos** y que la clase pasa 12/12 en aislamiento (problema de entorno/concurrencia nativa, no de estos cambios); (b) `ModelLifecycleAndMemoryTests.UserPreferences_AutoUnloadAiModelsOnCompletion_*` afirmaba el **valor por defecto** leyendo el singleton, que carga el `user_preferences.json` **real del usuario**: cualquier perfil con la preferencia activada hacía fallar la prueba (y la propia prueba escribía en ese fichero de perfil, dejando el valor alterado si la ejecución se interrumpía — de hecho quedó en `true` tras una ejecución abortada por el punto (a)). Se desdobla en dos pruebas: una comprueba el defecto declarado en `UserPreferencesData` (independiente del entorno) y otra verifica el ida y vuelta del singleton **restaurando el valor original** en `finally`.
+   - **Trinquete de estilos reducido**: la línea base de `UiStyleLintTests` baja con las dos vistas rediseñadas — tarjeta de nodo **44 → 4** literales de forma/tipografía (y **0** de tamaño de fuente) y 18 → 17 de color; `EditorView` 31 → 22.
+
+---
+
+## [2026-09-15] - Fase 0 del Rediseño Visual: Propagación de Tema, Tokens y Guardias de UI
+
+### 🎯 Objetivos y Alcance
+Ejecución de la **Fase 0** de [`docs/ui_redesign_plan.md`](file:///docs/ui_redesign_plan.md): saneamiento del sistema de temas, corrección de tokens rotos/inexistentes y localización del lienzo, con red de seguridad automatizada.
+
+### 🎯 Cambios Implementados
+1. **Propagación del Tema a la Aplicación y a Todas las Ventanas**:
+   - `ThemeManager` publica ahora `Application.RequestedThemeVariant` mediante el nuevo punto único `WindowThemeHelper.ResolveThemeVariant(bool)` y reaplica la variante a **todas las ventanas abiertas** con `WindowThemeHelper.ApplyThemeToOpenWindows()` (iteración sobre `IClassicDesktopStyleApplicationLifetime.Windows`, con despacho seguro a UI thread).
+   - **Bug corregido**: la variante de FluentTheme permanecía fija en `Dark` (fijada en `App.axaml`), por lo que en los temas Light/Pastel todos los controles internos de Fluent (ComboBox, ScrollBar, DataGrid, ContextMenu, Popup, TabControl) seguían pintándose oscuros sobre una UI clara.
+   - **Bug corregido**: sólo `MainWindow` se re-tematizaba (`WindowThemeHelper` se invocaba únicamente en su constructor); se elimina esa suscripción duplicada porque la propagación es ahora centralizada en `ThemeManager`.
+2. **Tokens Rotos, Inexistentes y Muertos**:
+   - Nuevo token **`TextMuted`** en `ThemeDefinition` (con valor propio y contraste AA ≥ 4.5:1 sobre `BgSurface` y `BgCard` en los 8 presets), añadido a `builtin_themes.json` y emitido como `TextMutedBrush` por `ThemeResourceApplier` (antes: `TextMutedBrush` sólo existía en el diccionario oscuro y **nunca se reescribía** al cambiar de tema, dejando la telemetría de nodos con color oscuro en temas claros).
+   - Nuevo token **`OverlaySurfaceBrush`** derivado del color de superficie de cada tema (alfa `0xE6` integrado en el `Color`), para el HUD del lienzo y la barra de zoom flotante.
+   - **Eliminados tokens fantasma** que ningún tema definía y que dejaban elementos sin fondo: `BgAppBrush` (3 diálogos), `CardBgBrush` y `CardBorderBrush` (barra de breadcrumbs del sub-workflow). Sustituidos por `AppBackgroundBrush` / `BgCardBrush` / `BorderDarkBrush`.
+   - **Drift estructural eliminado**: borrados los diccionarios manuales `LightTheme.axaml`, `CyberTheme.axaml` y `PastelTheme.axaml` (código muerto que contradecía los presets JSON: sólo `DarkTheme.axaml` se referenciaba). `Themes/DarkTheme.axaml` se reescribe como **espejo exacto del preset `dark_fluent`**, con cabecera que documenta que la fuente autoritativa son `builtin_themes.json` + `ThemeResourceApplier`. Se retira también `NodeShadowEffect` (no lo emitía ni lo consumía nadie).
+   - **Tipografía efectiva**: `App.axaml` deja de fijar `FontFamily`/`FontSize` literales y consume `{DynamicResource AppFontFamily}` / `{DynamicResource AppFontSize}`, activando dos tokens que hasta ahora no tenían ningún efecto visual en el Theme Studio.
+3. **Localización (i18n) del Lienzo**:
+   - **HUD del lienzo** localizado (`CanvasHud_Selected`, `CanvasHud_Connections`, `CanvasHud_Location`, `CanvasHud_Zoom`) y **temático**: fondo `OverlaySurfaceBrush` en lugar de `#9914161C` fijo y acentos por token (`AccentSuccessBrush`, `AccentWarningBrush`, `AccentCyanBrush`) en lugar de hex fijos.
+   - **Spotlight**: pie con atajos localizado (`Spotlight_FooterHints`).
+   - 5 claves nuevas registradas en `Strings.resx` y `Strings.es.resx`.
+   - `EditorZoomBarView` usa `OverlaySurfaceBrush` (antes `#C01E1E1E` fijo) y `NodeInspectorPanelView` usa `AccentCyanBrush` (antes `#00E5FF` fijo).
+4. **Red de Seguridad Automatizada (16 tests nuevos)**:
+   - **`ThemeTokenCompletenessTests` (4)**: todo token referenciado con `DynamicResource` en el repo (host **y plugins**) existe en los 8 presets generados y en el baseline de arranque; **paridad bidireccional** baseline ↔ preset `dark_fluent` (incluye la dirección inversa que causó el bug de `TextMutedBrush`: tokens declarados sólo en el baseline quedarían congelados al cambiar de tema); contraste WCAG AA del texto atenuado en cada preset.
+   - **`UiStyleLintTests` (3)**: lint con estrategia de **trinquete** — fija los 27 ficheros con estilos inline (158 literales de color y 546 de forma/tipografía) como línea base y **falla si una vista empeora o si una vista nueva introduce literales**, permitiendo reducir la línea base conforme avance la migración a tokens de la Fase 2. Incluye instantánea lista para actualizar la baseline en el mensaje de error.
+   - **`ThemeVariantPropagationTests` (9)**: decisión claro/oscuro → `ThemeVariant`, resolución de los 8 presets, eventos `ThemeChanged`, emisión de `TextMutedBrush`/`OverlaySurfaceBrush`/tipografía por tema, no-op seguro sin ciclo de vida de escritorio y **guardia de código fuente** que impide eliminar la publicación de la variante o la reaplicación a ventanas.
+   - **Verificación de las guardias**: se comprobó con un fichero sonda temporal que las tres guardias fallan con mensajes accionables ante una regresión real (token inexistente + estilos inline), y el fichero se eliminó después.
+   - Nuevo helper `TestRepositoryLocator` para que los tests que auditan ficheros localicen la raíz del repositorio.
+5. **Estabilidad de la Suite**:
+   - **Fallo intermitente corregido**: `VariableDiscoveryServiceTests` resuelve títulos de nodo vía `LocalizationManager` (cultura global del proceso) y se ejecutaba en paralelo con las clases que cambian de cultura; se serializa con `[Collection("Localization")]`.
+   - **Limitación detectada en la infraestructura de tests** (documentada para la siguiente sesión): `AvaloniaTestHelper.EnsureInitialized()` silencia la excepción de `AppBuilder...SetupWithoutStarting()` cuando otro test ha creado antes `Dispatcher.UIThread` en otro hilo (error `VerifyAccess` en `DefaultRenderLoop.Add`), dejando `Application.Current` en `null`. Los tests de la Fase 0 se diseñaron para ser deterministas sin depender de esa inicialización global.
+6. **Validación**:
+   - Compilación limpia: **0 advertencias, 0 errores**.
+   - Suite completa: **855 / 855 pruebas superadas al 100% (0 fallos, 0 omitidas)** en dos ejecuciones consecutivas (839 de referencia + 16 guardias nuevas).
+
+---
+
+## [2026-09-15] - Fase 3: Iconografía Vectorial Multiplataforma (Adiós a los Emojis)
+
+### 🎯 Objetivos y Alcance
+Eliminar la dependencia de los emojis como iconografía de la UI. Los emojis se renderizan con la fuente del sistema: en Windows a color, en Linux sin *Noto Color Emoji* aparecen como cuadraditos (*tofu*) o monocromos y en macOS con otro diseño, así que una aplicación que se define multiplataforma no puede apoyar su iconografía en ellos. Alcance migrado: **todo el AXAML del host y de los plugins**, los iconos de nodo, los del toolbox y las cadenas de icono que los view models exponen a la vista. Los emojis que son **texto** (mensajes de log, telemetría, informes Markdown/HTML/CSV y salida de CLI) se conservan por decisión explícita de producto.
+
+### 🎯 Cambios Implementados
+1. **Dependencia de iconografía (MIT, compatible con Avalonia 12)**:
+   - Nuevo paquete **`Material.Icons.Avalonia` 3.0.2** (iconos de Material Design como **geometrías vectoriales**, no como fuente) en `FileFlow.App` y en los plugins con UI (`FileSystem`, `Integrations`, `Scripting`). Se eligió frente al catálogo autorado a mano porque aporta **13.645 glifos** ya dibujados y verificados, frente a ~60 hechos a mano con riesgo de trazo inconsistente.
+   - Estilos registrados una sola vez en `App.axaml` (`<materialIcons:MaterialIconStyles />`), de modo que las ventanas de los plugins también los heredan. El color del icono llega por `Foreground` desde los tokens del tema, así que **los iconos se re-colorean con el tema activo** en lugar de quedar fijados.
+2. **Nuevo catálogo central `NodeIconResolver` (reescrito)**:
+   - Devuelve `MaterialIconKind` en lugar de `string`, con **tabla exacta** para 60+ tipos de nodo, **heurística por palabra clave** para tipos desconocidos (orden de reglas documentado) y tabla de categorías del toolbox (incluidas las claves localizadas en español e inglés).
+   - **Compatibilidad hacia atrás**: `FromLegacyIcon()` traduce un valor heredado a icono vectorial, porque el contrato `NodeActionDescriptor.Icon` vive en `FileFlow.Sdk` (que debe permanecer puro, sin depender de la librería de iconos) y los plugins pueden seguir declarando emojis, igual que un flujo guardado antes de la migración. La tabla cubre ~110 equivalencias emoji → glifo y acepta también el nombre del enum ya migrado; un valor irreconocible cae a un icono de reserva, nunca a una excepción.
+3. **Tipado de la iconografía de extremo a extremo**:
+   - `NodeToolboxItem.Icon`/`FavoriteIcon`, `FileVersionOption.Icon`, `ToolboxCategoryFilterItem.Icon`, `NodeMetricsRowViewModel.NodeIcon`/`CategoryIcon`, `NodeActionViewModel.Icon`, `PortViewModel.DirectionIcon`/`ConnectionStatusIcon` y `AiModelItemViewModel.StatusIcon` pasan de `string` (emoji) a `MaterialIconKind`: **el compilador valida ahora cada glifo** y un nombre inventado deja de ser un fallo silencioso en tiempo de ejecución.
+   - Los seis bindings que transportaban el icono como texto (`{Binding Icon}` en el lienzo, el toolbox, el inspector y el favorito) pasan a `Kind="{Binding Icon}"`; de otro modo habrían mostrado el *nombre del enum*.
+4. **Migración de las 28 vistas con emojis (137 usos)**:
+   - Formas transformadas: `TextBlock` con emoji único → `MaterialIcon` dimensionado con el `FontSize` que tenía; `Button` con emoji único → `MaterialIcon` hijo o la extensión `{materialIcons:MaterialIconExt Kind=...}`; etiquetas con emoji + texto (p. ej. "🏷️ Insertar Variable") → se conserva el texto y desaparece el pictograma; indicador de plegado del nodo → dos `MaterialIcon` (`ChevronUp`/`ChevronDown`) conmutados por `IsVisible`, en lugar de un glifo generado por convertidor.
+   - Casos especiales resueltos a mano: selector de idioma (se retiran las banderas, el código de locale ya está en el `Tag`), insignia del splash y barra de comparación de imágenes. El único pictograma que sobrevive es `●` de `PasswordChar`, que **no es un icono** (máscara de campo de contraseña) y está documentado como excepción en la guardia.
+   - Los finales de línea mixtos que dejó la migración automatizada se normalizaron al estilo dominante de cada fichero para no ensuciar el diff.
+5. **Red de Seguridad (5 guardias nuevas, 35 → 40 tests de UI)**:
+   - **`UiIconographyTests`**: (a) ningún AXAML de UI puede contener pictogramas, con lista de excepciones explícita y documentada; (b) todo `Kind="..."` literal debe existir en el enum `MaterialIconKind`; (c) todo tipo de nodo conocido debe resolver a un icono propio, no al de reserva; (d) la traducción de valores heredados (emojis y nombres de enum) funciona y un valor desconocido no lanza; (e) los estilos del control deben estar registrados en `App.axaml` (sin ellos no se dibuja nada).
+   - El escaneo de pictogramas se hace **por punto de código** porque el motor de expresiones regulares de .NET no admite rangos por encima del BMP: un `\u1F000` se interpreta como `\u1F00` + `0`, que es exactamente el tipo de error que habría dejado la guardia inservible.
+   - Verificado con una vista sonda temporal: la guardia falla con fichero y línea (`__IconProbe.axaml:3 '🔍'`). Sonda eliminada después.
+   - Tests actualizados: `AiModelManagerViewModelTests` y `ToolboxViewModelTests` comparaban emojis y ahora comparan glifos tipados.
+6. **Validación**: compilación del *slnx* completo **0 advertencias / 0 errores** (el compilador XAML valida cada `Kind`) y **865 / 865 pruebas superadas** (860 previas + 5 guardias nuevas).
+
+---
+
+## [2026-09-15] - Fase 2 (I): Capa de Estilos de Componentes y Migración de Barra de Control, Barra de Estado y Consola
+
+### 🎯 Objetivos y Alcance
+Creación de la **capa de componentes del sistema de diseño** (Fase 2 de [`docs/ui_redesign_plan.md`](file:///docs/ui_redesign_plan.md)) con clases reutilizables de estilo, y migración de las tres vistas de chrome (barra de control, barra de estado y consola de ejecución) para que dejen de llevar estilo inline.
+
+### 🎯 Cambios Implementados
+1. **Capa de Estilos (`FileFlow.App/Styles/`, 5 ficheros, registrados en `App.axaml` después de `FluentTheme`)**:
+   - **`Typography.axaml`**: escala tipográfica del tema (`display`, `title`, `subtitle`, `body`, `bodySm`, `caption`, `micro`) y clases de color/énfasis (`primaryText`, `secondary`, `muted`, `onAccent`, `accent`, `accentCyan`, `accentPurple`, `accentSuccess/Warning/Error`, `mono`, `numeric`, `strong`, `semiBold`, `sectionLabel`). Las clases de tamaño **no** fijan color (funcionan dentro de botones de acento) y las de color **sólo** fijan `Foreground`.
+   - **`Surfaces.axaml`**: tres niveles de profundidad (`surface` < `card` < `overlay`) más `panel`, `island`, `inset`, `chromeTop`, `chromeBottom`, `statusPill`, `brand`, `badge`, `badgeAccent`, `led` (+ `on`, `onInfo`, `onSuccess`, `onError`, `ledLarge`), `dividerV`, `dividerH` y `accentStrip`. Todos los radios provienen de la escala del tema (`RadiusXs…RadiusPill`).
+   - **`Buttons.axaml`**: `Button` base con estados hover/pressed/disabled declarados sobre `ContentPresenter#PART_ContentPresenter` (parte real de la plantilla Fluent, donde el tema base fija sus colores y por tanto gana la cascada) y variantes `primary`, `success`, `danger`, `warning`, `debug`, `ghost`, `icon`, `toolbar`, `link`, `pill`; `ToggleButton` con variantes `chip` e `icon`; y `ControlTheme` **`SegmentTheme`** para grupos de filtros exclusivos (pastilla activa con acento y texto `onAccent`).
+   - **`Inputs.axaml`**: `TextBox` (estados sobre `Border#PART_BorderElement`) con variantes `search`, `mono` y `flush` (sin cromo, para vivir dentro de un `Border.inset`), placeholder en `TextMutedBrush`; `ComboBox`/`ComboBoxItem` (estados sobre `Border#Background`, glifo de desplegable en `TextSecondaryBrush`); `CheckBox` y `RadioButton`.
+   - **`Containers.axaml`**: **pestañas** (`TabItem` con transición de `Foreground`, indicador `PART_SelectedPipe` como pastilla de acento y variante `TabControl.pill`), **`GridSplitter`** (5 px, acento al pasar el puntero), **barras de desplazamiento** (`Thumb` de 9 px con extremos redondeados, hover/pressed/disabled sobre el `Border` interno y pista visible al expandirse) y `DataGrid.logGrid` para la consola (filas de 26 px, código monoespaciado, cabeceras temáticas).
+2. **Migración de las Tres Vistas de Chrome**:
+   - **`ControlBarView.axaml`**: reorganizada en `Between` de tres **islas semánticas** (Modos · Ciclo de vida · Herramientas) mediante `Border.island`; LEDs de estado conmutados declarativamente (`Classes.on="{Binding IsDryRun}"`), botones con variantes semánticas (`success` para ejecutar, `debug` para depurar, `warning` para paso a paso, `danger` para detener), marca de app con `Border.brand` y tipografía por clase. **0 literales de color, radio y tamaño de fuente.**
+   - **`StatusBarView.axaml`**: telemetría agrupada en **píldoras** (`Border.statusPill`) — grafo, estado del motor, ruta de salida global, modelos IA en memoria y métricas de hardware (RAM/CPU/GPU) — con separadores internos `dividerV`, LEDs semánticos (`led onInfo`, `led onSuccess`) y valores en tipografía `numeric`.
+   - **`LogView.axaml`**: filtros de severidad como segmentos pastilla usando el `ControlTheme` `SegmentTheme`, campo de búsqueda instantánea en `Border.inset` + `TextBox.flush search` con botón `icon` de limpieza, barra de progreso fina y rejilla virtualizada `DataGrid.logGrid` con insignias `badge`. Sustituye el estilo inline anterior por clases en toda la vista.
+3. **Red de Seguridad Ampliada (3 guardias nuevas, 27 → 30 tests de UI)**:
+   - **`ThemeTokenCompletenessTests`**: la recopilación de tokens referidos excluye ahora los recursos locales de la capa de estilos (`x:Key` en `Styles/*.axaml`, como `SegmentTheme`), que no son tokens de tema y no debe publicar `ThemeResourceApplier` (antes provocaban un falso positivo en los dos tests de completitud).
+   - **`UiStyleContractTests.ThemeResourceReferences_ShouldResolveToADeclaredKey`** (nueva): todo `Theme="{DynamicResource X}"` debe apuntar a una clave declarada con `x:Key`; una errata ahí no rompe la compilación y el control se quedaría con la plantilla por defecto (mismo modo de fallo silencioso que las clases inexistentes).
+   - **`UiStyleContractTests.MigratedViews_ShouldNotDeclareInlineShapeOrColorLiterals`**: guarda que las tres vistas migradas no reintroduzcan literales de color, radio o tamaño de fuente.
+   - **Estabilidad**: `WorkflowMetricsDashboardViewModelTests` se serializa con `[Collection("Localization")]` (sus filas derivan de `NodeViewModel.Title`, que `OnLanguageChanged` reescribe; en paralelo con los tests que mutan la cultura global producía un fallo intermitente con `FilteredNodeRows` vacío).
+4. **Validación**:
+   - Compilación de `FileFlow.App`: **0 advertencias, 0 errores**.
+   - Suite completa: **860 / 860 pruebas superadas al 100% (0 fallos, 0 omitidas)** (855 de referencia + 4 guardias nuevas + `ThemeResourceReferences`), verificada también en modo `--blame-hang`.
+   - Nota operativa: dos ejecuciones del suite se colgaron por un `testhost.exe` huérfano (≈2 GB) de una ejecución anterior interrumpida por timeout, no por un fallo del código; se liberó el proceso y la suite volvió a pasar.
+
+---
+
+## [2026-09-15] - Auditoría de UI/UX Avalonia y Plan Maestro de Rediseño Visual
+
+### 🎯 Objetivos y Alcance
+1. **Auditoría Técnica de la Capa de Presentación (`FileFlow.App`)**:
+   - Medición objetiva del estado del diseño: **240 literales `#HEX`** en AXAML (97 fuera de los diccionarios de tema), **21 valores distintos de `CornerRadius` inline**, **25 tamaños de `FontSize` distintos** (8 → 28), **93 emojis usados como iconos en AXAML + 153 en C#** y únicamente **2 estilos globales de control** en `App.axaml` (`Window` y `ToolTip`).
+   - Identificación de **7 tokens declarados pero nunca consumidos** (`AppFontFamily`, `AppFontSize`, `AppCornerRadius`, `ScrollbarThumbBrush`, `ConnectionWireBrush`, `GridLineBrush`, `NodeShadowEffect`), lo que anula de facto la personalización prometida por el Theme Studio.
+2. **Defectos del Motor de Temas Detectados (bugs, no opiniones)**:
+   - `Application.RequestedThemeVariant` **nunca se actualiza** en `ThemeManager`: en temas Light/Pastel los controles internos de `FluentTheme` (ComboBox, ScrollBar, DataGrid, ContextMenu, TabControl, Popup) permanecen oscuros mientras el resto de la UI es clara.
+   - `WindowThemeHelper.ApplyThemeToWindow` sólo se invoca desde `MainWindow.axaml.cs`: los **10 diálogos** del host quedan en variante oscura al cambiar de tema.
+   - Recursos inexistentes `CardBgBrush` / `CardBorderBrush` (`EditorView.axaml`) → barra de breadcrumbs sin fondo ni borde.
+   - `TextMutedBrush` existe sólo en `DarkTheme.axaml` y no lo emite `ThemeResourceApplier`, por lo que la telemetría de nodos (`NodeCardView`) mantiene un valor oscuro en temas claros (y es una clave *nunca borrada* al cambiar de tema).
+   - Duplicidad de fuentes de verdad entre `Themes/*.axaml` y `BuiltInThemesCatalog`/`ThemeResourceApplier` (drift estructural garantizado).
+   - Incumplimientos de i18n en UI reciente: HUD del lienzo en inglés fijo (`Selected:`, `Connections:`, `Location:`, `Zoom:`), textos del Spotlight y `SplashScreenWindow`/`ThemeCustomizerWindow` con cadenas hardcodeadas.
+   - Colores no temáticos en superficies clave (HUD `#9914161C`, `EditorZoomBarView` `#C01E1E1E`, `SplashScreenWindow`, glows de nodo).
+3. **Plan Maestro de Rediseño Entregado**:
+   - Nuevo documento [**`docs/ui_redesign_plan.md`**](file:///docs/ui_redesign_plan.md) con objetivo, dirección visual "Studio Pro", arquitectura del sistema de diseño (tokens v2 → capa de componentes → vistas), decisión pendiente sobre un ensamblado compartido `FileFlow.Ui` para los diálogos de plugin (implica actualizar la lista de ensamblados compartidos de `PluginAssemblyLoadContext` y las reglas de gobernanza), **8 fases** de trabajo con entregables verificables, catálogo de **14 microinteracciones**, checklist de accesibilidad, plan de testing (incluyendo `UiStyleLintTests` y `ThemeTokenCompletenessTests` con Avalonia.Headless ya disponible), riesgos y quick wins.
+4. **Validación**:
+   - Análisis estático sobre el árbol de trabajo actual de la rama `feature/crossplatform-avalonia` (sin modificaciones de código en esta entrada; sólo documentación). Suite de referencia: **839 / 839 pruebas superadas**.
+
+---
 
 ## [2026-09-15] - Modernización Integral de Vistas AXAML, Agrupación Ergonómica e i18n
 

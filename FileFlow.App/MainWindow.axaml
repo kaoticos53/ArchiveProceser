@@ -1,17 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:views="clr-namespace:FileFlow.App.Views"
         xmlns:vm="clr-namespace:FileFlow.App.ViewModels"
         xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
-        mc:Ignorable="d"
         x:Class="FileFlow.App.MainWindow"
+        x:DataType="vm:MainViewModel"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AppTitle]}"
         Height="850" Width="1340"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource AppBackgroundBrush}"
-        d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=False}">
+        Background="{DynamicResource AppBackgroundBrush}">
 
     <Window.KeyBindings>
         <KeyBinding Gesture="F5" Command="{Binding ControlBar.ContinueWorkflowCommand}" />
@@ -52,7 +50,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" MinWidth="300" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="360" MinWidth="0" MaxWidth="750" />
+                <ColumnDefinition Width="{Binding NodeInspector.IsOpen, Converter={StaticResource BooleanToGridLengthConverter}, ConverterParameter=360}" MinWidth="0" MaxWidth="750" />
             </Grid.ColumnDefinitions>
 
             <!-- Left Panel: Node Toolbox -->
@@ -100,7 +98,7 @@
         <!-- Semi-Transparent Backdrop Overlay for Side Navigation Drawer -->
         <Border Grid.RowSpan="5"
                 ZIndex="99"
-                Background="#60000000"
+                Background="{DynamicResource ScrimBrush}"
                 IsVisible="{Binding ControlBar.IsMenuOpen}"
                 PointerPressed="DrawerBackdrop_PointerPressed" />
 
@@ -112,7 +110,7 @@
                 Background="{DynamicResource BgSurfaceBrush}"
                 BorderBrush="{DynamicResource BorderDarkBrush}"
                 BorderThickness="0,0,1,0"
-                BoxShadow="8 0 32 0 #70000000"
+                BoxShadow="{DynamicResource ElevPanelLeft}"
                 IsVisible="{Binding ControlBar.IsMenuOpen}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -125,12 +123,12 @@
                 <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1" Padding="18,16">
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="8" Width="34" Height="34" Margin="0,0,12,0">
-                                <TextBlock Text="⚡" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                            <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="{DynamicResource RadiusMd}" Width="34" Height="34" Margin="0,0,12,0">
+                                <materialIcons:MaterialIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF"  Kind="Flash" Width="18" Height="18" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="FileFlow Studio" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppSubtitle]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text="FileFlow Studio" FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppSubtitle]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
                         </StackPanel>
 
@@ -139,7 +137,7 @@
                                 VerticalAlignment="Center"
                                 Padding="8,4"
                                 Width="30" Height="30">
-                            <TextBlock Text="✕" FontSize="14" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"  Kind="Close" Width="14" Height="14" />
                         </Button>
                     </Grid>
                 </Border>
@@ -148,38 +146,39 @@
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16,14">
                         <!-- Section: Flow Management -->
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_FlowManagement]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_FlowManagement]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <Button Command="{Binding ControlBar.NewWorkflowCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📄" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_NewWorkflow]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="FileDocument" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_NewWorkflow]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.LoadWorkflowCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📂" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LoadWorkflow]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="FolderOpen" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LoadWorkflow]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.SaveWorkflowCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="💾" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_SaveWorkflow]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="ContentSaveOutline" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_SaveWorkflow]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <!-- Section: Theme & Language Customization -->
                         <Separator Margin="4,12,4,12" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppearanceLanguage]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_AppearanceLanguage]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <!-- Theme Selector in Drawer -->
                         <Grid Margin="4,6,4,8">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ThemeLabel]}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ThemeLabel]}" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             <ComboBox ItemsSource="{Binding ControlBar.AvailableThemes}"
-                                      SelectedItem="{Binding ControlBar.SelectedThemeObject, Mode=TwoWay}"
+                                      SelectedValue="{Binding ControlBar.SelectedTheme, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding Id}"
                                       DisplayMemberBinding="{Binding Name}"
                                       HorizontalAlignment="Right"
                                       Width="175"
@@ -188,77 +187,78 @@
 
                         <!-- Language Selector in Drawer -->
                         <Grid Margin="4,4,4,8">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                             <ComboBox SelectedValue="{Binding ControlBar.SelectedLanguage, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
                                       HorizontalAlignment="Right"
                                       Width="140">
-                                <ComboBoxItem Tag="es-ES">🌐 Español</ComboBoxItem>
-                                <ComboBoxItem Tag="en-US">🇬🇧 English</ComboBoxItem>
+                                <ComboBoxItem Tag="es-ES">Español</ComboBoxItem>
+                                <ComboBoxItem Tag="en-US">English</ComboBoxItem>
                             </ComboBox>
                         </Grid>
 
                         <!-- Theme Studio Button in Drawer -->
                         <Button Command="{Binding ControlBar.OpenThemeCustomizerCommand}" HorizontalAlignment="Stretch" Margin="0,2,0,4">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🎨" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_CustomizeTheme]}" FontSize="13.5" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="Palette" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_CustomizeTheme]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <!-- Section: Panels & Tools -->
                         <Separator Margin="4,12,4,12" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_PanelsTools]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_PanelsTools]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <Button Command="{Binding ControlBar.ToggleInspectorCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🔍" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_DataInspector]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="Magnify" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_DataInspector]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.OpenMetricsDashboardCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📊" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_MetricsDashboard], FallbackValue='Métricas y Rendimiento'}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="ChartBar" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_MetricsDashboard], FallbackValue='Métricas y Rendimiento'}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.OpenVirtualFileSystemExplorerCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🗂️" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_HeaderTitle], FallbackValue='Explorador Virtual (VFS)'}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="FolderOpen" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_HeaderTitle], FallbackValue='Explorador Virtual (VFS)'}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.OpenWorkflowSettingsCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="⚙️" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_Settings]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="Cog" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_Settings]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <!-- Section: Help & Resources -->
                         <Separator Margin="4,12,4,12" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_HelpResources]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_HelpResources]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,8" />
 
                         <Button Command="{Binding ControlBar.OpenUserManualCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📖" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_UserManual]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="BookOpen" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_UserManual]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.OpenExamplesFolderCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="💡" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ExampleFlows]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="Lightbulb" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ExampleFlows]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ControlBar.OpenAboutDialogCommand}" HorizontalAlignment="Stretch" Margin="0,2">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="ℹ️" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_About]}" FontSize="14" FontWeight="Medium" />
+                                <materialIcons:MaterialIcon Margin="0,0,12,0" Kind="InformationOutline" Width="16" Height="16" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_About]}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -267,8 +267,8 @@
                 <!-- Drawer Footer -->
                 <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0" Padding="16,10">
                     <StackPanel HorizontalAlignment="Center">
-                        <TextBlock Text="{Binding AppVersionDisplay}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
-                        <TextBlock Text="© RGLara" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,3,0,0" />
+                        <TextBlock Text="{Binding AppVersionDisplay}" FontSize="{DynamicResource FontSizeBodySm}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+                        <TextBlock Text="© RGLara" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,3,0,0" />
                     </StackPanel>
                 </Border>
             </Grid>

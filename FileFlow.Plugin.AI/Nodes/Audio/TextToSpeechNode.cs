@@ -19,9 +19,25 @@ public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
 {
     public event Action? ModelStatusChanged;
 
+    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
+
+    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+
     public TextToSpeechNode()
     {
-        AudioInferenceEngine.SessionStateChanged += () => ModelStatusChanged?.Invoke();
+        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+
+        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+
+        _ = WeakModelStatusRelay.Subscribe(
+
+            h => AudioInferenceEngine.SessionStateChanged += h,
+
+            h => AudioInferenceEngine.SessionStateChanged -= h,
+
+            this,
+
+            static self => self.RaiseModelStatusChanged());
     }
 
     public bool IsModelLoaded

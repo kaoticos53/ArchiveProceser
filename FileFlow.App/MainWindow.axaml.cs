@@ -20,11 +20,6 @@ public partial class MainWindow : Window
             DataContext = mainViewModel;
         }
         Services.WindowThemeHelper.ApplyThemeToWindow(this);
-
-        Services.ThemeManager.Instance.ThemeChanged += (theme) =>
-        {
-            Services.WindowThemeHelper.ApplyThemeToWindow(this);
-        };
     }
 
     private void InitializeComponent()

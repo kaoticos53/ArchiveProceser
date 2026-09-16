@@ -1,0 +1,116 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Capa de tipografía del sistema de diseño.
+        Las clases de TAMAÑO no fijan color (heredan el del contenedor, de modo que funcionan igual
+        dentro de un botón de acento que sobre un panel) y las clases de COLOR sólo fijan Foreground.
+        Usa combinaciones como Classes="caption secondary" o Classes="numeric accentCyan".
+        La escala se deriva del tamaño de fuente base del tema, así que el Theme Studio escala la UI completa.
+    -->
+
+    <!-- ============================= Tamaño y peso ============================= -->
+
+    <Style Selector="TextBlock.display">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeDisplay}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="TextBlock.title">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeTitle}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="TextBlock.subtitle">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeSubtitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.body">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    </Style>
+
+    <Style Selector="TextBlock.bodySm">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySm}" />
+    </Style>
+
+    <Style Selector="TextBlock.caption">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+    </Style>
+
+    <Style Selector="TextBlock.micro">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeMicro}" />
+    </Style>
+
+    <!-- Etiqueta de sección (cabeceras del drawer, grupos del inspector) -->
+    <Style Selector="TextBlock.sectionLabel">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+
+    <!-- ============================= Énfasis ============================= -->
+
+    <Style Selector="TextBlock.strong">
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="TextBlock.semiBold">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ============================= Color ============================= -->
+
+    <Style Selector="TextBlock.primaryText">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.secondary">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.onAccent">
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.accent">
+        <Setter Property="Foreground" Value="{DynamicResource AccentGlowBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.accentCyan">
+        <Setter Property="Foreground" Value="{DynamicResource AccentCyanBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.accentPurple">
+        <Setter Property="Foreground" Value="{DynamicResource AccentPurpleBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.accentSuccess">
+        <Setter Property="Foreground" Value="{DynamicResource AccentSuccessBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.accentWarning">
+        <Setter Property="Foreground" Value="{DynamicResource AccentWarningBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.accentError">
+        <Setter Property="Foreground" Value="{DynamicResource AccentErrorBrush}" />
+    </Style>
+
+    <!-- ============================= Familias ============================= -->
+
+    <Style Selector="TextBlock.mono">
+        <Setter Property="FontFamily" Value="{DynamicResource CodeFontFamily}" />
+    </Style>
+
+    <!-- Telemetría y métricas: monoespaciada + negrita -->
+    <Style Selector="TextBlock.numeric">
+        <Setter Property="FontFamily" Value="{DynamicResource CodeFontFamily}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+</Styles>

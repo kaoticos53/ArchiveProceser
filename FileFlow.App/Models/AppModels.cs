@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using Material.Icons;
 
 namespace FileFlow.App.Models;
 
@@ -16,7 +17,7 @@ public record NodeToolboxItem(
     string Category,
     string Description,
     string TypeName,
-    string Icon = "🧩",
+    MaterialIconKind Icon = MaterialIconKind.Puzzle,
     bool IsFavorite = false,
     int UsageCount = 0,
     PipelineRole Role = PipelineRole.Transform,
@@ -25,7 +26,7 @@ public record NodeToolboxItem(
     string LocalizedRole = ""
 )
 {
-    public string FavoriteIcon => IsFavorite ? "★" : "☆";
+    public MaterialIconKind FavoriteIcon => IsFavorite ? MaterialIconKind.Star : MaterialIconKind.StarOutline;
 
     public string RoleBadge => Role switch
     {
@@ -60,11 +61,12 @@ public record FileVersionOption(
     string Tag,
     string Token,
     string DisplayName,
-    string Icon = "📄",
+    MaterialIconKind Icon = MaterialIconKind.FileDocument,
     string Description = "",
     bool IsUpstream = false,
     string SourceNodeTitle = ""
 )
 {
-    public string ChipLabel => $"{Icon} {DisplayName}";
+    /// <summary>Etiqueta textual de la opción. El icono se dibuja aparte como vector.</summary>
+    public string ChipLabel => DisplayName;
 }

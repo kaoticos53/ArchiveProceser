@@ -4,6 +4,7 @@ using FileFlow.App.ViewModels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
+using Material.Icons;
 
 namespace FileFlow.App.Services;
 
@@ -559,8 +560,8 @@ public class VariableDiscoveryService : IVariableDiscoveryService
     {
         var versions = new List<FileVersionOption>
         {
-            new("Original", "{OriginalPath}", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Original", "Original"), "📄", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Original_Desc", "Archivo original inmutable")),
-            new("Current", "{CurrentPath}", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Current", "Actual"), "⚡", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Current_Desc", "Versión activa procesada hasta este nodo"))
+            new("Original", "{OriginalPath}", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Original", "Original"), MaterialIconKind.FileDocument, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Original_Desc", "Archivo original inmutable")),
+            new("Current", "{CurrentPath}", FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Current", "Actual"), MaterialIconKind.Flash, FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Current_Desc", "Versión activa procesada hasta este nodo"))
         };
 
         if (targetNode == null || connections == null)
@@ -614,7 +615,7 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                             "Optimized",
                             "{File:Optimized}",
                             FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Optimized", "Optimizada"),
-                            "🖼️",
+                            MaterialIconKind.Image,
                             FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_Optimized_Desc", "Versión optimizada por ImageOptimizerNode"),
                             IsUpstream: true,
                             SourceNodeTitle: upstreamNode.Title));
@@ -625,7 +626,7 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                             "NoBackground",
                             "{File:NoBackground}",
                             FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_NoBackground", "Sin Fondo"),
-                            "✂️",
+                            MaterialIconKind.ImageFilter,
                             FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_NoBackground_Desc", "Versión sin fondo segmentada por IA"),
                             IsUpstream: true,
                             SourceNodeTitle: upstreamNode.Title));
@@ -636,7 +637,7 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                             "SuperResolution",
                             "{File:SuperResolution}",
                             FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_SuperResolution", "Super-Resolución"),
-                            "🔍",
+                            MaterialIconKind.AutoFix,
                             FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Version_SuperResolution_Desc", "Imagen escalada con red neural"),
                             IsUpstream: true,
                             SourceNodeTitle: upstreamNode.Title));

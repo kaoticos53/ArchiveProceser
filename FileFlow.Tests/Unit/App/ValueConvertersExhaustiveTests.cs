@@ -60,11 +60,23 @@ public class ValueConvertersExhaustiveTests
         // Arrange
         var converter = new BooleanToGridLengthConverter { DefaultWidth = 320 };
 
-        // Act & Assert
+        // Act & Assert (Default)
         var visibleLength = (GridLength)converter.Convert(true, typeof(GridLength), null!, CultureInfo.InvariantCulture)!;
         visibleLength.Value.Should().Be(320);
 
         var collapsedLength = (GridLength)converter.Convert(false, typeof(GridLength), null!, CultureInfo.InvariantCulture)!;
         collapsedLength.Value.Should().Be(0);
+
+        // Act & Assert (With Parameter)
+        var customLength = (GridLength)converter.Convert(true, typeof(GridLength), "360", CultureInfo.InvariantCulture)!;
+        customLength.Value.Should().Be(360);
+
+        var customCollapsedLength = (GridLength)converter.Convert(false, typeof(GridLength), "360", CultureInfo.InvariantCulture)!;
+        customCollapsedLength.Value.Should().Be(0);
+
+        // Act & Assert (ConvertBack)
+        converter.ConvertBack(new GridLength(360, GridUnitType.Pixel), typeof(bool), null!, CultureInfo.InvariantCulture).Should().Be(true);
+        converter.ConvertBack(new GridLength(0, GridUnitType.Pixel), typeof(bool), null!, CultureInfo.InvariantCulture).Should().Be(false);
     }
 }
+

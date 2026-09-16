@@ -15,6 +15,15 @@
     <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
   </ItemGroup>
 
+  <!--
+    Los tests compilan contra la ref assembly, que Roslyn sólo rellena con internos cuando existe un
+    InternalsVisibleTo: sin esta línea, members internos añadidos al plugin no son visibles desde
+    FileFlow.Tests aunque la DLL de implementación sí los contenga (error CS0117 fantasma).
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FileFlow.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />

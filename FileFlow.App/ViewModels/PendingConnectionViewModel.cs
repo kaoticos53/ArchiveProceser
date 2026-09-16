@@ -6,7 +6,7 @@ namespace FileFlow.App.ViewModels;
 public partial class PendingConnectionViewModel : ObservableObject
 {
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(WireColor))]
+    [NotifyPropertyChangedFor(nameof(WireTypeClasses))]
     private PortViewModel? _source;
 
     [ObservableProperty]
@@ -18,7 +18,17 @@ public partial class PendingConnectionViewModel : ObservableObject
     [ObservableProperty]
     private bool _isVisible = true;
 
-    public string WireColor => Source?.PortColor ?? "#818CF8";
+    /// <summary>Color del cable en curso, por familia de tipo del puerto de origen (tokens del tema).</summary>
+    public string WireTypeClasses => "pending " + (Source?.TypeKind switch
+    {
+        PortTypeKind.Files => "wireFiles",
+        PortTypeKind.Text => "wireText",
+        PortTypeKind.Boolean => "wireBoolean",
+        PortTypeKind.Number => "wireNumber",
+        PortTypeKind.Binary => "wireBinary",
+        PortTypeKind.Collection => "wireCollection",
+        _ => "wireAny"
+    });
 
     public PendingConnectionViewModel(PortViewModel? source = null)
     {

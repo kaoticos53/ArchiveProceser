@@ -4,6 +4,8 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+[Collection(OnnxInferenceCollection.Name)]
+
 public class HardwareCapabilityDetectorTests
 {
     [Fact]

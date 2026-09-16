@@ -2,6 +2,7 @@ using FileFlow.App.Collections;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Telemetry;
+using FileFlow.Tests.TestHelpers;
 using Xunit;
 
 namespace FileFlow.Tests.Unit;
@@ -52,8 +53,10 @@ public class AsyncVirtualizingListTests : IAsyncLifetime
         var itemImmediate = list[50];
         Assert.NotNull(itemImmediate);
 
-        // Esperar brevemente para que la tarea asíncrona complete la carga
-        await Task.Delay(100);
+        await AsyncTestWaiter.WaitForAsync(
+            () => list[50]?.Message?.Contains("Log message 050", StringComparison.Ordinal) == true,
+            TimeSpan.FromSeconds(2),
+            description: "the virtualized log item at index 50 to finish loading");
 
         var loadedItem = list[50];
         Assert.NotNull(loadedItem);
@@ -76,7 +79,10 @@ public class AsyncVirtualizingListTests : IAsyncLifetime
 
         // Disparar carga
         _ = list[0];
-        await Task.Delay(100);
+        await AsyncTestWaiter.WaitForAsync(
+            () => list[0]?.Message == "Slow Op" && list[0]?.DurationMs == 500.0,
+            TimeSpan.FromSeconds(2),
+            description: "the sorted slowest log item to finish loading");
 
         var slowest = list[0];
         Assert.Equal("Slow Op", slowest.Message);

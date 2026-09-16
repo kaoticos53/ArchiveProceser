@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Services;
 using FileFlow.Sdk;
+using Material.Icons;
 
 namespace FileFlow.App.ViewModels;
 
@@ -14,7 +16,11 @@ public sealed partial class NodeActionViewModel : ObservableObject
     public NodeActionDescriptor Descriptor { get; }
     public string ActionId => Descriptor.ActionId;
     public string Title => Descriptor.Title;
-    public string Icon => Descriptor.Icon;
+    /// <summary>
+    /// Icono vectorial de la acción. El descriptor del plugin puede seguir declarando un emoji
+    /// (contrato del SDK), así que se traduce con la tabla de equivalencia.
+    /// </summary>
+    public MaterialIconKind Icon => NodeIconResolver.GetIconForAction(Descriptor.Icon);
     public string? Tooltip => Descriptor.Tooltip;
 
     public NodeActionViewModel(NodeActionDescriptor descriptor, NodeViewModel nodeOwner)

@@ -1,15 +1,42 @@
 using System.Diagnostics;
 using FileFlow.Sdk;
 using FileFlow.Sdk.TemplateEngine;
+using FileFlow.Tests.TestHelpers;
 using FluentAssertions;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace FileFlow.Tests.Performance;
 
-public class PerformanceStressTests
+/// <summary>
+/// Estrés del resolvedor de plantillas y del historial de snapshots del nodo.
+///
+/// <para>El umbral de tiempo usa el patrón calibrado del suite (<see cref="CalibratedBenchmark"/>): la
+/// medición se compara contra lo que esta máquina acaba de demostrar, no contra un número fijo que sólo
+/// vale en la máquina que lo escribió. El test de snapshots es determinista (sin timing) pero su view
+/// model se suscribe al singleton de localización: la prueba dispone el suscriptor con
+/// <c>Cleanup</c> para no dejar zombis tras de sí.</para>
+/// </summary>
+public class PerformanceStressTests : IDisposable
 {
+    private readonly ITestOutputHelper _output;
+    private FileFlow.App.ViewModels.NodeViewModel? _nodeUnderTest;
+
+    public PerformanceStressTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    public void Dispose()
+    {
+        // El ctor de NodeViewModel se suscribe eternamente a LocalizationManager.LanguageChanged; sólo
+        // Cleanup() desuscribe. Sin esto, cada pasada de la prueba deja un zombi del proceso.
+        _nodeUnderTest?.Cleanup();
+        _nodeUnderTest = null;
+    }
+
     [Fact]
-    public void Resolve_ShouldEvaluate10000ItemsUnder1000Milliseconds()
+    public void Resolve_ShouldNotRegressOn10000Items()
     {
         // Arrange
         const int itemQuantity = 10_000;
@@ -26,16 +53,18 @@ public class PerformanceStressTests
 
         string template = @"C:\Output\{Year(DateTaken)}/Folder_{PadLeft(Counter, 4, ""0"")}/{RelativePath}/{FileNameNoExt}.{Extension}";
 
-        // Act
-        var sw = Stopwatch.StartNew();
-        foreach (var item in items)
-        {
-            _ = VariableTemplateResolver.Resolve(template, item);
-        }
-        sw.Stop();
-
-        // Assert
-        sw.ElapsedMilliseconds.Should().BeLessThan(1000, "10,000 template resolutions should complete in less than 1 second");
+        CalibratedBenchmark.MeasureAndAssert(
+            _output,
+            "TemplateResolver (10.000 interpolaciones)",
+            unitsPerMeasurement: itemQuantity,
+            unitName: "ops",
+            work: () =>
+            {
+                foreach (var item in items)
+                {
+                    _ = VariableTemplateResolver.Resolve(template, item);
+                }
+            });
     }
 
     [Fact]
@@ -43,7 +72,8 @@ public class PerformanceStressTests
     {
         // Arrange
         var mockNode = new MockFlowNode();
-        var nodeVm = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new Avalonia.Point(0, 0));
+        _nodeUnderTest = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new Avalonia.Point(0, 0));
+        var nodeVm = _nodeUnderTest;
 
         // Act - Add 1,000 snapshots (exceeding MaxRecordedSnapshots of 500)
         for (int i = 0; i < 1_000; i++)
@@ -76,4 +106,3 @@ public class PerformanceStressTests
         public Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
-

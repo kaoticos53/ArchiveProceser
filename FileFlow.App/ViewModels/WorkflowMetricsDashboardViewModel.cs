@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Services;
 using FileFlow.Sdk.Localization;
+using Material.Icons;
 
 namespace FileFlow.App.ViewModels;
 
@@ -16,8 +17,8 @@ public partial class NodeMetricsRowViewModel : ObservableObject
     public required string NodeId { get; init; }
     public required string Title { get; init; }
     public required string Category { get; init; }
-    public required string NodeIcon { get; init; }
-    public required string CategoryIcon { get; init; }
+    public required MaterialIconKind NodeIcon { get; init; }
+    public required MaterialIconKind CategoryIcon { get; init; }
     public required string CategoryBadgeBackground { get; init; }
     public required string CategoryBadgeBorder { get; init; }
     public required string CategoryBadgeForeground { get; init; }

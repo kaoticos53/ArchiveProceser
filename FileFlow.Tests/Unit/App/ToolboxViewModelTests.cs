@@ -3,11 +3,12 @@ using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
 using FluentAssertions;
+using Material.Icons;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
-[Collection("Localization")]
+[Collection("VisualSnapshots")]
 /// <summary>
 /// Pruebas unitarias para <see cref="ToolboxViewModel"/> y la sincronización del catálogo de nodos en la barra de herramientas.
 /// </summary>
@@ -36,7 +37,7 @@ public class ToolboxViewModelTests
 
         reportItem.Should().NotBeNull("OperationReportNode must appear in the toolbox items");
         reportItem!.Category.Should().Be("Integrations");
-        reportItem.Icon.Should().Be("📋");
+        reportItem.Icon.Should().Be(MaterialIconKind.ClipboardText);
     }
 
     /// <summary>
@@ -91,12 +92,12 @@ public class ToolboxViewModelTests
         var docCategory = toolbox.AvailableCategories.FirstOrDefault(c => c.Key.Equals("Documents", StringComparison.OrdinalIgnoreCase));
         docCategory.Should().NotBeNull("Documents category must be discovered dynamically from the Documents plugin");
         docCategory!.Count.Should().Be(5, "Documents plugin registers 4 PDF nodes and FileSystem has DocumentProcessor");
-        docCategory.Icon.Should().Be("📄");
+        docCategory.Icon.Should().Be(MaterialIconKind.FileDocument);
 
         var netCategory = toolbox.AvailableCategories.FirstOrDefault(c => c.Key.Equals("Network", StringComparison.OrdinalIgnoreCase) || c.Key.Equals("Network & Remote", StringComparison.OrdinalIgnoreCase));
         netCategory.Should().NotBeNull("Network category must be discovered dynamically from the Network plugin");
         netCategory!.Count.Should().Be(2, "Network plugin registers 2 unified network nodes (Download + Upload)");
-        netCategory.Icon.Should().Be("🌐");
+        netCategory.Icon.Should().Be(MaterialIconKind.Web);
     }
 
     /// <summary>

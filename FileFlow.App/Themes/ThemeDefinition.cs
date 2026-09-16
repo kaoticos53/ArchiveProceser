@@ -34,6 +34,15 @@ public sealed class ThemeDefinition
     // --- Textos y Bordes ---
     public string TextPrimary { get; set; } = "#EAEAEA";
     public string TextSecondary { get; set; } = "#9E9E9E";
+
+    /// <summary>
+    /// Color de texto atenuado (telemetría secundaria, breadcrumbs, metadatos).
+    /// Debe mantener un contraste mínimo AA (4.5:1) sobre <see cref="BgSurface"/> y <see cref="BgCard"/>.
+    /// </summary>
+    public string TextMuted { get; set; } = "#7C8698";
+
+    /// <summary>Texto sobre superficies de acento saturadas (botones primarios, badges de estado).</summary>
+    public string TextOnAccent { get; set; } = "#FFFFFF";
     public string BorderDark { get; set; } = "#3C3C3C";
     public string BorderSubtle { get; set; } = "#2D2D2D";
     public string GridLine { get; set; } = "#282828";
@@ -50,9 +59,33 @@ public sealed class ThemeDefinition
     // --- Tipografía y Escala Visual ---
     public string FontFamily { get; set; } = "Segoe UI Variable Text, Segoe UI, sans-serif";
     public string CodeFontFamily { get; set; } = "Cascadia Code, Consolas, monospace";
+
+    /// <summary>
+    /// Tamaño base de la interfaz. De él se deriva la escala tipográfica completa
+    /// (<c>FontSizeMicro</c> … <c>FontSizeDisplay</c>), así que un solo ajuste reescala toda la aplicación.
+    /// </summary>
     public double BaseFontSize { get; set; } = 12.0;
+
+    /// <summary>
+    /// Radio base de la interfaz. De él se deriva la escala <c>RadiusXs</c> … <c>RadiusXxl</c>,
+    /// de modo que un solo ajuste cambia la redondez global.
+    /// </summary>
     public double CornerRadius { get; set; } = 6.0;
+
+    /// <summary>
+    /// Unidad del ritmo de espaciado (densidad). De ella se derivan <c>Space1</c> … <c>Space9</c> (valores
+    /// sueltos) y <c>Pad1</c> … <c>Pad9</c> (mismos valores como <c>Thickness</c> para rellenos y márgenes).
+    /// Con 4.0 la escala es 2·4·6·8·12·16·20·24·32.
+    /// </summary>
+    public double SpacingUnit { get; set; } = 4.0;
+
+    /// <summary>Desenfoque base de la escala de elevación (<c>Elev1</c> … <c>Elev4</c> y los resplandores).</summary>
     public double NodeShadowBlur { get; set; } = 24.0;
+
+    /// <summary>
+    /// Opacidad base de la escala de elevación. Los temas claros usan valores bajos para que la profundidad
+    /// se lea sin ensuciar las superficies.
+    /// </summary>
     public double NodeShadowOpacity { get; set; } = 0.55;
 
     public ThemeDefinition Clone()
@@ -81,6 +114,8 @@ public sealed class ThemeDefinition
             AccentPurple = this.AccentPurple,
             TextPrimary = this.TextPrimary,
             TextSecondary = this.TextSecondary,
+            TextMuted = this.TextMuted,
+            TextOnAccent = this.TextOnAccent,
             BorderDark = this.BorderDark,
             BorderSubtle = this.BorderSubtle,
             GridLine = this.GridLine,
@@ -93,6 +128,7 @@ public sealed class ThemeDefinition
             CodeFontFamily = this.CodeFontFamily,
             BaseFontSize = this.BaseFontSize,
             CornerRadius = this.CornerRadius,
+            SpacingUnit = this.SpacingUnit,
             NodeShadowBlur = this.NodeShadowBlur,
             NodeShadowOpacity = this.NodeShadowOpacity
         };

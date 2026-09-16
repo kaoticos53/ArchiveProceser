@@ -53,6 +53,23 @@ public static partial class MultimodalVlmClientEngine
     private static readonly HttpClient DefaultHttpClient = CreateDefaultHttpClient();
 
     /// <summary>
+    /// Escala (en porcentaje, 100 = producción) de los tiempos de espera del motor: el backoff de
+    /// reintentos ante errores transitorios (1,5 s y 2 s por intento) y el enfriamiento de 250 ms que
+    /// se aplica a los endpoints locales para liberar la KV Cache del slot.
+    ///
+    /// Es <c>internal</c> a propósito: sólo el ensamblado de pruebas lo toca. Las pruebas del nodo
+    /// ejercitan la política de reintento contra servidores HTTP simulados, donde no hay slot real que
+    /// enfriar ni sobrecarga que esperar; con la escala al 0% esa suite pasa de ~9 s a ~2 s sin tocar
+    /// una sola línea de la política que se quiere probar. Valor por defecto 100: el comportamiento en
+    /// producción no cambia ni un milisegundo.
+    /// </summary>
+    internal static int RetryBackoffScalePercent { get; set; } = 100;
+
+    /// <summary>Aplica la escala de pruebas a un intervalo de espera.</summary>
+    private static TimeSpan Scaled(TimeSpan delay) =>
+        TimeSpan.FromMilliseconds(delay.TotalMilliseconds * RetryBackoffScalePercent / 100.0);
+
+    /// <summary>
     /// Semáforos de concurrencia por host/endpoint para evitar saturar la memoria VRAM y los slots
     /// de inferencia de servidores locales de VLM (LM Studio, Ollama) durante ejecuciones paralelas en pipeline.
     /// </summary>
@@ -446,7 +463,7 @@ public static partial class MultimodalVlmClientEngine
                 {
                     if (currentAttempt < maxAttempts && !cts.IsCancellationRequested)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(1.5 * currentAttempt), cts.Token).ConfigureAwait(false);
+                        await Task.Delay(Scaled(TimeSpan.FromSeconds(1.5 * currentAttempt)), cts.Token).ConfigureAwait(false);
                         continue;
                     }
                     throw new InvalidOperationException($"No se pudo conectar con el servidor VLM en '{cleanEndpoint}'. Asegúrate de que LM Studio o el servidor local esté en ejecución: {ex.Message}", ex);
@@ -495,7 +512,7 @@ public static partial class MultimodalVlmClientEngine
                 if (isTransient && currentAttempt < maxAttempts && !cts.IsCancellationRequested)
                 {
                     response.Dispose();
-                    await Task.Delay(TimeSpan.FromSeconds(2.0 * currentAttempt), cts.Token).ConfigureAwait(false);
+                    await Task.Delay(Scaled(TimeSpan.FromSeconds(2.0 * currentAttempt)), cts.Token).ConfigureAwait(false);
                     continue;
                 }
 
@@ -510,7 +527,7 @@ public static partial class MultimodalVlmClientEngine
             {
                 try
                 {
-                    await Task.Delay(250, CancellationToken.None).ConfigureAwait(false);
+                    await Task.Delay(Scaled(TimeSpan.FromMilliseconds(250)), CancellationToken.None).ConfigureAwait(false);
                 }
                 catch
                 {

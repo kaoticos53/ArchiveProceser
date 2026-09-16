@@ -614,9 +614,9 @@
   <data name="ThemeCustomizer_ImportBtn" xml:space="preserve"><value>Import...</value></data>
   <data name="ThemeCustomizer_ExportBtn" xml:space="preserve"><value>Export...</value></data>
   <data name="ThemeCustomizer_AvailableThemes" xml:space="preserve"><value>AVAILABLE THEMES</value></data>
-  <data name="ThemeCustomizer_NewBtn" xml:space="preserve"><value>+ New</value></data>
-  <data name="ThemeCustomizer_DuplicateBtn" xml:space="preserve"><value>📋 Duplicate</value></data>
-  <data name="ThemeCustomizer_DeleteBtn" xml:space="preserve"><value>🗑️ Delete Theme</value></data>
+  <data name="ThemeCustomizer_NewBtn" xml:space="preserve"><value>New</value></data>
+  <data name="ThemeCustomizer_DuplicateBtn" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="ThemeCustomizer_DeleteBtn" xml:space="preserve"><value>Delete theme</value></data>
   <data name="ThemeCustomizer_GeneralInfo" xml:space="preserve"><value>GENERAL INFORMATION</value></data>
   <data name="ThemeCustomizer_ThemeName" xml:space="preserve"><value>Theme Name:</value></data>
   <data name="ThemeCustomizer_DarkMode" xml:space="preserve"><value>Dark Mode (enables Windows immersive title bar)</value></data>
@@ -630,11 +630,11 @@
   <data name="ThemeCustomizer_BaseFontSize" xml:space="preserve"><value>Base Size:</value></data>
   <data name="ThemeCustomizer_CornerRadius" xml:space="preserve"><value>Corner Radius:</value></data>
   <data name="ThemeCustomizer_NodeShadowBlur" xml:space="preserve"><value>Node Shadow Blur:</value></data>
-  <data name="ThemeCustomizer_LivePreviewTitle" xml:space="preserve"><value>👁️ Interactive Live Preview:</value></data>
+  <data name="ThemeCustomizer_LivePreviewTitle" xml:space="preserve"><value>Live preview</value></data>
   <data name="ThemeCustomizer_LivePreviewSubtitle" xml:space="preserve"><value>(Changes reflect instantly in real time)</value></data>
   <data name="ThemeCustomizer_TestInAppToolTip" xml:space="preserve"><value>Temporarily applies this theme to workspace to test it</value></data>
-  <data name="ThemeCustomizer_TestInApp" xml:space="preserve"><value>👁️ Test in App</value></data>
-  <data name="ThemeCustomizer_SaveAndApply" xml:space="preserve"><value>✓ Save &amp; Apply</value></data>
+  <data name="ThemeCustomizer_TestInApp" xml:space="preserve"><value>Test in app</value></data>
+  <data name="ThemeCustomizer_SaveAndApply" xml:space="preserve"><value>Save &amp; apply</value></data>
 
   <!-- Log View Details & Tooltips -->
   <data name="Log_ClearSearchToolTip" xml:space="preserve"><value>Clear search</value></data>
@@ -1019,4 +1019,104 @@
   <data name="Log_VfsExecutionFinished" xml:space="preserve"><value>[VFS] Simulation finished in Virtual File System: {0} files generated.</value></data>
   <data name="Drawer_DataSetDesigner" xml:space="preserve"><value>Synthetic Datasets</value></data>
   <data name="Drawer_DataSetDesignerToolTip" xml:space="preserve"><value>Open the Synthetic Data Sets Designer</value></data>
+  <data name="CanvasHud_Selected" xml:space="preserve"><value>Selected:</value></data>
+  <data name="CanvasHud_Connections" xml:space="preserve"><value>Connections:</value></data>
+  <data name="CanvasHud_Location" xml:space="preserve"><value>Location:</value></data>
+  <data name="CanvasHud_Zoom" xml:space="preserve"><value>Zoom:</value></data>
+  <data name="Spotlight_FooterHints" xml:space="preserve"><value>↑↓ Navigate  •  Enter Create  •  Esc Close</value></data>
+  <data name="Port_Type_Files" xml:space="preserve"><value>File</value></data>
+  <data name="Port_Type_Text" xml:space="preserve"><value>Text</value></data>
+  <data name="Port_Type_Boolean" xml:space="preserve"><value>Boolean</value></data>
+  <data name="Port_Type_Number" xml:space="preserve"><value>Numeric</value></data>
+  <data name="Port_Type_Binary" xml:space="preserve"><value>Binary</value></data>
+  <data name="Port_Type_Collection" xml:space="preserve"><value>Collection</value></data>
+  <data name="Port_Type_Any" xml:space="preserve"><value>Any</value></data>
+  <data name="Port_Direction_Input" xml:space="preserve"><value>Input</value></data>
+  <data name="Port_Direction_Output" xml:space="preserve"><value>Output</value></data>
+  <data name="Port_Status_Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="Port_Status_ConnectedTo" xml:space="preserve"><value>Connected to {0}</value></data>
+  <data name="Port_Status_Free" xml:space="preserve"><value>Free port (not connected)</value></data>
+  <data name="Port_Item_None" xml:space="preserve"><value>None</value></data>
+  <data name="Port_ItemCount_One" xml:space="preserve"><value>1 item</value></data>
+  <data name="Port_ItemCount_Many" xml:space="preserve"><value>{0} items</value></data>
+  <data name="Port_Desc_FileContext" xml:space="preserve"><value>Receives or emits full file context with metadata.</value></data>
+  <data name="Port_Desc_Text" xml:space="preserve"><value>Text string or file path.</value></data>
+  <data name="Port_Desc_Boolean" xml:space="preserve"><value>Boolean conditional value (True / False).</value></data>
+  <data name="Port_Desc_Integer" xml:space="preserve"><value>Integer numeric value.</value></data>
+  <data name="Port_Desc_Decimal" xml:space="preserve"><value>Decimal numeric value.</value></data>
+  <data name="Port_Desc_Binary" xml:space="preserve"><value>Binary data stream or in-memory stream.</value></data>
+  <data name="Port_Desc_Any" xml:space="preserve"><value>Universal (accepts any data type).</value></data>
+  <data name="Node_BottleneckPercent" xml:space="preserve"><value>{0}%</value></data>
+  <data name="NodeStatus_Running" xml:space="preserve"><value>Running</value></data>
+  <data name="NodeStatus_Paused" xml:space="preserve"><value>Paused</value></data>
+  <data name="NodeStatus_PausedOnError" xml:space="preserve"><value>Paused on error</value></data>
+  <data name="NodeStatus_Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="NodeStatus_Faulted" xml:space="preserve"><value>Error</value></data>
+  <data name="NodeStatus_Idle" xml:space="preserve"><value>Idle</value></data>
+  <data name="ThemeStudio_Section_Surfaces" xml:space="preserve"><value>SURFACES</value></data>
+  <data name="ThemeStudio_Section_Accents" xml:space="preserve"><value>ACCENTS &amp; STATUS</value></data>
+  <data name="ThemeStudio_Section_Text" xml:space="preserve"><value>TEXT</value></data>
+  <data name="ThemeStudio_Section_Borders" xml:space="preserve"><value>BORDERS &amp; GRID</value></data>
+  <data name="ThemeStudio_Section_Scrollbars" xml:space="preserve"><value>SCROLLBARS</value></data>
+  <data name="ThemeStudio_Section_Wire" xml:space="preserve"><value>NODE WIRE (GRADIENT)</value></data>
+  <data name="ThemeStudio_Section_Typography" xml:space="preserve"><value>TYPOGRAPHY</value></data>
+  <data name="ThemeStudio_Section_Shape" xml:space="preserve"><value>SHAPE &amp; DENSITY</value></data>
+  <data name="ThemeStudio_Section_Elevation" xml:space="preserve"><value>ELEVATION &amp; SHADOWS</value></data>
+  <data name="ThemeStudio_Set_AppBackground" xml:space="preserve"><value>Application background</value></data>
+  <data name="ThemeStudio_Set_BgDark" xml:space="preserve"><value>Base background</value></data>
+  <data name="ThemeStudio_Set_BgEditor" xml:space="preserve"><value>Canvas background</value></data>
+  <data name="ThemeStudio_Set_BgSurface" xml:space="preserve"><value>Panel surface</value></data>
+  <data name="ThemeStudio_Set_BgCard" xml:space="preserve"><value>Card surface</value></data>
+  <data name="ThemeStudio_Set_BgHeader" xml:space="preserve"><value>Header surface</value></data>
+  <data name="ThemeStudio_Set_BgHover" xml:space="preserve"><value>Hover surface</value></data>
+  <data name="ThemeStudio_Set_AccentPrimary" xml:space="preserve"><value>Primary accent</value></data>
+  <data name="ThemeStudio_Set_AccentHover" xml:space="preserve"><value>Accent on hover</value></data>
+  <data name="ThemeStudio_Set_AccentGlow" xml:space="preserve"><value>Accent glow</value></data>
+  <data name="ThemeStudio_Set_AccentSuccess" xml:space="preserve"><value>Success</value></data>
+  <data name="ThemeStudio_Set_AccentWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="ThemeStudio_Set_AccentError" xml:space="preserve"><value>Error</value></data>
+  <data name="ThemeStudio_Set_AccentCyan" xml:space="preserve"><value>Cyan accent</value></data>
+  <data name="ThemeStudio_Set_AccentPurple" xml:space="preserve"><value>Purple accent</value></data>
+  <data name="ThemeStudio_Set_TextPrimary" xml:space="preserve"><value>Primary text</value></data>
+  <data name="ThemeStudio_Set_TextSecondary" xml:space="preserve"><value>Secondary text</value></data>
+  <data name="ThemeStudio_Set_TextMuted" xml:space="preserve"><value>Muted text</value></data>
+  <data name="ThemeStudio_Set_TextOnAccent" xml:space="preserve"><value>Text on accent</value></data>
+  <data name="ThemeStudio_Set_BorderDark" xml:space="preserve"><value>Strong border</value></data>
+  <data name="ThemeStudio_Set_BorderSubtle" xml:space="preserve"><value>Subtle border</value></data>
+  <data name="ThemeStudio_Set_GridLine" xml:space="preserve"><value>Canvas grid line</value></data>
+  <data name="ThemeStudio_Set_ScrollbarThumb" xml:space="preserve"><value>Scrollbar thumb</value></data>
+  <data name="ThemeStudio_Set_ScrollbarThumbHover" xml:space="preserve"><value>Scrollbar thumb (hover)</value></data>
+  <data name="ThemeStudio_Set_WireColorStart" xml:space="preserve"><value>Wire start</value></data>
+  <data name="ThemeStudio_Set_WireColorMid" xml:space="preserve"><value>Wire middle</value></data>
+  <data name="ThemeStudio_Set_WireColorEnd" xml:space="preserve"><value>Wire end</value></data>
+  <data name="ThemeStudio_Set_FontFamily" xml:space="preserve"><value>Interface font family</value></data>
+  <data name="ThemeStudio_Set_CodeFontFamily" xml:space="preserve"><value>Monospaced font family</value></data>
+  <data name="ThemeStudio_Set_BaseFontSize" xml:space="preserve"><value>Base font size</value></data>
+  <data name="ThemeStudio_Set_CornerRadius" xml:space="preserve"><value>Corner radius</value></data>
+  <data name="ThemeStudio_Set_SpacingUnit" xml:space="preserve"><value>Spacing unit</value></data>
+  <data name="ThemeStudio_Set_NodeShadowBlur" xml:space="preserve"><value>Shadow blur</value></data>
+  <data name="ThemeStudio_Set_NodeShadowOpacity" xml:space="preserve"><value>Shadow opacity</value></data>
+  <data name="ThemeStudio_CopySuffix" xml:space="preserve"><value>(Copy)</value></data>
+  <data name="ThemeStudio_CustomSuffix" xml:space="preserve"><value>(Custom)</value></data>
+  <data name="ThemeStudio_DefaultNewThemeName" xml:space="preserve"><value>My Custom Theme</value></data>
+  <data name="ThemeStudio_DefaultNewThemeDescription" xml:space="preserve"><value>Custom theme created by the user.</value></data>
+  <data name="ThemeStudio_ConfirmDelete" xml:space="preserve"><value>Delete the custom theme '{0}'?</value></data>
+  <data name="ThemeStudio_ConfirmDeleteTitle" xml:space="preserve"><value>Confirm deletion</value></data>
+  <data name="ThemeStudio_ErrorTitle" xml:space="preserve"><value>Theme error</value></data>
+  <data name="ThemeStudio_ErrorFormat" xml:space="preserve"><value>Theme error: {0}</value></data>
+  <data name="ThemeStudio_BadgeBuiltIn" xml:space="preserve"><value>FACTORY</value></data>
+  <data name="ThemeStudio_BadgeCustom" xml:space="preserve"><value>CUSTOM</value></data>
+  <data name="ThemeStudio_TokenPreviewTitle" xml:space="preserve"><value>TOKEN SCALE</value></data>
+  <data name="ThemeStudio_RadiusSample" xml:space="preserve"><value>Radius</value></data>
+  <data name="ThemeStudio_SpacingSample" xml:space="preserve"><value>Spacing</value></data>
+  <data name="ThemeStudio_ElevationSample" xml:space="preserve"><value>Elevation</value></data>
+  <data name="ThemeStudio_Status_Loaded" xml:space="preserve"><value>Theme loaded: {0}</value></data>
+  <data name="ThemeStudio_Status_Created" xml:space="preserve"><value>New custom theme created.</value></data>
+  <data name="ThemeStudio_Status_Duplicated" xml:space="preserve"><value>Theme duplicated as '{0}'.</value></data>
+  <data name="ThemeStudio_Status_Deleted" xml:space="preserve"><value>Theme deleted.</value></data>
+  <data name="ThemeStudio_Status_Saved" xml:space="preserve"><value>Theme '{0}' saved.</value></data>
+  <data name="ThemeStudio_Status_SavedAs" xml:space="preserve"><value>Saved as custom theme: {0}</value></data>
+  <data name="ThemeStudio_Status_Applied" xml:space="preserve"><value>Theme '{0}' applied to the application live.</value></data>
+  <data name="ThemeStudio_Status_Exported" xml:space="preserve"><value>Theme exported to '{0}'.</value></data>
+  <data name="ThemeStudio_Status_Imported" xml:space="preserve"><value>Theme '{0}' imported successfully.</value></data>
 </root>

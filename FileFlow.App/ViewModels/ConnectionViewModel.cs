@@ -16,7 +16,20 @@ public partial class ConnectionViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasItems;
 
-    public string WireColor => Source?.PortColor ?? "#818CF8";
+    /// <summary>
+    /// Hay datos atravesando este cable ahora mismo. Mientras está activo, la plantilla del lienzo dibuja
+    /// una capa de energía animada sobre el cable: el trazo base nunca se anima, para no perder legibilidad
+    /// cuando el grafo es denso.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isExecuting;
+
+    /// <summary>
+    /// Número de pulsos de energía emitidos sobre este cable. Se usa como generación: un pulso antiguo que
+    /// llegue tarde no debe apagar la energía de un pulso más reciente.
+    /// </summary>
+    [ObservableProperty]
+    private int _lastDispatchedCount;
 
     public ConnectionViewModel(PortViewModel source, PortViewModel target)
     {
@@ -30,4 +43,3 @@ public partial class ConnectionViewModel : ObservableObject
         HasItems = count > 0;
     }
 }
-

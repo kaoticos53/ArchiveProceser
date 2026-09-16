@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FileFlow.Plugin.AI;
 using FileFlow.Sdk.Storage;
 using FluentAssertions;
@@ -9,19 +11,26 @@ namespace FileFlow.Tests.Unit.AI;
 [Collection("AiModelDownloadSequential")]
 public class AiModelManagerConfigTests
 {
-    [Fact]
-    public void AiModelManager_GetDefaultUrls_ShouldReturnWorkingUrlsForAllCatalogModels()
-    {
-        // Assert: cada modelo del catálogo debe tener al menos una URL por defecto
-        foreach (var (id, info) in AiModelManager.Catalog)
-        {
-            var defaultUrls = AiModelManager.GetDefaultUrls(id);
-            defaultUrls.Should().NotBeEmpty($"El modelo '{id}' debe tener al menos una URL por defecto");
-            defaultUrls[0].Should().StartWith("http", $"La URL por defecto de '{id}' debe ser HTTP/HTTPS");
-        }
+    public static IEnumerable<object[]> CatalogModelIds =>
+        AiModelManager.Catalog.Keys
+            .OrderBy(id => id)
+            .Select(id => new object[] { id });
 
-        // YOLOv8 Nano debe apuntar al repositorio funcional de Hugging Face
+    [Theory]
+    [MemberData(nameof(CatalogModelIds))]
+    public void AiModelManager_GetDefaultUrls_ShouldReturnWorkingUrlsForCatalogModel(string id)
+    {
+        var defaultUrls = AiModelManager.GetDefaultUrls(id);
+
+        defaultUrls.Should().NotBeEmpty($"El modelo '{id}' debe tener al menos una URL por defecto");
+        defaultUrls[0].Should().StartWith("http", $"La URL por defecto de '{id}' debe ser HTTP/HTTPS");
+    }
+
+    [Fact]
+    public void AiModelManager_GetDefaultUrls_ForYoloV8Nano_ShouldPointToHuggingFaceModel()
+    {
         var yoloUrls = AiModelManager.GetDefaultUrls("yolov8n");
+
         yoloUrls.Should().Contain(u => u.Contains("yolov8n.onnx"));
     }
 

@@ -1,6 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:FileFlow.App.Converters"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="FileFlow.App.App"
              RequestedThemeVariant="Dark">
     <Application.Styles>
@@ -8,10 +9,24 @@
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
         <StyleInclude Source="avares://Nodify.Avalonia/Themes/Controls.xaml" />
 
+        <!-- Component layer del sistema de diseño (debe ir después de FluentTheme para ganar la cascada) -->
+        <StyleInclude Source="avares://FileFlow.App/Styles/Typography.axaml" />
+        <StyleInclude Source="avares://FileFlow.App/Styles/Surfaces.axaml" />
+        <StyleInclude Source="avares://FileFlow.App/Styles/Buttons.axaml" />
+        <StyleInclude Source="avares://FileFlow.App/Styles/Inputs.axaml" />
+        <StyleInclude Source="avares://FileFlow.App/Styles/Containers.axaml" />
+        <StyleInclude Source="avares://FileFlow.App/Styles/Ports.axaml" />
+
+        <!-- Iconografía vectorial: la plantilla del control MaterialIcon resuelve `Foreground` como relleno.
+             Registrada una sola vez para el host y para las ventanas de los plugins. -->
+        <materialIcons:MaterialIconStyles />
+
         <!-- Global Fluent Typography & Control Styles -->
+        <!-- Tipografía alimentada por el tema activo: cambiar ThemeDefinition.FontFamily / BaseFontSize
+             desde el Theme Studio se refleja en toda la aplicación sin tocar cada vista. -->
         <Style Selector="Window">
-            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+            <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         </Style>
         <Style Selector="ToolTip">
             <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />

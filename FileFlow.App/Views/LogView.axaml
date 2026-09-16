@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              xmlns:converters="using:FileFlow.App.Converters"
              xmlns:vm="using:FileFlow.App.ViewModels"
@@ -7,9 +8,11 @@
              x:Class="FileFlow.App.Views.LogView"
              x:DataType="vm:LogViewModel">
 
-    <Border Background="{DynamicResource BgSurfaceBrush}" 
-            BorderBrush="{DynamicResource BorderDarkBrush}" 
-            BorderThickness="0,1,0,0" 
+    <!-- Consola de ejecución. Estilo 100% declarativo (Styles/*.axaml): sin literales de color,
+         radio ni tamaño de fuente. -->
+    <Border Classes="surface"
+            BorderBrush="{DynamicResource BorderDarkBrush}"
+            BorderThickness="0,1,0,0"
             Padding="10,6,10,8">
         <Grid RowDefinitions="Auto,Auto,*">
 
@@ -17,62 +20,56 @@
             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
 
                 <!-- Grupo Izquierdo: Título y Filtros Rápidos por Severidad -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                    <TextBlock Text="{Binding [ExecutionConsoleTitle], Source={x:Static loc:LocalizationManager.Instance}}" 
-                               FontWeight="Bold" 
-                               Foreground="{DynamicResource TextPrimaryBrush}" 
-                               FontSize="12.5" 
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space4}">
+                    <TextBlock Text="{Binding [ExecutionConsoleTitle], Source={x:Static loc:LocalizationManager.Instance}}"
+                               Classes="body strong"
                                VerticalAlignment="Center" />
 
-                    <!-- Filtros Rápidos por Nivel de Log -->
-                    <Border Background="{DynamicResource BgCardBrush}" 
-                            BorderBrush="{DynamicResource BorderDarkBrush}" 
-                            BorderThickness="1" 
-                            CornerRadius="4" 
-                            Padding="2">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <RadioButton Content="{Binding [LogFilterAll], Source={x:Static loc:LocalizationManager.Instance}}" 
+                    <!-- Filtros Rápidos por Nivel de Log (segmentos pastilla) -->
+                    <Border Classes="island">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                            <RadioButton Content="{Binding [LogFilterAll], Source={x:Static loc:LocalizationManager.Instance}}"
                                          GroupName="LogFilterGroup"
-                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=All, Mode=TwoWay}"
-                                         Padding="6,2" FontSize="10.5" Cursor="Hand" />
-                            
+                                         Theme="{DynamicResource SegmentTheme}"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=All, Mode=TwoWay}" />
+
                             <RadioButton GroupName="LogFilterGroup"
-                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=ErrorsOnly, Mode=TwoWay}"
-                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
-                                <StackPanel Orientation="Horizontal" Spacing="2">
-                                    <TextBlock Text="🔴" />
-                                    <TextBlock Text="{Binding [LogFilterErrors], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding ErrorCount, StringFormat=' ({0})'}" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" />
+                                         Theme="{DynamicResource SegmentTheme}"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=ErrorsOnly, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space1}">
+                                    <materialIcons:MaterialIcon  Kind="AlertCircle" Width="14" Height="14" />
+                                    <TextBlock Text="{Binding [LogFilterErrors], Source={x:Static loc:LocalizationManager.Instance}}" Classes="semiBold" />
+                                    <TextBlock Text="{Binding ErrorCount, StringFormat=' ({0})'}" Classes="strong accentError" />
                                 </StackPanel>
                             </RadioButton>
 
                             <RadioButton GroupName="LogFilterGroup"
-                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=WarningsOnly, Mode=TwoWay}"
-                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
-                                <StackPanel Orientation="Horizontal" Spacing="2">
-                                    <TextBlock Text="🟠" />
-                                    <TextBlock Text="{Binding [LogFilterWarnings], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding WarningCount, StringFormat=' ({0})'}" FontWeight="Bold" Foreground="{DynamicResource AccentWarningBrush}" />
+                                         Theme="{DynamicResource SegmentTheme}"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=WarningsOnly, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space1}">
+                                    <materialIcons:MaterialIcon  Kind="AlertCircle" Width="14" Height="14" />
+                                    <TextBlock Text="{Binding [LogFilterWarnings], Source={x:Static loc:LocalizationManager.Instance}}" Classes="semiBold" />
+                                    <TextBlock Text="{Binding WarningCount, StringFormat=' ({0})'}" Classes="strong accentWarning" />
                                 </StackPanel>
                             </RadioButton>
 
                             <RadioButton GroupName="LogFilterGroup"
-                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=InfoOnly, Mode=TwoWay}"
-                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
-                                <StackPanel Orientation="Horizontal" Spacing="2">
-                                    <TextBlock Text="🔵" />
-                                    <TextBlock Text="{Binding [LogFilterInfo], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding InfoCount, StringFormat=' ({0})'}" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
+                                         Theme="{DynamicResource SegmentTheme}"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=InfoOnly, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space1}">
+                                    <materialIcons:MaterialIcon  Kind="Information" Width="14" Height="14" />
+                                    <TextBlock Text="{Binding [LogFilterInfo], Source={x:Static loc:LocalizationManager.Instance}}" Classes="semiBold" />
+                                    <TextBlock Text="{Binding InfoCount, StringFormat=' ({0})'}" Classes="strong accentCyan" />
                                 </StackPanel>
                             </RadioButton>
 
                             <RadioButton GroupName="LogFilterGroup"
-                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=DebugOnly, Mode=TwoWay}"
-                                         Padding="6,2" FontSize="10.5" Cursor="Hand">
-                                <StackPanel Orientation="Horizontal" Spacing="2">
-                                    <TextBlock Text="🟣" />
-                                    <TextBlock Text="{Binding [LogFilterDebug], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding DebugCount, StringFormat=' ({0})'}" FontWeight="Bold" Foreground="{DynamicResource AccentPurpleBrush}" />
+                                         Theme="{DynamicResource SegmentTheme}"
+                                         IsChecked="{Binding ActiveFilter, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=DebugOnly, Mode=TwoWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space1}">
+                                    <materialIcons:MaterialIcon  Kind="Bug" Width="14" Height="14" />
+                                    <TextBlock Text="{Binding [LogFilterDebug], Source={x:Static loc:LocalizationManager.Instance}}" Classes="semiBold" />
+                                    <TextBlock Text="{Binding DebugCount, StringFormat=' ({0})'}" Classes="strong accentPurple" />
                                 </StackPanel>
                             </RadioButton>
                         </StackPanel>
@@ -80,116 +77,85 @@
                 </StackPanel>
 
                 <!-- Grupo Central: Input de Búsqueda Instantánea con Botón Limpiar -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0" Spacing="6">
-                    <Border Background="{DynamicResource BgCardBrush}" 
-                            BorderBrush="{DynamicResource BorderDarkBrush}" 
-                            BorderThickness="1" 
-                            CornerRadius="4" 
-                            Padding="6,2" 
-                            Width="260"
-                            Height="26"
-                            VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0" Spacing="{DynamicResource Space3}">
+                    <Border Classes="inset" Width="260" VerticalAlignment="Center">
                         <Grid ColumnDefinitions="Auto,*,Auto">
-                            <TextBlock Grid.Column="0" Text="🔍" FontSize="10" Margin="0,0,4,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                            
-                            <TextBox Grid.Column="1" 
-                                     PlaceholderText="{Binding [LogSearchPlaceholder], Source={x:Static loc:LocalizationManager.Instance}}"
-                                     Text="{Binding SearchFilter}" 
-                                     Background="Transparent" 
-                                     Foreground="{DynamicResource TextPrimaryBrush}" 
-                                     BorderThickness="0" 
-                                     FontSize="10.5" 
-                                     VerticalAlignment="Center" 
-                                     Padding="0" />
+                            <materialIcons:MaterialIcon Grid.Column="0" Margin="0,0,4,0" VerticalAlignment="Center"  Kind="Magnify" Width="14" Height="14" />
 
-                            <Button Grid.Column="2" 
-                                    Content="✕" 
-                                    Command="{Binding ClearSearchFilterCommand}" 
-                                    Background="Transparent" 
-                                    BorderThickness="0" 
-                                    Foreground="{DynamicResource TextSecondaryBrush}" 
-                                    FontSize="10" 
-                                    FontWeight="Bold" 
-                                    Padding="2,0" 
-                                    Cursor="Hand" 
-                                    ToolTip.Tip="{Binding [Log_ClearSearchToolTip], Source={x:Static loc:LocalizationManager.Instance}}" 
+                            <TextBox Grid.Column="1"
+                                     Classes="flush search"
+                                     PlaceholderText="{Binding [LogSearchPlaceholder], Source={x:Static loc:LocalizationManager.Instance}}"
+                                     Text="{Binding SearchFilter}"
+                                     VerticalAlignment="Center" />
+
+                            <Button Grid.Column="2"
+                                    Classes="icon"
+                                    Content="{materialIcons:MaterialIconExt Kind=Close}"
+                                    Command="{Binding ClearSearchFilterCommand}"
+                                    ToolTip.Tip="{Binding [Log_ClearSearchToolTip], Source={x:Static loc:LocalizationManager.Instance}}"
                                     IsVisible="{Binding SearchFilter, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </Grid>
                     </Border>
 
-                    <TextBlock Text="{Binding TotalLogsCount, StringFormat='• {0:N0} logs'}" 
-                               Foreground="{DynamicResource TextSecondaryBrush}" 
-                               FontSize="10.5" 
+                    <TextBlock Text="{Binding TotalLogsCount, StringFormat='• {0:N0} logs'}"
+                               Classes="micro secondary"
                                VerticalAlignment="Center" />
 
-                    <TextBlock Text="{Binding StatusMessage, StringFormat='• {0}'}" 
-                               Foreground="{DynamicResource TextSecondaryBrush}" 
-                               FontSize="10.5" 
+                    <TextBlock Text="{Binding StatusMessage, StringFormat='• {0}'}"
+                               Classes="micro secondary"
                                TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Grupo Derecho: Controles de Depuración (En Vivo, Exportar, Limpiar) -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                    <ToggleButton Content="{Binding [LogLive], Source={x:Static loc:LocalizationManager.Instance}}" 
-                                  IsChecked="{Binding IsLiveMode, Mode=TwoWay}" 
-                                  Padding="8,3" 
-                                  FontSize="10.5" 
-                                  FontWeight="SemiBold" 
-                                  Cursor="Hand" 
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
+                    <ToggleButton Content="{Binding [LogLive], Source={x:Static loc:LocalizationManager.Instance}}"
+                                  Classes="chip"
+                                  IsChecked="{Binding IsLiveMode, Mode=TwoWay}"
                                   ToolTip.Tip="{Binding [Log_ToggleLiveToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
 
-                    <Button Content="{Binding [LogExport], Source={x:Static loc:LocalizationManager.Instance}}" 
-                            Command="{Binding ExportLogsCommand}" 
-                            Padding="8,3" 
-                            FontSize="10.5" 
+                    <Button Content="{Binding [LogExport], Source={x:Static loc:LocalizationManager.Instance}}"
+                            Classes="toolbar"
+                            Command="{Binding ExportLogsCommand}"
                             ToolTip.Tip="{Binding [Log_ExportToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
 
-                    <Button Content="{Binding [LogClear], Source={x:Static loc:LocalizationManager.Instance}}" 
-                            Command="{Binding ClearLogsCommand}" 
-                            Padding="8,3" 
-                            FontSize="10.5"
+                    <Button Content="{Binding [LogClear], Source={x:Static loc:LocalizationManager.Instance}}"
+                            Classes="toolbar"
+                            Command="{Binding ClearLogsCommand}"
                             ToolTip.Tip="{Binding [Log_ClearToolTip], Source={x:Static loc:LocalizationManager.Instance}}" />
                 </StackPanel>
             </Grid>
 
             <!-- Slim Progress Bar -->
-            <ProgressBar Grid.Row="1" 
-                         Value="{Binding ProgressPercentage}" 
-                         Minimum="0" 
-                         Maximum="100" 
-                         Height="3" 
-                         Margin="0,0,0,4" 
-                         Foreground="{DynamicResource AccentSuccessBrush}" 
-                         Background="{DynamicResource BgCardBrush}" 
+            <ProgressBar Grid.Row="1"
+                         Value="{Binding ProgressPercentage}"
+                         Minimum="0"
+                         Maximum="100"
+                         Height="3"
+                         Margin="0,0,0,4"
+                         Foreground="{DynamicResource AccentSuccessBrush}"
+                         Background="{DynamicResource BgCardBrush}"
                          BorderThickness="0"
                          IsVisible="{Binding ProgressPercentage, Converter={StaticResource InverseNullToVisibilityConverter}}" />
 
             <!-- Virtualized DataGrid -->
             <DataGrid x:Name="LogDataGrid"
                       Grid.Row="2"
+                      Classes="logGrid"
                       ItemsSource="{Binding Logs}"
                       SelectedItem="{Binding SelectedLog, Mode=TwoWay}"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       CanUserResizeColumns="True"
-                      GridLinesVisibility="Horizontal"
                       HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto"
-                      Background="{DynamicResource BgCardBrush}"
-                      Foreground="{DynamicResource TextPrimaryBrush}"
-                      BorderBrush="{DynamicResource BorderDarkBrush}"
-                      BorderThickness="1"
-                      FontFamily="JetBrains Mono, Cascadia Code, Consolas, monospace"
-                      FontSize="11"
-                      RowHeight="26">
+                      VerticalScrollBarVisibility="Auto">
 
                 <DataGrid.Columns>
                     <!-- Hora -->
                     <DataGridTemplateColumn Width="90" Header="{Binding [LogColTime], Source={x:Static loc:LocalizationManager.Instance}}">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" FontSize="10" Padding="4,0" />
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <TextBlock Text="{Binding Timestamp, StringFormat='HH:mm:ss.fff'}" Classes="micro secondary" VerticalAlignment="Center" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -197,16 +163,14 @@
                     <!-- Nivel -->
                     <DataGridTemplateColumn Width="65" Header="{Binding [LogColLevel], Source={x:Static loc:LocalizationManager.Instance}}">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <Border Background="{Binding Level, Converter={StaticResource LogLevelToBadgeBackgroundConverter}}"
-                                        CornerRadius="3"
-                                        Padding="4,1"
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <Border Classes="badge"
+                                        Background="{Binding Level, Converter={StaticResource LogLevelToBadgeBackgroundConverter}}"
                                         HorizontalAlignment="Center"
                                         VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding BadgeText}" 
-                                               Foreground="{Binding Level, Converter={StaticResource LogLevelToBadgeForegroundConverter}}" 
-                                               FontWeight="Bold" 
-                                               FontSize="9" 
+                                    <TextBlock Text="{Binding BadgeText}"
+                                               Classes="micro strong"
+                                               Foreground="{Binding Level, Converter={StaticResource LogLevelToBadgeForegroundConverter}}"
                                                VerticalAlignment="Center" />
                                 </Border>
                             </DataTemplate>
@@ -216,8 +180,8 @@
                     <!-- Nodo -->
                     <DataGridTemplateColumn Width="120" Header="{Binding [LogColNode], Source={x:Static loc:LocalizationManager.Instance}}">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <TextBlock Text="{Binding NodeName}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" Padding="4,0" />
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <TextBlock Text="{Binding NodeName}" Classes="micro semiBold accent" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -225,12 +189,9 @@
                     <!-- ID Fichero -->
                     <DataGridTemplateColumn Width="75" Header="ID">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <Border Background="{DynamicResource BgHoverBrush}" CornerRadius="3" Padding="4,1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding ShortItemId, StringFormat='#{0}'}" 
-                                               Foreground="{DynamicResource AccentCyanBrush}" 
-                                               FontWeight="SemiBold" 
-                                               FontSize="9" />
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <Border Classes="badge" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ShortItemId, StringFormat='#{0}'}" Classes="micro strong accentCyan" />
                                 </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -239,13 +200,8 @@
                     <!-- Fichero -->
                     <DataGridTemplateColumn Width="140" Header="{Binding [LogColFile], Source={x:Static loc:LocalizationManager.Instance}}">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <TextBlock Text="{Binding FileName}" 
-                                           Foreground="{DynamicResource TextSecondaryBrush}" 
-                                           TextTrimming="CharacterEllipsis" 
-                                           VerticalAlignment="Center"
-                                           FontSize="10"
-                                           Padding="4,0" />
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <TextBlock Text="{Binding FileName}" Classes="micro secondary" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -253,8 +209,8 @@
                     <!-- Duración -->
                     <DataGridTemplateColumn Width="75" Header="{Binding [LogColDuration], Source={x:Static loc:LocalizationManager.Instance}}">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1}ms'}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" />
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <TextBlock Text="{Binding DurationMs, StringFormat='{}{0:F1}ms'}" Classes="micro secondary" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -262,25 +218,21 @@
                     <!-- Mensaje -->
                     <DataGridTemplateColumn Width="*" Header="{Binding [LogColMessage], Source={x:Static loc:LocalizationManager.Instance}}">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type telemetry:StructuredLogRecord}">
-                                <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center" Margin="4,0">
-                                    <Border Grid.Column="0" 
-                                            Background="{DynamicResource AccentPurpleBrush}" 
-                                            Opacity="0.85" 
-                                            CornerRadius="3" 
-                                            Padding="4,1" 
-                                            Height="16"
+                            <DataTemplate DataType="telemetry:StructuredLogRecord">
+                                <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                    <Border Grid.Column="0"
+                                            Classes="badge"
+                                            Background="{DynamicResource AccentPurpleBrush}"
                                             Margin="0,0,6,0"
                                             VerticalAlignment="Center"
                                             IsVisible="{Binding HasDetails}">
-                                        <TextBlock Text="{}{ } JSON" Foreground="White" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
+                                        <TextBlock Text="{}{ } JSON" Classes="micro onAccent strong" VerticalAlignment="Center" />
                                     </Border>
-                                    <TextBlock Grid.Column="1" 
-                                               Text="{Binding Message}" 
-                                               Foreground="{DynamicResource TextPrimaryBrush}" 
-                                               TextTrimming="CharacterEllipsis" 
-                                               VerticalAlignment="Center" 
-                                               FontSize="10.5" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Message}"
+                                               Classes="micro primaryText"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
                                 </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

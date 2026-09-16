@@ -1,4 +1,4 @@
-using System.Globalization;
+using FileFlow.Tests.TestHelpers;
 using System.Reflection;
 using FileFlow.App.Models;
 using FileFlow.App.ViewModels;
@@ -21,7 +21,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Toolbox;
 
-[Collection("Localization")]
+[Collection("VisualSnapshots")]
 public class ToolboxOrganizationTests
 {
     private static readonly HashSet<string> ExpectedCategories = new(StringComparer.OrdinalIgnoreCase)
@@ -166,7 +166,10 @@ public class ToolboxOrganizationTests
         try
         {
             // Spanish
-            LocalizationManager.Instance.CurrentCulture = new CultureInfo("es-ES");
+            // En el hilo de UI: el setter de CurrentCulture dispara PropertyChanged y con él la
+            // reevaluación de los bindings residuales de capturas anteriores — en el hilo runner eso
+            // revienta con 'The calling thread cannot access this object' (ver AvaloniaTestHelper).
+            AvaloniaTestHelper.SetCultureOnUI("es-ES");
             foreach (var role in roles)
             {
                 string locRole = LocalizationManager.Instance.GetString($"Role_{role}", string.Empty);
@@ -180,7 +183,7 @@ public class ToolboxOrganizationTests
             }
 
             // English
-            LocalizationManager.Instance.CurrentCulture = new CultureInfo("en-US");
+            AvaloniaTestHelper.SetCultureOnUI("en-US");
             foreach (var role in roles)
             {
                 string locRole = LocalizationManager.Instance.GetString($"Role_{role}", string.Empty);
@@ -195,7 +198,7 @@ public class ToolboxOrganizationTests
         }
         finally
         {
-            LocalizationManager.Instance.CurrentCulture = originalCulture;
+            AvaloniaTestHelper.RunOnUI(() => LocalizationManager.Instance.CurrentCulture = originalCulture);
         }
     }
 }

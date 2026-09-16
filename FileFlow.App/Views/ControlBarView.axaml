@@ -2,225 +2,162 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="FileFlow.App.Views.ControlBarView"
              x:DataType="vm:ControlBarViewModel">
-    <Border Background="{DynamicResource BgHeaderBrush}" 
-            BorderBrush="{DynamicResource BorderDarkBrush}" 
-            BorderThickness="0,0,0,1" 
-            Padding="12,5">
+
+    <!-- Barra de control: 3 islas semánticas (Modos · Ciclo de vida · Herramientas).
+         Estilo 100% declarativo mediante la capa de componentes (Styles/*.axaml). -->
+    <Border Classes="chromeTop">
         <Grid ColumnDefinitions="Auto,*,Auto">
 
             <!-- App Brand & Hamburger Side Drawer Toggle -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Command="{Binding ToggleMenuCommand}" 
-                        Padding="8,5"
-                        CornerRadius="5"
+                <Button Command="{Binding ToggleMenuCommand}"
+                        Classes="toolbar"
                         Margin="0,0,10,0"
-                        Background="{DynamicResource BgSurfaceBrush}"
-                        BorderBrush="{DynamicResource BorderDarkBrush}"
-                        BorderThickness="1"
-                        Cursor="Hand"
                         ToolTip.Tip="{Binding [ControlBar_MenuToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="☰" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding [MenuBtn], Source={x:Static loc:LocalizationManager.Instance}}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space3}">
+                        <materialIcons:MaterialIcon Kind="Menu" Width="13" Height="13" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding [MenuBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
 
-                <Border Background="{DynamicResource AccentPrimaryBrush}" CornerRadius="6" Width="26" Height="26" Margin="0,0,8,0">
-                    <TextBlock Text="⚡" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                <Border Classes="brand" Margin="0,0,8,0">
+                    <materialIcons:MaterialIcon Kind="Flash" Width="15" Height="15"
+                                                Foreground="{DynamicResource TextOnAccentBrush}"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <TextBlock Text="FileFlow Studio" FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="FileFlow Studio" Classes="subtitle" VerticalAlignment="Center" />
             </StackPanel>
 
             <!-- Workflow Execution Controls (Divided into 3 Semantic Islands) -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space4}">
 
                 <!-- Island 1: Modes & Workspace Tools -->
-                <Border Background="{DynamicResource BgSurfaceBrush}" 
-                        BorderBrush="{DynamicResource BorderDarkBrush}" 
-                        BorderThickness="1" 
-                        CornerRadius="6" 
-                        Padding="3">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
+                <Border Classes="island">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
                         <!-- Dry Run Toggle Button -->
-                        <ToggleButton IsChecked="{Binding IsDryRun}" 
-                                      Padding="8,3.5" 
-                                      CornerRadius="4" 
-                                      FontSize="11"
-                                      Cursor="Hand"
+                        <ToggleButton Classes="chip"
+                                      IsChecked="{Binding IsDryRun}"
                                       ToolTip.Tip="{Binding [ControlBar_DryRunToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <Border Width="6" Height="6" CornerRadius="3" 
-                                        Background="{Binding IsDryRun, Converter={StaticResource BooleanToBrushConverter}, FallbackValue='#F59E0B'}" 
-                                        VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [DryRun], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <Border Classes="led" Classes.on="{Binding IsDryRun}" />
+                                <TextBlock Text="{Binding [DryRun], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption strong" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
 
                         <!-- Watch Mode Button -->
-                        <Button Command="{Binding ToggleWatchModeCommand}" 
-                                Padding="8,3.5" 
-                                CornerRadius="4"
-                                Cursor="Hand"
+                        <Button Command="{Binding ToggleWatchModeCommand}"
+                                Classes="toolbar"
                                 ToolTip.Tip="{Binding [ControlBar_WatchModeToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="👁️" FontSize="11" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [ControlBar_Watcher], Source={x:Static loc:LocalizationManager.Instance}}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="Eye" Width="13" Height="13" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [ControlBar_Watcher], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- VFS Explorer Button (Visible when VFS results exist) -->
                         <Button Command="{Binding OpenVirtualFileSystemExplorerCommand}"
-                                Padding="8,3.5"
-                                CornerRadius="4"
-                                Cursor="Hand"
+                                Classes="toolbar"
                                 IsVisible="{Binding HasVirtualFiles}"
                                 ToolTip.Tip="{Binding [ControlBar_VfsToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="🗂️" FontSize="11" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding VirtualFilesCount, StringFormat='VFS ({0})'}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="FolderOpen" Width="13" Height="13" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding VirtualFilesCount, StringFormat='VFS ({0})'}" Classes="caption strong accentCyan" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
 
                 <!-- Island 2: Workflow Lifecycle & Debugging Actions -->
-                <Border Background="{DynamicResource BgSurfaceBrush}" 
-                        BorderBrush="{DynamicResource BorderDarkBrush}" 
-                        BorderThickness="1" 
-                        CornerRadius="6" 
-                        Padding="3">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
+                <Border Classes="island">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
                         <!-- Run Normal -->
-                        <Button Command="{Binding ExecuteWorkflowCommand}" 
-                                Background="{DynamicResource AccentSuccessBrush}" 
-                                Foreground="#FFFFFF"
-                                CornerRadius="4"
-                                Padding="10,4"
-                                FontSize="11.5"
-                                FontWeight="Bold"
-                                Cursor="Hand"
+                        <Button Command="{Binding ExecuteWorkflowCommand}"
+                                Classes="success"
                                 IsVisible="{Binding !IsRunning}">
                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="▶" FontSize="10" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [RunFlow], Source={x:Static loc:LocalizationManager.Instance}}" VerticalAlignment="Center" />
+                                <materialIcons:MaterialIcon Kind="Play" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [RunFlow], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- Start Debugging -->
-                        <Button Command="{Binding DebugWorkflowCommand}" 
-                                Background="{DynamicResource AccentPurpleBrush}" 
-                                Foreground="#FFFFFF"
-                                CornerRadius="4"
-                                Padding="10,4"
-                                FontSize="11.5"
-                                FontWeight="Bold"
-                                Cursor="Hand"
+                        <Button Command="{Binding DebugWorkflowCommand}"
+                                Classes="debug"
                                 IsVisible="{Binding !IsRunning}">
                             <StackPanel Orientation="Horizontal" Spacing="5">
-                                <TextBlock Text="🐞" FontSize="10.5" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [DebugFlow], Source={x:Static loc:LocalizationManager.Instance}}" VerticalAlignment="Center" />
+                                <materialIcons:MaterialIcon Kind="Bug" Width="13" Height="13" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [DebugFlow], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- Debug Stepping Controls (visible during debugging) -->
-                        <Button Command="{Binding StepNextCommand}" 
-                                Background="{DynamicResource AccentWarningBrush}" 
-                                Foreground="#FFFFFF"
-                                CornerRadius="4"
-                                Padding="9,4"
-                                FontSize="11"
-                                FontWeight="SemiBold"
-                                Cursor="Hand"
-                                IsVisible="{Binding IsDebugging}" 
+                        <Button Command="{Binding StepNextCommand}"
+                                Classes="warning"
+                                IsVisible="{Binding IsDebugging}"
                                 ToolTip.Tip="{Binding [ControlBar_StepNextToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="⏭" FontSize="10" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [StepNext], Source={x:Static loc:LocalizationManager.Instance}}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="DebugStepOver" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [StepNext], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
-                        <Button Command="{Binding ContinueWorkflowCommand}" 
-                                Background="{DynamicResource AccentSuccessBrush}" 
-                                Foreground="#FFFFFF"
-                                CornerRadius="4"
-                                Padding="9,4"
-                                FontSize="11"
-                                FontWeight="Bold"
-                                Cursor="Hand"
-                                IsVisible="{Binding IsDebugging}" 
+                        <Button Command="{Binding ContinueWorkflowCommand}"
+                                Classes="success"
+                                IsVisible="{Binding IsDebugging}"
                                 ToolTip.Tip="{Binding [ControlBar_ContinueToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="▶▶" FontSize="9.5" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [ContinueFlow], Source={x:Static loc:LocalizationManager.Instance}}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="FastForward" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [ContinueFlow], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- Pause / Resume Button -->
-                        <Button Command="{Binding TogglePauseCommand}" 
-                                CornerRadius="4"
-                                Padding="9,4"
-                                FontSize="11"
-                                FontWeight="SemiBold"
-                                Cursor="Hand"
-                                IsVisible="{Binding IsRunning}" 
+                        <Button Command="{Binding TogglePauseCommand}"
+                                Classes="toolbar"
+                                IsVisible="{Binding IsRunning}"
                                 ToolTip.Tip="{Binding [ControlBar_PauseToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="⏸" FontSize="10" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [Pause], Source={x:Static loc:LocalizationManager.Instance}}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="Pause" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [Pause], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- Stop Execution / Debugging -->
-                        <Button Command="{Binding StopWorkflowCommand}" 
-                                Background="{DynamicResource AccentErrorBrush}" 
-                                Foreground="#FFFFFF"
-                                CornerRadius="4"
-                                Padding="9,4"
-                                FontSize="11"
-                                FontWeight="Bold"
-                                Cursor="Hand"
-                                IsVisible="{Binding IsRunning}" 
+                        <Button Command="{Binding StopWorkflowCommand}"
+                                Classes="danger"
+                                IsVisible="{Binding IsRunning}"
                                 ToolTip.Tip="{Binding [ControlBar_StopToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="⏹" FontSize="10" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [Stop], Source={x:Static loc:LocalizationManager.Instance}}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="Stop" Width="12" Height="12" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [Stop], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
 
                 <!-- Island 3: Tools & Views -->
-                <Border Background="{DynamicResource BgSurfaceBrush}" 
-                        BorderBrush="{DynamicResource BorderDarkBrush}" 
-                        BorderThickness="1" 
-                        CornerRadius="6" 
-                        Padding="3">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
+                <Border Classes="island">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
                         <!-- Rollback / Undo Button -->
-                        <Button Command="{Binding RollbackLastExecutionCommand}" 
-                                CornerRadius="4"
-                                Padding="8,3.5"
-                                FontSize="11"
-                                Cursor="Hand"
+                        <Button Command="{Binding RollbackLastExecutionCommand}"
+                                Classes="toolbar"
                                 ToolTip.Tip="{Binding [ControlBar_RollbackToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="↶" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [RollbackBtn], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="Undo" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [RollbackBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 
                         <!-- Toggle Inspector Panel Button -->
-                        <Button Command="{Binding ToggleInspectorCommand}" 
-                                CornerRadius="4"
-                                Padding="8,3.5"
-                                FontSize="11"
-                                Cursor="Hand"
+                        <Button Command="{Binding ToggleInspectorCommand}"
+                                Classes="toolbar"
                                 ToolTip.Tip="{Binding [ControlBar_InspectorToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="🔍" FontSize="10.5" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [InspectorBtn], Source={x:Static loc:LocalizationManager.Instance}}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="Magnify" Width="13" Height="13" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [InspectorBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

@@ -1,9 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
-             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
+             Design.DesignWidth="600" Design.DesignHeight="450"
              x:Class="FileFlow.App.Preview.Controls.ImageCompareSliderControl"
              ClipToBounds="True" Background="{DynamicResource BgEditorBrush}">
 
@@ -15,23 +14,23 @@
         <Image x:Name="ProcessedImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
 
         <!-- Thumb de arrastre interactivo en el centro de la línea -->
-        <Border x:Name="SliderHandle" Width="36" Height="36" CornerRadius="18"
+        <Border x:Name="SliderHandle" Width="36" Height="36" CornerRadius="{DynamicResource RadiusXxl}"
                 Background="{DynamicResource AccentCyanBrush}" BorderBrush="{DynamicResource TextPrimaryBrush}" BorderThickness="2"
                 Cursor="SizeWestEast" PointerPressed="SliderHandle_PointerPressed"
                 HorizontalAlignment="Left" VerticalAlignment="Center"
-                BoxShadow="0 2 10 0 #60000000">
-            <TextBlock Text="↔" Foreground="#0B0D14" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                BoxShadow="{DynamicResource Elev2}">
+            <materialIcons:MaterialIcon Foreground="#0B0D14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"  Kind="SwapHorizontal" Width="18" Height="18" />
         </Border>
 
         <!-- Badges informativos flotantes -->
-        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Background="#CC111318" CornerRadius="6" Padding="8,4">
+        <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" Background="#CC111318" CornerRadius="{DynamicResource RadiusSm}" Padding="8,4">
             <TextBlock x:Name="OriginalBadgeText" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_OriginalBadge], FallbackValue='Original'}" 
-                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" />
+                       Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" />
         </Border>
 
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16" Background="#CC005577" CornerRadius="6" Padding="8,4">
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16" Background="#CC005577" CornerRadius="{DynamicResource RadiusSm}" Padding="8,4">
             <TextBlock x:Name="ProcessedBadgeText" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_ProcessedBadge], FallbackValue='Procesado'}" 
-                       Foreground="{DynamicResource AccentCyanBrush}" FontSize="11" FontWeight="SemiBold" />
+                       Foreground="{DynamicResource AccentCyanBrush}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" />
         </Border>
     </Grid>
 </UserControl>

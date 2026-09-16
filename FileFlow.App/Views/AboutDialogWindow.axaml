@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         x:Class="FileFlow.App.Views.AboutDialogWindow"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[About_Title]}"
@@ -11,11 +12,11 @@
         ExtendClientAreaToDecorationsHint="True">
 
     <Grid Margin="16">
-        <Border CornerRadius="14"
+        <Border CornerRadius="{DynamicResource RadiusXxl}"
                 Background="{DynamicResource BgCardBrush}"
                 BorderBrush="{DynamicResource BorderDarkBrush}"
                 BorderThickness="1"
-                BoxShadow="0 8 32 0 #50000000">
+                BoxShadow="{DynamicResource Elev4}">
             <Grid ClipToBounds="True">
                 <!-- Close Button -->
                 <Button Click="Close_Click"
@@ -28,50 +29,50 @@
                         BorderThickness="1"
                         Foreground="{DynamicResource TextSecondaryBrush}"
                         Cursor="Hand"
-                        CornerRadius="14">
-                    <TextBlock Text="✕" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        CornerRadius="{DynamicResource RadiusXxl}">
+                    <materialIcons:MaterialIcon HorizontalAlignment="Center" VerticalAlignment="Center" Kind="Close" Width="11" Height="11" />
                 </Button>
 
                 <Grid Margin="28,24,28,20" RowDefinitions="Auto,Auto,*,Auto">
                     <!-- Header -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="14">
-                        <Border Width="48" Height="48" CornerRadius="12" Background="{DynamicResource AccentPrimaryBrush}">
-                            <TextBlock Text="⚡" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#FFFFFF" />
+                        <Border Width="48" Height="48" CornerRadius="{DynamicResource RadiusXl}" Background="{DynamicResource AccentPrimaryBrush}">
+                            <materialIcons:MaterialIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextOnAccentBrush}"  Kind="Flash" Width="24" Height="24" />
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="2">
-                            <TextBlock Text="FileFlow Studio" FontSize="19" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock x:Name="TxtVersion" Text="v1.0.0 (net9.0 - Avalonia 12)" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="FileFlow Studio" FontSize="{DynamicResource FontSizeDisplay}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock x:Name="TxtVersion" Text="v1.0.0 (net9.0 - Avalonia 12)" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Badges -->
                     <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,8">
-                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text=".NET 9.0" FontSize="11" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text=".NET 9.0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
                         </Border>
-                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text="Avalonia UI 12" FontSize="11" Foreground="{DynamicResource AccentPurpleBrush}" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text="Avalonia UI 12" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentPurpleBrush}" FontWeight="SemiBold" />
                         </Border>
-                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text="Cross-Platform" FontSize="11" Foreground="{DynamicResource AccentSuccessBrush}" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text="Cross-Platform" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentSuccessBrush}" FontWeight="SemiBold" />
                         </Border>
-                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text="DAG Flow Engine" FontSize="11" Foreground="{DynamicResource AccentWarningBrush}" FontWeight="SemiBold" />
+                        <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,3" Margin="0,0,6,4">
+                            <TextBlock Text="DAG Flow Engine" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentWarningBrush}" FontWeight="SemiBold" />
                         </Border>
                     </WrapPanel>
 
                     <!-- Description -->
                     <TextBlock Grid.Row="2" 
                                Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[About_Description], FallbackValue='Motor visual avanzado y desacoplado para automatización de procesamiento por lotes, pipelines de archivos, transformaciones IA, OCR, transcodificación y compresión multiformato.'}"
-                               TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" LineHeight="18" Margin="0,8,0,0" />
+                               TextWrapping="Wrap" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" LineHeight="18" Margin="0,8,0,0" />
 
                     <!-- Footer -->
                     <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="© 2026 RGLara. MIT License." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="© 2026 RGLara. MIT License." FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
                         <Button Grid.Column="1" Click="Close_Click" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Accept], FallbackValue='Aceptar'}" 
-                                Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" CornerRadius="6" Cursor="Hand" FontWeight="SemiBold" />
+                                Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="{DynamicResource TextOnAccentBrush}" CornerRadius="{DynamicResource RadiusSm}" Cursor="Hand" FontWeight="SemiBold" />
                     </Grid>
                 </Grid>
             </Grid>

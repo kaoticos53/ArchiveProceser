@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              x:Class="FileFlow.App.Views.Components.AnnotationCardView"
@@ -25,9 +26,9 @@
     <Border Background="{Binding Color}"
             BorderBrush="#40000000"
             BorderThickness="1"
-            CornerRadius="10"
+            CornerRadius="{DynamicResource RadiusLg}"
             Padding="0"
-            BoxShadow="0 4 12 0 #30000000">
+            BoxShadow="{DynamicResource Elev3}">
 
         <Grid RowDefinitions="Auto,*">
             <!-- Header -->
@@ -43,13 +44,13 @@
                     </Thumb>
 
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" IsHitTestVisible="True">
-                        <TextBlock Grid.Column="0" Text="📌" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.8" />
+                        <materialIcons:MaterialIcon Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.8"  Kind="ChartBar" Width="12" Height="12" />
 
                         <!-- Title -->
                         <TextBox Grid.Column="1"
                                  Text="{Binding Title, Mode=TwoWay}"
                                  FontWeight="SemiBold"
-                                 FontSize="13"
+                                 FontSize="{DynamicResource FontSizeBody}"
                                  Foreground="#DD111827"
                                  Background="Transparent"
                                  BorderThickness="0"
@@ -81,11 +82,11 @@
                         <!-- Delete Button -->
                         <Button Grid.Column="3"
                                 Command="{Binding DeleteCommand}"
-                                Content="✕"
+                                Content="{materialIcons:MaterialIconExt Kind=Close}"
                                 Foreground="#88111827"
                                 Background="Transparent"
                                 BorderThickness="0"
-                                FontSize="11"
+                                FontSize="{DynamicResource FontSizeCaption}"
                                 FontWeight="Bold"
                                 Padding="4,0"
                                 Cursor="Hand"
@@ -103,7 +104,7 @@
                      Background="Transparent"
                      BorderThickness="0"
                      Padding="10,8"
-                     FontSize="12"
+                     FontSize="{DynamicResource FontSizeBodySm}"
                      Foreground="#EE1F2937"
                      FontFamily="Segoe UI, Inter, Arial"
                      VerticalAlignment="Stretch"

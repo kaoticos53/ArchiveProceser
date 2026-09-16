@@ -1,0 +1,152 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Capa de contenedores del sistema de diseño: pestañas, separadores de panel (GridSplitter)
+        y barras de desplazamiento. Las partes internas corresponden a la plantilla Fluent de
+        Avalonia 12.1.2: TabItem -> Border#PART_LayoutRoot / Border#PART_SelectedPipe,
+        ScrollBar -> Thumb (con Border interno) y Rectangle#TrackRect.
+    -->
+
+    <!-- ============================= Pestañas ============================= -->
+
+    <Style Selector="TabControl">
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+    </Style>
+
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Indicador de pestaña activa: pastilla de acento bajo la pestaña -->
+    <Style Selector="TabItem /template/ Border#PART_SelectedPipe">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+        <Setter Property="Height" Value="2.5" />
+    </Style>
+
+    <!-- Variante pastilla completa: la pestaña activa se rellena con el acento -->
+    <Style Selector="TabControl.pill TabItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="Margin" Value="0,0,2,0" />
+    </Style>
+
+    <Style Selector="TabControl.pill TabItem:pointerover /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+
+    <Style Selector="TabControl.pill TabItem:selected /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="TabControl.pill TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+    </Style>
+
+    <Style Selector="TabControl.pill TabItem:selected /template/ Border#PART_SelectedPipe">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- ============================= Rejilla de datos ============================= -->
+
+    <Style Selector="DataGrid.logGrid">
+        <Setter Property="FontFamily" Value="{DynamicResource CodeFontFamily}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="RowHeight" Value="26" />
+        <Setter Property="GridLinesVisibility" Value="Horizontal" />
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BorderSubtleBrush}" />
+        <Setter Property="VerticalGridLinesBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="DataGrid.logGrid DataGridCell">
+        <Setter Property="Padding" Value="4,0" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="DataGrid.logGrid DataGridColumnHeader">
+        <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Background" Value="{DynamicResource BgHeaderBrush}" />
+        <Setter Property="Padding" Value="8,4" />
+    </Style>
+
+    <!-- ============================= Separadores de panel ============================= -->
+
+    <Style Selector="GridSplitter">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="MinWidth" Value="5" />
+        <Setter Property="MinHeight" Value="5" />
+    </Style>
+
+    <Style Selector="GridSplitter:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+    </Style>
+
+    <!-- ============================= Barras de desplazamiento ============================= -->
+
+    <Style Selector="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical /template/ Thumb">
+        <Setter Property="Width" Value="9" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Background" Value="{DynamicResource ScrollbarThumbBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+        <Setter Property="RenderTransform" Value="none" />
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal /template/ Thumb">
+        <Setter Property="Height" Value="9" />
+        <Setter Property="MinWidth" Value="26" />
+        <Setter Property="Background" Value="{DynamicResource ScrollbarThumbBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+        <Setter Property="RenderTransform" Value="none" />
+    </Style>
+
+    <!-- El tema base pinta el color de hover/pressed en el Border interno del Thumb -->
+    <Style Selector="ScrollBar /template/ Thumb:pointerover /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource ScrollbarThumbHoverBrush}" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb:pressed /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb:disabled /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource BorderDarkBrush}" />
+    </Style>
+
+    <!-- Pista de desplazamiento: sutil pero visible al interactuar -->
+    <Style Selector="ScrollBar[IsExpanded=true] /template/ Rectangle#TrackRect">
+        <Setter Property="Fill" Value="{DynamicResource BorderSubtleBrush}" />
+        <Setter Property="Opacity" Value="0.6" />
+    </Style>
+
+</Styles>

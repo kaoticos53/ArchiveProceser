@@ -10,7 +10,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
-[Collection("Localization")]
+[Collection(OnnxInferenceCollection.Name)]
 public class ModelLifecycleAndMemoryTests
 {
     [Fact]
@@ -119,20 +119,32 @@ public class ModelLifecycleAndMemoryTests
     }
 
     [Fact]
-    public void UserPreferences_AutoUnloadAiModelsOnCompletion_ShouldDefaultToFalseAndBeMutable()
+    public void UserPreferences_AutoUnloadAiModelsOnCompletion_ShouldDefaultToFalse()
     {
-        // Arrange & Act
-        var prefs = UserPreferencesService.Instance.Preferences;
+        // El valor por defecto es una propiedad del modelo de datos, no del perfil del usuario: comprobarlo
+        // contra el singleton lo hacía depender del `user_preferences.json` real de la máquina y del estado
+        // en que lo hubiera dejado una ejecución anterior.
+        new UserPreferencesData().AutoUnloadAiModelsOnCompletion.Should().BeFalse();
+    }
 
-        // Assert
-        prefs.AutoUnloadAiModelsOnCompletion.Should().BeFalse();
+    [Fact]
+    public void UserPreferences_AutoUnloadAiModelsOnCompletion_ShouldBeMutableAndRestoreItsValue()
+    {
+        var service = UserPreferencesService.Instance;
+        bool original = service.Preferences.AutoUnloadAiModelsOnCompletion;
 
-        // Update preference
-        UserPreferencesService.Instance.UpdatePreferences(p => p.AutoUnloadAiModelsOnCompletion = true);
-        UserPreferencesService.Instance.Preferences.AutoUnloadAiModelsOnCompletion.Should().BeTrue();
+        try
+        {
+            service.UpdatePreferences(p => p.AutoUnloadAiModelsOnCompletion = true);
+            service.Preferences.AutoUnloadAiModelsOnCompletion.Should().BeTrue();
 
-        // Revert back
-        UserPreferencesService.Instance.UpdatePreferences(p => p.AutoUnloadAiModelsOnCompletion = false);
-        UserPreferencesService.Instance.Preferences.AutoUnloadAiModelsOnCompletion.Should().BeFalse();
+            service.UpdatePreferences(p => p.AutoUnloadAiModelsOnCompletion = false);
+            service.Preferences.AutoUnloadAiModelsOnCompletion.Should().BeFalse();
+        }
+        finally
+        {
+            // El servicio persiste en el perfil real del usuario: la prueba deja el valor como estaba.
+            service.UpdatePreferences(p => p.AutoUnloadAiModelsOnCompletion = original);
+        }
     }
 }

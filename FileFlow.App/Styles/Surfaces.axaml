@@ -1,0 +1,194 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Capa de superficies del sistema de diseño.
+
+        Escalera de profundidad (radio + elevación crecientes):
+          superficie  <  carta (RadiusMd, Elev1)  <  panel flotante (RadiusXl, Elev3)
+                      <  modal (RadiusXxl, Elev4)
+
+        Radios (RadiusXs..RadiusXxl), rellenos (Pad1..Pad9) y elevaciones (Elev1..Elev4) provienen del tema,
+        así que el Theme Studio controla la redondez, la densidad y la profundidad de toda la interfaz.
+    -->
+
+    <!-- Panel base sin borde (toolbox, inspector, consola) -->
+    <Style Selector="Border.surface">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+    </Style>
+
+    <!-- Tarjeta con borde, radio medio y elevación sutil (contenedores de contenido) -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource Elev1}" />
+        <Setter Property="Padding" Value="{DynamicResource Pad5}" />
+    </Style>
+
+    <!-- Panel con borde y radio pequeño -->
+    <Style Selector="Border.panel">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+    </Style>
+
+    <!-- Isla de controles agrupados (barra de control, widgets de herramientas) -->
+    <Style Selector="Border.island">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource Elev1}" />
+        <Setter Property="Padding" Value="3" />
+    </Style>
+
+    <!-- Zona hundida (contenedores de campos de búsqueda, paneles inset) -->
+    <Style Selector="Border.inset">
+        <Setter Property="Background" Value="{DynamicResource BgDarkBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="Padding" Value="6,2" />
+    </Style>
+
+    <!-- Barras de la ventana (superior e inferior) -->
+    <Style Selector="Border.chromeTop">
+        <Setter Property="Background" Value="{DynamicResource BgHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="12,5" />
+    </Style>
+
+    <Style Selector="Border.chromeBottom">
+        <Setter Property="Background" Value="{DynamicResource BgHeaderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+        <Setter Property="Padding" Value="10,4" />
+    </Style>
+
+    <!-- Superposición flotante sobre el lienzo DAG (HUD, barra de zoom) -->
+    <Style Selector="Border.overlay">
+        <Setter Property="Background" Value="{DynamicResource OverlaySurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource Elev3}" />
+        <Setter Property="Padding" Value="{DynamicResource Pad2}" />
+    </Style>
+
+    <!-- Panel flotante (tarjetas despegadas del lienzo, popovers propios) -->
+    <Style Selector="Border.floating">
+        <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXl}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource Elev3}" />
+        <Setter Property="Padding" Value="{DynamicResource Pad4}" />
+    </Style>
+
+    <!-- Contenedor modal: la elevación máxima y el radio mayor de la escala -->
+    <Style Selector="Border.modal">
+        <Setter Property="Background" Value="{DynamicResource BgCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXxl}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource Elev4}" />
+        <Setter Property="Padding" Value="{DynamicResource Pad6}" />
+    </Style>
+
+    <!-- Pastilla de la barra de estado (superficie + borde + altura compacta) -->
+    <Style Selector="Border.statusPill">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Marca de la aplicación (logo) -->
+    <Style Selector="Border.brand">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+    </Style>
+
+    <Style Selector="Border.brandLg">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+    </Style>
+
+    <!-- Badges e insignias -->
+    <Style Selector="Border.badge">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="Padding" Value="5,1.5" />
+    </Style>
+
+    <Style Selector="Border.badgeAccent">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="Padding" Value="6,1.5" />
+    </Style>
+
+    <!-- Indicador LED. El estado se conmuta de forma declarativa con Classes.on="{Binding ...}",
+         de modo que el color proviene del tema y no de brushes fijos en convertidores. -->
+    <Style Selector="Border.led">
+        <Setter Property="Width" Value="6" />
+        <Setter Property="Height" Value="6" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+
+    <Style Selector="Border.led.on">
+        <Setter Property="Background" Value="{DynamicResource AccentWarningBrush}" />
+    </Style>
+
+    <!-- LED informativo (motor en reposo, telemetría neutra) -->
+    <Style Selector="Border.led.onInfo">
+        <Setter Property="Background" Value="{DynamicResource AccentCyanBrush}" />
+    </Style>
+
+    <Style Selector="Border.led.onSuccess">
+        <Setter Property="Background" Value="{DynamicResource AccentSuccessBrush}" />
+    </Style>
+
+    <Style Selector="Border.led.onError">
+        <Setter Property="Background" Value="{DynamicResource AccentErrorBrush}" />
+    </Style>
+
+    <Style Selector="Border.ledLarge">
+        <Setter Property="Width" Value="9" />
+        <Setter Property="Height" Value="9" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Separadores -->
+    <Style Selector="Border.dividerV">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Margin" Value="8,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.dividerH">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Margin" Value="0,8" />
+    </Style>
+
+    <!-- Barra de acento superior en tarjetas (ComfyUI style) -->
+    <Style Selector="Border.accentStrip">
+        <Setter Property="Height" Value="3" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+    </Style>
+
+</Styles>

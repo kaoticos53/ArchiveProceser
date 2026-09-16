@@ -4,7 +4,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
-[Collection("Localization")]
+[Collection("VisualSnapshots")]
 public class MediaPresetsAndToolsServicesTests
 {
     [Fact]

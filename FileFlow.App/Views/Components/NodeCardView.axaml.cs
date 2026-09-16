@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using FileFlow.App.ViewModels;
 
 namespace FileFlow.App.Views.Components;
@@ -23,6 +24,29 @@ public partial class NodeCardView : UserControl
 
     private void NodeCardView_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (e.Source is Avalonia.Visual visual)
+        {
+            var interactiveParent = visual.FindAncestorOfType<ComboBox>() ??
+                                    (visual is ComboBox ? (Control)visual : null) ??
+                                    visual.FindAncestorOfType<AutoCompleteBox>() ??
+                                    (visual is AutoCompleteBox ? (Control)visual : null) ??
+                                    visual.FindAncestorOfType<Button>() ??
+                                    (visual is Button ? (Control)visual : null) ??
+                                    visual.FindAncestorOfType<TextBox>() ??
+                                    (visual is TextBox ? (Control)visual : null) ??
+                                    visual.FindAncestorOfType<ToggleSwitch>() ??
+                                    (visual is ToggleSwitch ? (Control)visual : null) ??
+                                    visual.FindAncestorOfType<Slider>() ??
+                                    (visual is Slider ? (Control)visual : null) ??
+                                    visual.FindAncestorOfType<NumericUpDown>() ??
+                                    (visual is NumericUpDown ? (Control)visual : null);
+
+            if (interactiveParent != null)
+            {
+                return;
+            }
+        }
+
         if (DataContext is NodeViewModel node)
         {
             node.ParentEditor?.BringToFront(node);

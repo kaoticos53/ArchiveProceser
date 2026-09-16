@@ -9,6 +9,12 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+/// <summary>
+/// Estos tests resuelven títulos de nodo a través de LocalizationManager (cultura global del proceso).
+/// Se serializan con las clases que cambian la cultura (colección "VisualSnapshots") para evitar
+/// fallos intermitentes al ejecutarse en paralelo.
+/// </summary>
+[Collection("VisualSnapshots")]
 public class VariableDiscoveryServiceTests
 {
     private readonly VariableDiscoveryService _discoveryService = new();

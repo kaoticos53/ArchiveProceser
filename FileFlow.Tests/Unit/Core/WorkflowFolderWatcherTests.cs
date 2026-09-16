@@ -4,6 +4,7 @@ using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Plugin.Logic;
 using FileFlow.Sdk;
+using FileFlow.Tests.TestHelpers;
 using FluentAssertions;
 using Xunit;
 
@@ -39,11 +40,10 @@ public class WorkflowFolderWatcherTests : IDisposable
         await File.WriteAllTextAsync(file1, "Content 1");
         await File.WriteAllTextAsync(file2, "Content 2");
 
-        // Wait for debounce and processing loop
-        for (int i = 0; i < 30 && discoveredItems.Count < 2; i++)
-        {
-            await Task.Delay(100);
-        }
+        await AsyncTestWaiter.WaitForAsync(
+            () => discoveredItems.Count >= 2,
+            TimeSpan.FromSeconds(3),
+            description: "the folder watcher to discover both incoming files");
 
         // Assert
         watcher.IsWatching.Should().BeTrue();
@@ -111,16 +111,11 @@ public class WorkflowFolderWatcherTests : IDisposable
         string newFile = Path.Combine(_testDir1, "brand_new_item.log");
         await File.WriteAllTextAsync(newFile, "Log payload");
 
-        // Esperar hasta que el nodo downstream haya procesado el archivo
-        for (int i = 0; i < 60; i++)
-        {
-            var currentStats = executor.GetNodeTelemetryStats();
-            if (currentStats.TryGetValue("throttle-node-1", out var s) && s.ProcessedCount > 0)
-            {
-                break;
-            }
-            await Task.Delay(100);
-        }
+        await AsyncTestWaiter.WaitForAsync(
+            () => executor.GetNodeTelemetryStats().TryGetValue("throttle-node-1", out var stats) &&
+                  stats.ProcessedCount > 0,
+            TimeSpan.FromSeconds(6),
+            description: "the downstream throttle node to process the new file");
 
         cts.Cancel();
         try

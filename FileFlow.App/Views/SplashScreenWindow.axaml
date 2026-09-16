@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         x:Class="FileFlow.App.Views.SplashScreenWindow"
         Title="FileFlow Studio"
         Width="540"
@@ -12,40 +13,40 @@
         ExtendClientAreaToDecorationsHint="True">
 
     <Grid Margin="16">
-        <Border CornerRadius="16"
+        <Border CornerRadius="{DynamicResource RadiusXxl}"
                 Background="#0F172A"
                 BorderBrush="#334155"
                 BorderThickness="1"
-                BoxShadow="0 0 30 0 #406366F1">
+                BoxShadow="{DynamicResource ElevGlowAccent}">
             <Grid Margin="32,26,32,20" RowDefinitions="Auto,*,Auto,Auto,Auto">
                 <!-- Header -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="16">
-                    <Border Width="52" Height="52" CornerRadius="12" Background="#6366F1">
-                        <TextBlock Text="⚡" FontSize="26" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" />
+                    <Border Width="52" Height="52" CornerRadius="{DynamicResource RadiusXl}" Background="#6366F1">
+                        <materialIcons:MaterialIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"  Kind="Flash" Width="26" Height="26" />
                     </Border>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="FileFlow Studio" FontSize="22" FontWeight="Bold" Foreground="White" />
-                        <TextBlock x:Name="TxtVersion" Text="v1.0.0" FontSize="12" Foreground="#94A3B8" />
+                        <TextBlock Text="FileFlow Studio" FontSize="{DynamicResource FontSizeDisplay}" FontWeight="Bold" Foreground="White" />
+                        <TextBlock x:Name="TxtVersion" Text="v1.0.0" FontSize="{DynamicResource FontSizeBodySm}" Foreground="#94A3B8" />
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Middle Content -->
                 <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="6">
-                    <TextBlock Text="Inicializando Motor de Flujo DAG..." FontSize="13" Foreground="#CBD5E1" />
-                    <TextBlock x:Name="TxtNodesBadge" Text="🧩 Cargando nodos..." FontSize="11" Foreground="#38BDF8" />
+                    <TextBlock Text="Inicializando Motor de Flujo DAG..." FontSize="{DynamicResource FontSizeBody}" Foreground="#CBD5E1" />
+                    <TextBlock x:Name="TxtNodesBadge" Text="Cargando nodos..." FontSize="{DynamicResource FontSizeCaption}" Foreground="#38BDF8" />
                 </StackPanel>
 
                 <!-- Status & Percentage -->
                 <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
-                    <TextBlock x:Name="TxtStatus" Grid.Column="0" Text="Iniciando servicios..." FontSize="11" Foreground="#94A3B8" />
-                    <TextBlock x:Name="TxtPercentage" Grid.Column="1" Text="0%" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" />
+                    <TextBlock x:Name="TxtStatus" Grid.Column="0" Text="Iniciando servicios..." FontSize="{DynamicResource FontSizeCaption}" Foreground="#94A3B8" />
+                    <TextBlock x:Name="TxtPercentage" Grid.Column="1" Text="0%" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="#38BDF8" />
                 </Grid>
 
                 <!-- Progress Bar -->
-                <ProgressBar x:Name="PbProgress" Grid.Row="3" Minimum="0" Maximum="100" Value="0" Height="6" CornerRadius="3" Foreground="#6366F1" Background="#1E293B" />
+                <ProgressBar x:Name="PbProgress" Grid.Row="3" Minimum="0" Maximum="100" Value="0" Height="6" CornerRadius="{DynamicResource RadiusXs}" Foreground="#6366F1" Background="#1E293B" />
 
                 <!-- Footer -->
-                <TextBlock Grid.Row="4" Text="© 2026 RGLara • Cross-Platform Engine" FontSize="10.5" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,16,0,0" />
+                <TextBlock Grid.Row="4" Text="© 2026 RGLara • Cross-Platform Engine" FontSize="{DynamicResource FontSizeMicro}" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,16,0,0" />
             </Grid>
         </Border>
     </Grid>

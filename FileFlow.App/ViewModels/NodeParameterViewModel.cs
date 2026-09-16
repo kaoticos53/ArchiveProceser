@@ -37,6 +37,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasBrowseButton))]
     [NotifyPropertyChangedFor(nameof(IsMultiLine))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
+    [NotifyPropertyChangedFor(nameof(IsNumber))]
     [NotifyPropertyChangedFor(nameof(IsSlider))]
     [NotifyPropertyChangedFor(nameof(IsToggle))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
@@ -45,6 +46,10 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(IsFileVersionSelector))]
     [NotifyPropertyChangedFor(nameof(ActiveVersionTag))]
     [NotifyPropertyChangedFor(nameof(IsStandardRow))]
+    [NotifyPropertyChangedFor(nameof(IsMultilineRow))]
+    [NotifyPropertyChangedFor(nameof(ValueAsBool))]
+    [NotifyPropertyChangedFor(nameof(SliderValue))]
+    [NotifyPropertyChangedFor(nameof(SliderDisplayValue))]
     private object? _value;
 
     [ObservableProperty]
@@ -70,10 +75,12 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(HasBrowseButton))]
     [NotifyPropertyChangedFor(nameof(IsMultiLine))]
     [NotifyPropertyChangedFor(nameof(IsStandardInput))]
+    [NotifyPropertyChangedFor(nameof(IsNumber))]
     [NotifyPropertyChangedFor(nameof(IsDropdown))]
     [NotifyPropertyChangedFor(nameof(IsEditableDropdown))]
     [NotifyPropertyChangedFor(nameof(HasOptionsAndNotEditable))]
     [NotifyPropertyChangedFor(nameof(IsStandardRow))]
+    [NotifyPropertyChangedFor(nameof(IsMultilineRow))]
     private ObservableCollection<string> _options = [];
 
     [ObservableProperty]
@@ -101,19 +108,94 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     public double SliderMax => Descriptor?.Max ?? 100;
     public double SliderStep => Descriptor?.Step ?? 1;
 
+    public bool ValueAsBool
+    {
+        get
+        {
+            if (Value is bool b) return b;
+            if (Value is int i) return i != 0;
+            if (Value is long l) return l != 0;
+            if (Value != null)
+            {
+                string s = Value.ToString()?.Trim() ?? string.Empty;
+                if (bool.TryParse(s, out var pb)) return pb;
+                if (s == "1") return true;
+                if (s == "0") return false;
+            }
+            return false;
+        }
+        set
+        {
+            Value = value;
+            OnPropertyChanged(nameof(ValueAsBool));
+        }
+    }
+
+    public double SliderValue
+    {
+        get
+        {
+            if (Value is double d) return d;
+            if (Value is float f) return f;
+            if (Value is int i) return i;
+            if (Value is long l) return l;
+            if (Value != null && double.TryParse(Value.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+                return parsed;
+            if (Value != null && double.TryParse(Value.ToString(), out var parsedLocal))
+                return parsedLocal;
+            return SliderMin;
+        }
+        set
+        {
+            Value = SliderStep == 1 ? (int)Math.Round(value) : Math.Round(value, 2);
+            OnPropertyChanged(nameof(SliderValue));
+            OnPropertyChanged(nameof(SliderDisplayValue));
+        }
+    }
+
+    public string SliderDisplayValue
+    {
+        get
+        {
+            double val = SliderValue;
+            if (SliderStep == 1)
+            {
+                return ((int)Math.Round(val)).ToString();
+            }
+            return val.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+    }
+
     public bool HasOptions => Options.Count > 0;
 
     public bool IsSlider => EditorType == ParameterEditorType.Slider;
+
+    public bool IsNumber => EditorType == ParameterEditorType.Number;
 
     public bool IsToggle => EditorType == ParameterEditorType.Toggle;
 
     public bool IsDropdown => (EditorType == ParameterEditorType.Dropdown || EditorType == ParameterEditorType.EditableDropdown || HasOptions) && !IsFileVersionSelector;
     public bool IsEditableDropdown => EditorType == ParameterEditorType.EditableDropdown;
     public bool HasOptionsAndNotEditable => HasOptions && !IsEditableDropdown;
-
     public bool IsFileVersionSelector => EditorType == ParameterEditorType.FileVersionSelector;
 
-    public bool IsBooleanAndNoOptions => !IsSlider && !IsDropdown && !IsFileVersionSelector && (IsToggle || (!HasOptions && (Value is bool || (Value != null && bool.TryParse(Value.ToString(), out _)))));
+    public bool IsBooleanAndNoOptions
+    {
+        get
+        {
+            if (IsSlider || IsDropdown || IsFileVersionSelector || IsNumber) return false;
+            if (IsToggle) return true;
+            if (HasOptions) return false;
+            if (Value is bool) return true;
+            if (Value is int vi && (vi == 0 || vi == 1)) return true;
+            if (Value != null)
+            {
+                string s = Value.ToString()?.Trim() ?? string.Empty;
+                return s == "0" || s == "1" || bool.TryParse(s, out _);
+            }
+            return false;
+        }
+    }
 
     public bool IsFolderPath => (EditorType == ParameterEditorType.FolderPath || (Descriptor == null && !HasOptions && !IsBooleanAndNoOptions && DetectIsFolderPath(Key))) && !IsFileVersionSelector;
 
@@ -129,8 +211,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public bool IsVariableInjectorNode => NodeOwner != null && NodeOwner.IsVariableInjectorNode;
 
-    public bool IsStandardInput => !IsSlider && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode && !IsMultiLine && !IsFileVersionSelector;
+    public bool IsStandardInput => !IsSlider && !IsNumber && !IsDropdown && !IsBooleanAndNoOptions && !HasBrowseButton && !IsPasswordList && !IsVariableInjectorNode && !IsMultiLine && !IsFileVersionSelector;
     public bool IsStandardRow => !IsVariableInjectorNode && !IsMultiLine;
+    public bool IsMultilineRow => !IsVariableInjectorNode && IsMultiLine;
 
     public string ActiveVersionTag
     {
@@ -240,7 +323,6 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         key.Equals("CandidateB", StringComparison.OrdinalIgnoreCase) ||
         key.Equals("TrueFile", StringComparison.OrdinalIgnoreCase) ||
         key.Equals("FalseFile", StringComparison.OrdinalIgnoreCase) ||
-        key.Equals("SourcePath", StringComparison.OrdinalIgnoreCase) ||
         key.Equals("FileVersion", StringComparison.OrdinalIgnoreCase);
 
     [RelayCommand]

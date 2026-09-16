@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
              xmlns:models="using:FileFlow.App.Models"
              xmlns:loc="using:FileFlow.Sdk.Localization"
@@ -16,7 +17,7 @@
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
                 <TextBlock Grid.Column="0" 
                            Text="{Binding [NodeToolboxTitle], Source={x:Static loc:LocalizationManager.Instance}}" 
-                           FontSize="13.5" 
+                           FontSize="{DynamicResource FontSizeBody}" 
                            FontWeight="Bold" 
                            Foreground="{DynamicResource TextPrimaryBrush}" 
                            VerticalAlignment="Center" />
@@ -27,12 +28,12 @@
                         Background="Transparent"
                         BorderBrush="{DynamicResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="4"
+                        CornerRadius="{DynamicResource RadiusXs}"
                         Padding="6,3"
                         Margin="0,0,6,0"
                         Cursor="Hand"
                         ToolTip.Tip="{Binding [TogglePerspectiveToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                    <TextBlock Text="{Binding PerspectiveButtonText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" />
+                    <TextBlock Text="{Binding PerspectiveButtonText}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource AccentCyanBrush}" />
                 </Button>
 
                 <!-- Toggle Compact / Detailed View Mode -->
@@ -41,11 +42,11 @@
                         Background="Transparent" 
                         BorderBrush="{DynamicResource BorderDarkBrush}"
                         BorderThickness="1"
-                        CornerRadius="4"
+                        CornerRadius="{DynamicResource RadiusXs}"
                         Padding="6,3"
                         Cursor="Hand"
                         ToolTip.Tip="{Binding [Toolbox_ToggleCompactToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                    <TextBlock Text="☰" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <materialIcons:MaterialIcon Foreground="{DynamicResource TextSecondaryBrush}"  Kind="Menu" Width="11" Height="11" />
                 </Button>
             </Grid>
 
@@ -54,12 +55,12 @@
                 <TextBox Text="{Binding SearchText, Mode=TwoWay}" 
                          PlaceholderText="{Binding [SearchNodesPlaceholder], Source={x:Static loc:LocalizationManager.Instance}}"
                          Padding="8,5" 
-                         FontSize="11.5"
+                         FontSize="{DynamicResource FontSizeCaption}"
                          Background="{DynamicResource BgSurfaceBrush}"
                          BorderBrush="{DynamicResource BorderDarkBrush}"
-                         CornerRadius="4">
+                         CornerRadius="{DynamicResource RadiusXs}">
                     <TextBox.InnerLeftContent>
-                        <TextBlock Text="🔍" FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <materialIcons:MaterialIcon Margin="8,0,2,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"  Kind="Magnify" Width="11" Height="11" />
                     </TextBox.InnerLeftContent>
                 </TextBox>
             </Grid>
@@ -70,18 +71,18 @@
                           SelectedItem="{Binding SelectedCategoryItem, Mode=TwoWay}"
                           Background="{DynamicResource BgSurfaceBrush}"
                           BorderBrush="{DynamicResource BorderDarkBrush}"
-                          CornerRadius="4"
+                          CornerRadius="{DynamicResource RadiusXs}"
                           Padding="8,4"
-                          FontSize="11.5"
+                          FontSize="{DynamicResource FontSizeCaption}"
                           HorizontalAlignment="Stretch"
                           Cursor="Hand">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:ToolboxCategoryFilterItem">
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1">
-                                <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                                <Border Grid.Column="2" Background="#20808080" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Count}" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <materialIcons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="13" Height="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                <Border Grid.Column="2" Background="{DynamicResource ChipStrongBrush}" CornerRadius="{DynamicResource RadiusMd}" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Count}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </Border>
                             </Grid>
                         </DataTemplate>
@@ -99,7 +100,7 @@
                                     <TextBlock Text="{Binding CategoryName}" 
                                                Foreground="{DynamicResource AccentGlowBrush}" 
                                                FontWeight="Bold" 
-                                               FontSize="12" 
+                                               FontSize="{DynamicResource FontSizeBodySm}" 
                                                VerticalAlignment="Center" />
                                 </Expander.Header>
                                 <ItemsControl ItemsSource="{Binding Items}">
@@ -108,7 +109,7 @@
                                             <Border Background="{DynamicResource BgSurfaceBrush}" 
                                                     BorderBrush="{DynamicResource BorderDarkBrush}" 
                                                     BorderThickness="1" 
-                                                    CornerRadius="4" 
+                                                    CornerRadius="{DynamicResource RadiusXs}" 
                                                     Padding="8,4" 
                                                     Margin="0,2" 
                                                     Cursor="Hand"
@@ -120,17 +121,17 @@
                                                 <ToolTip.Tip>
                                                     <Border Background="{DynamicResource BgCardBrush}" 
                                                             BorderBrush="{DynamicResource BorderDarkBrush}" 
-                                                            BorderThickness="1.5" CornerRadius="8" Padding="12,10" Width="260">
+                                                            BorderThickness="1.5" CornerRadius="{DynamicResource RadiusMd}" Padding="12,10" Width="260">
                                                         <StackPanel Spacing="4">
                                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                                 <TextBlock Text="{Binding Icon}" FontSize="13" />
-                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                                 <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="14" Height="14" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" />
                                                             </StackPanel>
-                                                            <Border Background="#18808080" CornerRadius="4" Padding="5,1.5" HorizontalAlignment="Left">
-                                                                <TextBlock Text="{Binding RoleBadge}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                            <Border Background="{DynamicResource ChipBrush}" CornerRadius="{DynamicResource RadiusXs}" Padding="5,1.5" HorizontalAlignment="Left">
+                                                                <TextBlock Text="{Binding RoleBadge}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                                             </Border>
                                                             <Separator Background="{DynamicResource BorderDarkBrush}" Margin="0,2" />
-                                                            <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding Description}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
                                                         </StackPanel>
                                                     </Border>
                                                 </ToolTip.Tip>
@@ -138,11 +139,11 @@
                                                 <StackPanel>
                                                     <!-- Fila de Icono, Título del Nodo y Botón Favorito -->
                                                     <Grid ColumnDefinitions="Auto,*,Auto">
-                                                        <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                        <materialIcons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" />
                                                         <TextBlock Grid.Column="1" Text="{Binding Name}" 
                                                                    FontWeight="SemiBold" 
                                                                    Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                                   FontSize="11.5" 
+                                                                   FontSize="{DynamicResource FontSizeCaption}" 
                                                                    TextTrimming="CharacterEllipsis"
                                                                    VerticalAlignment="Center" />
 
@@ -156,21 +157,21 @@
                                                                 Margin="4,0,0,0"
                                                                 Cursor="Hand"
                                                                 ToolTip.Tip="{Binding [Toolbox_FavoriteToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
-                                                            <TextBlock Text="{Binding FavoriteIcon}" 
-                                                                       FontSize="12" 
-                                                                       Foreground="{DynamicResource AccentWarningBrush}" 
+                                                            <materialIcons:MaterialIcon Kind="{Binding FavoriteIcon}"
+                                                                       Width="13" Height="13"
+                                                                       Foreground="{DynamicResource AccentWarningBrush}"
                                                                        VerticalAlignment="Center" />
                                                         </Button>
                                                     </Grid>
 
                                                     <!-- Role Badge + Description (visible en modo detallado) -->
                                                     <StackPanel IsVisible="{Binding !$parent[UserControl].((vm:ToolboxViewModel)DataContext).IsCompactMode}">
-                                                        <Border Background="#14808080" CornerRadius="4" Padding="4,1" Margin="0,4,0,2" HorizontalAlignment="Left">
-                                                            <TextBlock Text="{Binding RoleBadge}" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                        <Border Background="{DynamicResource ChipBrush}" CornerRadius="{DynamicResource RadiusXs}" Padding="4,1" Margin="0,4,0,2" HorizontalAlignment="Left">
+                                                            <TextBlock Text="{Binding RoleBadge}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                                         </Border>
                                                         <TextBlock Text="{Binding Description}" 
                                                                    Foreground="{DynamicResource TextSecondaryBrush}" 
-                                                                   FontSize="10.5" 
+                                                                   FontSize="{DynamicResource FontSizeMicro}" 
                                                                    TextWrapping="Wrap" 
                                                                    Margin="0,2,0,0" />
                                                     </StackPanel>

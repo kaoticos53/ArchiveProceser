@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:nodify="using:Nodify.Avalonia"
              xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
@@ -19,28 +20,8 @@
         </DataTemplate>
     </UserControl.DataTemplates>
 
-    <UserControl.Styles>
-        <!-- Animated Pulsating Glow & Energy Wave Effect for Pending Connections while dragging -->
-        <Style Selector="nodifyConn|PendingConnection">
-            <Setter Property="StrokeThickness" Value="3.5" />
-            <Style.Animations>
-                <Animation Duration="0:0:0.8" IterationCount="Infinite">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="Opacity" Value="0.55" />
-                        <Setter Property="StrokeThickness" Value="3.0" />
-                    </KeyFrame>
-                    <KeyFrame Cue="50%">
-                        <Setter Property="Opacity" Value="1.0" />
-                        <Setter Property="StrokeThickness" Value="4.5" />
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="Opacity" Value="0.55" />
-                        <Setter Property="StrokeThickness" Value="3.0" />
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-    </UserControl.Styles>
+    <!-- Los estilos de sockets y cables (formas, colores por tipo de dato, resaltado de compatibilidad y
+         flujo de energía) viven en Styles/Ports.axaml, compartidos con el resto de la UI. -->
 
     <Grid Background="{DynamicResource BgEditorBrush}">
         <!-- Nodify DAG Canvas -->
@@ -68,25 +49,6 @@
                 <Style Selector="nodify|DecoratorContainer">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
                 </Style>
-                <!-- Animated Pulsating Glow & Energy Wave Effect for Pending Connections while dragging -->
-                <Style Selector="nodifyConn|PendingConnection">
-                    <Style.Animations>
-                        <Animation Duration="0:0:0.8" IterationCount="Infinite">
-                            <KeyFrame Cue="0%">
-                                <Setter Property="Opacity" Value="0.55" />
-                                <Setter Property="StrokeThickness" Value="3.0" />
-                            </KeyFrame>
-                            <KeyFrame Cue="50%">
-                                <Setter Property="Opacity" Value="1.0" />
-                                <Setter Property="StrokeThickness" Value="4.5" />
-                            </KeyFrame>
-                            <KeyFrame Cue="100%">
-                                <Setter Property="Opacity" Value="0.55" />
-                                <Setter Property="StrokeThickness" Value="3.0" />
-                            </KeyFrame>
-                        </Animation>
-                    </Style.Animations>
-                </Style>
             </nodify:NodifyEditor.Styles>
 
             <!-- Decorator Template -->
@@ -103,7 +65,7 @@
                               InputGesture="Shift+A"
                               Command="{Binding OpenSpotlightCommand}">
                         <MenuItem.Icon>
-                            <TextBlock Text="➕" FontSize="12" />
+                            <materialIcons:MaterialIcon  Kind="Plus" Width="12" Height="12" />
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator />
@@ -111,27 +73,27 @@
                               InputGesture="Ctrl+V"
                               Command="{Binding PasteNodesCommand}">
                         <MenuItem.Icon>
-                            <TextBlock Text="📋" FontSize="12" />
+                            <materialIcons:MaterialIcon  Kind="ClipboardText" Width="12" Height="12" />
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator />
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddAnnotation]}"
                               Command="{Binding AddNewAnnotationCommand}">
                         <MenuItem.Icon>
-                            <TextBlock Text="✨" FontSize="12" />
+                            <materialIcons:MaterialIcon  Kind="AutoFix" Width="12" Height="12" />
                         </MenuItem.Icon>
                     </MenuItem>
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AddGroup]}"
                               Command="{Binding AddNewGroupCommand}">
                         <MenuItem.Icon>
-                            <TextBlock Text="📦" FontSize="12" />
+                            <materialIcons:MaterialIcon  Kind="ZipBox" Width="12" Height="12" />
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator />
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomFit]}"
                               Command="{Binding FitToScreenCommand}">
                         <MenuItem.Icon>
-                            <TextBlock Text="🔍" FontSize="12" />
+                            <materialIcons:MaterialIcon  Kind="Magnify" Width="12" Height="12" />
                         </MenuItem.Icon>
                     </MenuItem>
                 </ContextMenu>
@@ -157,40 +119,74 @@
                                                 EnableSnapping="True"
                                                 AllowOnlyConnectors="True"
                                                 Direction="Forward"
-                                                Stroke="{Binding WireColor}"
-                                                StrokeDashArray="5,3" />
+                                                Classes.wireFiles="{Binding Source.IsFilesType}"
+                                                Classes.wireText="{Binding Source.IsTextType}"
+                                                Classes.wireBoolean="{Binding Source.IsBooleanType}"
+                                                Classes.wireNumber="{Binding Source.IsNumberType}"
+                                                Classes.wireBinary="{Binding Source.IsBinaryType}"
+                                                Classes.wireCollection="{Binding Source.IsCollectionType}"
+                                                Classes.wireAny="{Binding Source.IsAnyType}" />
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
 
             <!-- Connection Wires -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
-                    <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                    <!-- Cable base + capa de energía superpuesta.
+                         El cable base lleva el color de la familia de tipo del dato; la capa de energía sólo
+                         existe durante la ejecución y se anima con guiones en movimiento para mostrar por
+                         dónde van los datos. Se usan dos Connection con el mismo trazado en vez de tocar la
+                         plantilla interna de Nodify, que no es API pública. -->
+                    <Panel>
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
                                         Target="{Binding Target.Anchor}"
                                         Spacing="45"
-                                        Stroke="{Binding WireColor}"
                                         StrokeThickness="3.5"
-                                        Direction="Forward">
-                        <nodifyConn:Connection.ContextMenu>
-                            <ContextMenu>
-                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
-                                          Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
-                                          CommandParameter="{Binding}">
-                                    <MenuItem.Icon>
-                                        <TextBlock Text="🗑" FontSize="12" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                            </ContextMenu>
-                        </nodifyConn:Connection.ContextMenu>
-                    </nodifyConn:Connection>
+                                        Direction="Forward"
+                                        Classes.wireFiles="{Binding Source.IsFilesType}"
+                                        Classes.wireText="{Binding Source.IsTextType}"
+                                        Classes.wireBoolean="{Binding Source.IsBooleanType}"
+                                        Classes.wireNumber="{Binding Source.IsNumberType}"
+                                        Classes.wireBinary="{Binding Source.IsBinaryType}"
+                                        Classes.wireCollection="{Binding Source.IsCollectionType}"
+                                        Classes.wireAny="{Binding Source.IsAnyType}">
+                            <nodifyConn:Connection.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
+                                              Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <materialIcons:MaterialIcon Kind="TrashCan" Width="12" Height="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </nodifyConn:Connection.ContextMenu>
+                        </nodifyConn:Connection>
+
+                        <!-- La capa de energía no es interactiva: sólo decora el cable durante la ejecución. -->
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                        Target="{Binding Target.Anchor}"
+                                        Spacing="45"
+                                        Direction="Forward"
+                                        IsHitTestVisible="False"
+                                        IsVisible="{Binding IsExecuting}"
+                                        Classes="energy"
+                                        Classes.wireFiles="{Binding Source.IsFilesType}"
+                                        Classes.wireText="{Binding Source.IsTextType}"
+                                        Classes.wireBoolean="{Binding Source.IsBooleanType}"
+                                        Classes.wireNumber="{Binding Source.IsNumberType}"
+                                        Classes.wireBinary="{Binding Source.IsBinaryType}"
+                                        Classes.wireCollection="{Binding Source.IsCollectionType}"
+                                        Classes.wireAny="{Binding Source.IsAnyType}" />
+                    </Panel>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
         </nodify:NodifyEditor>
 
         <!-- Sub-workflow Breadcrumbs Navigation -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,16,0,0"
-                Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
-                BorderThickness="1" CornerRadius="8" Padding="8,4"
+                Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
+                BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="8,4"
                 IsVisible="{Binding Breadcrumbs.Count}">
             <ItemsControl ItemsSource="{Binding Breadcrumbs}">
                 <ItemsControl.ItemsPanel>
@@ -204,9 +200,9 @@
                             <Button Content="{Binding Name}"
                                     Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).NavigateBreadcrumbCommand}"
                                     CommandParameter="{Binding}"
-                                    FontSize="12" FontWeight="Medium" Foreground="{DynamicResource AccentGlowBrush}"
+                                    FontSize="{DynamicResource FontSizeBodySm}" FontWeight="Medium" Foreground="{DynamicResource AccentGlowBrush}"
                                     Background="Transparent" BorderThickness="0" Padding="4,2" />
-                            <TextBlock Text=" ❯ " Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"  Kind="ChevronRight" Width="14" Height="14" />
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -218,7 +214,7 @@
 
         <!-- Canvas HUD Telemetry Overlay (Nodify Playground Style) -->
         <Border HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
-                Background="#9914161C" 
+                Background="{DynamicResource OverlaySurfaceBrush}" 
                 BorderBrush="{DynamicResource BorderDarkBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="16,6"
@@ -227,28 +223,28 @@
                 <!-- Left Telemetry: Selected Nodes & Connections -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="Selected:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Text="{Binding SelectedNodesCount}" FontSize="11" FontWeight="Bold" Foreground="#10B981" />
-                        <TextBlock Text="/" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Text="{Binding TotalNodesCount}" FontSize="11" FontWeight="Bold" Foreground="#10B981" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CanvasHud_Selected]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding SelectedNodesCount}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" />
+                        <TextBlock Text="/" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding TotalNodesCount}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="Connections:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Text="{Binding ConnectionsCount}" FontSize="11" FontWeight="Bold" Foreground="#F59E0B" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CanvasHud_Connections]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding ConnectionsCount}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource AccentWarningBrush}" />
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Right Telemetry: Location & Zoom -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="Location:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Text="{Binding FormattedLocation}" FontSize="11" FontWeight="Bold" Foreground="#FB923C" FontFamily="JetBrains Mono, Cascadia Code, Consolas" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CanvasHud_Location]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedLocation}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource AccentWarningBrush}" FontFamily="JetBrains Mono, Cascadia Code, Consolas" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="Zoom:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Text="{Binding FormattedZoom}" FontSize="11" FontWeight="Bold" Foreground="#06B6D4" FontFamily="JetBrains Mono, Cascadia Code, Consolas" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CanvasHud_Zoom]}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding FormattedZoom}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" FontFamily="JetBrains Mono, Cascadia Code, Consolas" />
                     </StackPanel>
                 </StackPanel>
             </Grid>
@@ -260,8 +256,8 @@
                 Background="{DynamicResource BgCardBrush}"
                 BorderBrush="{DynamicResource AccentPrimaryBrush}"
                 BorderThickness="1.5"
-                CornerRadius="10"
-                BoxShadow="0 16 48 0 #A0000000"
+                CornerRadius="{DynamicResource RadiusLg}"
+                BoxShadow="{DynamicResource Elev4}"
                 IsVisible="{Binding IsSpotlightOpen}"
                 ZIndex="50">
             <Grid RowDefinitions="Auto,*,Auto" Margin="10">
@@ -274,12 +270,12 @@
                              Foreground="{DynamicResource TextPrimaryBrush}"
                              BorderBrush="{DynamicResource BorderDarkBrush}"
                              BorderThickness="1"
-                             CornerRadius="6"
+                             CornerRadius="{DynamicResource RadiusSm}"
                              Padding="8,6"
-                             FontSize="12"
+                             FontSize="{DynamicResource FontSizeBodySm}"
                              KeyDown="SpotlightSearchBox_KeyDown">
                         <TextBox.InnerLeftContent>
-                            <TextBlock Text="🔍" FontSize="11" Margin="8,0,4,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <materialIcons:MaterialIcon Margin="8,0,4,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"  Kind="Magnify" Width="11" Height="11" />
                         </TextBox.InnerLeftContent>
                     </TextBox>
                 </Grid>
@@ -290,7 +286,7 @@
                          SelectedItem="{Binding SelectedSpotlightItem, Mode=TwoWay}"
                          Background="Transparent"
                          BorderThickness="0"
-                         CornerRadius="6"
+                         CornerRadius="{DynamicResource RadiusSm}"
                          MaxHeight="290"
                          DoubleTapped="SpotlightList_DoubleTapped"
                          KeyDown="SpotlightList_KeyDown">
@@ -298,19 +294,19 @@
                         <DataTemplate x:DataType="models:NodeToolboxItem">
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,3">
                                 <!-- Icon -->
-                                <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4" Background="{DynamicResource BgSurfaceBrush}" Margin="0,0,8,0">
-                                    <TextBlock Text="{Binding Icon}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border Grid.Column="0" Width="24" Height="24" CornerRadius="{DynamicResource RadiusXs}" Background="{DynamicResource BgSurfaceBrush}" Margin="0,0,8,0">
+                                    <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="13" Height="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
 
                                 <!-- Title & Description -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Description}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                                 </StackPanel>
 
                                 <!-- Category Badge -->
-                                <Border Grid.Column="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="5,1.5" VerticalAlignment="Center" Margin="4,0,0,0">
-                                    <TextBlock Text="{Binding Category}" FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentGlowBrush}" />
+                                <Border Grid.Column="2" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXs}" Padding="5,1.5" VerticalAlignment="Center" Margin="4,0,0,0">
+                                    <TextBlock Text="{Binding Category}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource AccentGlowBrush}" />
                                 </Border>
                             </Grid>
                         </DataTemplate>
@@ -320,9 +316,9 @@
                 <!-- Footer Hints -->
                 <Border Grid.Row="2" Margin="0,8,0,0" Padding="4,6,4,0" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0">
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="↑↓ Navegar  •  Enter Crear  •  Esc Cerrar" FontSize="9.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Spotlight_FooterHints]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Command="{Binding CloseSpotlightCommand}" Background="Transparent" BorderThickness="0" Padding="4,1" Cursor="Hand">
-                            <TextBlock Text="✕" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextSecondaryBrush}"  Kind="Close" Width="10" Height="10" />
                         </Button>
                     </Grid>
                 </Border>

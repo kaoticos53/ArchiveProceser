@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:FileFlow.App.ViewModels"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         x:Class="FileFlow.App.Views.Components.WorkflowMetricsDashboardWindow"
@@ -15,28 +16,28 @@
         <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" CornerRadius="10,10,0,0" Padding="16,12" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-                    <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1">
-                        <TextBlock Text="📊" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Width="32" Height="32" CornerRadius="{DynamicResource RadiusMd}" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource AccentCyanBrush}" BorderThickness="1">
+                        <materialIcons:MaterialIcon HorizontalAlignment="Center" VerticalAlignment="Center"  Kind="ChartBar" Width="16" Height="16" />
                     </Border>
                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[MetricsDashboard_Title]}"
-                               FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                               FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                     <Button Command="{Binding RefreshMetricsCommand}" Padding="10,6">
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="🔄" FontSize="11" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Refresh]}" FontSize="11" />
+                            <materialIcons:MaterialIcon  Kind="Refresh" Width="11" Height="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Refresh]}" FontSize="{DynamicResource FontSizeCaption}" />
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding ExportReportCsvCommand}" Padding="10,6">
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="📥" FontSize="11" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportCSV]}" FontSize="11" />
+                            <materialIcons:MaterialIcon  Kind="Download" Width="11" Height="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportCSV]}" FontSize="{DynamicResource FontSizeCaption}" />
                         </StackPanel>
                     </Button>
                     <Button Click="Close_Click" Padding="8,6">
-                        <TextBlock Text="✕" FontSize="12" />
+                        <materialIcons:MaterialIcon  Kind="Close" Width="12" Height="12" />
                     </Button>
                 </StackPanel>
             </Grid>
@@ -44,34 +45,34 @@
 
         <!-- KPI Cards -->
         <UniformGrid Grid.Row="1" Columns="4" Margin="0,12">
-            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="4">
                 <StackPanel Spacing="3">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalWorkflowDuration]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <TextBlock Text="{Binding TotalWorkflowDurationText}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalWorkflowDuration]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding TotalWorkflowDurationText}" FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
                 </StackPanel>
             </Border>
-            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="4">
                 <StackPanel Spacing="3">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalBytesProcessed]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <TextBlock Text="{Binding TotalBytesProcessedText}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalBytesProcessed]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding TotalBytesProcessedText}" FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold" Foreground="{DynamicResource AccentCyanBrush}" />
                 </StackPanel>
             </Border>
-            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="4">
                 <StackPanel Spacing="3">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalItemsProcessed]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <TextBlock Text="{Binding TotalItemsProcessedCount}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_TotalItemsProcessed]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding TotalItemsProcessedCount}" FontSize="{DynamicResource FontSizeTitle}" FontWeight="Bold" Foreground="{DynamicResource AccentSuccessBrush}" />
                 </StackPanel>
             </Border>
-            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="4">
+            <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="4">
                 <StackPanel Spacing="3">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_SlowestNodeLabel]}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <TextBlock Text="{Binding SlowestNodeName}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_SlowestNodeLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding SlowestNodeName}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Bold" Foreground="{DynamicResource AccentErrorBrush}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
         </UniformGrid>
 
         <!-- DataGrid Metrics Table -->
-        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="4">
+        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="4">
             <DataGrid ItemsSource="{Binding NodeMetrics}"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
@@ -92,8 +93,8 @@
 
         <!-- Footer -->
         <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0" Text="{Binding ProfilingStatusMessage}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Click="Close_Click" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close], FallbackValue='Cerrar'}" Padding="16,6" CornerRadius="6" />
+            <TextBlock Grid.Column="0" Text="{Binding ProfilingStatusMessage}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Click="Close_Click" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close], FallbackValue='Cerrar'}" Padding="16,6" CornerRadius="{DynamicResource RadiusSm}" />
         </Grid>
     </Grid>
 </Window>

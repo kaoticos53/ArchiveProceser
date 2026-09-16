@@ -1,11 +1,13 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
                     xmlns:vm="using:FileFlow.App.ViewModels"
+                    xmlns:models="using:FileFlow.App.Models"
                     xmlns:loc="using:FileFlow.Sdk.Localization">
 
     <!-- Blender / ComfyUI Node Parameter Row DataTemplate -->
     <DataTemplate x:Key="NodeParameterItemTemplate" DataType="vm:NodeParameterViewModel">
-        <Grid Margin="0,2.5" IsVisible="{Binding IsVisible}">
+        <Grid Margin="0,2" IsVisible="{Binding IsVisible}">
             <!-- Standard Single-Line Node Parameter Row -->
             <Grid IsVisible="{Binding IsStandardRow}">
                 <Grid.ColumnDefinitions>
@@ -14,10 +16,71 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Key}" 
-                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10.5" FontWeight="Medium" 
-                           MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" />
+                           Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Medium" 
+                           MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
 
-                <!-- Dropdown ComboBox for parameters with options -->
+                <!-- 1. ToggleSwitch for Boolean parameters -->
+                <ToggleSwitch Grid.Column="1"
+                              IsChecked="{Binding ValueAsBool, Mode=TwoWay}"
+                              IsVisible="{Binding IsBooleanAndNoOptions}"
+                              OnContent="" OffContent=""
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Center"
+                              Margin="0,-2" />
+
+                <!-- 2. Slider with Value Badge for Range parameters -->
+                <Grid Grid.Column="1" 
+                      IsVisible="{Binding IsSlider}"
+                      HorizontalAlignment="Stretch"
+                      ColumnDefinitions="*,Auto"
+                      VerticalAlignment="Center">
+                    <Slider Grid.Column="0"
+                            Value="{Binding SliderValue, Mode=TwoWay}"
+                            Minimum="{Binding SliderMin}"
+                            Maximum="{Binding SliderMax}"
+                            SmallChange="{Binding SliderStep}"
+                            LargeChange="10"
+                            IsSnapToTickEnabled="True"
+                            TickFrequency="{Binding SliderStep}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,6,0" />
+
+                    <Border Grid.Column="1"
+                            Background="{DynamicResource BgSurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{DynamicResource RadiusXs}"
+                            Padding="5,1.5"
+                            MinWidth="32"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding SliderDisplayValue}"
+                                   FontSize="{DynamicResource FontSizeMicro}"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentPrimaryBrush}"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                </Grid>
+
+                <!-- 3. NumericUpDown for Numeric parameters -->
+                <NumericUpDown Grid.Column="1"
+                               Value="{Binding SliderValue, Mode=TwoWay}"
+                               Minimum="{Binding SliderMin}"
+                               Maximum="{Binding SliderMax}"
+                               Increment="{Binding SliderStep}"
+                               FormatString="0"
+                               IsVisible="{Binding IsNumber}"
+                               Background="{DynamicResource BgSurfaceBrush}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               BorderBrush="{DynamicResource BorderDarkBrush}"
+                               BorderThickness="1"
+                               FontSize="{DynamicResource FontSizeMicro}"
+                               Padding="4,2"
+                               CornerRadius="{DynamicResource RadiusXs}"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Center" />
+
+                <!-- 4. Dropdown ComboBox for parameters with options -->
                 <Grid Grid.Column="1" IsVisible="{Binding IsDropdown}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -28,21 +91,25 @@
                     <ComboBox Grid.Column="0"
                               ItemsSource="{Binding Options}"
                               SelectedItem="{Binding Value, Mode=TwoWay}"
-                              IsVisible="{Binding HasOptionsAndNotEditable}"
+                              IsVisible="{Binding !IsEditableDropdown}"
                               Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                              BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="10.5" Padding="6,3"
-                              CornerRadius="4"
-                              HorizontalAlignment="Stretch" />
+                              BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeMicro}" Padding="6,3"
+                              CornerRadius="{DynamicResource RadiusXs}"
+                              HorizontalAlignment="Stretch"
+                              MaxDropDownHeight="240" />
 
                     <!-- Editable Dropdown -->
                     <Grid Grid.Column="0" IsVisible="{Binding IsEditableDropdown}" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
                         <AutoCompleteBox Grid.Column="0"
                                          ItemsSource="{Binding Options}"
                                          Text="{Binding Value, Mode=TwoWay}"
+                                         MinimumPrefixLength="0"
+                                         FilterMode="None"
                                          Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                         BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="10.5" Padding="6,3"
-                                         CornerRadius="4,0,0,4"
-                                         HorizontalAlignment="Stretch" />
+                                         BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeMicro}" Padding="6,3"
+                                         CornerRadius="{DynamicResource RadiusXs}"
+                                         HorizontalAlignment="Stretch"
+                                         MaxDropDownHeight="240" />
                         <Button Grid.Column="1" 
                                 Command="{Binding OpenVariablePickerCommand}"
                                 CommandParameter="{Binding $self}"
@@ -50,62 +117,32 @@
                                 Background="{DynamicResource BgHoverBrush}" 
                                 Foreground="{DynamicResource AccentGlowBrush}" 
                                 BorderBrush="{DynamicResource BorderDarkBrush}"
-                                BorderThickness="0,1,1,1" 
+                                BorderThickness="1" 
                                 Padding="6,3" 
-                                FontSize="10" 
+                                FontSize="{DynamicResource FontSizeMicro}" 
                                 FontWeight="Bold" 
                                 Cursor="Hand"
-                                CornerRadius="0,4,4,0"
+                                CornerRadius="{DynamicResource RadiusXs}"
                                 ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip]}" />
                     </Grid>
 
                     <Button Grid.Column="1"
                             Command="{Binding OpenMediaPresetManagerCommand}"
                             IsVisible="{Binding IsMediaPreset}"
-                            Content="⚙️ Presets"
+                            Content="Presets"
                             Background="{DynamicResource AccentPrimaryBrush}"
-                            Foreground="White"
+                            Foreground="{DynamicResource TextOnAccentBrush}"
                             BorderThickness="0"
                             Padding="6,3"
                             Margin="4,0,0,0"
-                            FontSize="9.5"
+                            FontSize="{DynamicResource FontSizeMicro}"
                             FontWeight="SemiBold"
                             Cursor="Hand"
-                            CornerRadius="4"
+                            CornerRadius="{DynamicResource RadiusXs}"
                             ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_OpenPresetManager]}" />
                 </Grid>
 
-                <!-- Slider for Numeric Range Parameters -->
-                <Grid Grid.Column="1" 
-                      IsVisible="{Binding IsSlider}"
-                      HorizontalAlignment="Stretch"
-                      ColumnDefinitions="*,42">
-                    <Slider Grid.Column="0"
-                            Value="{Binding Value, Mode=TwoWay}"
-                            Minimum="{Binding SliderMin}"
-                            Maximum="{Binding SliderMax}"
-                            SmallChange="{Binding SliderStep}"
-                            LargeChange="10"
-                            IsSnapToTickEnabled="True"
-                            TickFrequency="{Binding SliderStep}"
-                            VerticalAlignment="Center"
-                            Margin="0,0,6,0" />
-
-                    <TextBox Grid.Column="1"
-                             Text="{Binding Value, Mode=TwoWay}"
-                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
-                             BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="10" Padding="3,2"
-                             CornerRadius="4"
-                             TextAlignment="Center" VerticalAlignment="Center" />
-                </Grid>
-
-                <!-- CheckBox for Boolean parameters -->
-                <CheckBox Grid.Column="1"
-                          IsChecked="{Binding Value, Mode=TwoWay}"
-                          IsVisible="{Binding IsBooleanAndNoOptions}"
-                          VerticalAlignment="Center" Margin="2,0,0,0" />
-
-                <!-- Path Selector Input -->
+                <!-- 5. Path Selector Input (with integrated folder icon button) -->
                 <Grid Grid.Column="1" 
                       IsVisible="{Binding HasBrowseButton}"
                       HorizontalAlignment="Stretch"
@@ -113,20 +150,20 @@
                     <TextBox Grid.Column="0" 
                              Text="{Binding Value, Mode=TwoWay}" 
                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                             BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="10.5" Padding="6,3"
+                             BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeMicro}" Padding="6,3"
                              HorizontalAlignment="Stretch" CornerRadius="4,0,0,4" />
 
                     <Button Grid.Column="1" 
                             Command="{Binding BrowsePathCommand}" 
-                            Content="📁" 
                             Background="{DynamicResource AccentPrimaryBrush}" 
-                            Foreground="White" 
+                            Foreground="{DynamicResource TextOnAccentBrush}" 
                             BorderThickness="0" 
-                            Padding="7,3" 
-                            FontSize="10" 
+                            Padding="6,3" 
                             Cursor="Hand"
                             CornerRadius="0"
-                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}" />
+                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BrowseExplorerToolTip]}">
+                        <materialIcons:MaterialIcon Kind="FolderOpen" Width="12" Height="12" Foreground="{DynamicResource TextOnAccentBrush}" />
+                    </Button>
 
                     <Button Grid.Column="2" 
                             Command="{Binding OpenVariablePickerCommand}"
@@ -137,14 +174,59 @@
                             BorderBrush="{DynamicResource BorderDarkBrush}"
                             BorderThickness="0,1,1,1" 
                             Padding="6,3" 
-                            FontSize="10" 
+                            FontSize="{DynamicResource FontSizeMicro}" 
                             FontWeight="Bold" 
                             Cursor="Hand"
                             CornerRadius="0,4,4,0"
                             ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip]}" />
                 </Grid>
 
-                <!-- TextBox for standard text/numeric parameters -->
+                <!-- 6. File Version Selector (Interactive Chips) -->
+                <Grid Grid.Column="1" IsVisible="{Binding IsFileVersionSelector}" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
+                    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding AvailableVersionOptions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="models:FileVersionOption">
+                                    <Button Command="{Binding $parent[ItemsControl].((vm:NodeParameterViewModel)DataContext).SelectVersionOptionCommand}"
+                                            CommandParameter="{Binding}"
+                                            Padding="5,2"
+                                            Background="{DynamicResource BgSurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderDarkBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="{DynamicResource RadiusXs}"
+                                            Cursor="Hand">
+                                        <StackPanel Orientation="Horizontal" Spacing="3">
+                                            <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="10" Height="10" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Tag}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Button Grid.Column="1" 
+                            Command="{Binding OpenVariablePickerCommand}"
+                            CommandParameter="{Binding $self}"
+                            Content="{}{x}" 
+                            Background="{DynamicResource BgHoverBrush}" 
+                            Foreground="{DynamicResource AccentGlowBrush}" 
+                            BorderBrush="{DynamicResource BorderDarkBrush}"
+                            BorderThickness="1" 
+                            Padding="5,2" 
+                            Margin="4,0,0,0"
+                            FontSize="{DynamicResource FontSizeMicro}" 
+                            FontWeight="Bold" 
+                            Cursor="Hand"
+                            CornerRadius="{DynamicResource RadiusXs}"
+                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip]}" />
+                </Grid>
+
+                <!-- 7. TextBox for standard text parameters -->
                 <Grid Grid.Column="1"
                       IsVisible="{Binding IsStandardInput}"
                       HorizontalAlignment="Stretch"
@@ -152,19 +234,19 @@
                     <TextBox Grid.Column="0" 
                              Text="{Binding Value, Mode=TwoWay}" 
                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                             BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="10.5" Padding="6,3"
+                             BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeMicro}" Padding="6,3"
                              HorizontalAlignment="Stretch" CornerRadius="4,0,0,4" />
 
                     <Button Grid.Column="1" 
                             Command="{Binding OpenPasswordManagerCommand}"
                             IsVisible="{Binding IsPasswordList}"
-                            Content="🔑 Claves" 
+                            Content="Claves" 
                             Background="{DynamicResource AccentPrimaryBrush}" 
-                            Foreground="White" 
+                            Foreground="{DynamicResource TextOnAccentBrush}" 
                             BorderThickness="0" 
                             Padding="6,3" 
-                            FontSize="9.5" 
-                            FontWeight="SemiBold"
+                            FontSize="{DynamicResource FontSizeMicro}" 
+                            FontWeight="SemiBold" 
                             Cursor="Hand"
                             CornerRadius="0"
                             ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_OpenPasswordManager]}" />
@@ -172,17 +254,15 @@
                     <Button Grid.Column="2" 
                             Command="{Binding OpenTextEditorCommand}"
                             CommandParameter="{Binding $self}"
-                            Content="⤢" 
                             Background="{DynamicResource BgHoverBrush}" 
-                            Foreground="{DynamicResource AccentCyanBrush}" 
                             BorderBrush="{DynamicResource BorderDarkBrush}"
                             BorderThickness="0,1,1,1" 
                             Padding="6,3" 
-                            FontSize="10" 
-                            FontWeight="Bold" 
                             Cursor="Hand"
                             CornerRadius="0"
-                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip]}" />
+                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip]}">
+                        <materialIcons:MaterialIcon Kind="ArrowExpandAll" Width="10" Height="10" Foreground="{DynamicResource AccentCyanBrush}" />
+                    </Button>
 
                     <Button Grid.Column="3" 
                             Command="{Binding OpenVariablePickerCommand}"
@@ -193,7 +273,7 @@
                             BorderBrush="{DynamicResource BorderDarkBrush}"
                             BorderThickness="0,1,1,1" 
                             Padding="6,3" 
-                            FontSize="10" 
+                            FontSize="{DynamicResource FontSizeMicro}" 
                             FontWeight="Bold" 
                             Cursor="Hand"
                             CornerRadius="0,4,4,0"
@@ -201,11 +281,11 @@
                 </Grid>
             </Grid>
 
-            <!-- Multi-line / Rich parameter row -->
-            <Grid IsVisible="{Binding IsMultilineRow}" RowDefinitions="Auto,Auto">
+            <!-- Multi-line / Rich parameter row (Only shown when IsMultilineRow is TRUE) -->
+            <Grid IsVisible="{Binding IsMultilineRow}" RowDefinitions="Auto,Auto" Margin="0,3">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,3">
                     <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Key}" 
-                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10.5" FontWeight="Medium" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Medium" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                         <Button Command="{Binding OpenVariablePickerCommand}"
                                 CommandParameter="{Binding $self}"
@@ -215,24 +295,22 @@
                                 BorderBrush="{DynamicResource BorderDarkBrush}"
                                 BorderThickness="1" 
                                 Padding="5,2" 
-                                FontSize="9.5" 
+                                FontSize="{DynamicResource FontSizeMicro}" 
                                 FontWeight="Bold" 
                                 Cursor="Hand"
-                                CornerRadius="3"
+                                CornerRadius="{DynamicResource RadiusXs}"
                                 ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip]}" />
                         <Button Command="{Binding OpenTextEditorCommand}"
                                 CommandParameter="{Binding $self}"
-                                Content="⤢" 
                                 Background="{DynamicResource BgHoverBrush}" 
-                                Foreground="{DynamicResource AccentCyanBrush}" 
                                 BorderBrush="{DynamicResource BorderDarkBrush}"
                                 BorderThickness="1" 
                                 Padding="5,2" 
-                                FontSize="10" 
-                                FontWeight="Bold" 
                                 Cursor="Hand"
-                                CornerRadius="3"
-                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip]}" />
+                                CornerRadius="{DynamicResource RadiusXs}"
+                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_ExpandToolTip]}">
+                            <materialIcons:MaterialIcon Kind="ArrowExpandAll" Width="10" Height="10" Foreground="{DynamicResource AccentCyanBrush}" />
+                        </Button>
                     </StackPanel>
                 </Grid>
                 <TextBox Grid.Row="1"
@@ -241,8 +319,8 @@
                          TextWrapping="Wrap"
                          MinHeight="50" MaxHeight="120"
                          Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                         BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="10.5" Padding="6,4"
-                         CornerRadius="4" />
+                         BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeMicro}" Padding="6,4"
+                         CornerRadius="{DynamicResource RadiusXs}" />
             </Grid>
         </Grid>
     </DataTemplate>

@@ -8,6 +8,9 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+// Usa la sesión headless de Avalonia (crea controles y resuelve recursos del tema), así que comparte la
+// colección serializada: ver VisualSnapshotsCollection.
+[Collection(FileFlow.Tests.Unit.Views.VisualSnapshotsCollection.Name)]
 public class FilePreviewerTests : IDisposable
 {
     private readonly string _tempDir;
@@ -93,10 +96,18 @@ public class FilePreviewerTests : IDisposable
             await img.SaveAsWebpAsync(sampleWebp);
         }
 
-        var bmpSource = FileFlow.App.Preview.Helpers.AvaloniaImageLoader.LoadBitmap(sampleWebp);
-        bmpSource.Should().NotBeNull();
-        bmpSource!.PixelSize.Width.Should().BeGreaterThan(0);
-        bmpSource!.PixelSize.Height.Should().BeGreaterThan(0);
+        // La decodificación pasa por la interfaz de render de Avalonia, que vive en el hilo de UI de la
+        // sesión: hecha desde el hilo del runner devuelve 'null' sin lanzar (el cargador se lo traga y cae a
+        // su plan B, que también falla), así que la llamada se despacha y las aserciones se hacen ahí.
+        var size = TestHelpers.AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var bmpSource = FileFlow.App.Preview.Helpers.AvaloniaImageLoader.LoadBitmap(sampleWebp);
+            bmpSource.Should().NotBeNull("el cargador debe decodificar WebP con la interfaz de render de la sesión");
+
+            return bmpSource!.PixelSize;
+        });
+
+        size.Should().Be(new Avalonia.PixelSize(150, 80), "el mapa de bits debe conservar el tamaño del original");
     }
 
     public void Dispose()

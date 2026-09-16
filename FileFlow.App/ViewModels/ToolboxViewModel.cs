@@ -7,6 +7,7 @@ using FileFlow.App.Services;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using Material.Icons;
 
 namespace FileFlow.App.ViewModels;
 
@@ -24,7 +25,7 @@ public partial class ToolboxCategoryFilterItem : ObservableObject
     private string _displayName = string.Empty;
 
     [ObservableProperty]
-    private string _icon = "📁";
+    private MaterialIconKind _icon = MaterialIconKind.Folder;
 
     [ObservableProperty]
     private int _count;
@@ -32,7 +33,7 @@ public partial class ToolboxCategoryFilterItem : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public ToolboxCategoryFilterItem(string key, string displayName, string icon, int count = 0, bool isSelected = false)
+    public ToolboxCategoryFilterItem(string key, string displayName, MaterialIconKind icon, int count = 0, bool isSelected = false)
     {
         Key = key;
         _displayName = displayName;
@@ -196,7 +197,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
                     bool isFavorite = prefs.IsFavorite(typeName) || prefs.IsFavorite(type.Name);
                     int usageCount = Math.Max(prefs.GetUsageCount(typeName), prefs.GetUsageCount(type.Name));
-                    string icon = GetIconForNodeType(typeName);
+                    MaterialIconKind icon = GetIconForNodeType(typeName);
 
                     var role = defAttr?.Role ?? PipelineRole.Transform;
                     var tags = defAttr?.Tags ?? Array.Empty<string>();
@@ -463,11 +464,11 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
         var list = new List<ToolboxCategoryFilterItem>
         {
-            new("Todas", LocalizationManager.Instance.GetString("Category_All", "Todas"), "🌐", totalCount,
+            new("Todas", LocalizationManager.Instance.GetString("Category_All", "Todas"), MaterialIconKind.Web, totalCount,
                 SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase)),
-            new("Favoritos", LocalizationManager.Instance.GetString("Category_Favorites", "Favoritos"), "⭐", favCount,
+            new("Favoritos", LocalizationManager.Instance.GetString("Category_Favorites", "Favoritos"), MaterialIconKind.Star, favCount,
                 SelectedCategoryFilter.Equals("Favoritos", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Favorites", StringComparison.OrdinalIgnoreCase)),
-            new("Frecuentes", LocalizationManager.Instance.GetString("Category_Frequent", "Más Usados"), "🔥", freqCount,
+            new("Frecuentes", LocalizationManager.Instance.GetString("Category_Frequent", "Más Usados"), MaterialIconKind.Fire, freqCount,
                 SelectedCategoryFilter.Equals("Frecuentes", StringComparison.OrdinalIgnoreCase) || SelectedCategoryFilter.Equals("Frequent", StringComparison.OrdinalIgnoreCase))
         };
 
@@ -487,7 +488,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         {
             int count = categoryCounts.TryGetValue(cat, out int c) ? c : 0;
             string displayName = LocalizationManager.Instance.GetString($"Category_{cat}", cat);
-            string icon = GetIconForCategory(cat);
+            MaterialIconKind icon = GetIconForCategory(cat);
             bool isSelected = SelectedCategoryFilter.Equals(cat, StringComparison.OrdinalIgnoreCase);
 
             list.Add(new ToolboxCategoryFilterItem(cat, displayName, icon, count, isSelected));
@@ -568,7 +569,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         RefreshToolbox();
     }
 
-    public static string GetIconForCategory(string category) => NodeIconResolver.GetIconForCategory(category);
+    public static MaterialIconKind GetIconForCategory(string category) => NodeIconResolver.GetIconForCategory(category);
 
-    public static string GetIconForNodeType(string typeName) => NodeIconResolver.GetIconForNodeType(typeName);
+    public static MaterialIconKind GetIconForNodeType(string typeName) => NodeIconResolver.GetIconForNodeType(typeName);
 }

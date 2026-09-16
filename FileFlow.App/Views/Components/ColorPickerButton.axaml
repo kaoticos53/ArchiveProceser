@@ -11,19 +11,19 @@
 
         <!-- Color Label and Caption -->
         <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
-            <TextBlock x:Name="TxtLabel" Text="Color" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-            <TextBlock x:Name="TxtDesc" Text="" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="False" />
+            <TextBlock x:Name="TxtLabel" Text="Color" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <TextBlock x:Name="TxtDesc" Text="" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="False" />
         </StackPanel>
 
         <!-- Color Swatch Button with Palette Flyout -->
-        <Button x:Name="BtnSwatch" Grid.Column="1" Padding="2" Margin="0,0,6,0" 
+        <Button x:Name="BtnSwatch" Grid.Column="1" Padding="2" Margin="0,0,6,0"
                 ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}">
-            <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="4" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Background="#6366F1" />
+            <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="{DynamicResource RadiusXs}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Background="{DynamicResource AccentPrimaryBrush}" />
             <Button.Flyout>
                 <Flyout Placement="Bottom">
-                    <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="4">
+                    <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="8" Margin="4">
                         <StackPanel Spacing="6">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
                             
                             <!-- Predefined Swatches Grid -->
                             <UniformGrid Columns="6" Width="180">
@@ -55,10 +55,10 @@
         </Button>
 
         <!-- HEX Input Box -->
-        <TextBox x:Name="TxtHex" Grid.Column="2" 
-                 FontFamily="Cascadia Code, Consolas, monospace" 
-                 FontSize="11.5" 
-                 Padding="6,4" 
+        <TextBox x:Name="TxtHex" Grid.Column="2"
+                 Classes="mono"
+                 FontSize="{DynamicResource FontSizeCaption}"
+                 Padding="6,4"
                  VerticalContentAlignment="Center" />
     </Grid>
 </UserControl>

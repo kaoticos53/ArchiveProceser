@@ -6,8 +6,11 @@ using Moq;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Xunit;
+using FileFlow.Tests.Unit.AI;
 
 namespace FileFlow.Tests.Unit.Plugins.AI;
+
+[Collection(OnnxInferenceCollection.Name)]
 
 public class AiNodesTests : IDisposable
 {

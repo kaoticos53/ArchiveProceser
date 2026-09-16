@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              x:Class="FileFlow.App.Views.Components.GroupCardView"
@@ -26,8 +27,8 @@
         <!-- Border Frame -->
         <Border BorderBrush="{Binding Color}"
                 BorderThickness="2"
-                CornerRadius="12"
-                Background="#08808080"
+                CornerRadius="{DynamicResource RadiusXl}"
+                Background="{DynamicResource TintFaintBrush}"
                 IsHitTestVisible="False" />
 
         <Grid RowDefinitions="Auto,*">
@@ -44,13 +45,13 @@
                     </Thumb>
 
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" IsHitTestVisible="True">
-                        <TextBlock Grid.Column="0" Text="🔲" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <materialIcons:MaterialIcon Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,0"  Kind="SelectGroup" Width="12" Height="12" />
 
                         <!-- Title -->
                         <TextBox Grid.Column="1"
                                  Text="{Binding Title, Mode=TwoWay}"
                                  FontWeight="Bold"
-                                 FontSize="12"
+                                 FontSize="{DynamicResource FontSizeBodySm}"
                                  Foreground="#FFFFFF"
                                  Background="Transparent"
                                  BorderThickness="0"
@@ -82,11 +83,11 @@
                         <!-- Delete Button -->
                         <Button Grid.Column="3"
                                 Command="{Binding DeleteCommand}"
-                                Content="✕"
+                                Content="{materialIcons:MaterialIconExt Kind=Close}"
                                 Foreground="#FFFFFF"
                                 Background="Transparent"
                                 BorderThickness="0"
-                                FontSize="11"
+                                FontSize="{DynamicResource FontSizeCaption}"
                                 FontWeight="Bold"
                                 Padding="4,0"
                                 Cursor="Hand"

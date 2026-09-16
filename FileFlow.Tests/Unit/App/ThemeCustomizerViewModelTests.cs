@@ -2,11 +2,13 @@ using System.IO;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.App.Themes;
+using FileFlow.Sdk.Localization;
 using FluentAssertions;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+[Collection("VisualSnapshots")]
 public class ThemeCustomizerViewModelTests : IDisposable
 {
     private readonly string _testStoragePath;
@@ -76,7 +78,11 @@ public class ThemeCustomizerViewModelTests : IDisposable
 
         // Assert
         vm.AvailableThemes.Count.Should().Be(initialCount + 1);
-        vm.SelectedTheme!.Name.Should().Contain("Copia");
+
+        // El sufijo es texto de interfaz y por tanto localizado: se comprueba contra el recurso, no
+        // contra una cadena en español, para que el test no dependa del idioma activo.
+        string suffix = LocalizationManager.Instance.GetString("ThemeStudio_CopySuffix", "(Copy)");
+        vm.SelectedTheme!.Name.Should().EndWith(suffix);
         vm.IsCustomTheme.Should().BeTrue();
     }
 

@@ -8,6 +8,11 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+// Las filas de métricas derivan de NodeViewModel.Title, que se reescribe al cambiar el idioma de la
+// aplicación (NodeViewModel.OnLanguageChanged). Ejecutar este test en paralelo con los que mutan la
+// cultura global producía un fallo intermitente (FilteredNodeRows vacío tras fijar el filtro),
+// así que se serializa con ellos.
+[Collection("VisualSnapshots")]
 public class WorkflowMetricsDashboardViewModelTests
 {
     [Fact]

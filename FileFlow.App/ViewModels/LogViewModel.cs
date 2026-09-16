@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
@@ -86,6 +87,7 @@ public partial class LogViewModel : ObservableObject, IDisposable
 
     private readonly ConcurrentQueue<StructuredLogRecord> _pendingLogs = new();
     private readonly DispatcherTimer _flushTimer;
+    private readonly EventHandler<CultureInfo> _languageChangedHandler;
 
     private volatile bool _isClearingLogs;
 
@@ -99,13 +101,19 @@ public partial class LogViewModel : ObservableObject, IDisposable
         _dialogService = dialogService ?? AvaloniaDialogService.Instance;
 
         _statusMessage = _loc["StatusReady"];
-        _loc.LanguageChanged += (_, _) =>
+
+        // Handler guardado (no lambda anónima eterna): Dispose debe poder desuscribirlo. El handler
+        // escribe StatusMessage (propiedad observable, segura desde cualquier hilo), pero igual que
+        // NodeParameterViewModel/ToolboxViewModel, la desuscripción determinista evita que una instancia
+        // efímera deje un suscriptor vivo en el singleton de localización para siempre.
+        _languageChangedHandler = (_, _) =>
         {
             if (ProgressPercentage == 0)
             {
                 StatusMessage = _loc["StatusReady"];
             }
         };
+        _loc.LanguageChanged += _languageChangedHandler;
 
         _flushTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -616,5 +624,6 @@ public partial class LogViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _flushTimer.Stop();
+        _loc.LanguageChanged -= _languageChangedHandler;
     }
 }

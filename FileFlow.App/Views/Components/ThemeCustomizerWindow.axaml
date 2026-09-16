@@ -1,117 +1,386 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:themes="using:FileFlow.App.Themes"
         xmlns:components="using:FileFlow.App.Views.Components"
         x:Class="FileFlow.App.Views.Components.ThemeCustomizerWindow"
         x:DataType="vm:ThemeCustomizerViewModel"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_WindowTitle]}"
-        Height="760" Width="1200"
-        MinHeight="620" MinWidth="980"
+        Height="820" Width="1320"
+        MinHeight="640" MinWidth="1080"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackgroundBrush}">
 
-    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
-        <!-- Header Banner -->
-        <Grid Grid.Row="0" Margin="0,0,0,14" ColumnDefinitions="*,Auto">
-            <StackPanel Grid.Column="0">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="🎨" FontSize="20" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderTitle]}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+    <!--
+        THEME STUDIO. Tres zonas: catálogo de temas, editor por secciones y previsualización en vivo.
+
+        El editor no tiene una fila escrita a mano por ajuste: se genera a partir de ThemeSettingCatalog
+        (secciones -> filas tipadas), de modo que añadir un token al tema y exponerlo en el catálogo basta
+        para que aparezca aquí. Los controles de ajuste se resuelven por tipo con DataTemplates.
+
+        La previsualización consume su PROPIO diccionario de tokens (PreviewHost.Resources, enganchado en el
+        code-behind): mover un radio, una tipografía o una sombra se ve al instante sin aplicar el tema a la
+        aplicación, y el resto de la ventana sigue mostrando el tema activo.
+    -->
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- ── Cabecera ─────────────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" Classes="chromeTop" Padding="{DynamicResource Pad5}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Border Grid.Column="0" Classes="brandLg">
+                    <materialIcons:MaterialIcon Kind="Palette"
+                                                Width="18" Height="18"
+                                                Foreground="{DynamicResource TextOnAccentBrush}"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Classes="title primaryText"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderTitle]}" />
+                    <TextBlock Classes="caption secondary"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderSubtitle]}" />
                 </StackPanel>
-                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_HeaderSubtitle]}" 
-                           FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="28,2,0,0" />
-            </StackPanel>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <Button Command="{Binding ImportThemeCommand}" Padding="10,5">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="📥" FontSize="12" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ImportBtn]}" FontSize="11.5" />
-                    </StackPanel>
-                </Button>
-                <Button Command="{Binding ExportThemeCommand}" Padding="10,5">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="📤" FontSize="12" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ExportBtn]}" FontSize="11.5" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </Grid>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="ghost" Command="{Binding ImportThemeCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="Download" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ImportBtn]}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="ghost" Command="{Binding ExportThemeCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="Upload" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ExportBtn]}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-        <!-- Main Content (Themes List | Editor Controls | Live Preview Mockup) -->
-        <Grid Grid.Row="1" Margin="0,0,0,12" ColumnDefinitions="240,390,*">
-            <!-- Column 0: Themes List -->
-            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,10,0">
+        <!-- ── Cuerpo ───────────────────────────────────────────────────────────── -->
+        <Grid Grid.Row="1" ColumnDefinitions="260,*,460" Margin="{DynamicResource Pad5}">
+
+            <!-- Catálogo de temas -->
+            <Border Grid.Column="0" Classes="card" Margin="0,0,12,0">
                 <Grid RowDefinitions="Auto,*,Auto">
-                    <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_AvailableThemes]}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="4,0,0,8" />
+                    <TextBlock Grid.Row="0" Classes="sectionLabel"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_AvailableThemes]}" />
 
-                    <ListBox Grid.Row="1" ItemsSource="{Binding AvailableThemes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
-                             Background="Transparent">
+                    <ListBox Grid.Row="1" Margin="0,6,0,0"
+                             Background="Transparent"
+                             ItemsSource="{Binding AvailableThemes}"
+                             SelectedItem="{Binding SelectedTheme, Mode=TwoWay}">
                         <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,2">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-                                        <Border Grid.Column="1" Background="{DynamicResource BgHoverBrush}" CornerRadius="4" Padding="4,1" Margin="4,0,0,0">
-                                            <TextBlock Text="{Binding BaseType}" FontSize="9" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                        </Border>
-                                    </Grid>
-                                </Border>
+                            <DataTemplate x:DataType="themes:ThemeDefinition">
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Classes="bodySm semiBold primaryText"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Classes="badge" Margin="6,0,0,0"
+                                            IsVisible="{Binding IsBuiltIn}">
+                                        <TextBlock Classes="micro muted"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeStudio_BadgeBuiltIn]}" />
+                                    </Border>
+                                    <Border Grid.Column="1" Classes="badgeAccent" Margin="6,0,0,0"
+                                            IsVisible="{Binding !IsBuiltIn}">
+                                        <TextBlock Classes="micro onAccent"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeStudio_BadgeCustom]}" />
+                                    </Border>
+                                </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Action buttons -->
-                    <StackPanel Grid.Row="2" Spacing="4" Margin="0,8,0,0">
-                        <Button Command="{Binding CreateNewThemeCommand}" Content="+ Nuevo Tema" HorizontalAlignment="Stretch" Padding="8,5" />
-                        <Button Command="{Binding DuplicateThemeCommand}" Content="📑 Duplicar" HorizontalAlignment="Stretch" Padding="8,5" />
-                        <Button Command="{Binding DeleteThemeCommand}" Content="🗑 Eliminar" HorizontalAlignment="Stretch" Padding="8,5" />
+                    <StackPanel Grid.Row="2" Spacing="6" Margin="0,10,0,0">
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding NewCustomThemeCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <materialIcons:MaterialIcon Kind="Plus" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_NewBtn]}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding DuplicateThemeCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <materialIcons:MaterialIcon Kind="ContentCopy" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_DuplicateBtn]}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding DeleteThemeCommand}"
+                                IsEnabled="{Binding IsCustomTheme}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <materialIcons:MaterialIcon Kind="Delete" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_DeleteBtn]}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Column 1: Color Properties Editor -->
-            <Border Grid.Column="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,10,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Propiedades de Color" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <TextBox Text="{Binding CurrentThemeName, Mode=TwoWay}" PlaceholderText="Nombre del tema..." Padding="8,5" />
-                        
-                        <components:ColorPickerButton SelectedColorHex="{Binding AccentPrimary, Mode=TwoWay}" Label="Acento Primario" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding AccentGlow, Mode=TwoWay}" Label="Brillo de Acento" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding BgApp, Mode=TwoWay}" Label="Fondo de Aplicación" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding BgSurface, Mode=TwoWay}" Label="Fondo de Superficie" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding BgCard, Mode=TwoWay}" Label="Fondo de Tarjetas" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding BgHeader, Mode=TwoWay}" Label="Fondo de Encabezados" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding TextPrimary, Mode=TwoWay}" Label="Texto Primario" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding TextSecondary, Mode=TwoWay}" Label="Texto Secundario" />
-                        <components:ColorPickerButton SelectedColorHex="{Binding BorderDark, Mode=TwoWay}" Label="Borde Oscuro" />
+            <!-- Editor por secciones (generado desde el catálogo de ajustes) -->
+            <Border Grid.Column="1" Classes="card" Margin="0,0,12,0">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Classes="sectionLabel" VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_ThemeName]}" />
+                        <TextBox Grid.Column="1" Width="240"
+                                 Text="{Binding CurrentThemeName, Mode=TwoWay}"
+                                 VerticalContentAlignment="Center" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Sections}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ThemeSettingSectionViewModel">
+                                    <StackPanel Margin="0,0,0,14">
+                                        <TextBlock Classes="sectionLabel" Margin="0,0,0,4" Text="{Binding Title}" />
+
+                                        <ItemsControl ItemsSource="{Binding Rows}">
+                                            <ItemsControl.DataTemplates>
+
+                                                <!-- Color: selector con muestra, paleta y hex editable -->
+                                                <DataTemplate DataType="vm:ThemeColorRowViewModel" x:DataType="vm:ThemeColorRowViewModel">
+                                                    <components:ColorPickerButton Margin="0,2"
+                                                                                  Label="{Binding Label}"
+                                                                                  SelectedColorHex="{Binding SelectedColorHex, Mode=TwoWay}" />
+                                                </DataTemplate>
+
+                                                <!-- Número: radios, tamaño de fuente, densidad y sombras -->
+                                                <DataTemplate DataType="vm:ThemeNumberRowViewModel" x:DataType="vm:ThemeNumberRowViewModel">
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                                                        <TextBlock Grid.Column="0" Classes="bodySm primaryText"
+                                                                   Text="{Binding Label}" VerticalAlignment="Center" />
+                                                        <NumericUpDown Grid.Column="1" Width="170"
+                                                                       Minimum="{Binding Minimum}"
+                                                                       Maximum="{Binding Maximum}"
+                                                                       Increment="{Binding Step}"
+                                                                       FormatString="0.##"
+                                                                       Value="{Binding Value, Mode=TwoWay}" />
+                                                    </Grid>
+                                                </DataTemplate>
+
+                                                <!-- Elección: familias tipográficas -->
+                                                <DataTemplate DataType="vm:ThemeChoiceRowViewModel" x:DataType="vm:ThemeChoiceRowViewModel">
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                                                        <TextBlock Grid.Column="0" Classes="bodySm primaryText"
+                                                                   Text="{Binding Label}" VerticalAlignment="Center" />
+                                                        <ComboBox Grid.Column="1" Width="240"
+                                                                  ItemsSource="{Binding Options}"
+                                                                  SelectedItem="{Binding SelectedOption, Mode=TwoWay}" />
+                                                    </Grid>
+                                                </DataTemplate>
+
+                                            </ItemsControl.DataTemplates>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <TextBlock Grid.Row="2" Classes="caption muted" Margin="0,8,0,0"
+                               TextWrapping="Wrap" Text="{Binding StatusMessage}" />
+                </Grid>
+            </Border>
+
+            <!-- Previsualización en vivo: todo lo de dentro resuelve sus tokens contra LivePreviewResources -->
+            <Border Grid.Column="2" Classes="card">
+                <Grid RowDefinitions="Auto,*">
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                        <materialIcons:MaterialIcon Kind="Eye" Width="15" Height="15" VerticalAlignment="Center"
+                                                    Foreground="{DynamicResource AccentPrimaryBrush}" />
+                        <TextBlock Classes="subtitle primaryText" VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_LivePreviewTitle]}" />
+                        <TextBlock Classes="caption muted" VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_LivePreviewSubtitle]}" />
                     </StackPanel>
-                </ScrollViewer>
-            </Border>
 
-            <!-- Column 2: Live Preview -->
-            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
-                <StackPanel Spacing="10">
-                    <TextBlock Text="Vista Previa en Vivo" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}" />
-                    <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Ejemplo de Tarjeta de Nodo" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock Text="Demostración de contraste y colores de la paleta actual." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                            <Button Content="Botón de Prueba" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" Padding="10,5" CornerRadius="4" />
+                    <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="PreviewHost" Spacing="12">
+
+                            <!-- Tarjeta de nodo: radios, tipografía, chips, sockets, telemetría y elevación -->
+                            <Border Background="{DynamicResource BgCardBrush}"
+                                    BorderBrush="{DynamicResource BorderDarkBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="{DynamicResource RadiusMd}"
+                                    BoxShadow="{DynamicResource Elev2}"
+                                    Padding="{DynamicResource Pad4}">
+                                <StackPanel Spacing="10">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Border Grid.Column="0" Width="28" Height="28"
+                                                Background="{DynamicResource AccentPrimaryBrush}"
+                                                CornerRadius="{DynamicResource RadiusXs}">
+                                            <materialIcons:MaterialIcon Kind="Folder" Width="16" Height="16"
+                                                                        Foreground="{DynamicResource TextOnAccentBrush}"
+                                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Classes="semiBold primaryText"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_StandardTextSample]}" />
+                                            <TextBlock Classes="micro muted" Text="3 inputs · 2 outputs" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2" Classes="badgeAccent" VerticalAlignment="Center">
+                                            <TextBlock Classes="micro onAccent"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[NodeStatus_Running]}" />
+                                        </Border>
+                                    </Grid>
+
+                                    <StackPanel Spacing="5">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Border Grid.Column="0" Classes="led ledLarge onSuccess" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Classes="caption secondary" Margin="8,0,0,0"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_ColFile]}" />
+                                            <Border Grid.Column="2" Classes="badge">
+                                                <TextBlock Classes="micro muted" Text="txt" />
+                                            </Border>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Border Grid.Column="0" Classes="led ledLarge onInfo" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Classes="caption secondary" Margin="8,0,0,0"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_ColResult]}" />
+                                            <Border Grid.Column="2" Classes="badge">
+                                                <TextBlock Classes="micro muted" Text="any" />
+                                            </Border>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Border Height="6" CornerRadius="{DynamicResource RadiusPill}"
+                                            Background="{DynamicResource BgHoverBrush}">
+                                        <Border Width="180" HorizontalAlignment="Left"
+                                                CornerRadius="{DynamicResource RadiusPill}"
+                                                Background="{DynamicResource AccentPrimaryBrush}" />
+                                    </Border>
+
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="micro muted" Text="12 / 24" />
+                                        <TextBlock Grid.Column="1" Classes="micro muted" Text="1.4 MB" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Botones: radios, altura y rellenos de la escala del tema -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="sectionLabel"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_PreviewActions]}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="primary" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnPrimary]}" />
+                                    <Button Classes="success" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnSuccess]}" />
+                                    <Button Classes="warning" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnWarning]}" />
+                                    <Button Classes="danger" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_BtnDanger]}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Campos: tipografía de interfaz y monoespaciada -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="sectionLabel"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_PreviewInputs]}" />
+                                <TextBox Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_StandardTextSample]}" />
+                                <TextBox Classes="mono" Text=".Where(f =&gt; f.Length &gt; 1024)" />
+                            </StackPanel>
+
+                            <!-- Tabla: bordes, superficies alternas y densidad -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="sectionLabel"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_PreviewDataTable]}" />
+                                <Border Classes="panel" Padding="{DynamicResource Pad3}">
+                                    <StackPanel>
+                                        <Grid ColumnDefinitions="*,80">
+                                            <TextBlock Grid.Column="0" Classes="micro muted"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_ColFile]}" />
+                                            <TextBlock Grid.Column="1" Classes="micro muted"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Theme_ColResult]}" />
+                                        </Grid>
+                                        <Border Classes="dividerH" />
+                                        <Grid ColumnDefinitions="*,80">
+                                            <TextBlock Grid.Column="0" Classes="caption primaryText" Text="informe_final.pdf" />
+                                            <TextBlock Grid.Column="1" Classes="caption secondary" Text="OK" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,80" Margin="0,4,0,0">
+                                            <TextBlock Grid.Column="0" Classes="caption primaryText" Text="factura_2026_09.csv" />
+                                            <TextBlock Grid.Column="1" Classes="caption secondary" Text="OK" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Escalas del tema: son justo los tres ajustes que el Studio controla -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Classes="sectionLabel"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeStudio_TokenPreviewTitle]}" />
+
+                                <TextBlock Classes="micro muted"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeStudio_RadiusSample]}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border Width="42" Height="26" Background="{DynamicResource BgHoverBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXs}" />
+                                    <Border Width="42" Height="26" Background="{DynamicResource BgHoverBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" />
+                                    <Border Width="42" Height="26" Background="{DynamicResource BgHoverBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" />
+                                    <Border Width="42" Height="26" Background="{DynamicResource BgHoverBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusLg}" />
+                                    <Border Width="42" Height="26" Background="{DynamicResource BgHoverBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXl}" />
+                                    <Border Width="42" Height="26" Background="{DynamicResource BgHoverBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXxl}" />
+                                </StackPanel>
+
+                                <TextBlock Classes="micro muted"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeStudio_SpacingSample]}" />
+                                <StackPanel Spacing="3">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Border Height="10" Width="{DynamicResource Space1}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space2}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space3}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space4}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space5}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space6}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space7}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space8}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                        <Border Height="10" Width="{DynamicResource Space9}" Background="{DynamicResource AccentCyanBrush}" CornerRadius="{DynamicResource RadiusPill}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock Classes="micro muted"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeStudio_ElevationSample]}" />
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Border Width="58" Height="34" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="{DynamicResource RadiusSm}" BoxShadow="{DynamicResource Elev1}" />
+                                    <Border Width="58" Height="34" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="{DynamicResource RadiusSm}" BoxShadow="{DynamicResource Elev2}" />
+                                    <Border Width="58" Height="34" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="{DynamicResource RadiusSm}" BoxShadow="{DynamicResource Elev3}" />
+                                    <Border Width="58" Height="34" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="{DynamicResource RadiusSm}" BoxShadow="{DynamicResource Elev4}" />
+                                    <Border Width="58" Height="34" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="{DynamicResource RadiusSm}" BoxShadow="{DynamicResource ElevGlowAccent}" />
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </Border>
         </Grid>
 
-        <!-- Footer Actions -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto">
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Command="{Binding ApplyAndSaveThemeCommand}" Content="Guardar y Aplicar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
-                <Button Click="Close_Click" Content="Cerrar" Padding="14,6" CornerRadius="6" />
-            </StackPanel>
-        </Grid>
+        <!-- ── Pie de acciones ──────────────────────────────────────────────────── -->
+        <Border Grid.Row="2" Classes="chromeBottom" Padding="{DynamicResource Pad5}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Classes="caption muted" VerticalAlignment="Center"
+                           Text="{Binding CurrentThemeName}" TextTrimming="CharacterEllipsis" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="ghost" Command="{Binding ApplyToApplicationCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="CheckBold" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_TestInApp]}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="primary"
+                            Command="{Binding SaveAndApplyCommand}"
+                            CommandParameter="{Binding $parent[Window]}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="CheckBold" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ThemeCustomizer_SaveAndApply]}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="ghost" Click="Close_Click"
+                            Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close]}" />
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

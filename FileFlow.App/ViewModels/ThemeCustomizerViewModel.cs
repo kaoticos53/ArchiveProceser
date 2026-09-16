@@ -15,6 +15,14 @@ using FileFlow.Sdk.Services;
 
 namespace FileFlow.App.ViewModels;
 
+/// <summary>
+/// View model del Theme Studio.
+///
+/// El editor no está escrito a mano ajuste por ajuste: se genera a partir de <see cref="ThemeSettingCatalog"/>
+/// y cada fila escribe sobre la propiedad real de <see cref="ThemeDefinition"/>. Al cambiar cualquier valor se
+/// regeneran los tokens de <see cref="LivePreviewResources"/>, que es el diccionario que consume la vista previa,
+/// de modo que mover un radio, una tipografía o una sombra se ve al instante sin aplicar el tema a la aplicación.
+/// </summary>
 public partial class ThemeCustomizerViewModel : ObservableObject
 {
     private readonly CustomThemeService _themeService;
@@ -27,19 +35,33 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     private ThemeDefinition _editingTheme = new();
 
     [ObservableProperty]
-    private ResourceDictionary _livePreviewResources = new();
-
-    [ObservableProperty]
     private bool _isCustomTheme;
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
+    /// <summary>Nombre del tema en edición (campo de la cabecera del editor).</summary>
+    [ObservableProperty]
+    private string _currentThemeName = string.Empty;
+
+    /// <summary>
+    /// Tokens del tema en edición. La instancia es <b>estable</b> a propósito: la vista previa la engancha una
+    /// sola vez y cada ajuste reemplaza los valores en el sitio, de modo que los <c>DynamicResource</c> del
+    /// panel de previsualización se re-resuelven en caliente. Reemplazar el diccionario entero dejaría a la
+    /// vista apuntando al objeto antiguo.
+    /// </summary>
+    public ResourceDictionary LivePreviewResources { get; } = new();
+
+    /// <summary>Editor por secciones, generado desde el catálogo de ajustes del tema.</summary>
+    public ObservableCollection<ThemeSettingSectionViewModel> Sections { get; } = [];
+
     public ObservableCollection<ThemeDefinition> AvailableThemes { get; } = [];
-    public ObservableCollection<string> AvailableFontFamilies { get; } = [];
-    public ObservableCollection<string> AvailableCodeFonts { get; } = [];
-    public IReadOnlyList<double> FontSizes { get; } = [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0];
-    public IReadOnlyList<double> CornerRadiusOptions { get; } = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0];
+
+    /// <summary>Familias tipográficas publicadas por el catálogo (misma fuente de verdad que el editor).</summary>
+    public ObservableCollection<string> AvailableFontFamilies { get; }
+
+    /// <summary>Familias monoespaciadas publicadas por el catálogo.</summary>
+    public ObservableCollection<string> AvailableCodeFonts { get; }
 
     public ThemeCustomizerViewModel() : this(CustomThemeService.Instance, null)
     {
@@ -50,7 +72,9 @@ public partial class ThemeCustomizerViewModel : ObservableObject
         _themeService = themeService;
         _dialogService = dialogService ?? NullDialogService.Instance;
 
-        LoadFontLists();
+        AvailableFontFamilies = [.. CatalogOptions(nameof(ThemeDefinition.FontFamily))];
+        AvailableCodeFonts = [.. CatalogOptions(nameof(ThemeDefinition.CodeFontFamily))];
+
         LoadThemes();
 
         string currentId = ThemeManager.Instance.CurrentThemeId;
@@ -58,26 +82,17 @@ public partial class ThemeCustomizerViewModel : ObservableObject
                      ?? AvailableThemes.FirstOrDefault();
     }
 
-    private void LoadFontLists()
-    {
-        var curatedFonts = new[] { "Segoe UI", "Segoe UI Variable Text", "Inter", "Roboto", "Outfit", "Arial", "Ubuntu", "Tahoma", "Verdana" };
-        foreach (var font in curatedFonts)
-        {
-            AvailableFontFamilies.Add(font);
-        }
-
-        var curatedCodeFonts = new[] { "Cascadia Code, Consolas, monospace", "Cascadia Code", "Consolas", "Fira Code", "Courier New", "monospace" };
-        foreach (var cf in curatedCodeFonts)
-        {
-            AvailableCodeFonts.Add(cf);
-        }
-    }
+    /// <summary>Opciones que el catálogo publica para un ajuste de elección (las familias tipográficas).</summary>
+    private static string[] CatalogOptions(string propertyName) =>
+        ThemeSettingCatalog.Settings
+            .FirstOrDefault(setting => setting.Property == propertyName)
+            ?.Options?.ToArray()
+        ?? [];
 
     public void LoadThemes()
     {
         AvailableThemes.Clear();
-        var all = _themeService.GetAllThemes();
-        foreach (var theme in all)
+        foreach (var theme in _themeService.GetAllThemes())
         {
             AvailableThemes.Add(theme);
         }
@@ -89,13 +104,91 @@ public partial class ThemeCustomizerViewModel : ObservableObject
 
         EditingTheme = value.Clone();
         IsCustomTheme = !value.IsBuiltIn;
+        CurrentThemeName = value.Name;
+        RebuildEditor();
         UpdateLivePreview();
-        StatusMessage = $"Tema cargado: {value.Name}";
+        StatusMessage = LocalizationManager.Instance.GetFormattedString("ThemeStudio_Status_Loaded", "Theme loaded: {0}", value.Name);
     }
 
+    partial void OnCurrentThemeNameChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || EditingTheme.Name == value)
+        {
+            return;
+        }
+
+        EditingTheme.Name = value;
+        RefreshSelectedThemeName();
+    }
+
+    /// <summary>Reconstruye el editor a partir del catálogo y engancha cada fila al refresco de la vista previa.</summary>
+    private void RebuildEditor()
+    {
+        Sections.Clear();
+
+        foreach (string sectionKey in ThemeSettingCatalog.Sections)
+        {
+            var rows = ThemeSettingCatalog.Settings
+                .Where(setting => setting.SectionKey == sectionKey)
+                .Select(CreateRow)
+                .ToList();
+
+            if (rows.Count == 0)
+            {
+                continue;
+            }
+
+            Sections.Add(new ThemeSettingSectionViewModel(sectionKey, rows));
+        }
+    }
+
+    private ThemeSettingRowViewModel CreateRow(ThemeSettingDescriptor descriptor)
+    {
+        ThemeSettingRowViewModel row = descriptor.Kind switch
+        {
+            ThemeSettingKind.Color => new ThemeColorRowViewModel(descriptor, EditingTheme),
+            ThemeSettingKind.Choice => new ThemeChoiceRowViewModel(descriptor, EditingTheme),
+            _ => new ThemeNumberRowViewModel(descriptor, EditingTheme)
+        };
+
+        row.ValueChanged += UpdateLivePreview;
+        return row;
+    }
+
+    /// <summary>
+    /// Regenera los tokens del tema en edición y los vuelca sobre la instancia estable de
+    /// <see cref="LivePreviewResources"/>, que es lo que consume la previsualización en vivo.
+    /// </summary>
     public void UpdateLivePreview()
     {
-        LivePreviewResources = CustomThemeService.BuildResourceDictionary(EditingTheme);
+        var generated = CustomThemeService.BuildResourceDictionary(EditingTheme);
+
+        foreach (var entry in generated)
+        {
+            if (entry.Key is string key)
+            {
+                LivePreviewResources[key] = entry.Value;
+            }
+        }
+    }
+
+    private void RefreshSelectedThemeName()
+    {
+        if (SelectedTheme == null)
+        {
+            return;
+        }
+
+        int index = AvailableThemes.IndexOf(SelectedTheme);
+        if (index < 0)
+        {
+            return;
+        }
+
+        SelectedTheme.Name = EditingTheme.Name;
+
+        // La lista muestra instancias del servicio, así que se avisa del cambio de nombre de la fila en curso.
+        AvailableThemes[index] = SelectedTheme;
     }
 
     [RelayCommand]
@@ -104,16 +197,16 @@ public partial class ThemeCustomizerViewModel : ObservableObject
         var newTheme = new ThemeDefinition
         {
             Id = Guid.NewGuid().ToString("N"),
-            Name = "Mi Tema Personalizado",
-            Description = "Tema personalizado creado por el usuario.",
+            Name = LocalizationManager.Instance.GetString("ThemeStudio_DefaultNewThemeName", "My Custom Theme"),
+            Description = LocalizationManager.Instance.GetString("ThemeStudio_DefaultNewThemeDescription", "Custom theme created by the user."),
             IsBuiltIn = false,
-            IsDark = true
+            IsDark = EditingTheme.IsDark
         };
 
         _themeService.SaveCustomTheme(newTheme);
         LoadThemes();
         SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == newTheme.Id);
-        StatusMessage = "Nuevo tema personalizado creado.";
+        StatusMessage = LocalizationManager.Instance.GetString("ThemeStudio_Status_Created", "New custom theme created.");
     }
 
     [RelayCommand]
@@ -121,11 +214,12 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     {
         if (SelectedTheme == null) return;
 
-        string newName = $"{SelectedTheme.Name} (Copia)";
+        string suffix = LocalizationManager.Instance.GetString("ThemeStudio_CopySuffix", "(Copy)");
+        string newName = $"{SelectedTheme.Name} {suffix}";
         var duplicated = _themeService.DuplicateTheme(EditingTheme, newName);
         LoadThemes();
         SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == duplicated.Id);
-        StatusMessage = $"Tema duplicado como '{newName}'.";
+        StatusMessage = LocalizationManager.Instance.GetFormattedString("ThemeStudio_Status_Duplicated", "Theme duplicated as '{0}'.", newName);
     }
 
     [RelayCommand]
@@ -133,23 +227,24 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     {
         if (SelectedTheme == null || SelectedTheme.IsBuiltIn)
         {
-            string factoryMsg = LocalizationManager.Instance.GetString("Msg_ThemeFactoryNoDelete", "No se pueden eliminar los temas predefinidos de fábrica.");
-            string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Personalizador de Temas");
-            _dialogService.ShowInformation(factoryMsg, title);
+            _dialogService.ShowInformation(
+                LocalizationManager.Instance.GetString("Msg_ThemeFactoryNoDelete", "Cannot delete factory default themes."),
+                LocalizationManager.Instance.GetString("ThemeCustomizer_HeaderTitle", "Theme Studio"));
             return;
         }
 
-        bool confirm = _dialogService.ShowConfirmation(
-            $"¿Estás seguro de que deseas eliminar el tema personalizado '{SelectedTheme.Name}'?",
-            "Confirmar Eliminación");
+        string confirmMessage = LocalizationManager.Instance.GetFormattedString(
+            "ThemeStudio_ConfirmDelete",
+            "Delete the custom theme '{0}'?",
+            SelectedTheme.Name);
+        string confirmTitle = LocalizationManager.Instance.GetString("ThemeStudio_ConfirmDeleteTitle", "Confirm deletion");
 
-        if (!confirm) return;
+        if (!_dialogService.ShowConfirmation(confirmMessage, confirmTitle)) return;
 
-        string idToDelete = SelectedTheme.Id;
-        _themeService.DeleteCustomTheme(idToDelete);
+        _themeService.DeleteCustomTheme(SelectedTheme.Id);
         LoadThemes();
         SelectedTheme = AvailableThemes.FirstOrDefault();
-        StatusMessage = "Tema eliminado.";
+        StatusMessage = LocalizationManager.Instance.GetString("ThemeStudio_Status_Deleted", "Theme deleted.");
     }
 
     [RelayCommand]
@@ -157,22 +252,22 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     {
         if (EditingTheme.IsBuiltIn)
         {
-            // Si es un tema de fábrica, crear una copia personalizada
+            // Los temas de fábrica son inmutables: guardar sobre uno crea una copia personalizada.
             var copy = EditingTheme.Clone();
             copy.Id = Guid.NewGuid().ToString("N");
-            copy.Name = $"{EditingTheme.Name} (Personalizado)";
+            copy.Name = $"{EditingTheme.Name} {LocalizationManager.Instance.GetString("ThemeStudio_CustomSuffix", "(Custom)")}";
             copy.IsBuiltIn = false;
             _themeService.SaveCustomTheme(copy);
             LoadThemes();
             SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == copy.Id);
-            StatusMessage = $"Guardado como tema personalizado: {copy.Name}";
+            StatusMessage = LocalizationManager.Instance.GetFormattedString("ThemeStudio_Status_SavedAs", "Saved as custom theme: {0}", copy.Name);
         }
         else
         {
             _themeService.SaveCustomTheme(EditingTheme);
             LoadThemes();
             SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == EditingTheme.Id);
-            StatusMessage = $"Tema '{EditingTheme.Name}' guardado correctamente.";
+            StatusMessage = LocalizationManager.Instance.GetFormattedString("ThemeStudio_Status_Saved", "Theme '{0}' saved.", EditingTheme.Name);
         }
     }
 
@@ -185,7 +280,7 @@ public partial class ThemeCustomizerViewModel : ObservableObject
         prefs.ActiveTheme = EditingTheme.Id;
         UserPreferencesService.Instance.Save();
 
-        StatusMessage = $"Tema '{EditingTheme.Name}' aplicado a la aplicación en vivo.";
+        StatusMessage = LocalizationManager.Instance.GetFormattedString("ThemeStudio_Status_Applied", "Theme '{0}' applied to the application live.", EditingTheme.Name);
     }
 
     [RelayCommand]
@@ -194,86 +289,104 @@ public partial class ThemeCustomizerViewModel : ObservableObject
         SaveCustomTheme();
         ApplyToApplication();
 
-        if (window != null)
-        {
-            window.Close(true);
-        }
+        window?.Close(true);
     }
 
     [RelayCommand]
     public async Task ExportThemeAsync()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-        {
-            var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.StorageProvider != null)
-            {
-                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-                {
-                    Title = "Exportar Tema Visual",
-                    DefaultExtension = "json",
-                    SuggestedFileName = $"{SanitizeFileName(EditingTheme.Name)}_theme.json"
-                });
+        var file = await PickFileAsync(save: true,
+            LocalizationManager.Instance.GetString("Theme_ExportTitle", "Export Visual Theme"),
+            $"{SanitizeFileName(EditingTheme.Name)}_theme.json");
 
-                if (file != null)
-                {
-                    try
-                    {
-                        string json = _themeService.ExportThemeToJson(EditingTheme);
-                        await File.WriteAllTextAsync(file.Path.LocalPath, json);
-                        StatusMessage = $"Tema exportado con éxito a '{Path.GetFileName(file.Path.LocalPath)}'.";
-                        string successMsg = LocalizationManager.Instance.GetString("Msg_ThemeExportSuccess", "Tema exportado correctamente.");
-                        string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
-                        _dialogService.ShowInformation(successMsg, title);
-                    }
-                    catch (Exception ex)
-                    {
-                        _dialogService.ShowError($"Error: {ex.Message}", "Error");
-                    }
-                }
-            }
+        if (file == null) return;
+
+        try
+        {
+            string json = _themeService.ExportThemeToJson(EditingTheme);
+            await File.WriteAllTextAsync(file, json);
+            StatusMessage = LocalizationManager.Instance.GetFormattedString(
+                "ThemeStudio_Status_Exported", "Theme exported to '{0}'.", Path.GetFileName(file));
+
+            _dialogService.ShowInformation(
+                LocalizationManager.Instance.GetString("Msg_ThemeExportSuccess", "Theme exported successfully."),
+                LocalizationManager.Instance.GetString("Theme_ExportTitle", "Export Visual Theme"));
+        }
+        catch (Exception ex)
+        {
+            ReportThemeError(ex);
         }
     }
 
     [RelayCommand]
     public async Task ImportThemeAsync()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-        {
-            var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.StorageProvider != null)
-            {
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = "Importar Tema Visual",
-                    AllowMultiple = false
-                });
+        var file = await PickFileAsync(save: false,
+            LocalizationManager.Instance.GetString("Theme_ImportTitle", "Import Visual Theme"),
+            suggestedFileName: null);
 
-                if (files != null && files.Count > 0)
-                {
-                    try
-                    {
-                        string json = await File.ReadAllTextAsync(files[0].Path.LocalPath);
-                        var imported = _themeService.ImportThemeFromJson(json);
-                        LoadThemes();
-                        SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == imported.Id);
-                        StatusMessage = $"Tema '{imported.Name}' importado con éxito.";
-                        string successMsg = string.Format(LocalizationManager.Instance.GetString("Msg_ThemeImportSuccess", "Tema '{0}' importado y añadido a tus temas personalizados."), imported.Name);
-                        string title = LocalizationManager.Instance.GetString("ThemeCustomizer_Title", "Temas");
-                        _dialogService.ShowInformation(successMsg, title);
-                    }
-                    catch (Exception ex)
-                    {
-                        _dialogService.ShowError($"Error: {ex.Message}", "Error");
-                    }
-                }
-            }
+        if (file == null) return;
+
+        try
+        {
+            string json = await File.ReadAllTextAsync(file);
+            var imported = _themeService.ImportThemeFromJson(json);
+            LoadThemes();
+            SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Id == imported.Id);
+            StatusMessage = LocalizationManager.Instance.GetFormattedString("ThemeStudio_Status_Imported", "Theme '{0}' imported successfully.", imported.Name);
+
+            _dialogService.ShowInformation(
+                LocalizationManager.Instance.GetFormattedString("Msg_ThemeImportSuccess", "Theme '{0}' imported and added to your custom themes.", imported.Name),
+                LocalizationManager.Instance.GetString("Theme_ImportTitle", "Import Visual Theme"));
+        }
+        catch (Exception ex)
+        {
+            ReportThemeError(ex);
         }
     }
 
-    private static string SanitizeFileName(string name)
+    private void ReportThemeError(Exception ex)
     {
-        var invalid = Path.GetInvalidFileNameChars();
-        return string.Concat(name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).Replace(" ", "_");
+        string message = LocalizationManager.Instance.GetFormattedString("ThemeStudio_ErrorFormat", "Theme error: {0}", ex.Message);
+        StatusMessage = message;
+        _dialogService.ShowError(message, LocalizationManager.Instance.GetString("ThemeStudio_ErrorTitle", "Theme error"));
     }
+
+    private static async Task<string?> PickFileAsync(bool save, string title, string? suggestedFileName)
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop
+            || desktop.MainWindow == null)
+        {
+            return null;
+        }
+
+        var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
+        if (topLevel?.StorageProvider == null)
+        {
+            return null;
+        }
+
+        if (save)
+        {
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = title,
+                DefaultExtension = "json",
+                SuggestedFileName = suggestedFileName ?? "theme.json"
+            });
+
+            return file?.Path.LocalPath;
+        }
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false
+        });
+
+        return files.Count > 0 ? files[0].Path.LocalPath : null;
+    }
+
+    private static string SanitizeFileName(string name) =>
+        string.Concat(name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).Replace(' ', '_');
 }

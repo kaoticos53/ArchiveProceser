@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:nodify="using:Nodify.Avalonia.Nodes"
              xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
              xmlns:views="clr-namespace:FileFlow.App.Views;assembly=FileFlow.App"
@@ -14,7 +15,6 @@
 
     <UserControl.Resources>
         <ResourceDictionary>
-            <conv:StringEqualsToBooleanConverter x:Key="StringEqualsToBooleanConverter" />
             <conv:BreakpointToBrushConverter x:Key="BreakpointToBrushConverter" />
             <conv:LoggingToBrushConverter x:Key="LoggingToBrushConverter" />
             <conv:LoggingToTooltipConverter x:Key="LoggingToTooltipConverter" />
@@ -24,6 +24,50 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://FileFlow.App/Themes/Templates/NodeParameterTemplates.axaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!--
+                Socket de puerto: la forma comunica el TIPO de dato (círculo=texto, cuadrado=archivo/colección,
+                triángulo=booleano, rombo=numérico) y el color sale del tema por clases de estilo. Las clases de
+                estado de arrastre resaltan los destinos válidos y atenúan el resto mientras se dibuja un cable.
+                Se define una vez y se reutiliza en entradas y salidas para que no puedan divergir.
+            -->
+            <DataTemplate x:Key="PortSocketTemplate" DataType="vm:PortViewModel">
+                <Grid Width="15" Height="15" ToolTip.Tip="{Binding SocketToolTip}" VerticalAlignment="Center">
+                    <Border Classes="socket"
+                            Classes.shapeCircle="{Binding IsCircleSocket}"
+                            Classes.shapeSquare="{Binding IsSquareSocket}"
+                            Classes.shapeDiamond="{Binding IsDiamondSocket}"
+                            Classes.typeFiles="{Binding IsFilesType}"
+                            Classes.typeText="{Binding IsTextType}"
+                            Classes.typeBoolean="{Binding IsBooleanType}"
+                            Classes.typeNumber="{Binding IsNumberType}"
+                            Classes.typeBinary="{Binding IsBinaryType}"
+                            Classes.typeCollection="{Binding IsCollectionType}"
+                            Classes.typeAny="{Binding IsAnyType}"
+                            Classes.connected="{Binding IsConnected}"
+                            Classes.dragSource="{Binding IsDragSource}"
+                            Classes.compatible="{Binding IsConnectableDuringDrag}"
+                            Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
+                            Classes.incompatible="{Binding IsDimmedDuringDrag}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                    <Path Classes="socketTriangle"
+                          Classes.typeFiles="{Binding IsFilesType}"
+                          Classes.typeText="{Binding IsTextType}"
+                          Classes.typeBoolean="{Binding IsBooleanType}"
+                          Classes.typeNumber="{Binding IsNumberType}"
+                          Classes.typeBinary="{Binding IsBinaryType}"
+                          Classes.typeCollection="{Binding IsCollectionType}"
+                          Classes.typeAny="{Binding IsAnyType}"
+                          Classes.connected="{Binding IsConnected}"
+                          Classes.dragSource="{Binding IsDragSource}"
+                          Classes.compatible="{Binding IsConnectableDuringDrag}"
+                          Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
+                          Classes.incompatible="{Binding IsDimmedDuringDrag}"
+                          IsVisible="{Binding IsTriangleSocket}"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+            </DataTemplate>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -32,7 +76,7 @@
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[InspectorTitle]}"
                       Command="{Binding InspectNodeCommand}">
                 <MenuItem.Icon>
-                    <TextBlock Text="🔍" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="Magnify" Width="12" Height="12" />
                 </MenuItem.Icon>
             </MenuItem>
 
@@ -40,7 +84,7 @@
                       InputGesture="F2"
                       Command="{Binding StartRenamingCommand}">
                 <MenuItem.Icon>
-                    <TextBlock Text="✏️" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="RenameBox" Width="12" Height="12" />
                 </MenuItem.Icon>
             </MenuItem>
 
@@ -54,8 +98,8 @@
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[LoggingToggle]}"
                       Command="{Binding ToggleLoggingCommand}">
                 <MenuItem.Icon>
-                    <Border Width="12" Height="12" CornerRadius="2" Background="#06B6D4">
-                        <TextBlock Text="≡" FontSize="8" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Width="12" Height="12" CornerRadius="{DynamicResource RadiusXs}" Background="#06B6D4">
+                        <materialIcons:MaterialIcon Kind="ConsoleLine" Width="8" Height="8" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                 </MenuItem.Icon>
             </MenuItem>
@@ -66,7 +110,7 @@
                       InputGesture="Ctrl+C"
                       Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).CopySelectedNodesCommand}">
                 <MenuItem.Icon>
-                    <TextBlock Text="📋" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="ClipboardText" Width="12" Height="12" />
                 </MenuItem.Icon>
             </MenuItem>
 
@@ -74,7 +118,7 @@
                       InputGesture="Ctrl+X"
                       Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).CutSelectedNodesCommand}">
                 <MenuItem.Icon>
-                    <TextBlock Text="✂" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="ImageFilter" Width="12" Height="12" />
                 </MenuItem.Icon>
             </MenuItem>
 
@@ -82,7 +126,7 @@
                       InputGesture="Ctrl+D"
                       Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DuplicateSelectedNodesCommand}">
                 <MenuItem.Icon>
-                    <TextBlock Text="📑" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="FileTable" Width="12" Height="12" />
                 </MenuItem.Icon>
             </MenuItem>
 
@@ -91,7 +135,7 @@
             <!-- Quick Color Menu -->
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ChangeColor]}">
                 <MenuItem.Icon>
-                    <TextBlock Text="🎨" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="Palette" Width="12" Height="12" />
                 </MenuItem.Icon>
 
                 <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorEmerald]}"
@@ -143,33 +187,49 @@
                       InputGesture="Delete"
                       Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteSelectedNodesCommand}">
                 <MenuItem.Icon>
-                    <TextBlock Text="🗑" FontSize="12" />
+                    <materialIcons:MaterialIcon  Kind="TrashCan" Width="12" Height="12" />
                 </MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
     </UserControl.ContextMenu>
 
     <Grid HorizontalAlignment="Stretch">
-        <!-- Outer Selection Glow -->
-        <Border BorderBrush="{DynamicResource AccentPrimaryBrush}" 
-                BorderThickness="2" CornerRadius="8" Margin="-2" IsHitTestVisible="False"
-                IsVisible="{Binding IsSelected}"
-                BoxShadow="0 0 10 0 #906366F1" />
+        <!-- Profundidad del nodo sobre el lienzo: la tarjeta se despega del fondo con la elevación del tema -->
+        <Border Background="{DynamicResource BgCardBrush}"
+                CornerRadius="{DynamicResource RadiusMd}"
+                BoxShadow="{DynamicResource Elev2}"
+                IsHitTestVisible="False" />
 
-        <!-- Outer Execution Glow -->
-        <Border BorderBrush="#10B981" 
-                BorderThickness="2" CornerRadius="8" Margin="-2" IsHitTestVisible="False"
-                IsVisible="{Binding ExecutionStatus, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Running}"
-                BoxShadow="0 0 14 0 #E010B981" />
+        <!-- Resplandor de selección -->
+        <Border BorderBrush="{DynamicResource AccentPrimaryBrush}" 
+                BorderThickness="2" CornerRadius="{DynamicResource RadiusMd}" Margin="-2" IsHitTestVisible="False"
+                IsVisible="{Binding IsSelected}"
+                BoxShadow="{DynamicResource ElevGlowAccent}" />
+
+        <!-- Resplandor de ejecución en curso -->
+        <Border BorderBrush="{DynamicResource AccentSuccessBrush}" 
+                BorderThickness="2" CornerRadius="{DynamicResource RadiusMd}" Margin="-2" IsHitTestVisible="False"
+                IsVisible="{Binding IsExecuting}"
+                BoxShadow="{DynamicResource ElevGlowSuccess}" />
+
+        <!-- Resplandor de error (nodo fallido o en pausa por excepción) -->
+        <Border BorderBrush="{DynamicResource AccentErrorBrush}" 
+                BorderThickness="2" CornerRadius="{DynamicResource RadiusMd}" Margin="-2" IsHitTestVisible="False"
+                IsVisible="{Binding IsFaulted}"
+                BoxShadow="{DynamicResource ElevGlowError}" />
 
         <nodify:Node Header="{Binding}" 
+                     Footer="{Binding}"
                      Width="{Binding Width, Mode=TwoWay}"
                      HorizontalAlignment="Stretch"
                      HorizontalContentAlignment="Stretch"
+                     VerticalAlignment="Stretch"
+                     VerticalContentAlignment="Stretch"
+                     Padding="0"
                      Background="{DynamicResource BgCardBrush}"
                      BorderBrush="{DynamicResource BorderDarkBrush}"
                      BorderThickness="1.2"
-                     CornerRadius="7">
+                     CornerRadius="{DynamicResource RadiusMd}">
 
             <!-- Node Header Template -->
             <nodify:Node.HeaderTemplate>
@@ -181,51 +241,54 @@
                             Padding="10,6">
                         <StackPanel>
                             <!-- Top Accent Bar (ComfyUI Category Neon Strip) -->
-                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="6,6,0,0" Margin="-10,-6,-10,6" />
+                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="6,6,0,0" Margin="-10,-8,-10,7" />
 
-                            <!-- Header Main Controls Row -->
-                            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                            <!-- LÍNEA 1 · Identidad: icono del tipo, título y controles de la tarjeta -->
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+                                <!-- Icono del tipo de nodo, sobre el fondo del acento de su categoría -->
+                                <Border Grid.Column="0" Width="22" Height="22" CornerRadius="{DynamicResource RadiusSm}" Margin="0,0,8,0"
+                                        Background="{Binding HeaderColor}"
+                                        BorderBrush="{Binding AccentColor}"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Center"
+                                        ToolTip.Tip="{Binding Category}">
+                                    <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="13" Height="13"
+                                                                Foreground="{Binding AccentColor}"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
                                 <!-- Breakpoint Button -->
-                                <Button Grid.Column="0" Command="{Binding ToggleBreakpointCommand}" 
+                                <Button Grid.Column="2" Command="{Binding ToggleBreakpointCommand}"
                                         Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,5,0"
                                         Cursor="Hand" ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[BreakpointToggle]}">
-                                    <Ellipse Width="11" Height="11" 
-                                             Fill="{Binding HasBreakpoint, Converter={StaticResource BreakpointToBrushConverter}}" 
+                                    <Ellipse Width="11" Height="11"
+                                             Fill="{Binding HasBreakpoint, Converter={StaticResource BreakpointToBrushConverter}}"
                                              Stroke="{DynamicResource BorderDarkBrush}" StrokeThickness="1.5" />
                                 </Button>
 
                                 <!-- Toggle Logging Button -->
-                                <Button Grid.Column="1" Command="{Binding ToggleLoggingCommand}" 
+                                <Button Grid.Column="3" Command="{Binding ToggleLoggingCommand}"
                                         Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,6,0"
                                         Cursor="Hand" ToolTip.Tip="{Binding IsLoggingEnabled, Converter={StaticResource LoggingToTooltipConverter}}">
-                                    <Border Width="13" Height="13" CornerRadius="3"
+                                    <Border Width="14" Height="14" CornerRadius="{DynamicResource RadiusXs}"
                                             Background="{Binding IsLoggingEnabled, Converter={StaticResource LoggingToBrushConverter}}"
                                             BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
-                                        <TextBlock Text="≡" FontSize="8.5" FontWeight="Bold" Foreground="White" 
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                                        <materialIcons:MaterialIcon Kind="ConsoleLine" Width="9" Height="9" Foreground="White"
+                                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                 </Button>
 
-                                <!-- Execution LED Indicator -->
-                                <Border Grid.Column="2" Width="9" Height="9" CornerRadius="4.5" Margin="0,0,7,0" VerticalAlignment="Center"
-                                        Background="{Binding ExecutionStatus, Converter={StaticResource NodeExecutionStatusToBrushConverter}}"
-                                        BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1.2"
-                                        ToolTip.Tip="{Binding ExecutionStatus}" />
-
                                 <!-- Title Display / In-place Rename Box -->
-                                <Grid Grid.Column="3" VerticalAlignment="Center">
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Title}" 
-                                               FontWeight="Bold" 
-                                               Foreground="{DynamicResource TextPrimaryBrush}" 
-                                               FontSize="11.5" 
+                                               Classes="bodySm strong primaryText" 
                                                VerticalAlignment="Center" 
                                                TextTrimming="CharacterEllipsis"
                                                IsVisible="{Binding !IsEditingTitle}" />
 
                                     <TextBox x:Name="TitleEditBox"
                                              Text="{Binding EditingTitleText, Mode=TwoWay}"
-                                             FontWeight="Bold"
-                                             FontSize="11"
+                                             Classes="bodySm strong"
                                              Background="{DynamicResource BgSurfaceBrush}"
                                              Foreground="{DynamicResource TextPrimaryBrush}"
                                              CaretBrush="{DynamicResource TextPrimaryBrush}"
@@ -244,15 +307,15 @@
                                         Background="{DynamicResource BgSurfaceBrush}"
                                         BorderBrush="{DynamicResource BorderDarkBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="4"
+                                        CornerRadius="{DynamicResource RadiusXs}"
                                         Padding="4,2"
                                         Margin="4,0,4,0"
                                         Cursor="Hand"
                                         ToolTip.Tip="{Binding ModelStatusToolTip}">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <TextBlock Text="🧠" FontSize="10" VerticalAlignment="Center" />
-                                        <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                                                 Fill="{Binding IsModelLoaded, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=True, FallbackValue='#64748B'}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                        <materialIcons:MaterialIcon VerticalAlignment="Center"  Kind="Brain" Width="10" Height="10" />
+                                        <!-- LED temático: cargado en memoria (verde) o descargado (atenuado) -->
+                                        <Border Classes="led" Classes.onSuccess="{Binding IsModelLoaded}" />
                                     </StackPanel>
                                 </Button>
                                 
@@ -262,24 +325,54 @@
                                               Background="{DynamicResource BgSurfaceBrush}"
                                               BorderBrush="{DynamicResource BorderDarkBrush}"
                                               BorderThickness="1"
-                                              CornerRadius="4"
+                                              CornerRadius="{DynamicResource RadiusXs}"
                                               Padding="5,2"
                                               Margin="4,0,0,0"
                                               Cursor="Hand"
                                               ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ToggleParametersToolTip]}">
                                     <StackPanel Orientation="Horizontal" Spacing="3">
-                                        <TextBlock Text="⚙" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding IsExpanded, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=True, FallbackValue='▼'}" 
-                                                   FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                        <materialIcons:MaterialIcon Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"  Kind="Cog" Width="10" Height="10" />
+                                        <materialIcons:MaterialIcon Kind="ChevronUp" Width="9" Height="9"
+                                                                    Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
+                                                                    IsVisible="{Binding IsExpanded}" />
+                                        <materialIcons:MaterialIcon Kind="ChevronDown" Width="9" Height="9"
+                                                                    Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
+                                                                    IsVisible="{Binding !IsExpanded}" />
                                     </StackPanel>
                                 </ToggleButton>
                             </Grid>
 
+                            <!-- LÍNEA 2 · Contexto: categoría, estado de ejecución y aviso de cuello de botella -->
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,7,0,0">
+                                <Border Grid.Column="0" Classes="badge" Padding="5,1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Category}" Classes="micro secondary" />
+                                </Border>
+
+                                <Border Grid.Column="1" Width="7" Height="7" CornerRadius="{DynamicResource RadiusPill}" Margin="7,0,5,0" VerticalAlignment="Center"
+                                        Background="{Binding ExecutionStatus, Converter={StaticResource NodeExecutionStatusToBrushConverter}}"
+                                        ToolTip.Tip="{Binding ExecutionStatusText}" />
+
+                                <TextBlock Grid.Column="2" Text="{Binding ExecutionStatusText}"
+                                           Classes="micro secondary" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <Border Grid.Column="3" Classes="badge" Padding="4,1" VerticalAlignment="Center"
+                                        Background="{DynamicResource AccentWarningBrush}"
+                                        IsVisible="{Binding IsBottleneck}"
+                                        ToolTip.Tip="{Binding DetailedMetricsToolTip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                        <materialIcons:MaterialIcon Kind="Alert" Width="9" Height="9"
+                                                                    Foreground="{DynamicResource TextOnAccentBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding BottleneckRatioText}" Classes="micro strong onAccent" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
                             <!-- Progress Bar -->
-                            <Grid Margin="0,6,0,0" IsVisible="{Binding IsProgressActive}" RowDefinitions="Auto,Auto">
+                            <Grid Margin="0,7,0,0" IsVisible="{Binding IsProgressActive}" RowDefinitions="Auto,Auto">
                                 <ProgressBar Grid.Row="0" Value="{Binding ProgressPercentage}" Minimum="0" Maximum="100" Height="3.5" 
-                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource AccentSuccessBrush}" BorderThickness="0" CornerRadius="2" />
-                                <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="9" Margin="0,2,0,0" 
+                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource AccentSuccessBrush}" BorderThickness="0" CornerRadius="{DynamicResource RadiusXs}" />
+                                <TextBlock Grid.Row="1" Text="{Binding ProgressMessage}" Classes="micro secondary" Margin="0,2,0,0" 
                                            HorizontalAlignment="Right" />
                             </Grid>
                         </StackPanel>
@@ -287,198 +380,169 @@
                 </DataTemplate>
             </nodify:Node.HeaderTemplate>
 
-            <!-- Node Body: Ports, Parameters & Status Footer -->
-            <Grid RowDefinitions="*,Auto">
-                <StackPanel Grid.Row="0" Margin="0,4">
-                    <!-- Ports Row (Inputs & Outputs aligned on exact card margins) -->
-                    <Grid ColumnDefinitions="*,12,*">
-                        <!-- Input Ports (Left Edge) -->
-                        <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}">
+            <!-- Node Body: Ports & Parameters -->
+            <StackPanel Margin="0,4">
+                <!-- Ports Row (Inputs & Outputs aligned on exact card margins) -->
+                <Grid ColumnDefinitions="*,12,*">
+                    <!-- Input Ports (Left Edge) -->
+                    <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:PortViewModel">
+                                <nodify:NodeInput Header="{Binding}" 
+                                                  IsConnected="{Binding IsConnected, Mode=TwoWay}" 
+                                                  Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                  HorizontalAlignment="Left"
+                                                  Background="Transparent"
+                                                  BorderBrush="Transparent"
+                                                  BorderThickness="0"
+                                                  Margin="-7,3,0,3">
+                                    <nodify:NodeInput.HeaderTemplate>
+                                        <DataTemplate DataType="vm:PortViewModel">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
+                                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PortSocketTemplate}" />
+
+                                                <!-- Input Port Name -->
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Classes="portLabel"
+                                                           Classes.compatible="{Binding IsConnectableDuringDrag}"
+                                                           Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
+                                                           Classes.incompatible="{Binding IsDimmedDuringDrag}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </nodify:NodeInput.HeaderTemplate>
+                                </nodify:NodeInput>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Output Ports (Right Edge) -->
+                    <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputPorts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:PortViewModel">
+                                <nodify:NodeOutput Header="{Binding}" 
+                                                   IsConnected="{Binding IsConnected, Mode=TwoWay}" 
+                                                   Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                   HorizontalAlignment="Right"
+                                                   Background="Transparent"
+                                                   BorderBrush="Transparent"
+                                                   BorderThickness="0"
+                                                   Margin="0,3,-7,3">
+                                    <nodify:NodeOutput.HeaderTemplate>
+                                        <DataTemplate DataType="vm:PortViewModel">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
+                                                <!-- Output Port Name -->
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Classes="portLabel"
+                                                           Classes.compatible="{Binding IsConnectableDuringDrag}"
+                                                           Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
+                                                           Classes.incompatible="{Binding IsDimmedDuringDrag}" />
+
+                                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PortSocketTemplate}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </nodify:NodeOutput.HeaderTemplate>
+                                </nodify:NodeOutput>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+
+                <!-- Inline Parameters Area (Blender Inset Panel) -->
+                <Border Margin="8,5,8,3" 
+                        Background="{DynamicResource BgSurfaceBrush}" 
+                        BorderBrush="{DynamicResource BorderDarkBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="{DynamicResource RadiusSm}" 
+                        Padding="8,6"
+                        IsVisible="{Binding IsExpanded}">
+                    <StackPanel Spacing="{DynamicResource Space2}">
+                        <ItemsControl ItemsSource="{Binding Parameters}"
+                                      ItemTemplate="{StaticResource NodeParameterItemTemplate}" />
+
+                        <!-- Custom Actions (e.g. Add Variable / Switch Case) -->
+                        <ItemsControl ItemsSource="{Binding CustomActions}" Margin="0,4,0,0" IsVisible="{Binding CustomActions.Count}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="vm:PortViewModel">
-                                    <nodify:NodeInput Header="{Binding}" 
-                                                      IsConnected="{Binding IsConnected, Mode=TwoWay}" 
-                                                      Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                      HorizontalAlignment="Left"
-                                                      Background="Transparent"
-                                                      BorderBrush="Transparent"
-                                                      BorderThickness="0"
-                                                      Margin="-7,3,0,3">
-                                        <nodify:NodeInput.HeaderTemplate>
-                                            <DataTemplate DataType="vm:PortViewModel">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                                                    <!-- Geometric Input Socket: Circle, Square, Triangle, Diamond -->
-                                                    <Grid Width="13" Height="13" ToolTip.Tip="{Binding DisplayName}" VerticalAlignment="Center">
-                                                        <!-- Circle Socket -->
-                                                        <Border Width="13" Height="13" CornerRadius="6.5" 
-                                                                Background="{Binding SocketFillColor}" 
-                                                                BorderBrush="{Binding SocketBorderColor}" 
-                                                                BorderThickness="2"
-                                                                IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Circle}" />
-
-                                                        <!-- Square Socket -->
-                                                        <Border Width="12" Height="12" CornerRadius="2" 
-                                                                Background="{Binding SocketFillColor}" 
-                                                                BorderBrush="{Binding SocketBorderColor}" 
-                                                                BorderThickness="2"
-                                                                IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Square}" />
-
-                                                        <!-- Triangle Socket -->
-                                                        <Path Width="11" Height="11" Stretch="Uniform"
-                                                              Fill="{Binding SocketFillColor}"
-                                                              Stroke="{Binding SocketBorderColor}"
-                                                              StrokeThickness="1.5"
-                                                              Data="M 1,1 L 10,6 L 1,11 Z"
-                                                              IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Triangle}" />
-
-                                                        <!-- Diamond Socket -->
-                                                        <Border Width="9.5" Height="9.5" CornerRadius="1"
-                                                                Background="{Binding SocketFillColor}" 
-                                                                BorderBrush="{Binding SocketBorderColor}" 
-                                                                BorderThickness="2"
-                                                                RenderTransform="rotate(45deg)"
-                                                                IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Diamond}" />
-                                                    </Grid>
-
-                                                    <!-- Input Port Name -->
-                                                    <TextBlock Text="{Binding DisplayName}" 
-                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                               FontSize="10.5" FontWeight="SemiBold" 
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </nodify:NodeInput.HeaderTemplate>
-                                    </nodify:NodeInput>
+                                <DataTemplate DataType="vm:NodeActionViewModel">
+                                    <Button Command="{Binding ExecuteCommand}"
+                                            Content="{Binding Title}"
+                                            Background="{DynamicResource BgHoverBrush}"
+                                            Foreground="{DynamicResource AccentGlowBrush}"
+                                            BorderBrush="{DynamicResource BorderDarkBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="{DynamicResource RadiusXs}"
+                                            Padding="6,2.5"
+                                            Margin="0,2,4,2"
+                                            FontSize="{DynamicResource FontSizeMicro}"
+                                            FontWeight="SemiBold"
+                                            Cursor="Hand"
+                                            ToolTip.Tip="{Binding Tooltip}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-
-                        <!-- Output Ports (Right Edge) -->
-                        <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputPorts}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="vm:PortViewModel">
-                                    <nodify:NodeOutput Header="{Binding}" 
-                                                       IsConnected="{Binding IsConnected, Mode=TwoWay}" 
-                                                       Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                       HorizontalAlignment="Right"
-                                                       Background="Transparent"
-                                                       BorderBrush="Transparent"
-                                                       BorderThickness="0"
-                                                       Margin="0,3,-7,3">
-                                        <nodify:NodeOutput.HeaderTemplate>
-                                            <DataTemplate DataType="vm:PortViewModel">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                                                    <!-- Output Port Name -->
-                                                    <TextBlock Text="{Binding DisplayName}" 
-                                                               Foreground="{DynamicResource TextPrimaryBrush}" 
-                                                               FontSize="10.5" FontWeight="SemiBold" 
-                                                               VerticalAlignment="Center" />
-
-                                                    <!-- Geometric Output Socket: Circle, Square, Triangle, Diamond -->
-                                                    <Grid Width="13" Height="13" ToolTip.Tip="{Binding DisplayName}" VerticalAlignment="Center">
-                                                        <!-- Circle Socket -->
-                                                        <Border Width="13" Height="13" CornerRadius="6.5" 
-                                                                Background="{Binding SocketFillColor}" 
-                                                                BorderBrush="{Binding SocketBorderColor}" 
-                                                                BorderThickness="2"
-                                                                IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Circle}" />
-
-                                                        <!-- Square Socket -->
-                                                        <Border Width="12" Height="12" CornerRadius="2" 
-                                                                Background="{Binding SocketFillColor}" 
-                                                                BorderBrush="{Binding SocketBorderColor}" 
-                                                                BorderThickness="2"
-                                                                IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Square}" />
-
-                                                        <!-- Triangle Socket -->
-                                                        <Path Width="11" Height="11" Stretch="Uniform"
-                                                              Fill="{Binding SocketFillColor}"
-                                                              Stroke="{Binding SocketBorderColor}"
-                                                              StrokeThickness="1.5"
-                                                              Data="M 1,1 L 10,6 L 1,11 Z"
-                                                              IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Triangle}" />
-
-                                                        <!-- Diamond Socket -->
-                                                        <Border Width="9.5" Height="9.5" CornerRadius="1"
-                                                                Background="{Binding SocketFillColor}" 
-                                                                BorderBrush="{Binding SocketBorderColor}" 
-                                                                BorderThickness="2"
-                                                                RenderTransform="rotate(45deg)"
-                                                                IsVisible="{Binding SocketShape, Converter={StaticResource StringEqualsToBooleanConverter}, ConverterParameter=Diamond}" />
-                                                    </Grid>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </nodify:NodeOutput.HeaderTemplate>
-                                    </nodify:NodeOutput>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
-
-                    <!-- Inline Parameters Area (Blender Inset Panel) -->
-                    <Border Margin="8,5,8,3" 
-                            Background="{DynamicResource BgSurfaceBrush}" 
-                            BorderBrush="{DynamicResource BorderDarkBrush}" 
-                            BorderThickness="1" 
-                            CornerRadius="5" 
-                            Padding="8,6"
-                            IsVisible="{Binding IsExpanded}">
-                        <StackPanel Spacing="4">
-                            <ItemsControl ItemsSource="{Binding Parameters}"
-                                          ItemTemplate="{StaticResource NodeParameterItemTemplate}" />
-
-                            <!-- Custom Actions (e.g. Add Variable / Switch Case) -->
-                            <ItemsControl ItemsSource="{Binding CustomActions}" Margin="0,4,0,0" IsVisible="{Binding CustomActions.Count}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="vm:NodeActionViewModel">
-                                        <Button Command="{Binding ExecuteCommand}"
-                                                Content="{Binding Label}"
-                                                Background="{DynamicResource BgHoverBrush}"
-                                                Foreground="{DynamicResource AccentGlowBrush}"
-                                                BorderBrush="{DynamicResource BorderDarkBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="4"
-                                                Padding="6,2.5"
-                                                Margin="0,2,4,2"
-                                                FontSize="9.5"
-                                                FontWeight="SemiBold"
-                                                Cursor="Hand"
-                                                ToolTip.Tip="{Binding Description}" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!-- Footer Resize Handle & Telemetry summary -->
-                <Border Grid.Row="1" Background="{DynamicResource BgHeaderBrush}" CornerRadius="0,0,6,6" Padding="8,3.5" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding ExecutionDuration, Converter={StaticResource DurationMsToTextConverter}}" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
-                            <TextBlock Text="•" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
-                            <TextBlock Text="{Binding ProcessedBytes, Converter={StaticResource BytesToTextConverter}}" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
-                            <TextBlock Text="•" FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" />
-                            <TextBlock Text="{Binding LatencyText}" FontSize="9.5" Foreground="{DynamicResource AccentGlowBrush}" FontWeight="SemiBold" />
-                        </StackPanel>
-                        <!-- Resize Thumb -->
-                        <Thumb Grid.Column="1" Width="14" Height="14" Cursor="SizeWestEast" DragDelta="ResizeThumb_DragDelta">
-                            <Thumb.Template>
-                                <ControlTemplate>
-                                    <Border Background="Transparent">
-                                        <TextBlock Text="⇲" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                    </Border>
-                                </ControlTemplate>
-                            </Thumb.Template>
-                        </Thumb>
-                    </Grid>
+                    </StackPanel>
                 </Border>
-            </Grid>
+            </StackPanel>
+
+            <!-- Node Footer Template: Status & Telemetry Metrics (Reaches card border) -->
+            <nodify:Node.FooterTemplate>
+                <DataTemplate DataType="vm:NodeViewModel">
+                    <Border Background="{DynamicResource BgHeaderBrush}" CornerRadius="0,0,6,6" Padding="6,3.5" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0"
+                            ToolTip.Tip="{Binding DetailedMetricsToolTip}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                                <!-- Elementos procesados -->
+                                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                                            IsVisible="{Binding HasTelemetry}">
+                                    <materialIcons:MaterialIcon Kind="Counter" Width="10" Height="10"
+                                                                Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding CurrentStats.ProcessedCount}" Classes="numeric caption muted"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Coste por elemento: la métrica que revela cuellos de botella -->
+                                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                                            IsVisible="{Binding HasTelemetry}">
+                                    <materialIcons:MaterialIcon Kind="Pulse" Width="10" Height="10"
+                                                                Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding RollingLatencyMs, Converter={StaticResource DurationMsToTextConverter}}"
+                                               Classes="numeric caption accent" VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Memoria atribuida por elemento (no todos los nodos asignan memoria medible) -->
+                                <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center"
+                                            IsVisible="{Binding HasRamTelemetry}">
+                                    <materialIcons:MaterialIcon Kind="ExpansionCard" Width="10" Height="10"
+                                                                Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding CurrentStats.RollingAvgAllocatedBytes, Converter={StaticResource BytesToTextConverter}}"
+                                               Classes="numeric caption muted" VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <!-- Aceleración por GPU -->
+                                <Border Classes="badge" Padding="4,0.5" VerticalAlignment="Center"
+                                        Background="{DynamicResource AccentPurpleBrush}" IsVisible="{Binding IsGpuAccelerated}">
+                                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ColGpu]}"
+                                               Classes="micro strong onAccent" />
+                                </Border>
+                            </StackPanel>
+                            <!-- Resize Thumb -->
+                            <Thumb Grid.Column="1" Width="14" Height="14" Cursor="SizeWestEast" DragDelta="ResizeThumb_DragDelta">
+                                <Thumb.Template>
+                                    <ControlTemplate>
+                                        <Border Background="Transparent">
+                                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"  Kind="ChevronUp" Width="10" Height="10" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </nodify:Node.FooterTemplate>
         </nodify:Node>
     </Grid>
 </UserControl>

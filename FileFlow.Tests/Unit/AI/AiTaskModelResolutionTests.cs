@@ -10,6 +10,8 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+[Collection(OnnxInferenceCollection.Name)]
+
 public class AiTaskModelResolutionTests : IDisposable
 {
     private readonly string _tempDir;

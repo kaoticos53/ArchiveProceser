@@ -11,6 +11,8 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+[Collection(OnnxInferenceCollection.Name)]
+
 public class SecurityAndSemanticNodesTests : IDisposable
 {
     private readonly string _tempDir;
@@ -220,11 +222,10 @@ public class SecurityAndSemanticNodesTests : IDisposable
         mockContext.Verify(c => c.EmitAsync("Out", item), Times.Once);
     }
 
-    [Fact]
-    public void ClipModel_Diagnostic_Test()
+    [Fact(Skip = "Requires the optional CLIP ONNX model to be installed in the user model directory.")]
+    public void SemanticEmbeddingEngine_ClassifyZeroShot_WithClipModel_ShouldScoreEnglishAndSpanishCategories()
     {
         string clipPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlow", "Models", "clip-vit-base-patch32.onnx");
-        if (!File.Exists(clipPath)) return;
 
         string imgPath = Path.Combine(_tempDir, "test.png");
         using (var img = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(100, 100))

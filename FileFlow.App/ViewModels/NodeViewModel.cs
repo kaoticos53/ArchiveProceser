@@ -51,12 +51,14 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     private string _editingTitleText = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Icon))]
     private string _category = "General";
 
     [ObservableProperty]
     private string _description = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Icon))]
     private string _nodeTypeName = string.Empty;
 
     [ObservableProperty]
@@ -145,6 +147,9 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     private bool _isLoggingEnabled = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsExecuting))]
+    [NotifyPropertyChangedFor(nameof(IsFaulted))]
+    [NotifyPropertyChangedFor(nameof(ExecutionStatusText))]
     private NodeExecutionStatus _executionStatus = NodeExecutionStatus.Idle;
 
     [ObservableProperty]
@@ -160,18 +165,15 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     private bool _isProgressActive;
 
     [ObservableProperty]
-    private string _latencyText = string.Empty;
-
-    [ObservableProperty]
-    private string _rollingRamText = string.Empty;
-
-    [ObservableProperty]
     private bool _isGpuAccelerated;
 
     [ObservableProperty]
     private string _detailedMetricsToolTip = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTelemetry))]
+    [NotifyPropertyChangedFor(nameof(HasRamTelemetry))]
+    [NotifyPropertyChangedFor(nameof(RollingLatencyMs))]
     private FileFlow.Sdk.Telemetry.NodeTelemetryStats _currentStats;
 
     [ObservableProperty]
@@ -254,54 +256,41 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             : LocalizationManager.Instance.GetString("Node_ModelUnloaded_ToolTip", "El modelo de IA no está cargado en memoria. Haz clic para precargarlo en memoria.");
     }
 
+    /// <summary>
+    /// Vuelca una instantánea de telemetría en el nodo.
+    ///
+    /// El pie de la tarjeta NO guarda texto formateado: expone los valores numéricos (a través de
+    /// <see cref="CurrentStats"/>) y deja el formato a los convertidores de la vista. Así no hay emojis ni
+    /// cadenas con unidades dentro del view model, y el mismo dato se puede reutilizar en cualquier idioma.
+    /// </summary>
     public void UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
     {
         CurrentStats = stats;
+
         if (stats.ProcessedCount > 0)
         {
-            var effLatency = stats.RollingAvgDurationMs > 0 ? stats.RollingAvgDurationMs : stats.AverageTimeMs;
-            LatencyText = effLatency < 1.0
-                ? $"⚡ {effLatency * 1000:F0} µs"
-                : (effLatency < 1000.0
-                    ? $"⚡ {effLatency:F1} ms"
-                    : $"⏱️ {effLatency / 1000.0:F2} s");
-
-            if (stats.RollingAvgAllocatedBytes >= 1024 * 1024)
-            {
-                RollingRamText = $"💾 {stats.RollingAvgAllocatedBytes / (1024.0 * 1024.0):F1} MB";
-            }
-            else if (stats.RollingAvgAllocatedBytes >= 1024)
-            {
-                RollingRamText = $"💾 {stats.RollingAvgAllocatedBytes / 1024.0:F0} KB";
-            }
-            else if (stats.RollingAvgAllocatedBytes > 0)
-            {
-                RollingRamText = $"💾 {stats.RollingAvgAllocatedBytes} B";
-            }
-            else
-            {
-                RollingRamText = string.Empty;
-            }
-
             IsGpuAccelerated = stats.IsGpuAccelerated;
             IsBottleneck = stats.IsBottleneck;
             HeatLevel = stats.HeatLevel;
             BottleneckRatioText = stats.RelativeBottleneckRatio > 0.05
-                ? $"{stats.RelativeBottleneckRatio * 100:F0}% del tiempo"
+                ? LocalizationManager.Instance.GetFormattedString(
+                    "Node_BottleneckPercent", "{0}%", $"{stats.RelativeBottleneckRatio * 100:F0}")
                 : string.Empty;
 
             DetailedMetricsToolTip = BuildDetailedMetricsToolTip(stats);
         }
         else
         {
-            LatencyText = string.Empty;
-            RollingRamText = string.Empty;
             IsGpuAccelerated = false;
             IsBottleneck = false;
             HeatLevel = FileFlow.Sdk.Telemetry.LatencyHeatLevel.None;
             BottleneckRatioText = string.Empty;
             DetailedMetricsToolTip = string.Empty;
         }
+
+        OnPropertyChanged(nameof(HasTelemetry));
+        OnPropertyChanged(nameof(HasRamTelemetry));
+        OnPropertyChanged(nameof(RollingLatencyMs));
     }
 
     private string BuildDetailedMetricsToolTip(FileFlow.Sdk.Telemetry.NodeTelemetryStats stats)
@@ -370,6 +359,9 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     partial void OnExecutionStatusChanged(NodeExecutionStatus value)
     {
         IsLedOn = value == NodeExecutionStatus.Running || value == NodeExecutionStatus.Completed;
+        OnPropertyChanged(nameof(IsExecuting));
+        OnPropertyChanged(nameof(IsFaulted));
+        OnPropertyChanged(nameof(ExecutionStatusText));
         if (value == NodeExecutionStatus.Idle)
         {
             IsProgressActive = false;
@@ -554,6 +546,14 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         Description = _nodeInstance.Description;
         Category = _nodeInstance.Category;
         UpdateModelStatus();
+        OnPropertyChanged(nameof(ExecutionStatusText));
+        OnPropertyChanged(nameof(BottleneckRatioText));
+
+        // El estado de cada socket (tipo, dirección, conexión) es texto visible: se recompone en caliente.
+        foreach (var port in InputPorts.Concat(OutputPorts))
+        {
+            port.RefreshLocalizedText();
+        }
     }
 
     public void Cleanup()
@@ -696,6 +696,46 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             port.UpdatePortContext(snapshot.ItemSnapshot);
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Presentación de la tarjeta (cabecera y telemetría)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Icono vectorial del tipo de nodo, para la cabecera de la tarjeta.</summary>
+    public Material.Icons.MaterialIconKind Icon => NodeIconResolver.GetIconForNodeType(NodeTypeName);
+
+    public bool IsExecuting => ExecutionStatus == NodeExecutionStatus.Running;
+
+    public bool IsFaulted => ExecutionStatus is NodeExecutionStatus.Faulted or NodeExecutionStatus.PausedOnError;
+
+    /// <summary>Estado de ejecución en texto, para la línea de contexto de la cabecera.</summary>
+    public string ExecutionStatusText => ExecutionStatus switch
+    {
+        NodeExecutionStatus.Running => LocalizationManager.Instance.GetString("NodeStatus_Running", "Ejecutando"),
+        NodeExecutionStatus.PausedAtBreakpoint => LocalizationManager.Instance.GetString("NodeStatus_Paused", "En pausa"),
+        NodeExecutionStatus.PausedOnError => LocalizationManager.Instance.GetString("NodeStatus_PausedOnError", "Pausa por error"),
+        NodeExecutionStatus.Completed => LocalizationManager.Instance.GetString("NodeStatus_Completed", "Completado"),
+        NodeExecutionStatus.Faulted => LocalizationManager.Instance.GetString("NodeStatus_Faulted", "Error"),
+        _ => LocalizationManager.Instance.GetString("NodeStatus_Idle", "En espera")
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Pie de telemetría: valores crudos (el formato lo aplica la vista con sus convertidores)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>El nodo ya se ha ejecutado al menos una vez: el pie de métricas tiene datos que mostrar.</summary>
+    public bool HasTelemetry => CurrentStats.ProcessedCount > 0;
+
+    /// <summary>Hay medida de memoria por elemento (no todos los nodos asignan memoria medible).</summary>
+    public bool HasRamTelemetry => CurrentStats.RollingAvgAllocatedBytes > 0;
+
+    /// <summary>
+    /// Latencia por elemento: la media en rodadura cuando existe y, si aún no hay muestras suficientes,
+    /// la media acumulada. En milisegundos, lista para el convertidor de duraciones del pie.
+    /// </summary>
+    public double RollingLatencyMs => CurrentStats.RollingAvgDurationMs > 0
+        ? CurrentStats.RollingAvgDurationMs
+        : CurrentStats.AverageTimeMs;
 
     public void SetExecutionStatus(NodeExecutionStatus status, string? errorDetails = null)
     {

@@ -2,6 +2,7 @@ using System.IO;
 using FileFlow.App.ViewModels;
 using FileFlow.Plugin.AI;
 using FluentAssertions;
+using Material.Icons;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
@@ -28,7 +29,7 @@ public class AiModelManagerViewModelTests
             model.Category.Should().NotBeNullOrWhiteSpace();
             model.Description.Should().NotBeNullOrWhiteSpace();
             model.ExpectedSizeLabel.Should().NotBeNullOrWhiteSpace();
-            model.StatusIcon.Should().NotBeNullOrWhiteSpace();
+            Enum.IsDefined(model.StatusIcon).Should().BeTrue("el icono de estado debe ser un glifo vectorial válido");
             model.StatusText.Should().NotBeNullOrWhiteSpace();
         }
     }
@@ -63,7 +64,7 @@ public class AiModelManagerViewModelTests
         item.RefreshState();
 
         // Assert
-        item.StatusIcon.Should().BeOneOf("✅", "⏳");
+        item.StatusIcon.Should().BeOneOf(MaterialIconKind.CheckCircle, MaterialIconKind.TimerSandComplete);
         item.StatusText.Should().NotBeNullOrWhiteSpace();
         item.CanDownload.Should().BeTrue();
         item.IsDownloading.Should().BeFalse();
@@ -115,7 +116,7 @@ public class AiModelManagerViewModelTests
         // Assert
         item.HasError.Should().BeTrue();
         item.ErrorMessage.Should().Be("Fallo de conexión 404");
-        item.StatusIcon.Should().Be("❌");
+        item.StatusIcon.Should().Be(MaterialIconKind.CloseCircle);
         item.StatusText.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -137,7 +138,7 @@ public class AiModelManagerViewModelTests
         // Assert
         fakeItem.HasError.Should().BeTrue();
         fakeItem.ErrorMessage.Should().NotBeNullOrWhiteSpace();
-        fakeItem.StatusIcon.Should().Be("❌");
+        fakeItem.StatusIcon.Should().Be(MaterialIconKind.CloseCircle);
         vm.HasDownloadError.Should().BeTrue();
         vm.LastDownloadErrorMessage.Should().NotBeNullOrWhiteSpace();
 

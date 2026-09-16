@@ -11,6 +11,8 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+[Collection(OnnxInferenceCollection.Name)]
+
 public class VisionSuiteNodesTests : IDisposable
 {
     private readonly string _tempDir;

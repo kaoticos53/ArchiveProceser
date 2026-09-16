@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Styling;
 using FileFlow.App.Themes;
 
 namespace FileFlow.App.Services;
@@ -64,9 +65,20 @@ public class ThemeManager : IThemeService
             }
 
             CurrentThemeId = themeId;
+            PublishThemeChange(IsDarkFor(theme));
         }
         ThemeChanged?.Invoke(CurrentTheme);
     }
+
+    /// <summary>
+    /// Determina si un tema integrado debe resolverse en variante oscura cuando no existe definición explícita.
+    /// </summary>
+    private static bool IsDarkFor(AppTheme theme) => theme switch
+    {
+        AppTheme.Light or AppTheme.Pastel => false,
+        AppTheme.System => !IsOperatingSystemInLightMode(),
+        _ => true
+    };
 
     public void SetThemeById(string themeId)
     {
@@ -108,9 +120,31 @@ public class ThemeManager : IThemeService
 
         var dict = CustomThemeService.BuildResourceDictionary(theme);
         ApplyResourceDictionary(dict);
+        PublishThemeChange(theme.IsDark);
 
         ThemeChanged?.Invoke(CurrentTheme);
         CustomThemeChanged?.Invoke(ActiveThemeDefinition);
+    }
+
+    /// <summary>
+    /// Publica el cambio de tema en toda la aplicación: actualiza la variante de FluentTheme
+    /// (<see cref="Application.RequestedThemeVariant"/>) y la aplica a todas las ventanas abiertas.
+    /// Sin esto, los controles internos del tema Fluent (ComboBox, ScrollBar, DataGrid, ContextMenu,
+    /// Popup, TabControl...) permanecen en la variante oscura aunque el resto de la UI cambie.
+    /// </summary>
+    private static void PublishThemeChange(bool isDark)
+    {
+        var app = Application.Current;
+        if (app == null) return;
+
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => PublishThemeChange(isDark));
+            return;
+        }
+
+        app.RequestedThemeVariant = WindowThemeHelper.ResolveThemeVariant(isDark);
+        WindowThemeHelper.ApplyThemeToOpenWindows();
     }
 
     private void ApplySystemTheme()
@@ -123,6 +157,7 @@ public class ThemeManager : IThemeService
             var dict = CustomThemeService.BuildResourceDictionary(themeDef);
             ApplyResourceDictionary(dict);
             ActiveThemeDefinition = themeDef;
+            PublishThemeChange(!isLight);
         }
     }
 

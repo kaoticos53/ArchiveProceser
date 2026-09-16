@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels"
         xmlns:models="using:FileFlow.Plugin.FileSystem.UI.Models"
         xmlns:sdk="using:FileFlow.Sdk.Renaming"
@@ -21,43 +22,43 @@
 
     <Grid Margin="16" RowDefinitions="Auto,3*,8,2*,Auto">
         <!-- 1. Header & Presets Bar -->
-        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="0,0,0,10">
             <Grid ColumnDefinitions="*,Auto">
                 <!-- Left: Pipeline Name & Description -->
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="🏷️" FontSize="16" VerticalAlignment="Center" />
+                        <materialIcons:MaterialIcon VerticalAlignment="Center"  Kind="Tag" Width="16" Height="16" />
                         <TextBox Text="{Binding PipelineName, Mode=TwoWay}"
-                                 FontWeight="Bold" FontSize="15" Foreground="{DynamicResource AccentPrimaryBrush}"
+                                 FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource AccentPrimaryBrush}"
                                  Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1"
                                  Padding="8,3" MinWidth="220" />
-                        <Border Background="{DynamicResource AccentSuccessBrush}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsBadge]}" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF" />
+                        <Border Background="{DynamicResource AccentSuccessBrush}" CornerRadius="{DynamicResource RadiusLg}" Padding="8,2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsBadge]}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Bold" Foreground="{DynamicResource TextOnAccentBrush}" />
                         </Border>
                     </StackPanel>
                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_HeaderSubtitle]}"
-                               FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
+                               FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0" />
                 </StackPanel>
 
                 <!-- Right: Preset Selector & Collision Strategy -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_PresetLabel]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_PresetLabel]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                     <ComboBox Width="180" ItemsSource="{Binding AvailablePresets}" DisplayMemberBinding="{Binding Name}"
                               SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
                               SelectionChanged="PresetComboBox_SelectionChanged"
                               Padding="8,5" />
 
                     <Button Command="{Binding SaveCurrentAsPresetCommand}" Padding="8,5">
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveBtn]}" FontSize="11" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveBtn]}" FontSize="{DynamicResource FontSizeCaption}" />
                     </Button>
 
                     <Button Command="{Binding LoadPresetFromFileCommand}" Padding="8,5">
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_OpenBtn]}" FontSize="11" />
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_OpenBtn]}" FontSize="{DynamicResource FontSizeCaption}" />
                     </Button>
 
                     <Border Width="1" Background="{DynamicResource BorderDarkBrush}" Margin="4,2" />
 
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_CollisionLabel]}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_CollisionLabel]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                     <ComboBox Width="130" ItemsSource="{Binding CollisionStrategies}" SelectedItem="{Binding CollisionStrategy, Mode=TwoWay}"
                               Padding="8,5" />
                 </StackPanel>
@@ -67,12 +68,12 @@
         <!-- 2. Main Content: Steps List (Left) + Step Config Form (Right) -->
         <Grid Grid.Row="1" ColumnDefinitions="340,8,*">
             <!-- Left: Pipeline Steps List -->
-            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="10">
+            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="10">
                 <Grid RowDefinitions="Auto,*,Auto">
                     <!-- Steps Header & Add Button -->
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                        <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsPipeline]}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="➕ Añadir Método" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="8,4" FontWeight="SemiBold" FontSize="11" CornerRadius="4">
+                        <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_MethodsPipeline]}" FontWeight="Bold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                        <Button Classes="primary" Grid.Column="1" Content="Añadir Método" Padding="8,4" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" CornerRadius="{DynamicResource RadiusXs}">
                             <Button.Flyout>
                                 <MenuFlyout Placement="Bottom">
                                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Tab_Template]}" Click="AddMethod_NewName_Click" />
@@ -94,19 +95,19 @@
                              SelectionChanged="StepsListBox_SelectionChanged" Background="Transparent">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="sdk:RenameMethodStep">
-                                <Border Padding="6,4" Margin="0,1" CornerRadius="4">
+                                <Border Padding="6,4" Margin="0,1" CornerRadius="{DynamicResource RadiusXs}">
                                     <Grid ColumnDefinitions="Auto,*,Auto">
                                         <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled, Mode=TwoWay}" 
                                                   IsCheckedChanged="StepCheckbox_Changed"
                                                   VerticalAlignment="Center" Margin="0,0,8,0" />
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding MethodType}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding MethodType}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         </StackPanel>
 
-                                        <Border Grid.Column="2" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="4" Padding="4,2" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding ApplyTo}" FontSize="9.5" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
+                                        <Border Grid.Column="2" Background="{DynamicResource BgSurfaceBrush}" CornerRadius="{DynamicResource RadiusXs}" Padding="4,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ApplyTo}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -117,13 +118,13 @@
                     <!-- Step Order Tools -->
                     <Grid Grid.Row="2" ColumnDefinitions="*,*,*" Margin="0,8,0,0">
                         <Button Grid.Column="0" Command="{Binding MoveStepUpCommand}" CommandParameter="{Binding SelectedStep}" Padding="4,4" Margin="0,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_MoveUp]}" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_MoveUp]}" FontSize="{DynamicResource FontSizeCaption}" />
                         </Button>
                         <Button Grid.Column="1" Command="{Binding MoveStepDownCommand}" CommandParameter="{Binding SelectedStep}" Padding="4,4" Margin="3,0,3,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_MoveDown]}" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_MoveDown]}" FontSize="{DynamicResource FontSizeCaption}" />
                         </Button>
                         <Button Grid.Column="2" Command="{Binding RemoveStepCommand}" CommandParameter="{Binding SelectedStep}" Padding="4,4" Margin="3,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_Delete]}" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Renamer_Btn_Delete]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentErrorBrush}" />
                         </Button>
                     </Grid>
                 </Grid>
@@ -133,12 +134,12 @@
             <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" />
 
             <!-- Right: Dynamic Step Configurator -->
-            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14">
                 <Grid>
                     <!-- Empty State -->
                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_EmptyStateStep], FallbackValue='Selecciona o añade un método del panel izquierdo para configurar sus propiedades.'}"
                                IsVisible="{Binding SelectedStep, Converter={x:Static ObjectConverters.IsNull}}"
-                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeBodySm}" HorizontalAlignment="Center" VerticalAlignment="Center" />
 
                     <!-- Form Content -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding SelectedStep, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -146,12 +147,12 @@
                             <!-- Common Settings -->
                             <Grid ColumnDefinitions="*,180">
                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                    <TextBlock Text="Nombre del Paso:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                    <TextBox Text="{Binding SelectedStep.Name, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                    <TextBlock Text="Nombre del Paso:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding SelectedStep.Name, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Aplicar a:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                    <TextBlock Text="Aplicar a:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                     <ComboBox ItemsSource="{Binding ApplyToTargets}" SelectedItem="{Binding SelectedStep.ApplyTo, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                                 </StackPanel>
                             </Grid>
@@ -161,12 +162,12 @@
                             <!-- 1. METHOD: NewName Form -->
                             <StackPanel x:Name="PanelNewName" Spacing="4">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Plantilla de Nuevo Nombre:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Plantilla de Nuevo Nombre:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                                     <Button Grid.Column="1" Click="OpenVariablesMenu_Click" Tag="{Binding #TxtNewNamePattern}" Padding="8,3">
-                                        <TextBlock Text="🏷️ Insertar Variable / Tag..." FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                        <TextBlock Text="Insertar Variable / Tag..." FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                     </Button>
                                 </Grid>
-                                <TextBox x:Name="TxtNewNamePattern" Text="{Binding SelectedStep.Pattern, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,6" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace" />
+                                <TextBox x:Name="TxtNewNamePattern" Text="{Binding SelectedStep.Pattern, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,6" FontSize="{DynamicResource FontSizeBodySm}" FontFamily="Cascadia Code, Consolas, monospace" />
                             </StackPanel>
 
                             <!-- 2. METHOD: SearchReplace Form -->
@@ -174,27 +175,27 @@
                                 <Grid ColumnDefinitions="*,*">
                                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
                                         <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
-                                            <TextBlock Text="Texto / Patrón a Buscar:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="Texto / Patrón a Buscar:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                                                 <Button Click="OpenRegexHelper_SearchReplace_Click" Padding="6,2">
-                                                    <TextBlock Text="🪄 Asistente Regex..." FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="Asistente Regex..." FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
                                                 </Button>
                                                 <Button Click="OpenVariablesMenu_Click" Tag="{Binding #TxtSearchPattern}" Padding="6,2">
-                                                    <TextBlock Text="🏷️ Variable" FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                    <TextBlock Text="Variable" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                                 </Button>
                                             </StackPanel>
                                         </Grid>
-                                        <TextBox x:Name="TxtSearchPattern" Text="{Binding SelectedStep.SearchText, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace" />
+                                        <TextBox x:Name="TxtSearchPattern" Text="{Binding SelectedStep.SearchText, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" FontFamily="Cascadia Code, Consolas, monospace" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
                                         <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
-                                            <TextBlock Text="Reemplazar Con:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="Reemplazar Con:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                             <Button Grid.Column="1" Click="OpenVariablesMenu_Click" Tag="{Binding #TxtReplacePattern}" Padding="6,2">
-                                                <TextBlock Text="🏷️ Variable" FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                <TextBlock Text="Variable" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                             </Button>
                                         </Grid>
-                                        <TextBox x:Name="TxtReplacePattern" Text="{Binding SelectedStep.ReplaceText, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace" />
+                                        <TextBox x:Name="TxtReplacePattern" Text="{Binding SelectedStep.ReplaceText, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" FontFamily="Cascadia Code, Consolas, monospace" />
                                     </StackPanel>
                                 </Grid>
                                 <WrapPanel Orientation="Horizontal">
@@ -207,20 +208,20 @@
                             <!-- 3. METHOD: Insert Form -->
                             <StackPanel x:Name="PanelInsert" Spacing="6">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Texto o Plantilla a Insertar:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Texto o Plantilla a Insertar:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                     <Button Grid.Column="1" Click="OpenVariablesMenu_Click" Tag="{Binding #TxtInsertPattern}" Padding="8,3">
-                                        <TextBlock Text="🏷️ Insertar Variable / Tag..." FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                        <TextBlock Text="Insertar Variable / Tag..." FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                     </Button>
                                 </Grid>
-                                <TextBox x:Name="TxtInsertPattern" Text="{Binding SelectedStep.Pattern, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                <TextBox x:Name="TxtInsertPattern" Text="{Binding SelectedStep.Pattern, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                 <Grid ColumnDefinitions="*,120">
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <TextBlock Text="Posición de Inserción:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="Posición de Inserción:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                         <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding SelectedStep.Position, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Índice (0-based):" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.PositionIndex, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Índice (0-based):" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.PositionIndex, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -229,30 +230,30 @@
                             <StackPanel x:Name="PanelRemove" Spacing="6">
                                 <Grid ColumnDefinitions="*,100,120">
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <TextBlock Text="Desde la Posición:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="Desde la Posición:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                         <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding SelectedStep.Position, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                        <TextBlock Text="Índice:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.PositionIndex, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Índice:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.PositionIndex, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Nº Caracteres:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.CharacterCount, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Nº Caracteres:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.CharacterCount, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                 </Grid>
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="O eliminar coincidencia de texto / variable:" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="O eliminar coincidencia de texto / variable:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                     <Button Grid.Column="1" Click="OpenVariablesMenu_Click" Tag="{Binding #TxtRemovePattern}" Padding="6,2">
-                                        <TextBlock Text="🏷️ Variable" FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                        <TextBlock Text="Variable" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                     </Button>
                                 </Grid>
-                                <TextBox x:Name="TxtRemovePattern" Text="{Binding SelectedStep.SearchText, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace" />
+                                <TextBox x:Name="TxtRemovePattern" Text="{Binding SelectedStep.SearchText, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" FontFamily="Cascadia Code, Consolas, monospace" />
                             </StackPanel>
 
                             <!-- 5. METHOD: CaseConversion Form -->
                             <StackPanel x:Name="PanelCaseConversion" Spacing="4">
-                                <TextBlock Text="Tipo de Transformación de Mayúsculas:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text="Tipo de Transformación de Mayúsculas:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 <ComboBox ItemsSource="{Binding CaseTypes}" SelectedItem="{Binding SelectedStep.CaseType, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                             </StackPanel>
 
@@ -260,31 +261,31 @@
                             <StackPanel x:Name="PanelNumbering" Spacing="8">
                                 <Grid ColumnDefinitions="*,*,*">
                                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                        <TextBlock Text="Número Inicial:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.StartNumber, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Número Inicial:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.StartNumber, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="3,0,3,0">
-                                        <TextBlock Text="Incremento:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.Increment, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Incremento:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.Increment, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="6,0,0,0">
-                                        <TextBlock Text="Relleno de Ceros (Padding):" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.PaddingZeroes, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Relleno de Ceros (Padding):" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.PaddingZeroes, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                 </Grid>
                                 <Grid ColumnDefinitions="*,*">
                                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                        <TextBlock Text="Reiniciar Secuencia En:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="Reiniciar Secuencia En:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                         <ComboBox ItemsSource="{Binding ResetConditions}" SelectedItem="{Binding SelectedStep.ResetOn, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="6,0,0,0">
                                         <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
-                                            <TextBlock Text="Clave de Metadato / Grupo:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="Clave de Metadato / Grupo:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                             <Button Grid.Column="1" Click="OpenVariablesMenu_Click" Tag="{Binding #TxtResetMetadataKey}" Padding="6,2">
-                                                <TextBlock Text="🏷️ Variable" FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                                <TextBlock Text="Variable" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                             </Button>
                                         </Grid>
-                                        <TextBox x:Name="TxtResetMetadataKey" Text="{Binding SelectedStep.ResetMetadataKey, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBox x:Name="TxtResetMetadataKey" Text="{Binding SelectedStep.ResetMetadataKey, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -292,13 +293,13 @@
                             <!-- 7. METHOD: ReplaceList Form -->
                             <StackPanel x:Name="PanelReplaceList" Spacing="6">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="Tabla de Términos a Sustituir:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Tabla de Términos a Sustituir:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                                         <Button Command="{Binding AddReplaceListEntryCommand}" Padding="6,2">
-                                            <TextBlock Text="➕ Añadir Fila" FontSize="10.5" />
+                                            <TextBlock Text="Añadir Fila" FontSize="{DynamicResource FontSizeMicro}" />
                                         </Button>
                                         <Button Click="OpenVariablesMenu_Click" Tag="ReplaceList" Padding="6,2">
-                                            <TextBlock Text="🏷️ Insertar Variable..." FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                            <TextBlock Text="Insertar Variable..." FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                         </Button>
                                     </StackPanel>
                                 </Grid>
@@ -317,7 +318,7 @@
                                     <CheckBox Content="Colapsar Espacios Consecutivos" IsChecked="{Binding SelectedStep.CollapseSpaces, Mode=TwoWay}" IsCheckedChanged="StepCheckbox_Changed" Margin="0,0,16,6" />
                                     <CheckBox Content="Sanitizar Caracteres Inválidos de SO" IsChecked="{Binding SelectedStep.SanitizeInvalidChars, Mode=TwoWay}" IsCheckedChanged="StepCheckbox_Changed" Margin="0,0,16,6" />
                                 </WrapPanel>
-                                <TextBlock Text="Normalización Unicode:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Text="Normalización Unicode:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 <ComboBox ItemsSource="{Binding NormalizationModes}" SelectedItem="{Binding SelectedStep.NormalizationMode, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                             </StackPanel>
 
@@ -325,29 +326,29 @@
                             <StackPanel x:Name="PanelNormalizeNumbers" Spacing="8">
                                 <Grid ColumnDefinitions="*,140">
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <TextBlock Text="Objetivo de Normalización:" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBlock Text="Objetivo de Normalización:" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                         <ComboBox ItemsSource="{Binding NumberPaddingTargets}" SelectedItem="{Binding SelectedStep.NumberTarget, Mode=TwoWay}" SelectionChanged="FormCombo_Changed" Padding="8,5" HorizontalAlignment="Stretch" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Dígitos Mínimos (Padding):" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                        <TextBox Text="{Binding SelectedStep.NumberPaddingDigits, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" />
+                                        <TextBlock Text="Dígitos Mínimos (Padding):" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding SelectedStep.NumberPaddingDigits, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" />
                                     </StackPanel>
                                 </Grid>
                                 <CheckBox Content="Rellenar también número de Temporada en formato 'NxN' (ej. 01x02)"
                                           IsChecked="{Binding SelectedStep.PadSeasonAndEpisode, Mode=TwoWay}"
                                           IsCheckedChanged="StepCheckbox_Changed" />
                                 <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                                    <TextBlock Text="Patrón Regex Personalizado (Opcional):" FontWeight="SemiBold" FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="Patrón Regex Personalizado (Opcional):" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                                         <Button Click="OpenRegexHelper_NormalizeNumbers_Click" Padding="6,2">
-                                            <TextBlock Text="🪄 Asistente Regex..." FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
+                                            <TextBlock Text="Asistente Regex..." FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" FontWeight="SemiBold" />
                                         </Button>
                                         <Button Click="OpenVariablesMenu_Click" Tag="{Binding #TxtNumberRegexPattern}" Padding="6,2">
-                                            <TextBlock Text="🏷️ Variable" FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                            <TextBlock Text="Variable" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                                         </Button>
                                     </StackPanel>
                                 </Grid>
-                                <TextBox x:Name="TxtNumberRegexPattern" Text="{Binding SelectedStep.NumberRegexPattern, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace" />
+                                <TextBox x:Name="TxtNumberRegexPattern" Text="{Binding SelectedStep.NumberRegexPattern, Mode=TwoWay}" TextChanged="FormInput_Changed" Padding="8,5" FontSize="{DynamicResource FontSizeBodySm}" FontFamily="Cascadia Code, Consolas, monospace" />
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
@@ -359,29 +360,29 @@
         <GridSplitter Grid.Row="2" Height="8" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="Transparent" Margin="0,2" />
 
         <!-- 3. Bottom Panel: Live Preview Table -->
-        <Border Grid.Row="3" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,10">
+        <Border Grid.Row="3" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="12,10" Margin="0,0,0,10">
             <Grid RowDefinitions="Auto,*">
                 <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,8">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
                         <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_LivePreviewTitle]}" 
-                                   FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="Categoría:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                   FontWeight="Bold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Categoría:" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
                         <ComboBox ItemsSource="{Binding SampleCategories}" SelectedItem="{Binding SelectedSampleCategory, Mode=TwoWay}"
-                                  Width="145" Height="26" VerticalAlignment="Center" FontSize="11" Padding="6,2" />
+                                  Width="145" Height="26" VerticalAlignment="Center" FontSize="{DynamicResource FontSizeCaption}" Padding="6,2" />
                         <Button Command="{Binding OpenDataSetDesignerCommand}" Padding="6,3" Height="26">
-                            <TextBlock Text="📊 Diseñador..." FontSize="10" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                            <TextBlock Text="Diseñador..." FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" />
                         </Button>
-                        <TextBlock Text="{Binding PreviewSourceDescription}" FontSize="10.5" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                        <TextBlock Text="{Binding PreviewSourceDescription}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentPrimaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="220" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="4">
-                        <TextBlock Text="✏️ Probar nombre:" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                        <TextBox Text="{Binding NewCustomSampleName, Mode=TwoWay}" Width="210" Height="26" FontSize="11" Padding="6,3" VerticalContentAlignment="Center" />
+                        <TextBlock Text="Probar nombre:" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding NewCustomSampleName, Mode=TwoWay}" Width="210" Height="26" FontSize="{DynamicResource FontSizeCaption}" Padding="6,3" VerticalContentAlignment="Center" />
                         <Button Command="{Binding AddCustomSampleCommand}" Padding="8,3" Height="26">
-                            <TextBlock Text="➕ Probar" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                            <TextBlock Text="Probar" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
                         </Button>
                         <Button Command="{Binding ClearCustomSamplesCommand}" Padding="6,3" Height="26">
-                            <TextBlock Text="🗑️" FontSize="10.5" Foreground="{DynamicResource AccentErrorBrush}" />
+                            <materialIcons:MaterialIcon Foreground="{DynamicResource AccentErrorBrush}"  Kind="TrashCan" Width="10.5" Height="10.5" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -399,14 +400,14 @@
         <!-- 4. Footer Actions Bar -->
         <Grid Grid.Row="4" ColumnDefinitions="*,Auto">
             <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_FooterHint]}" 
-                       FontSize="11.5" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                       FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                 <Button Click="Cancel_Click" Padding="14,6">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" FontSize="12" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" FontSize="{DynamicResource FontSizeBodySm}" />
                 </Button>
-                <Button Click="Save_Click" Background="{DynamicResource AccentPrimaryBrush}" Foreground="#FFFFFF" Padding="18,6" CornerRadius="6">
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveAndApply]}" FontSize="12" FontWeight="Bold" />
+                <Button Classes="primary" Click="Save_Click" Padding="18,6" CornerRadius="{DynamicResource RadiusSm}">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AdvancedRenamer_SaveAndApply]}" FontSize="{DynamicResource FontSizeBodySm}" FontWeight="Bold" />
                 </Button>
             </StackPanel>
         </Grid>

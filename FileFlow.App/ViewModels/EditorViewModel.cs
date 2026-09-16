@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
 using Avalonia;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
@@ -9,6 +10,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using Material.Icons;
 
 namespace FileFlow.App.ViewModels;
 
@@ -261,6 +263,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (port != null)
         {
             PendingConnection = new PendingConnectionViewModel(port);
+            ApplyPortCompatibilityHighlight(port);
         }
     }
 
@@ -289,13 +292,40 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             CreateConnection(sourcePort, targetPort);
         }
         PendingConnection = null;
+        ClearPortCompatibilityHighlight();
     }
 
     [RelayCommand]
     public void CancelConnection()
     {
         PendingConnection = null;
+        ClearPortCompatibilityHighlight();
     }
+
+    /// <summary>
+    /// Marca cada puerto del lienzo con su compatibilidad respecto al puerto que se está arrastrando, para
+    /// que la tarjeta pueda resaltar los destinos válidos y atenuar el resto mientras se dibuja el cable.
+    /// </summary>
+    private void ApplyPortCompatibilityHighlight(PortViewModel source)
+    {
+        foreach (var port in AllPorts())
+        {
+            port.IsDragActive = true;
+            port.ApplyDragHighlight(source);
+        }
+    }
+
+    /// <summary>Devuelve todos los puertos del lienzo al estado de reposo (fin o cancelación del arrastre).</summary>
+    public void ClearPortCompatibilityHighlight()
+    {
+        foreach (var port in AllPorts())
+        {
+            port.ClearDragHighlight();
+        }
+    }
+
+    private IEnumerable<PortViewModel> AllPorts()
+        => Nodes.SelectMany(n => n.InputPorts.Concat(n.OutputPorts));
 
     [RelayCommand]
     public void DisconnectConnector(object? connector)
@@ -346,6 +376,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public void BringToFront(NodeViewModel node)
     {
         if (node == null) return;
+        if (node.ZIndex == _maxZIndex && _maxZIndex > 0) return;
         node.ZIndex = ++_maxZIndex;
     }
 
@@ -736,7 +767,71 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             foreach (var conn in list)
             {
                 conn.UpdateCount(count);
+                PulseConnectionEnergy(conn);
             }
+        }
+    }
+
+    /// <summary>
+    /// Energiza un cable durante unos instantes (flujo de energía animado mientras los datos viajan) y lo
+    /// devuelve a reposo. Reutiliza un único temporizador por cable para que ráfagas consecutivas no dejen
+    /// animaciones colgadas.
+    /// </summary>
+    public void PulseConnectionEnergy(ConnectionViewModel connection, int durationMs = 900)
+    {
+        if (durationMs <= 0)
+        {
+            connection.IsExecuting = false;
+            return;
+        }
+
+        connection.LastDispatchedCount++;
+        connection.IsExecuting = true;
+
+        int generation = connection.LastDispatchedCount;
+        _ = Task.Delay(durationMs).ContinueWith(
+            _ => RunOnUiThread(() => CompleteConnectionPulse(connection, generation)),
+            TaskScheduler.Default);
+    }
+
+    /// <summary>
+    /// Apaga la energía de un cable al vencer su pulso... salvo que ya haya empezado otro más reciente. La
+    /// comparación de generación es lo que evita que una ráfaga de datos deje el cable apagado antes de
+    /// tiempo (o encendido para siempre) cuando los pulsos se solapan.
+    /// </summary>
+    public static void CompleteConnectionPulse(ConnectionViewModel connection, int generation)
+    {
+        if (connection.LastDispatchedCount == generation)
+        {
+            connection.IsExecuting = false;
+        }
+    }
+
+    /// <summary>Apaga el flujo de energía de todos los cables (fin de ejecución o parada).</summary>
+    public void ClearConnectionEnergy()
+    {
+        foreach (var connection in Connections)
+        {
+            connection.IsExecuting = false;
+        }
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        try
+        {
+            if (Application.Current is null)
+            {
+                action();
+                return;
+            }
+
+            Dispatcher.UIThread.Post(action);
+        }
+        catch
+        {
+            // Sin ciclo de vida de UI (pruebas, apagado): el cambio de estado no es crítico.
+            action();
         }
     }
 
@@ -770,7 +865,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 description = sampleInstance.Description;
             }
 
-            string icon = NodeIconResolver.GetIconForNodeType(typeName);
+            MaterialIconKind icon = NodeIconResolver.GetIconForNodeType(typeName);
             var role = defAttr?.Role ?? PipelineRole.Transform;
             var tags = defAttr?.Tags ?? Array.Empty<string>();
             var subCategory = defAttr?.SubCategory ?? string.Empty;

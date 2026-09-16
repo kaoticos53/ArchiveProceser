@@ -17,6 +17,17 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.AI;
 
+/// <summary>
+/// Pruebas del nodo VLM multimodal contra servidores HTTP simulados (handlers de <c>Moq</c> inyectados
+/// vía <c>CustomHttpClient</c>): política de reintentos, presets, degradación de <c>response_format</c> y
+/// metadatos. <b>No toca ningún registro de sesión nativo</b> — el adaptador in-process va sustituido o no
+/// abre sesiones, y el motor cliente no consulta <c>OnnxSessionManager</c>—, así que puede correr en
+/// paralelo con el resto del suite sin la colección exclusiva <c>OnnxInference</c>.
+///
+/// Los esperas de reintento del motor están escaladas a 0 % (ver <c>MultimodalVlmClientEngine
+/// .RetryBackoffScalePercent</c>): no hay slot real de LM Studio que enfriar, y con el retardo real la
+/// clase entera tardaba ~9 s de los que 8,7 eran esperas.
+/// </summary>
 public class MultimodalVisionLlmNodeTests : IDisposable
 {
     private readonly string _tempDir;
@@ -25,6 +36,7 @@ public class MultimodalVisionLlmNodeTests : IDisposable
     {
         _tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_VlmTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
+        MultimodalVlmClientEngine.RetryBackoffScalePercent = 0;
     }
 
     public void Dispose()

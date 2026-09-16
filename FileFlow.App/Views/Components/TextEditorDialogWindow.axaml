@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         xmlns:vm="using:FileFlow.App.ViewModels"
         x:Class="FileFlow.App.Views.Components.TextEditorDialogWindow"
@@ -7,61 +8,61 @@
         Width="860" Height="560"
         MinWidth="600" MinHeight="420"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource BgAppBrush}">
+        Background="{DynamicResource AppBackgroundBrush}">
 
     <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto">
         <!-- Header -->
         <Grid Grid.Row="0" Margin="0,0,0,10" ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                <TextBlock x:Name="TxtTitle" Text="Editor Ampliado" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimaryBrush}" />
-                <TextBlock x:Name="TxtSubtitle" Text="Edite el texto con soporte de variables dinámicas." FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock x:Name="TxtTitle" Text="Editor Ampliado" FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock x:Name="TxtSubtitle" Text="Edite el texto con soporte de variables dinámicas." FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
-                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="4" Padding="6,3">
-                    <TextBlock x:Name="TxtCharCount" Text="0 caracteres" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXs}" Padding="6,3">
+                    <TextBlock x:Name="TxtCharCount" Text="0 caracteres" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                 </Border>
             </StackPanel>
         </Grid>
 
         <!-- Quick Toolbar -->
-        <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,8">
+        <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,5" Margin="0,0,0,8">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
                     <Button x:Name="BtnInsertVar" Click="BtnInsertVar_Click" Padding="8,4">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <TextBlock Text="{}{x}" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_InsertVar]}" FontSize="11" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[TextEditor_InsertVar]}" FontSize="{DynamicResource FontSizeCaption}" />
                         </StackPanel>
                     </Button>
                     <Button x:Name="BtnCopy" Click="BtnCopy_Click" Padding="8,4">
-                        <TextBlock Text="📋 Copiar" FontSize="11" />
+                        <TextBlock Text="Copiar" FontSize="{DynamicResource FontSizeCaption}" />
                     </Button>
                 </StackPanel>
 
                 <Button Grid.Column="2" x:Name="BtnClear" Click="BtnClear_Click" Padding="8,4">
-                    <TextBlock Text="🗑️ Limpiar" FontSize="11" Foreground="{DynamicResource AccentErrorBrush}" />
+                    <TextBlock Text="Limpiar" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentErrorBrush}" />
                 </Button>
             </Grid>
         </Border>
 
         <!-- Editor Box -->
-        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6">
+        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}">
             <TextBox x:Name="TxtContent"
                      AcceptsReturn="True"
                      TextWrapping="Wrap"
                      Background="Transparent"
                      BorderThickness="0"
                      Padding="12"
-                     FontSize="12"
+                     FontSize="{DynamicResource FontSizeBodySm}"
                      FontFamily="Cascadia Code, Consolas, monospace" />
         </Border>
 
         <!-- Footer Buttons -->
         <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto,Auto">
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Click="BtnApply_Click" Content="Aplicar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="6" />
-                <Button Click="BtnCancel_Click" Content="Cancelar" Padding="14,6" CornerRadius="6" />
+                <Button Click="BtnApply_Click" Content="Aplicar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="{DynamicResource RadiusSm}" />
+                <Button Click="BtnCancel_Click" Content="Cancelar" Padding="14,6" CornerRadius="{DynamicResource RadiusSm}" />
             </StackPanel>
         </Grid>
     </Grid>

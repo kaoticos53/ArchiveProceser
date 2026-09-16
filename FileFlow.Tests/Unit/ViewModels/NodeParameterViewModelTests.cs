@@ -1,3 +1,4 @@
+using FileFlow.Tests.TestHelpers;
 using System.Resources;
 using FileFlow.App.ViewModels;
 using FileFlow.Sdk;
@@ -7,12 +8,12 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.ViewModels;
 
-[Collection("Localization")]
+[Collection("VisualSnapshots")]
 public class NodeParameterViewModelTests : IDisposable
 {
     public void Dispose()
     {
-        LocalizationManager.Instance.SetCulture("es-ES");
+        AvaloniaTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -32,14 +33,14 @@ public class NodeParameterViewModelTests : IDisposable
         var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(FileFlow.App.App).Assembly);
         LocalizationManager.Instance.RegisterResourceManager(resourceManager);
 
-        LocalizationManager.Instance.SetCulture("es-ES");
+        AvaloniaTestHelper.SetCultureOnUI("es-ES");
         using var param = new NodeParameterViewModel("Width", 1920);
 
         // Act - En español
         string nameEs = param.DisplayName;
 
         // Cambiar a inglés
-        LocalizationManager.Instance.SetCulture("en-US");
+        AvaloniaTestHelper.SetCultureOnUI("en-US");
         string nameEn = param.DisplayName;
 
         // Assert
@@ -47,7 +48,7 @@ public class NodeParameterViewModelTests : IDisposable
         nameEn.Should().Be("Width");
 
         // Reset
-        LocalizationManager.Instance.SetCulture("es-ES");
+        AvaloniaTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -131,5 +132,33 @@ public class NodeParameterViewModelTests : IDisposable
         // Assert
         param.Options.Should().ContainInOrder("GIF", "PNG", "AVIF");
         param.Value.Should().Be("PNG");
+    }
+
+    [Fact]
+    public void DropdownParameter_ShouldRecognizeDropdownAndMatchOption()
+    {
+        // Arrange
+        var desc = new NodeParameterDescriptor("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "ZIP", Options: ["ZIP", "TAR", "GZ", "7Z"]);
+        using var param = new NodeParameterViewModel(desc, "tar");
+
+        // Act & Assert
+        param.IsDropdown.Should().BeTrue();
+        param.IsEditableDropdown.Should().BeFalse();
+        param.Options.Should().ContainInOrder("ZIP", "TAR", "GZ", "7Z");
+        param.Value.Should().Be("TAR"); // matched case-insensitively to exact option
+    }
+
+    [Fact]
+    public void EditableDropdownParameter_ShouldBeMarkedAsEditable()
+    {
+        // Arrange
+        var desc = new NodeParameterDescriptor("CustomPreset", ParameterEditorType.EditableDropdown, DefaultValue: "Default", Options: ["Default", "High", "Low"]);
+        using var param = new NodeParameterViewModel(desc, "CustomValue");
+
+        // Act & Assert
+        param.IsDropdown.Should().BeTrue();
+        param.IsEditableDropdown.Should().BeTrue();
+        param.Options.Should().Contain("CustomValue");
+        param.Value.Should().Be("CustomValue");
     }
 }

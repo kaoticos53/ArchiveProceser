@@ -1,10 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
-             mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="900"
+             Design.DesignHeight="600" Design.DesignWidth="900"
              x:Class="FileFlow.App.Preview.Controls.FilePreviewerControl"
              Background="{DynamicResource BgEditorBrush}">
 
@@ -20,11 +17,11 @@
             <ContentControl Content="{Binding ActiveVisualElement}" />
 
             <!-- Indicador de Carga -->
-            <Border Background="#99000000" IsVisible="{Binding IsLoading}"
+            <Border Background="{DynamicResource ScrimStrongBrush}" IsVisible="{Binding IsLoading}"
                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
                     <ProgressBar IsIndeterminate="True" Width="180" Height="4" Margin="0,0,0,8" />
-                    <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="{DynamicResource FontSizeBodySm}" HorizontalAlignment="Center" />
                 </StackPanel>
             </Border>
         </Grid>
@@ -39,7 +36,7 @@
                 <!-- Cabecera del Panel Lateral -->
                 <Border Grid.Row="0" Background="{DynamicResource BgHeaderBrush}" Padding="14,10" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,0,0,1">
                     <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_MetadataTitle], FallbackValue='Metadatos e Información'}" 
-                               Foreground="{DynamicResource AccentCyanBrush}" FontWeight="Bold" FontSize="12.5" />
+                               Foreground="{DynamicResource AccentCyanBrush}" FontWeight="Bold" FontSize="{DynamicResource FontSizeBodySm}" />
                 </Border>
 
                 <!-- Lista de Metadatos -->
@@ -47,10 +44,10 @@
                     <ItemsControl ItemsSource="{Binding MetadataItems}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="6" Margin="0,0,0,6" Padding="8,6">
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Margin="0,0,0,6" Padding="8,6">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="10.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Value}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="11.5" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Key}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Value}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="{DynamicResource FontSizeCaption}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -62,9 +59,9 @@
                 <Border Grid.Row="2" Background="{DynamicResource BgHeaderBrush}" Padding="10" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
                         <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_CopyPath], FallbackValue='Copiar Ruta'}" 
-                                Command="{Binding CopyPathToClipboardCommand}" Padding="10,5" FontSize="11" />
+                                Command="{Binding CopyPathToClipboardCommand}" Padding="10,5" FontSize="{DynamicResource FontSizeCaption}" />
                         <Button Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Preview_OpenExplorer], FallbackValue='Explorador'}" 
-                                Command="{Binding OpenInExplorerCommand}" Padding="10,5" Background="{DynamicResource AccentCyanBrush}" Foreground="#0B0D14" FontWeight="Bold" FontSize="11" />
+                                Command="{Binding OpenInExplorerCommand}" Padding="10,5" Background="{DynamicResource AccentCyanBrush}" Foreground="#0B0D14" FontWeight="Bold" FontSize="{DynamicResource FontSizeCaption}" />
                     </StackPanel>
                 </Border>
             </Grid>

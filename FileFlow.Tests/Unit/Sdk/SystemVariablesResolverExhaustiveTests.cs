@@ -6,6 +6,9 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.Sdk;
 
+// Muta CultureInfo.CurrentCulture (con restauración): se serializa con la colección "VisualSnapshots",
+// que confina todo el estado de cultura e idioma del proceso.
+[Collection("VisualSnapshots")]
 public class SystemVariablesResolverExhaustiveTests
 {
     [Fact]
