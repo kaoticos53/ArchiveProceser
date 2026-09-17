@@ -54,8 +54,41 @@ public partial class TextEditorDialogWindow : Window
 
     private void BtnInsertVar_Click(object? sender, RoutedEventArgs e)
     {
-        var picker = new VariablePickerWindow();
-        picker.ShowDialog(this);
+        var groups = _parameter?.AvailableVariables;
+        if (groups == null || groups.Count == 0)
+        {
+            var editor = _parameter != null ? _parameter.NodeOwner?.ParentEditor : null;
+            if (editor != null && _parameter?.NodeOwner != null)
+            {
+                groups = _variableDiscoveryService.GetAvailableVariables(_parameter.NodeOwner, editor.Connections);
+            }
+        }
+
+        var previewContext = _parameter?.NodeOwner != null
+            ? _variableDiscoveryService.CreatePreviewItem(_parameter.NodeOwner)
+            : null;
+
+        var picker = new VariablePickerWindow(groups ?? [], _parameter?.NodeOwner, previewContext, _loc);
+        _ = picker.ShowDialog<bool>(this).ContinueWith(t =>
+        {
+            if (t.IsCompletedSuccessfully && t.Result && !string.IsNullOrEmpty(picker.SelectedToken))
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    int caretIndex = TxtContent.CaretIndex;
+                    string currentText = TxtContent.Text ?? string.Empty;
+                    if (caretIndex >= 0 && caretIndex <= currentText.Length)
+                    {
+                        TxtContent.Text = currentText.Insert(caretIndex, picker.SelectedToken);
+                        TxtContent.CaretIndex = caretIndex + picker.SelectedToken.Length;
+                    }
+                    else
+                    {
+                        TxtContent.Text = currentText + picker.SelectedToken;
+                    }
+                });
+            }
+        });
     }
 
     private async void BtnCopy_Click(object? sender, RoutedEventArgs e)

@@ -4,6 +4,8 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using Material.Icons;
 
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace FileFlow.App.Models;
 
 public record LogEntry(
@@ -57,16 +59,40 @@ public class VariableGroupItem(string groupName, bool isUpstream = false)
     public List<VariableItem> Variables { get; } = [];
 }
 
-public record FileVersionOption(
-    string Tag,
-    string Token,
-    string DisplayName,
-    MaterialIconKind Icon = MaterialIconKind.FileDocument,
-    string Description = "",
-    bool IsUpstream = false,
-    string SourceNodeTitle = ""
-)
+public partial class FileVersionOption : ObservableObject
 {
-    /// <summary>Etiqueta textual de la opción. El icono se dibuja aparte como vector.</summary>
+    public string Tag { get; init; } = string.Empty;
+    public string Token { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public MaterialIconKind Icon { get; init; } = MaterialIconKind.FileDocument;
+    public string Description { get; init; } = string.Empty;
+    public bool IsUpstream { get; init; }
+    public string SourceNodeTitle { get; init; } = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSelected;
+
     public string ChipLabel => DisplayName;
+
+    public FileVersionOption() { }
+
+    public FileVersionOption(
+        string tag,
+        string token,
+        string displayName,
+        MaterialIconKind icon = MaterialIconKind.FileDocument,
+        string description = "",
+        bool IsUpstream = false,
+        string SourceNodeTitle = "",
+        bool isSelected = false)
+    {
+        Tag = tag;
+        Token = token;
+        DisplayName = displayName;
+        Icon = icon;
+        Description = description;
+        this.IsUpstream = IsUpstream;
+        this.SourceNodeTitle = SourceNodeTitle;
+        _isSelected = isSelected;
+    }
 }

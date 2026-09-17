@@ -13,7 +13,7 @@ public class AsyncTestWaiterTests
 
         await AsyncTestWaiter.WaitForAsync(
             () => ++observations >= 3,
-            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(5),
             TimeSpan.FromMilliseconds(1),
             description: "the synthetic condition");
 

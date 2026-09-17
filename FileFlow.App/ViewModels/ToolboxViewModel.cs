@@ -51,6 +51,9 @@ public partial class ToolboxCategoryGroup : ObservableObject
     private string _categoryName = string.Empty;
 
     [ObservableProperty]
+    private MaterialIconKind _icon = MaterialIconKind.Folder;
+
+    [ObservableProperty]
     private bool _isExpanded;
 
     public string CategoryKey { get; }
@@ -61,12 +64,14 @@ public partial class ToolboxCategoryGroup : ObservableObject
         string categoryName, 
         string categoryKey = "", 
         bool isExpanded = false, 
-        Action<ToolboxCategoryGroup>? onExpanded = null)
+        Action<ToolboxCategoryGroup>? onExpanded = null,
+        MaterialIconKind? icon = null)
     {
         _categoryName = categoryName;
         CategoryKey = string.IsNullOrWhiteSpace(categoryKey) ? categoryName : categoryKey;
         _isExpanded = isExpanded;
         _onExpanded = onExpanded;
+        _icon = icon ?? NodeIconResolver.GetIconForCategory(CategoryKey);
     }
 
     partial void OnIsExpandedChanged(bool value)

@@ -102,6 +102,29 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
     }
 
+    public FileVersionOption? SelectedVersionOption
+    {
+        get
+        {
+            string valStr = Value?.ToString()?.Trim() ?? string.Empty;
+            return AvailableVersionOptions.FirstOrDefault(o =>
+                string.Equals(valStr, o.Token, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(valStr, o.Tag, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(ActiveVersionTag) && string.Equals(ActiveVersionTag, o.Tag, StringComparison.OrdinalIgnoreCase)));
+        }
+        set
+        {
+            if (value != null && !string.Equals(Value?.ToString(), value.Token, StringComparison.OrdinalIgnoreCase))
+            {
+                Value = value.Token;
+                IsCustomExpressionMode = false;
+                UpdateVersionOptionsSelection();
+                OnPropertyChanged(nameof(ActiveVersionTag));
+                OnPropertyChanged(nameof(SelectedVersionOption));
+            }
+        }
+    }
+
     public ParameterEditorType EditorType => Descriptor?.EditorType ?? DetectEditorType();
 
     public double SliderMin => Descriptor?.Min ?? 0;
@@ -250,13 +273,29 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         if (option == null) return;
         Value = option.Token;
         IsCustomExpressionMode = false;
+        UpdateVersionOptionsSelection();
         OnPropertyChanged(nameof(ActiveVersionTag));
+        OnPropertyChanged(nameof(SelectedVersionOption));
     }
 
     [RelayCommand]
     public void ToggleCustomExpressionMode()
     {
         IsCustomExpressionMode = !IsCustomExpressionMode;
+    }
+
+    public void UpdateVersionOptionsSelection()
+    {
+        if (!IsFileVersionSelector) return;
+        string valStr = Value?.ToString()?.Trim() ?? string.Empty;
+        string activeTag = ActiveVersionTag;
+
+        foreach (var opt in _availableVersionOptions)
+        {
+            opt.IsSelected = string.Equals(valStr, opt.Token, StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(valStr, opt.Tag, StringComparison.OrdinalIgnoreCase) ||
+                             (!string.IsNullOrEmpty(activeTag) && string.Equals(activeTag, opt.Tag, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     public void RefreshAvailableVersions()
@@ -295,7 +334,9 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
                 }
 
                 _hasLoadedVersions = true;
+                UpdateVersionOptionsSelection();
                 OnPropertyChanged(nameof(ActiveVersionTag));
+                OnPropertyChanged(nameof(SelectedVersionOption));
             }
 
             UpdateList();
@@ -415,6 +456,11 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     {
         NodeOwner?.OnParameterValueChanged(Key, newValue);
         RecalculateEvaluatedValue();
+        if (IsFileVersionSelector)
+        {
+            UpdateVersionOptionsSelection();
+            OnPropertyChanged(nameof(SelectedVersionOption));
+        }
     }
 
     public void UpdateEvaluationContext(FileItemContext? context, string? sourceRootPath = null)
@@ -562,9 +608,13 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         var element = targetObject as Control;
         var editor = ResolveEditor(element);
 
-        if (NodeOwner != null && editor != null)
+        if (editor != null)
         {
             RefreshAvailableVariables(editor);
+        }
+        else if (AvailableVariables.Count == 0)
+        {
+            AvailableVariables = Services.VariableDiscoveryService.Instance.GetAvailableVariables(NodeOwner, []);
         }
 
         var cm = new ContextMenu
@@ -624,9 +674,13 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         var element = targetObject as Control;
         var editor = ResolveEditor(element);
 
-        if (NodeOwner != null && editor != null)
+        if (editor != null)
         {
             RefreshAvailableVariables(editor);
+        }
+        else if (AvailableVariables.Count == 0)
+        {
+            AvailableVariables = Services.VariableDiscoveryService.Instance.GetAvailableVariables(NodeOwner, []);
         }
 
         var previewContext = (editor?.VariableDiscoveryService ?? Services.VariableDiscoveryService.Instance).CreatePreviewItem(NodeOwner);
@@ -651,9 +705,16 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void RefreshAvailableVariables(EditorViewModel editor)
     {
-        if (NodeOwner != null && editor != null)
+        if (editor != null)
         {
-            AvailableVariables = editor.GetUpstreamAvailableVariables(NodeOwner);
+            if (NodeOwner != null)
+            {
+                AvailableVariables = editor.GetUpstreamAvailableVariables(NodeOwner);
+            }
+            else
+            {
+                AvailableVariables = editor.VariableDiscoveryService.GetAvailableVariables(null, editor.Connections);
+            }
         }
     }
 

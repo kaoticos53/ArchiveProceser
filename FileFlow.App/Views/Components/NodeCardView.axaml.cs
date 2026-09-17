@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using FileFlow.App.ViewModels;
@@ -20,31 +21,73 @@ public partial class NodeCardView : UserControl
 
         PointerPressed += NodeCardView_PointerPressed;
         DoubleTapped += NodeCardView_DoubleTapped;
+
+        AddHandler(InputElement.GotFocusEvent, (sender, e) =>
+        {
+            if (e.Source is Avalonia.Visual visual)
+            {
+                var acb = visual.FindAncestorOfType<AutoCompleteBox>() ?? (visual is AutoCompleteBox box ? box : null);
+                if (acb != null && acb.MinimumPrefixLength == 0 && !acb.IsDropDownOpen)
+                {
+                    acb.IsDropDownOpen = true;
+                }
+            }
+        });
+    }
+
+    private static bool IsInteractiveVisual(object? source)
+    {
+        if (source is not Avalonia.Visual visual) return false;
+
+        return visual.FindAncestorOfType<ComboBox>() != null ||
+               visual is ComboBox ||
+               visual.FindAncestorOfType<ComboBoxItem>() != null ||
+               visual is ComboBoxItem ||
+               visual.FindAncestorOfType<AutoCompleteBox>() != null ||
+               visual is AutoCompleteBox ||
+               visual.FindAncestorOfType<Button>() != null ||
+               visual is Button ||
+               visual.FindAncestorOfType<ToggleButton>() != null ||
+               visual is ToggleButton ||
+               visual.FindAncestorOfType<TextBox>() != null ||
+               visual is TextBox ||
+               visual.FindAncestorOfType<ToggleSwitch>() != null ||
+               visual is ToggleSwitch ||
+               visual.FindAncestorOfType<Slider>() != null ||
+               visual is Slider ||
+               visual.FindAncestorOfType<NumericUpDown>() != null ||
+               visual is NumericUpDown ||
+               visual.FindAncestorOfType<ListBox>() != null ||
+               visual is ListBox ||
+               visual.FindAncestorOfType<ListBoxItem>() != null ||
+               visual is ListBoxItem ||
+               visual.FindAncestorOfType<ScrollViewer>() != null ||
+               visual is ScrollViewer;
     }
 
     private void NodeCardView_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.Source is Avalonia.Visual visual)
+        if (IsInteractiveVisual(e.Source))
         {
-            var interactiveParent = visual.FindAncestorOfType<ComboBox>() ??
-                                    (visual is ComboBox ? (Control)visual : null) ??
-                                    visual.FindAncestorOfType<AutoCompleteBox>() ??
-                                    (visual is AutoCompleteBox ? (Control)visual : null) ??
-                                    visual.FindAncestorOfType<Button>() ??
-                                    (visual is Button ? (Control)visual : null) ??
-                                    visual.FindAncestorOfType<TextBox>() ??
-                                    (visual is TextBox ? (Control)visual : null) ??
-                                    visual.FindAncestorOfType<ToggleSwitch>() ??
-                                    (visual is ToggleSwitch ? (Control)visual : null) ??
-                                    visual.FindAncestorOfType<Slider>() ??
-                                    (visual is Slider ? (Control)visual : null) ??
-                                    visual.FindAncestorOfType<NumericUpDown>() ??
-                                    (visual is NumericUpDown ? (Control)visual : null);
-
-            if (interactiveParent != null)
+            // Traer al frente y seleccionar el nodo para que pase a primer plano
+            // de inmediato al interactuar con cualquier parámetro o control.
+            if (DataContext is NodeViewModel interactiveNode)
             {
-                return;
+                if (!interactiveNode.IsSelected)
+                {
+                    interactiveNode.IsSelected = true;
+                }
+                else
+                {
+                    interactiveNode.ParentEditor?.BringToFront(interactiveNode);
+                }
             }
+
+            // Marcar como manejado para evitar que el evento burbujee a ItemContainer de Nodify,
+            // lo cual capturaría el puntero (e.Pointer.Capture) e interrumpiría la apertura o
+            // interacción de ComboBox, AutoCompleteBox y demás controles interactivos en la tarjeta.
+            e.Handled = true;
+            return;
         }
 
         if (DataContext is NodeViewModel node)
@@ -55,6 +98,11 @@ public partial class NodeCardView : UserControl
 
     private void NodeCardView_DoubleTapped(object? sender, TappedEventArgs e)
     {
+        if (IsInteractiveVisual(e.Source))
+        {
+            return;
+        }
+
         if (DataContext is NodeViewModel node)
         {
             node.InspectNode();

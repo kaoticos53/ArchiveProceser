@@ -8,7 +8,7 @@ namespace FileFlow.App.Services;
 /// </summary>
 public interface IVariableDiscoveryService
 {
-    List<VariableGroupItem> GetAvailableVariables(NodeViewModel targetNode, IEnumerable<ConnectionViewModel> connections);
-    List<FileVersionOption> GetAvailableFileVersions(NodeViewModel targetNode, IEnumerable<ConnectionViewModel> connections);
-    FileFlow.Sdk.FileItemContext CreatePreviewItem(NodeViewModel? targetNode);
+    List<VariableGroupItem> GetAvailableVariables(NodeViewModel? targetNode = null, IEnumerable<ConnectionViewModel>? connections = null);
+    List<FileVersionOption> GetAvailableFileVersions(NodeViewModel? targetNode = null, IEnumerable<ConnectionViewModel>? connections = null);
+    FileFlow.Sdk.FileItemContext CreatePreviewItem(NodeViewModel? targetNode = null);
 }

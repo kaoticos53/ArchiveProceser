@@ -1,9 +1,9 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-                    xmlns:vm="using:FileFlow.App.ViewModels"
-                    xmlns:models="using:FileFlow.App.Models"
-                    xmlns:loc="using:FileFlow.Sdk.Localization">
+                    xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
+                    xmlns:models="clr-namespace:FileFlow.App.Models;assembly=FileFlow.App"
+                    xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk">
 
     <!-- Blender / ComfyUI Node Parameter Row DataTemplate -->
     <DataTemplate x:Key="NodeParameterItemTemplate" DataType="vm:NodeParameterViewModel">
@@ -181,34 +181,25 @@
                             ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip]}" />
                 </Grid>
 
-                <!-- 6. File Version Selector (Interactive Chips) -->
+                <!-- 6. File Version Selector (Dropdown) -->
                 <Grid Grid.Column="1" IsVisible="{Binding IsFileVersionSelector}" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
-                    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding AvailableVersionOptions}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="4" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="models:FileVersionOption">
-                                    <Button Command="{Binding $parent[ItemsControl].((vm:NodeParameterViewModel)DataContext).SelectVersionOptionCommand}"
-                                            CommandParameter="{Binding}"
-                                            Padding="5,2"
-                                            Background="{DynamicResource BgSurfaceBrush}"
-                                            BorderBrush="{DynamicResource BorderDarkBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="{DynamicResource RadiusXs}"
-                                            Cursor="Hand">
-                                        <StackPanel Orientation="Horizontal" Spacing="3">
-                                            <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="10" Height="10" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding Tag}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding AvailableVersionOptions}"
+                              SelectedItem="{Binding SelectedVersionOption, Mode=TwoWay}"
+                              Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                              BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeMicro}" Padding="6,3"
+                              CornerRadius="{DynamicResource RadiusXs}"
+                              HorizontalAlignment="Stretch"
+                              MaxDropDownHeight="240">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate DataType="models:FileVersionOption">
+                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                    <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="11" Height="11" VerticalAlignment="Center" Foreground="{DynamicResource AccentCyanBrush}" />
+                                    <TextBlock Text="{Binding Tag}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                     <Button Grid.Column="1" 
                             Command="{Binding OpenVariablePickerCommand}"
                             CommandParameter="{Binding $self}"
@@ -217,7 +208,7 @@
                             Foreground="{DynamicResource AccentGlowBrush}" 
                             BorderBrush="{DynamicResource BorderDarkBrush}"
                             BorderThickness="1" 
-                            Padding="5,2" 
+                            Padding="6,3" 
                             Margin="4,0,0,0"
                             FontSize="{DynamicResource FontSizeMicro}" 
                             FontWeight="Bold" 

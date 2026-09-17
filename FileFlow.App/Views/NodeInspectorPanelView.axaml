@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-             xmlns:vm="using:FileFlow.App.ViewModels"
-             xmlns:loc="using:FileFlow.Sdk.Localization"
-             xmlns:conv="using:FileFlow.App.Converters"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
+             xmlns:models="clr-namespace:FileFlow.App.Models;assembly=FileFlow.App"
+             xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk"
+             xmlns:conv="clr-namespace:FileFlow.App.Converters;assembly=FileFlow.App"
              x:Class="FileFlow.App.Views.NodeInspectorPanelView"
              x:DataType="vm:NodeInspectorViewModel">
 
@@ -254,6 +255,42 @@
                                                                 BorderBrush="{DynamicResource BorderDarkBrush}"
                                                                 BorderThickness="1" 
                                                                 Padding="7,5" 
+                                                                FontSize="{DynamicResource FontSizeCaption}" 
+                                                                FontWeight="Bold" 
+                                                                Cursor="Hand"
+                                                                CornerRadius="{DynamicResource RadiusXs}"
+                                                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Node_Param_InsertVariableToolTip]}" />
+                                                    </Grid>
+
+                                                    <!-- File Version Selector (Dropdown) -->
+                                                    <Grid IsVisible="{Binding IsFileVersionSelector}" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
+                                                        <ComboBox Grid.Column="0"
+                                                                  ItemsSource="{Binding AvailableVersionOptions}"
+                                                                  SelectedItem="{Binding SelectedVersionOption, Mode=TwoWay}"
+                                                                  Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
+                                                                  BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" FontSize="{DynamicResource FontSizeCaption}" Padding="8,5"
+                                                                  CornerRadius="{DynamicResource RadiusXs}"
+                                                                  HorizontalAlignment="Stretch"
+                                                                  MaxDropDownHeight="240">
+                                                            <ComboBox.ItemTemplate>
+                                                                <DataTemplate DataType="models:FileVersionOption">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                                        <materialIcons:MaterialIcon Kind="{Binding Icon}" Width="14" Height="14" VerticalAlignment="Center" Foreground="{DynamicResource AccentCyanBrush}" />
+                                                                        <TextBlock Text="{Binding Tag}" FontSize="{DynamicResource FontSizeBodySm}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ComboBox.ItemTemplate>
+                                                        </ComboBox>
+                                                        <Button Grid.Column="1" 
+                                                                Command="{Binding OpenVariablePickerCommand}"
+                                                                CommandParameter="{Binding $self}"
+                                                                Content="{}{x}" 
+                                                                Background="{DynamicResource BgHoverBrush}" 
+                                                                Foreground="{DynamicResource AccentGlowBrush}" 
+                                                                BorderBrush="{DynamicResource BorderDarkBrush}"
+                                                                BorderThickness="1" 
+                                                                Padding="7,5" 
+                                                                Margin="4,0,0,0"
                                                                 FontSize="{DynamicResource FontSizeCaption}" 
                                                                 FontWeight="Bold" 
                                                                 Cursor="Hand"

@@ -217,6 +217,42 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}" />
     </Style>
 
+    <!-- Chip de Selección / Version Option -->
+    <Style Selector="Button.chipButton">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        <Setter Property="Padding" Value="6,2.5" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+
+    <Style Selector="Button.chipButton /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.chipButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentCyanBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.chipButton.selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="Button.chipButton.selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+    </Style>
+
     <!-- Pastilla completa -->
     <Style Selector="Button.pill">
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}" />

@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia">
 
     <!--
         Capa de contenedores del sistema de diseño: pestañas, separadores de panel (GridSplitter)
@@ -147,6 +148,128 @@
     <Style Selector="ScrollBar[IsExpanded=true] /template/ Rectangle#TrackRect">
         <Setter Property="Fill" Value="{DynamicResource BorderSubtleBrush}" />
         <Setter Property="Opacity" Value="0.6" />
+    </Style>
+
+    <!-- ============================= Acordeón / Expander de Menú con Chevron Izquierdo ============================= -->
+
+    <Style Selector="Expander.menuAccordion">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,1" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}">
+                    <StackPanel>
+                        <!-- Header ToggleButton con Chevron en la izquierda -->
+                        <ToggleButton Name="PART_ToggleButton"
+                                      IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}"
+                                      Content="{TemplateBinding Header}"
+                                      ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      CornerRadius="{DynamicResource RadiusXs}"
+                                      Padding="2,1,4,1"
+                                      MinHeight="22"
+                                      Cursor="Hand"
+                                      HorizontalAlignment="Stretch"
+                                      HorizontalContentAlignment="Stretch">
+                            <ToggleButton.Template>
+                                <ControlTemplate>
+                                    <Border Name="PART_HeaderRoot"
+                                            Background="{TemplateBinding Background}"
+                                            CornerRadius="{TemplateBinding CornerRadius}"
+                                            Padding="{TemplateBinding Padding}">
+                                        <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                            <!-- Chevron rotativo a la izquierda -->
+                                            <materialIcons:MaterialIcon Grid.Column="0"
+                                                                        Name="PART_Chevron"
+                                                                        Kind="ChevronRight"
+                                                                        Width="12"
+                                                                        Height="12"
+                                                                        Margin="0,0,2,0"
+                                                                        Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                        VerticalAlignment="Center"
+                                                                        RenderTransformOrigin="50%,50%">
+                                                <materialIcons:MaterialIcon.Transitions>
+                                                    <Transitions>
+                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                                                    </Transitions>
+                                                </materialIcons:MaterialIcon.Transitions>
+                                            </materialIcons:MaterialIcon>
+
+                                            <!-- Contenido del Header -->
+                                            <ContentPresenter Grid.Column="1"
+                                                              Content="{TemplateBinding Content}"
+                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                              Foreground="{DynamicResource TextPrimaryBrush}"
+                                                              VerticalAlignment="Center"
+                                                              HorizontalAlignment="Stretch" />
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+
+                        <!-- Contenido Expandido del Expander -->
+                        <Border Name="PART_ContentArea"
+                                IsVisible="{TemplateBinding IsExpanded}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="12,1,2,2">
+                            <ContentPresenter Content="{TemplateBinding Content}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Expander.menuAccordion /template/ ToggleButton#PART_ToggleButton">
+        <Setter Property="MinHeight" Value="22" />
+        <Setter Property="Padding" Value="2,1,4,1" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style Selector="Expander.menuAccordion /template/ ToggleButton#PART_ToggleButton:pointerover /template/ Border#PART_HeaderRoot">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
+    </Style>
+
+    <Style Selector="Expander.menuAccordion /template/ ToggleButton#PART_ToggleButton:checked /template/ materialIcons|MaterialIcon#PART_Chevron">
+        <Setter Property="RenderTransform" Value="rotate(90deg)" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <!-- Elemento de Fila de Menú / Catálogo Homogéneo -->
+    <Style Selector="Border.nodeMenuItem">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}" />
+        <Setter Property="Padding" Value="4,1.5,6,1.5" />
+        <Setter Property="Margin" Value="0,0,2,1" />
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.nodeMenuItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
     </Style>
 
 </Styles>

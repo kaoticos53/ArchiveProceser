@@ -2,28 +2,34 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:mi="using:Material.Icons.Avalonia"
         x:Class="FileFlow.App.Views.Components.VariablePickerWindow"
         x:DataType="vm:VariablePickerViewModel"
-        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_WindowTitle]}"
-        Height="620" Width="840" MinHeight="500" MinWidth="680"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_WindowTitle], FallbackValue='Catálogo de Variables y Expresiones'}"
+        Height="560" Width="680" MinHeight="480" MinWidth="600"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackgroundBrush}">
 
-    <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Margin="14" RowDefinitions="Auto,Auto,*,Auto">
         <!-- Header -->
-        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="0,0,0,10">
+        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="12,8" Margin="0,0,0,8">
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="{}{x} " FontSize="{DynamicResource FontSizeSubtitle}" FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_HeaderTitle]}" 
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_HeaderTitle], FallbackValue='Catálogo de Variables'}" 
                                    FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource AccentPrimaryBrush}" VerticalAlignment="Center" />
                     </StackPanel>
-                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_HeaderSubtitle]}" 
-                               FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,3,0,0" />
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_HeaderSubtitle], FallbackValue='Explora, busca e inserta variables dinámicas disponibles para este parámetro'}" 
+                               FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <!-- Upstream Badge if available -->
+                    <Border IsVisible="{Binding HasUpstreamNodes}" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource AccentPrimaryBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,4">
+                        <TextBlock Text="{Binding UpstreamCountText}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                    </Border>
+                    <!-- Target Node Badge -->
                     <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,4">
                         <TextBlock Text="{Binding TargetNodeTitle, StringFormat='Nodo: {0}'}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                     </Border>
@@ -31,32 +37,151 @@
             </Grid>
         </Border>
 
-        <!-- Search Bar -->
-        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="10,8" Margin="0,0,0,10">
-            <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Buscar variable..." Padding="8,5" />
+        <!-- Categories & Search Bar -->
+        <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="8,6" Margin="0,0,0,8">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                <!-- Category Filter Buttons -->
+                <WrapPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Command="{Binding SetCategoryCommand}" CommandParameter="ALL" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategoryAll], FallbackValue='Todas'}" 
+                            Padding="8,3" Margin="0,0,4,3" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeCaption}" />
+                    <Button IsVisible="{Binding HasUpstreamNodes}" Command="{Binding SetCategoryCommand}" CommandParameter="UPSTREAM" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategoryUpstream], FallbackValue='Nodos Anteriores'}" 
+                            Padding="8,3" Margin="0,0,4,3" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeCaption}" />
+                    <Button Command="{Binding SetCategoryCommand}" CommandParameter="SYSTEM" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategorySystem], FallbackValue='Archivo y Sistema'}" 
+                            Padding="8,3" Margin="0,0,4,3" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeCaption}" />
+                    <Button Command="{Binding SetCategoryCommand}" CommandParameter="DATES" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategoryDates], FallbackValue='Fechas y Tiempos'}" 
+                            Padding="8,3" Margin="0,0,4,3" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeCaption}" />
+                    <Button Command="{Binding SetCategoryCommand}" CommandParameter="SIZES" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategorySizes], FallbackValue='Tamaños y Métricas'}" 
+                            Padding="8,3" Margin="0,0,4,3" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeCaption}" />
+                    <Button Command="{Binding SetCategoryCommand}" CommandParameter="FUNCTIONS" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategoryFunctions], FallbackValue='Funciones y Texto'}" 
+                            Padding="8,3" Margin="0,0,4,3" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeCaption}" />
+                </WrapPanel>
+
+                <!-- Search Input -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding SearchText, Mode=TwoWay}" 
+                             PlaceholderText="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_SearchPlaceholder], FallbackValue='Buscar por nombre de variable, descripción o categoría...'}" 
+                             Padding="6,4" CornerRadius="{DynamicResource RadiusSm}" FontSize="{DynamicResource FontSizeBodySm}" />
+                    <Button Grid.Column="1" Command="{Binding ClearSearchCommand}" Margin="4,0,0,0" Padding="6,3" 
+                            CornerRadius="{DynamicResource RadiusSm}" IsVisible="{Binding SearchText.Length}" ToolTip.Tip="Limpiar búsqueda">
+                        <mi:MaterialIcon Kind="Close" Width="12" Height="12" />
+                    </Button>
+                </Grid>
+            </Grid>
         </Border>
 
-        <!-- Variables List DataGrid -->
-        <Border Grid.Row="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="4">
-            <DataGrid ItemsSource="{Binding FilteredVariables}"
-                      SelectedItem="{Binding SelectedVariable, Mode=TwoWay}"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Variable" Binding="{Binding FullExpression}" Width="2*" />
-                    <DataGridTextColumn Header="Categoría" Binding="{Binding CategoryName}" Width="120" />
-                    <DataGridTextColumn Header="Descripción" Binding="{Binding Description}" Width="3*" />
-                    <DataGridTextColumn Header="Ejemplo" Binding="{Binding ExampleValue}" Width="130" />
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+        <!-- Main Content Area: Variables List + Detail Side Panel -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,8,240">
+            <!-- Variables DataGrid -->
+            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="4">
+                <Grid>
+                    <DataGrid ItemsSource="{Binding FilteredVariables}"
+                              SelectedItem="{Binding SelectedVariable, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              DoubleTapped="Row_DoubleTapped"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Variable / Token" Binding="{Binding Token}" Width="1.8*" FontFamily="Cascadia Code, Consolas, monospace" FontWeight="SemiBold" />
+                            <DataGridTextColumn Header="Categoría" Binding="{Binding Category}" Width="100" />
+                            <DataGridTextColumn Header="Descripción" Binding="{Binding Description}" Width="2.2*" />
+                            <DataGridTextColumn Header="Ejemplo" Binding="{Binding SampleValue}" Width="1.2*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Empty State Placeholder -->
+                    <Border IsVisible="{Binding HasNoResults}" Background="{DynamicResource BgCardBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="16">
+                        <StackPanel Spacing="4" HorizontalAlignment="Center">
+                            <mi:MaterialIcon Kind="Magnify" Width="24" Height="24" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_NoResults], FallbackValue='No se encontraron variables coincidentes'}" 
+                                       FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Detail Side Panel -->
+            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="10">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_DetailTitle], FallbackValue='Detalle de la Variable'}" 
+                               FontWeight="Bold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" />
+
+                    <!-- Selected Variable Details -->
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding HasSelectedVariable}">
+                        <StackPanel Spacing="8">
+                            <!-- Token & Copy Button -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_TokenLabel], FallbackValue='Token / Sintaxis:'}" 
+                                           FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding DetailToken}" IsReadOnly="True" 
+                                             FontFamily="Cascadia Code, Consolas, monospace" FontSize="{DynamicResource FontSizeCaption}" 
+                                             FontWeight="Bold" Foreground="{DynamicResource AccentGlowBrush}" Padding="4,3" />
+                                    <Button Grid.Column="1" Command="{Binding CopyTokenCommand}" Margin="4,0,0,0" Padding="6,3" 
+                                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CopyToken], FallbackValue='Copiar Token'}">
+                                        <mi:MaterialIcon Kind="ContentCopy" Width="12" Height="12" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Category -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CategoryLabel], FallbackValue='Categoría:'}" 
+                                           FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXs}" Padding="6,3">
+                                    <TextBlock Text="{Binding DetailCategory}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Source Node -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_SourceLabel], FallbackValue='Origen:'}" 
+                                           FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXs}" Padding="6,3">
+                                    <TextBlock Text="{Binding DetailSource}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Description -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_DescriptionLabel], FallbackValue='Descripción:'}" 
+                                           FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding DetailDescription}" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            </StackPanel>
+
+                            <!-- Evaluated Sample Value -->
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_SamplePreviewLabel], FallbackValue='Vista Previa Evaluada (Ejemplo):'}" 
+                                           FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="SemiBold" />
+                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusXs}" Padding="6,4">
+                                    <TextBlock Text="{Binding DetailEvaluated}" TextWrapping="Wrap" FontFamily="Cascadia Code, Consolas, monospace" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource AccentSuccessBrush}" />
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- No Selection Hint -->
+                    <Border Grid.Row="1" IsVisible="{Binding !HasSelectedVariable}" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_SelectVariableHint], FallbackValue='Selecciona una variable de la lista para ver su descripción y vista previa'}" 
+                                   TextWrapping="Wrap" TextAlignment="Center" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Footer Actions -->
-        <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" Text="{Binding InsertPreviewText}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+        <Grid Grid.Row="3" Margin="0,10,0,0" ColumnDefinitions="*,Auto,Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="{Binding CountStatusText}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="•" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                <TextBlock Text="{Binding InsertPreviewText}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+            </StackPanel>
+
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                <Button Command="{Binding InsertSelectedCommand}" Content="Insertar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="{DynamicResource RadiusSm}" />
-                <Button Click="Close_Click" Content="Cancelar" Padding="14,6" CornerRadius="{DynamicResource RadiusSm}" />
+                <Button Command="{Binding InsertSelectedCommand}" IsEnabled="{Binding HasSelectedVariable}" 
+                        Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_InsertBtn], FallbackValue='Insertar Variable'}" 
+                        Padding="14,5" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="{DynamicResource RadiusSm}" FontWeight="SemiBold" />
+                <Button Click="Close_Click" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VarPicker_CancelBtn], FallbackValue='Cancelar'}" 
+                        Padding="12,5" CornerRadius="{DynamicResource RadiusSm}" />
             </StackPanel>
         </Grid>
     </Grid>

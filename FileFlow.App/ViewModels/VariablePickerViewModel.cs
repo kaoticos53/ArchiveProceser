@@ -69,8 +69,14 @@ public partial class VariablePickerViewModel : ObservableObject
 
     public IReadOnlyList<VariableItem> AllVariables => _allVariables;
 
+    public string InsertPreviewText => SelectedVariable != null
+        ? string.Format(_loc.GetString("VarPicker_InsertPreview", "Insertar: {0}"), SelectedVariable.Token)
+        : _loc.GetString("VarPicker_SelectVariableHint", "Selecciona una variable para insertar");
+
+    public event EventHandler<bool>? RequestClose;
+
     public VariablePickerViewModel(
-        IEnumerable<VariableGroupItem> groups,
+        IEnumerable<VariableGroupItem>? groups = null,
         NodeViewModel? targetNode = null,
         FileItemContext? previewContext = null,
         ILocalizationService? localizationService = null)
@@ -80,11 +86,18 @@ public partial class VariablePickerViewModel : ObservableObject
 
         TargetNodeTitle = targetNode?.Title ?? "Personalizado";
 
+        var effectiveGroups = groups?.ToList() ?? [];
+        if (effectiveGroups.Count == 0)
+        {
+            var discovery = Services.VariableDiscoveryService.Instance;
+            effectiveGroups = discovery.GetAvailableVariables(targetNode, []);
+        }
+
         // Aplanar variables deduplicando por Token
         var seenTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var upstreamNodeTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var group in groups)
+        foreach (var group in effectiveGroups)
         {
             foreach (var variable in group.Variables)
             {
@@ -121,6 +134,8 @@ public partial class VariablePickerViewModel : ObservableObject
 
     partial void OnSelectedVariableChanged(VariableItem? value)
     {
+        SelectedToken = value?.Token ?? string.Empty;
+        OnPropertyChanged(nameof(InsertPreviewText));
         if (value != null)
         {
             ShowDetail(value);
@@ -141,6 +156,16 @@ public partial class VariablePickerViewModel : ObservableObject
     public void ClearSearch()
     {
         SearchText = string.Empty;
+    }
+
+    [RelayCommand]
+    public void InsertSelected()
+    {
+        if (SelectedVariable != null)
+        {
+            SelectedToken = SelectedVariable.Token;
+            RequestClose?.Invoke(this, true);
+        }
     }
 
     public void ApplyFilter()
@@ -165,21 +190,24 @@ public partial class VariablePickerViewModel : ObservableObject
             else if (CurrentCategory == "DATES" &&
                      !v.Category.Contains("Fecha", StringComparison.OrdinalIgnoreCase) &&
                      !v.Category.Contains("Date", StringComparison.OrdinalIgnoreCase) &&
-                     !v.Category.Contains("Tiempo", StringComparison.OrdinalIgnoreCase))
+                     !v.Category.Contains("Tiempo", StringComparison.OrdinalIgnoreCase) &&
+                     !v.Category.Contains("Time", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
             else if (CurrentCategory == "SIZES" &&
                      !v.Category.Contains("Tamaño", StringComparison.OrdinalIgnoreCase) &&
                      !v.Category.Contains("Size", StringComparison.OrdinalIgnoreCase) &&
-                     !v.Category.Contains("Métrica", StringComparison.OrdinalIgnoreCase))
+                     !v.Category.Contains("Métrica", StringComparison.OrdinalIgnoreCase) &&
+                     !v.Category.Contains("Metric", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
             else if (CurrentCategory == "FUNCTIONS" &&
                      !v.Category.Contains("Función", StringComparison.OrdinalIgnoreCase) &&
                      !v.Category.Contains("Function", StringComparison.OrdinalIgnoreCase) &&
-                     !v.Category.Contains("Texto", StringComparison.OrdinalIgnoreCase))
+                     !v.Category.Contains("Texto", StringComparison.OrdinalIgnoreCase) &&
+                     !v.Category.Contains("Text", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }

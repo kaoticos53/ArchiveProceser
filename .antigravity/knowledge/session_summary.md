@@ -10,6 +10,89 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **124. Sustitución de botones de versión de archivo por Dropdown ComboBox (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En nodos como `FileRelocatorNode` (Copiar/Mover) y `BestVersionSelectorNode` (Selector de Mejor Versión), los botones horizontales de versiones de archivo desbordaban el ancho compacto de las tarjetas en el lienzo, generando recorte visual, solapamiento y artefactos antiestéticos.
+    2. En el inspector lateral, la hilera de botones ocupaba un espacio horizontal inconsistente con el resto de controles (`ComboBox`).
+  - **Corrección**:
+    - En `NodeParameterTemplates.axaml`: reemplazado el contenedor horizontal de chips por un `ComboBox` estilizado con `ItemTemplate` que muestra el icono vectorial (`MaterialIcon`), el nombre (`Tag`) y el botón `{x}` para insertar expresiones o variables.
+    - En `NodeInspectorPanelView.axaml`: reemplazado el contenedor de chips por el `ComboBox` correspondiente con diseño visual armónico para el panel lateral.
+    - En `NodeParameterViewModel.cs`: implementada la propiedad bidireccional `SelectedVersionOption` que resuelve y sincroniza transparentemente `Value` con el objeto `FileVersionOption` seleccionado, notificando reactivamente en `OnValueChanged`, `SelectVersionOption` y `RefreshAvailableVersions`.
+    - En `NodeCardInteractiveControlsPointerTests.cs`: actualizada la prueba unitaria para validar la presencia del `ComboBox` y la actualización del parámetro al seleccionar elementos.
+  - **Validación**: compilación 0/0, suite completa: **1019 superadas + 1 skip / 1020 (100% verde)**.
+- **123. Estado visual seleccionado y sincronización reactiva de chips en FileVersionSelector (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En `NodeParameterTemplates.axaml` y `NodeInspectorPanelView.axaml`, los chips de selección de versión de archivo no tenían estilo ni clase que reflejara visualmente cuál botón estaba activo/seleccionado. Todos los botones mantenían el mismo color gris de fondo estático, aparentando que no se seleccionaban al hacer clic.
+    2. `FileVersionOption` no notificaba cambios de estado observable para `IsSelected`.
+  - **Corrección**:
+    - En `AppModels.cs`: `FileVersionOption` convertido a `ObservableObject` con `_isSelected`.
+    - En `Buttons.axaml`: añadido estilo `Button.chipButton` y `Button.chipButton.selected` con fondo `AccentPrimaryBrush`, `TextOnAccentBrush` y estados hover.
+    - En `NodeParameterViewModel.cs`: implementado `UpdateVersionOptionsSelection()` sincronizando `IsSelected` en cada cambio de valor o selección de chip.
+    - En `NodeParameterTemplates.axaml` y `NodeInspectorPanelView.axaml`: enlazadas las clases visuales `Classes="chipButton"` y `Classes.selected="{Binding IsSelected}"`.
+  - **Validación**: compilación 0/0, pruebas visuales y suite completa: **1019 superadas + 1 skip / 1020 (100% verde)**.
+- **122. Corrección de excepción XamlTypeResolver y cierre al expandir nodos con FileVersionSelector (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En `NodeParameterTemplates.axaml`, el selector de versiones de archivo (`IsFileVersionSelector`) declaraba `{Binding $parent[ItemsControl].((vm:NodeParameterViewModel)DataContext).SelectVersionOptionCommand}`.
+    2. En la cabecera de `NodeParameterTemplates.axaml`, el namespace `xmlns:vm` estaba definido como `using:FileFlow.App.ViewModels`.
+    3. El resolver de tipos en runtime de Avalonia (`ExpressionNodeFactory.LookupType` / `XamlTypeResolver.Resolve`) no puede inferir el ensamblado a partir de prefijos `using:` cuando se hace casting en expresiones de binding, lanzando `System.ArgumentException: Unable to resolve type vm:NodeParameterViewModel` y cerrando la app al medir el layout tras expandir `FileRelocatorNode` o `BestVersionSelectorNode`.
+    4. En `NodeInspectorPanelView.axaml` no existía bloque para `IsFileVersionSelector`.
+  - **Corrección**:
+    - En `NodeParameterTemplates.axaml`: migrados `xmlns:vm`, `xmlns:models` y `xmlns:loc` a `clr-namespace:*;assembly=*` con ensamblado explícito.
+    - En `NodeInspectorPanelView.axaml`: migrados namespaces y añadido soporte visual completo para `IsFileVersionSelector`.
+    - En `NodeCardInteractiveControlsPointerTests.cs`: añadida prueba `ExpandingNodeCard_WithFileVersionSelector_ShouldRenderWithoutException` validando la expansión de `FileRelocatorNode` y `BestVersionSelectorNode`.
+  - **Validación**: compilación 0/0, pruebas visuales y suite completa: **1019 superadas + 1 skip / 1020 (100% verde)**.
+- **121. Corrección integral del catálogo de variables y expresiones (VariablePickerWindow) (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En `VariablePickerWindow.axaml`, las columnas del `DataGrid` vinculaban a nombres inexistentes (`FullExpression`, `CategoryName`, `ExampleValue`) en vez de las propiedades de `VariableItem` (`Token`, `Category`, `Description`, `SampleValue`). Como resultado, todas las filas del catálogo se mostraban vacías.
+    2. Cuando `VariablePickerWindow` se abría sin grupos suministrados (o desde editores de texto auxiliares como `TextEditorDialogWindow`), la lista `AllVariables` permanecía vacía (`[]`) porque no se llamaba al servicio de descubrimiento por defecto (`VariableDiscoveryService.Instance.GetAvailableVariables(targetNode, [])`).
+    3. Faltaba el comando `InsertSelectedCommand`, la propiedad reactiva `InsertPreviewText` y el evento `RequestClose` para retornar el token seleccionado al diálogo invocador.
+    4. El botón de variables en `TextEditorDialogWindow.axaml.cs` no insertaba el token resultante en el cursor del editor de texto.
+  - **Corrección**:
+    - En `VariablePickerViewModel.cs`: añadido respaldo de descubrimiento automático en constructor, filtrado por categorías bilingüe (`ALL`, `UPSTREAM`, `SYSTEM`, `DATES`, `SIZES`, `FUNCTIONS`), comando `InsertSelectedCommand` e `InsertPreviewText`.
+    - En `VariablePickerWindow.axaml` y `VariablePickerWindow.axaml.cs`: corregidos los bindings a `{Binding Token}`, `{Binding Category}`, `{Binding Description}` y `{Binding SampleValue}`. Añadido filtrado por píldoras, buscador con botón de borrado, inserción por doble clic y panel lateral de vista previa. Aplicados tokens de diseño (`TextMutedBrush`, iconos vectoriales `MaterialIconKind`).
+    - En `TextEditorDialogWindow.axaml.cs`: cableado para insertar el token devuelto en la posición del cursor de texto.
+    - En `IVariableDiscoveryService.cs` y `VariableDiscoveryService.cs`: parámetros `targetNode` y `connections` opcionales/anulables.
+    - En `Strings.resx` y `Strings.es.resx`: añadida la clave `VarPicker_DescriptionLabel`.
+    - En `VariablePickerAndIntelliSenseTests.cs`: añadidas pruebas unitarias para descubrimiento por defecto e inserción de variables.
+  - **Validación**: compilación 0/0, suite completa: **1017 superadas + 1 skip / 1018 (100% verde)**.
+- **120. Elevación automática de nodos a primer plano (ZIndex / BringToFront) y activación fluida de controles interactivos (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En `EditorView.axaml`, el estilo `nodify:ItemContainer` tipado a `vm:NodeViewModel` no tenía vinculado `ZIndex` (`<Setter Property="ZIndex" Value="{Binding ZIndex, Mode=TwoWay}" />`). A pesar de que `NodeViewModel` gestionaba la propiedad `ZIndex` y llamaba a `ParentEditor.BringToFront(this)` al seleccionarse, la capa visual de Nodify/Avalonia nunca reflejaba el cambio de elevación.
+    2. Al interactuar con controles dentro de un nodo solapado, era necesario que el nodo pasara inmediatamente a primer plano para permitir su edición sin quedar oculto detrás de tarjetas contiguas.
+  - **Corrección**:
+    - En `EditorView.axaml`: añadido `<Setter Property="ZIndex" Value="{Binding ZIndex, Mode=TwoWay}" />` al estilo de `nodify:ItemContainer`.
+    - En `NodeCardView.axaml.cs`: en `NodeCardView_PointerPressed`, al detectar un control interactivo (`IsInteractiveVisual(e.Source)`), se asigna `interactiveNode.IsSelected = true` y/o `ParentEditor.BringToFront(interactiveNode)` antes de marcar `e.Handled = true`. Esto garantiza que la tarjeta se eleve al `ZIndex` superior sin interferir con los eventos de clic, apertura de popups y edición de texto de Avalonia.
+    - En `AsyncTestWaiterTests.cs`: ampliado timeout a 5 s para prevenir jitter de programación en pruebas de sondeo sintético durante la ejecución concurrente de la suite completa.
+    - En `NodeCardInteractiveControlsPointerTests.cs`: añadida la prueba unitaria `PointerPressed_OnInteractiveControl_ShouldSelectAndBringNodeToFront` verificando la selección y el incremento de `ZIndex`.
+  - **Validación**: compilación 0/0, suite completa: **1015 superadas + 1 omitida / 1016 (100% verde)**.
+- **119. Corrección de listas desplegables (ComboBox / AutoCompleteBox) en tarjetas de nodos expandidas (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En `NodeCardView.axaml.cs`, al pulsar sobre un `ComboBox` o `AutoCompleteBox` en la tarjeta de un nodo expandido, `NodeCardView_PointerPressed` detectaba el control interactivo pero no marcaba el evento como manejado (`e.Handled = true`).
+    2. El evento `PointerPressed` burbujeaba a `nodify:ItemContainer`, el cual ejecutaba su lógica de inicio de arrastre de nodo y llamaba a `e.Pointer.Capture(this)`. Esta captura de puntero por parte de `ItemContainer` cancelaba inmediatamente el popup del `ComboBox` o impedía que recibiera el `PointerReleased` para abrir el menú de opciones. En cambio, en el inspector lateral (`NodeInspectorPanelView`) funcionaba correctamente al no estar dentro de `NodifyCanvas`/`ItemContainer`.
+    3. `AutoCompleteBox` (`IsEditableDropdown`) no desplegaba sugerencias automáticamente al hacer clic/foco si no se escribía texto previo.
+    4. `NodeCardView_DoubleTapped` ejecutaba `InspectNode()` incondicionalmente sobre cualquier control de la tarjeta (incluyendo campos interactivos).
+  - **Corrección**:
+    - En `NodeCardView.axaml.cs`: creado `IsInteractiveVisual` exhaustivo (`ComboBox`, `ComboBoxItem`, `AutoCompleteBox`, `Button`, `ToggleButton`, `TextBox`, `ToggleSwitch`, `Slider`, `NumericUpDown`, `ListBox`, `ListBoxItem`, `ScrollViewer`). En `NodeCardView_PointerPressed`, se marca explícitamente `e.Handled = true` para evitar que `ItemContainer` capture el puntero, permitiendo la apertura y selección normal de las listas desplegables.
+    - En `NodeCardView.axaml.cs` y `NodeInspectorPanelView.axaml.cs`: añadido handler de `GotFocusEvent` para `AutoCompleteBox` con `MinimumPrefixLength == 0`, abriendo automáticamente el desplegable (`IsDropDownOpen = true`) al recibir foco.
+    - En `NodeCardView.axaml.cs`: protegido `DoubleTapped` para omitir `InspectNode()` si el doble clic ocurre sobre un control interactivo.
+    - En `NodeCardInteractiveControlsPointerTests.cs`: añadidas 3 pruebas unitarias probando el manejo de puntero y la no interferencia con Nodify.
+  - **Validación**: compilación 0/0, suite completa: **1014 superadas + 1 skip / 1015 (100% verde)**.
+- **118. Rediseño del catálogo de nodos y corrección del anclaje dinámico del cable de conexión (2026-09-17)**:
+  - **Diagnóstico**:
+    1. Las categorías del catálogo de nodos (`NodeToolboxView.axaml`) se renderizaban con bordes y fondos de tarjeta pesados (`Expander` Fluent default), creando cajas desconectadas con márgenes de 8px en lugar de un menú acordeón continuo y homogéneo.
+    2. Los elementos de nodo dentro de cada categoría tenían bordes y fondos de tarjeta individuales (`BorderThickness="1"`), recargando la jerarquía visual.
+    3. El chevron de apertura estaba a la derecha por defecto en lugar de la izquierda (estilo estándar de menú de navegación/árbol) y los títulos presentaban emojis sueltos e inconsistentes (e.g. "General" y "Testing" no tenían iconos).
+    4. Las categorías y elementos tenían una separación vertical excesiva por la altura mínima (`MinHeight="48"`) heredada de FluentTheme en `Expander` y `ToggleButton#PART_ToggleButton`.
+    5. El botón de favoritos (estrella) estaba pegado al borde derecho sobre la pista del scrollbar.
+    6. Al iniciar una conexión desde un conector en el lienzo, la primera vez el cable seguía al ratón pero en intentos sucesivos el extremo saltaba a `(0, 0)` (esquina superior izquierda). Esto se debía a que `EditorView.axaml` enlazaba `TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"` y pasaba `Source.Anchor` a `Source` (en vez del objeto `PortViewModel`), forzando `TargetAnchor` a `(0, 0)` en cada nuevo `PendingConnectionViewModel` tras reciclar la vista.
+    7. Faltaba el recurso de localización para `SearchNodesPlaceholder` en `Strings.resx` y `Strings.es.resx`.
+  - **Corrección**:
+    - En `Containers.axaml`: creados los estilos `Expander.menuAccordion` (con chevron interactivo a la izquierda que rota de 0° a 90° al desplegar, fondo y borde transparentes, altura uniforme compacta `MinHeight="22"`, `Padding="2,1,4,1"`, `Margin="0,0,0,1"`, hover suave) y `Border.nodeMenuItem` (filas homogéneas sin bordes, hover `BgHoverBrush`, altura compacta `MinHeight="20"`, `Padding="4,1.5,6,1.5"`, `Margin="0,0,2,1"`).
+    - En `ToolboxViewModel.cs` y `NodeIconResolver.cs`: añadido soporte para `Icon` vectorial en `ToolboxCategoryGroup` para todas las categorías (incluyendo "General", "Testing", "Muestra", roles ETL) y eliminados los emojis de texto de `Strings.resx`/`Strings.es.resx`.
+    - En `NodeToolboxView.axaml`: reemplazados los contenedores por `menuAccordion` y `nodeMenuItem`, fijado `VerticalAlignment="Top"` en la lista, añadido icono vectorial en cabecera, badge estilizado con el conteo de elementos, botón de favorito ajustado con margen de 4px a la derecha y `TextTrimming="CharacterEllipsis"`.
+    - En `EditorView.axaml` y `PendingConnectionViewModel.cs`: corregido `PendingConnection` eliminando la sobreescritura estática de `TargetAnchor`, asignando `Source="{Binding Source}"`, `Target="{Binding Target}"` y `SourceAnchor="{Binding Source.Anchor}"`, e inicializando `_targetLocation` a `source.Anchor`. Ahora Nodify.Avalonia realiza el seguimiento continuo del puntero en todos los intentos de conexión.
+    - En `Strings.resx` y `Strings.es.resx`: añadida la clave `SearchNodesPlaceholder`.
+  - **Validación**: compilación 0/0, pruebas visuales y suite completa: **1011 superadas + 1 skip / 1012** (100% verde).
 - **117. Resolución definitiva de listas desplegables (ComboBox / AutoCompleteBox) en Canvas e Inspector (2026-09-16)**:
   - **Diagnóstico**:
     1. Al hacer clic en un `ComboBox` o `AutoCompleteBox` de una tarjeta de nodo en el lienzo, el evento `PointerPressed` burbujeaba a `NodeCardView`, invocando `EditorViewModel.BringToFront(Node)`. Esto modificaba el `ZIndex` del nodo, forzando a Nodify a reordenar los elementos en el lienzo visual y destruyendo la captura de puntero antes de abrir o seleccionar el popup.

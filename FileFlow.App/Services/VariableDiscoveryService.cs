@@ -15,26 +15,26 @@ namespace FileFlow.App.Services;
 public class VariableDiscoveryService : IVariableDiscoveryService
 {
     public static readonly VariableDiscoveryService Instance = new();
-    public List<VariableGroupItem> GetAvailableVariables(NodeViewModel targetNode, IEnumerable<ConnectionViewModel> connections)
+    public List<VariableGroupItem> GetAvailableVariables(NodeViewModel? targetNode = null, IEnumerable<ConnectionViewModel>? connections = null)
     {
-        ArgumentNullException.ThrowIfNull(targetNode);
-        ArgumentNullException.ThrowIfNull(connections);
-
         var result = new List<VariableGroupItem>();
         var previewItem = CreatePreviewItem(targetNode);
 
-        // 1. Upstream Traversal (Variables que realmente existen según los nodos anteriores en el grafo DAG)
-        var visitedNodeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (!string.IsNullOrEmpty(targetNode.Id))
-        {
-            visitedNodeIds.Add(targetNode.Id);
-        }
-
-        var queue = new Queue<NodeViewModel>();
-        queue.Enqueue(targetNode);
-
-        var connectionsList = connections.ToList();
         var upstreamGroups = new List<VariableGroupItem>();
+
+        // 1. Upstream Traversal (Variables que realmente existen según los nodos anteriores en el grafo DAG)
+        if (targetNode != null && connections != null)
+        {
+            var visitedNodeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrEmpty(targetNode.Id))
+            {
+                visitedNodeIds.Add(targetNode.Id);
+            }
+
+            var queue = new Queue<NodeViewModel>();
+            queue.Enqueue(targetNode);
+
+            var connectionsList = connections.ToList();
 
         while (queue.Count > 0)
         {
@@ -351,6 +351,7 @@ public class VariableDiscoveryService : IVariableDiscoveryService
                 }
             }
         }
+        }
 
         // Añadir grupos upstream al inicio si existen
         if (upstreamGroups.Count > 0)
@@ -556,7 +557,7 @@ public class VariableDiscoveryService : IVariableDiscoveryService
         return item;
     }
 
-    public List<FileVersionOption> GetAvailableFileVersions(NodeViewModel targetNode, IEnumerable<ConnectionViewModel> connections)
+    public List<FileVersionOption> GetAvailableFileVersions(NodeViewModel? targetNode = null, IEnumerable<ConnectionViewModel>? connections = null)
     {
         var versions = new List<FileVersionOption>
         {

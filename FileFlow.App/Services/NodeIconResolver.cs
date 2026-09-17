@@ -216,7 +216,24 @@ public static class NodeIconResolver
         ["metadata"] = MaterialIconKind.Tag,
         ["metadatos"] = MaterialIconKind.Tag,
         ["media & docs"] = MaterialIconKind.Movie,
-        ["mediadocs"] = MaterialIconKind.Movie
+        ["mediadocs"] = MaterialIconKind.Movie,
+        ["general"] = MaterialIconKind.ViewGridOutline,
+        ["testing"] = MaterialIconKind.TestTube,
+        ["test"] = MaterialIconKind.TestTube,
+        ["muestra"] = MaterialIconKind.ShapeOutline,
+        ["sample"] = MaterialIconKind.ShapeOutline,
+        ["role_source"] = MaterialIconKind.TrayArrowDown,
+        ["source"] = MaterialIconKind.TrayArrowDown,
+        ["role_filter"] = MaterialIconKind.FilterOutline,
+        ["filter"] = MaterialIconKind.FilterOutline,
+        ["role_transform"] = MaterialIconKind.AutoFix,
+        ["transform"] = MaterialIconKind.AutoFix,
+        ["role_analyze"] = MaterialIconKind.EyeOutline,
+        ["analyze"] = MaterialIconKind.EyeOutline,
+        ["role_sink"] = MaterialIconKind.TrayArrowUp,
+        ["sink"] = MaterialIconKind.TrayArrowUp,
+        ["role_control"] = MaterialIconKind.Tune,
+        ["control"] = MaterialIconKind.Tune
     };
 
     /// <summary>

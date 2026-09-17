@@ -277,4 +277,46 @@ public class VariablePickerAndIntelliSenseTests
         vm.DetailSource.Should().BeEmpty();
         vm.DetailEvaluated.Should().BeEmpty();
     }
+
+    [Fact]
+    public void VariablePickerViewModel_WithoutGroups_ShouldLoadSystemAndFunctionVariables()
+    {
+        // Act - instanciar sin grupos
+        var vm = new VariablePickerViewModel();
+
+        // Assert - variables del sistema y funciones cargadas automáticamente
+        vm.AllVariables.Should().NotBeEmpty();
+        vm.AllVariables.Count.Should().BeGreaterThan(20);
+        vm.FilteredVariables.Should().NotBeEmpty();
+        vm.AllVariables.Should().Contain(v => v.Token == "{FileName}");
+        vm.AllVariables.Should().Contain(v => v.Token == "{DateNow}");
+        vm.AllVariables.Should().Contain(v => v.Token.Contains("Upper"));
+
+        // Insert preview text
+        vm.SelectedVariable = vm.FilteredVariables.First(v => v.Token == "{FileName}");
+        vm.InsertPreviewText.Should().Contain("{FileName}");
+        vm.SelectedToken.Should().Be("{FileName}");
+    }
+
+    [Fact]
+    public void VariablePickerViewModel_InsertSelected_ShouldTriggerRequestClose()
+    {
+        var vm = new VariablePickerViewModel();
+        bool closed = false;
+        bool closeResult = false;
+        vm.RequestClose += (s, res) =>
+        {
+            closed = true;
+            closeResult = res;
+        };
+
+        var targetVar = vm.FilteredVariables.First(v => v.Token == "{FileName}");
+        vm.SelectedVariable = targetVar;
+
+        vm.InsertSelected();
+
+        closed.Should().BeTrue();
+        closeResult.Should().BeTrue();
+        vm.SelectedToken.Should().Be("{FileName}");
+    }
 }

@@ -45,6 +45,7 @@
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                     <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
+                    <Setter Property="ZIndex" Value="{Binding ZIndex, Mode=TwoWay}" />
                 </Style>
                 <Style Selector="nodify|DecoratorContainer">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
@@ -112,9 +113,9 @@
                     <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
                                                 StartedCommand="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
                                                 CompletedCommand="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
-                                                Source="{Binding Source.Anchor}"
+                                                Source="{Binding Source}"
+                                                Target="{Binding Target}"
                                                 SourceAnchor="{Binding Source.Anchor}"
-                                                TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"
                                                 EnablePreview="True"
                                                 EnableSnapping="True"
                                                 AllowOnlyConnectors="True"

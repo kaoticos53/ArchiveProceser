@@ -83,6 +83,9 @@
   <data name="NodeToolboxTitle" xml:space="preserve">
     <value>🧩 Node Library</value>
   </data>
+  <data name="SearchNodesPlaceholder" xml:space="preserve">
+    <value>Search nodes...</value>
+  </data>
   <data name="ToolboxResizeToolTip" xml:space="preserve">
     <value>Drag to resize node toolbox panel</value>
   </data>
@@ -375,39 +378,39 @@
   <data name="LogColMessage" xml:space="preserve"><value>Message</value></data>
   <data name="LogSearchPlaceholder" xml:space="preserve"><value>Search logs...</value></data>
   <data name="Filter_All" xml:space="preserve"><value>All</value></data>
-  <data name="Filter_Favorites" xml:space="preserve"><value>⭐ Favorites</value></data>
-  <data name="Filter_Frequent" xml:space="preserve"><value>🔥 Most Used</value></data>
+  <data name="Filter_Favorites" xml:space="preserve"><value>Favorites</value></data>
+  <data name="Filter_Frequent" xml:space="preserve"><value>Most Used</value></data>
 
   <!-- Categories -->
   <data name="Category_All" xml:space="preserve"><value>All</value></data>
-  <data name="Category_Favorites" xml:space="preserve"><value>⭐ Favorites</value></data>
-  <data name="Category_Frequent" xml:space="preserve"><value>🔥 Frequent</value></data>
-  <data name="Category_Files" xml:space="preserve"><value>📁 Files &amp; System</value></data>
-  <data name="Category_FileSystem" xml:space="preserve"><value>📁 Files &amp; System</value></data>
-  <data name="Category_ImageVision" xml:space="preserve"><value>🖼️ Images &amp; AI Vision</value></data>
-  <data name="Category_Images" xml:space="preserve"><value>🖼️ Images &amp; AI Vision</value></data>
-  <data name="Category_AudioVoice" xml:space="preserve"><value>🎙️ Audio &amp; Voice AI</value></data>
-  <data name="Category_Documents" xml:space="preserve"><value>📄 Documents &amp; PDF</value></data>
-  <data name="Category_Data" xml:space="preserve"><value>📊 Data &amp; Tables</value></data>
-  <data name="Category_LanguageAI" xml:space="preserve"><value>🧠 Language &amp; LLM</value></data>
-  <data name="Category_Security" xml:space="preserve"><value>🔒 Security &amp; Privacy</value></data>
-  <data name="Category_Logic" xml:space="preserve"><value>🔀 Logic &amp; Flow</value></data>
-  <data name="Category_Archives" xml:space="preserve"><value>📦 Compressed Archives</value></data>
-  <data name="Category_Network" xml:space="preserve"><value>🌐 Network &amp; Cloud</value></data>
-  <data name="Category_Integrations" xml:space="preserve"><value>⚡ Integrations &amp; Diagnostics</value></data>
-  <data name="Category_MediaDocs" xml:space="preserve"><value>🎬 Media &amp; Docs</value></data>
-  <data name="Category_Metadata" xml:space="preserve"><value>🏷️ Metadata</value></data>
-  <data name="Category_Hashing" xml:space="preserve"><value>🔑 Hashing &amp; Security</value></data>
-  <data name="Category_Scripting" xml:space="preserve"><value>📜 Scripting</value></data>
+  <data name="Category_Favorites" xml:space="preserve"><value>Favorites</value></data>
+  <data name="Category_Frequent" xml:space="preserve"><value>Frequent</value></data>
+  <data name="Category_Files" xml:space="preserve"><value>Files &amp; System</value></data>
+  <data name="Category_FileSystem" xml:space="preserve"><value>Files &amp; System</value></data>
+  <data name="Category_ImageVision" xml:space="preserve"><value>Images &amp; AI Vision</value></data>
+  <data name="Category_Images" xml:space="preserve"><value>Images &amp; AI Vision</value></data>
+  <data name="Category_AudioVoice" xml:space="preserve"><value>Audio &amp; Voice AI</value></data>
+  <data name="Category_Documents" xml:space="preserve"><value>Documents &amp; PDF</value></data>
+  <data name="Category_Data" xml:space="preserve"><value>Data &amp; Tables</value></data>
+  <data name="Category_LanguageAI" xml:space="preserve"><value>Language &amp; LLM</value></data>
+  <data name="Category_Security" xml:space="preserve"><value>Security &amp; Privacy</value></data>
+  <data name="Category_Logic" xml:space="preserve"><value>Logic &amp; Flow</value></data>
+  <data name="Category_Archives" xml:space="preserve"><value>Compressed Archives</value></data>
+  <data name="Category_Network" xml:space="preserve"><value>Network &amp; Cloud</value></data>
+  <data name="Category_Integrations" xml:space="preserve"><value>Integrations &amp; Diagnostics</value></data>
+  <data name="Category_MediaDocs" xml:space="preserve"><value>Media &amp; Docs</value></data>
+  <data name="Category_Metadata" xml:space="preserve"><value>Metadata</value></data>
+  <data name="Category_Hashing" xml:space="preserve"><value>Hashing &amp; Security</value></data>
+  <data name="Category_Scripting" xml:space="preserve"><value>Scripting</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
 
   <!-- Pipeline Roles (ETL / DAG) -->
-  <data name="Role_Source" xml:space="preserve"><value>📥 Source / Input</value></data>
-  <data name="Role_Filter" xml:space="preserve"><value>🔍 Filter / Decision</value></data>
-  <data name="Role_Transform" xml:space="preserve"><value>⚡ Transform / Process</value></data>
-  <data name="Role_Analyze" xml:space="preserve"><value>🔬 Analyze / Metadata</value></data>
-  <data name="Role_Sink" xml:space="preserve"><value>📤 Destination / Sink</value></data>
-  <data name="Role_Control" xml:space="preserve"><value>🎛️ Control / Utility</value></data>
+  <data name="Role_Source" xml:space="preserve"><value>Source / Input</value></data>
+  <data name="Role_Filter" xml:space="preserve"><value>Filter / Decision</value></data>
+  <data name="Role_Transform" xml:space="preserve"><value>Transform / Process</value></data>
+  <data name="Role_Analyze" xml:space="preserve"><value>Analyze / Metadata</value></data>
+  <data name="Role_Sink" xml:space="preserve"><value>Destination / Sink</value></data>
+  <data name="Role_Control" xml:space="preserve"><value>Control / Utility</value></data>
 
   <!-- Toolbox Perspectives -->
   <data name="Toolbox_Perspective_Domain" xml:space="preserve"><value>Domain</value></data>
@@ -978,6 +981,7 @@
   <data name="VarPicker_SystemBadge" xml:space="preserve"><value>🌐 Global</value></data>
   <data name="VarPicker_SelectVariableHint" xml:space="preserve"><value>Select a variable from the list to view its description and preview</value></data>
   <data name="VarPicker_CopyToken" xml:space="preserve"><value>Copy Token</value></data>
+  <data name="VarPicker_DescriptionLabel" xml:space="preserve"><value>Description:</value></data>
   <data name="TextEditor_SidePanelTitle" xml:space="preserve"><value>Available Variables</value></data>
   <data name="TextEditor_ToggleSidePanel" xml:space="preserve"><value>Toggle variables panel</value></data>
   <data name="TextEditor_IntelliSenseHint" xml:space="preserve"><value>Type '{' to trigger smart autocomplete</value></data>

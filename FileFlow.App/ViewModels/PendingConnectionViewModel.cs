@@ -33,5 +33,9 @@ public partial class PendingConnectionViewModel : ObservableObject
     public PendingConnectionViewModel(PortViewModel? source = null)
     {
         _source = source;
+        if (source != null)
+        {
+            _targetLocation = source.Anchor;
+        }
     }
 }
