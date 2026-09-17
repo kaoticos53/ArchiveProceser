@@ -60,7 +60,25 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         if (actionId.Equals("ManageMediaPresets", StringComparison.OrdinalIgnoreCase))
         {
             var window = new MediaPresetManagerWindow();
-            if (context is Avalonia.Controls.Window ownerWindow)
+            Action? onCompleted = null;
+            object? parentWindow = context;
+
+            if (context is NodeCustomActionContext customCtx)
+            {
+                parentWindow = customCtx.ParentWindow;
+                onCompleted = customCtx.OnCompleted;
+            }
+            else if (context is Action callback)
+            {
+                onCompleted = callback;
+            }
+
+            if (onCompleted != null)
+            {
+                window.Closed += (_, _) => onCompleted();
+            }
+
+            if (parentWindow is Avalonia.Controls.Window ownerWindow)
             {
                 window.ShowDialog(ownerWindow);
             }

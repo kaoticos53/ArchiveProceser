@@ -47,10 +47,24 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
     };
 
     public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
-        new("PipelineName", ParameterEditorType.Text, DefaultValue: "Pipeline Predeterminado", DisplayOrder: 1),
+        new("PipelineName", ParameterEditorType.Dropdown, DefaultValue: "Pipeline Predeterminado", DisplayOrder: 1, Options: GetPresetOptions()),
         new("RenameMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", DisplayOrder: 2, Options: ["Virtual", "DirectInPlace"]),
         new("CollisionStrategy", ParameterEditorType.Dropdown, DefaultValue: "AutoIncrement", DisplayOrder: 3, Options: ["AutoIncrement", "Overwrite", "Skip", "Fail"])
     ];
+
+    private static IReadOnlyList<string> GetPresetOptions()
+    {
+        var presets = RenamerPresetService.GetBuiltinPresets();
+        var options = new List<string> { "Pipeline Predeterminado" };
+        foreach (var p in presets)
+        {
+            if (!options.Contains(p.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                options.Add(p.Name);
+            }
+        }
+        return options;
+    }
 
     public IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("OpenRenamerPipeline", "🏷️ Pipeline de Métodos...", "🏷️", "Abrir el Estudio de Renombrado Avanzado (7 métodos, presets y vista previa)")
@@ -61,7 +75,25 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
         {
             var window = new AdvancedRenamerEditorWindow(this);
-            if (context is Avalonia.Controls.Window ownerWindow)
+            Action? onCompleted = null;
+            object? parentWindow = context;
+
+            if (context is NodeCustomActionContext customCtx)
+            {
+                parentWindow = customCtx.ParentWindow;
+                onCompleted = customCtx.OnCompleted;
+            }
+            else if (context is Action callback)
+            {
+                onCompleted = callback;
+            }
+
+            if (onCompleted != null)
+            {
+                window.Closed += (_, _) => onCompleted();
+            }
+
+            if (parentWindow is Avalonia.Controls.Window ownerWindow)
             {
                 window.ShowDialog(ownerWindow);
             }

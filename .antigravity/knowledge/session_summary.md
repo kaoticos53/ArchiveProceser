@@ -10,6 +10,72 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **130. Implementación de curvas Spline Bézier fluidas en conexiones interactivas (PendingConnection) (2026-09-17)**:
+  - **Diagnóstico y Objetivo**:
+    1. El usuario requería que al hacer clic en un conector y arrastrar el cable hacia otro nodo, el cable mostrara una curva spline fluida (Bézier cúbica nativa de Nodify con `Spacing="45"`) en lugar de una línea recta rígida, siguiendo al cursor en tiempo real y haciendo snap hacia el conector destino.
+    2. En `Nodify.Avalonia`, `PendingConnection` incluye por defecto una plantilla con `LineConnection`. Para renderizar una curva spline se requería redefinir su `ControlTemplate` para alojar un `<nodifyConn:Connection>` enlazado a `SourceAnchor`, `TargetAnchor`, `Direction`, `Stroke` y `StrokeThickness`.
+  - **Corrección**:
+    - En `FileFlow.App/Styles/Ports.axaml`: configurada la `ControlTemplate` de `nodifyConn:PendingConnection` con `<nodifyConn:Connection>` enlazando `{TemplateBinding SourceAnchor}`, `{TemplateBinding TargetAnchor}` y `Spacing="45"`.
+    - Mantenida la tematización de cables según el tipo de datos (`.wireFiles`, `.wireText`, `.wireBoolean`, etc.) con trazo 100% sólido y limpio sin animaciones parásitas.
+    - En `FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`: actualizadas y verificadas las pruebas del ciclo de vida de `PendingConnectionViewModel`.
+  - **Validación**: `dotnet build FileFlow.App\FileFlow.App.csproj` 0/0, suite completa: **1028 superadas + 1 skip / 1029 (100% verde)**.
+- **129. Restauración del comportamiento estándar de conexiones en Nodify y eliminación de líneas a (0,0) y animaciones (2026-09-17)**:
+  - **Diagnóstico**:
+    1. Al arrastrar una conexión desde un conector en el lienzo, una línea recta apuntaba a `(0, 0)` (borde superior izquierdo).
+    2. La causa era que en `EditorView.axaml`, `NodifyEditor.PendingConnectionTemplate` tenía enlaces manuales forzados `Source="{Binding Source.Anchor}"` y `Target="{Binding TargetLocation, Mode=TwoWay}"`. En Nodify.Avalonia, `PendingConnection` gestiona el seguimiento del cursor de forma nativa a través de `TargetAnchor` en sus manejadores de eventos enrutados. Al fijar `Target` a `TargetLocation` (que se evaluaba a `Point(0, 0)` sin actualizarse en el pointer move), se anulaba el cálculo geométrico del control y la conexión se forzaba hacia `(0, 0)`.
+    3. En `Ports.axaml` y `EditorView.axaml` quedaban capas de energía con `StrokeDashArray` animado y transiciones que introducían latencia.
+  - **Corrección**:
+    - En `EditorView.axaml`: simplificado `PendingConnectionTemplate` al estándar nativo de Nodify.Avalonia sin enlaces manuales forzados de `Source` y `Target`.
+    - En `Ports.axaml`: eliminadas todas las transiciones y capas con `StrokeDashArray` o animaciones de guiones, asegurando `StrokeDashArray="{x:Null}"` y `EnablePreview="False"` para conexiones instantáneas y sólidas.
+    - En `EditorViewLayoutTests.cs`: añadidas pruebas unitarias del ciclo de vida y propiedades de `PendingConnectionViewModel`.
+  - **Validación**: `dotnet build FileFlow.slnx` 0/0, suite completa: **1028 superadas + 1 skip / 1029 (100% verde)**.
+- **128. Desplegable de presets en nodo Renombrar y simplificación a cables de conexión estándar Nodify (2026-09-17)**:
+  - **Diagnóstico y Requerimientos del Usuario**:
+    1. En el nodo "Renombrar Archivo" (`AdvancedRenamerConfigViewModel`), desplegable con todos los presets definidos.
+    2. En el Estudio de Renombrado Avanzado (`AdvancedRenamerEditorWindow`), al pulsar "Guardar y Aplicar", el preset seleccionado/guardado pasa a ser el preset seleccionado en el nodo actual del editor.
+    3. En el proceso de hacer clic y arrastrar una conexión, eliminar animaciones personalizadas y keyframes que provocaban glitches o comportamientos anómalos, alineando con el estándar más limpio de Nodify.
+    4. Al mover un nodo por el lienzo, las conexiones conectadas a sus puertos deben desplazarse sincronizadamente con el nodo.
+  - **Corrección**:
+    - En `FileFlow.App/Styles/Ports.axaml`: eliminadas todas las transiciones animadas (`Transitions`) en sockets y etiquetas de puertos, eliminadas las animaciones complejas con `Style.Animations` en `PendingConnection`, los estados compatibles/warning de los sockets y la capa de energía animada con guiones (`Connection.energy`), fijando `StrokeDashArray="{x:Null}"` y `EnablePreview="False"` en todas las conexiones para asegurar trazados 100% continuos, sólidos e instantáneos.
+    - En `FileFlow.App/Views/EditorView.axaml`: fijados `EnablePreview="False"` y `StrokeDashArray="{x:Null}"`, dejando conexiones `nodifyConn:Connection` y `PendingConnection` puras y estáticas.
+    - En `NodeCardView.axaml`: restauradas las propiedades estándar `IsConnected="{Binding IsConnected, Mode=TwoWay}"` y `Anchor="{Binding Anchor, Mode=OneWayToSource}"` en `<nodify:NodeInput>` y `<nodify:NodeOutput>`.
+    - En `EditorView.axaml`: configurados los templates estándar y limpios de Nodify:
+      - `PendingConnectionTemplate`: `Source="{Binding Source.Anchor}"` y `Target="{Binding TargetLocation, Mode=TwoWay}"`.
+      - `ConnectionTemplate`: `Source="{Binding Source.Anchor}"` y `Target="{Binding Target.Anchor}"`.
+    - En `AdvancedRenamerConfigViewModel.cs` y vistas asociadas: integrado selector desplegable de presets con sincronización reactiva bidireccional entre la ventana modal del editor y el nodo del canvas.
+    - En `FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`: añadidas pruebas unitarias de arrastre continuo y desplazamiento de anclas con movimiento de nodo (`RepeatedConnectionDrag_ShouldUpdatePendingConnectionState_AndAllowSubsequentConnections` y `MovingNode_ShouldUpdatePortAnchor_AndAffectConnections`).
+  - **Validación**: compilación 0/0, suite completa: **1027 superadas + 1 skip / 1028 (100% verde)**.
+- **127. Corrección del seguimiento del cursor en el cable de conexión pendiente (PendingConnection) (2026-09-17)**:
+  - **Diagnóstico**:
+    1. Al hacer clic en la entrada o salida de un nodo y arrastrar el ratón para conectar con otro nodo en el lienzo visual, el cable salía del conector y apuntaba fijamente a la esquina superior izquierda `(0, 0)` en lugar de seguir la posición del cursor.
+    2. En `EditorView.axaml` dentro de `NodifyEditor.PendingConnectionTemplate`, `<nodifyConn:PendingConnection>` enlazaba `Source`, `SourceAnchor` y `Target`, pero carecía de los enlaces bidireccionales `TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"` y `Target="{Binding Target, Mode=TwoWay}"`. Como resultado, la propiedad `TargetAnchor` del control de Nodify permanecía en `(0, 0)` en lugar de recibir las coordenadas dinámicas de arrastre.
+  - **Corrección**:
+    - En `FileFlow.App/Views/EditorView.axaml`: añadido `TargetAnchor="{Binding TargetLocation, Mode=TwoWay}"` y `Target="{Binding Target, Mode=TwoWay}"` en `NodifyEditor.PendingConnectionTemplate`.
+    - En `FileFlow.App/ViewModels/PendingConnectionViewModel.cs`: verificado que `TargetLocation` inicializa con `source.Anchor` y se actualiza reactivamente durante el arrastre.
+    - En `FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`: añadida la prueba unitaria `PendingConnection_WhenStarted_ShouldInitializeTargetLocationToSourceAnchor`.
+  - **Validación**: compilación 0/0, suite completa: **1025 superadas + 1 skip / 1026 (100% verde)**.
+- **126. Sincronización reactiva de presets al guardar y aplicar en el Estudio de Renombrado Avanzado (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En el Estudio de Renombrado Avanzado (`AdvancedRenamerEditorWindow`), al seleccionar un preset del catálogo y hacer clic en el botón "Guardar y Aplicar" (`SaveAndClose`), el preset seleccionado no se reflejaba de forma reactiva en el parámetro `"PipelineName"` de la tarjeta del lienzo ni en el panel de inspección.
+    2. En Avalonia, `window.ShowDialog(owner)` es asíncrono (`Task`) y no bloqueante. Al ejecutarse una acción personalizada (`provider.ExecuteCustomAction(...)`), la sincronización previa de parámetros se ejecutaba inmediatamente antes de que el usuario interactuara con el diálogo modal. Al cerrar la ventana con `Close(true)`, el anfitrión `NodeViewModel` no recibía notificación de finalización para refrescar los parámetros.
+  - **Corrección**:
+    - En `FileFlow.Sdk/Descriptors/NodeCustomActionContext.cs`: creado el contrato `NodeCustomActionContext(object? ParentWindow = null, Action? OnCompleted = null)` en el SDK base, desacoplando completamente los plugins de `FileFlow.App`.
+    - En `FileFlow.App/ViewModels/NodeViewModel.cs`: implementado `SyncParametersFromNodeInstance()` y actualizado `ExecuteCustomAction` para suministrar `NodeCustomActionContext` con callback de sincronización reactiva al cierre.
+    - En `AdvancedRenamerNode.cs`, `MediaTranscoderNode.cs`, `MultimodalVisionLlmNode.cs`, `SmartUnpackNode.cs`, `ArchiveFanOutNode.cs`, `CustomScriptNode.cs` y `SyntheticDataSourceNode.cs`: adaptada la ejecución de acciones para enganchar `window.Closed += (_, _) => onCompleted();` (o invocar `onCompleted?.Invoke()` al completar).
+    - En `AdvancedRenamerEditorViewModel.cs`: en `OnSelectedPresetChanged`, el cambio de preset actualiza `PipelineName` y clona sus pasos; al pulsar `SaveAndClose`, se persiste en el nodo `PipelineName`, notificando a la tarjeta y al inspector al cerrar.
+    - En `NodeParameterViewModel.cs`: actualizados `OpenMediaPresetManager` y `OpenPasswordManager` para usar `NodeCustomActionContext`.
+    - En `AdvancedRenamerEditorViewModelTests.cs` y `NodeParameterManagerTests.cs`: añadidas 3 pruebas unitarias exhaustivas.
+  - **Validación**: compilación 0/0, suite completa: **1024 superadas + 1 skip / 1025 (100% verde)**.
+- **125. Desplegable de presets en el parámetro PipelineName de AdvancedRenamerNode (2026-09-17)**:
+  - **Diagnóstico**:
+    1. En el nodo de Renombrar Archivo (`AdvancedRenamerNode`), el parámetro `"PipelineName"` estaba configurado como un cuadro de texto plano (`ParameterEditorType.Text`), impidiendo que el usuario viera o seleccionara directamente los presets disponibles desde la tarjeta en el lienzo o en el panel de inspección.
+    2. Al abrir el editor visual (`AdvancedRenamerEditorWindow`), si el usuario había cambiado de preset, no se auto-seleccionaba en el desplegable de presets de la modal.
+  - **Corrección**:
+    - En `AdvancedRenamerNode.cs`: descriptor `"PipelineName"` actualizado a `ParameterEditorType.Dropdown` con `Options: GetPresetOptions()`, cargando dinámicamente `"Pipeline Predeterminado"` y todos los presets descubiertos por `RenamerPresetService.GetBuiltinPresets()`.
+    - En `AdvancedRenamerEditorViewModel.cs`: reordenada la carga (`LoadPresets()` antes de `LoadFromNode()`), clonado seguro de pasos (`s.Clone()`) y sincronización reactiva de `SelectedPreset`.
+    - En `NodeParameterManager.cs`: al cambiar `"PipelineName"` en la UI, se limpia `MethodSteps` para activar de inmediato el preset elegido.
+    - En `AdvancedRenamerExhaustiveTests.cs` y `AdvancedRenamerEditorViewModelTests.cs`: añadidas 3 pruebas unitarias exhaustivas.
+  - **Validación**: compilación 0/0, suite completa: **1021 superadas + 1 skip / 1022 (100% verde)**.
 - **124. Sustitución de botones de versión de archivo por Dropdown ComboBox (2026-09-17)**:
   - **Diagnóstico**:
     1. En nodos como `FileRelocatorNode` (Copiar/Mover) y `BestVersionSelectorNode` (Selector de Mejor Versión), los botones horizontales de versiones de archivo desbordaban el ancho compacto de las tarjetas en el lienzo, generando recorte visual, solapamiento y artefactos antiestéticos.

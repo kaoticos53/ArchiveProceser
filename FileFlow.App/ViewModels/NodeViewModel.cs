@@ -462,23 +462,8 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     {
         if (_nodeInstance is INodeCustomActionProvider provider)
         {
-            provider.ExecuteCustomAction(actionId, App.MainWindow);
-
-            // Sincronizar descriptores y parámetros modificados por el diálogo (plantillas nuevas, opciones, etc.)
-            var updatedDescriptors = _nodeInstance.ParameterDescriptors?.ToDictionary(d => d.Key, StringComparer.OrdinalIgnoreCase);
-
-            foreach (var param in Parameters)
-            {
-                if (updatedDescriptors != null && updatedDescriptors.TryGetValue(param.Key, out var desc) && desc.Options != null)
-                {
-                    param.UpdateOptions(desc.Options);
-                }
-
-                if (_nodeInstance.Parameters.TryGetValue(param.Key, out var updatedVal))
-                {
-                    param.Value = updatedVal;
-                }
-            }
+            provider.ExecuteCustomAction(actionId, new NodeCustomActionContext(App.MainWindow, () => SyncParametersFromNodeInstance()));
+            SyncParametersFromNodeInstance();
             return;
         }
 
@@ -490,6 +475,24 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             case "addswitchcase":
                 AddSwitchCase();
                 break;
+        }
+    }
+
+    public void SyncParametersFromNodeInstance()
+    {
+        var updatedDescriptors = _nodeInstance.ParameterDescriptors?.ToDictionary(d => d.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var param in Parameters)
+        {
+            if (updatedDescriptors != null && updatedDescriptors.TryGetValue(param.Key, out var desc) && desc.Options != null)
+            {
+                param.UpdateOptions(desc.Options);
+            }
+
+            if (_nodeInstance.Parameters.TryGetValue(param.Key, out var updatedVal))
+            {
+                param.Value = updatedVal;
+            }
         }
     }
 

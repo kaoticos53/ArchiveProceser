@@ -94,6 +94,24 @@ public class AdvancedRenamerEditorViewModelTests : IDisposable
     }
 
     [Fact]
+    public void Constructor_WithPresetSelected_ShouldLoadPresetStepsAndSelectPreset()
+    {
+        // Arrange
+        var renamerNode = new AdvancedRenamerNode();
+        renamerNode.Parameters["PipelineName"] = "0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)";
+
+        // Act
+        var vm = new AdvancedRenamerEditorViewModel(renamerNode);
+
+        // Assert
+        vm.PipelineName.Should().Be("0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)");
+        vm.SelectedPreset.Should().NotBeNull();
+        vm.SelectedPreset!.Name.Should().Be("0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)");
+        vm.Steps.Should().HaveCount(2);
+        vm.Steps[0].MethodType.Should().Be(FileFlow.Sdk.Renaming.RenameMethodType.NormalizeNumbers);
+    }
+
+    [Fact]
     public void RenamerSampleDataProvider_ShouldLoadFromJsonSuccessfully()
     {
         // Arrange
@@ -157,5 +175,36 @@ public class AdvancedRenamerEditorViewModelTests : IDisposable
         // Assert
         regexes.Should().NotBeNullOrEmpty();
         scripts.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void SelectedPreset_WhenChanged_ShouldUpdatePipelineNameAndSteps()
+    {
+        // Arrange
+        var renamerNode = new AdvancedRenamerNode();
+        var vm = new AdvancedRenamerEditorViewModel(renamerNode);
+
+        var targetPreset = vm.AvailablePresets.FirstOrDefault(p => p.Name.Contains("Fotografía"));
+        targetPreset.Should().NotBeNull();
+
+        // Act
+        vm.SelectedPreset = targetPreset;
+
+        // Assert
+        vm.PipelineName.Should().Be(targetPreset!.Name);
+        vm.Steps.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void ExecuteCustomAction_WithNodeCustomActionContext_ShouldAcceptContext()
+    {
+        // Arrange
+        var renamerNode = new AdvancedRenamerNode();
+        bool callbackFired = false;
+        var context = new FileFlow.Sdk.NodeCustomActionContext(null, () => callbackFired = true);
+
+        // Act - CustomAction should accept context without exception
+        renamerNode.Invoking(n => n.ExecuteCustomAction("UnknownAction", context)).Should().NotThrow();
+        callbackFired.Should().BeFalse();
     }
 }

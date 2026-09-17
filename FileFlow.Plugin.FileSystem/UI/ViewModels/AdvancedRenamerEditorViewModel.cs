@@ -59,8 +59,8 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     {
         _node = node;
         _dialogService = dialogService ?? NullDialogService.Instance;
-        LoadFromNode();
         LoadPresets();
+        LoadFromNode();
         LoadAvailableTags();
         LoadSampleCategories();
         GenerateLivePreview();
@@ -85,6 +85,15 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
         }
 
         var loadedSteps = RenamerPresetService.DeserializeSteps(stepsJson);
+
+        if (loadedSteps.Count == 0 && !string.IsNullOrWhiteSpace(PipelineName) && !string.Equals(PipelineName, "Pipeline Predeterminado", StringComparison.OrdinalIgnoreCase))
+        {
+            var matchingPreset = AvailablePresets.FirstOrDefault(p => string.Equals(p.Name, PipelineName, StringComparison.OrdinalIgnoreCase));
+            if (matchingPreset != null && matchingPreset.Steps.Count > 0)
+            {
+                loadedSteps = matchingPreset.Steps.Select(s => s.Clone()).ToList();
+            }
+        }
 
         if (loadedSteps.Count == 0)
         {
@@ -118,6 +127,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
         }
 
         SelectedStep = Steps.FirstOrDefault();
+        SelectedPreset = AvailablePresets.FirstOrDefault(p => string.Equals(p.Name, PipelineName, StringComparison.OrdinalIgnoreCase));
     }
 
     private void LoadPresets()
@@ -269,7 +279,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
         Steps.Clear();
         foreach (var s in value.Steps)
         {
-            Steps.Add(s);
+            Steps.Add(s.Clone());
         }
         SelectedStep = Steps.FirstOrDefault();
         GenerateLivePreview();

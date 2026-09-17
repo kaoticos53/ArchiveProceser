@@ -173,6 +173,41 @@ public class AdvancedRenamerExhaustiveTests : IDisposable
         node.Parameters.ContainsKey("CollisionStrategy").Should().BeTrue();
         node.Parameters.ContainsKey("Pattern").Should().BeFalse();
         node.Parameters.ContainsKey("CaseTransformation").Should().BeFalse();
+
+        // Verify Descriptor is Dropdown and contains all presets
+        var pipelineDesc = node.ParameterDescriptors.FirstOrDefault(d => d.Key == "PipelineName");
+        pipelineDesc.Should().NotBeNull();
+        pipelineDesc!.EditorType.Should().Be(ParameterEditorType.Dropdown);
+        pipelineDesc.Options.Should().NotBeNull();
+        pipelineDesc.Options!.Should().Contain("Pipeline Predeterminado");
+        pipelineDesc.Options!.Should().Contain("📷 Fotografía Digital (Fecha EXIF + Modelo + Contador)");
+        pipelineDesc.Options!.Should().Contain("0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)");
+        pipelineDesc.Options!.Should().Contain("🧹 Limpiar Nombre");
+        pipelineDesc.Options!.Count.Should().BeGreaterThanOrEqualTo(14);
+    }
+
+    [Fact]
+    public async Task AdvancedRenamer_SelectingPresetFromDropdown_ShouldExecutePresetCorrectly()
+    {
+        // Arrange
+        string sourceFile = Path.Combine(_tempDirectory, "album 1 track 5.mp3");
+        await File.WriteAllTextAsync(sourceFile, "audio");
+
+        var node = new AdvancedRenamerNode();
+        node.Parameters["RenameMode"] = "DirectInPlace";
+        node.Parameters["PipelineName"] = "0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)";
+
+        var item = new FileItemContext(sourceFile);
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert: 1 -> 01, 5 -> 05
+        item.FileName.Should().Be("album 01 track 05.mp3");
+        File.Exists(item.CurrentPath).Should().BeTrue();
     }
 
     [Fact]

@@ -111,75 +111,66 @@
             <nodify:NodifyEditor.PendingConnectionTemplate>
                 <DataTemplate x:DataType="vm:PendingConnectionViewModel">
                     <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
-                                                StartedCommand="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).StartConnectionCommand}"
-                                                CompletedCommand="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).FinishConnectionCommand}"
-                                                Source="{Binding Source}"
-                                                Target="{Binding Target}"
-                                                SourceAnchor="{Binding Source.Anchor}"
+                                                Source="{Binding Source.Anchor}"
+                                                Target="{Binding TargetLocation}"
+                                                TargetAnchor="{Binding TargetLocation}"
                                                 EnablePreview="True"
                                                 EnableSnapping="True"
                                                 AllowOnlyConnectors="True"
                                                 Direction="Forward"
+                                                StrokeDashArray="{x:Null}"
                                                 Classes.wireFiles="{Binding Source.IsFilesType}"
                                                 Classes.wireText="{Binding Source.IsTextType}"
                                                 Classes.wireBoolean="{Binding Source.IsBooleanType}"
                                                 Classes.wireNumber="{Binding Source.IsNumberType}"
                                                 Classes.wireBinary="{Binding Source.IsBinaryType}"
                                                 Classes.wireCollection="{Binding Source.IsCollectionType}"
-                                                Classes.wireAny="{Binding Source.IsAnyType}" />
+                                                Classes.wireAny="{Binding Source.IsAnyType}">
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                               Target="{Binding TargetLocation}"
+                                               Spacing="45"
+                                               Direction="Forward"
+                                               StrokeThickness="3.5"
+                                               StrokeDashArray="{x:Null}"
+                                               Classes.wireFiles="{Binding Source.IsFilesType}"
+                                               Classes.wireText="{Binding Source.IsTextType}"
+                                               Classes.wireBoolean="{Binding Source.IsBooleanType}"
+                                               Classes.wireNumber="{Binding Source.IsNumberType}"
+                                               Classes.wireBinary="{Binding Source.IsBinaryType}"
+                                               Classes.wireCollection="{Binding Source.IsCollectionType}"
+                                               Classes.wireAny="{Binding Source.IsAnyType}" />
+                    </nodifyConn:PendingConnection>
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
 
             <!-- Connection Wires -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
-                    <!-- Cable base + capa de energía superpuesta.
-                         El cable base lleva el color de la familia de tipo del dato; la capa de energía sólo
-                         existe durante la ejecución y se anima con guiones en movimiento para mostrar por
-                         dónde van los datos. Se usan dos Connection con el mismo trazado en vez de tocar la
-                         plantilla interna de Nodify, que no es API pública. -->
-                    <Panel>
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                        Target="{Binding Target.Anchor}"
-                                        Spacing="45"
-                                        StrokeThickness="3.5"
-                                        Direction="Forward"
-                                        Classes.wireFiles="{Binding Source.IsFilesType}"
-                                        Classes.wireText="{Binding Source.IsTextType}"
-                                        Classes.wireBoolean="{Binding Source.IsBooleanType}"
-                                        Classes.wireNumber="{Binding Source.IsNumberType}"
-                                        Classes.wireBinary="{Binding Source.IsBinaryType}"
-                                        Classes.wireCollection="{Binding Source.IsCollectionType}"
-                                        Classes.wireAny="{Binding Source.IsAnyType}">
-                            <nodifyConn:Connection.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
-                                              Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
-                                              CommandParameter="{Binding}">
-                                        <MenuItem.Icon>
-                                            <materialIcons:MaterialIcon Kind="TrashCan" Width="12" Height="12" />
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </nodifyConn:Connection.ContextMenu>
-                        </nodifyConn:Connection>
-
-                        <!-- La capa de energía no es interactiva: sólo decora el cable durante la ejecución. -->
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                        Target="{Binding Target.Anchor}"
-                                        Spacing="45"
-                                        Direction="Forward"
-                                        IsHitTestVisible="False"
-                                        IsVisible="{Binding IsExecuting}"
-                                        Classes="energy"
-                                        Classes.wireFiles="{Binding Source.IsFilesType}"
-                                        Classes.wireText="{Binding Source.IsTextType}"
-                                        Classes.wireBoolean="{Binding Source.IsBooleanType}"
-                                        Classes.wireNumber="{Binding Source.IsNumberType}"
-                                        Classes.wireBinary="{Binding Source.IsBinaryType}"
-                                        Classes.wireCollection="{Binding Source.IsCollectionType}"
-                                        Classes.wireAny="{Binding Source.IsAnyType}" />
-                    </Panel>
+                    <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                    Target="{Binding Target.Anchor}"
+                                    Spacing="45"
+                                    StrokeThickness="3.5"
+                                    StrokeDashArray="{x:Null}"
+                                    Direction="Forward"
+                                    Classes.wireFiles="{Binding Source.IsFilesType}"
+                                    Classes.wireText="{Binding Source.IsTextType}"
+                                    Classes.wireBoolean="{Binding Source.IsBooleanType}"
+                                    Classes.wireNumber="{Binding Source.IsNumberType}"
+                                    Classes.wireBinary="{Binding Source.IsBinaryType}"
+                                    Classes.wireCollection="{Binding Source.IsCollectionType}"
+                                    Classes.wireAny="{Binding Source.IsAnyType}">
+                        <nodifyConn:Connection.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
+                                          Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
+                                          CommandParameter="{Binding}">
+                                    <MenuItem.Icon>
+                                        <materialIcons:MaterialIcon Kind="TrashCan" Width="12" Height="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </nodifyConn:Connection.ContextMenu>
+                    </nodifyConn:Connection>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
         </nodify:NodifyEditor>

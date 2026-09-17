@@ -58,7 +58,25 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
             var window = new SyntheticDataSetDesignerWindow();
-            if (context is Avalonia.Controls.Window ownerWindow)
+            Action? onCompleted = null;
+            object? parentWindow = context;
+
+            if (context is NodeCustomActionContext customCtx)
+            {
+                parentWindow = customCtx.ParentWindow;
+                onCompleted = customCtx.OnCompleted;
+            }
+            else if (context is Action callback)
+            {
+                onCompleted = callback;
+            }
+
+            if (onCompleted != null)
+            {
+                window.Closed += (_, _) => onCompleted();
+            }
+
+            if (parentWindow is Avalonia.Controls.Window ownerWindow)
             {
                 window.ShowDialog(ownerWindow);
             }

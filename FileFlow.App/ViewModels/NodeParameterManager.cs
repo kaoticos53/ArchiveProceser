@@ -95,6 +95,10 @@ public sealed class NodeParameterManager
         lock (_nodeInstance.Parameters)
         {
             _nodeInstance.Parameters[key] = value;
+            if (key.Equals("PipelineName", StringComparison.OrdinalIgnoreCase) && _nodeInstance.Parameters.ContainsKey("MethodSteps"))
+            {
+                _nodeInstance.Parameters["MethodSteps"] = string.Empty;
+            }
         }
         UpdateVisibilityConditions();
     }

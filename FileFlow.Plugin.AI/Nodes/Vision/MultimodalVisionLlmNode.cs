@@ -102,7 +102,26 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
         {
             var vm = new MultimodalVlmConfigViewModel(this);
             var window = new MultimodalVlmConfigWindow(vm);
-            if (context is Window ownerWindow)
+
+            Action? onCompleted = null;
+            object? parentWindow = context;
+
+            if (context is NodeCustomActionContext customCtx)
+            {
+                parentWindow = customCtx.ParentWindow;
+                onCompleted = customCtx.OnCompleted;
+            }
+            else if (context is Action callback)
+            {
+                onCompleted = callback;
+            }
+
+            if (onCompleted != null)
+            {
+                window.Closed += (_, _) => onCompleted();
+            }
+
+            if (parentWindow is Window ownerWindow)
             {
                 window.ShowDialog(ownerWindow);
             }

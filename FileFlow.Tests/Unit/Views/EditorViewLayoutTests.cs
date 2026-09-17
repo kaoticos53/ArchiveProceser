@@ -168,4 +168,122 @@ public class EditorViewLayoutTests
         outPort.IsConnected.Should().BeTrue();
         inPort.IsConnected.Should().BeTrue();
     }
+
+    [Fact]
+    public void PendingConnection_WhenStarted_ShouldInitializeTargetLocationToSourceAnchor()
+    {
+        var editorVm = new EditorViewModel(CreateLoader());
+        var node1 = editorVm.AddNode("FolderSourceNode", new Point(200, 300));
+        var outPort = node1!.OutputPorts[0];
+        outPort.Anchor = new Point(350, 320);
+
+        // Act - Start connection from outPort
+        editorVm.StartConnection(outPort);
+
+        // Assert
+        editorVm.PendingConnection.Should().NotBeNull();
+        editorVm.PendingConnection!.Source.Should().Be(outPort);
+        editorVm.PendingConnection.TargetLocation.Should().Be(new Point(350, 320));
+        editorVm.PendingConnection.IsVisible.Should().BeTrue();
+
+        // Simulate moving cursor across canvas
+        editorVm.PendingConnection.TargetLocation = new Point(480, 520);
+        editorVm.PendingConnection.TargetLocation.Should().Be(new Point(480, 520));
+    }
+
+    [Fact]
+    public void RepeatedConnectionDrag_ShouldUpdatePendingConnectionState_AndAllowSubsequentConnections()
+    {
+        var editorVm = new EditorViewModel(CreateLoader());
+        var node1 = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+        var node2 = editorVm.AddNode("DestinationSinkNode", new Point(500, 100))!;
+        var outPort = node1.OutputPorts[0];
+        var inPort = node2.InputPorts[0];
+        outPort.Anchor = new Point(250, 150);
+        inPort.Anchor = new Point(500, 150);
+
+        // 1st Drag Attempt
+        editorVm.StartConnection(outPort);
+        editorVm.PendingConnection.Should().NotBeNull();
+        editorVm.PendingConnection!.Source.Should().Be(outPort);
+        editorVm.PendingConnection.TargetLocation.Should().Be(new Point(250, 150));
+        editorVm.PendingConnection.TargetLocation = new Point(300, 200);
+
+        // Finish 1st
+        editorVm.FinishConnection((outPort, inPort));
+        editorVm.PendingConnection.Should().BeNull();
+        editorVm.Connections.Should().HaveCount(1);
+        outPort.IsConnected.Should().BeTrue();
+        inPort.IsConnected.Should().BeTrue();
+
+        // 2nd Drag Attempt (dragging from output port to start new branch/connection)
+        editorVm.StartConnection(outPort);
+        editorVm.PendingConnection.Should().NotBeNull();
+        editorVm.PendingConnection!.Source.Should().Be(outPort);
+        editorVm.PendingConnection.TargetLocation.Should().Be(new Point(250, 150));
+
+        // Move cursor in 2nd attempt
+        editorVm.PendingConnection.TargetLocation = new Point(400, 300);
+        editorVm.PendingConnection.TargetLocation.Should().Be(new Point(400, 300));
+
+        // Cancel 2nd attempt (e.g. user drops on empty canvas)
+        editorVm.CancelConnection();
+        editorVm.PendingConnection.Should().BeNull();
+
+        // 3rd Drag Attempt (start connection from an input port)
+        editorVm.StartConnection(inPort);
+        editorVm.PendingConnection.Should().NotBeNull();
+        editorVm.PendingConnection!.Source.Should().Be(inPort);
+        editorVm.PendingConnection.TargetLocation.Should().Be(new Point(500, 150));
+    }
+
+    [Fact]
+    public void MovingNode_ShouldUpdatePortAnchor_AndAffectConnections()
+    {
+        var editorVm = new EditorViewModel(CreateLoader());
+        var node1 = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+        var node2 = editorVm.AddNode("DestinationSinkNode", new Point(500, 100))!;
+        var outPort = node1.OutputPorts[0];
+        var inPort = node2.InputPorts[0];
+        outPort.Anchor = new Point(250, 150);
+        inPort.Anchor = new Point(500, 150);
+
+        editorVm.CreateConnection(outPort, inPort);
+        editorVm.Connections.Should().HaveCount(1);
+
+        var conn = editorVm.Connections[0];
+        conn.Source.Anchor.Should().Be(new Point(250, 150));
+        conn.Target.Anchor.Should().Be(new Point(500, 150));
+
+        // Simulate moving node1
+        node1.Location = new Point(200, 200);
+        outPort.Anchor = new Point(350, 250);
+
+        conn.Source.Anchor.Should().Be(new Point(350, 250));
+        conn.Target.Anchor.Should().Be(new Point(500, 150));
+    }
+
+    [Fact]
+    public void PendingConnectionViewModel_InitialState_MatchesExpectedProperties()
+    {
+        var pendingVm = new PendingConnectionViewModel();
+        pendingVm.IsVisible.Should().BeTrue();
+        pendingVm.Source.Should().BeNull();
+        pendingVm.Target.Should().BeNull();
+    }
+
+    [Fact]
+    public void PendingConnection_WhenGivenSource_SetsTargetLocationToSourceAnchor()
+    {
+        var editorVm = new EditorViewModel(CreateLoader());
+        var node = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+        var port = node.OutputPorts[0];
+        port.Anchor = new Point(120, 240);
+
+        var pendingVm = new PendingConnectionViewModel(port);
+
+        pendingVm.Source.Should().Be(port);
+        pendingVm.TargetLocation.Should().Be(new Point(120, 240));
+        pendingVm.IsVisible.Should().BeTrue();
+    }
 }

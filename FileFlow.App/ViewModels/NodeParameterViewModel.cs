@@ -373,7 +373,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                provider.ExecuteCustomAction("ManageMediaPresets", App.MainWindow);
+                provider.ExecuteCustomAction("ManageMediaPresets", new NodeCustomActionContext(App.MainWindow, () => NodeOwner?.SyncParametersFromNodeInstance()));
             }
         }
         catch (Exception ex)
@@ -396,7 +396,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                provider.ExecuteCustomAction("ManagePasswords", App.MainWindow);
+                provider.ExecuteCustomAction("ManagePasswords", new NodeCustomActionContext(App.MainWindow, () => NodeOwner?.SyncParametersFromNodeInstance()));
                 if (NodeOwner.NodeInstance.Parameters.TryGetValue(Key, out var updatedVal))
                 {
                     Value = updatedVal;

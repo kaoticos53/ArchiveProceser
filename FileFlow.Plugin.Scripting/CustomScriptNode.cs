@@ -128,13 +128,26 @@ await EmitAsync(""Out"");",
         {
             if (actionId.Equals("OpenScriptStudio", StringComparison.OrdinalIgnoreCase))
             {
+                Action? onCompleted = null;
+                object? parentWindow = context;
+
+                if (context is NodeCustomActionContext customCtx)
+                {
+                    parentWindow = customCtx.ParentWindow;
+                    onCompleted = customCtx.OnCompleted;
+                }
+                else if (context is Action callback)
+                {
+                    onCompleted = callback;
+                }
+
                 string language = Parameters.TryGetValue("Language", out var lVal) ? ParameterHelper.GetString(lVal, "CSharp") : "CSharp";
                 string code = Parameters.TryGetValue("ScriptCode", out var cVal) ? ParameterHelper.GetString(cVal, "") : "";
                 string inputsStr = Parameters.TryGetValue("InputPorts", out var inVal) ? ParameterHelper.GetString(inVal, "In") : "In";
                 string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
 
                 var window = new ScriptStudioWindow(language, code, inputsStr, outputsStr);
-                Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
+                Avalonia.Controls.Window? owner = parentWindow as Avalonia.Controls.Window;
                 if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
                 {
                     owner = desktop.MainWindow;
@@ -158,6 +171,7 @@ await EmitAsync(""Out"");",
                     Parameters["OutputPorts"] = window.OutputPortsString;
 
                     SyncPortsFromParameters();
+                    onCompleted?.Invoke();
                 }
             }
         }

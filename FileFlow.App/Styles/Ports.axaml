@@ -25,13 +25,6 @@
         <Setter Property="CornerRadius" Value="3" />
         <Setter Property="Background" Value="{DynamicResource BgDarkBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TextMutedBrush}" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15" />
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
-            </Transitions>
-        </Setter>
     </Style>
 
     <Style Selector="Path.socketTriangle">
@@ -42,13 +35,6 @@
         <Setter Property="Data" Value="M 1,1 L 10,6 L 1,11 Z" />
         <Setter Property="Fill" Value="{DynamicResource BgDarkBrush}" />
         <Setter Property="Stroke" Value="{DynamicResource TextMutedBrush}" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Fill" Duration="0:0:0.15" />
-                <BrushTransition Property="Stroke" Duration="0:0:0.15" />
-                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
-            </Transitions>
-        </Setter>
     </Style>
 
     <!-- ============================= Formas ============================= -->
@@ -212,94 +198,32 @@
     <Style Selector="Border.socket.compatible">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentSuccessBrush}" />
         <Setter Property="BorderThickness" Value="2.5" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.78" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
     </Style>
 
-    <!-- La rotación del rombo viaja en la animación: si el latido la omitiera, el socket giraría a
-         cuadrado mientras se arrastra un cable compatible. -->
     <Style Selector="Border.socket.shapeDiamond.compatible">
         <Setter Property="RenderTransformOrigin" Value="50%,50%" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.78" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentSuccessBrush}" />
+        <Setter Property="BorderThickness" Value="2.5" />
     </Style>
 
     <Style Selector="Border.socket.shapeDiamond.compatibleWarning">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentWarningBrush}" />
         <Setter Property="BorderThickness" Value="2.5" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.78" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
     </Style>
 
-    <!-- El triángulo (booleanos) es un Path, no un Border: necesita sus propios estados de arrastre,
-         si no los puertos lógicos se quedan sin resaltado de compatibilidad. -->
     <Style Selector="Path.socketTriangle.compatible">
         <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
         <Setter Property="StrokeThickness" Value="2.2" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.78" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
     </Style>
 
     <Style Selector="Path.socketTriangle.compatibleWarning">
         <Setter Property="Stroke" Value="{DynamicResource AccentWarningBrush}" />
         <Setter Property="StrokeThickness" Value="2.2" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.78" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
     </Style>
 
     <Style Selector="Border.socket.compatibleWarning">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentWarningBrush}" />
         <Setter Property="BorderThickness" Value="2.5" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.78" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
     </Style>
 
     <!-- Etiqueta del puerto: se resalta sólo si el destino es válido, para leer la lista sin ruido -->
@@ -308,12 +232,6 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Foreground" Duration="0:0:0.12" />
-                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
-            </Transitions>
-        </Setter>
     </Style>
 
     <Style Selector="TextBlock.portLabel.incompatible">
@@ -335,129 +253,85 @@
     <Style Selector="nodifyConn|Connection">
         <Setter Property="Stroke" Value="{DynamicResource ConnectionWireBrush}" />
         <Setter Property="StrokeThickness" Value="3" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Hand" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireFiles">
         <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireText">
         <Setter Property="Stroke" Value="{DynamicResource AccentCyanBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireBoolean">
         <Setter Property="Stroke" Value="{DynamicResource AccentWarningBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireNumber">
         <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireBinary">
         <Setter Property="Stroke" Value="{DynamicResource AccentPurpleBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireCollection">
         <Setter Property="Stroke" Value="{DynamicResource AccentErrorBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|Connection.wireAny">
         <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <!-- Capa de energía (flujo animado durante la ejecución) -->
-    <Style Selector="nodifyConn|Connection.energy">
-        <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
-        <Setter Property="StrokeThickness" Value="4.5" />
-        <Setter Property="StrokeDashArray" Value="5,11" />
-        <Setter Property="Opacity" Value="0.95" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.9" IterationCount="Infinite">
-                <KeyFrame Cue="0%">
-                    <Setter Property="StrokeDashOffset" Value="0" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="StrokeDashOffset" Value="-16" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireFiles">
-        <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireText">
-        <Setter Property="Stroke" Value="{DynamicResource AccentCyanBrush}" />
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireBoolean">
-        <Setter Property="Stroke" Value="{DynamicResource AccentWarningBrush}" />
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireNumber">
-        <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}" />
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireBinary">
-        <Setter Property="Stroke" Value="{DynamicResource AccentPurpleBrush}" />
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireCollection">
-        <Setter Property="Stroke" Value="{DynamicResource AccentErrorBrush}" />
-    </Style>
-
-    <Style Selector="nodifyConn|Connection.energy.wireAny">
-        <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
-    </Style>
-
-    <!-- Cable en curso de dibujo. PendingConnection no expone StrokeDashOffset (a diferencia de
-         Connection), así que el movimiento se comunica con un latido de opacidad y grosor. -->
+    <!-- Cable en curso de dibujo con curva Spline (Bézier fluida idéntica al cable final) -->
     <Style Selector="nodifyConn|PendingConnection">
         <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
         <Setter Property="StrokeThickness" Value="3.5" />
-        <Setter Property="StrokeDashArray" Value="6,5" />
-        <Style.Animations>
-            <Animation Duration="0:0:0.7" IterationCount="Infinite" PlaybackDirection="Alternate">
-                <KeyFrame Cue="0%">
-                    <Setter Property="Opacity" Value="0.55" />
-                    <Setter Property="StrokeThickness" Value="3.0" />
-                </KeyFrame>
-                <KeyFrame Cue="100%">
-                    <Setter Property="Opacity" Value="1.0" />
-                    <Setter Property="StrokeThickness" Value="4.2" />
-                </KeyFrame>
-            </Animation>
-        </Style.Animations>
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
+        <Setter Property="EnablePreview" Value="True" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireFiles">
         <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireText">
         <Setter Property="Stroke" Value="{DynamicResource AccentCyanBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireBoolean">
         <Setter Property="Stroke" Value="{DynamicResource AccentWarningBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireNumber">
         <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireBinary">
         <Setter Property="Stroke" Value="{DynamicResource AccentPurpleBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireCollection">
         <Setter Property="Stroke" Value="{DynamicResource AccentErrorBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
     <Style Selector="nodifyConn|PendingConnection.wireAny">
         <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
+        <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
-
 </Styles>

@@ -136,20 +136,19 @@ public class NodeCardVisualContractTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // Cables y energía
+    // Cables
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void TheConnectionTemplate_ShouldOverlayAnAnimatedEnergyLayer()
+    public void TheConnectionTemplate_ShouldDefineStandardConnectionWire()
     {
         string editor = ReadRepositoryFile(EditorRelativePath);
         string template = ExtractConnectionTemplate(editor);
 
-        template.Should().Contain("Classes=\"energy\"", "el cable necesita una capa de energía para el flujo animado");
-        template.Should().Contain("IsVisible=\"{Binding IsExecuting}\"",
-            "la energía debe aparecer sólo mientras el cable transporta datos");
-        template.Should().Contain("IsHitTestVisible=\"False\"",
-            "la capa de energía no debe interceptar clics ni arrastres sobre el cable");
+        template.Should().Contain("<nodifyConn:Connection ", "el lienzo debe declarar la conexión Nodify");
+        template.Should().Contain("Source=\"{Binding Source.Anchor}\"", "el cable debe conectarse al ancla de origen");
+        template.Should().Contain("Target=\"{Binding Target.Anchor}\"", "el cable debe conectarse al ancla de destino");
+        template.Should().NotContain("Classes=\"energy\"", "las animaciones de guiones superpuestas fueron eliminadas");
     }
 
     [Fact]
@@ -159,24 +158,21 @@ public class NodeCardVisualContractTests
 
         int interactiveWire = template.IndexOf("<nodifyConn:Connection ", StringComparison.Ordinal);
         int contextMenu = template.IndexOf("<nodifyConn:Connection.ContextMenu>", StringComparison.Ordinal);
-        int firstElementEnd = template.IndexOf("/>", interactiveWire, StringComparison.Ordinal);
 
         interactiveWire.Should().BeGreaterThanOrEqualTo(0, "el cable base debe existir");
         contextMenu.Should().BeGreaterThan(interactiveWire,
-            "el menú contextual debe colgar del cable base, no de la capa de energía");
-        contextMenu.Should().BeLessThan(firstElementEnd,
-            "colgado de la capa de energía (no interactiva) el clic derecho no llegaría nunca al menú");
+            "el menú contextual debe colgar del cable de conexión");
     }
 
     [Fact]
-    public void TheEnergyLayerStyle_ShouldExistForEveryWireType()
+    public void TheConnectionStyles_ShouldExistForEveryWireType()
     {
         string ports = ReadRepositoryFile("FileFlow.App/Styles/Ports.axaml");
 
         foreach (string type in new[] { "wireFiles", "wireText", "wireBoolean", "wireNumber", "wireBinary", "wireCollection", "wireAny" })
         {
-            ports.Should().Contain($"nodifyConn|Connection.energy.{type}",
-                $"la energía del cable '{type}' debe usar el color de su familia de tipo");
+            ports.Should().Contain($"nodifyConn|Connection.{type}",
+                $"el cable '{type}' debe usar el color de su familia de tipo");
         }
 
         // Los sockets booleanos y numéricos se dibujan con formas distintas (Path y Border rotado): cada uno

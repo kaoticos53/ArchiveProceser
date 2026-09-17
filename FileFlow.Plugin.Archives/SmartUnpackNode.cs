@@ -66,10 +66,23 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
             if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
                 actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
             {
+                Action? onCompleted = null;
+                object? parentWindow = context;
+
+                if (context is NodeCustomActionContext customCtx)
+                {
+                    parentWindow = customCtx.ParentWindow;
+                    onCompleted = customCtx.OnCompleted;
+                }
+                else if (context is Action callback)
+                {
+                    onCompleted = callback;
+                }
+
                 string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
                 var window = new PasswordManagerWindow(currentPasswords);
 
-                Avalonia.Controls.Window? owner = context as Avalonia.Controls.Window;
+                Avalonia.Controls.Window? owner = parentWindow as Avalonia.Controls.Window;
                 if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
                 {
                     owner = desktop.MainWindow;
@@ -91,6 +104,7 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
                     {
                         Parameters["PasswordList"] = window.PasswordsText;
                     }
+                    onCompleted?.Invoke();
                 }
             }
         }

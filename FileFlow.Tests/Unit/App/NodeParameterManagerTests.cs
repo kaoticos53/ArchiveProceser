@@ -108,4 +108,22 @@ public class NodeParameterManagerTests
         varInjectorVm.CustomActions.Should().HaveCount(1);
         varInjectorVm.CustomActions[0].ActionId.Should().Be("AddVariable");
     }
+
+    [Fact]
+    public void SyncParametersFromNodeInstance_ShouldUpdateParameterValuesAndOptions()
+    {
+        // Arrange
+        var renamerNode = new AdvancedRenamerNode();
+        using var renamerVm = new NodeViewModel(renamerNode, new Point(0, 0));
+
+        var pipelineParam = renamerVm.Parameters.First(p => p.Key == "PipelineName");
+        pipelineParam.Value.Should().Be("Pipeline Predeterminado");
+
+        // Act - Mutate parameters in node
+        renamerNode.Parameters["PipelineName"] = "0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)";
+        renamerVm.SyncParametersFromNodeInstance();
+
+        // Assert
+        pipelineParam.Value.Should().Be("0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)");
+    }
 }
