@@ -10,7 +10,19 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **131. Corrección de anclaje de socket (SourceAnchor) y seguimiento dinámico de cursor en PendingConnection (2026-09-17)**:
+  - **Diagnóstico y Causa Raíz**:
+    1. Al arrastrar una conexión, la línea comenzaba en la esquina superior izquierda `(0, 0)` en lugar del socket seleccionado. La causa era que en `Nodify.Avalonia`, `PendingConnection` es instanciado reactivamente por `NodifyEditor` tras dispararse el evento de inicio `PendingConnectionStartedEvent`, por lo que el control recién creado perdía el evento y dejaba `SourceAnchor = (0, 0)`.
+    2. En intentos sucesivos, el extremo final quedaba bloqueado en el nodo inicial y no seguía al ratón debido a que `TargetAnchor` estaba enlazado de forma unidireccional a `TargetLocation` (`TargetAnchor="{Binding TargetLocation}"`), sobreescribiendo el evento de arrastre `PendingConnectionDragEvent` de Nodify.
+    3. Al final de la línea aparecía un gran recuadro negro por anidar un `<nodifyConn:Connection>` en el cuerpo de `PendingConnection`, alojándose dentro del `ContentPresenter` de su plantilla por defecto.
+  - **Corrección**:
+    - En `FileFlow.App/Views/EditorView.axaml`: configurado `Source="{Binding Source}"` y `SourceAnchor="{Binding Source.Anchor}"` en `NodifyEditor.PendingConnectionTemplate`, y eliminada la asignación estática de `TargetAnchor` y contenidos anidados.
+    - En `FileFlow.App/Styles/Ports.axaml`: redefinida la `ControlTemplate` de `nodifyConn:PendingConnection` usando `<Canvas>` con `<nodifyConn:Connection>` vinculado a `{TemplateBinding SourceAnchor}` y `{TemplateBinding TargetAnchor}` con `Spacing="45"`.
+    - En `FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`: añadida la prueba `PendingConnection_TestSplineTemplate`.
+  - **Validación**: `dotnet build FileFlow.slnx` 0/0, suite completa: **1030 superadas, 0 fallos, 1 omitida (100% verde)**.
 - **130. Implementación de curvas Spline Bézier fluidas en conexiones interactivas (PendingConnection) (2026-09-17)**:
+
+
   - **Diagnóstico y Objetivo**:
     1. El usuario requería que al hacer clic en un conector y arrastrar el cable hacia otro nodo, el cable mostrara una curva spline fluida (Bézier cúbica nativa de Nodify con `Spacing="45"`) en lugar de una línea recta rígida, siguiendo al cursor en tiempo real y haciendo snap hacia el conector destino.
     2. En `Nodify.Avalonia`, `PendingConnection` incluye por defecto una plantilla con `LineConnection`. Para renderizar una curva spline se requería redefinir su `ControlTemplate` para alojar un `<nodifyConn:Connection>` enlazado a `SourceAnchor`, `TargetAnchor`, `Direction`, `Stroke` y `StrokeThickness`.

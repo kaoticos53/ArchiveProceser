@@ -111,37 +111,22 @@
             <nodify:NodifyEditor.PendingConnectionTemplate>
                 <DataTemplate x:DataType="vm:PendingConnectionViewModel">
                     <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
-                                                Source="{Binding Source.Anchor}"
-                                                Target="{Binding TargetLocation}"
-                                                TargetAnchor="{Binding TargetLocation}"
+                                                Source="{Binding Source}"
+                                                SourceAnchor="{Binding Source.Anchor}"
                                                 EnablePreview="True"
                                                 EnableSnapping="True"
                                                 AllowOnlyConnectors="True"
-                                                Direction="Forward"
-                                                StrokeDashArray="{x:Null}"
                                                 Classes.wireFiles="{Binding Source.IsFilesType}"
                                                 Classes.wireText="{Binding Source.IsTextType}"
                                                 Classes.wireBoolean="{Binding Source.IsBooleanType}"
                                                 Classes.wireNumber="{Binding Source.IsNumberType}"
                                                 Classes.wireBinary="{Binding Source.IsBinaryType}"
                                                 Classes.wireCollection="{Binding Source.IsCollectionType}"
-                                                Classes.wireAny="{Binding Source.IsAnyType}">
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding TargetLocation}"
-                                               Spacing="45"
-                                               Direction="Forward"
-                                               StrokeThickness="3.5"
-                                               StrokeDashArray="{x:Null}"
-                                               Classes.wireFiles="{Binding Source.IsFilesType}"
-                                               Classes.wireText="{Binding Source.IsTextType}"
-                                               Classes.wireBoolean="{Binding Source.IsBooleanType}"
-                                               Classes.wireNumber="{Binding Source.IsNumberType}"
-                                               Classes.wireBinary="{Binding Source.IsBinaryType}"
-                                               Classes.wireCollection="{Binding Source.IsCollectionType}"
-                                               Classes.wireAny="{Binding Source.IsAnyType}" />
-                    </nodifyConn:PendingConnection>
+                                                Classes.wireAny="{Binding Source.IsAnyType}" />
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
+
+
 
             <!-- Connection Wires -->
             <nodify:NodifyEditor.ConnectionTemplate>

@@ -1,6 +1,38 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-17] - Corrección de Anclaje de Socket (SourceAnchor) y Seguimiento Dinámico de Cursor en PendingConnection (Hito 131)
+
+### 🎯 Diagnóstico y Causa Raíz
+1. **Línea de Conexión Naciendo en (0,0) / Esquina Superior Izquierda**:
+   - Al iniciar el arrastre de conexión, el inicio de la línea partía de `(0, 0)` en vez de situarse en el conector seleccionado.
+   - **Causa Raíz**: En `Nodify.Avalonia`, `PendingConnection` es instanciado reactivamente por `NodifyEditor` una vez que el evento `PendingConnectionStartedEvent` ya ha terminado de dispararse en el conector. Como el control se creaba después del evento, nunca recibía `e.Anchor`, dejando `SourceAnchor` en `(0, 0)`.
+   - **Solución**: Vincular explícitamente `SourceAnchor="{Binding Source.Anchor}"` en `PendingConnectionTemplate`. Dado que `PortViewModel.Anchor` es actualizado en tiempo real por `<nodify:NodeInput Anchor="{Binding Anchor, Mode=OneWayToSource}">` y `<nodify:NodeOutput Anchor="{Binding Anchor, Mode=OneWayToSource}">`, `SourceAnchor` se posiciona inmediatamente en el centro del socket sin depender de la secuencia del evento de inicio.
+2. **Extremo de la Línea Bloqueado en el Nodo Inicial en Intentos Sucesivos**:
+   - En intentos sucesivos, el extremo final no seguía al cursor y se quedaba fijo en el nodo.
+   - **Causa Raíz**: En `EditorView.axaml`, `TargetAnchor` estaba enlazado de forma unidireccional a `TargetLocation` (`TargetAnchor="{Binding TargetLocation}"`). Como `TargetLocation` no se actualiza en el ViewModel durante el movimiento del ratón, el binding sobreescribía y bloqueaba el cálculo interno que `PendingConnection.OnPendingConnectionDrag` realizaba a partir del evento enrutado.
+   - **Solución**: Eliminar la asignación de `TargetAnchor` en el XAML de `PendingConnectionTemplate`, permitiendo que `PendingConnection` actualice `TargetAnchor` libremente según los eventos de arrastre del puntero (`PendingConnectionDragEvent`).
+3. **Cuadro Negro Grande al Final de la Línea**:
+   - **Causa Raíz**: `PendingConnection` hereda de `ContentControl` y su plantilla nativa ubica un contenedor `Border` con `ContentPresenter` en las coordenadas `TargetAnchor` para mostrar previews/miniaturas. Al anidar un `<nodifyConn:Connection>` dentro del cuerpo de `<nodifyConn:PendingConnection>`, el control `Connection` se incrustaba dentro de ese slot de contenido en el extremo del cursor, renderizando su caja de layout por defecto con fondo oscuro.
+   - **Solución**: Redefinir la `ControlTemplate` en `Ports.axaml` utilizando `<Canvas>` con un único `<nodifyConn:Connection>` vinculado a `{TemplateBinding SourceAnchor}` y `{TemplateBinding TargetAnchor}` con `Spacing="45"`.
+
+### 🎯 Cambios Implementados
+1. **`FileFlow.App/Views/EditorView.axaml`**:
+   - Configurado `Source="{Binding Source}"` y `SourceAnchor="{Binding Source.Anchor}"` en `NodifyEditor.PendingConnectionTemplate`.
+   - Eliminado `TargetAnchor="{Binding TargetLocation}"` para no bloquear el arrastre, y eliminado cualquier contenido anidado.
+2. **`FileFlow.App/Styles/Ports.axaml`**:
+   - Definida la `ControlTemplate` de `nodifyConn:PendingConnection` con `<Canvas>` y `<nodifyConn:Connection>` con curvatura spline (`Spacing="45"`).
+3. **`FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`**:
+   - Añadida prueba unitaria `PendingConnection_TestSplineTemplate` verificando la resolución de `SourceAnchor` y `TargetAnchor`.
+
+### 🧪 Validación
+- `dotnet build FileFlow.slnx`: **0 advertencias / 0 errores**.
+- Suite completa de pruebas (`dotnet test --nologo`): **1030 superadas, 0 fallos, 1 omitida (100% verde)**.
+
+
+---
+
 ## [2026-09-17] - Implementación de Curvas Spline Bézier Fluidas en Conexiones Interactivas (PendingConnection) (Hito 130)
+
 
 ### 🎯 Diagnóstico y Objetivo
 1. **Curva Spline en Tiempo Real al Arrastrar Conexiones**:

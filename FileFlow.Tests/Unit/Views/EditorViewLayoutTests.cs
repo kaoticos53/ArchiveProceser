@@ -1,15 +1,19 @@
 using Avalonia;
+using Avalonia.VisualTree;
 using FileFlow.App.Converters;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
+using FileFlow.Tests.TestHelpers;
 using FluentAssertions;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.Views;
 
+[Collection(VisualSnapshotsCollection.Name)]
 public class EditorViewLayoutTests
+
 {
     private PluginLoader CreateLoader()
     {
@@ -286,4 +290,43 @@ public class EditorViewLayoutTests
         pendingVm.TargetLocation.Should().Be(new Point(120, 240));
         pendingVm.IsVisible.Should().BeTrue();
     }
+
+    [Fact]
+    public void PendingConnection_TestSplineTemplate()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var editorVm = new EditorViewModel(CreateLoader());
+            var node1 = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+            var outPort = node1.OutputPorts[0];
+            outPort.Anchor = new Point(250, 150);
+
+            editorVm.StartConnection(outPort);
+            editorVm.PendingConnection.Should().NotBeNull();
+            editorVm.PendingConnection!.Source.Should().Be(outPort);
+
+            var pc = new Nodify.Avalonia.Connections.PendingConnection
+            {
+                DataContext = editorVm.PendingConnection,
+                Source = editorVm.PendingConnection.Source,
+                SourceAnchor = outPort.Anchor,
+                TargetAnchor = new Point(400, 300)
+            };
+
+            pc.SourceAnchor.Should().Be(new Point(250, 150));
+            pc.TargetAnchor.Should().Be(new Point(400, 300));
+        });
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+

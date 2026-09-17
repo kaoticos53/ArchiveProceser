@@ -298,7 +298,21 @@
         <Setter Property="StrokeThickness" Value="3.5" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
         <Setter Property="EnablePreview" Value="True" />
+        <Setter Property="Template">
+            <ControlTemplate TargetType="nodifyConn:PendingConnection">
+                <Canvas>
+                    <nodifyConn:Connection Source="{TemplateBinding SourceAnchor}"
+                                           Target="{TemplateBinding TargetAnchor}"
+                                           Spacing="45"
+                                           Direction="{TemplateBinding Direction}"
+                                           Stroke="{TemplateBinding Stroke}"
+                                           StrokeThickness="{TemplateBinding StrokeThickness}"
+                                           StrokeDashArray="{TemplateBinding StrokeDashArray}" />
+                </Canvas>
+            </ControlTemplate>
+        </Setter>
     </Style>
+
 
     <Style Selector="nodifyConn|PendingConnection.wireFiles">
         <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
