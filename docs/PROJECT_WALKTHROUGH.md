@@ -1,5 +1,33 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-18] - Rediseño Plano de Tarjetas de Nodos (Flat Modern Design) (Hito 137)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Solicitud del Usuario**: Eliminar el borde negro en cabecera y pie y el efecto de elevación de los nodos, prefiriendo un diseño completamente plano (*flat*).
+- **Causa Raíz Visual**:
+  - En `FileFlow.App/Views/Components/NodeCardView.axaml`, la tarjeta contenía un `Border` con `BoxShadow="{DynamicResource Elev2}"` que proyectaba una sombra difuminada dándole un aspecto 3D de elevación respecto al lienzo.
+  - La cabecera (`nodify:Node.HeaderTemplate`) utilizaba `Background="{DynamicResource BgHeaderBrush}"` con `BorderThickness="0,0,0,1"` y `BorderBrush="{DynamicResource BorderDarkBrush}"`, generando una franja oscura separada por una línea negra en la parte superior.
+  - El pie (`nodify:Node.FooterTemplate`) utilizaba `Background="{DynamicResource BgHeaderBrush}"` con `BorderThickness="0,1,0,0"` y `BorderBrush="{DynamicResource BorderDarkBrush}"`, generando otra franja oscura separada por una línea negra en la parte inferior.
+  - El control contenedor `<nodify:Node>` tenía `BorderThickness="1.2"`, causando ligeros artefactos de suavizado subpíxel.
+
+### 🎯 Solución Implementada
+1. **Eliminación de la Sombra de Elevación**:
+   - Eliminado el elemento `<Border BoxShadow="{DynamicResource Elev2}" ... />` de la tarjeta en `NodeCardView.axaml`. Ahora la tarjeta se asienta de forma 100% plana sobre el lienzo.
+2. **Homogeneización y Eliminación de Bordes en Cabecera y Pie**:
+   - En `nodify:Node.HeaderTemplate`: fondo configurado como `Background="Transparent"`, borde como `BorderThickness="0"` y `BorderBrush="Transparent"`. Corregida la altura de la caja de icono a `Height="22"`.
+   - En `nodify:Node.FooterTemplate`: fondo configurado como `Background="Transparent"`, borde como `BorderThickness="0"` y `BorderBrush="Transparent"`.
+   - La cabecera, el cuerpo de puertos y el pie de telemetría quedan integrados en un único bloque continuo con el fondo limpio `BgCardBrush` del nodo.
+3. **Perímetro Nítido de 1px**:
+   - `<nodify:Node>` configurado con `BorderThickness="1"` para un contorno plano, nítido y preciso.
+4. **Actualización de Líneas Base de Regresión Visual (`FileFlow.Tests`)**:
+   - Regeneradas y verificadas las líneas base `node-card-dark.png` y `app-shell-light.png` reflejando el aspecto plano.
+
+### 🧪 Validación
+- `dotnet build FileFlow.App/FileFlow.App.csproj`: **0 advertencias / 0 errores**.
+- Suite completa de pruebas (`dotnet test`): **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
+
+---
+
 ## [2026-09-18] - Alineación Perfecta y Enrase Perimetral de Sockets de Puertos vía ConnectorTemplate (Hito 136)
 
 ### 🎯 Diagnóstico y Causa Raíz

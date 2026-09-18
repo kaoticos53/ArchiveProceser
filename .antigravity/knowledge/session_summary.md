@@ -10,6 +10,17 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **137. Rediseño plano de tarjetas de nodos (Flat Modern Design) (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    - Las tarjetas de nodos mostraban bordes oscuros en la cabecera (`BorderThickness="0,0,0,1"`) y en el pie (`BorderThickness="0,1,0,0"`), además de un fondo diferenciado `BgHeaderBrush` y una sombra difusa `BoxShadow="{DynamicResource Elev2}"`, generando un efecto visual de barras elevadas/hundidas en 3D en lugar de una tarjeta plana y moderna.
+  - **Corrección**:
+    - En `FileFlow.App/Views/Components/NodeCardView.axaml`:
+      - Eliminado el `<Border BoxShadow="{DynamicResource Elev2}" ... />` de la tarjeta para asentar los nodos 100% planos sobre el lienzo.
+      - En `nodify:Node.HeaderTemplate`: asignados `Background="Transparent"`, `BorderBrush="Transparent"` y `BorderThickness="0"`. Corregida altura del icono a `Height="22"`.
+      - En `nodify:Node.FooterTemplate`: asignados `Background="Transparent"`, `BorderBrush="Transparent"` y `BorderThickness="0"`.
+      - En `<nodify:Node>`: ajustado `BorderThickness="1"` con `BorderBrush="{DynamicResource BorderDarkBrush}"` para un perímetro nítido y uniforme.
+    - Actualizadas las líneas base de regresión visual (`node-card-dark.png` y `app-shell-light.png`).
+  - **Validación**: `dotnet build FileFlow.App/FileFlow.App.csproj` 0/0, suite completa: **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
 - **136. Alineación perfecta y enrase perimetral de sockets de puertos vía ConnectorTemplate (2026-09-18)**:
   - **Diagnóstico y Causa Raíz**:
     - Los gráficos de los sockets de entrada y salida se mostraban desplazados hacia el interior del nodo con un hueco de ~20px respecto al borde, y en los puertos de salida el gráfico se desplazaba horizontalmente dependiendo de la longitud de la etiqueta (`DisplayName`).

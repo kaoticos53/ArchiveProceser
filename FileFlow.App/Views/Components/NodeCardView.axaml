@@ -194,12 +194,6 @@
     </UserControl.ContextMenu>
 
     <Grid HorizontalAlignment="Stretch">
-        <!-- Profundidad del nodo sobre el lienzo: la tarjeta se despega del fondo con la elevación del tema -->
-        <Border Background="{DynamicResource BgCardBrush}"
-                CornerRadius="{DynamicResource RadiusMd}"
-                BoxShadow="{DynamicResource Elev2}"
-                IsHitTestVisible="False" />
-
         <!-- Resplandor de selección -->
         <Border BorderBrush="{DynamicResource AccentPrimaryBrush}" 
                 BorderThickness="2" CornerRadius="{DynamicResource RadiusMd}" Margin="-2" IsHitTestVisible="False"
@@ -228,20 +222,19 @@
                      Padding="0"
                      Background="{DynamicResource BgCardBrush}"
                      BorderBrush="{DynamicResource BorderDarkBrush}"
-                     BorderThickness="1.2"
+                     BorderThickness="1"
                      CornerRadius="{DynamicResource RadiusMd}">
 
             <!-- Node Header Template -->
             <nodify:Node.HeaderTemplate>
                 <DataTemplate DataType="vm:NodeViewModel">
-                    <Border Background="{DynamicResource BgHeaderBrush}" 
-                            BorderBrush="{DynamicResource BorderDarkBrush}" 
-                            BorderThickness="0,0,0,1" 
-                            CornerRadius="6,6,0,0" 
+                    <Border Background="Transparent" 
+                            BorderBrush="Transparent" 
+                            BorderThickness="0" 
                             Padding="10,6">
                         <StackPanel>
                             <!-- Top Accent Bar (ComfyUI Category Neon Strip) -->
-                            <Border Height="3" Background="{Binding AccentColor}" CornerRadius="6,6,0,0" Margin="-10,-8,-10,7" />
+                            <Border Height="8" Background="{Binding AccentColor}" CornerRadius="0,0,0,0" Margin="-16,-12,-16,7" />
 
                             <!-- LÍNEA 1 · Identidad: icono del tipo, título y controles de la tarjeta -->
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
@@ -383,7 +376,7 @@
             <!-- Node Body: Ports & Parameters -->
             <StackPanel Margin="0,4">
                 <!-- Ports Row (Inputs & Outputs aligned on exact card margins) -->
-                <Grid ColumnDefinitions="*,12,*">
+                <Grid ColumnDefinitions="*,12,*"  Margin="-16,0,-16,0">
                     <!-- Input Ports (Left Edge) -->
                     <ItemsControl Grid.Column="0" ItemsSource="{Binding InputPorts}">
                         <ItemsControl.ItemTemplate>
@@ -487,7 +480,10 @@
             <!-- Node Footer Template: Status & Telemetry Metrics (Reaches card border) -->
             <nodify:Node.FooterTemplate>
                 <DataTemplate DataType="vm:NodeViewModel">
-                    <Border Background="{DynamicResource BgHeaderBrush}" CornerRadius="0,0,6,6" Padding="6,3.5" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="0,1,0,0"
+                    <Border Background="Transparent" 
+                            Padding="6,3.5" 
+                            BorderBrush="Transparent" 
+                            BorderThickness="0"
                             ToolTip.Tip="{Binding DetailedMetricsToolTip}">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
@@ -525,12 +521,20 @@
                                                Classes="micro strong onAccent" />
                                 </Border>
                             </StackPanel>
-                            <!-- Resize Thumb -->
-                            <Thumb Grid.Column="1" Width="14" Height="14" Cursor="SizeWestEast" DragDelta="ResizeThumb_DragDelta">
+                            <!-- Resize Thumb con Triángulo en la Esquina -->
+                            <Thumb Grid.Column="1" Width="12" Height="12" 
+                                   Cursor="SizeWestEast" 
+                                   DragDelta="ResizeThumb_DragDelta"
+                                   Margin="0,0,-2,-2">
                                 <Thumb.Template>
                                     <ControlTemplate>
                                         <Border Background="Transparent">
-                                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Center"  Kind="ChevronUp" Width="10" Height="10" />
+                                            <!-- Triángulo isósceles rectángulo en la esquina inferior derecha -->
+                                            <Path Data="M 0,10 L 10,10 L 10,0 Z"
+                                                  Fill="{DynamicResource TextMutedBrush}"
+                                                  Width="9" Height="9"
+                                                  HorizontalAlignment="Right"
+                                                  VerticalAlignment="Bottom" />
                                         </Border>
                                     </ControlTemplate>
                                 </Thumb.Template>
