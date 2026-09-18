@@ -9,10 +9,12 @@ export LD_LIBRARY_PATH="${HERE}/usr/lib:${HERE}/usr/lib/fileflow:${LD_LIBRARY_PA
 export DOTNET_ROOT="${HERE}/usr/lib/fileflow/engine"
 
 # Si existe un binario o script de ejecución dentro de AppDir
-if [ -f "${HERE}/usr/lib/fileflow/fileflow.sh" ]; then
-    exec "${HERE}/usr/lib/fileflow/fileflow.sh" "$@"
+if [ -f "${HERE}/usr/bin/FileFlow.App" ]; then
+    exec "${HERE}/usr/bin/FileFlow.App" "$@"
 elif [ -f "${HERE}/usr/bin/fileflow" ]; then
     exec "${HERE}/usr/bin/fileflow" "$@"
+elif [ -f "${HERE}/usr/lib/fileflow/fileflow.sh" ]; then
+    exec "${HERE}/usr/lib/fileflow/fileflow.sh" "$@"
 else
     echo "Error: No se encontró el ejecutable principal en ${HERE}" >&2
     exit 1

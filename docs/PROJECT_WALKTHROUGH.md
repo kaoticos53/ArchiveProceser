@@ -1,6 +1,6 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
-## [2026-09-18] - Rediseño Plano de Tarjetas de Nodos (Flat Modern Design) (Hito 137)
+## [2026-09-18] - Rediseño Plano de Tarjetas de Nodos (Flat Modern Design) (Hito 138)
 
 ### 🎯 Diagnóstico y Causa Raíz
 - **Solicitud del Usuario**: Eliminar el borde negro en cabecera y pie y el efecto de elevación de los nodos, prefiriendo un diseño completamente plano (*flat*).

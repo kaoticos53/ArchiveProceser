@@ -10,6 +10,16 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **138. Empaquetador universal de distribución y soporte nativo para Linux (2026-09-18)**:
+  - **Diagnóstico y Requerimientos**:
+    - Desarrollar una herramienta de empaquetado integral para distribuir FileFlow Studio en Linux de la forma más sencilla para el usuario final.
+  - **Corrección y Nuevos Scripts**:
+    - Creado `package-linux.sh` que compila en `Release`, optimiza binarios e invoca factorías de empaquetado para generar simultáneamente en `dist/`:
+      1. `FileFlow-1.0.0-x86_64.AppImage` (Universal portable de doble clic).
+      2. `fileflow_1.0.0_amd64.deb` (Instalador nativo para Ubuntu/Debian/Mint).
+      3. `FileFlow-1.0.0-Linux-x64-Portable.tar.gz` (Tarball con scripts de instalación y desinstalación).
+    - Creados `run.sh`, `run-fast.sh`, `test.sh` y `clean.sh`.
+  - **Validación**: Generación exitosa de los 3 paquetes (186 MB totales) y compilación limpia 0/0.
 - **137. Rediseño plano de tarjetas de nodos (Flat Modern Design) (2026-09-18)**:
   - **Diagnóstico y Causa Raíz**:
     - Las tarjetas de nodos mostraban bordes oscuros en la cabecera (`BorderThickness="0,0,0,1"`) y en el pie (`BorderThickness="0,1,0,0"`), además de un fondo diferenciado `BgHeaderBrush` y una sombra difusa `BoxShadow="{DynamicResource Elev2}"`, generando un efecto visual de barras elevadas/hundidas en 3D en lugar de una tarjeta plana y moderna.
