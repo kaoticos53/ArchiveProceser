@@ -156,6 +156,17 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             nodeInspectorViewModel
         );
 
+        _editorViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(EditorViewModel.CanUndo) || e.PropertyName == nameof(EditorViewModel.CanRedo))
+            {
+                UndoCommand.NotifyCanExecuteChanged();
+                RedoCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(CanUndo));
+                OnPropertyChanged(nameof(CanRedo));
+            }
+        };
+
         SyncFromPreferences();
         _userPreferencesService.PreferencesChanged += SyncFromPreferences;
     }
@@ -174,6 +185,15 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
     public EditorViewModel Editor => _editorViewModel;
     public NodeInspectorViewModel NodeInspector => _nodeInspectorViewModel;
+
+    public bool CanUndo => _editorViewModel.CanUndo;
+    public bool CanRedo => _editorViewModel.CanRedo;
+
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    public void Undo() => _editorViewModel.Undo();
+
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    public void Redo() => _editorViewModel.Redo();
 
     [RelayCommand]
     public void OpenWorkflowSettings()
@@ -394,13 +414,13 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         if (_lastJournalService == null || _lastJournalService.Entries.Count == 0)
         {
             string noEntriesMsg = _loc.GetString("Msg_RollbackNoEntries", "No hay operaciones registradas para revertir.");
-            string rollbackTitle = _loc.GetString("RollbackBtn", "Deshacer");
+            string rollbackTitle = _loc.GetString("RollbackExecutionBtn", "Revertir Archivos");
             _dialogService.ShowInformation(noEntriesMsg, rollbackTitle);
             return;
         }
 
         string confirmMsg = string.Format(_loc.GetString("Msg_RollbackConfirm", "¿Deseas revertir {0} operaciones realizadas en la última ejecución?"), _lastJournalService.Entries.Count);
-        string confirmTitle = _loc.GetString("RollbackBtn", "Deshacer");
+        string confirmTitle = _loc.GetString("RollbackExecutionBtn", "Revertir Archivos");
         if (_dialogService.ShowConfirmation(confirmMsg, confirmTitle))
         {
             _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_RollbackStarting", "Iniciando Rollback de operaciones..."));

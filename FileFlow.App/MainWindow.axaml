@@ -18,6 +18,9 @@
         <KeyBinding Gesture="Ctrl+S" Command="{Binding ControlBar.SaveWorkflowCommand}" />
         <KeyBinding Gesture="Ctrl+O" Command="{Binding ControlBar.LoadWorkflowCommand}" />
         <KeyBinding Gesture="Ctrl+N" Command="{Binding ControlBar.NewWorkflowCommand}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding Editor.UndoCommand}" />
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding Editor.RedoCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding Editor.RedoCommand}" />
         <KeyBinding Gesture="Ctrl+C" Command="{Binding Editor.CopySelectedNodesCommand}" />
         <KeyBinding Gesture="Ctrl+V" Command="{Binding Editor.PasteNodesCommand}" />
         <KeyBinding Gesture="Ctrl+X" Command="{Binding Editor.CutSelectedNodesCommand}" />

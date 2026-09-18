@@ -1,6 +1,44 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
-## [2026-09-18] - Corrección Integral de Paquetes de Distribución Linux (.AppImage y .deb) y Normalización Universal de Rutas (Hito 139)
+## [2026-09-18] - Sistema Integral de Deshacer/Rehacer (Undo/Redo DAG Engine) y Corrección de Bloqueo de UI (Hito 140)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Problema Reportado**:
+  1. Falta de un sistema para deshacer (`Ctrl+Z`) y rehacer (`Ctrl+Y` / `Ctrl+Shift+Z`) operaciones de edición sobre el lienzo (DAG canvas), arriesgando pérdida de cambios ante ediciones accidentales.
+  2. El botón de la barra superior "Deshacer" arrojaba error o dejaba congelada / colgada la aplicación al pulsarlo.
+- **Causas Raíz Identificadas**:
+  - **Deadlock en UI Thread con `AvaloniaDialogService`**:
+    Al pulsar el botón cuando no había operaciones de pipeline que revertir, `AvaloniaDialogService` llamaba a `dialog.ShowDialog(owner).GetAwaiter().GetResult()` bloqueando el hilo principal del despachador de Avalonia. Al estar bloqueado el dispatcher, la ventana modal nunca procesaba sus mensajes ni se renderizaba, produciendo un bloqueo total (freeze).
+  - **Confusión Conceptual de "Deshacer"**:
+    El botón de la barra de control con icono `Undo` y texto "Deshacer" estaba enlazado a `RollbackLastExecutionCommand` (reversión física de archivos en disco mediante `ExecutionJournalService`), en lugar de deshacer cambios de diseño en el lienzo.
+
+### 🎯 Solución Implementada
+1. **Resolución Definitiva del Deadlock en Diálogos Modales (`FileFlow.App/Services/AvaloniaDialogService.cs`)**:
+   - Reemplazado `.GetAwaiter().GetResult()` por un bucle de bombeo de mensajes no bloqueante utilizando `DispatcherFrame` + `window.Show(owner)` + `Dispatcher.UIThread.PushFrame(frame)`.
+2. **Motor Transaccional de Undo/Redo (`FileFlow.App/Services/UndoRedo/`)**:
+   - Diseñado e implementado `IUndoRedoService` y `UndoRedoService` con control de capacidad (100 niveles de historial), notificaciones reactivas (`CanUndo`, `CanRedo`, `NextUndoDescription`) y soporte de transacciones atómicas anidadas (`BeginTransaction` / `CompositeAction`).
+   - Implementado catálogo completo de acciones reversibles:
+     - `AddNodesAction` / `DeleteNodesAction`: Inserción y eliminación de nodos (preservando y reconectando automáticamente sus conexiones incidentes).
+     - `AddConnectionAction` / `DeleteConnectionAction`: Creación y desconexión de cables entre sockets compatibles.
+     - `MoveNodesAction`: Desplazamiento individual y múltiple de nodos en el lienzo.
+     - `ChangeParameterAction`: Modificación reactiva de parámetros de configuración en tarjetas y paneles.
+     - `AddAnnotationAction`, `DeleteAnnotationAction`, `AddGroupAction`, `DeleteGroupAction`: Creación y eliminación de notas adhesivas y grupos visuales.
+3. **Integración en `EditorViewModel` y Captura de Eventos**:
+   - Enlazadas todas las operaciones del editor (`AddNode`, `DeleteSelectedNodes`, `CreateConnection`, `DisconnectConnector`, `PasteNodes`, `DuplicateSelectedNodes`, `AddAnnotation`, `AddGroup`, `ClearGraph`, `LoadFromGraphModel`).
+   - Captura de arrastre por ratón en `EditorView.axaml.cs` (`_nodeDragStartPositions` en `PointerPressed` y confirmación atómica en `PointerReleased`) para evitar saturar la pila de deshacer durante el arrastre continuo.
+   - Atajos de teclado globales y locales configurados para `Ctrl+Z`, `Ctrl+Y` y `Ctrl+Shift+Z` en `MainWindow.axaml` y `EditorView.axaml.cs`.
+4. **Actualización de Interfaz y Localización Multilingüe**:
+   - En `ControlBarView.axaml` (Isla 3): Incorporados botones específicos de `Deshacer (Ctrl+Z)` y `Rehacer (Ctrl+Y)` con iconos dedicados y `IsEnabled` reactivo.
+   - Re-etiquetado el botón de reversión de disco a `Revertir Archivos / Rollback` con icono `History` (`RollbackExecutionBtn`), separando limpiamente la reversión de archivos en disco del deshacer de edición visual.
+   - Añadidas todas las cadenas en inglés (`Strings.resx`) y español (`Strings.es.resx`).
+
+### 🧪 Validación
+- **Suite de Pruebas Unitarias (`UndoRedoServiceTests.cs`)**:
+  - Validado estado inicial, inserción, eliminación con reconexión, conexión/desconexión, movimiento de nodos, edición de parámetros, transacciones compuestas y límite de capacidad.
+- **Suite Completa de Pruebas (`dotnet test`)**: **1045 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **Pruebas de Regresión Visual Actualizadas**: 43/43 baselines visuales sincronizados.
+
+---
 
 ### 🎯 Diagnóstico y Causa Raíz
 - **Problema Reportado**: La aplicación funcionaba correctamente al ejecutarla mediante `run.sh` / `run-fast.sh`, pero los paquetes de distribución generados en `dist/` (tanto el `.deb` como el `.AppImage`) no funcionaban al ejecutarlos o instalarlos.

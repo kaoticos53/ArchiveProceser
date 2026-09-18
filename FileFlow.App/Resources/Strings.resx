@@ -324,10 +324,15 @@
   <data name="CloseInspector" xml:space="preserve"><value>Close Inspector</value></data>
   <data name="InspectorBtn" xml:space="preserve"><value>🔍 Inspector</value></data>
 
-  <!-- UI Navigation & Buttons -->
   <data name="MenuBtn" xml:space="preserve"><value>Menu</value></data>
   <data name="WorkflowSettingsBtn" xml:space="preserve"><value>Workflow Settings</value></data>
-  <data name="RollbackBtn" xml:space="preserve"><value>↩ Undo</value></data>
+  <data name="UndoBtn" xml:space="preserve"><value>Undo</value></data>
+  <data name="RedoBtn" xml:space="preserve"><value>Redo</value></data>
+  <data name="UndoToolTip" xml:space="preserve"><value>Undo last canvas action (Ctrl+Z)</value></data>
+  <data name="RedoToolTip" xml:space="preserve"><value>Redo last undone action (Ctrl+Y)</value></data>
+  <data name="RollbackBtn" xml:space="preserve"><value>Rollback</value></data>
+  <data name="RollbackExecutionBtn" xml:space="preserve"><value>Rollback</value></data>
+  <data name="RollbackExecutionToolTip" xml:space="preserve"><value>Rollback disk changes from last execution</value></data>
 
   <!-- Drawer Side Navigation Menu -->
   <data name="Drawer_AppSubtitle" xml:space="preserve"><value>Workflow Engine v1.0</value></data>

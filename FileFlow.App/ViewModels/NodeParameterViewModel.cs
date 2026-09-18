@@ -461,6 +461,15 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
             UpdateVersionOptionsSelection();
             OnPropertyChanged(nameof(SelectedVersionOption));
         }
+
+        if (!Equals(oldValue, newValue))
+        {
+            var editor = NodeOwner?.ParentEditor;
+            if (editor != null && !editor.UndoRedoService.IsExecuting)
+            {
+                editor.UndoRedoService.Record(new FileFlow.App.Services.UndoRedo.ChangeParameterAction(this, oldValue, newValue));
+            }
+        }
     }
 
     public void UpdateEvaluationContext(FileItemContext? context, string? sourceRootPath = null)

@@ -14,6 +14,7 @@ public partial class EditorView : UserControl
 {
     private Point? _lastRightClickPosition;
     private Point? _lastPointerPosition;
+    private readonly Dictionary<NodeViewModel, Point> _nodeDragStartPositions = [];
 
     static EditorView()
     {
@@ -38,6 +39,8 @@ public partial class EditorView : UserControl
         // sobre conexiones ANTES de que NodifyEditor los procese como inicio de pan.
         AddHandler(InputElement.PointerPressedEvent, EditorView_TunnelingPointerPressed, 
             Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(InputElement.PointerReleasedEvent, EditorView_PointerReleased,
+            Avalonia.Interactivity.RoutingStrategies.Tunnel | Avalonia.Interactivity.RoutingStrategies.Bubble);
         
         PointerPressed += EditorView_PointerPressed;
         PointerMoved += EditorView_PointerMoved;
@@ -102,6 +105,15 @@ public partial class EditorView : UserControl
 
     private void EditorView_TunnelingPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && DataContext is EditorViewModel vm)
+        {
+            _nodeDragStartPositions.Clear();
+            foreach (var node in vm.Nodes)
+            {
+                _nodeDragStartPositions[node] = node.Location;
+            }
+        }
+
         // Este handler se ejecuta en fase de túnel (antes que NodifyEditor).
         // Si el clic derecho cae sobre un ConnectionContainer que tiene ContextMenu,
         // lo abrimos nosotros y marcamos Handled para que NodifyEditor no inicie el pan.
@@ -122,6 +134,29 @@ public partial class EditorView : UserControl
 
             // Si el clic está dentro de un NodeCardView, NodeCardView_PointerPressed ya lo maneja.
             // No intervenir aquí para las tarjetas de nodo.
+        }
+    }
+
+    private void EditorView_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is not EditorViewModel vm) return;
+
+        if (_nodeDragStartPositions.Count > 0)
+        {
+            var movedNodes = new List<FileFlow.App.Services.UndoRedo.NodeMoveItem>();
+            foreach (var (node, oldPos) in _nodeDragStartPositions)
+            {
+                if (node.Location != oldPos)
+                {
+                    movedNodes.Add(new FileFlow.App.Services.UndoRedo.NodeMoveItem(node, oldPos, node.Location));
+                }
+            }
+
+            if (movedNodes.Count > 0)
+            {
+                vm.UndoRedoService.Record(new FileFlow.App.Services.UndoRedo.MoveNodesAction(movedNodes));
+            }
+            _nodeDragStartPositions.Clear();
         }
     }
 
@@ -198,6 +233,25 @@ public partial class EditorView : UserControl
             }
 
             vm.OpenSpotlight(canvasPoint);
+            e.Handled = true;
+            return;
+        }
+
+        if (ctrl && !shift && e.Key == Key.Z)
+        {
+            if (vm.UndoCommand.CanExecute(null))
+            {
+                vm.UndoCommand.Execute(null);
+            }
+            e.Handled = true;
+            return;
+        }
+        else if ((ctrl && e.Key == Key.Y) || (ctrl && shift && e.Key == Key.Z))
+        {
+            if (vm.RedoCommand.CanExecute(null))
+            {
+                vm.RedoCommand.Execute(null);
+            }
             e.Handled = true;
             return;
         }

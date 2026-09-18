@@ -141,13 +141,35 @@
                 <!-- Island 3: Tools & Views -->
                 <Border Classes="island">
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
-                        <!-- Rollback / Undo Button -->
-                        <Button Command="{Binding RollbackLastExecutionCommand}"
+                        <!-- Undo Button -->
+                        <Button Command="{Binding UndoCommand}"
                                 Classes="toolbar"
-                                ToolTip.Tip="{Binding [ControlBar_RollbackToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                                IsEnabled="{Binding CanUndo}"
+                                ToolTip.Tip="{Binding [UndoToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
                                 <materialIcons:MaterialIcon Kind="Undo" Width="14" Height="14" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding [RollbackBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [UndoBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Redo Button -->
+                        <Button Command="{Binding RedoCommand}"
+                                Classes="toolbar"
+                                IsEnabled="{Binding CanRedo}"
+                                ToolTip.Tip="{Binding [RedoToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="Redo" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [RedoBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Rollback Last Execution Button -->
+                        <Button Command="{Binding RollbackLastExecutionCommand}"
+                                Classes="toolbar"
+                                ToolTip.Tip="{Binding [RollbackExecutionToolTip], Source={x:Static loc:LocalizationManager.Instance}}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                <materialIcons:MaterialIcon Kind="History" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding [RollbackExecutionBtn], Source={x:Static loc:LocalizationManager.Instance}}" Classes="caption semiBold" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
 

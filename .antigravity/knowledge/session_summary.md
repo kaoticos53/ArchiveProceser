@@ -10,6 +10,20 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **140. Sistema Integral de Deshacer/Rehacer (Undo/Redo DAG Engine) y Corrección de Bloqueo de UI (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    - **Deadlock en Diálogos Modales**: `AvaloniaDialogService` llamaba a `dialog.ShowDialog(owner).GetAwaiter().GetResult()` en el UI Thread de Avalonia. Al bloquear el hilo del Dispatcher, la ventana modal no podía procesar mensajes ni renderizarse, congelando la aplicación.
+    - **Ambigüedad Conceptual**: El botón "Deshacer" de la barra de herramientas estaba enlazado a `RollbackLastExecutionCommand` (reversión física de archivos en disco mediante `ExecutionJournalService`) en vez de deshacer acciones del lienzo.
+  - **Corrección**:
+    - `AvaloniaDialogService`: Implementado bombeo de mensajes no bloqueante mediante `DispatcherFrame` + `window.Show(owner)` + `Dispatcher.UIThread.PushFrame(frame)`.
+    - Motor de Undo/Redo (`FileFlow.App/Services/UndoRedo/`): Creados `IUndoableAction`, `IUndoRedoService`, `UndoRedoService` (capacidad de 100 pasos, transacciones atómicas `BeginTransaction` / `CompositeAction`, notificación reactiva de `CanUndo`/`CanRedo`).
+    - Acciones Reversibles: `AddNodesAction`, `DeleteNodesAction` (con restauración automática de conexiones incidentes), `AddConnectionAction`, `DeleteConnectionAction`, `MoveNodesAction`, `ChangeParameterAction`, `AddAnnotationAction`, `DeleteAnnotationAction`, `AddGroupAction`, `DeleteGroupAction`.
+    - `EditorViewModel`: Enlazadas todas las operaciones de nodos, conexiones, notas, grupos, pegado y duplicación; añadidos comandos `UndoCommand` y `RedoCommand`.
+    - `EditorView.axaml.cs`: Captura de arrastre por ratón (`_nodeDragStartPositions` en `PointerPressed` y confirmación en `PointerReleased`) y atajos `Ctrl+Z`, `Ctrl+Y`, `Ctrl+Shift+Z`.
+    - `ControlBarView.axaml` & `MainWindow.axaml`: Añadidos botones de Deshacer y Rehacer; re-etiquetado el botón de disco a `Revertir Archivos / Rollback` con icono `History`.
+  - **Validación**:
+    - Suite de pruebas unitarias `UndoRedoServiceTests.cs`.
+    - Suite completa (`dotnet test`): **1045 superadas, 0 fallos, 1 omitida (100% verde)**.
 - **139. Corrección integral de paquetes de distribución Linux (.AppImage y .deb) y normalización universal de rutas (2026-09-18)**:
   - **Diagnóstico y Causa Raíz**:
     - Los paquetes de distribución en `dist/` no se ejecutaban correctamente debido a tres factores:

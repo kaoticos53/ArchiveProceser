@@ -324,10 +324,15 @@
   <data name="CloseInspector" xml:space="preserve"><value>Cerrar Inspector</value></data>
   <data name="InspectorBtn" xml:space="preserve"><value>🔍 Inspector</value></data>
 
-  <!-- UI Navigation & Buttons -->
   <data name="MenuBtn" xml:space="preserve"><value>Menú</value></data>
   <data name="WorkflowSettingsBtn" xml:space="preserve"><value>Ajustes del Flujo</value></data>
-  <data name="RollbackBtn" xml:space="preserve"><value>↩ Deshacer</value></data>
+  <data name="UndoBtn" xml:space="preserve"><value>Deshacer</value></data>
+  <data name="RedoBtn" xml:space="preserve"><value>Rehacer</value></data>
+  <data name="UndoToolTip" xml:space="preserve"><value>Deshacer la última acción del lienzo (Ctrl+Z)</value></data>
+  <data name="RedoToolTip" xml:space="preserve"><value>Rehacer la última acción deshecha (Ctrl+Y)</value></data>
+  <data name="RollbackBtn" xml:space="preserve"><value>Revertir Archivos</value></data>
+  <data name="RollbackExecutionBtn" xml:space="preserve"><value>Revertir Archivos</value></data>
+  <data name="RollbackExecutionToolTip" xml:space="preserve"><value>Revertir los cambios físicos en disco de la última ejecución</value></data>
 
   <!-- Drawer Side Navigation Menu -->
   <data name="Drawer_AppSubtitle" xml:space="preserve"><value>Gestor de Flujos v1.0</value></data>

@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
 using FileFlow.App.Services;
+using FileFlow.App.Services.UndoRedo;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
@@ -25,10 +26,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly IUserPreferencesService _userPreferencesService;
     private readonly ILocalizationService _loc;
     private readonly IDialogService _dialogService;
+    private readonly IUndoRedoService _undoRedoService;
     private readonly Action _preferencesChangedHandler;
 
     public Services.INodeClipboardService ClipboardService => _clipboardService;
     public Services.IVariableDiscoveryService VariableDiscoveryService => _variableDiscoveryService;
+    public IUndoRedoService UndoRedoService => _undoRedoService;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
     public ObservableCollection<ConnectionViewModel> Connections { get; } = [];
@@ -134,7 +137,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Services.INodeClipboardService? clipboardService = null,
         IUserPreferencesService? userPreferencesService = null,
         ILocalizationService? localizationService = null,
-        IDialogService? dialogService = null)
+        IDialogService? dialogService = null,
+        IUndoRedoService? undoRedoService = null)
     {
         _pluginLoader = pluginLoader;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
@@ -142,12 +146,25 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
         _loc = localizationService ?? LocalizationManager.Instance;
         _dialogService = dialogService ?? AvaloniaDialogService.Instance;
+        _undoRedoService = undoRedoService ?? new UndoRedoService();
         _globalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
         _preferencesChangedHandler = () =>
         {
             GlobalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
         };
         _userPreferencesService.PreferencesChanged += _preferencesChangedHandler;
+
+        _undoRedoService.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(IUndoRedoService.CanUndo) || e.PropertyName == nameof(IUndoRedoService.CanRedo))
+            {
+                UndoCommand.NotifyCanExecuteChanged();
+                RedoCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(CanUndo));
+                OnPropertyChanged(nameof(CanRedo));
+            }
+        };
+
         Connections.CollectionChanged += (s, e) =>
         {
             RebuildConnectionLookup();
@@ -175,6 +192,27 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(TotalNodesCount));
             UpdateSelectedCount();
         };
+    }
+
+    public bool CanUndo => _undoRedoService.CanUndo;
+    public bool CanRedo => _undoRedoService.CanRedo;
+
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    public void Undo()
+    {
+        if (_undoRedoService.CanUndo)
+        {
+            _undoRedoService.Undo();
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    public void Redo()
+    {
+        if (_undoRedoService.CanRedo)
+        {
+            _undoRedoService.Redo();
+        }
     }
 
     private void RebuildConnectionLookup()
@@ -228,14 +266,22 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (outputPort.Direction != PortDirection.Output || inputPort.Direction != PortDirection.Input)
             return;
 
+        if (Connections.Any(c => c.Source == outputPort && c.Target == inputPort))
+            return;
+
+        using var tx = _undoRedoService.BeginTransaction($"Conectar {outputPort.NodeOwner.Title} -> {inputPort.NodeOwner.Title}");
+
         // Remove any existing connection to the same input port
         var existing = Connections.FirstOrDefault(c => c.Target == inputPort);
         if (existing != null)
         {
             Connections.Remove(existing);
+            _undoRedoService.Record(new DeleteConnectionAction(this, existing));
         }
 
-        Connections.Add(new ConnectionViewModel(outputPort, inputPort));
+        var newConn = new ConnectionViewModel(outputPort, inputPort);
+        Connections.Add(newConn);
+        _undoRedoService.Record(new AddConnectionAction(this, newConn));
     }
 
     private static (PortViewModel? Source, PortViewModel? Target) ExtractPortsFromParameter(object? param)
@@ -347,6 +393,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             if (specificConn != null)
             {
                 Connections.Remove(specificConn);
+                _undoRedoService.Record(new DeleteConnectionAction(this, specificConn));
                 return;
             }
         }
@@ -354,9 +401,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (port != null)
         {
             var removeList = Connections.Where(c => c.Source == port || c.Target == port).ToList();
-            foreach (var conn in removeList)
+            if (removeList.Count > 0)
             {
-                Connections.Remove(conn);
+                using var tx = _undoRedoService.BeginTransaction("Desconectar puerto");
+                foreach (var conn in removeList)
+                {
+                    Connections.Remove(conn);
+                    _undoRedoService.Record(new DeleteConnectionAction(this, conn));
+                }
             }
         }
     }
@@ -376,6 +428,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (connectionParam is ConnectionViewModel conn)
         {
             Connections.Remove(conn);
+            _undoRedoService.Record(new DeleteConnectionAction(this, conn));
         }
     }
 
@@ -399,6 +452,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public void RemoveNodeWithConnections(NodeViewModel node)
     {
+        if (node == null) return;
         var relatedConnections = Connections
             .Where(c => c.Source.NodeOwner == node || c.Target.NodeOwner == node)
             .ToList();
@@ -409,8 +463,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
 
         node.PropertyChanged -= OnNodePropertyChanged;
-        node.Dispose();
         Nodes.Remove(node);
+        _undoRedoService.Record(new DeleteNodesAction(this, [node], relatedConnections));
     }
 
     private List<NodeViewModel> ResolveTargetNodes(object? parameter)
@@ -440,10 +494,25 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public void DeleteSelectedNodes(object? parameter = null)
     {
         var targets = ResolveTargetNodes(parameter);
+        if (targets.Count == 0) return;
+
+        var targetIds = new HashSet<string>(targets.Select(t => t.Id), StringComparer.OrdinalIgnoreCase);
+        var relatedConnections = Connections
+            .Where(c => targetIds.Contains(c.Source.NodeOwner.Id) || targetIds.Contains(c.Target.NodeOwner.Id))
+            .ToList();
+
+        foreach (var conn in relatedConnections)
+        {
+            Connections.Remove(conn);
+        }
+
         foreach (var node in targets)
         {
-            RemoveNodeWithConnections(node);
+            node.PropertyChanged -= OnNodePropertyChanged;
+            Nodes.Remove(node);
         }
+
+        _undoRedoService.Record(new DeleteNodesAction(this, targets, relatedConnections));
     }
 
     [RelayCommand]
@@ -463,10 +532,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (targets.Count > 0)
         {
             _clipboardService.Copy(targets, Connections);
-            foreach (var node in targets)
-            {
-                RemoveNodeWithConnections(node);
-            }
+            DeleteSelectedNodes(targets.Count == 1 ? targets[0] : null);
         }
     }
 
@@ -479,6 +545,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             targetPoint = pt;
         }
 
+        using var tx = _undoRedoService.BeginTransaction("Pegar Nodos");
         var newNodes = _clipboardService.Paste(this, targetPoint);
         if (newNodes.Count > 0)
         {
@@ -492,6 +559,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         var targets = ResolveTargetNodes(parameter);
         if (targets.Count > 0)
         {
+            using var tx = _undoRedoService.BeginTransaction("Duplicar Nodos");
             var newNodes = _clipboardService.Duplicate(targets, Connections, this);
             if (newNodes.Count > 0)
             {
@@ -517,6 +585,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Groups.Clear();
         CanvasDecorators.Clear();
         SelectedNode = null;
+        _undoRedoService.Clear();
     }
 
     public AnnotationViewModel AddAnnotation(Point? position = null, string title = "Nota", string content = "", string color = "#FEF08A")
@@ -528,6 +597,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         };
         Annotations.Add(annotation);
         CanvasDecorators.Add(annotation);
+        _undoRedoService.Record(new AddAnnotationAction(this, annotation));
         return annotation;
     }
 
@@ -544,6 +614,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             Annotations.Remove(annotation);
             CanvasDecorators.Remove(annotation);
+            _undoRedoService.Record(new DeleteAnnotationAction(this, annotation));
         }
     }
 
@@ -556,6 +627,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         };
         Groups.Add(group);
         CanvasDecorators.Insert(0, group);
+        _undoRedoService.Record(new AddGroupAction(this, group));
         return group;
     }
 
@@ -590,6 +662,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             Groups.Remove(group);
             CanvasDecorators.Remove(group);
+            _undoRedoService.Record(new DeleteGroupAction(this, group));
         }
     }
 
@@ -605,6 +678,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         nodeVm.PropertyChanged += OnNodePropertyChanged;
         Nodes.Add(nodeVm);
         UserPreferencesService.Instance.IncrementNodeUsage(nodeTypeName);
+        _undoRedoService.Record(new AddNodesAction(this, [nodeVm]));
         return nodeVm;
     }
 
@@ -695,6 +769,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         );
 
         RefreshAllNodeFileVersions();
+        _undoRedoService.Clear();
     }
 
     public void RefreshAllNodeFileVersions()

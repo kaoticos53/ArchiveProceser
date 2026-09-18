@@ -44,6 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
         services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
         services.AddSingleton<IProcessLauncherService, ProcessLauncherService>();
+        services.AddSingleton<FileFlow.App.Services.UndoRedo.IUndoRedoService, FileFlow.App.Services.UndoRedo.UndoRedoService>();
 
         // 4. ViewModels (Ciclo de vida Singleton en el ámbito de aplicación de escritorio)
         services.AddSingleton<LogViewModel>();

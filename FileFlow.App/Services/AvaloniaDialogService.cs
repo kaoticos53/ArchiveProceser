@@ -59,16 +59,16 @@ public class AvaloniaDialogService : IDialogService
 
         if (Dispatcher.UIThread.CheckAccess())
         {
-            return ShowDialogWindow(desktop.MainWindow, title, message, iconType, primaryText, secondaryText, cancelText).GetAwaiter().GetResult();
+            return ShowDialogWindowSync(desktop.MainWindow, title, message, iconType, primaryText, secondaryText, cancelText);
         }
 
-        return Dispatcher.UIThread.InvokeAsync(async () =>
+        return Dispatcher.UIThread.Invoke(() =>
         {
-            return await ShowDialogWindow(desktop.MainWindow, title, message, iconType, primaryText, secondaryText, cancelText);
-        }).GetAwaiter().GetResult();
+            return ShowDialogWindowSync(desktop.MainWindow, title, message, iconType, primaryText, secondaryText, cancelText);
+        });
     }
 
-    private static async Task<DialogResult> ShowDialogWindow(
+    private static DialogResult ShowDialogWindowSync(
         Window owner,
         string title,
         string message,
@@ -200,9 +200,13 @@ public class AvaloniaDialogService : IDialogService
 
         window.Content = rootGrid;
 
+        var frame = new DispatcherFrame();
+        window.Closed += (_, _) => frame.Continue = false;
+
         try
         {
-            await window.ShowDialog(owner);
+            window.Show(owner);
+            Dispatcher.UIThread.PushFrame(frame);
         }
         catch
         {
