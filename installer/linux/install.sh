@@ -27,7 +27,7 @@ fi
 
 if [ "$INSTALL_MODE" == "system" ]; then
     INSTALL_PREFIX="/opt/fileflow"
-    BIN_DIR="/usr/local/bin"
+    BIN_DIR="/usr/bin"
     APPS_DIR="/usr/share/applications"
     ICONS_DIR="/usr/share/icons/hicolor/256x256/apps"
     echo -e "${YELLOW}Modo de instalación: Sistema (${INSTALL_PREFIX})${NC}"

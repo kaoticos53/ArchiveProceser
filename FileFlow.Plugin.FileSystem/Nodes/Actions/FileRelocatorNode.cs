@@ -88,8 +88,8 @@ public sealed class FileRelocatorNode : IFlowNode
             bool cleanupSource = Parameters.TryGetValue("CleanupSource", out var csVal) && ParameterHelper.GetBoolean(csVal, false);
 
             string targetDir = VariableTemplateResolver.Resolve(destDirTemplate, item);
-            string fileName = Path.GetFileName(sourcePath);
-            string targetPath = Path.Combine(targetDir, fileName);
+            string fileName = CrossPlatformPath.GetFileName(sourcePath);
+            string targetPath = CrossPlatformPath.Combine(targetDir, fileName);
 
             if (createDirs)
             {
@@ -97,7 +97,7 @@ public sealed class FileRelocatorNode : IFlowNode
             }
 
             bool isCopy = operation.Equals("Copy", StringComparison.OrdinalIgnoreCase);
-            bool isSamePath = string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(targetPath), StringComparison.OrdinalIgnoreCase);
+            bool isSamePath = string.Equals(sourcePath.Replace('\\', '/'), targetPath.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase);
 
             if (context.IsDryRun)
             {

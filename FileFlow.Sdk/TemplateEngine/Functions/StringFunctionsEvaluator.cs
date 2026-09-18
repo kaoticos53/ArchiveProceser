@@ -6,7 +6,7 @@ namespace FileFlow.Sdk.TemplateEngine.Functions;
 public sealed class StringFunctionsEvaluator : ITemplateFunctionEvaluator
 {
     private static readonly System.Buffers.SearchValues<char> InvalidCharsSearch =
-        System.Buffers.SearchValues.Create(Path.GetInvalidFileNameChars().Union(Path.GetInvalidPathChars()).Distinct().ToArray());
+        CrossPlatformPath.InvalidFileNameCharsSearch;
 
     private static readonly HashSet<string> SupportedFunctions = new(StringComparer.OrdinalIgnoreCase)
     {

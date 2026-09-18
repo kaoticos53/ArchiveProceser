@@ -16,8 +16,10 @@ chmod +x "${APPDIR}/AppRun" 2>/dev/null || true
 find "${APPDIR}/usr/bin" -type f -exec chmod +x {} + 2>/dev/null || true
 find "${APPDIR}" -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
 
-# Comprobar o descargar appimagetool
+# Comprobar o descargar appimagetool y runtime moderno
 TOOL_CMD="appimagetool"
+RUNTIME_FILE="/tmp/appimagetool-root/runtime-x86_64"
+
 if ! command -v appimagetool >/dev/null 2>&1; then
     if [ ! -f "/tmp/appimagetool-root/AppRun" ]; then
         echo "==> Descargando appimagetool en /tmp..."
@@ -35,9 +37,23 @@ if ! command -v appimagetool >/dev/null 2>&1; then
     TOOL_CMD="/tmp/appimagetool-root/AppRun"
 fi
 
+if [ ! -f "${RUNTIME_FILE}" ]; then
+    echo "==> Descargando runtime estático universal para AppImage..."
+    mkdir -p "$(dirname "${RUNTIME_FILE}")"
+    curl -sLo "${RUNTIME_FILE}" "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64" 2>/dev/null || \
+    wget -qO "${RUNTIME_FILE}" "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64" 2>/dev/null || true
+    chmod +x "${RUNTIME_FILE}" 2>/dev/null || true
+fi
+
 echo "==> Generando AppImage desde ${APPDIR} hacia ${OUTPUT}..."
 export ARCH=x86_64
-${TOOL_CMD} "${APPDIR}" "${OUTPUT}"
+
+if [ -f "${RUNTIME_FILE}" ] && [ -s "${RUNTIME_FILE}" ]; then
+    ${TOOL_CMD} --runtime-file "${RUNTIME_FILE}" -n "${APPDIR}" "${OUTPUT}"
+else
+    ${TOOL_CMD} -n "${APPDIR}" "${OUTPUT}"
+fi
 
 echo "==> [OK] AppImage generado con éxito en: ${OUTPUT}"
 chmod +x "${OUTPUT}" 2>/dev/null || true
+

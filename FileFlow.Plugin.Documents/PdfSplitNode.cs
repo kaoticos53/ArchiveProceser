@@ -11,6 +11,11 @@ namespace FileFlow.Plugin.Documents;
     "pdf", "separar", "dividir", "paginas", "cortar", "split", "extract")]
 public sealed class PdfSplitNode : IFlowNode
 {
+    static PdfSplitNode()
+    {
+        FileFlowFontResolver.EnsureInitialized();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfSplitNode_Name", "Dividir PDF (PDF Split)");
     public string Category => "Documents";

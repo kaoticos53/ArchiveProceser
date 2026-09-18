@@ -1,5 +1,45 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-18] - Corrección Integral de Paquetes de Distribución Linux (.AppImage y .deb) y Normalización Universal de Rutas (Hito 139)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Problema Reportado**: La aplicación funcionaba correctamente al ejecutarla mediante `run.sh` / `run-fast.sh`, pero los paquetes de distribución generados en `dist/` (tanto el `.deb` como el `.AppImage`) no funcionaban al ejecutarlos o instalarlos.
+- **Causas Raíz Identificadas**:
+  1. **AppImage (`AppRun` y FUSE runtime)**:
+     - `installer/linux/AppRun` exportaba `DOTNET_ROOT=${HERE}/usr/lib/fileflow/engine`, rompiendo la resolución de ensamblados en ejecutables autónomos de .NET 9.
+     - El runtime base de AppImageKit fallaba en distribuciones modernas (Ubuntu 22.04+, Ubuntu 24.04, Debian 12, Linux Mint 21+) por requerir `libfuse.so.2` en lugar del nuevo estándar `fuse3`.
+  2. **Paquete Debian (.deb) y Entornos de Escritorio**:
+     - El enlace simbólico se creaba en `/usr/local/bin/fileflow`, el cual a menudo no está en el `PATH` por defecto de las sesiones gráficas de usuario.
+     - El archivo `fileflow.desktop` ejecutaba `fileflow %F` en lugar de la ruta absoluta `/opt/fileflow/FileFlow.App %F`.
+     - Faltaban dependencias de librerías nativas X11/Fontconfig en `DEBIAN/control` y scripts de integración de post-instalación (`update-desktop-database`, `gtk-update-icon-cache`).
+  3. **Incompatibilidad de Rutas y Fuentes en Linux**:
+     - Nodos de SDK y plugins utilizaban llamadas a `Path.GetFileName`, `Path.GetFullPath`, `Path.GetInvalidFileNameChars` que en Linux no reconocían separadores `\\` ni rutas de unidad Windows (`C:\...`), provocando concatenaciones erróneas y fallos en suites de tests.
+     - `PdfSharp` en Linux requería un proveedor de fuentes TrueType (`IFontResolver`) para no fallar ante fuentes del sistema no registradas.
+
+### 🎯 Solución Implementada
+1. **Actualización de Runtime de AppImage (`installer/linux/build-appimage.sh` y `AppRun`)**:
+   - Se eliminó la asignación errónea de `DOTNET_ROOT` en `AppRun`.
+   - Se incorporó la descarga y uso del runtime estático moderno Type 2 (`AppImage/type2-runtime` con soporte integrado de squashfuse), permitiendo que el AppImage funcione en cualquier distribución moderna sin requerir `libfuse2` y soportando `--appimage-extract-and-run`.
+2. **Corrección de Empaquetado Debian (`package-linux.sh`, `installer/linux/`)**:
+   - Symlink migrado a `/usr/bin/fileflow`.
+   - `.desktop` configurado con `Exec=/opt/fileflow/FileFlow.App %F`.
+   - Añadidas dependencias de runtime en `DEBIAN/control` (`libc6, libfontconfig1, libx11-6, libice6, libsm6, libxext6, libxi6, libxrender1, libxtst6`).
+   - Añadidos scripts `postinst` y `postrm` con actualización automática de la base de datos de escritorio e iconos.
+3. **Módulo Transversal de Rutas Multiplataforma (`FileFlow.Sdk/CrossPlatformPath.cs`)**:
+   - Creada clase estática con métodos `GetFileName`, `GetFileNameWithoutExtension`, `GetExtension`, `GetDirectoryName`, `Combine`, `GetRelativePath`, `IsPathFullyQualified` y catálogo universal de caracteres inválidos `InvalidFileNameChars`.
+   - Actualizados `ParameterHelper`, `PathRelativeCalculator`, `FileItemContext`, `DestinationSinkNode`, `FileRelocatorNode`, `OperationReportNode`, `LogOutputNode`, `NetworkDownloadNode` y `CliExecutionNode`.
+4. **Resolvedor de Fuentes TrueType para PDFsharp (`FileFlow.Plugin.Documents/FileFlowFontResolver.cs`)**:
+   - Implementado `IFontResolver` con detección y carga automática de fuentes TrueType estándar de Linux (`LiberationSans`, `DejaVuSans`, `FreeSans`).
+
+### 🧪 Validación
+- **Suite Completa de Pruebas (`./test.sh`)**: **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **Empaquetado de Distribución (`./package-linux.sh`)**:
+  - `dist/FileFlow-1.0.0-x86_64.AppImage` (64 MB) - Verificada ejecución directa y `--appimage-extract-and-run --help`.
+  - `dist/fileflow_1.0.0_amd64.deb` (61 MB) - Verificada estructura y metadatos `dpkg-deb -I`.
+  - `dist/FileFlow-1.0.0-Linux-x64-Portable.tar.gz` (63 MB).
+
+---
+
 ## [2026-09-18] - Rediseño Plano de Tarjetas de Nodos (Flat Modern Design) (Hito 138)
 
 ### 🎯 Diagnóstico y Causa Raíz

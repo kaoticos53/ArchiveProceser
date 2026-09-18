@@ -32,7 +32,7 @@ public record FileItemContext
         }
     }
 
-    public string FileName => _fileName ??= (!string.IsNullOrWhiteSpace(_currentPath) ? Path.GetFileName(_currentPath) : string.Empty);
+    public string FileName => _fileName ??= (!string.IsNullOrWhiteSpace(_currentPath) ? CrossPlatformPath.GetFileName(_currentPath) : string.Empty);
 
     public string OriginalPath { get; set; } = string.Empty;
     public string PhysicalPath { get; set; } = string.Empty;

@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+
 namespace FileFlow.Sdk.TemplateEngine.Resolvers;
 
 /// <summary>
@@ -14,16 +17,13 @@ public static class PathRelativeCalculator
 
         try
         {
-            string normFull = Path.GetFullPath(fullPath);
-            string normRoot = Path.GetFullPath(rootPath);
-
-            string relPath = Path.GetRelativePath(normRoot, normFull);
-            if (relPath.Equals(".", StringComparison.Ordinal))
+            string relPath = CrossPlatformPath.GetRelativePath(rootPath, fullPath);
+            if (relPath.Equals(".", StringComparison.Ordinal) || relPath.Equals(fullPath, StringComparison.Ordinal))
             {
                 return string.Empty;
             }
 
-            string? relDir = Path.GetDirectoryName(relPath);
+            string relDir = CrossPlatformPath.GetDirectoryName(relPath);
             return string.IsNullOrEmpty(relDir) || relDir.Equals(".", StringComparison.Ordinal) ? string.Empty : relDir;
         }
         catch
@@ -36,19 +36,17 @@ public static class PathRelativeCalculator
     {
         if (string.IsNullOrWhiteSpace(rootPath) || string.IsNullOrWhiteSpace(fullPath))
         {
-            return Path.GetFileName(fullPath);
+            return CrossPlatformPath.GetFileName(fullPath);
         }
 
         try
         {
-            string normFull = Path.GetFullPath(fullPath);
-            string normRoot = Path.GetFullPath(rootPath);
-            string rel = Path.GetRelativePath(normRoot, normFull);
-            return rel.Equals(".", StringComparison.Ordinal) ? Path.GetFileName(fullPath) : rel;
+            string rel = CrossPlatformPath.GetRelativePath(rootPath, fullPath);
+            return rel.Equals(".", StringComparison.Ordinal) ? CrossPlatformPath.GetFileName(fullPath) : rel;
         }
         catch
         {
-            return Path.GetFileName(fullPath);
+            return CrossPlatformPath.GetFileName(fullPath);
         }
     }
 }

@@ -11,7 +11,7 @@ internal sealed class NumberingStepHandler : IRenameStepHandler
 
     public string Execute(RenameMethodStep step, string targetText, FileItemContext item, RenameBatchContext batchContext)
     {
-        string currentDir = Path.GetDirectoryName(item.CurrentPath) ?? string.Empty;
+        string currentDir = CrossPlatformPath.GetDirectoryName(item.CurrentPath);
         string metaGroupKey = string.Empty;
         if (!string.IsNullOrEmpty(step.ResetMetadataKey) && item.Metadata.TryGetValue(step.ResetMetadataKey, out var metaVal) && metaVal != null)
         {

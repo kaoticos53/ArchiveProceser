@@ -20,7 +20,7 @@ echo -e "${CYAN}====================================================${NC}"
 if [ -d "/opt/fileflow" ] && ([ "$EUID" -eq 0 ] || [ -w "/opt/fileflow" ]); then
     echo -e "${YELLOW}Eliminando instalación a nivel de sistema (/opt/fileflow)...${NC}"
     rm -rf "/opt/fileflow"
-    rm -f "/usr/local/bin/fileflow"
+    rm -f "/usr/bin/fileflow" "/usr/local/bin/fileflow"
     rm -f "/usr/share/applications/fileflow.desktop"
     rm -f "/usr/share/icons/hicolor/256x256/apps/fileflow.png"
     echo -e "${GREEN}Instalación de sistema eliminada.${NC}"

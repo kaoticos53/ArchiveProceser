@@ -122,7 +122,7 @@ public sealed class OperationReportNode : IFlowNode
                 string perFileContent = renderer.Render(perFileSummary, theme, includeMeta);
                 string extension = renderer.FileExtension.TrimStart('.');
 
-                string perFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_Report.{extension}";
+                string perFileName = $"{CrossPlatformPath.GetFileNameWithoutExtension(item.CurrentPath)}_Report.{extension}";
 
                 var reportContext = new FileItemContext(perFileName, isDirectory: false)
                 {

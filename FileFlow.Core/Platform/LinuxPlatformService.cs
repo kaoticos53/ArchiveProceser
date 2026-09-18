@@ -109,7 +109,7 @@ public sealed class LinuxPlatformService : IOsPlatformService
         }
     }
 
-    public string GetDefaultShellExecutable() => "/bin/sh";
+    public string GetDefaultShellExecutable() => File.Exists("/bin/bash") ? "/bin/bash" : "/bin/sh";
 
     public string GetDefaultShellArguments(string command) => $"-c \"{command.Replace("\"", "\\\"")}\"";
 

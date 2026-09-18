@@ -11,6 +11,11 @@ namespace FileFlow.Plugin.Documents;
     "pdf", "texto", "extraer", "ocr", "txt", "leer", "text", "extract")]
 public sealed class PdfTextExtractorNode : IFlowNode
 {
+    static PdfTextExtractorNode()
+    {
+        FileFlowFontResolver.EnsureInitialized();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfTextExtractorNode_Name", "Extraer Texto de PDF (PDF Text Extractor)");
     public string Category => "Documents";

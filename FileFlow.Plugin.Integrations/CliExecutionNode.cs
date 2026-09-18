@@ -42,26 +42,16 @@ public sealed class CliExecutionNode : IFlowNode
     {
         var platform = context.Platform ?? NullOsPlatformService.Instance;
         string defaultShell = platform.GetDefaultShellExecutable();
-        string exe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, defaultShell) : defaultShell;
-        if (string.Equals(exe, "cmd.exe", StringComparison.OrdinalIgnoreCase) && !platform.IsWindows)
-        {
-            exe = defaultShell;
-        }
-
-        string argsTemplate = Parameters.TryGetValue("ArgumentsTemplate", out var aVal) ? ParameterHelper.GetString(aVal, "") : "";
+        string rawExe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, defaultShell) : defaultShell;
+        string rawArgs = Parameters.TryGetValue("ArgumentsTemplate", out var aVal) ? ParameterHelper.GetString(aVal, "") : "";
         int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 60) : 60;
         bool captureOutput = Parameters.TryGetValue("CaptureOutputToMetadata", out var cVal) && ParameterHelper.GetBoolean(cVal, true);
 
-        string resolvedArgs = VariableTemplateResolver.Resolve(argsTemplate, item);
-        if (!platform.IsWindows && resolvedArgs.StartsWith("/c ", StringComparison.OrdinalIgnoreCase))
-        {
-            resolvedArgs = "-c \"" + resolvedArgs[3..].Replace("\"", "\\\"") + "\"";
-        }
-        string resolvedExe = VariableTemplateResolver.Resolve(exe, item);
+        string resolvedExe = VariableTemplateResolver.Resolve(rawExe, item);
+        string resolvedArgs = VariableTemplateResolver.Resolve(rawArgs, item);
 
         try
         {
-
             if (context.IsDryRun)
             {
                 context.RegisterPlannedAction(new PlannedAction(
@@ -71,18 +61,31 @@ public sealed class CliExecutionNode : IFlowNode
                     PlannedOperationType.ExecuteCommand,
                     item.CurrentPath,
                     null,
-                    $"Run command: {resolvedExe} {resolvedArgs}"
+                    $"Run command: {resolvedExe} {resolvedArgs}".TrimEnd()
                 ));
-                item.AddLog($"[DryRun] Planned CLI Execution: {resolvedExe} {resolvedArgs}");
+                item.AddLog($"[DryRun] Planned CLI Execution: {resolvedExe} {resolvedArgs}".TrimEnd());
                 await context.EmitAsync("Success", item);
                 return;
+            }
+
+            string exeToRun = resolvedExe;
+            string argsToRun = resolvedArgs;
+
+            if (string.Equals(exeToRun, "cmd.exe", StringComparison.OrdinalIgnoreCase) && !platform.IsWindows)
+            {
+                exeToRun = defaultShell;
+            }
+
+            if (!platform.IsWindows && argsToRun.StartsWith("/c ", StringComparison.OrdinalIgnoreCase))
+            {
+                argsToRun = "-c \"" + argsToRun[3..].Replace("\"", "\\\"") + "\"";
             }
 
             var runner = context.ProcessRunner ?? ProcessRunner.Instance;
             var runnerResult = await runner.RunAsync(new ProcessExecutionRequest
             {
-                FileName = resolvedExe,
-                Arguments = resolvedArgs,
+                FileName = exeToRun,
+                Arguments = argsToRun,
                 WorkingDirectory = null,
                 Timeout = TimeSpan.FromSeconds(timeoutSec),
                 RedirectStandardOutput = true,

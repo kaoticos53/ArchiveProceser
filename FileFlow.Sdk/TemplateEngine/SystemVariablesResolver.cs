@@ -104,16 +104,16 @@ public static class SystemVariablesResolver
         switch (varName.ToLowerInvariant())
         {
             case "filename":
-                return Path.GetFileName(currentPath);
+                return CrossPlatformGetFileName(currentPath);
 
             case "filenamenoext":
             case "filenamewithoutextension":
             case "filebasename":
-                return Path.GetFileNameWithoutExtension(currentPath);
+                return CrossPlatformGetFileNameWithoutExtension(currentPath);
 
             case "extension":
             case "ext":
-                return Path.GetExtension(currentPath).TrimStart('.');
+                return CrossPlatformGetExtension(currentPath).TrimStart('.');
 
             case "currentpath":
                 return currentPath;
@@ -123,19 +123,19 @@ public static class SystemVariablesResolver
 
             case "currentdir":
             case "sourcedir":
-                return Path.GetDirectoryName(currentPath) ?? string.Empty;
+                return CrossPlatformGetDirectoryName(currentPath);
 
             case "originaldir":
-                return Path.GetDirectoryName(originalPath) ?? string.Empty;
+                return CrossPlatformGetDirectoryName(originalPath);
 
             case "originaldirectoryname":
-                string? oDir = Path.GetDirectoryName(originalPath);
-                return string.IsNullOrEmpty(oDir) ? string.Empty : Path.GetFileName(oDir);
+                string oDir = CrossPlatformGetDirectoryName(originalPath);
+                return string.IsNullOrEmpty(oDir) ? string.Empty : CrossPlatformGetFileName(oDir);
 
             case "parentdir":
             case "dirname":
-                string? pDir = Path.GetDirectoryName(currentPath);
-                return string.IsNullOrEmpty(pDir) ? string.Empty : Path.GetFileName(pDir);
+                string pDir = CrossPlatformGetDirectoryName(currentPath);
+                return string.IsNullOrEmpty(pDir) ? string.Empty : CrossPlatformGetFileName(pDir);
 
             case "date":
                 return DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -400,4 +400,10 @@ public static class SystemVariablesResolver
         }
         return false;
     }
+
+    public static string CrossPlatformGetFileName(string path) => CrossPlatformPath.GetFileName(path);
+    public static string CrossPlatformGetFileNameWithoutExtension(string path) => CrossPlatformPath.GetFileNameWithoutExtension(path);
+    public static string CrossPlatformGetExtension(string path) => CrossPlatformPath.GetExtension(path);
+    public static string CrossPlatformGetDirectoryName(string path) => CrossPlatformPath.GetDirectoryName(path);
 }
+

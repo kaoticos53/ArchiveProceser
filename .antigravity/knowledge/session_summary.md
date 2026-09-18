@@ -10,6 +10,22 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **139. Corrección integral de paquetes de distribución Linux (.AppImage y .deb) y normalización universal de rutas (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    - Los paquetes de distribución en `dist/` no se ejecutaban correctamente debido a tres factores:
+      1. **AppImage**: El script `installer/linux/AppRun` exportaba `DOTNET_ROOT=${HERE}/usr/lib/fileflow/engine`, rompiendo la resolución interna del runtime de .NET. Además, el runtime base de AppImageKit fallaba en distribuciones modernas (Ubuntu 22.04/24.04, Debian 12) por falta de `libfuse.so.2` (al migrar a `fuse3`).
+      2. **Debian .deb**: El symlink se creaba en `/usr/local/bin` (frecuentemente omitido del `PATH` en entornos de escritorio de usuarios) y el archivo `.desktop` apuntaba a `fileflow` en lugar de la ruta absoluta `/opt/fileflow/FileFlow.App %F`. Faltaban dependencias de librerías nativas X11/Fontconfig y scripts de post-instalación de base de datos de escritorio e iconos.
+      3. **Manipulación de rutas multiplataforma**: Nodos como `DestinationSinkNode`, `FileRelocatorNode`, `OperationReportNode`, `LogOutputNode` y evaluadores de plantillas utilizaban llamadas dependientes de la plataforma (`Path.GetFileName`, `Path.GetFullPath`, `Path.GetInvalidFileNameChars`) que asumían `/` o `\\` rígidos, causando fallos al procesar rutas con unidades Windows o plantillas en Linux.
+  - **Corrección**:
+    - **`installer/linux/AppRun`**: Corregida la variable `DOTNET_ROOT` y configuración de ejecución autónoma.
+    - **`installer/linux/build-appimage.sh`**: Integrado el runtime moderno estático Type 2 (`AppImage/type2-runtime`) con soporte nativo para `squashfuse` y ejecución en entornos FUSE3/sin FUSE con `--appimage-extract-and-run`.
+    - **`package-linux.sh` y `installer/linux/`**: Symlink corregido a `/usr/bin/fileflow`, `.desktop` enrutado a `/opt/fileflow/FileFlow.App %F`, dependencias nativas declaradas en `DEBIAN/control` (`libc6, libfontconfig1, libx11-6...`) y scripts `postinst`/`postrm` automáticos.
+    - **`FileFlow.Sdk/CrossPlatformPath.cs`**: Implementada clase transversal para cálculo, combinación, sanitización y normalización universal de rutas (Windows/Unix).
+    - **`FileFlow.Plugin.Documents/FileFlowFontResolver.cs`**: Implementado `IFontResolver` para `PdfSharp` resolviendo fuentes TrueType nativas de Linux (`LiberationSans`, `DejaVuSans`).
+    - Actualizados `ParameterHelper`, `PathRelativeCalculator`, `FileItemContext`, `DestinationSinkNode`, `FileRelocatorNode`, `OperationReportNode`, `LogOutputNode` y `CliExecutionNode`.
+  - **Validación**:
+    - Suite de pruebas unitarias e integración: **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
+    - Generación exitosa de los 3 paquetes (`FileFlow-1.0.0-x86_64.AppImage`, `fileflow_1.0.0_amd64.deb`, `FileFlow-1.0.0-Linux-x64-Portable.tar.gz`) y verificación de ejecución directa.
 - **138. Empaquetador universal de distribución y soporte nativo para Linux (2026-09-18)**:
   - **Diagnóstico y Requerimientos**:
     - Desarrollar una herramienta de empaquetado integral para distribuir FileFlow Studio en Linux de la forma más sencilla para el usuario final.

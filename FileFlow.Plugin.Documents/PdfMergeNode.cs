@@ -11,6 +11,11 @@ namespace FileFlow.Plugin.Documents;
     "pdf", "unir", "fusionar", "juntar", "combinar", "merge", "join")]
 public sealed class PdfMergeNode : IFlowNode
 {
+    static PdfMergeNode()
+    {
+        FileFlowFontResolver.EnsureInitialized();
+    }
+
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("PdfMergeNode_Name", "Unir PDFs (PDF Merge)");
     public string Category => "Documents";

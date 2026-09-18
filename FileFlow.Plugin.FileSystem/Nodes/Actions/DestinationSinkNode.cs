@@ -79,8 +79,8 @@ public sealed class DestinationSinkNode : IFlowNode
 
         try
         {
-            string fileName = Path.GetFileName(item.CurrentPath);
-            string targetPath = Path.Combine(destRoot, fileName);
+            string fileName = CrossPlatformPath.GetFileName(item.CurrentPath);
+            string targetPath = CrossPlatformPath.Combine(destRoot, fileName);
 
             StorageOperationResult result;
             if (hasVirtualContent && !hasFile)
@@ -116,7 +116,7 @@ public sealed class DestinationSinkNode : IFlowNode
 
             if (result.WasCollision)
             {
-                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_IncrementalRename", "[Destination Sink] Incremental rename to avoid collision: '{0}'", Path.GetFileName(result.FinalPath)), LogLevel.Debug, item);
+                context.Log(LocalizationManager.Instance.GetFormattedString("Log_Sink_IncrementalRename", "[Destination Sink] Incremental rename to avoid collision: '{0}'", CrossPlatformPath.GetFileName(result.FinalPath)), LogLevel.Debug, item);
             }
 
             // Enlazar entrada de origen y destino si VFS está activo
@@ -125,8 +125,8 @@ public sealed class DestinationSinkNode : IFlowNode
                 var entry = new FileFlow.Sdk.VirtualFileSystem.VirtualFileEntry(
                     VirtualPath: result.FinalPath,
                     OriginalPath: item.OriginalPath,
-                    FileName: Path.GetFileName(result.FinalPath),
-                    Extension: Path.GetExtension(result.FinalPath),
+                    FileName: CrossPlatformPath.GetFileName(result.FinalPath),
+                    Extension: CrossPlatformPath.GetExtension(result.FinalPath),
                     DirectoryPath: destRoot,
                     FileSizeBytes: item.FileSizeBytes > 0 ? item.FileSizeBytes : result.BytesProcessed,
                     OperationType: result.WasCollision ? FileFlow.Sdk.VirtualFileSystem.VirtualOperationType.ConflictRenamed : FileFlow.Sdk.VirtualFileSystem.VirtualOperationType.Saved,

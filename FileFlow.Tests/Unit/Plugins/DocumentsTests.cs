@@ -10,8 +10,14 @@ namespace FileFlow.Tests.Unit.Plugins;
 
 public class DocumentsTests
 {
+    static DocumentsTests()
+    {
+        FileFlowFontResolver.EnsureInitialized();
+    }
+
     private string CreateSamplePdf(string filePath, string text, int pages = 1)
     {
+        FileFlowFontResolver.EnsureInitialized();
         string? dir = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
 

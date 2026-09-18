@@ -114,7 +114,7 @@ public class VirtualPipelineSourceDestinationTests
 
         destinationFiles.Should().HaveCount(2);
         destinationFiles.Should().OnlyContain(f => f.Role == VirtualFileRole.Destination);
-        destinationFiles.Should().OnlyContain(f => f.DirectoryPath.StartsWith(@"D:\PeliculasFinal", StringComparison.OrdinalIgnoreCase));
+        destinationFiles.Should().OnlyContain(f => f.DirectoryPath.Replace('/', '\\').StartsWith(@"D:\PeliculasFinal", StringComparison.OrdinalIgnoreCase));
         destinationFiles.Should().OnlyContain(f => !string.IsNullOrEmpty(f.RelatedSourcePath));
 
         // Ambos directorios existen en el VFS

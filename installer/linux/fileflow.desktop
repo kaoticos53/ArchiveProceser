@@ -2,12 +2,13 @@
 Name=FileFlow Studio
 GenericName=Workflow DAG Engine & Pipeline Studio
 Comment=Advanced DAG-based batch processing, OCR, AI and automation platform
-Exec=fileflow %F
+Exec=/opt/fileflow/FileFlow.App %F
 Icon=fileflow
 Terminal=false
 Type=Application
-Categories=Utility;FileTools;System;
+Categories=Utility;FileTools;Development;
 MimeType=application/json;
 Keywords=workflow;dag;pipeline;batch;processing;ocr;ai;automation;
 StartupNotify=true
 StartupWMClass=FileFlow.App
+

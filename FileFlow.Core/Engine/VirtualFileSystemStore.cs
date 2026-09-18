@@ -474,24 +474,41 @@ public class VirtualFileSystemStore : IVirtualFileSystemStore
 
     private void RegisterDirectories(string filePath)
     {
-        string? dir = Path.GetDirectoryName(filePath);
+        string? dir = CrossPlatformGetDirectoryName(filePath);
         while (!string.IsNullOrWhiteSpace(dir))
         {
             _directories.Add(dir);
-            dir = Path.GetDirectoryName(dir);
+            dir = CrossPlatformGetDirectoryName(dir);
         }
+    }
+
+    private static string CrossPlatformGetDirectoryName(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return string.Empty;
+        int lastSep = Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'));
+        return lastSep >= 0 ? path[..lastSep] : string.Empty;
     }
 
     private static string NormalizePath(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+        string trimmed = path.Trim();
+        bool isWindowsDrive = trimmed.Length >= 2 && char.IsLetter(trimmed[0]) && trimmed[1] == ':';
+        if (isWindowsDrive)
+        {
+            return trimmed.Replace('/', '\\');
+        }
+        if (trimmed.StartsWith('/'))
+        {
+            return trimmed.Replace('\\', '/');
+        }
         try
         {
-            return Path.GetFullPath(path);
+            return Path.GetFullPath(trimmed);
         }
         catch
         {
-            return path.Replace('/', '\\').Trim();
+            return trimmed;
         }
     }
 

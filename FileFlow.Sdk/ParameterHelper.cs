@@ -208,23 +208,18 @@ public static class ParameterHelper
 
         if (string.IsNullOrWhiteSpace(resolved))
         {
-            resolved = Path.GetFileName(context.CurrentPath);
+            resolved = CrossPlatformPath.GetFileName(context.CurrentPath);
         }
 
-        // Si la ruta resultante comienza con separador sin ser UNC (ej. \Output tras {RelativeDir}\Output cuando RelativeDir es vacio),
-        // se normaliza quitando el separador inicial para poder combinarlo correctamente con el directorio base.
-        if ((resolved.StartsWith('\\') || resolved.StartsWith('/')) && !resolved.StartsWith(@"\\") && !resolved.StartsWith("//"))
+        // Si ya es una ruta absoluta
+        if (CrossPlatformPath.IsPathFullyQualified(resolved))
         {
-            resolved = resolved.TrimStart('\\', '/');
-            if (string.IsNullOrWhiteSpace(resolved))
+            if (CrossPlatformPath.IsWindowsDrivePath(resolved) || CrossPlatformPath.IsWindowsUncPath(resolved))
             {
-                resolved = Path.GetFileName(context.CurrentPath);
+                return CrossPlatformPath.NormalizeWindowsPath(resolved);
             }
-        }
-
-        if (Path.IsPathFullyQualified(resolved))
-        {
-            return resolved;
+            string unixResolved = resolved.Replace('\\', '/');
+            return OperatingSystem.IsWindows() ? resolved : Path.GetFullPath(unixResolved);
         }
 
         // Comprobar si el patrón original solicitaba explícitamente una ruta relativa al directorio de origen
@@ -254,29 +249,38 @@ public static class ParameterHelper
             string? itemPath = !string.IsNullOrWhiteSpace(context.OriginalPath) ? context.OriginalPath : context.CurrentPath;
             if (!string.IsNullOrWhiteSpace(itemPath))
             {
-                baseDir = Path.GetDirectoryName(itemPath);
+                baseDir = CrossPlatformPath.GetDirectoryName(itemPath);
             }
         }
+
+        string finalPath;
 
         // 1. Si el patrón era explícitamente relativo al origen (ej. "{RelativeDir}\Output"), anclar bajo el directorio origen
         if (isExplicitlySourceRelative && !string.IsNullOrWhiteSpace(baseDir))
         {
-            return Path.GetFullPath(Path.Combine(baseDir, resolved));
+            finalPath = CrossPlatformPath.Combine(baseDir, resolved);
         }
-
         // 2. Si hay GlobalOutputDir configurado, anclar bajo GlobalOutputDir
-        if (!string.IsNullOrWhiteSpace(effectiveGlobalOutputDir))
+        else if (!string.IsNullOrWhiteSpace(effectiveGlobalOutputDir))
         {
-            return Path.GetFullPath(Path.Combine(effectiveGlobalOutputDir, resolved));
+            finalPath = CrossPlatformPath.Combine(effectiveGlobalOutputDir, resolved);
         }
-
         // 3. Fallback: anclar bajo el directorio del archivo origen
-        if (!string.IsNullOrWhiteSpace(baseDir))
+        else if (!string.IsNullOrWhiteSpace(baseDir))
         {
-            return Path.GetFullPath(Path.Combine(baseDir, resolved));
+            finalPath = CrossPlatformPath.Combine(baseDir, resolved);
+        }
+        else
+        {
+            finalPath = resolved;
         }
 
-        return resolved;
+        if (!OperatingSystem.IsWindows() && finalPath.StartsWith('/'))
+        {
+            finalPath = finalPath.Replace('\\', '/');
+        }
+
+        return finalPath;
     }
 
     /// <summary>

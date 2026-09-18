@@ -145,7 +145,7 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
             string resolvedName = transformResult.ResultFileName;
 
             // Sanitización preventiva final de caracteres inválidos de Windows
-            char[] invalidChars = Path.GetInvalidFileNameChars();
+            char[] invalidChars = CrossPlatformPath.InvalidFileNameChars;
             if (resolvedName.IndexOfAny(invalidChars) >= 0)
             {
                 foreach (char c in invalidChars)

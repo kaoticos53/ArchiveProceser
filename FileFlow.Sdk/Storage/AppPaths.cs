@@ -216,7 +216,7 @@ public static class AppPaths
     public static string ResolveApplicationPath(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return string.Empty;
-        if (Path.IsPathRooted(path)) return path;
+        if (CrossPlatformPath.IsPathFullyQualified(path)) return path;
 
         return Path.GetFullPath(Path.Combine(AppBaseDirectory, path));
     }

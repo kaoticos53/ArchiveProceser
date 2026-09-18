@@ -33,7 +33,7 @@ internal sealed class CleanupStepHandler : IRenameStepHandler
 
         if (step.SanitizeInvalidChars)
         {
-            char[] invalid = Path.GetInvalidFileNameChars();
+            char[] invalid = CrossPlatformPath.InvalidFileNameChars;
             if (result.IndexOfAny(invalid) >= 0)
             {
                 var sb = new StringBuilder(result.Length);

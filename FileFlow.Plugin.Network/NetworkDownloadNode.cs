@@ -134,7 +134,7 @@ public sealed class NetworkDownloadNode : IFlowNode
         bool overwrite = !Parameters.TryGetValue("Overwrite", out var ow) || !bool.TryParse(ow?.ToString(), out bool isOw) || isOw;
         bool deleteAfter = Parameters.TryGetValue("DeleteAfterDownload", out var del) && bool.TryParse(del?.ToString(), out bool isDel) && isDel;
 
-        string resolvedDestDir = NetworkTemplateHelper.ResolveRemotePath(destFolder, item).Replace('/', '\\');
+        string resolvedDestDir = ParameterHelper.ResolveOutputPath(destFolder, item);
         if (string.IsNullOrWhiteSpace(resolvedDestDir))
         {
             resolvedDestDir = Directory.GetCurrentDirectory();

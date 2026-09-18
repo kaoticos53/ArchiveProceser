@@ -72,8 +72,8 @@ public sealed class LogOutputNode : IFlowNode
         LogLevel level = parsedLevel;
 
         string fileName = !string.IsNullOrWhiteSpace(item.CurrentPath)
-            ? System.IO.Path.GetFileName(item.CurrentPath)
-            : (!string.IsNullOrWhiteSpace(item.OriginalPath) ? System.IO.Path.GetFileName(item.OriginalPath) : "Elemento");
+            ? CrossPlatformPath.GetFileName(item.CurrentPath)
+            : (!string.IsNullOrWhiteSpace(item.OriginalPath) ? CrossPlatformPath.GetFileName(item.OriginalPath) : "Elemento");
 
         double mb = item.FileSizeBytes / (1024.0 * 1024.0);
         string sizeText = item.FileSizeBytes > 0 ? (mb >= 1.0 ? $"{mb:F2} MB" : $"{item.FileSizeBytes / 1024.0:F1} KB") : (item.IsDirectory ? "Carpeta" : "0 B");
