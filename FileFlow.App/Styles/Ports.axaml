@@ -293,7 +293,7 @@
     </Style>
 
     <!-- Cable en curso de dibujo con curva Spline (Bézier fluida idéntica al cable final) -->
-    <Style Selector="nodifyConn|PendingConnection">
+    <Style Selector=":is(nodifyConn|PendingConnection)">
         <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
         <Setter Property="StrokeThickness" Value="3.5" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
@@ -314,37 +314,37 @@
     </Style>
 
 
-    <Style Selector="nodifyConn|PendingConnection.wireFiles">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireFiles">
         <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|PendingConnection.wireText">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireText">
         <Setter Property="Stroke" Value="{DynamicResource AccentCyanBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|PendingConnection.wireBoolean">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireBoolean">
         <Setter Property="Stroke" Value="{DynamicResource AccentWarningBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|PendingConnection.wireNumber">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireNumber">
         <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|PendingConnection.wireBinary">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireBinary">
         <Setter Property="Stroke" Value="{DynamicResource AccentPurpleBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|PendingConnection.wireCollection">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireCollection">
         <Setter Property="Stroke" Value="{DynamicResource AccentErrorBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|PendingConnection.wireAny">
+    <Style Selector=":is(nodifyConn|PendingConnection).wireAny">
         <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>

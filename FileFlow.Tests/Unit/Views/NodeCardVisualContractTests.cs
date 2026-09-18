@@ -30,10 +30,10 @@ public class NodeCardVisualContractTests
         RegexOptions.Compiled);
 
     private static readonly Regex DataTemplateContextRegex = new(
-        @"<DataTemplate\b[^>]*DataType=""vm:([A-Za-z0-9_]+)""",
+        @"<(?:DataTemplate|ControlTemplate)\b[^>]*(?:x:)?DataType=""vm:([A-Za-z0-9_]+)""",
         RegexOptions.Compiled);
 
-    private static readonly Regex ClosedDataTemplateRegex = new(@"</DataTemplate>", RegexOptions.Compiled);
+    private static readonly Regex ClosedDataTemplateRegex = new(@"</(?:DataTemplate|ControlTemplate)>", RegexOptions.Compiled);
 
     /// <summary>View models del proyecto a los que puede apuntar un DataType declarado en la tarjeta.</summary>
     private static readonly Dictionary<string, Type> KnownDataContexts = new(StringComparer.Ordinal)
@@ -110,7 +110,7 @@ public class NodeCardVisualContractTests
 
         Occurrences(card, "x:Key=\"PortSocketTemplate\"").Should().Be(1,
             "el socket se define una sola vez para que entrada y salida no puedan divergir");
-        Occurrences(card, "ContentTemplate=\"{StaticResource PortSocketTemplate}\"").Should().Be(2,
+        Occurrences(card, "ConnectorTemplate=\"{StaticResource PortSocketTemplate}\"").Should().Be(2,
             "tanto los puertos de entrada como los de salida deben usar la plantilla compartida");
         Occurrences(card, "Classes=\"socket\"").Should().Be(1,
             "el socket no debe dibujarse con estilos sueltos fuera de su plantilla");

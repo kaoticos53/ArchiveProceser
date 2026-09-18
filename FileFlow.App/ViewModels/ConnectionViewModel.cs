@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace FileFlow.App.ViewModels;
 
@@ -41,5 +42,11 @@ public partial class ConnectionViewModel : ObservableObject
     {
         ItemCount = count;
         HasItems = count > 0;
+    }
+
+    [RelayCommand]
+    public void Delete()
+    {
+        Source?.NodeOwner?.ParentEditor?.DeleteConnection(this);
     }
 }

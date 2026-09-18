@@ -67,6 +67,29 @@ public partial class NodeCardView : UserControl
 
     private void NodeCardView_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        var props = e.GetCurrentPoint(this).Properties;
+
+        // Clic derecho: el nodo debe mostrar su menú contextual.
+        // Marcar como manejado evita que el evento burbujee a NodifyEditor, donde
+        // el gesto de paneo (RightClick) capturaría el puntero y cancelaría el
+        // ContextRequested. En su lugar, abrimos el ContextMenu manualmente.
+        if (props.IsRightButtonPressed)
+        {
+            if (DataContext is NodeViewModel nodeRightClick)
+            {
+                nodeRightClick.ParentEditor?.BringToFront(nodeRightClick);
+            }
+            // Marcar handled para que NodifyEditor no inicie el paneo sobre este nodo.
+            // Avalonia no dispara ContextRequested si el PointerPressed fue handled,
+            // así que abrimos el ContextMenu directamente.
+            e.Handled = true;
+            if (ContextMenu is { } menu)
+            {
+                menu.Open(this);
+            }
+            return;
+        }
+
         if (IsInteractiveVisual(e.Source))
         {
             // Traer al frente y seleccionar el nodo para que pase a primer plano

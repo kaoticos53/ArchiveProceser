@@ -592,6 +592,52 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public void Delete()
+    {
+        if (ParentEditor != null)
+        {
+            if (IsSelected && ParentEditor.Nodes.Count(n => n.IsSelected) > 1)
+            {
+                ParentEditor.DeleteSelectedNodesCommand.Execute(null);
+            }
+            else
+            {
+                ParentEditor.DeleteNode(this);
+            }
+        }
+    }
+
+    [RelayCommand]
+    public void Copy()
+    {
+        if (ParentEditor != null)
+        {
+            if (!IsSelected) IsSelected = true;
+            ParentEditor.CopySelectedNodesCommand.Execute(null);
+        }
+    }
+
+    [RelayCommand]
+    public void Cut()
+    {
+        if (ParentEditor != null)
+        {
+            if (!IsSelected) IsSelected = true;
+            ParentEditor.CutSelectedNodesCommand.Execute(null);
+        }
+    }
+
+    [RelayCommand]
+    public void Duplicate()
+    {
+        if (ParentEditor != null)
+        {
+            if (!IsSelected) IsSelected = true;
+            ParentEditor.DuplicateSelectedNodesCommand.Execute(null);
+        }
+    }
+
+    [RelayCommand]
     public void ChangeColor(string colorHex)
     {
         var targets = GetTargetNodesForBatchAction();

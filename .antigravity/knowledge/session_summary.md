@@ -10,6 +10,61 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **136. Alineación perfecta y enrase perimetral de sockets de puertos vía ConnectorTemplate (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    - Los gráficos de los sockets de entrada y salida se mostraban desplazados hacia el interior del nodo con un hueco de ~20px respecto al borde, y en los puertos de salida el gráfico se desplazaba horizontalmente dependiendo de la longitud de la etiqueta (`DisplayName`).
+    - En Nodify.Avalonia, `NodeInput` y `NodeOutput` heredan de `Connector` y exponen `PART_Connector` (el socket y ancla de cable, controlado por `ConnectorTemplate`) y `PART_Header` (la etiqueta, controlada por `HeaderTemplate`). Anteriormente el socket se colocaba dentro de `HeaderTemplate` junto al texto, dejando `PART_Connector` nativo invisible en el perímetro empujando el socket hacia adentro y haciendo que su posición variara según la longitud del texto.
+  - **Corrección**:
+    - En `FileFlow.App/Views/Components/NodeCardView.axaml`: configurado `PortSocketTemplate` como `ControlTemplate x:Key="PortSocketTemplate" x:DataType="vm:PortViewModel"` e inyectado en `ConnectorTemplate="{StaticResource PortSocketTemplate}"` de `nodify:NodeInput` y `nodify:NodeOutput`.
+    - En `nodify:NodeInput`: el socket se sitúa rígidamente en el extremo izquierdo perimetral seguido del `TextBlock` con margen 6px.
+    - En `nodify:NodeOutput`: el `TextBlock` se sitúa a la izquierda con margen 6px y el socket se sitúa rígidamente en el extremo derecho perimetral.
+    - Todos los sockets quedan perfectamente alineados en la misma vertical y pegados al borde de la tarjeta independientemente de la longitud del texto de la etiqueta.
+    - Actualizado `FileFlow.Tests/Unit/Views/NodeCardVisualContractTests.cs` y regenerada la línea base `node-card-dark.png`.
+  - **Validación**: `dotnet build FileFlow.App/FileFlow.App.csproj` 0/0, suite completa: **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **135. Alineación de sockets de puertos al borde de la tarjeta de nodo (2026-09-18)**:
+  - **Diagnóstico y Objetivo**:
+    - Ajustar los gráficos de los sockets de entrada y salida (`PortSocketTemplate`) para que queden situados casi al borde del contenedor del nodo.
+  - **Corrección**:
+    - En `FileFlow.App/Views/Components/NodeCardView.axaml`: ajustados márgenes de `NodeInput` a `Margin="2,2,0,2"` y `NodeOutput` a `Margin="0,2,2,2"`, alineando los sockets a 2px del borde interior de la tarjeta.
+    - Regeneradas líneas base de regresión visual con `FILEFLOW_UPDATE_VISUALS=1`.
+  - **Validación**: `dotnet build FileFlow.App/FileFlow.App.csproj` 0/0, suite completa: **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **134. Corrección de seguimiento dinámico de cursor y ciclo de vida limpio en PendingConnection (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    1. En arrastres sucesivos de conexiones, el extremo final de la línea quedaba congelado en `(0, 0)` sin seguir al cursor del ratón. En `Nodify.Avalonia.Connections.PendingConnection`, `OnApplyTemplate` suscribe cuatro eventos enrutados en `NodifyEditor` (`PendingConnectionDragEvent`, etc.), pero la clase no implementaba `OnDetachedFromVisualTree`. Al desmantelar el control visual del primer arrastre, la instancia huérfana seguía suscrita al editor. En el segundo arrastre, la instancia huérfana procesaba el evento de arrastre primero, marcaba `e.Handled = true` y actualizaba sus coordenadas muertas; la nueva instancia visible nunca recibía el evento (`handledEventsToo: false`) y su `TargetAnchor` permanecía en `(0, 0)`.
+    2. En el primer arrastre, la línea apuntaba por un instante a `(0, 0)` antes de moverse el ratón porque `TargetAnchor` nacía con `default(Point) = (0, 0)` hasta el primer evento de movimiento.
+  - **Corrección**:
+    - Creado `FileFlow.App/Views/Components/FlowPendingConnection.cs` heredando de `PendingConnection` con `StyleKeyOverride => typeof(PendingConnection)`:
+      - En `OnDetachedFromVisualTree`: desuscribe deterministamente todos los eventos de `NodifyEditor` y establece `IsVisible = false`, impidiendo memory leaks e interferencia con arrastres posteriores.
+      - En `OnApplyTemplate`: re-suscribe `PendingConnectionDragEvent` con `handledEventsToo: true`. En `OnPendingConnectionDrag`, asegura que la instancia activa actualice `TargetAnchor` aun si vino marcado.
+      - En `OnSourceAnchorChanged` y `OnAttachedToVisualTree`: inicializa inmediatamente `TargetAnchor = SourceAnchor` en cuanto se asigna el socket origen, eliminando el parpadeo a `(0, 0)`.
+    - En `FileFlow.App/Views/EditorView.axaml`: actualizado `PendingConnectionTemplate` para usar `components:FlowPendingConnection`.
+    - En `FileFlow.App/Styles/Ports.axaml`: selectores actualizados a `:is(nodifyConn|PendingConnection)`.
+    - En `FileFlow.App/ViewModels/EditorViewModel.cs`: añadido `PendingConnection.IsVisible = false` antes de `null` en `FinishConnection` y `CancelConnection`.
+    - En `FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`: añadidas pruebas `FlowPendingConnection_WhenSourceAnchorAssigned_InitializesTargetAnchorToSourceAnchor` y `FlowPendingConnection_SuccessiveDrags_FollowCursorCorrectly`.
+  - **Validación**: `dotnet build FileFlow.App/FileFlow.App.csproj` 0/0, suite completa: **1035 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **133. Corrección definitiva de paneo con clic derecho y menús contextuales en nodos y conexiones (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    1. Tras el Hito 132, `Pan.Value = PointerGesture(MiddleClick)` eliminó el paneo por clic derecho. El usuario no podía desplazar el lienzo con el botón derecho del ratón.
+    2. Con el paneo asignado de vuelta a `RightClick` en `NodifyEditor`, los clics derechos sobre nodos burbujeaban hasta `NodifyEditor` donde el gesto de paneo capturaba el puntero (`e.Pointer.Capture`), cancelando el `PointerReleased` y por tanto el `ContextRequested` → menú contextual del nodo nunca se abría.
+    3. Mismo problema para las conexiones: el clic derecho sobre un `ConnectionContainer` burbujeaba a `NodifyEditor` e iniciaba el pan, suprimiendo el `ContextMenu`.
+  - **Corrección**:
+    - En `FileFlow.App/Views/EditorView.axaml.cs`: restaurado `Pan.Value = PointerGesture(RightClick)` para que el lienzo vuelva a desplazarse con el botón derecho sobre el fondo libre.
+    - En `FileFlow.App/Views/Components/NodeCardView.axaml.cs`: en `NodeCardView_PointerPressed`, cuando `IsRightButtonPressed == true`, se marca `e.Handled = true` (evita que el evento llegue a `NodifyEditor` y active el pan) y se llama a `ContextMenu.Open(this)` directamente para mostrar el menú del nodo.
+    - En `FileFlow.App/Views/EditorView.axaml.cs`: añadido handler de tunneling `EditorView_TunnelingPointerPressed` (via `AddHandler(PointerPressedEvent, ..., RoutingStrategies.Tunnel)`) que intercepta clics derechos sobre `ConnectionContainer`, marca `e.Handled = true` y llama a `connMenu.Open(connContainer)` para mostrar el menú contextual de la conexión antes de que `NodifyEditor` inicie el pan.
+    - En `FileFlow.Tests/Unit/Views/NodeCardInteractiveControlsPointerTests.cs`: añadida prueba `RightClick_OnNodeCard_ShouldMarkHandledAndOpenContextMenu` verificando que el clic derecho en superficie de nodo marca el evento como manejado.
+  - **Validación**: `dotnet build FileFlow.App.csproj` 0/0, suite completa: **1033 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **132. Restauración de menús contextuales en nodos y conexiones y liberación del clic derecho en el editor (2026-09-18)**:
+  - **Diagnóstico y Causa Raíz**:
+    1. Al hacer clic derecho sobre cualquier nodo, conexión o fondo del lienzo, no se abría el menú contextual. En `Nodify.Avalonia`, el mapa de gestos por defecto `EditorGestures.Mappings.Editor.Pan` incluía `RightClick` y `MiddleClick`. Al pulsar el botón derecho, `NodifyEditor` capturaba el puntero para iniciar el paneo y marcaba el evento como manejado (`e.Handled = true`), suprimiendo la notificación de menú contextual de Avalonia.
+    2. En `NodeCardView.axaml` y `EditorView.axaml`, los menús contextuales utilizaban enlaces relativos `{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext)...}` para acciones como borrar, copiar, cortar y duplicar. Al renderizarse en popups flotantes fuera del árbol visual de `EditorView`, `$parent[views:EditorView]` se evaluaba a `null`, impidiendo la ejecución de los comandos.
+  - **Corrección**:
+    - En `FileFlow.App/Views/EditorView.axaml.cs`: configurado `Nodify.Avalonia.EditorGestures.Mappings.Editor.Pan.Value = new PointerGesture(MouseAction.MiddleClick)`, liberando el clic derecho para los menús contextuales del sistema.
+    - En `FileFlow.App/ViewModels/NodeViewModel.cs`: añadidos los comandos `DeleteCommand`, `CopyCommand`, `CutCommand` y `DuplicateCommand`.
+    - En `FileFlow.App/ViewModels/ConnectionViewModel.cs`: añadido `DeleteCommand` para eliminar la conexión del editor.
+    - En `FileFlow.App/Views/Components/NodeCardView.axaml`: actualizados los enlaces del `ContextMenu` a `{Binding CopyCommand}`, `{Binding CutCommand}`, `{Binding DuplicateCommand}` y `{Binding DeleteCommand}` directos contra `NodeViewModel`.
+    - En `FileFlow.App/Views/EditorView.axaml`: añadido estilo `nodifyConn|ConnectionContainer` con `ContextMenu` y actualizado `nodifyConn:Connection.ContextMenu` con `Command="{Binding DeleteCommand}"`.
+    - En `FileFlow.Tests/Unit/Views/EditorViewLayoutTests.cs`: añadidas 2 pruebas unitarias verificando la apertura y ejecución de comandos en los menús contextuales de tarjetas y conexiones.
+  - **Validación**: `dotnet build FileFlow.slnx` 0/0, suite completa: **1032 superadas, 0 fallos, 1 omitida (100% verde)**.
 - **131. Corrección de anclaje de socket (SourceAnchor) y seguimiento dinámico de cursor en PendingConnection (2026-09-17)**:
   - **Diagnóstico y Causa Raíz**:
     1. Al arrastrar una conexión, la línea comenzaba en la esquina superior izquierda `(0, 0)` en lugar del socket seleccionado. La causa era que en `Nodify.Avalonia`, `PendingConnection` es instanciado reactivamente por `NodifyEditor` tras dispararse el evento de inicio `PendingConnectionStartedEvent`, por lo que el control recién creado perdía el evento y dejaba `SourceAnchor = (0, 0)`.

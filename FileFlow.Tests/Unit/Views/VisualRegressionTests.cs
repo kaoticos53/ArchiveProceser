@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.App.Views.Components;

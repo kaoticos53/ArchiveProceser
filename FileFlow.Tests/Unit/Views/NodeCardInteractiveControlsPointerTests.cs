@@ -190,4 +190,34 @@ public class NodeCardInteractiveControlsPointerTests
             window.Close();
         });
     }
+    [Fact]
+    public void RightClick_OnNodeCard_ShouldMarkHandledAndOpenContextMenu()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var nodeVm = CreateTestNode();
+            var cardView = new NodeCardView { DataContext = nodeVm };
+
+            var nonInteractiveBorder = new Border();
+            cardView.Content = nonInteractiveBorder;
+
+            var window = new Window { Content = cardView };
+            window.Show();
+
+            // Simular clic derecho en superficie no interactiva de la tarjeta
+            var pointer = new Pointer(5, PointerType.Mouse, true);
+            var pointerProps = new PointerPointProperties(RawInputModifiers.RightMouseButton, PointerUpdateKind.RightButtonPressed);
+            var pointerArgs = new PointerPressedEventArgs(nonInteractiveBorder, pointer, cardView, new Point(10, 10), 0, pointerProps, KeyModifiers.None)
+            {
+                RoutedEvent = InputElement.PointerPressedEvent
+            };
+
+            nonInteractiveBorder.RaiseEvent(pointerArgs);
+            window.Close();
+
+            // El clic derecho debe marcarse como manejado para evitar que NodifyEditor
+            // inicie el paneo y bloquee el menú contextual del nodo.
+            pointerArgs.Handled.Should().BeTrue("el clic derecho en un nodo debe marcar el evento como manejado para mostrar el menú contextual");
+        });
+    }
 }

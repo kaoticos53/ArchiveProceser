@@ -1,8 +1,13 @@
+using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.VisualTree;
 using FileFlow.App.Converters;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
+using FileFlow.App.Views;
+using FileFlow.App.Views.Components;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Tests.TestHelpers;
@@ -315,6 +320,150 @@ public class EditorViewLayoutTests
 
             pc.SourceAnchor.Should().Be(new Point(250, 150));
             pc.TargetAnchor.Should().Be(new Point(400, 300));
+        });
+    }
+
+    [Fact]
+    public void FlowPendingConnection_WhenSourceAnchorAssigned_InitializesTargetAnchorToSourceAnchor()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var fpc = new FlowPendingConnection();
+            fpc.TargetAnchor.Should().Be(default(Point));
+
+            // Setting SourceAnchor should immediately initialize TargetAnchor to the same point,
+            // preventing the wire from pointing to (0,0) before mouse movement.
+            fpc.SourceAnchor = new Point(250, 180);
+            fpc.TargetAnchor.Should().Be(new Point(250, 180));
+        });
+    }
+
+    [Fact]
+    public void FlowPendingConnection_SuccessiveDrags_FollowCursorCorrectly()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var editorVm = new EditorViewModel(CreateLoader());
+            var node1 = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+            var node2 = editorVm.AddNode("ExpressionFilterNode", new Point(500, 100))!;
+            var outPort = node1.OutputPorts[0];
+            var inPort = node2.InputPorts[0];
+            outPort.Anchor = new Point(250, 150);
+            inPort.Anchor = new Point(500, 150);
+
+            // Drag 1
+            editorVm.StartConnection(outPort);
+            var fpc1 = new FlowPendingConnection
+            {
+                DataContext = editorVm.PendingConnection,
+                Source = editorVm.PendingConnection!.Source,
+                SourceAnchor = outPort.Anchor
+            };
+            fpc1.TargetAnchor.Should().Be(outPort.Anchor);
+
+            // Simulate drag movement
+            var dragArgs1 = new Nodify.Avalonia.Events.PendingConnectionEventArgs(outPort)
+            {
+                RoutedEvent = Nodify.Avalonia.Connections.Connector.PendingConnectionDragEvent,
+                Anchor = new Point(300, 220),
+                OffsetX = 50,
+                OffsetY = 70
+            };
+            // Target Anchor updates
+            fpc1.TargetAnchor = new Point(dragArgs1.Anchor.X + dragArgs1.OffsetX, dragArgs1.Anchor.Y + dragArgs1.OffsetY);
+            fpc1.TargetAnchor.Should().Be(new Point(350, 290));
+
+            // Drag 1 Completes
+            editorVm.FinishConnection((outPort, inPort));
+            editorVm.PendingConnection.Should().BeNull();
+
+            // Drag 2 (Subsequent attempt)
+            editorVm.StartConnection(outPort);
+            editorVm.PendingConnection.Should().NotBeNull();
+            var fpc2 = new FlowPendingConnection
+            {
+                DataContext = editorVm.PendingConnection,
+                Source = editorVm.PendingConnection!.Source,
+                SourceAnchor = outPort.Anchor
+            };
+            // Initial position MUST be source anchor, NOT (0,0)
+            fpc2.TargetAnchor.Should().Be(outPort.Anchor);
+
+            // Subsequent drag movement MUST update target anchor
+            fpc2.TargetAnchor = new Point(420, 310);
+            fpc2.TargetAnchor.Should().Be(new Point(420, 310));
+            fpc2.TargetAnchor.Should().NotBe(default(Point));
+
+            // Drag 2 Cancels
+            editorVm.CancelConnection();
+            editorVm.PendingConnection.Should().BeNull();
+        });
+    }
+
+    [Fact]
+    public void ContextMenu_OnNodeCard_ShouldHaveCommands_AndExecuteProperly()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var pluginLoader = CreateLoader();
+            var editorVm = new EditorViewModel(pluginLoader);
+            var node1 = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+            var node2 = editorVm.AddNode("ExpressionFilterNode", new Point(400, 100))!;
+            editorVm.CreateConnection(node1.OutputPorts[0], node2.InputPorts[0]);
+
+            var editorView = new EditorView { DataContext = editorVm };
+            var window = new Window { Content = editorView, Width = 1000, Height = 800 };
+            window.Show();
+
+            var nodeCard = editorView.GetVisualDescendants().OfType<NodeCardView>().FirstOrDefault();
+            nodeCard.Should().NotBeNull();
+            nodeCard!.ContextMenu.Should().NotBeNull();
+            nodeCard.ContextMenu!.Items.Should().NotBeEmpty();
+
+            // Test Rename command
+            node1.StartRenamingCommand.Execute(null);
+            node1.IsEditingTitle.Should().BeTrue();
+            node1.CancelTitleRenameCommand.Execute(null);
+            node1.IsEditingTitle.Should().BeFalse();
+
+            // Test Copy and Cut commands
+            node1.CopyCommand.Execute(null);
+            node1.CutCommand.Execute(null);
+
+            // Test Delete command
+            node1.DeleteCommand.Execute(null);
+            editorVm.Nodes.Should().NotContain(node1);
+            editorVm.Connections.Should().BeEmpty("borrar el nodo debe limpiar sus conexiones asociadas");
+
+            window.Close();
+        });
+    }
+
+    [Fact]
+    public void ContextMenu_OnConnection_ShouldHaveDeleteCommand_AndExecuteProperly()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var pluginLoader = CreateLoader();
+            var editorVm = new EditorViewModel(pluginLoader);
+            var node1 = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+            var node2 = editorVm.AddNode("ExpressionFilterNode", new Point(400, 100))!;
+            editorVm.CreateConnection(node1.OutputPorts[0], node2.InputPorts[0]);
+            var conn = editorVm.Connections[0];
+
+            var editorView = new EditorView { DataContext = editorVm };
+            var window = new Window { Content = editorView, Width = 1000, Height = 800 };
+            window.Show();
+
+            var connectionVisual = editorView.GetVisualDescendants().OfType<Nodify.Avalonia.Connections.Connection>().FirstOrDefault();
+            connectionVisual.Should().NotBeNull();
+            connectionVisual!.ContextMenu.Should().NotBeNull();
+
+            // Execute DeleteCommand directly on connection VM
+            conn.DeleteCommand.Execute(null);
+            editorVm.Connections.Should().BeEmpty("ejecutar DeleteCommand en ConnectionViewModel debe eliminar la conexión del editor");
+
+            window.Close();
         });
     }
 }

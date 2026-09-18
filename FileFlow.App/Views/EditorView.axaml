@@ -50,6 +50,18 @@
                 <Style Selector="nodify|DecoratorContainer">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
                 </Style>
+                <Style Selector="nodifyConn|ConnectionContainer" x:DataType="vm:ConnectionViewModel">
+                    <Setter Property="ContextMenu">
+                        <ContextMenu>
+                            <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
+                                      Command="{Binding DeleteCommand}">
+                                <MenuItem.Icon>
+                                    <materialIcons:MaterialIcon Kind="TrashCan" Width="12" Height="12" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </Setter>
+                </Style>
             </nodify:NodifyEditor.Styles>
 
             <!-- Decorator Template -->
@@ -110,7 +122,7 @@
             <!-- Pending Connection Line -->
             <nodify:NodifyEditor.PendingConnectionTemplate>
                 <DataTemplate x:DataType="vm:PendingConnectionViewModel">
-                    <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
+                    <components:FlowPendingConnection IsVisible="{Binding IsVisible}"
                                                 Source="{Binding Source}"
                                                 SourceAnchor="{Binding Source.Anchor}"
                                                 EnablePreview="True"
@@ -147,8 +159,7 @@
                         <nodifyConn:Connection.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
-                                          Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteConnectionCommand}"
-                                          CommandParameter="{Binding}">
+                                          Command="{Binding DeleteCommand}">
                                     <MenuItem.Icon>
                                         <materialIcons:MaterialIcon Kind="TrashCan" Width="12" Height="12" />
                                     </MenuItem.Icon>

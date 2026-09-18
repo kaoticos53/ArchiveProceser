@@ -291,6 +291,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             CreateConnection(sourcePort, targetPort);
         }
+        if (PendingConnection != null)
+        {
+            PendingConnection.IsVisible = false;
+        }
         PendingConnection = null;
         ClearPortCompatibilityHighlight();
     }
@@ -298,6 +302,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void CancelConnection()
     {
+        if (PendingConnection != null)
+        {
+            PendingConnection.IsVisible = false;
+        }
         PendingConnection = null;
         ClearPortCompatibilityHighlight();
     }

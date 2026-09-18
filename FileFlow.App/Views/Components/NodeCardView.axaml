@@ -29,9 +29,9 @@
                 Socket de puerto: la forma comunica el TIPO de dato (círculo=texto, cuadrado=archivo/colección,
                 triángulo=booleano, rombo=numérico) y el color sale del tema por clases de estilo. Las clases de
                 estado de arrastre resaltan los destinos válidos y atenúan el resto mientras se dibuja un cable.
-                Se define una vez y se reutiliza en entradas y salidas para que no puedan divergir.
+                Se define como ControlTemplate para el Connector de Nodify en entradas y salidas.
             -->
-            <DataTemplate x:Key="PortSocketTemplate" DataType="vm:PortViewModel">
+            <ControlTemplate x:Key="PortSocketTemplate" x:DataType="vm:PortViewModel">
                 <Grid Width="15" Height="15" ToolTip.Tip="{Binding SocketToolTip}" VerticalAlignment="Center">
                     <Border Classes="socket"
                             Classes.shapeCircle="{Binding IsCircleSocket}"
@@ -67,7 +67,7 @@
                           IsVisible="{Binding IsTriangleSocket}"
                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
-            </DataTemplate>
+            </ControlTemplate>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -108,7 +108,7 @@
 
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CopyNode]}"
                       InputGesture="Ctrl+C"
-                      Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).CopySelectedNodesCommand}">
+                      Command="{Binding CopyCommand}">
                 <MenuItem.Icon>
                     <materialIcons:MaterialIcon  Kind="ClipboardText" Width="12" Height="12" />
                 </MenuItem.Icon>
@@ -116,7 +116,7 @@
 
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CutNode]}"
                       InputGesture="Ctrl+X"
-                      Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).CutSelectedNodesCommand}">
+                      Command="{Binding CutCommand}">
                 <MenuItem.Icon>
                     <materialIcons:MaterialIcon  Kind="ImageFilter" Width="12" Height="12" />
                 </MenuItem.Icon>
@@ -124,7 +124,7 @@
 
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DuplicateNode]}"
                       InputGesture="Ctrl+D"
-                      Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DuplicateSelectedNodesCommand}">
+                      Command="{Binding DuplicateCommand}">
                 <MenuItem.Icon>
                     <materialIcons:MaterialIcon  Kind="FileTable" Width="12" Height="12" />
                 </MenuItem.Icon>
@@ -185,7 +185,7 @@
 
             <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteNode]}"
                       InputGesture="Delete"
-                      Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).DeleteSelectedNodesCommand}">
+                      Command="{Binding DeleteCommand}">
                 <MenuItem.Icon>
                     <materialIcons:MaterialIcon  Kind="TrashCan" Width="12" Height="12" />
                 </MenuItem.Icon>
@@ -391,23 +391,21 @@
                                 <nodify:NodeInput Header="{Binding}" 
                                                   IsConnected="{Binding IsConnected, Mode=TwoWay}" 
                                                   Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                  ConnectorTemplate="{StaticResource PortSocketTemplate}"
                                                   HorizontalAlignment="Left"
                                                   Background="Transparent"
                                                   BorderBrush="Transparent"
                                                   BorderThickness="0"
-                                                  Margin="-7,3,0,3">
+                                                  Margin="0,2,0,2">
                                     <nodify:NodeInput.HeaderTemplate>
                                         <DataTemplate DataType="vm:PortViewModel">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
-                                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PortSocketTemplate}" />
-
-                                                <!-- Input Port Name -->
-                                                <TextBlock Text="{Binding DisplayName}"
-                                                           Classes="portLabel"
-                                                           Classes.compatible="{Binding IsConnectableDuringDrag}"
-                                                           Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
-                                                           Classes.incompatible="{Binding IsDimmedDuringDrag}" />
-                                            </StackPanel>
+                                            <!-- Input Port Name -->
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       Classes="portLabel"
+                                                       Margin="6,0,0,0"
+                                                       Classes.compatible="{Binding IsConnectableDuringDrag}"
+                                                       Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
+                                                       Classes.incompatible="{Binding IsDimmedDuringDrag}" />
                                         </DataTemplate>
                                     </nodify:NodeInput.HeaderTemplate>
                                 </nodify:NodeInput>
@@ -422,23 +420,21 @@
                                 <nodify:NodeOutput Header="{Binding}" 
                                                    IsConnected="{Binding IsConnected, Mode=TwoWay}" 
                                                    Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                   ConnectorTemplate="{StaticResource PortSocketTemplate}"
                                                    HorizontalAlignment="Right"
                                                    Background="Transparent"
                                                    BorderBrush="Transparent"
                                                    BorderThickness="0"
-                                                   Margin="0,3,-7,3">
+                                                   Margin="0,2,0,2">
                                     <nodify:NodeOutput.HeaderTemplate>
                                         <DataTemplate DataType="vm:PortViewModel">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
-                                                <!-- Output Port Name -->
-                                                <TextBlock Text="{Binding DisplayName}"
-                                                           Classes="portLabel"
-                                                           Classes.compatible="{Binding IsConnectableDuringDrag}"
-                                                           Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
-                                                           Classes.incompatible="{Binding IsDimmedDuringDrag}" />
-
-                                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PortSocketTemplate}" />
-                                            </StackPanel>
+                                            <!-- Output Port Name -->
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       Classes="portLabel"
+                                                       Margin="0,0,6,0"
+                                                       Classes.compatible="{Binding IsConnectableDuringDrag}"
+                                                       Classes.compatibleWarning="{Binding IsTypeWarningDuringDrag}"
+                                                       Classes.incompatible="{Binding IsDimmedDuringDrag}" />
                                         </DataTemplate>
                                     </nodify:NodeOutput.HeaderTemplate>
                                 </nodify:NodeOutput>

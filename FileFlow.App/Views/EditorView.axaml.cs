@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FileFlow.App.ViewModels;
 
 namespace FileFlow.App.Views;
@@ -14,6 +15,17 @@ public partial class EditorView : UserControl
     private Point? _lastRightClickPosition;
     private Point? _lastPointerPosition;
 
+    static EditorView()
+    {
+        // El paneo del lienzo se activa con el botón derecho del ratón en el fondo del canvas.
+        // Cuando el usuario hace clic derecho sobre un nodo, NodeCardView intercepta el evento
+        // (e.Handled = true) y muestra el menú contextual del nodo. Los clics derechos que llegan
+        // a NodifyEditor son los del fondo libre del canvas, que inician el paneo.
+        Nodify.Avalonia.EditorGestures.Mappings.Editor.Pan.Value =
+            new Nodify.Avalonia.Helpers.Gestures.PointerGesture(
+                Nodify.Avalonia.Helpers.Gestures.MouseAction.RightClick);
+    }
+
     public EditorView()
     {
         InitializeComponent();
@@ -21,6 +33,11 @@ public partial class EditorView : UserControl
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DropEvent, Editor_Drop);
         AddHandler(DragDrop.DragOverEvent, Editor_DragOver);
+        
+        // Usar fase de túnel (Tunnel) para interceptar clics derechos
+        // sobre conexiones ANTES de que NodifyEditor los procese como inicio de pan.
+        AddHandler(InputElement.PointerPressedEvent, EditorView_TunnelingPointerPressed, 
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
         
         PointerPressed += EditorView_PointerPressed;
         PointerMoved += EditorView_PointerMoved;
@@ -81,6 +98,31 @@ public partial class EditorView : UserControl
     private void EditorView_PointerMoved(object? sender, PointerEventArgs e)
     {
         _lastPointerPosition = e.GetPosition(NodifyCanvas);
+    }
+
+    private void EditorView_TunnelingPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Este handler se ejecuta en fase de túnel (antes que NodifyEditor).
+        // Si el clic derecho cae sobre un ConnectionContainer que tiene ContextMenu,
+        // lo abrimos nosotros y marcamos Handled para que NodifyEditor no inicie el pan.
+        if (!e.GetCurrentPoint(this).Properties.IsRightButtonPressed) return;
+
+        if (e.Source is Avalonia.Visual src)
+        {
+            // Buscar el ConnectionContainer más cercano en el árbol visual
+            var connContainer = src.FindAncestorOfType<Nodify.Avalonia.Connections.ConnectionContainer>()
+                ?? (src is Nodify.Avalonia.Connections.ConnectionContainer cc ? cc : null);
+
+            if (connContainer?.ContextMenu is { } connMenu)
+            {
+                e.Handled = true;
+                connMenu.Open(connContainer);
+                return;
+            }
+
+            // Si el clic está dentro de un NodeCardView, NodeCardView_PointerPressed ya lo maneja.
+            // No intervenir aquí para las tarjetas de nodo.
+        }
     }
 
     private void EditorView_PointerPressed(object? sender, PointerPressedEventArgs e)
