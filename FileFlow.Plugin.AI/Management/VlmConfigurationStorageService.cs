@@ -39,10 +39,7 @@ public sealed class VlmConfigurationStorageService
 
     public VlmConfigurationStorageService(string? customDirectory = null)
     {
-        _storageDirectory = customDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "FileFlow"
-        );
+        _storageDirectory = customDirectory ?? FileFlow.Sdk.Storage.AppPaths.ConfigDirectory;
 
         _providersFilePath = Path.Combine(_storageDirectory, "vlm_providers.json");
         _templatesFilePath = Path.Combine(_storageDirectory, "vlm_templates.json");

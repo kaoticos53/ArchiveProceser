@@ -35,8 +35,7 @@ public sealed class SyntheticDataSetStorageService : ISyntheticDataSetStorageSer
     public SyntheticDataSetStorageService(string? customStorageDirectory = null)
     {
         _storageDirectory = customStorageDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "FileFlow",
+            FileFlow.Sdk.Storage.AppPaths.RootDirectory,
             "SyntheticDataSets");
     }
 

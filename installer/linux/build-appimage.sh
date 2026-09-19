@@ -2,9 +2,20 @@
 # Script para empaquetar FileFlow Studio en formato AppImage en Linux / WSL
 set -e
 
+ORIG_DIR="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPDIR="${1:-${SCRIPT_DIR}/FileFlow.AppDir}"
 OUTPUT="${2:-${SCRIPT_DIR}/FileFlow-x86_64.AppImage}"
+
+# Asegurar rutas absolutas y existencia de directorios
+if [ -d "${APPDIR}" ]; then
+    APPDIR="$(cd "${APPDIR}" && pwd)"
+fi
+
+mkdir -p "$(dirname "${OUTPUT}")"
+OUTPUT_DIR="$(cd "$(dirname "${OUTPUT}")" && pwd)"
+OUTPUT_FILE="$(basename "${OUTPUT}")"
+OUTPUT="${OUTPUT_DIR}/${OUTPUT_FILE}"
 
 if [ ! -d "${APPDIR}" ]; then
     echo "Error: El directorio AppDir '${APPDIR}' no existe." >&2
@@ -32,7 +43,7 @@ if ! command -v appimagetool >/dev/null 2>&1; then
         ./appimagetool-x86_64.AppImage --appimage-extract >/dev/null 2>&1 || true
         rm -rf /tmp/appimagetool-root
         mv squashfs-root /tmp/appimagetool-root
-        cd "${SCRIPT_DIR}"
+        cd "${ORIG_DIR}"
     fi
     TOOL_CMD="/tmp/appimagetool-root/AppRun"
 fi

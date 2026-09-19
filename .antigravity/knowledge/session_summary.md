@@ -10,6 +10,41 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **149. Blindaje de Permisos de Escritura y Modos Instalado vs. Portable (Cierre en Inicio en Windows Program Files) (2026-09-19)**:
+  - **Diagnóstico del Fallo**:
+    - Al instalar la aplicación en Windows (ej. `C:\Program Files\FileFlow Studio\`), la pantalla de inicio (splash screen) se mostraba brevemente y la aplicación se cerraba abruptamente.
+    - **Causas Raíz Identificadas**:
+      1. `PluginRegistryHelper.LoadPluginsDirectory`: Si la carpeta `Plugins` no existía o el cargador se ejecutaba, invocaba `Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins"))`. En `Program Files`, usuarios estándar carecen de permisos de escritura, lanzando `UnauthorizedAccessException` no capturada que cerraba la app.
+      2. `AppPaths.IsPortableMode`: Evaluaba erróneamente `Directory.Exists(Path.Combine(AppBaseDirectory, "data"))`. Si existía cualquier subdirectorio `data/`, consideraba la instalación como portable y redirigía la raíz a `C:\Program Files\...\data\`, provocando fallos en cadena al intentar crear subdirectorios de configuración, presets y logs.
+      3. `AiModelManager.ModelsDirectory`: Intentaba crear `data/models` directamente en `AppDomain.CurrentDomain.BaseDirectory` sin comprobar permisos ni delegar en `AppPaths`.
+  - **Implementación**:
+    - `FileFlow.Sdk/Storage/AppPaths.cs`:
+      - Detección estricta de modo portable basada únicamente en marcadores explícitos (`portable.dat`, `.portable`, `FILEFLOW_PORTABLE=1`).
+      - Nuevo método de comprobación no destructiva `IsDirectoryWritable(path)`. Si el modo portable reside en un directorio de solo lectura (como `Program Files`), conmuta automáticamente a `%AppData%/FileFlow/` de forma transparente.
+      - Incorporadas propiedades estándar `PluginsDirectory` y `ModelsDirectory` con creación individual y segura de carpetas en `EnsureDirectories()`.
+    - `FileFlow.App/Services/PluginRegistryHelper.cs`:
+      - Eliminada la creación forzosa de directorios en `AppDomain.CurrentDomain.BaseDirectory`.
+      - Ahora solo lee la carpeta `Plugins/` si existe, y añade soporte para escanear `AppPaths.PluginsDirectory` en `%AppData%`.
+    - `FileFlow.Plugin.AI/Management/AiModelManager.cs` y `VlmConfigurationStorageService.cs`:
+      - Reemplazadas rutas ad-hoc por `AppPaths.ModelsDirectory` y `AppPaths.ConfigDirectory` con tolerancia a fallos y fallback seguro a `%TEMP%`.
+    - `FileFlow.Plugin.FileSystem/Services/SyntheticDataSetStorageService.cs` y `FileFlow.Plugin.Integrations/UI/Services/MediaPresetManagerService.cs`:
+      - Unificados con `AppPaths.RootDirectory` y creación garantizada de directorios previos a la serialización JSON.
+    - `FileFlow.App/App.axaml.cs`:
+      - `LogCrashToFile`: Añadido fallback a `%TEMP%/fileflow_crash.log` si el directorio principal de logs estuviese restringido.
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1064 pruebas superadas al 100%, 0 errores, 1 omitida**.
+
+- **148. Corrección de Rutas Absolutas y Creación de Destino en Empaquetado Linux AppImage & Flatpak (2026-09-19)**:
+  - **Diagnóstico del Fallo**:
+    - En el workflow de GitHub Actions (`build-linux`), el paso de empaquetado AppImage fallaba con el error: `Could not create destination file: No such file or directory` / `mksquashfs exited with code 1`.
+    - **Causa Raíz**: `installer/linux/build-appimage.sh` realizaba un `cd "${SCRIPT_DIR}"` tras descargar `appimagetool` en `/tmp`. Al invocarse con la ruta relativa `installer/output/FileFlow-v${VER}-x86_64.AppImage`, `appimagetool` intentaba escribir en `${SCRIPT_DIR}/installer/output/...`, ruta inexistente. Además, no se garantizaba la resolución absoluta ni la creación preventiva de subdirectorios para `${OUTPUT}`.
+  - **Implementación**:
+    - `installer/linux/build-appimage.sh`: Normalización obligatoria de `APPDIR` y `OUTPUT` a rutas canónicas absolutas con `cd "$(dirname "${OUTPUT}")" && pwd` y creación automática del directorio con `mkdir -p "$(dirname "${OUTPUT}")"`. Restauración de `ORIG_DIR` tras descargas auxiliares.
+    - `installer/linux/flatpak/build-flatpak.sh`: Normalización análoga de `OUTPUT_FILE` a ruta absoluta para ejecución determinista independiente del directorio de trabajo.
+    - `.github/workflows/release.yml`: Invocación explícita con `${GITHUB_WORKSPACE}/installer/output/...` para ambos empaquetadores en Linux.
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1064 pruebas superadas al 100%, 0 errores, 1 omitida**.
+
 - **147. Migración Integral a .NET 10 LTS y C# 14 (Long Term Support Migration) (2026-09-19)**:
   - **Diagnóstico y Requerimientos**:
     - Portar toda la solución (`FileFlow.Sdk`, `FileFlow.Core`, `FileFlow.App`, los 11 plugins `FileFlow.Plugin.*` y `FileFlow.Tests`) al runtime **.NET 10 LTS (`net10.0`)** y compilador **C# 14 (`<LangVersion>14</LangVersion>`)**.

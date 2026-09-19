@@ -1,5 +1,64 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-19] - Blindaje de Permisos de Escritura y Modos Instalado vs. Portable (Cierre en Inicio en Windows Program Files) (Hito 149)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Fallo reportado**:
+  - Al ejecutar la versión instalada de Windows (Inno Setup en `C:\Program Files\FileFlow Studio`), la aplicación mostraba la pantalla de inicio (splash screen) y se cerraba de inmediato.
+- **Causas Raíz Identificadas**:
+  1. `PluginRegistryHelper.LoadPluginsDirectory`: Si la carpeta `Plugins/` no existía o al cargarse los plugins, llamaba a `Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins"))`. En `Program Files`, un usuario estándar no tiene privilegios de escritura, por lo que lanzaba `UnauthorizedAccessException` cerrando la app.
+  2. `AppPaths.IsPortableMode`: Verificaba `Directory.Exists(Path.Combine(AppBaseDirectory, "data"))`. Si existía cualquier carpeta `data/`, consideraba la instalación como portable y asignaba `RootDirectory` a `C:\Program Files\...\data\`, provocando fallos de escritura en las configuraciones de usuario, presets y logs.
+  3. `AiModelManager.ModelsDirectory`: Intentaba crear la carpeta de modelos directamente en la ruta de la aplicación en vez de usar `AppPaths`.
+
+### 🎯 Solución Implementada
+1. **Detección Estricta y Resiliente de Modo Portable (`FileFlow.Sdk/Storage/AppPaths.cs`)**:
+   - Limitada la detección de modo portable a marcadores explícitos (`portable.dat`, `.portable`, `FILEFLOW_PORTABLE=1`).
+   - Implementada la función `IsDirectoryWritable(path)`: Si el ejecutable se encuentra en una carpeta de solo lectura (como `Program Files`), conmuta automáticamente a `%AppData%/FileFlow/` de forma no destructiva.
+   - Definidas las propiedades `PluginsDirectory` y `ModelsDirectory` con creación de directorios protegida por `try/catch` individual en `EnsureDirectories()`.
+2. **Cargador de Plugins de Solo Lectura (`FileFlow.App/Services/PluginRegistryHelper.cs`)**:
+   - Eliminada la creación forzada de carpetas en `AppDomain.CurrentDomain.BaseDirectory`.
+   - Soporte para escanear `Plugins/` si existe, más `AppPaths.PluginsDirectory` en el perfil de usuario.
+3. **Gestión de Modelos e Inteligencia Artificial (`AiModelManager.cs` y `VlmConfigurationStorageService.cs`)**:
+   - Delegación en `AppPaths.ModelsDirectory` y `AppPaths.ConfigDirectory` con fallbacks seguros a `%AppData%` y `%TEMP%`.
+4. **Resistencia de Logs de Fallo (`FileFlow.App/App.axaml.cs`)**:
+   - En `LogCrashToFile`, añadido un fallback secundario a `%TEMP%/fileflow_crash.log` en caso de fallo en el almacenamiento primario.
+
+### 🧪 Validación
+- **Suite Completa de Pruebas (`dotnet test`)**: **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+
+---
+
+## [2026-09-19] - Corrección de Rutas Absolutas y Creación de Destino en Empaquetado Linux AppImage & Flatpak (Hito 148)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Fallo reportado**:
+  - En el workflow de GitHub Actions (`Build, Package & Release Multiplatform Installers`), el paso `Compilar y empaquetar Ejecutable AppImage (.AppImage)` dentro del job `build-linux` fallaba con:
+    ```
+    ==> Generando AppImage desde /tmp/FileFlow.AppDir hacia installer/output/FileFlow-v1.0.0-beta+build.3693-x86_64.AppImage...
+    Generating squashfs...
+    Could not create destination file: No such file or directory
+    mksquashfs (pid 4978) exited with code 1
+    ```
+- **Causa Raíz**:
+  - `installer/linux/build-appimage.sh` realizaba un `cd "${SCRIPT_DIR}"` tras descargar y extraer `appimagetool` en `/tmp`.
+  - Al recibir un argumento relativo como `installer/output/FileFlow-v...-x86_64.AppImage`, `appimagetool` y `mksquashfs` interpretaban la ruta relativa con respecto al directorio de trabajo actual (`installer/linux`), intentando escribir en `installer/linux/installer/output/...`, ruta inexistente.
+  - No existía resolución canónica a ruta absoluta ni llamada previa a `mkdir -p` sobre el directorio del fichero de salida en `build-appimage.sh` y `build-flatpak.sh`.
+
+### 🎯 Solución Implementada
+1. **Script de Empaquetado AppImage (`installer/linux/build-appimage.sh`)**:
+   - Conversión obligatoria y temprana de `APPDIR` y `OUTPUT` a rutas absolutas canónicas (`$(cd "$(dirname "${OUTPUT}")" && pwd)/$(basename "${OUTPUT}")`).
+   - Creación automática del directorio padre de destino mediante `mkdir -p "$(dirname "${OUTPUT}")"`.
+   - Restauración del directorio de trabajo original (`ORIG_DIR`) tras la descarga de herramientas.
+2. **Script de Empaquetado Flatpak (`installer/linux/flatpak/build-flatpak.sh`)**:
+   - Resolución canónica a ruta absoluta de `OUTPUT_FILE` y aseguramiento del directorio padre destino.
+3. **Flujo de Integración Continua (`.github/workflows/release.yml`)**:
+   - Invocación explícita con `${GITHUB_WORKSPACE}/installer/output/...` para los pasos de AppImage y Flatpak.
+
+### 🧪 Validación
+- **Suite Completa de Pruebas (`dotnet test`)**: **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+
+---
+
 ## [2026-09-19] - Migración Integral de la Solución a .NET 10 LTS y C# 14 (Hito 147)
 
 ### 🎯 Diagnóstico y Requerimientos

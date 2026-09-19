@@ -39,17 +39,26 @@ public static class PluginRegistryHelper
     }
 
     /// <summary>
-    /// Carga dinámicamente cualquier ensamblado de plugin adicional ubicado en el directorio /Plugins de la aplicación.
+    /// Carga dinámicamente cualquier ensamblado de plugin adicional ubicado en el directorio /Plugins de la aplicación
+    /// o en el directorio de plugins de datos del usuario (%AppData%/FileFlow/plugins o data/plugins).
     /// </summary>
     public static void LoadPluginsDirectory(PluginLoader loader)
     {
         ArgumentNullException.ThrowIfNull(loader);
+
+        // 1. Plugins distribuidos junto a la aplicación (solo lectura, sin crear carpeta en Program Files)
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
         string pluginsDirectory = Path.Combine(baseDir, "Plugins");
-        if (!Directory.Exists(pluginsDirectory))
+        if (Directory.Exists(pluginsDirectory))
         {
-            Directory.CreateDirectory(pluginsDirectory);
+            loader.LoadPluginDirectory(pluginsDirectory);
         }
-        loader.LoadPluginDirectory(pluginsDirectory);
+
+        // 2. Plugins de usuario instalados dinámicamente
+        string userPluginsDir = FileFlow.Sdk.Storage.AppPaths.PluginsDirectory;
+        if (Directory.Exists(userPluginsDir))
+        {
+            loader.LoadPluginDirectory(userPluginsDir);
+        }
     }
 }

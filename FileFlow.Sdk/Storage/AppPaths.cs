@@ -16,7 +16,7 @@ public static class AppPaths
 
     /// <summary>
     /// Indica si la aplicación se está ejecutando en modo portable autónomo.
-    /// Se activa automáticamente si existe un archivo 'portable.dat', '.portable' o una carpeta 'data' junto al ejecutable,
+    /// Se activa automáticamente si existe un archivo marcador 'portable.dat' o '.portable' junto al ejecutable,
     /// o mediante la variable de entorno FILEFLOW_PORTABLE=1.
     /// </summary>
     public static bool IsPortableMode
@@ -32,8 +32,7 @@ public static class AppPaths
             }
 
             return File.Exists(Path.Combine(AppBaseDirectory, "portable.dat")) ||
-                   File.Exists(Path.Combine(AppBaseDirectory, ".portable")) ||
-                   Directory.Exists(Path.Combine(AppBaseDirectory, "data"));
+                   File.Exists(Path.Combine(AppBaseDirectory, ".portable"));
         }
     }
 
@@ -50,6 +49,8 @@ public static class AppPaths
 
     /// <summary>
     /// Directorio raíz de datos de usuario (Modo Portable: AppBaseDir/data, Modo Instalado: %AppData%/FileFlow/).
+    /// Si el directorio portable no tiene permisos de escritura (ej. instalado en Program Files),
+    /// conmuta automáticamente a %AppData%/FileFlow/ para garantizar estabilidad total.
     /// </summary>
     public static string RootDirectory
     {
@@ -64,11 +65,38 @@ public static class AppPaths
 
                 if (IsPortableMode)
                 {
-                    return Path.Combine(AppBaseDirectory, "data");
+                    string portableData = Path.Combine(AppBaseDirectory, "data");
+                    if (IsDirectoryWritable(portableData))
+                    {
+                        return portableData;
+                    }
                 }
 
                 return DefaultAppDataRoot;
             }
+        }
+    }
+
+    /// <summary>
+    /// Comprueba de forma segura y no destructiva si un directorio es accesible y escribible por el usuario actual.
+    /// </summary>
+    public static bool IsDirectoryWritable(string directoryPath)
+    {
+        try
+        {
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            string testFile = Path.Combine(directoryPath, $".write_test_{Guid.NewGuid():N}.tmp");
+            File.WriteAllText(testFile, "write_test");
+            File.Delete(testFile);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -79,6 +107,8 @@ public static class AppPaths
     public static string SamplesDirectory => Path.Combine(RootDirectory, "samples");
     public static string ScriptsDirectory => Path.Combine(RootDirectory, "scripts");
     public static string LogsDirectory => Path.Combine(RootDirectory, "logs");
+    public static string PluginsDirectory => Path.Combine(RootDirectory, "plugins");
+    public static string ModelsDirectory => Path.Combine(RootDirectory, "models");
 
     /// <summary>
     /// Ruta de salida global por defecto utilizada por los flujos y variables del sistema.
@@ -227,17 +257,37 @@ public static class AppPaths
     /// </summary>
     public static void EnsureDirectories()
     {
+        string[] dirsToCreate =
+        [
+            RootDirectory,
+            ConfigDirectory,
+            ThemesDirectory,
+            PresetsDirectory,
+            SamplesDirectory,
+            ScriptsDirectory,
+            LogsDirectory,
+            PluginsDirectory,
+            ModelsDirectory,
+            DefaultTempDirectory
+        ];
+
+        foreach (var dir in dirsToCreate)
+        {
+            try
+            {
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+            }
+            catch
+            {
+                // Resistencia ante permisos restrictivos por carpeta
+            }
+        }
+
         try
         {
-            Directory.CreateDirectory(RootDirectory);
-            Directory.CreateDirectory(ConfigDirectory);
-            Directory.CreateDirectory(ThemesDirectory);
-            Directory.CreateDirectory(PresetsDirectory);
-            Directory.CreateDirectory(SamplesDirectory);
-            Directory.CreateDirectory(ScriptsDirectory);
-            Directory.CreateDirectory(LogsDirectory);
-            Directory.CreateDirectory(DefaultTempDirectory);
-
             if (!IsPortableMode)
             {
                 MigrateLegacyLocations();
@@ -245,7 +295,7 @@ public static class AppPaths
         }
         catch
         {
-            // Resistencia ante entornos con restricciones de permisos temporales
+            // Migración no bloqueante
         }
     }
 

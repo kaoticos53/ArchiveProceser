@@ -136,6 +136,11 @@ public class MediaPresetManagerService
     {
         try
         {
+            string? dir = Path.GetDirectoryName(_presetsFilePath);
+            if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
             var options = new JsonSerializerOptions { WriteIndented = true };
             string json = JsonSerializer.Serialize(_presets, options);
             File.WriteAllText(_presetsFilePath, json);

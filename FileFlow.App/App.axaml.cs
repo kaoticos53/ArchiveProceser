@@ -155,12 +155,27 @@ public partial class App : Application
 
     private static void LogCrashToFile(object exception)
     {
+        string logText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Unhandled Exception:\n{exception}\n\n";
+
         try
         {
             FileFlow.Sdk.Storage.AppPaths.EnsureDirectories();
             string crashFile = FileFlow.Sdk.Storage.AppPaths.CrashLogFile;
-            string logText = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Unhandled Exception:\n{exception}\n\n";
+            string? dir = Path.GetDirectoryName(crashFile);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
             System.IO.File.AppendAllText(crashFile, logText);
+            return;
+        }
+        catch { }
+
+        // Fallback a %TEMP%/fileflow_crash.log si el directorio estándar no fuese accesible
+        try
+        {
+            string tempCrash = Path.Combine(Path.GetTempPath(), "fileflow_crash.log");
+            System.IO.File.AppendAllText(tempCrash, logText);
         }
         catch { }
     }

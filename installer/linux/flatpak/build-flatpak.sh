@@ -19,6 +19,9 @@ BUILD_DIR="/tmp/fileflow-flatpak-build"
 REPO_DIR="/tmp/fileflow-flatpak-repo"
 rm -rf "${BUILD_DIR}" "${REPO_DIR}"
 mkdir -p "$(dirname "${OUTPUT_FILE}")"
+OUTPUT_DIR="$(cd "$(dirname "${OUTPUT_FILE}")" && pwd)"
+OUTPUT_FILE_NAME="$(basename "${OUTPUT_FILE}")"
+OUTPUT_FILE="${OUTPUT_DIR}/${OUTPUT_FILE_NAME}"
 
 echo -e "\n\033[0;33m[1/2] Compilando e integrando en Flatpak sandbox...\033[0m"
 flatpak-builder \

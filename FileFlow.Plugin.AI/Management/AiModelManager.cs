@@ -95,23 +95,27 @@ public static class AiModelManager
     {
         get
         {
-            string appBaseDir = AppDomain.CurrentDomain.BaseDirectory;
-
-            // Modo portable: data/models relativo al ejecutable
-            if (File.Exists(Path.Combine(appBaseDir, "portable.dat")) ||
-                Directory.Exists(Path.Combine(appBaseDir, "data")))
+            string dir = FileFlow.Sdk.Storage.AppPaths.ModelsDirectory;
+            try
             {
-                string portableDir = Path.Combine(appBaseDir, "data", "models");
-                Directory.CreateDirectory(portableDir);
-                return portableDir;
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+                return dir;
             }
-
-            // Modo estándar: %AppData%/FileFlow/Models
-            string standardDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "FileFlow", "Models");
-            Directory.CreateDirectory(standardDir);
-            return standardDir;
+            catch
+            {
+                // Fallback de ultra-resistencia a AppData estándar o Temp
+                string fallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileFlow", "models");
+                try
+                {
+                    if (!Directory.Exists(fallback)) Directory.CreateDirectory(fallback);
+                    return fallback;
+                }
+                catch { }
+                return Path.Combine(Path.GetTempPath(), "FileFlow", "models");
+            }
         }
     }
 

@@ -210,13 +210,13 @@ jobs:
           cp assets/FileFlow.png "${APPDIR}/usr/share/icons/hicolor/256x256/apps/fileflow.png"
           
           # Generar AppImage autónomo
-          bash installer/linux/build-appimage.sh "${APPDIR}" "installer/output/FileFlow-v${VER}-x86_64.AppImage"
+          bash installer/linux/build-appimage.sh "${APPDIR}" "${GITHUB_WORKSPACE}/installer/output/FileFlow-v${VER}-x86_64.AppImage"
 
       - name: 📦 Compilar y empaquetar Bundle Flatpak (.flatpak)
         shell: bash
         run: |
           VER="${{ needs.resolve-version.outputs.clean_version }}"
-          bash installer/linux/flatpak/build-flatpak.sh "$VER" "installer/output/FileFlow-v${VER}-x86_64.flatpak"
+          bash installer/linux/flatpak/build-flatpak.sh "$VER" "${GITHUB_WORKSPACE}/installer/output/FileFlow-v${VER}-x86_64.flatpak"
 
       - name: 📤 Subir artefactos de Linux (AppImage y Flatpak)
         uses: actions/upload-artifact@v4
