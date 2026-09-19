@@ -115,7 +115,7 @@ chmod +x "${APPIMAGE_DIR}/AppRun" "${APPIMAGE_DIR}/usr/bin/FileFlow.App"
 rm -rf "${APPIMAGE_DIR}"
 
 # 4. Generar Tarball Portable .tar.gz
-echo -e "\n\033[0;33m[4/4] Generando archivo portable comprimido .tar.gz...\033[0m"
+echo -e "\n\033[0;33m[4/5] Generando archivo portable comprimido .tar.gz...\033[0m"
 PORTABLE_DIR="${DIST_DIR}/FileFlow-Linux-Portable"
 mkdir -p "${PORTABLE_DIR}"
 cp -r "${APP_DIR}/"* "${PORTABLE_DIR}/"
@@ -127,6 +127,14 @@ chmod +x "${PORTABLE_DIR}/install.sh" "${PORTABLE_DIR}/uninstall.sh" "${PORTABLE
 
 tar -czf "${DIST_DIR}/FileFlow-${VERSION}-Linux-x64-Portable.tar.gz" -C "${DIST_DIR}" "FileFlow-Linux-Portable"
 rm -rf "${PORTABLE_DIR}" "${APP_DIR}"
+
+# 5. Generar Paquete Flatpak (.flatpak) si flatpak-builder está presente
+if command -v flatpak-builder &> /dev/null; then
+    echo -e "\n\033[0;33m[5/5] Generando bundle autónomo Flatpak (.flatpak)...\033[0m"
+    bash "${SCRIPT_DIR}/installer/linux/flatpak/build-flatpak.sh" "${VERSION}" "${DIST_DIR}/FileFlow-${VERSION}-x86_64.flatpak" || echo -e "\033[0;33m[ADVERTENCIA] No se pudo generar el Flatpak automáticamente.\033[0m"
+else
+    echo -e "\n\033[0;33m[5/5] 'flatpak-builder' no detectado: omitiendo generación de .flatpak (usa: sudo apt install flatpak-builder)\033[0m"
+fi
 
 echo -e "\n\033[0;32m==========================================================\033[0m"
 echo -e "\033[0;32m  ¡Paquetes para Linux generados con éxito en dist/!       \033[0m"

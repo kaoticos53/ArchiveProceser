@@ -10,6 +10,15 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **142. Integración de Empaquetado Flatpak Universal (.flatpak) y Publicación en GitHub Releases (2026-09-19)**:
+  - **Diagnóstico y Requerimientos**:
+    - Soportar empaquetado y sandbox nativo en formato Flatpak (`.flatpak`) para Linux e incluir su compilación automática en los releases de GitHub Actions.
+  - **Corrección**:
+    - `installer/linux/flatpak/`: Creados el manifiesto `com.fileflowstudio.FileFlow.yml` (con runtime Freedesktop 24.08 y .NET 9 SDK), los metadatos AppStream `com.fileflowstudio.FileFlow.metainfo.xml`, el lanzador de escritorio y el script de compilación `build-flatpak.sh`.
+    - `package-linux.sh` y `installer/build-linux-installer.ps1`: Añadida la generación del bundle `.flatpak`.
+    - `.github/workflows/release.yml`: Configurada la instalación de `flatpak-builder` y runtimes en el runner de Ubuntu para generar y adjuntar `FileFlow-v{version}-x86_64.flatpak` con sumas SHA-256 en cada release.
+  - **Validación**:
+    - Suite de pruebas unitarias (`dotnet test`): **1045 superadas, 0 fallos, 1 omitida (100% verde)**.
 - **141. Optimización del Tiempo de Arranque y Scripts de Publicación/Ejecución Nativa ReadyToRun (R2R) (2026-09-19)**:
   - **Diagnóstico y Causa Raíz**:
     - La aplicación tardaba ~6 segundos en mostrar la ventana en `Release` debido a la instanciación síncrona por reflexión de los 70+ nodos en `ToolboxViewModel.RefreshToolbox()` y a la sobrecarga de compilación JIT en frío de Avalonia y Material Icons.

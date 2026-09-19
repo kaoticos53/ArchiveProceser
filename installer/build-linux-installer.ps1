@@ -256,6 +256,21 @@ if ($wslAvailable) {
         $appImgSize = [math]::Round(((Get-Item $appImageFile).Length / 1MB), 2)
         Write-Host "  [OK] Ejecutable AppImage generado: FileFlow-v${Version}-x86_64.AppImage ($appImgSize MB)" -ForegroundColor Green
     }
+
+    # Compilación de Flatpak (.flatpak) si flatpak-builder está instalado en WSL
+    $flatpakOutFile = Join-Path $outputDir "FileFlow-v${Version}-x86_64.flatpak"
+    $wslFlatpakScript = "/mnt/" + (Join-Path $scriptDir "linux\flatpak\build-flatpak.sh").Substring(0,1).ToLower() + (Join-Path $scriptDir "linux\flatpak\build-flatpak.sh").Substring(2).Replace('\', '/')
+    $wslFlatpakOut = "/mnt/" + $flatpakOutFile.Substring(0,1).ToLower() + $flatpakOutFile.Substring(2).Replace('\', '/')
+    
+    $checkFlatpak = wsl which flatpak-builder 2>$null
+    if (-not [string]::IsNullOrWhiteSpace($checkFlatpak)) {
+        Write-Host "  -> Compilando paquete .flatpak vía subsistema Linux (WSL)..." -ForegroundColor DarkGray
+        & wsl bash "$wslFlatpakScript" "$Version" "$wslFlatpakOut" 2>$null
+        if (Test-Path $flatpakOutFile) {
+            $flatpakSize = [math]::Round(((Get-Item $flatpakOutFile).Length / 1MB), 2)
+            Write-Host "  [OK] Paquete Flatpak generado: FileFlow-v${Version}-x86_64.flatpak ($flatpakSize MB)" -ForegroundColor Green
+        }
+    }
 }
 
 # Limpiar temporales de compilación

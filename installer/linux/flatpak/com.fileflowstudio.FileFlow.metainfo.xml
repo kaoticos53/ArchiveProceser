@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.fileflowstudio.FileFlow</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>FileFlow Studio</name>
+  <summary>Visual DAG workflow engine and batch file processing automation platform</summary>
+  <description>
+    <p>
+      FileFlow Studio is an advanced cross-platform visual DAG (Directed Acyclic Graph) workflow workstation for automated batch file processing, OCR, AI inference, and media transcoding.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Interactive DAG visual canvas with real-time cycle prevention and validation.</li>
+      <li>Local AI model inference (ONNX, Vision-LLM, image classification, object detection).</li>
+      <li>Integrated Script Studio with dual C# (Roslyn JIT) and JavaScript engines.</li>
+      <li>Multi-format report generation (Interactive HTML, Markdown, ASCII tree, JSON, CSV).</li>
+      <li>High-throughput concurrent pipeline processing powered by .NET 9 and Avalonia UI.</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.fileflowstudio.FileFlow.desktop</launchable>
+  <url type="homepage">https://github.com/kaoticos53/ArchiveProceser</url>
+  <url type="bugtracker">https://github.com/kaoticos53/ArchiveProceser/issues</url>
+  <provides>
+    <binary>fileflow</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.0.0" date="2026-09-19">
+      <description>
+        <p>FileFlow Studio 1.0.0 - Multiplatform release with Avalonia UI, undo/redo DAG engine, high-speed startup, and native Linux Flatpak support.</p>
+      </description>
+    </release>
+  </releases>
+</component>

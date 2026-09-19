@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=FileFlow Studio
+GenericName=File Processing Workflow Engine
+Comment=Estación de automatización y flujos DAG de procesamiento masivo de archivos
+Exec=fileflow %F
+Icon=com.fileflowstudio.FileFlow
+Type=Application
+Terminal=false
+Categories=Utility;Development;Graphics;Office;
+MimeType=application/json;
+Keywords=workflow;dag;pipeline;batch;files;automation;ocr;ai;transcode;
+StartupNotify=true
+StartupWMClass=FileFlow.App

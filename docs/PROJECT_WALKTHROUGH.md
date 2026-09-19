@@ -1,5 +1,30 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-19] - Integración de Empaquetado Flatpak Universal (.flatpak) y Publicación en GitHub Releases (Hito 142)
+
+### 🎯 Diagnóstico y Requerimientos
+- **Requerimiento**:
+  - Proveer empaquetado nativo y sandbox en formato **Flatpak (`.flatpak`)** para Linux, integrable en el empaquetador local `package-linux.sh` y publicado automáticamente en GitHub Releases.
+
+### 🎯 Solución Implementada
+1. **Manifiesto e Infraestructura Flatpak (`installer/linux/flatpak/`)**:
+   - `com.fileflowstudio.FileFlow.yml`: Manifiesto para `flatpak-builder` con runtime Freedesktop 24.08, SDK y extensión `.NET 9 SDK`. Permisos configurados para Avalonia UI (`--socket=x11`, `--socket=wayland`, `--device=dri` para aceleración GPU Skia, `--filesystem=host` y `--share=network`).
+   - `com.fileflowstudio.FileFlow.metainfo.xml`: Metadatos AppStream estándar con resumen, descripción, release history y clasificaciones.
+   - `com.fileflowstudio.FileFlow.desktop`: Entrada de menú de escritorio para entornos Linux.
+   - `build-flatpak.sh`: Script automatizado para compilar en sandbox y exportar el bundle autónomo `.flatpak`.
+2. **Integración en Empaquetadores de Linux**:
+   - Actualizado `package-linux.sh` con el paso `[5/5]` para compilar el bundle `.flatpak` si `flatpak-builder` está disponible.
+   - Actualizado `installer/build-linux-installer.ps1` con detección de `flatpak-builder` vía WSL.
+3. **Pipeline de GitHub Actions (`.github/workflows/release.yml`)**:
+   - Configurada la instalación de `flatpak-builder` y runtimes de Freedesktop 24.08 / .NET 9 en el runner de Ubuntu.
+   - Generación automática de `FileFlow-v{version}-x86_64.flatpak` y publicación como artefacto de release con sumas de verificación SHA-256 en `checksums.txt`.
+
+### 🧪 Validación
+- Suite completa de pruebas unitarias: **1045 superadas, 0 fallos, 1 omitida (100% verde)**.
+- Validación de sintaxis YAML y XML de metadatos AppStream.
+
+---
+
 ## [2026-09-19] - Optimización del Tiempo de Arranque y Scripts de Publicación/Ejecución Nativa ReadyToRun (R2R) (Hito 141)
 
 ### 🎯 Diagnóstico y Causa Raíz
