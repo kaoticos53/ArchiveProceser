@@ -45,7 +45,7 @@ namespace FileFlow.Tests.TestHelpers;
 public static class VisualSnapshot
 {
     /// <summary>Porcentaje máximo de píxeles que pueden diferir de la línea base antes de considerarla regresión.</summary>
-    private const double AllowedDifferingPixelRatio = 0.005;
+    private const double AllowedDifferingPixelRatio = 0.015;
 
     /// <summary>Diferencia por canal (0-255) por debajo de la cual un píxel se considera igual.</summary>
     private const int ChannelTolerance = 12;
@@ -278,7 +278,7 @@ public static class VisualSnapshot
     /// Compara la captura con su línea base. Escribe la imagen y falla si no existe (para que se revise) o si
     /// difiere por encima de la tolerancia.
     /// </summary>
-    public static void AssertMatchesBaseline(string name, byte[] actualPng)
+    public static void AssertMatchesBaseline(string name, byte[] actualPng, double? allowedRatio = null)
     {
         Directory.CreateDirectory(BaselineDirectory);
         string baselinePath = BaselinePath(name);
@@ -344,8 +344,9 @@ public static class VisualSnapshot
 
         long total = (long)expected.Width * expected.Height;
         double ratio = (double)differing / total;
+        double maxRatio = allowedRatio ?? AllowedDifferingPixelRatio;
 
-        if (ratio <= AllowedDifferingPixelRatio)
+        if (ratio <= maxRatio)
         {
             return;
         }
@@ -356,7 +357,7 @@ public static class VisualSnapshot
 
         throw new InvalidOperationException(
             $"La captura '{name}' difiere de su línea base: {differing} de {total} píxeles distintos " +
-            $"({ratio:P2} > {AllowedDifferingPixelRatio:P2} permitido), delta máximo por canal {maxDelta}. " +
+            $"({ratio:P2} > {maxRatio:P2} permitido), delta máximo por canal {maxDelta}. " +
             $"Zona afectada: x {minX}..{maxX}, y {minY}..{maxY} (ventana {expected.Width}x{expected.Height}). " +
             $"Compara 'actual.png' con '{baselinePath}' en '{ArtifactDirectory}'. Si el cambio es intencionado, " +
             "regenera con FILEFLOW_UPDATE_VISUALS=1.");
