@@ -1128,4 +1128,38 @@
   <data name="ThemeStudio_Status_Applied" xml:space="preserve"><value>Theme '{0}' applied to the application live.</value></data>
   <data name="ThemeStudio_Status_Exported" xml:space="preserve"><value>Theme exported to '{0}'.</value></data>
   <data name="ThemeStudio_Status_Imported" xml:space="preserve"><value>Theme '{0}' imported successfully.</value></data>
+  <data name="CollapseToSubflow" xml:space="preserve"><value>Collapse selection to Subflow</value></data>
+  <data name="OpenSubflow" xml:space="preserve"><value>Open Subflow</value></data>
+
+  <!-- In-App Auto-Updater -->
+  <data name="Update_AvailableBadge" xml:space="preserve"><value>⚡ Update {0} available</value></data>
+  <data name="Update_WindowTitle" xml:space="preserve"><value>Software Update — FileFlow Studio</value></data>
+  <data name="Update_HeaderTitle" xml:space="preserve"><value>New Version Available</value></data>
+  <data name="Update_CurrentVersionLabel" xml:space="preserve"><value>Current Version:</value></data>
+  <data name="Update_NewVersionLabel" xml:space="preserve"><value>New Version:</value></data>
+  <data name="Update_PackagingFormatLabel" xml:space="preserve"><value>Packaging Format:</value></data>
+  <data name="Update_PublishedLabel" xml:space="preserve"><value>Release Date:</value></data>
+  <data name="Update_ChangelogTitle" xml:space="preserve"><value>What's New in this Release</value></data>
+  <data name="Update_BtnInstallAndRestart" xml:space="preserve"><value>🚀 Download &amp; Update Now</value></data>
+  <data name="Update_BtnRemindLater" xml:space="preserve"><value>Remind Me Later</value></data>
+  <data name="Update_BtnSkipVersion" xml:space="preserve"><value>Skip this Version</value></data>
+  <data name="Update_BtnOpenGitHub" xml:space="preserve"><value>🌐 View on GitHub</value></data>
+  <data name="Update_StatusChecking" xml:space="preserve"><value>Checking for updates on GitHub...</value></data>
+  <data name="Update_StatusUpToDate" xml:space="preserve"><value>🟢 FileFlow Studio is up to date.</value></data>
+  <data name="Update_StatusError" xml:space="preserve"><value>Could not check for updates: {0}</value></data>
+  <data name="Update_DownloadingProgress" xml:space="preserve"><value>Downloading: {0:F1}% ({1:F1} MB / {2:F1} MB at {3:F1} MB/s)</value></data>
+  <data name="Update_VerifyingChecksum" xml:space="preserve"><value>Verifying cryptographic SHA-256 integrity...</value></data>
+  <data name="Update_ChecksumVerified" xml:space="preserve"><value>✅ Integrity verified successfully.</value></data>
+  <data name="Update_ChecksumMismatchError" xml:space="preserve"><value>Security error: SHA-256 hash ({0}) does not match published hash ({1}). Update aborted.</value></data>
+  <data name="Update_NoCompatibleAssetFound" xml:space="preserve"><value>No compatible installer package found for your platform in this release.</value></data>
+  <data name="Settings_TabUpdates" xml:space="preserve"><value>🔄 Updates</value></data>
+  <data name="Settings_UpdatesTitle" xml:space="preserve"><value>Application Updates</value></data>
+  <data name="Settings_UpdatesDesc" xml:space="preserve"><value>Manage automatic update checks and release channels (Stable / Beta).</value></data>
+  <data name="Settings_UpdateChannelTitle" xml:space="preserve"><value>Update Channel:</value></data>
+  <data name="Settings_ChannelStable" xml:space="preserve"><value>Stable (Recommended for production)</value></data>
+  <data name="Settings_ChannelBeta" xml:space="preserve"><value>Beta / Pre-releases (Latest features and preview builds)</value></data>
+  <data name="Settings_AutoCheckUpdates" xml:space="preserve"><value>Check for updates automatically on application startup</value></data>
+  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>🔍 Check for Updates Now</value></data>
+  <data name="Settings_LastUpdateCheck" xml:space="preserve"><value>Last checked: {0}</value></data>
+  <data name="Settings_LastUpdateNever" xml:space="preserve"><value>Never checked</value></data>
 </root>

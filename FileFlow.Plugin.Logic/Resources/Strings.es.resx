@@ -51,4 +51,10 @@
   <data name="ThrottleDelayNode_Desc" xml:space="preserve"><value>Introduce una pausa controlada entre el procesamiento de elementos.</value></data>
   <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Barrera de Sincronización Fork/Join</value></data>
   <data name="ForkJoinBarrierNode_Desc" xml:space="preserve"><value>Sincroniza y une ramas de ejecución paralelas divergentes.</value></data>
+  <data name="SubflowInputNode_Name" xml:space="preserve"><value>Entrada de Subflujo</value></data>
+  <data name="SubflowInputNode_Desc" xml:space="preserve"><value>Punto de entrada frontera dentro de un subflujo. Los datos inyectados en los puertos de entrada del nodo subflujo exterior se emiten a través de los puertos de salida de este nodo.</value></data>
+  <data name="SubflowOutputNode_Name" xml:space="preserve"><value>Salida de Subflujo</value></data>
+  <data name="SubflowOutputNode_Desc" xml:space="preserve"><value>Punto de salida frontera dentro de un subflujo. Los elementos procesados que llegan a este nodo se emiten hacia los puertos de salida del nodo subflujo exterior.</value></data>
+  <data name="SubflowNode_Name" xml:space="preserve"><value>Subflujo Reutilizable</value></data>
+  <data name="SubflowNode_Desc" xml:space="preserve"><value>Encapsula un subgrafo DAG completo en un único nodo modular reutilizable con puertos dinámicos mapeados a sus entradas y salidas internas.</value></data>
 </root>

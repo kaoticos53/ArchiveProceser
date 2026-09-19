@@ -99,6 +99,13 @@ public sealed class NodeParameterManager
             {
                 _nodeInstance.Parameters["MethodSteps"] = string.Empty;
             }
+
+            if (key.Equals("SubflowPath", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("SubflowDefinitionJson", StringComparison.OrdinalIgnoreCase) ||
+                key.Equals("PortNames", StringComparison.OrdinalIgnoreCase))
+            {
+                _nodeOwner.SyncSubflowPorts();
+            }
         }
         UpdateVisibilityConditions();
     }

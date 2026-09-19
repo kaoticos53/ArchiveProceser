@@ -128,7 +128,14 @@ public partial class NodeCardView : UserControl
 
         if (DataContext is NodeViewModel node)
         {
-            node.InspectNode();
+            if (node.IsSubflowNode)
+            {
+                node.ParentEditor?.OpenSubflow(node);
+            }
+            else
+            {
+                node.InspectNode();
+            }
             e.Handled = true;
         }
     }

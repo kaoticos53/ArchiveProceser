@@ -1128,4 +1128,38 @@
   <data name="ThemeStudio_Status_Applied" xml:space="preserve"><value>Tema '{0}' aplicado a la aplicación en vivo.</value></data>
   <data name="ThemeStudio_Status_Exported" xml:space="preserve"><value>Tema exportado a '{0}'.</value></data>
   <data name="ThemeStudio_Status_Imported" xml:space="preserve"><value>Tema '{0}' importado con éxito.</value></data>
+  <data name="CollapseToSubflow" xml:space="preserve"><value>Colapsar selección a Subflujo</value></data>
+  <data name="OpenSubflow" xml:space="preserve"><value>Abrir Subflujo</value></data>
+
+  <!-- In-App Auto-Updater -->
+  <data name="Update_AvailableBadge" xml:space="preserve"><value>⚡ Actualización {0} disponible</value></data>
+  <data name="Update_WindowTitle" xml:space="preserve"><value>Actualización de Software — FileFlow Studio</value></data>
+  <data name="Update_HeaderTitle" xml:space="preserve"><value>Nueva Versión Disponible</value></data>
+  <data name="Update_CurrentVersionLabel" xml:space="preserve"><value>Versión Actual:</value></data>
+  <data name="Update_NewVersionLabel" xml:space="preserve"><value>Nueva Versión:</value></data>
+  <data name="Update_PackagingFormatLabel" xml:space="preserve"><value>Formato de Entorno:</value></data>
+  <data name="Update_PublishedLabel" xml:space="preserve"><value>Fecha de Publicación:</value></data>
+  <data name="Update_ChangelogTitle" xml:space="preserve"><value>Novedades y Mejoras de esta Versión</value></data>
+  <data name="Update_BtnInstallAndRestart" xml:space="preserve"><value>🚀 Descargar y Actualizar Ahora</value></data>
+  <data name="Update_BtnRemindLater" xml:space="preserve"><value>Recordar más tarde</value></data>
+  <data name="Update_BtnSkipVersion" xml:space="preserve"><value>Omitir esta versión</value></data>
+  <data name="Update_BtnOpenGitHub" xml:space="preserve"><value>🌐 Ver en GitHub</value></data>
+  <data name="Update_StatusChecking" xml:space="preserve"><value>Buscando actualizaciones en GitHub...</value></data>
+  <data name="Update_StatusUpToDate" xml:space="preserve"><value>🟢 FileFlow Studio está actualizado a la versión más reciente.</value></data>
+  <data name="Update_StatusError" xml:space="preserve"><value>No se pudo comprobar las actualizaciones: {0}</value></data>
+  <data name="Update_DownloadingProgress" xml:space="preserve"><value>Descargando: {0:F1}% ({1:F1} MB / {2:F1} MB a {3:F1} MB/s)</value></data>
+  <data name="Update_VerifyingChecksum" xml:space="preserve"><value>Verificando integridad criptográfica SHA-256...</value></data>
+  <data name="Update_ChecksumVerified" xml:space="preserve"><value>✅ Integridad verificada correctamente.</value></data>
+  <data name="Update_ChecksumMismatchError" xml:space="preserve"><value>Fallo de seguridad: El hash SHA-256 ({0}) no coincide con el publicado ({1}). Actualización abortada.</value></data>
+  <data name="Update_NoCompatibleAssetFound" xml:space="preserve"><value>No se encontró ningún paquete de instalación compatible con su plataforma en este lanzamiento.</value></data>
+  <data name="Settings_TabUpdates" xml:space="preserve"><value>🔄 Actualizaciones</value></data>
+  <data name="Settings_UpdatesTitle" xml:space="preserve"><value>Actualizaciones de la Aplicación</value></data>
+  <data name="Settings_UpdatesDesc" xml:space="preserve"><value>Gestiona las comprobaciones automáticas y los canales de lanzamiento (Estable / Beta).</value></data>
+  <data name="Settings_UpdateChannelTitle" xml:space="preserve"><value>Canal de Actualización:</value></data>
+  <data name="Settings_ChannelStable" xml:space="preserve"><value>Estable (Recomendado para producción)</value></data>
+  <data name="Settings_ChannelBeta" xml:space="preserve"><value>Beta / Pre-lanzamientos (Novedades y compilaciones preliminares)</value></data>
+  <data name="Settings_AutoCheckUpdates" xml:space="preserve"><value>Comprobar actualizaciones automáticamente al iniciar la aplicación</value></data>
+  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>🔍 Buscar Actualizaciones Ahora</value></data>
+  <data name="Settings_LastUpdateCheck" xml:space="preserve"><value>Última comprobación: {0}</value></data>
+  <data name="Settings_LastUpdateNever" xml:space="preserve"><value>Nunca comprobado</value></data>
 </root>

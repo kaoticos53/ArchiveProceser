@@ -10,6 +10,50 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **145. Sistema de Autoactualizaciones In-App Nativo, Criptográfico y Multiplataforma (In-App Auto-Updater) (2026-09-19)**:
+  - **Diagnóstico y Requerimientos**:
+    - Dotar a la aplicación de un sistema nativo y seguro de autoactualizaciones directas desde GitHub Releases, capaz de detectar el formato de empaquetado del entorno (Windows Portable `.zip`, Setup `.exe`, Linux `.AppImage`, `.flatpak`, `.deb`, `.tar.gz`), verificar hashes SHA-256 (`checksums.txt`), mostrar notas de lanzamiento en un modal estilizado y ejecutar el reemplazo/reinicio de forma atómica y no destructiva.
+  - **Implementación**:
+    - **Contratos SDK (`FileFlow.Sdk`)**: `IAppUpdateService`, `NullAppUpdateService`, `AppUpdateInfo`, `AppPackagingFormat`, `UpdateChannel` y analizador semántico `SemVersion`.
+    - **Servicio Central (`FileFlow.App/Services/AppUpdateService.cs`)**:
+      - Consulta asíncrona a GitHub Releases API con filtrado de canales (Estable / Beta).
+      - Mapeo inteligente y resolución de assets con fallbacks seguros.
+      - Descarga y verificación estricta de hash SHA-256 contra `checksums.txt` previo a cualquier ejecución.
+      - Scripts de reemplazo y relanzamiento sin bloqueo (`update.cmd` y `update.sh`).
+    - **Preferencias de Usuario (`FileFlow.App/Services/UserPreferencesService.cs`)**: Persistencia de canal, verificación automática y versiones ignoradas.
+    - **Componentes UI (`FileFlow.App`)**:
+      - `UpdateDialogWindow.axaml` y `UpdateDialogViewModel.cs`: Diálogo modal reactivo con changelog, barra de progreso y badges.
+      - `WorkflowSettingsWindow.axaml`: Pestaña de actualizaciones con selector de canal y botón "Buscar ahora".
+      - `ControlBarView.axaml` y `ControlBarViewModel.cs`: Badge de notificación con botón de apertura directa.
+      - `App.axaml.cs`: Tarea de comprobación de actualizaciones en segundo plano con debounce de 24h.
+    - **Localización e Iconografía**: Cadenas ES/EN en `Strings.resx` y `Strings.es.resx` y cumplimiento del estándar de diseño y tokens del tema.
+  - **Validación**:
+    - Suite de pruebas unitarias (`AppUpdateServiceTests.cs`): 14 tests superados al 100%.
+    - Suite completa (`dotnet test`): **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+
+- **144. Sistema de Subflujos y Subgrafos Reutilizables (Modular Subflow Nodes & DAG Hierarchy) (2026-09-19)**:
+  - **Diagnóstico y Requerimientos**:
+    - Capacidad de encapsular y guardar flujos completos como subflujos reutilizables (nodos compuestos modulares) con puertos de frontera configurables, navegación visual por migas de pan (*Breadcrumbs*), colapso automático de selecciones a subflujo con Undo/Redo y ejecución jerárquica libre de recursión infinita.
+  - **Implementación**:
+    - **Contratos SDK (`FileFlow.Sdk`)**: `ISubflowNode`, `ISubflowBoundaryNode`, constante `SubflowSinkKey = "__SubflowOutputSink__"` y servicio desacoplado `ISubflowExecutionService` con fallback `NullSubflowExecutionService`.
+    - **Nodos en Plugin Logic (`FileFlow.Plugin.Logic`)**:
+      - `SubflowInputNode.cs`: Nodo frontera de entrada (`PortNames` configurable) que emite datos hacia el interior del subgrafo.
+      - `SubflowOutputNode.cs`: Nodo frontera de salida (`PortNames` configurable) que canaliza las emisiones del subgrafo hacia el contexto del flujo padre.
+      - `SubflowNode.cs`: Nodo contenedor modular con puertos dinámicos sincronizados (`RefreshDynamicPorts`), parámetros `SubflowPath`, `EmbedDefinition`, `SubflowDefinitionJson`, `SubflowName` y acción `OpenSubflowEditor`.
+      - Localización multilingüe (ES/EN) co-ubicada de forma autónoma en `FileFlow.Plugin.Logic/Resources/Strings.resx` y `Strings.es.resx`.
+    - **Motor Core (`FileFlow.Core`)**:
+      - `WorkflowSubflowExecutionService.cs`: Orquestación jerárquica en `childExecutor`, detección de ciclos infinitos mediante `__SubflowCallStack__` en metadatos de `FileItemContext`, resolución polimórfica (disco o JSON embebido) y auto-descubrimiento de puertos dinámicos.
+      - `WorkflowExecutor.cs`: Actualizado `ExecuteAsync` para inyectar `initialItem` y `entryInputPortName`, registrando `WorkflowSubflowExecutionService`.
+    - **Interfaz y Editor Visual (`FileFlow.App`)**:
+      - `NodeViewModel.cs` y `NodeParameterManager.cs`: Sincronización reactiva de puertos dinámicos `SyncSubflowPorts()`.
+      - `EditorViewModel.cs`: Propiedades `HasBreadcrumbs`, `Breadcrumbs`, comandos `OpenSubflow`, `NavigateToBreadcrumb`, `ClearCanvas` y comando *"Colapsar a Subflujo"* (`CollapseSelectionToSubflow`) con cálculo de conexiones frontera y registro transaccional en `IUndoRedoService`.
+      - `EditorView.axaml`: Barra visual de migas de pan en la cabecera del lienzo y opción *"Colapsar selección a Subflujo"* en el menú contextual.
+      - `NodeCardView.axaml`: Doble clic en nodos `SubflowNode` para abrir el subflujo y opción contextual *"Abrir Subflujo"`.
+    - **Tests y Validación**:
+      - Creados `SubflowExecutionTests.cs` (procesamiento y emisión, detección de recursión infinita, descubrimiento de puertos) y `SubflowEditorTests.cs` (navegación por migas de pan, colapso de nodos con Undo/Redo).
+  - **Validación**:
+    - Suite completa de pruebas unitarias e integración: **1,050 superadas, 0 fallos, 1 omitida (100% verde)**.
+    - Compilación limpia: 0 advertencias, 0 errores.
 - **143. Calibración de Tolerancia de Regresión Visual para Entornos CI Headless (2026-09-19)**:
   - **Diagnóstico y Causa Raíz**:
     - En los runners de GitHub Actions para Windows (máquinas virtuales Windows Server con rasterización por software DirectWrite/WARP), el test `ModalVisualRegressionTests.EveryKeyModal_ShouldMatchItsBaseline` fallaba para `WorkflowSettings (modal-workflow-settings-dark)` con un 0.89% de píxeles distintos frente al límite estricto previo de 0.50% debido a diferencias sutiles de antialiasing/subpixel rendering de fuentes tipográficas.

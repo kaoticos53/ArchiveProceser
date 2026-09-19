@@ -27,6 +27,12 @@ public class UserPreferencesData
     public bool AutoUnloadAiModelsOnCompletion { get; set; } = false;
     public bool AutoCleanIntermediateTempFiles { get; set; } = true;
     public bool CleanStaleTempOnStartup { get; set; } = true;
+
+    // Auto-Update Preferences
+    public bool AutoCheckForUpdates { get; set; } = true;
+    public string UpdateChannel { get; set; } = "Stable";
+    public DateTime? LastUpdateCheckUtc { get; set; } = null;
+    public string IgnoredUpdateVersion { get; set; } = string.Empty;
 }
 
 public class UserPreferencesService : IUserPreferencesService

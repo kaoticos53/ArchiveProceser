@@ -1016,6 +1016,368 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         SpotlightSearchText = string.Empty;
     }
 
+    public bool HasBreadcrumbs => Breadcrumbs.Count > 1;
+
+    public void InitializeBreadcrumbs()
+    {
+        Breadcrumbs.Clear();
+        var rootGraph = WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, CurrentWorkflowTitle, Annotations, Groups);
+        Breadcrumbs.Add(new BreadcrumbItem(CurrentWorkflowTitle, null, rootGraph));
+        OnPropertyChanged(nameof(HasBreadcrumbs));
+    }
+
+    [RelayCommand]
+    public void OpenSubflow(NodeViewModel subflowNodeVm)
+    {
+        if (subflowNodeVm == null) return;
+
+        // Si la lista de breadcrumbs está vacía, inicializar la raíz
+        if (Breadcrumbs.Count == 0)
+        {
+            var rootGraph = WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, CurrentWorkflowTitle, Annotations, Groups);
+            Breadcrumbs.Add(new BreadcrumbItem(CurrentWorkflowTitle, null, rootGraph));
+        }
+        else
+        {
+            // Guardar el estado actual en el breadcrumb superior
+            var currentGraph = WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, CurrentWorkflowTitle, Annotations, Groups);
+            var top = Breadcrumbs.Last();
+            int topIndex = Breadcrumbs.Count - 1;
+            Breadcrumbs[topIndex] = new BreadcrumbItem(top.Name, top.NodeId, currentGraph);
+        }
+
+        // Resolver el grafo del subflujo
+        WorkflowGraph? innerGraph = null;
+        if (subflowNodeVm.NodeInstance is ISubflowNode sn)
+        {
+            if (sn.EmbedDefinition && !string.IsNullOrWhiteSpace(sn.SubflowDefinitionJson))
+            {
+                innerGraph = WorkflowGraph.FromJson(sn.SubflowDefinitionJson);
+            }
+            else if (!string.IsNullOrWhiteSpace(sn.SubflowDefinitionJson))
+            {
+                try { innerGraph = WorkflowGraph.FromJson(sn.SubflowDefinitionJson); } catch { }
+            }
+
+            if (innerGraph == null && !string.IsNullOrWhiteSpace(sn.SubflowPath) && File.Exists(sn.SubflowPath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(sn.SubflowPath);
+                    innerGraph = WorkflowGraph.FromJson(json);
+                }
+                catch { }
+            }
+        }
+
+        // Si no tiene grafo interno aún, crear uno predeterminado con SubflowInputNode y SubflowOutputNode
+        if (innerGraph == null || innerGraph.Nodes.Count == 0)
+        {
+            innerGraph = new WorkflowGraph
+            {
+                Name = subflowNodeVm.Title,
+                GlobalOutputDir = GlobalOutputDir
+            };
+
+            var inputNode = new WorkflowNode
+            {
+                Id = Guid.NewGuid().ToString(),
+                NodeTypeName = "FileFlow.Plugin.Logic.SubflowInputNode",
+                CustomTitle = "Entrada",
+                X = 100,
+                Y = 200,
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["PortNames"] = "In" }
+            };
+
+            var outputNode = new WorkflowNode
+            {
+                Id = Guid.NewGuid().ToString(),
+                NodeTypeName = "FileFlow.Plugin.Logic.SubflowOutputNode",
+                CustomTitle = "Salida",
+                X = 600,
+                Y = 200,
+                Parameters = new(StringComparer.OrdinalIgnoreCase) { ["PortNames"] = "Out" }
+            };
+
+            innerGraph.Nodes.Add(inputNode);
+            innerGraph.Nodes.Add(outputNode);
+        }
+
+        // Limpiar el lienzo actual e importar el grafo interno
+        ClearCanvas();
+        WorkflowGraphSerializer.Import(
+            innerGraph,
+            _pluginLoader,
+            this,
+            n => Nodes.Add(n),
+            c => Connections.Add(c),
+            a => Annotations.Add(a),
+            g => Groups.Add(g));
+
+        CurrentWorkflowTitle = subflowNodeVm.Title;
+        Breadcrumbs.Add(new BreadcrumbItem(subflowNodeVm.Title, subflowNodeVm.Id, innerGraph));
+        OnPropertyChanged(nameof(HasBreadcrumbs));
+        FitToScreen();
+    }
+
+    [RelayCommand]
+    public void NavigateToBreadcrumb(BreadcrumbItem targetItem)
+    {
+        if (targetItem == null || Breadcrumbs.Count == 0) return;
+        if (Breadcrumbs.LastOrDefault() == targetItem) return;
+
+        int targetIndex = Breadcrumbs.IndexOf(targetItem);
+        if (targetIndex < 0) return;
+
+        // Guardar el grafo actual del nivel que abandonamos
+        var currentLevelGraph = WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, CurrentWorkflowTitle, Annotations, Groups);
+        var currentTop = Breadcrumbs.Last();
+
+        // Si el nivel que abandonamos correspondía a un nodo de subflujo, actualizar su SubflowDefinitionJson en el grafo padre
+        if (!string.IsNullOrWhiteSpace(currentTop.NodeId) && Breadcrumbs.Count >= 2)
+        {
+            var parentBreadcrumb = Breadcrumbs[Breadcrumbs.Count - 2];
+            var targetNodeDto = parentBreadcrumb.Graph.Nodes.FirstOrDefault(n => n.Id == currentTop.NodeId);
+            if (targetNodeDto != null)
+            {
+                targetNodeDto.Parameters["SubflowDefinitionJson"] = currentLevelGraph.ToJson();
+                targetNodeDto.Parameters["EmbedDefinition"] = true;
+            }
+        }
+
+        // Eliminar todos los breadcrumbs posteriores al targetIndex
+        while (Breadcrumbs.Count > targetIndex + 1)
+        {
+            Breadcrumbs.RemoveAt(Breadcrumbs.Count - 1);
+        }
+
+        // Cargar el grafo del target
+        ClearCanvas();
+        WorkflowGraphSerializer.Import(
+            targetItem.Graph,
+            _pluginLoader,
+            this,
+            n => Nodes.Add(n),
+            c => Connections.Add(c),
+            a => Annotations.Add(a),
+            g => Groups.Add(g));
+
+        CurrentWorkflowTitle = targetItem.Name;
+        OnPropertyChanged(nameof(HasBreadcrumbs));
+        FitToScreen();
+    }
+
+    private void ClearCanvas()
+    {
+        Connections.Clear();
+        Nodes.Clear();
+        Annotations.Clear();
+        Groups.Clear();
+        CanvasDecorators.Clear();
+    }
+
+    [RelayCommand]
+    public void CollapseSelectionToSubflow()
+    {
+        var selectedNodes = Nodes.Where(n => n.IsSelected).ToList();
+        if (selectedNodes.Count == 0) return;
+
+        using var tx = _undoRedoService.BeginTransaction("Colapsar a Subflujo");
+
+        var selectedSet = selectedNodes.ToHashSet();
+
+        // Identificar conexiones entrantes (desde nodos externos hacia la selección)
+        var incomingConns = Connections
+            .Where(c => selectedSet.Contains(c.Target.NodeOwner) && !selectedSet.Contains(c.Source.NodeOwner))
+            .ToList();
+
+        // Identificar conexiones salientes (desde la selección hacia nodos externos)
+        var outgoingConns = Connections
+            .Where(c => selectedSet.Contains(c.Source.NodeOwner) && !selectedSet.Contains(c.Target.NodeOwner))
+            .ToList();
+
+        // Identificar conexiones internas
+        var internalConns = Connections
+            .Where(c => selectedSet.Contains(c.Source.NodeOwner) && selectedSet.Contains(c.Target.NodeOwner))
+            .ToList();
+
+        var inPortNames = incomingConns.Select(c => c.Target.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (inPortNames.Count == 0) inPortNames.Add("In");
+
+        var outPortNames = outgoingConns.Select(c => c.Source.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (outPortNames.Count == 0) outPortNames.Add("Out");
+
+        // Coordenadas para calcular el centro
+        double minX = selectedNodes.Min(n => n.Location.X);
+        double minY = selectedNodes.Min(n => n.Location.Y);
+        double maxX = selectedNodes.Max(n => n.Location.X);
+        double maxY = selectedNodes.Max(n => n.Location.Y);
+        double centerX = (minX + maxX) / 2.0;
+        double centerY = (minY + maxY) / 2.0;
+
+        // Construir el subgrafo interno
+        var subflowGraph = new WorkflowGraph
+        {
+            Name = "Subflujo Compuesto",
+            GlobalOutputDir = GlobalOutputDir
+        };
+
+        var inputBoundary = new WorkflowNode
+        {
+            Id = Guid.NewGuid().ToString(),
+            NodeTypeName = "FileFlow.Plugin.Logic.SubflowInputNode",
+            CustomTitle = "Entrada",
+            X = minX - 300,
+            Y = minY,
+            Parameters = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["PortNames"] = string.Join(";", inPortNames)
+            }
+        };
+        subflowGraph.Nodes.Add(inputBoundary);
+
+        var outputBoundary = new WorkflowNode
+        {
+            Id = Guid.NewGuid().ToString(),
+            NodeTypeName = "FileFlow.Plugin.Logic.SubflowOutputNode",
+            CustomTitle = "Salida",
+            X = maxX + 300,
+            Y = minY,
+            Parameters = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["PortNames"] = string.Join(";", outPortNames)
+            }
+        };
+        subflowGraph.Nodes.Add(outputBoundary);
+
+        // Añadir nodos seleccionados al subgrafo
+        foreach (var node in selectedNodes)
+        {
+            var nodeDto = new WorkflowNode
+            {
+                Id = node.Id,
+                NodeTypeName = node.NodeTypeName,
+                CustomTitle = node.CustomTitle,
+                X = node.Location.X,
+                Y = node.Location.Y,
+                HasBreakpoint = node.HasBreakpoint,
+                IsLoggingEnabled = node.IsLoggingEnabled,
+                Parameters = node.Parameters
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+                    .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase)
+            };
+            subflowGraph.Nodes.Add(nodeDto);
+        }
+
+        // Añadir aristas internas
+        foreach (var c in internalConns)
+        {
+            subflowGraph.Edges.Add(new WorkflowEdge
+            {
+                SourceNodeId = c.Source.NodeOwner.Id,
+                SourcePortName = c.Source.Name,
+                TargetNodeId = c.Target.NodeOwner.Id,
+                TargetPortName = c.Target.Name
+            });
+        }
+
+        // Conectar SubflowInputNode a los nodos internos destino
+        foreach (var inConn in incomingConns)
+        {
+            subflowGraph.Edges.Add(new WorkflowEdge
+            {
+                SourceNodeId = inputBoundary.Id,
+                SourcePortName = inConn.Target.Name,
+                TargetNodeId = inConn.Target.NodeOwner.Id,
+                TargetPortName = inConn.Target.Name
+            });
+        }
+
+        // Conectar los nodos internos origen a SubflowOutputNode
+        foreach (var outConn in outgoingConns)
+        {
+            subflowGraph.Edges.Add(new WorkflowEdge
+            {
+                SourceNodeId = outConn.Source.NodeOwner.Id,
+                SourcePortName = outConn.Source.Name,
+                TargetNodeId = outputBoundary.Id,
+                TargetPortName = outConn.Source.Name
+            });
+        }
+
+        string subflowJson = subflowGraph.ToJson();
+
+        // Crear la instancia del nodo SubflowNode en el lienzo padre
+        IFlowNode? subflowInstance = _pluginLoader.CreateNodeInstance("FileFlow.Plugin.Logic.SubflowNode");
+        if (subflowInstance == null) return;
+
+        subflowInstance.Parameters["EmbedDefinition"] = true;
+        subflowInstance.Parameters["SubflowDefinitionJson"] = subflowJson;
+        subflowInstance.Parameters["SubflowName"] = "Subflujo Compuesto";
+
+        if (subflowInstance is ISubflowNode snNode)
+        {
+            snNode.RefreshDynamicPorts(inPortNames, outPortNames);
+        }
+
+        var subflowNodeVm = new NodeViewModel(subflowInstance, new Point(centerX, centerY))
+        {
+            ParentEditor = this,
+            Title = "Subflujo Compuesto"
+        };
+        subflowNodeVm.SyncSubflowPorts();
+
+        // 1. Eliminar conexiones incidentes de los nodos seleccionados
+        var allIncidentConns = Connections
+            .Where(c => selectedSet.Contains(c.Source.NodeOwner) || selectedSet.Contains(c.Target.NodeOwner))
+            .ToList();
+
+        foreach (var c in allIncidentConns)
+        {
+            _undoRedoService.Record(new DeleteConnectionAction(this, c));
+            Connections.Remove(c);
+        }
+
+        // 2. Eliminar nodos seleccionados
+        _undoRedoService.Record(new DeleteNodesAction(this, selectedNodes, allIncidentConns));
+        foreach (var n in selectedNodes)
+        {
+            Nodes.Remove(n);
+        }
+
+        // 3. Añadir el nuevo nodo subflujo
+        _undoRedoService.Record(new AddNodesAction(this, [subflowNodeVm]));
+        Nodes.Add(subflowNodeVm);
+
+        // 4. Reconectar aristas externas al nuevo nodo subflujo
+        foreach (var inConn in incomingConns)
+        {
+            var targetPort = subflowNodeVm.InputPorts.FirstOrDefault(p => p.Name.Equals(inConn.Target.Name, StringComparison.OrdinalIgnoreCase))
+                             ?? subflowNodeVm.InputPorts.FirstOrDefault();
+            if (targetPort != null)
+            {
+                var newConn = new ConnectionViewModel(inConn.Source, targetPort);
+                _undoRedoService.Record(new AddConnectionAction(this, newConn));
+                Connections.Add(newConn);
+            }
+        }
+
+        foreach (var outConn in outgoingConns)
+        {
+            var sourcePort = subflowNodeVm.OutputPorts.FirstOrDefault(p => p.Name.Equals(outConn.Source.Name, StringComparison.OrdinalIgnoreCase))
+                             ?? subflowNodeVm.OutputPorts.FirstOrDefault();
+            if (sourcePort != null)
+            {
+                var newConn = new ConnectionViewModel(sourcePort, outConn.Target);
+                _undoRedoService.Record(new AddConnectionAction(this, newConn));
+                Connections.Add(newConn);
+            }
+        }
+
+        subflowNodeVm.IsSelected = true;
+    }
+
     [RelayCommand]
     public void ConfirmSpotlightSelection()
     {

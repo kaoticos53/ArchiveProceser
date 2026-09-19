@@ -51,4 +51,10 @@
   <data name="ThrottleDelayNode_Desc" xml:space="preserve"><value>Introduces a delay between processed items.</value></data>
   <data name="ForkJoinBarrierNode_Name" xml:space="preserve"><value>Fork / Join Barrier</value></data>
   <data name="ForkJoinBarrierNode_Desc" xml:space="preserve"><value>Synchronizes and joins divergent parallel branches.</value></data>
+  <data name="SubflowInputNode_Name" xml:space="preserve"><value>Subflow Input</value></data>
+  <data name="SubflowInputNode_Desc" xml:space="preserve"><value>Entry boundary inside a subflow. Data injected into the parent subflow node inputs are emitted through this node's output ports.</value></data>
+  <data name="SubflowOutputNode_Name" xml:space="preserve"><value>Subflow Output</value></data>
+  <data name="SubflowOutputNode_Desc" xml:space="preserve"><value>Exit boundary inside a subflow. Processed items reaching this node are emitted through the parent subflow node output ports.</value></data>
+  <data name="SubflowNode_Name" xml:space="preserve"><value>Reusable Subflow</value></data>
+  <data name="SubflowNode_Desc" xml:space="preserve"><value>Encapsulates an entire DAG sub-graph into a single reusable modular node with dynamic ports mapped to its internal inputs and outputs.</value></data>
 </root>

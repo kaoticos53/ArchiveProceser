@@ -57,6 +57,35 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
     private FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? _lastVirtualFileSystem;
 
+    // In-App Auto-Updater Notification
+    [ObservableProperty]
+    private bool _hasPendingUpdate;
+
+    [ObservableProperty]
+    private string _pendingUpdateVersionTag = string.Empty;
+
+    private FileFlow.Sdk.Services.AppUpdateInfo? _pendingUpdateInfo;
+
+    public void SetPendingUpdate(FileFlow.Sdk.Services.AppUpdateInfo updateInfo)
+    {
+        _pendingUpdateInfo = updateInfo;
+        PendingUpdateVersionTag = updateInfo.VersionTag;
+        HasPendingUpdate = true;
+    }
+
+    [RelayCommand]
+    public async Task OpenUpdateDialogAsync()
+    {
+        if (_pendingUpdateInfo == null) return;
+
+        var updateVm = new UpdateDialogViewModel(_pendingUpdateInfo);
+        var updateWindow = new Views.Components.UpdateDialogWindow(updateVm);
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            await updateWindow.ShowDialog(desktop.MainWindow ?? updateWindow);
+        }
+    }
+
     [ObservableProperty]
     private bool _isMenuOpen;
 

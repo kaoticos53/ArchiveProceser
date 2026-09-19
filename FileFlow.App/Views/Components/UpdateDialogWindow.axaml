@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:FileFlow.Sdk.Localization"
+        xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        x:Class="FileFlow.App.Views.Components.UpdateDialogWindow"
+        x:DataType="vm:UpdateDialogViewModel"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_WindowTitle]}"
+        Width="640" Height="540"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+    <Border Padding="20" Background="{DynamicResource AppBackgroundBrush}">
+        <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="{DynamicResource RadiusMd}" Background="{DynamicResource AccentPrimaryBrush}" Margin="0,0,14,0">
+                    <materialIcons:MaterialIcon Kind="RocketLaunch" Width="22" Height="22" Foreground="{DynamicResource TextOnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_HeaderTitle]}" FontWeight="Bold" FontSize="{DynamicResource FontSizeTitle}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock Text="{Binding ReleaseTitle}" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                </StackPanel>
+                <Button Grid.Column="2" Command="{Binding OpenGitHubCommand}" ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_BtnOpenGitHub]}" Padding="8,5" Background="Transparent" BorderThickness="1" BorderBrush="{DynamicResource BorderDarkBrush}" CornerRadius="{DynamicResource RadiusSm}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Github" Width="14" Height="14" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="GitHub" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Version Meta Card -->
+            <Border Grid.Row="1" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="0,0,0,14">
+                <Grid ColumnDefinitions="*,*,*">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_CurrentVersionLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                        <TextBlock Text="{Binding CurrentVersionText}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_NewVersionLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                        <TextBlock Text="{Binding NewVersionText}" FontWeight="Bold" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource AccentSuccessBrush}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Spacing="2">
+                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_PackagingFormatLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                        <TextBlock Text="{Binding PackagingFormatText}" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Changelog Section -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,*" Margin="0,0,0,14">
+                <TextBlock Grid.Row="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_ChangelogTitle]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6" />
+                <Border Grid.Row="1" Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="12">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <SelectableTextBlock Text="{Binding ReleaseNotes}" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" LineHeight="18" />
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+
+            <!-- Download Progress & Status -->
+            <StackPanel Grid.Row="3" Spacing="6" Margin="0,0,0,14" IsVisible="{Binding IsDownloading}">
+                <ProgressBar Value="{Binding DownloadProgress}" Minimum="0" Maximum="100" Height="6" CornerRadius="{DynamicResource RadiusXs}" Foreground="{DynamicResource AccentPrimaryBrush}" Background="{DynamicResource BgCardBrush}" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="{Binding DownloadStatusText}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding DownloadProgress, StringFormat='{}{0:F0}%'}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="Bold" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                </Grid>
+            </StackPanel>
+
+            <!-- Error Banner -->
+            <Border Grid.Row="3" BorderBrush="{DynamicResource AccentErrorBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="10,6" Margin="0,0,0,14" IsVisible="{Binding HasError}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <materialIcons:MaterialIcon Kind="AlertCircle" Width="16" Height="16" Foreground="{DynamicResource AccentErrorBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ErrorMessage}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- Action Buttons -->
+            <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding SkipVersionCommand}" IsEnabled="{Binding !IsDownloading}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_BtnSkipVersion]}" Padding="10,6" FontSize="{DynamicResource FontSizeBodySm}" Background="Transparent" Foreground="{DynamicResource TextMutedBrush}" CornerRadius="{DynamicResource RadiusSm}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                    <Button Command="{Binding RemindLaterCommand}" IsEnabled="{Binding !IsDownloading}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_BtnRemindLater]}" Padding="12,6" FontSize="{DynamicResource FontSizeBodySm}" Background="{DynamicResource BgCardBrush}" Foreground="{DynamicResource TextPrimaryBrush}" CornerRadius="{DynamicResource RadiusSm}" />
+                    <Button Command="{Binding InstallAndRestartCommand}" IsEnabled="{Binding !IsDownloading}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_BtnInstallAndRestart]}" Padding="16,6" FontSize="{DynamicResource FontSizeBodySm}" FontWeight="SemiBold" Background="{DynamicResource AccentPrimaryBrush}" Foreground="{DynamicResource TextOnAccentBrush}" CornerRadius="{DynamicResource RadiusSm}" />
+                </StackPanel>
+            </Grid>
+
+        </Grid>
+    </Border>
+</Window>
+

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using FileFlow.Core.Plugins;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.Telemetry;
 
@@ -152,8 +153,16 @@ public class WorkflowExecutor
         }
     }
 
-    public async Task ExecuteAsync(WorkflowGraph graph, PluginLoader loader, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(
+        WorkflowGraph graph,
+        PluginLoader loader,
+        CancellationToken cancellationToken,
+        FileItemContext? initialItem = null,
+        string? entryInputPortName = null)
     {
+        // Registrar el servicio de subflujos desacoplado con el loader actual
+        ISubflowExecutionService.Instance = new WorkflowSubflowExecutionService(loader);
+
         if (string.IsNullOrWhiteSpace(GlobalOutputDir) && !string.IsNullOrWhiteSpace(graph.GlobalOutputDir))
         {
             GlobalOutputDir = graph.GlobalOutputDir;
@@ -232,7 +241,14 @@ public class WorkflowExecutor
 
             HashSet<string> targetNodeIds = graph.Edges.Select(e => e.TargetNodeId).ToHashSet();
             List<IFlowNode> startNodes = validation.TopologicalOrder.Where(n => !targetNodeIds.Contains(n.Id)).ToList();
-            if (startNodes.Count == 0 && validation.TopologicalOrder.Count > 0)
+            
+            // Si es un subflujo y hay nodos de entrada frontera, priorizarlos como nodos iniciales
+            var boundaryInputNodes = validation.TopologicalOrder.Where(n => n.GetType().Name.Contains("SubflowInputNode", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (boundaryInputNodes.Count > 0)
+            {
+                startNodes = boundaryInputNodes;
+            }
+            else if (startNodes.Count == 0 && validation.TopologicalOrder.Count > 0)
             {
                 startNodes.Add(validation.TopologicalOrder[0]);
             }
@@ -246,19 +262,19 @@ public class WorkflowExecutor
                 startTasks.Add(Task.Run(async () =>
                 {
                     await WaitIfPausedAsync(cancellationToken);
-                    var dummyItem = new FileItemContext(string.Empty);
-                    dummyItem.Metadata["WorkflowExecutionId"] = _currentExecutionId;
-                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) dummyItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
+                    var runItem = initialItem != null ? initialItem.DeepClone() : new FileItemContext(string.Empty);
+                    runItem.Metadata["WorkflowExecutionId"] = _currentExecutionId;
+                    if (!string.IsNullOrWhiteSpace(GlobalOutputDir)) runItem.Metadata["GlobalOutputDir"] = GlobalOutputDir;
                     string effectiveTemp = !string.IsNullOrWhiteSpace(TemporaryDirectory) ? TemporaryDirectory : AppPaths.DefaultTempDirectory;
-                    dummyItem.Metadata["TemporaryDirectory"] = effectiveTemp;
-                    if (IsDryRun) dummyItem.Metadata["DryRun"] = true;
+                    runItem.Metadata["TemporaryDirectory"] = effectiveTemp;
+                    if (IsDryRun) runItem.Metadata["DryRun"] = true;
 
-                    var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, dummyItem);
+                    var ctx = new WorkflowExecutionContext(startNode.Id, this, cancellationToken, runItem);
 
                     if (DebugSession != null)
                     {
-                        DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(startNode.Id, string.Empty, dummyItem));
-                        await DebugSession.CheckBreakpointOrStepAsync(startNode.Id, string.Empty, dummyItem, cancellationToken);
+                        DebugSession.RecordSnapshot(NodeDataSnapshot.CreateInput(startNode.Id, string.Empty, runItem));
+                        await DebugSession.CheckBreakpointOrStepAsync(startNode.Id, string.Empty, runItem, cancellationToken);
                     }
 
                     NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Running);
@@ -267,7 +283,8 @@ public class WorkflowExecutor
                     long startTicks = Stopwatch.GetTimestamp();
                     try
                     {
-                        await startNode.ExecuteAsync(string.Empty, dummyItem, ctx, cancellationToken);
+                        string effectiveEntryPort = !string.IsNullOrWhiteSpace(entryInputPortName) ? entryInputPortName : string.Empty;
+                        await startNode.ExecuteAsync(effectiveEntryPort, runItem, ctx, cancellationToken);
                         double elapsedMs = Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds;
                         long endAllocatedBytes = GC.GetAllocatedBytesForCurrentThread();
                         long allocatedBytes = Math.Max(0, endAllocatedBytes - startAllocatedBytes);
@@ -284,7 +301,7 @@ public class WorkflowExecutor
                         NotifyNodeStatus(startNode.Id, NodeExecutionStatus.Faulted);
                         if (DebugSession != null)
                         {
-                            await DebugSession.HandleNodeErrorAsync(startNode.Id, string.Empty, dummyItem, ex, cancellationToken);
+                            await DebugSession.HandleNodeErrorAsync(startNode.Id, string.Empty, runItem, ex, cancellationToken);
                         }
                         throw;
                     }

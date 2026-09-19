@@ -103,6 +103,67 @@
                     </ScrollViewer>
                 </Border>
             </TabItem>
+
+            <!-- Tab 3: Updates -->
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabUpdates]}" Padding="10,4">
+                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14" Margin="0,10,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14">
+                            <!-- Updates Header Info -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdatesTitle]}" FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdatesDesc]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!-- Version & Platform Info Box -->
+                            <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="12,10">
+                                <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_CurrentVersionLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                                        <TextBlock Text="{Binding CurrentVersionDisplay}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_PackagingFormatLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                                        <TextBlock Text="{Binding PackagingFormatDisplay}" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Spacing="2">
+                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LastUpdateCheck]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
+                                        <TextBlock Text="{Binding LastUpdateCheckDisplay}" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Channel Selection -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdateChannelTitle]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <ComboBox SelectedValue="{Binding SelectedUpdateChannel, Mode=TwoWay}"
+                                          SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                                          Width="260" HorizontalAlignment="Left">
+                                    <ComboBoxItem Tag="Stable" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ChannelStable]}" />
+                                    <ComboBoxItem Tag="Beta" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ChannelBeta]}" />
+                                </ComboBox>
+                            </StackPanel>
+
+                            <!-- Auto-check Toggle -->
+                            <CheckBox IsChecked="{Binding AutoCheckForUpdates, Mode=TwoWay}"
+                                      Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCheckUpdates]}"
+                                      FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                            <!-- Check Now Action Area -->
+                            <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                                <Button Grid.Column="0" Command="{Binding CheckForUpdatesNowCommand}"
+                                        IsEnabled="{Binding !IsCheckingForUpdates}"
+                                        Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckUpdatesNowBtn]}"
+                                        Padding="14,8" Background="{DynamicResource AccentPrimaryBrush}" Foreground="{DynamicResource TextOnAccentBrush}" CornerRadius="{DynamicResource RadiusSm}" />
+                                <TextBlock Grid.Column="1" Text="{Binding CheckUpdatesStatusMessage}"
+                                           VerticalAlignment="Center" Margin="14,0,0,0" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
         </TabControl>
 
         <!-- Bottom Buttons -->

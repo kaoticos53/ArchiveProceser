@@ -102,6 +102,12 @@
                             <materialIcons:MaterialIcon  Kind="ZipBox" Width="12" Height="12" />
                         </MenuItem.Icon>
                     </MenuItem>
+                    <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CollapseToSubflow], FallbackValue='Colapsar selección a Subflujo'}"
+                              Command="{Binding CollapseSelectionToSubflowCommand}">
+                        <MenuItem.Icon>
+                            <materialIcons:MaterialIcon Kind="PackageVariantClosed" Width="12" Height="12" />
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <Separator />
                     <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ZoomFit]}"
                               Command="{Binding FitToScreenCommand}">
@@ -175,22 +181,29 @@
         <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,16,0,0"
                 Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
                 BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="8,4"
-                IsVisible="{Binding Breadcrumbs.Count}">
+                BoxShadow="{DynamicResource Elev2}"
+                IsVisible="{Binding HasBreadcrumbs}"
+                ZIndex="25">
             <ItemsControl ItemsSource="{Binding Breadcrumbs}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="2">
-                            <Button Content="{Binding Name}"
-                                    Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).NavigateBreadcrumbCommand}"
+                    <DataTemplate x:DataType="vm:BreadcrumbItem">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <Button Command="{Binding $parent[views:EditorView].((vm:EditorViewModel)DataContext).NavigateToBreadcrumbCommand}"
                                     CommandParameter="{Binding}"
-                                    FontSize="{DynamicResource FontSizeBodySm}" FontWeight="Medium" Foreground="{DynamicResource AccentGlowBrush}"
-                                    Background="Transparent" BorderThickness="0" Padding="4,2" />
-                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"  Kind="ChevronRight" Width="14" Height="14" />
+                                    Background="Transparent" BorderThickness="0" Padding="6,3"
+                                    CornerRadius="{DynamicResource RadiusXs}"
+                                    Cursor="Hand">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <materialIcons:MaterialIcon Kind="FolderOpenOutline" Width="13" Height="13" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                                    <TextBlock Text="{Binding Name}" FontSize="{DynamicResource FontSizeCaption}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </StackPanel>
+                            </Button>
+                            <materialIcons:MaterialIcon Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Kind="ChevronRight" Width="12" Height="12" />
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

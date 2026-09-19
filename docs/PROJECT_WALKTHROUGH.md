@@ -1,5 +1,62 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-19] - Sistema Nativo y Seguro de Autoactualizaciones In-App (In-App Auto-Updater) (Hito 145)
+
+### 🎯 Diagnóstico y Requerimientos
+- **Requerimiento**:
+  - Proveer un sistema integrado y no invasivo de autoactualizaciones automáticas en FileFlow Studio (.NET 9 / Avalonia 12 en Windows y Linux), capaz de consultar GitHub Releases, mapear e identificar assets para el formato de empaquetado del entorno, verificar la integridad criptográfica SHA-256 (`checksums.txt`), mostrar un diálogo interactivo con changelog y ejecutar la actualización/reinicio sin tocar datos del usuario ni modelos.
+
+### 🎯 Solución Implementada
+1. **Contratos y Modelos SDK (`FileFlow.Sdk/Services/IAppUpdateService.cs`, `NullAppUpdateService.cs`)**:
+   - Definición de `IAppUpdateService`, `AppUpdateInfo`, `AppPackagingFormat`, `UpdateChannel` y el analizador semántico `SemVersion` compatible con SemVer 2.0.
+2. **Servicio Central de Actualizaciones (`FileFlow.App/Services/AppUpdateService.cs`)**:
+   - Detección automática del formato de empaquetado del entorno actual (Windows Portable `.zip`, Setup `.exe`, Linux `.AppImage`, `.flatpak`, `.deb`, `.tar.gz`).
+   - Consulta a la API de GitHub Releases con filtrado por canal (Estable vs Beta/Pre-releases).
+   - Descarga asíncrona de `checksums.txt` con validación estricta del hash SHA-256 del binario descargado antes de cualquier ejecución.
+   - Generación de scripts de reemplazo atómico y relanzamiento sin bloqueo de archivos (`update.cmd` en Windows y `update.sh` en Linux).
+3. **Preferencias de Usuario (`FileFlow.App/Services/UserPreferencesService.cs`)**:
+   - Persistencia de `AutoCheckForUpdates`, `UpdateChannel`, `LastUpdateCheckUtc` y `IgnoredUpdateVersion`.
+4. **Capa Visual y Experiencia de Usuario (UI/UX)**:
+   - `UpdateDialogWindow.axaml` y `UpdateDialogViewModel.cs`: Diálogo modal estilizado con notas de la versión, progreso de descarga en tiempo real, verificación SHA-256 y botones de "Instalar y Reiniciar", "Omitir versión" y "Recordar más tarde". 100% integrado con los tokens de diseño de Theme Studio y tipografía.
+   - Pestaña de "Actualizaciones" en `WorkflowSettingsWindow.axaml` y `WorkflowSettingsViewModel.cs` para configuración de canal y búsqueda manual.
+   - Botón e indicador reactivo en `ControlBarView.axaml` (`ControlBarViewModel.cs`) que aparece automáticamente cuando hay una versión pendiente.
+   - Comprobación en segundo plano no bloqueante al inicio de la aplicación en `App.axaml.cs`.
+5. **Localización e Internacionalización**:
+   - Cadenas completas bilingües (ES/EN) agregadas a `Strings.resx` y `Strings.es.resx`.
+
+### 🧪 Validación
+- **Suite de Pruebas Unitarias (`AppUpdateServiceTests.cs`)**: 14 tests específicos (SemVer, resolución de assets con fallback, validación SHA-256, filtrado de canales).
+- **Suite Completa de Pruebas (`dotnet test`)**: **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+- Conformidad al 100% con `UiStyleLintTests` y `UiIconographyTests`.
+
+---
+
+## [2026-09-19] - Subflujos Reutilizables y Jerárquicos con Sockets Dinámicos (Subflows Engine) (Hito 144)
+
+### 🎯 Diagnóstico y Requerimientos
+- **Requerimiento**:
+  - Permitir empaquetar cualquier flujo DAG completo como un subflujo reutilizable dentro de otro flujo mayor, encapsulado en un único nodo (`SubflowNode`) con sincronización dinámica de sockets (`SubflowInputNode` / `SubflowOutputNode`), soporte para definiciones incrustadas o referenciadas en disco (.flow/.subflow) y detección de recursión infinita.
+
+### 🎯 Solución Implementada
+1. **Contratos e Interfaces del SDK (`FileFlow.Sdk`)**:
+   - `ISubflowNode.cs`: Contrato para nodos capaces de ejecutar subgrafos encapsulados.
+   - `ISubflowExecutionService.cs` y `NullSubflowExecutionService.cs`: Contrato desacoplado para invocación de subflujos.
+2. **Nodos Especializados en `FileFlow.Plugin.Logic`**:
+   - `SubflowNode.cs`: Nodo de pipeline con soporte para incrustar definición JSON o enlazar archivo externo, acción de inspección y sincronización dinámica de puertos.
+   - `SubflowInputNode.cs`: Nodo de entrada que declara los puertos de entrada accesibles desde el flujo padre.
+   - `SubflowOutputNode.cs`: Nodo de salida que captura elementos procesados y los devuelve al flujo padre.
+3. **Motor de Ejecución Core (`WorkflowSubflowExecutionService.cs` y `WorkflowExecutor.cs`)**:
+   - Aislamiento de ejecución y paso de elementos `FileItemContext` con callback sink.
+   - Detección de recursión circular mediante pila rastreada en metadatos (`__SubflowCallStack__`).
+4. **Integración en la UI (`EditorViewModel.cs`, `NodeCardView.axaml`)**:
+   - Soporte para abrir e inspeccionar subgrafos visualmente mediante pestañas o navegación jerárquica.
+
+### 🧪 Validación
+- **Suite de Pruebas Unitarias (`SubflowExecutionTests.cs`, `SubflowEditorTests.cs`)**: Pruebas de descubrimiento de puertos, propagación de datos, ejecución completa y detección de recursión infinita.
+- **Suite Completa de Pruebas (`dotnet test`)**: **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+
+---
+
 ## [2026-09-19] - Calibración de Tolerancia de Regresión Visual para Entornos CI Headless (Hito 143)
 
 ### 🎯 Diagnóstico y Causa Raíz
@@ -2249,7 +2306,36 @@ Creación de la **capa de componentes del sistema de diseño** (Fase 2 de [`docs
 
 ---
 
+## [2026-09-19] - Hito 129: Sistema de Subflujos y Subgrafos Reutilizables (Modular Subflow Nodes & DAG Hierarchy)
+
+### 🎯 Objetivos y Alcance
+1. **Contratos e Interfaces Desacopladas en SDK (`FileFlow.Sdk`)**:
+   - Declaradas interfaces [`ISubflowNode`](file:///FileFlow.Sdk/ISubflowNode.cs) e [`ISubflowBoundaryNode`](file:///FileFlow.Sdk/ISubflowNode.cs) y la constante `SubflowSinkKey = "__SubflowOutputSink__"`.
+   - Creado el servicio [`ISubflowExecutionService`](file:///FileFlow.Sdk/Services/ISubflowExecutionService.cs) con implementación predeterminada [`NullSubflowExecutionService`](file:///FileFlow.Sdk/Services/NullSubflowExecutionService.cs) para mantener el desacoplamiento estricto entre plugins y el motor Core.
+2. **Nodos de Entrada, Salida y Subflujo Modular en Plugin Logic (`FileFlow.Plugin.Logic`)**:
+   - [`SubflowInputNode.cs`](file:///FileFlow.Plugin.Logic/SubflowInputNode.cs): Nodo frontera de entrada con puertos configurables (`PortNames`, ej. `In` o `In;Alternate`) que inyecta los elementos recibidos desde el exterior hacia el subgrafo interno.
+   - [`SubflowOutputNode.cs`](file:///FileFlow.Plugin.Logic/SubflowOutputNode.cs): Nodo frontera de salida con puertos configurables (`PortNames`, ej. `Out` o `Out;Errors`) que intercepta los elementos y los emite hacia el contexto del flujo padre a través del callback `SubflowSinkKey`.
+   - [`SubflowNode.cs`](file:///FileFlow.Plugin.Logic/SubflowNode.cs): Nodo compuesto contenedor que implementa `ISubflowNode` con puertos dinámicos (`Inputs` y `Outputs`), parámetros de subflujo (`SubflowPath`, `EmbedDefinition`, `SubflowDefinitionJson`, `SubflowName`) y acción personalizada `OpenSubflowEditor`.
+   - Localización multilingüe (ES/EN) co-ubicada de forma autónoma en [`Strings.resx`](file:///FileFlow.Plugin.Logic/Resources/Strings.resx) y [`Strings.es.resx`](file:///FileFlow.Plugin.Logic/Resources/Strings.es.resx).
+3. **Motor Core de Orquestación y Descubrimiento Jerárquico (`FileFlow.Core`)**:
+   - [`WorkflowSubflowExecutionService.cs`](file:///FileFlow.Core/Engine/WorkflowSubflowExecutionService.cs): Orquestación del ciclo de vida del subgrafo, detección de recursión cíclica infinita mediante la pila de llamadas `__SubflowCallStack__` en los metadatos de los ítems, resolución polimórfica (archivo en disco o JSON embebido) y auto-descubrimiento de puertos dinámicos analizando los nodos frontera del subgrafo.
+   - [`WorkflowExecutor.cs`](file:///FileFlow.Core/Engine/WorkflowExecutor.cs): Actualizado `ExecuteAsync` para aceptar `initialItem` y `entryInputPortName`, registrando el servicio `WorkflowSubflowExecutionService` en tiempo de ejecución.
+4. **Experiencia Visual e Interactiva en el Editor (`FileFlow.App`)**:
+   - [`NodeViewModel.cs`](file:///FileFlow.App/ViewModels/NodeViewModel.cs) y [`NodeParameterManager.cs`](file:///FileFlow.App/ViewModels/NodeParameterManager.cs): Sincronización reactiva bidireccional de puertos (`SyncSubflowPorts`) ante cambios en `SubflowPath`, `SubflowDefinitionJson` o puertos de frontera.
+   - [`EditorViewModel.cs`](file:///FileFlow.App/ViewModels/EditorViewModel.cs):
+     - Navegación jerárquica con migas de pan (*Breadcrumbs*) con soporte para profundizar en subflujos anidados (`OpenSubflow`, `NavigateToBreadcrumb`).
+     - Comando *"Colapsar a Subflujo"* (`CollapseSelectionToSubflow`) con cálculo automático de puertos frontera (entradas y salidas conectadas externamente) y registro transaccional en `IUndoRedoService` para deshacer/rehacer instantáneo.
+   - [`EditorView.axaml`](file:///FileFlow.App/Views/EditorView.axaml): Barra visual de migas de pan en la cabecera del lienzo y opción *"Colapsar selección a Subflujo"* en el menú contextual del lienzo.
+   - [`NodeCardView.axaml`](file:///FileFlow.App/Views/Components/NodeCardView.axaml): Doble clic en nodos de subflujo para ingresar al subgrafo y opción contextual *"Abrir Subflujo"*.
+5. **Pruebas y Validación**:
+   - Creados [`SubflowExecutionTests.cs`](file:///FileFlow.Tests/Unit/SubflowExecutionTests.cs) (procesamiento y emisión, detección de recursión infinita, descubrimiento de puertos) y [`SubflowEditorTests.cs`](file:///FileFlow.Tests/Unit/SubflowEditorTests.cs) (navegación Breadcrumbs, colapso de nodos a subflujo con Undo/Redo).
+   - Suite completa de pruebas unitarias e integración: **1,050 superadas, 0 fallos, 1 omitida** (1,051 tests totales).
+   - Compilación limpia: 0 advertencias, 0 errores.
+
+---
+
 ## 📜 Historial de Versiones Anteriores (Archivado)
 
 Las fases históricas previas (Fases 1 a 8, Sprints de Agosto 2026 y desarrollos fundacionales anteriores) han sido consolidadas y archivadas para optimización de contexto en:
 - 📄 [**`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`**](file:///docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md)
+

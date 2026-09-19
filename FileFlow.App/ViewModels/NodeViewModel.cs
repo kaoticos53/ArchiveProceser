@@ -457,6 +457,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     public bool IsSwitchCaseNode => NodeTypeName.Contains("SwitchCaseNode", StringComparison.OrdinalIgnoreCase);
     public bool IsAdvancedRenamerNode => NodeTypeName.Contains("AdvancedRenamerNode", StringComparison.OrdinalIgnoreCase);
     public bool IsFolderSourceNode => NodeTypeName.Contains("FolderSourceNode", StringComparison.OrdinalIgnoreCase);
+    public bool IsSubflowNode => _nodeInstance is ISubflowNode || NodeTypeName.Contains("SubflowNode", StringComparison.OrdinalIgnoreCase);
 
     public void ExecuteCustomAction(string actionId)
     {
@@ -475,6 +476,54 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             case "addswitchcase":
                 AddSwitchCase();
                 break;
+            case "opensubfloweditor":
+                ParentEditor?.OpenSubflow(this);
+                break;
+        }
+    }
+
+    public void SyncSubflowPorts()
+    {
+        if (_nodeInstance is ISubflowNode subflowNode)
+        {
+            var (inputs, outputs) = FileFlow.Sdk.Services.ISubflowExecutionService.Instance.DiscoverSubflowPorts(subflowNode);
+            subflowNode.RefreshDynamicPorts(inputs, outputs);
+
+            var existingInNames = InputPorts.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newInNames = inputs.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = InputPorts.Count - 1; i >= 0; i--)
+            {
+                if (!newInNames.Contains(InputPorts[i].Name))
+                {
+                    InputPorts.RemoveAt(i);
+                }
+            }
+            foreach (var inName in inputs)
+            {
+                if (!existingInNames.Contains(inName))
+                {
+                    InputPorts.Add(new PortViewModel(this, inName, inName, PortDirection.Input, typeof(FileItemContext)));
+                }
+            }
+
+            var existingOutNames = OutputPorts.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newOutNames = outputs.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = OutputPorts.Count - 1; i >= 0; i--)
+            {
+                if (!newOutNames.Contains(OutputPorts[i].Name))
+                {
+                    OutputPorts.RemoveAt(i);
+                }
+            }
+            foreach (var outName in outputs)
+            {
+                if (!existingOutNames.Contains(outName))
+                {
+                    OutputPorts.Add(new PortViewModel(this, outName, outName, PortDirection.Output, typeof(FileItemContext)));
+                }
+            }
         }
     }
 

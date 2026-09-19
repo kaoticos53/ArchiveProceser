@@ -29,6 +29,21 @@
                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <TextBlock Text="FileFlow Studio" Classes="subtitle" VerticalAlignment="Center" />
+
+                <!-- Update Available Badge Button -->
+                <Button Command="{Binding OpenUpdateDialogCommand}"
+                        IsVisible="{Binding HasPendingUpdate}"
+                        Classes="toolbar"
+                        Margin="12,0,0,0"
+                        BorderBrush="{DynamicResource AccentSuccessBrush}"
+                        BorderThickness="1"
+                        Padding="8,3"
+                        CornerRadius="{DynamicResource RadiusSm}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="RocketLaunch" Width="13" Height="13" Foreground="{DynamicResource AccentSuccessBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding PendingUpdateVersionTag}" Classes="caption semiBold" Foreground="{DynamicResource AccentSuccessBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
 
             <!-- Workflow Execution Controls (Divided into 3 Semantic Islands) -->

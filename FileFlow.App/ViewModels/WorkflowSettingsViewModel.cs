@@ -107,6 +107,28 @@ public partial class WorkflowSettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isAutoDetecting;
 
+    // Tab: Updates
+    [ObservableProperty]
+    private bool _autoCheckForUpdates = true;
+
+    [ObservableProperty]
+    private string _selectedUpdateChannel = "Stable";
+
+    [ObservableProperty]
+    private string _currentVersionDisplay = string.Empty;
+
+    [ObservableProperty]
+    private string _packagingFormatDisplay = string.Empty;
+
+    [ObservableProperty]
+    private string _lastUpdateCheckDisplay = string.Empty;
+
+    [ObservableProperty]
+    private bool _isCheckingForUpdates;
+
+    [ObservableProperty]
+    private string _checkUpdatesStatusMessage = string.Empty;
+
     public WorkflowSettingsViewModel(
         IUserPreferencesService preferencesService,
         IExternalToolsService toolsService,
@@ -164,6 +186,24 @@ public partial class WorkflowSettingsViewModel : ObservableObject
         FfprobePath = tools.FfprobePath;
         SevenZipPath = tools.SevenZipPath;
         PythonPath = tools.PythonPath;
+
+        // Tab 5: Updates
+        AutoCheckForUpdates = prefs.AutoCheckForUpdates;
+        SelectedUpdateChannel = !string.IsNullOrWhiteSpace(prefs.UpdateChannel) ? prefs.UpdateChannel : "Stable";
+        CurrentVersionDisplay = AppUpdateService.Instance.CurrentVersion.ToString();
+        PackagingFormatDisplay = AppUpdateService.Instance.CurrentPackagingFormat switch
+        {
+            AppPackagingFormat.WindowsInstalled => "Windows Setup (.exe)",
+            AppPackagingFormat.WindowsPortable => "Windows Portable (.zip)",
+            AppPackagingFormat.LinuxAppImage => "Linux AppImage (.AppImage)",
+            AppPackagingFormat.LinuxFlatpak => "Linux Flatpak (.flatpak)",
+            AppPackagingFormat.LinuxDebPackage => "Debian / Ubuntu (.deb)",
+            AppPackagingFormat.LinuxGenericTarball => "Linux Portable (.tar.gz)",
+            _ => "Portable / Universal"
+        };
+        LastUpdateCheckDisplay = prefs.LastUpdateCheckUtc.HasValue
+            ? prefs.LastUpdateCheckUtc.Value.ToLocalTime().ToString("g")
+            : _loc.GetString("Settings_LastUpdateNever", "Nunca comprobado");
     }
 
     public void ReloadThemes(string selectedThemeId)
@@ -339,6 +379,9 @@ public partial class WorkflowSettingsViewModel : ObservableObject
             prefs.AutoUnloadAiModelsOnCompletion = AutoUnloadAiModelsOnCompletion;
             prefs.AutoCleanIntermediateTempFiles = AutoCleanIntermediateTempFiles;
             prefs.CleanStaleTempOnStartup = CleanStaleTempOnStartup;
+
+            prefs.AutoCheckForUpdates = AutoCheckForUpdates;
+            prefs.UpdateChannel = SelectedUpdateChannel;
         });
 
         if (!string.IsNullOrWhiteSpace(SelectedLanguage))
@@ -358,6 +401,58 @@ public partial class WorkflowSettingsViewModel : ObservableObject
         _themeService.SetThemeById(SelectedThemeId);
 
         RequestClose?.Invoke(true);
+    }
+
+    [RelayCommand]
+    public async Task CheckForUpdatesNowAsync()
+    {
+        if (IsCheckingForUpdates) return;
+
+        IsCheckingForUpdates = true;
+        CheckUpdatesStatusMessage = _loc.GetString("Update_StatusChecking", "Buscando actualizaciones en GitHub...");
+
+        try
+        {
+            var channel = string.Equals(SelectedUpdateChannel, "Beta", StringComparison.OrdinalIgnoreCase)
+                ? UpdateChannel.Beta
+                : UpdateChannel.Stable;
+
+            var result = await AppUpdateService.Instance.CheckForUpdatesAsync(channel, force: true, CancellationToken.None);
+
+            LastUpdateCheckDisplay = DateTime.Now.ToString("g");
+
+            if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+            {
+                CheckUpdatesStatusMessage = string.Format(_loc.GetString("Update_StatusError", "Error: {0}"), result.ErrorMessage);
+                _dialogService.ShowError(result.ErrorMessage, _loc.GetString("Settings_UpdatesTitle", "Actualizaciones"));
+            }
+            else if (result.UpdateAvailable && result.UpdateInfo != null)
+            {
+                CheckUpdatesStatusMessage = string.Format(_loc.GetString("Update_AvailableBadge", "⚡ Actualización {0} disponible"), result.UpdateInfo.VersionTag);
+
+                // Abrir diálogo modal de actualización
+                var updateVm = new UpdateDialogViewModel(result.UpdateInfo);
+                var updateWindow = new Views.Components.UpdateDialogWindow(updateVm);
+                if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    await updateWindow.ShowDialog(desktop.MainWindow ?? updateWindow);
+                }
+            }
+            else
+            {
+                CheckUpdatesStatusMessage = _loc.GetString("Update_StatusUpToDate", "🟢 FileFlow Studio está actualizado a la versión más reciente.");
+                _dialogService.ShowInformation(CheckUpdatesStatusMessage, _loc.GetString("Settings_UpdatesTitle", "Actualizaciones"));
+            }
+        }
+        catch (Exception ex)
+        {
+            CheckUpdatesStatusMessage = ex.Message;
+            _dialogService.ShowError(ex.Message, _loc.GetString("Settings_UpdatesTitle", "Actualizaciones"));
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
     }
 
     [RelayCommand]

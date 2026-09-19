@@ -110,6 +110,37 @@ public partial class App : Application
                 mainWindow.Show();
 
                 _ = splash.CloseWithFadeAsync();
+
+                // Comprobación de actualizaciones en segundo plano no bloqueante
+                if (prefsService.Preferences.AutoCheckForUpdates)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(3000); // Esperar a que la UI esté completamente renderizada
+                            var channel = string.Equals(prefsService.Preferences.UpdateChannel, "Beta", StringComparison.OrdinalIgnoreCase)
+                                ? FileFlow.Sdk.Services.UpdateChannel.Beta
+                                : FileFlow.Sdk.Services.UpdateChannel.Stable;
+
+                            var checkResult = await AppUpdateService.Instance.CheckForUpdatesAsync(channel, force: false, CancellationToken.None);
+                            if (checkResult.UpdateAvailable && checkResult.UpdateInfo != null)
+                            {
+                                if (!string.Equals(prefsService.Preferences.IgnoredUpdateVersion, checkResult.UpdateInfo.VersionTag, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                                    {
+                                        mainVm.ControlBar.SetPendingUpdate(checkResult.UpdateInfo);
+                                    });
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Comprobación en segundo plano tolerante a fallos
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {
