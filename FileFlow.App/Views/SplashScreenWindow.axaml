@@ -7,10 +7,10 @@
         Height="350"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
-        Topmost="True"
-        CanResize="False"
+        TransparencyLevelHint="Transparent"
         WindowDecorations="None"
-        ExtendClientAreaToDecorationsHint="True">
+        Topmost="True"
+        CanResize="False">
 
     <Grid Margin="16">
         <Border CornerRadius="{DynamicResource RadiusXxl}"

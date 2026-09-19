@@ -45,7 +45,10 @@ public partial class App : Application
             {
                 splash = new SplashScreenWindow();
                 splash.Show();
+                await Task.Delay(60);
+
                 splash.UpdateStatus("Iniciando localización y servicios...", 15);
+                await Task.Delay(30);
 
                 var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
                 LocalizationManager.Instance.RegisterResourceManager(resourceManager);
@@ -55,6 +58,8 @@ public partial class App : Application
                 Services = serviceCollection.BuildServiceProvider();
 
                 splash.UpdateStatus("Cargando preferencias y tema...", 35);
+                await Task.Delay(30);
+
                 var prefsService = Services.GetRequiredService<IUserPreferencesService>();
                 prefsService.Load();
                 string savedLang = prefsService.Preferences.Language;
@@ -69,6 +74,8 @@ public partial class App : Application
                 }
 
                 splash.UpdateStatus("Descubriendo módulos y plugins...", 60);
+                await Task.Delay(30);
+
                 var pluginLoader = Services.GetRequiredService<FileFlow.Core.Plugins.PluginLoader>();
                 splash.SetNodeCount(pluginLoader.DiscoveredNodeTypes.Count);
 
@@ -88,6 +95,8 @@ public partial class App : Application
                 }
 
                 splash.UpdateStatus("Inicializando lienzo DAG...", 85);
+                await Task.Delay(40);
+
                 var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
                 var mainWindow = new MainWindow
                 {
@@ -95,6 +104,8 @@ public partial class App : Application
                 };
 
                 splash.UpdateStatus("¡Listo!", 100);
+                await Task.Delay(80);
+
                 desktop.MainWindow = mainWindow;
                 mainWindow.Show();
 

@@ -16,28 +16,23 @@ public partial class SplashScreenWindow : Window
 
     public void UpdateStatus(string message, double progress)
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            TxtStatus.Text = message;
-            PbProgress.Value = Math.Clamp(progress, 0, 100);
-            TxtPercentage.Text = $"{(int)PbProgress.Value}%";
-        });
+        TxtStatus.Text = message;
+        PbProgress.Value = Math.Clamp(progress, 0, 100);
+        TxtPercentage.Text = $"{(int)PbProgress.Value}%";
     }
 
     public void SetNodeCount(int count)
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            TxtNodesBadge.Text = $"🧩 {count} Nodos DAG";
-        });
+        TxtNodesBadge.Text = $"🧩 {count} Nodos DAG";
     }
 
     public async Task CloseWithFadeAsync()
     {
-        await Dispatcher.UIThread.InvokeAsync(async () =>
+        for (double opacity = 1.0; opacity > 0.05; opacity -= 0.15)
         {
-            await Task.Delay(150);
-            Close();
-        });
+            Opacity = opacity;
+            await Task.Delay(16);
+        }
+        Close();
     }
 }

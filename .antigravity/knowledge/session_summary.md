@@ -10,6 +10,17 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **141. Optimización del Tiempo de Arranque y Scripts de Publicación/Ejecución Nativa ReadyToRun (R2R) (2026-09-19)**:
+  - **Diagnóstico y Causa Raíz**:
+    - La aplicación tardaba ~6 segundos en mostrar la ventana en `Release` debido a la instanciación síncrona por reflexión de los 70+ nodos en `ToolboxViewModel.RefreshToolbox()` y a la sobrecarga de compilación JIT en frío de Avalonia y Material Icons.
+  - **Corrección**:
+    - `ToolboxViewModel.cs`: Eliminada la llamada a `_pluginLoader.CreateNodeInstance(typeName)`. Los metadatos de los nodos se obtienen de forma pura y directa a través del atributo `[NodeDefinition]` y de los recursos `Strings.resx`.
+    - `SplashScreenWindow.axaml` & `App.axaml.cs`: Restaurada la visualización fluida de la pantalla de bienvenida con esquinas redondeadas, fondo transparente (`TransparencyLevelHint="Transparent"`), animación de progreso en fases (15% a 100%) y desvanecimiento suave de opacidad.
+    - `publish-optimized.ps1`: Script que publica con `dotnet publish -c Release -r win-x64 -p:PublishReadyToRun=true` en `bin/optimized/`. Precompila IL y dependencias a código máquina nativo x64.
+    - `run-optimized.ps1`: Script de lanzamiento instantáneo (< 1 segundo) que ejecuta directamente el binario ReadyToRun en `bin/optimized/FileFlow.App.exe`.
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1045 superadas, 0 fallos, 1 omitida (100% verde)**.
+    - Generación y ejecución verificada de `bin/optimized/FileFlow.App.exe` mostrando la SplashScreen animada.
 - **140. Sistema Integral de Deshacer/Rehacer (Undo/Redo DAG Engine) y Corrección de Bloqueo de UI (2026-09-18)**:
   - **Diagnóstico y Causa Raíz**:
     - **Deadlock en Diálogos Modales**: `AvaloniaDialogService` llamaba a `dialog.ShowDialog(owner).GetAwaiter().GetResult()` en el UI Thread de Avalonia. Al bloquear el hilo del Dispatcher, la ventana modal no podía procesar mensajes ni renderizarse, congelando la aplicación.

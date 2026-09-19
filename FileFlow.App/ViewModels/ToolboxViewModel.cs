@@ -178,26 +178,22 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                 foreach (var type in uniqueTypes)
                 {
                     string typeName = type.FullName ?? type.Name;
-                    IFlowNode? sampleInstance = null;
-                    try
-                    {
-                        sampleInstance = _pluginLoader.CreateNodeInstance(typeName);
-                    }
-                    catch { }
-
                     var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
-                    string name = _loc.GetString(type.Name + "_Name", sampleInstance?.Name ?? defAttr?.Name ?? type.Name);
-                    if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Name))
+
+                    string rawName = defAttr?.Name ?? type.Name;
+                    string name = _loc.GetString(type.Name + "_Name", rawName);
+                    if (name.EndsWith("_Name", StringComparison.OrdinalIgnoreCase))
                     {
-                        name = sampleInstance.Name;
+                        name = rawName;
                     }
 
-                    string category = sampleInstance?.Category ?? defAttr?.Category ?? "General";
+                    string category = defAttr?.Category ?? "General";
 
-                    string description = _loc.GetString(type.Name + "_Desc", sampleInstance?.Description ?? defAttr?.Description ?? string.Empty);
-                    if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase) && sampleInstance != null && !string.IsNullOrWhiteSpace(sampleInstance.Description))
+                    string rawDesc = defAttr?.Description ?? string.Empty;
+                    string description = _loc.GetString(type.Name + "_Desc", rawDesc);
+                    if (description.EndsWith("_Desc", StringComparison.OrdinalIgnoreCase))
                     {
-                        description = sampleInstance.Description;
+                        description = rawDesc;
                     }
 
                     bool isFavorite = prefs.IsFavorite(typeName) || prefs.IsFavorite(type.Name);

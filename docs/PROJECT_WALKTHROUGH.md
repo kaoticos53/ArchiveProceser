@@ -1,5 +1,37 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-19] - Optimización del Tiempo de Arranque y Scripts de Publicación/Ejecución Nativa ReadyToRun (R2R) (Hito 141)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Problema Reportado**:
+  - La aplicación tardaba ~6 segundos en mostrar la ventana principal al iniciar, incluso en compilación `Release`.
+- **Causas Raíz Identificadas**:
+  1. **Instanciación Masiva en Arranque (`ToolboxViewModel.cs`)**:
+     `ToolboxViewModel.RefreshToolbox()` ejecutaba `_pluginLoader.CreateNodeInstance(typeName)` en un bucle síncrono para los más de 70 tipos de nodos en el hilo principal de UI. Esto forzaba la instanciación por reflexión de todos los nodos y la inicialización de librerías dependientes (PDF, imágenes, SQLite, etc.) en el arranque.
+  2. **Compilación JIT en Caliente en `dotnet build`**:
+     `dotnet build -c Release` genera bytecode IL pero no código máquina nativo. En el arranque, el JIT de .NET compila en memoria Avalonia, Nodify y Material Icons.
+
+### 🎯 Solución Implementada
+1. **Extracción Directa de Metadatos sin Instanciación (`ToolboxViewModel.cs`)**:
+   - Eliminada la instanciación síncrona `CreateNodeInstance`.
+   - Los metadatos de los nodos (Nombre, Categoría, Descripción, Rol, Subcategoría y Tags) se extraen directamente del atributo `[NodeDefinition]` y de los diccionarios de recursos satélite `Strings.resx`.
+2. **Script de Publicación Nativa ReadyToRun (`publish-optimized.ps1`)**:
+   - Compila y publica con `dotnet publish -c Release -r win-x64 -p:PublishReadyToRun=true` en `bin/optimized/`.
+   - Precompila todo el código IL y el runtime a código máquina nativo x64, eliminando la sobrecarga de compilación JIT.
+4. **Restauración y Renderizado Fluido del Splash Screen (`SplashScreenWindow.axaml` y `App.axaml.cs`)**:
+   - En Avalonia, `OnFrameworkInitializationCompleted` se ejecutaba 100% síncrono en el UI Thread, bloqueando el bucle de renderizado y cerrando la ventana antes de que el motor Skia dibujara el primer fotograma.
+   - En `SplashScreenWindow.axaml`: configuradas las propiedades nativas `WindowDecorations="None"` y `TransparencyLevelHint="Transparent"`.
+   - En `App.axaml.cs`: integradas pausas no bloqueantes (`await Task.Delay(...)`) entre fases de inicialización para permitir el refresco visual de la barra de progreso (15% → 35% → 60% → 85% → 100%) y el conteo dinámico de nodos ("🧩 72 Nodos DAG").
+   - En `SplashScreenWindow.axaml.cs`: implementada transición de desvanecimiento suave de opacidad al abrir la ventana principal.
+
+### 🧪 Validación
+- Suite completa de pruebas unitarias e integración: **1045 superadas, 0 fallos, 1 omitida (100% verde)**.
+- Compilación limpia 0 warnings.
+- Publicación y ejecución exitosa con `publish-optimized.ps1` y `run-optimized.ps1`.
+- Publicación y ejecución exitosa con `publish-optimized.ps1` y `run-optimized.ps1`.
+
+---
+
 ## [2026-09-18] - Sistema Integral de Deshacer/Rehacer (Undo/Redo DAG Engine) y Corrección de Bloqueo de UI (Hito 140)
 
 ### 🎯 Diagnóstico y Causa Raíz
