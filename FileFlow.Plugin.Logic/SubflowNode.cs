@@ -126,7 +126,13 @@ public sealed class SubflowNode : IFlowNode, ISubflowNode
     {
         context.Log($"[SubflowNode] Ejecutando subflujo '{SubflowName}' para el elemento '{item.FileName}' en puerto de entrada '{inputPortName}'", LogLevel.Information, item);
 
-        await ISubflowExecutionService.Instance.ExecuteSubflowAsync(
+        ISubflowExecutionService service = ISubflowExecutionService.Instance;
+        if (item.Metadata.TryGetValue("__SubflowExecutionService__", out var svcObj) && svcObj is ISubflowExecutionService itemService)
+        {
+            service = itemService;
+        }
+
+        await service.ExecuteSubflowAsync(
             this,
             inputPortName,
             item,

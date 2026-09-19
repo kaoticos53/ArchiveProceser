@@ -108,10 +108,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
+      - name: ⚙️ Configurar .NET 10.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: 📦 Restaurar dependencias
         run: dotnet restore FileFlow.slnx
@@ -153,10 +153,10 @@ jobs:
           retention-days: 7
 
   # -------------------------------------------------------------------------
-  # 3. Job de Compilación y Empaquetado para Linux (AppImage, Tar.gz, .deb)
+  # 3. Job de Compilación y Empaquetado para Linux (AppImage y Flatpak)
   # -------------------------------------------------------------------------
   build-linux:
-    name: 🐧 Empaquetar para Linux (AppImage, Tar.gz, .deb)
+    name: 🐧 Empaquetar para Linux (AppImage, Flatpak)
     needs: resolve-version
     runs-on: ubuntu-latest
     steps:
@@ -165,36 +165,66 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
+      - name: ⚙️ Configurar .NET 10.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: 🛠️ Instalar herramientas de empaquetado de Linux
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 file curl wget tar dpkg flatpak flatpak-builder
+          sudo apt-get install -y libfuse2 file curl wget tar flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 org.freedesktop.Sdk.Extension.dotnet9//24.08
 
-      - name: 🏗️ Compilar motor, plugins y generar instaladores de Linux
-        shell: pwsh
+      - name: 🚀 Compilar y empaquetar Ejecutable AppImage (.AppImage)
+        shell: bash
         run: |
-          $ver = "${{ needs.resolve-version.outputs.clean_version }}"
-          Write-Host "Generando paquetes e instaladores de Linux para versión $ver..."
-          .\installer\build-linux-installer.ps1 -Version "$ver" -Configuration "Release"
+          VER="${{ needs.resolve-version.outputs.clean_version }}"
+          mkdir -p installer/output /tmp/fileflow-payload /tmp/FileFlow.AppDir
+          
+          # Publicar la aplicación FileFlow.App para linux-x64
+          dotnet publish FileFlow.App/FileFlow.App.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -o /tmp/fileflow-payload
+          
+          APPDIR="/tmp/FileFlow.AppDir"
+          rm -rf "${APPDIR}"
+          mkdir -p "${APPDIR}/usr/bin" "${APPDIR}/usr/lib/fileflow" "${APPDIR}/usr/share/applications" "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
+          
+          cp -r /tmp/fileflow-payload/* "${APPDIR}/usr/lib/fileflow/"
+          ln -sf /usr/lib/fileflow/FileFlow.App "${APPDIR}/usr/bin/FileFlow.App"
+          ln -sf /usr/lib/fileflow/FileFlow.App "${APPDIR}/usr/bin/fileflow"
+          chmod +x "${APPDIR}/usr/lib/fileflow/FileFlow.App"
+          
+          cp installer/linux/AppRun "${APPDIR}/AppRun"
+          chmod +x "${APPDIR}/AppRun"
+          cp installer/linux/fileflow.desktop "${APPDIR}/fileflow.desktop"
+          cp installer/linux/fileflow.desktop "${APPDIR}/usr/share/applications/fileflow.desktop"
+          cp assets/FileFlow.png "${APPDIR}/fileflow.png"
+          cp assets/FileFlow.png "${APPDIR}/.DirIcon"
+          cp assets/FileFlow.png "${APPDIR}/usr/share/icons/hicolor/256x256/apps/fileflow.png"
+          
+          # Generar AppImage autónomo
+          bash installer/linux/build-appimage.sh "${APPDIR}" "installer/output/FileFlow-v${VER}-x86_64.AppImage"
 
       - name: 📦 Compilar y empaquetar Bundle Flatpak (.flatpak)
         shell: bash
         run: |
           VER="${{ needs.resolve-version.outputs.clean_version }}"
-          bash installer/linux/flatpak/build-flatpak.sh "$VER" "installer/output/FileFlow-v${VER}-x86_64.flatpak" || echo "Flatpak build step completed with fallback"
+          bash installer/linux/flatpak/build-flatpak.sh "$VER" "installer/output/FileFlow-v${VER}-x86_64.flatpak"
 
-      - name: 📤 Subir artefactos de Linux
+      - name: 📤 Subir artefactos de Linux (AppImage y Flatpak)
         uses: actions/upload-artifact@v4
         with:
           name: linux-packages
-          path: installer/output/*
+          path: |
+            installer/output/*.AppImage
+            installer/output/*.flatpak
           if-no-files-found: error
           retention-days: 7
 
@@ -229,7 +259,7 @@ jobs:
           
           # Filtrar todos los binarios, paquetes y documentos relevantes
           $files = Get-ChildItem -Path $assetsDir -File | Where-Object { 
-            $_.Extension -in @(".exe", ".zip", ".AppImage", ".deb", ".flatpak", ".pdf") -or $_.Name.EndsWith(".tar.gz") 
+            $_.Extension -in @(".exe", ".zip", ".AppImage", ".flatpak", ".pdf")
           }
 
           $checksums = foreach ($file in $files) {
@@ -273,12 +303,7 @@ jobs:
             - 📦 **Paquete Flatpak Universal (.flatpak):** `FileFlow-v${{ needs.resolve-version.outputs.clean_version }}-x86_64.flatpak`
               - *Bundle sandbox autónomo instalable con `flatpak install FileFlow...flatpak`.*
             - 🚀 **Ejecutable Único / Standalone AppImage:** `FileFlow-v${{ needs.resolve-version.outputs.clean_version }}-x86_64.AppImage`
-              - *Formato de un solo archivo ejecutable compatible con Ubuntu, Debian, Fedora, Arch, etc. (`chmod +x && ./FileFlow...AppImage`).*
-            - 📦 **Paquete Debian / Ubuntu (.deb):** `fileflow_${{ needs.resolve-version.outputs.clean_version }}_amd64.deb`
-              - *Instalación nativa con resolución de dependencias (`sudo dpkg -i fileflow...deb`).*
-            - 🗜️ **Bundle Universal Linux (.tar.gz):** `fileflow-linux-x64-v${{ needs.resolve-version.outputs.clean_version }}.tar.gz`
-              - *Incluye scripts `install.sh` (soporta `/opt/fileflow` o modo usuario `--user`) y `uninstall.sh`.*
-            - 📁 **Estructura AppDir (.tar.gz):** `fileflow-linux-x64-v${{ needs.resolve-version.outputs.clean_version }}.AppDir.tar.gz`
+              - *Formato de un solo archivo ejecutable compatible con todas las distribuciones Linux (`chmod +x && ./FileFlow...AppImage`).*
 
             #### 📚 Documentación y Manuales Oficiales (PDF)
             - 📖 `FileFlowStudio-Manual-de-Usuario.pdf` (Referencia técnica completa y catálogo de nodos)
@@ -296,8 +321,8 @@ jobs:
             ### 🌟 Características Destacadas de esta Versión
             - 🎨 **Lienzo DAG Interactivo:** Diseño de flujos mediante nodos visuales con validación topológica y prevención de ciclos en tiempo real.
             - 🤖 **Inferencia Local de IA:** Nodos integrados con modelos ONNX para clasificación de imágenes, OCR de alta precisión y modelos multimodales Vision-LLM.
-            - ⚡ **Script Studio Integrado:** Motor dinámico dual C# (Roslyn JIT en memoria) y JavaScript (Jint Sandbox en .NET 9).
-            - 🌐 **Soporte Multiplataforma Nativo:** Binarios optimizados para Windows y Linux con empaquetado universal (Flatpak, AppImage, Deb, Tar.gz).
+            - ⚡ **Script Studio Integrado:** Motor dinámico dual C# (Roslyn JIT en memoria) y JavaScript (Jint Sandbox en .NET 10 LTS).
+            - 🌐 **Soporte Multiplataforma Nativo:** Binarios optimizados para Windows y Linux con empaquetado universal (Flatpak y AppImage).
             - 📋 **Reportes Visuales de Operaciones (`OperationReportNode`):** Generación de informes en **HTML Interactivo**, **Markdown**, **Árbol ASCII**, **JSON** y **CSV**.
             - ⚡ **Motor Asíncrono de Alto Rendimiento:** Procesamiento concurrente mediante `Channel<T>` con telemetría SQLite In-Memory (>82.000 logs/s).
             - 🛡️ **Inmutabilidad de Archivos de Origen y Simulación (*Dry Run*):** Procesamiento no destructivo por defecto y previsualización determinista.
@@ -305,8 +330,7 @@ jobs:
             release-assets/*.exe
             release-assets/*.zip
             release-assets/*.AppImage
-            release-assets/*.deb
             release-assets/*.flatpak
-            release-assets/*.tar.gz
             release-assets/*.pdf
             release-assets/checksums.txt
+

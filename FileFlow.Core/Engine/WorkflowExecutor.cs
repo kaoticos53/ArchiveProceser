@@ -199,6 +199,11 @@ public class WorkflowExecutor
 
         try
         {
+            if (ISubflowExecutionService.Instance is NullSubflowExecutionService)
+            {
+                ISubflowExecutionService.Instance = new WorkflowSubflowExecutionService(loader);
+            }
+
             var validator = new GraphValidator();
             var validation = validator.Validate(graph, loader);
 

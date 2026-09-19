@@ -10,6 +10,35 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **147. Migración Integral a .NET 10 LTS y C# 14 (Long Term Support Migration) (2026-09-19)**:
+  - **Diagnóstico y Requerimientos**:
+    - Portar toda la solución (`FileFlow.Sdk`, `FileFlow.Core`, `FileFlow.App`, los 11 plugins `FileFlow.Plugin.*` y `FileFlow.Tests`) al runtime **.NET 10 LTS (`net10.0`)** y compilador **C# 14 (`<LangVersion>14</LangVersion>`)**.
+    - Centralizar propiedades en `Directory.Build.props` y actualizar tareas MSBuild (`CopyPlugins`) para rutas multi-framework dinámicas `$(TargetFramework)`.
+    - Adaptar flujos de CI/CD en GitHub Actions (`.github/workflows/release.yml`) con `dotnet-version: '10.0.x'`.
+    - Garantizar que los empaquetadores y publicadores optimizados (`publish-optimized.ps1`) generen ejecutables ReadyToRun (R2R) x64 bajo el nuevo runtime.
+  - **Implementación**:
+    - `Directory.Build.props`: Centralizado `<TargetFramework>net10.0</TargetFramework>`, `<LangVersion>14</LangVersion>`, `<Nullable>enable</Nullable>`, `<ImplicitUsings>enable</ImplicitUsings>` y supresión de advertencias transitivas de auditoría NuGet.
+    - Actualizados todos los proyectos `.csproj` (`FileFlow.Sdk`, `FileFlow.Core`, `FileFlow.App`, `FileFlow.Tests` y los 11 plugins `FileFlow.Plugin.*`).
+    - `FileFlow.App.csproj`: Dinamizada la tarea `CopyPlugins` usando `bin\$(Configuration)\$(TargetFramework)\`.
+    - `.github/workflows/release.yml`: Configurado `setup-dotnet` con `dotnet-version: '10.0.x'` para jobs Windows y Linux.
+    - `publish-optimized.ps1`: Publicación y precompilación ReadyToRun nativa validada exitosamente sobre .NET 10.
+    - Documentación técnica actualizada (`AGENTS.md`, `GEMINI.md`, `.agents/rules/rules.md`, `repo_architecture.md`).
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+    - Publicación R2R: Compilación exitosa en 49s generando `FileFlow.App.exe` optimizado.
+
+- **146. Optimización de GitHub Actions Releases para Linux (Exclusividad AppImage y Flatpak) (2026-09-19)**:
+  - **Diagnóstico y Requerimientos**:
+    - Configurar el workflow de GitHub Actions (`release.yml`) para que en Linux genere y distribuya únicamente los paquetes **AppImage (`.AppImage`)** y **Flatpak (`.flatpak`)**, eliminando formatos innecesarios (.deb, .tar.gz).
+    - Corregir el drenaje de excepciones en `WorkflowTaskTracker` para garantizar que tareas completadas con fallos antes de entrar al bucle de espera sean capturadas sin omisiones.
+  - **Implementación**:
+    - `.github/workflows/release.yml`: Actualizados los jobs `build-linux` (compilación y empaquetado directo de AppImage y Flatpak) y `publish-release` (filtrado de hashes SHA-256 en `checksums.txt`, notas de release y artefactos `files:`).
+    - `installer/build-linux-installer.ps1` & `installer/linux/AppRun`: Soporte de ejecución nativa y fallback de ruta `/usr/lib/fileflow/FileFlow.App`.
+    - `WorkflowTaskTracker.cs`: Drenaje seguro con chequeo de `task.IsFaulted` antes de retirar tareas finalizadas.
+    - `SubflowNode.cs`: Resolución aislada de `ISubflowExecutionService` por elemento para prevenir colisiones en pruebas concurrentes.
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+
 - **145. Sistema de Autoactualizaciones In-App Nativo, Criptográfico y Multiplataforma (In-App Auto-Updater) (2026-09-19)**:
   - **Diagnóstico y Requerimientos**:
     - Dotar a la aplicación de un sistema nativo y seguro de autoactualizaciones directas desde GitHub Releases, capaz de detectar el formato de empaquetado del entorno (Windows Portable `.zip`, Setup `.exe`, Linux `.AppImage`, `.flatpak`, `.deb`, `.tar.gz`), verificar hashes SHA-256 (`checksums.txt`), mostrar notas de lanzamiento en un modal estilizado y ejecutar el reemplazo/reinicio de forma atómica y no destructiva.

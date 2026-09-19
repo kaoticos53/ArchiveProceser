@@ -1,7 +1,7 @@
 # Arquitectura y Mapa del Repositorio - FileFlow Studio
 
 ## 1. Visión General del Proyecto
-**FileFlow Studio** es un entorno de procesamiento y automatización de flujos de archivos por lotes (Batch Processing & Workflow Automation) de ultra-alta flexibilidad, modular y desacoplado, desarrollado en **C# 13**, **.NET 9** y **WPF / Avalonia UI (Nodify / MVVM)**.
+**FileFlow Studio** es un entorno de procesamiento y automatización de flujos de archivos por lotes (Batch Processing & Workflow Automation) de ultra-alta flexibilidad, modular y desacoplado, desarrollado en **C# 14**, **.NET 10 LTS** y **Avalonia UI 12 (Nodify / MVVM)**.
 
 ---
 
@@ -9,7 +9,7 @@
 
 ```
 ArchiveProceser/
-├── FileFlow.slnx                     # Solución XML de .NET 9
+├── FileFlow.slnx                     # Solución XML de .NET 10 LTS
 ├── LICENSE                           # Licencia GNU General Public License v3.0 (GNU GPLv3)
 ├── GEMINI.md                         # Directivas de contexto y persistencia
 ├── AGENTS.md                         # Protocolo de arranque y estándares de agentes
@@ -18,13 +18,13 @@ ArchiveProceser/
 │   └── knowledge/                    # Base de conocimiento viva
 │       ├── session_summary.md        # Resumen ejecutivo de la última sesión
 │       └── repo_architecture.md      # Este documento de arquitectura
-├── FileFlow.Sdk/                     # Capa de contratos puros (C# 13, cero dependencias de UI/IO pesadas)
+├── FileFlow.Sdk/                     # Capa de contratos puros (C# 14, cero dependencias de UI/IO pesadas)
 ├── FileFlow.Core/                    # Motor DAG asíncrono, canales, telemetría, temp workspace y carga de plugins
 ├── FileFlow.App/                     # Aplicación de escritorio UI (Nodify, MVVM, Theme Studio, Inspector)
 ├── FileFlow.Plugin.FileSystem/       # Ingesta de carpetas, renombrado avanzado (9 métodos), reubicación, papelera
-├── FileFlow.Plugin.Logic/            # Control de flujo (BatchBuffer, Throttle, ForkJoin, SwitchCase, Filter)
+├── FileFlow.Plugin.Logic/            # Control de flujo (Subflujos, BatchBuffer, Throttle, ForkJoin, SwitchCase, Filter)
 ├── FileFlow.Plugin.Hashing/          # Integridad criptográfica (SHA, MD5) y deduplicación en memoria
-├── FileFlow.Plugin.Archives/         # Descompresión universal (.NET 9, 7-Zip CLI, SharpCompress), Fan-Out, Fan-In
+├── FileFlow.Plugin.Archives/         # Descompresión universal (.NET 10, 7-Zip CLI, SharpCompress), Fan-Out, Fan-In
 ├── FileFlow.Plugin.Images/           # Optimización WebP/PNG/JPEG, redimensionamiento y metadatos EXIF (ImageSharp)
 ├── FileFlow.Plugin.Documents/        # Manipulación de documentos y PDFs (PdfSharp, PdfPig: Merge, Split, OCR)
 ├── FileFlow.Plugin.Data/             # Exportación e ingesta tabular/bases de datos (MiniExcel, CsvHelper, SQLite)
@@ -32,7 +32,7 @@ ArchiveProceser/
 ├── FileFlow.Plugin.AI/               # Inferencia local VLM (Qwen2.5-VL/Ollama), CLIP ONNX, UltraFace, OCR Tesseract
 ├── FileFlow.Plugin.Scripting/        # Scripting dinámico en C# (Roslyn) y JavaScript (Jint)
 ├── FileFlow.Plugin.Integrations/     # Integraciones externas (CLI Process Runner, Webhooks HTTP, FFmpeg)
-└── FileFlow.Tests/                   # Suite de pruebas unitarias e integración xUnit (833 tests, 100% éxito)
+└── FileFlow.Tests/                   # Suite de pruebas unitarias e integración xUnit (1.064 tests, 100% éxito)
 ```
 
 ---
@@ -40,7 +40,7 @@ ArchiveProceser/
 ## 3. Puntos de Entrada y Dependencias Clave
 
 ### Dependencias por Módulo:
-- **`FileFlow.Sdk`**: Solo tipos base de `net9.0`. *Contratos puros, sin librerías de UI ni dependencias pesadas*.
+- **`FileFlow.Sdk`**: Solo tipos base de `net10.0`. *Contratos puros, sin librerías de UI ni dependencias pesadas*.
 - **`FileFlow.Core`**: Depende de `FileFlow.Sdk`. Orquesta canales asíncronos (`System.Threading.Channels`), grafos DAG, `WorkflowWorkspaceManager`, `ExecutionJournalService`, `SqliteLogStore` y `AdaptiveConcurrencyManager`.
 - **`FileFlow.Plugin.*`**: Dependen exclusivamente de `FileFlow.Sdk` y librerías de dominio específicas.
 - **`FileFlow.App`**: Depende de `FileFlow.Core` y `FileFlow.Sdk`. Consume plugins dinámicamente mediante `PluginLoader`, Nodify, `CommunityToolkit.Mvvm` y `Microsoft.Extensions.DependencyInjection`.

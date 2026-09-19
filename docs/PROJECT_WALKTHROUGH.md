@@ -1,5 +1,55 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-19] - Migración Integral de la Solución a .NET 10 LTS y C# 14 (Hito 147)
+
+### 🎯 Diagnóstico y Requerimientos
+- **Requerimiento**:
+  - Portar todos los proyectos de la solución (`FileFlow.Sdk`, `FileFlow.Core`, `FileFlow.App`, los 11 plugins `FileFlow.Plugin.*` y `FileFlow.Tests`) al runtime **.NET 10 LTS (`net10.0`)** y compilador **C# 14 (`<LangVersion>14</LangVersion>`)**.
+  - Centralizar propiedades en `Directory.Build.props` para simplificar futuros mantenimientos de versión.
+  - Actualizar el target MSBuild `CopyPlugins` para que resuelva rutas dinámicas `$(TargetFramework)`.
+  - Actualizar los flujos de CI/CD (`.github/workflows/release.yml`) con `dotnet-version: '10.0.x'`.
+  - Validar los publicadores y empaquetadores optimizados (`publish-optimized.ps1`) para compilación nativa ReadyToRun (R2R) x64.
+
+### 🎯 Solución Implementada
+1. **Configuración Global y Proyectos (.csproj)**:
+   - `Directory.Build.props`: Centralizadas las propiedades `<TargetFramework>net10.0</TargetFramework>`, `<LangVersion>14</LangVersion>`, `<Nullable>enable</Nullable>`, `<ImplicitUsings>enable</ImplicitUsings>` y supresión de advertencias de auditoría NuGet para paquetes transitivos de SQLite.
+   - Migrados los 15 proyectos a `net10.0` y C# 14.
+   - `FileFlow.App.csproj`: Tarea `CopyPlugins` actualizada a `bin\$(Configuration)\$(TargetFramework)\`.
+2. **Pipelines de Integración Continua (CI/CD)**:
+   - `.github/workflows/release.yml`: Configurado `setup-dotnet` a `10.0.x` en jobs `build-windows` y `build-linux`.
+3. **Publicación Nativa ReadyToRun (R2R)**:
+   - `publish-optimized.ps1`: Ejecutado y validado satisfactoriamente, precompilando código nativo x64 en `bin/optimized/FileFlow.App.exe`.
+4. **Documentación del Repositorio**:
+   - Actualizados `AGENTS.md`, `GEMINI.md`, `.agents/rules/rules.md`, `repo_architecture.md` y `session_summary.md`.
+
+### 🧪 Validación
+- **Suite Completa de Pruebas (`dotnet test`)**: **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+- **Compilación R2R Optimizada**: Completada limpiamente en 49 segundos.
+
+---
+
+## [2026-09-19] - Optimización del Flujo de GitHub Actions: Releases de Linux Exclusivamente en AppImage y Flatpak (Hito 146)
+
+### 🎯 Diagnóstico y Requerimientos
+- **Requerimiento**:
+  - Modificar el flujo de GitHub Actions (`.github/workflows/release.yml`) para que en Linux se generen y publiquen de forma exclusiva y optimizada los paquetes **AppImage (`.AppImage`)** y **Flatpak (`.flatpak`)**, eliminando paquetes redundantes (`.deb`, `.tar.gz`).
+  - Corregir el drenaje de tareas asíncronas en `WorkflowTaskTracker` para no descartar excepciones de tareas finalizadas antes del bucle de drenaje.
+
+### 🎯 Solución Implementada
+1. **Flujo de Publicación de GitHub Actions (`.github/workflows/release.yml`)**:
+   - `build-linux`: Actualizado para compilar directamente la aplicación Avalonia (.NET 9 Self-Contained) y empaquetar únicamente el ejecutable universal autónomo `FileFlow-v{version}-x86_64.AppImage` y el bundle sandbox `FileFlow-v{version}-x86_64.flatpak`.
+   - Subida de artefactos `linux-packages` filtrada exclusivamente a `*.AppImage` y `*.flatpak`.
+   - `publish-release`: Actualizado el filtrado de sumas SHA-256 (`checksums.txt`), la descripción del cuerpo de la release y la lista de archivos adjuntos (`files:`).
+2. **Robustecimiento del Rastreador de Tareas DAG (`WorkflowTaskTracker.cs` y `SubflowNode.cs`)**:
+   - En `WorkflowTaskTracker.DrainActiveTasksAsync`, inspección explícita de `task.IsFaulted` / `task.Exception` antes de remover tareas completadas de `_activeTasks`.
+   - Propagación determinista de `ISubflowExecutionService` en `FileItemContext.Metadata["__SubflowExecutionService__"]` para aislamiento total en ejecuciones concurrentes de pruebas unitarias.
+
+### 🧪 Validación
+- **Suite Completa de Pruebas (`dotnet test`)**: **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+- Verificación de sintaxis y configuración del workflow YAML.
+
+---
+
 ## [2026-09-19] - Sistema Nativo y Seguro de Autoactualizaciones In-App (In-App Auto-Updater) (Hito 145)
 
 ### 🎯 Diagnóstico y Requerimientos

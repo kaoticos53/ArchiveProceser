@@ -12,6 +12,8 @@ if [ -f "${HERE}/usr/bin/FileFlow.App" ]; then
     exec "${HERE}/usr/bin/FileFlow.App" "$@"
 elif [ -f "${HERE}/usr/bin/fileflow" ]; then
     exec "${HERE}/usr/bin/fileflow" "$@"
+elif [ -f "${HERE}/usr/lib/fileflow/FileFlow.App" ]; then
+    exec "${HERE}/usr/lib/fileflow/FileFlow.App" "$@"
 elif [ -f "${HERE}/FileFlow.App" ]; then
     exec "${HERE}/FileFlow.App" "$@"
 else

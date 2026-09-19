@@ -187,6 +187,7 @@ public class SubflowExecutionTests
 
         var subflowNode = new SubflowNode
         {
+            Id = "sub-self",
             EmbedDefinition = true,
             SubflowDefinitionJson = loopJson,
             SubflowName = "RecursiveSubflow"
@@ -197,6 +198,7 @@ public class SubflowExecutionTests
         ISubflowExecutionService.Instance = service;
 
         var item = new FileItemContext("test.txt");
+        item.Metadata["__SubflowExecutionService__"] = service;
         var context = new WorkflowExecutionContext("dummy", new WorkflowExecutor(), CancellationToken.None);
 
         try

@@ -63,6 +63,7 @@ public sealed class WorkflowSubflowExecutionService : ISubflowExecutionService
 
         var subflowItem = item.DeepClone();
         subflowItem.Metadata["__SubflowCallStack__"] = callStack;
+        subflowItem.Metadata["__SubflowExecutionService__"] = this;
 
         // Callback para capturar las emisiones de los SubflowOutputNode y enviarlas al parentContext
         subflowItem.Metadata[ISubflowNode.SubflowSinkKey] = new Func<string, FileItemContext, Task>(async (outPort, outItem) =>

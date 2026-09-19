@@ -45,18 +45,18 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 ## ⚙️ Principios Técnicos y Estándares de Código
 
 1. **Plataforma y Lenguaje:**
-   - **Target Framework:** `net9.0` (o `net9.0-windows` exclusivamente en la capa de UI `FileFlow.App`).
-   - **Lenguaje:** `C# 13` (`<LangVersion>13</LangVersion>`).
+   - **Target Framework:** `net10.0` (o `net10.0-windows` exclusivamente en la capa de UI `FileFlow.App`).
+   - **Lenguaje:** `C# 14` (`<LangVersion>14</LangVersion>`).
    - **Tipos de referencia nulos activados:** `<Nullable>enable</Nullable>` de forma estricta.
-   - **Sincronización moderna:** Usar `System.Threading.Lock` de .NET 9 en lugar de `object` para bloqueos.
+   - **Sincronización moderna:** Usar `System.Threading.Lock` de .NET 9/.NET 10 en lugar de `object` para bloqueos.
 
 2. **Desacoplamiento Estricto por Capas:**
-   - **`FileFlow.Sdk`**: Debe permanecer puro. Solo tipos base de C# 13 y contratos de interfaces. Sin dependencias de UI ni librerías pesadas.
+   - **`FileFlow.Sdk`**: Debe permanecer puro. Solo tipos base de C# 14 y contratos de interfaces. Sin dependencias de UI ni librerías pesadas.
    - **`FileFlow.Plugin.*`**: Solo pueden referenciar `FileFlow.Sdk` y sus respectivas librerías de dominio (ej. `SharpCompress`, `ImageSharp`, `MetadataExtractor`). Nunca referenciar `FileFlow.Core` ni `FileFlow.App`.
    - **`FileFlow.Core`**: Orquestador del motor DAG, carga dinámica de plugins (`AssemblyLoadContext`), ejecución en canales (`System.Threading.Channels` / `TPL Dataflow`) y serialización polimórfica.
    - **`FileFlow.App`**: Capa de presentación WPF con Nodify y `CommunityToolkit.Mvvm`.
 
-3. **I/O Asíncrono y Rendimiento en .NET 9:**
+3. **I/O Asíncrono y Rendimiento en .NET 10:**
    - Métodos I/O de disco 100% asíncronos (`ValueTask` / `Task`) con propagación obligatoria de `CancellationToken`.
    - Liberación determinista de recursos con `await using` y `using var`.
    - Inyección de dependencias nativa (`Microsoft.Extensions.DependencyInjection`).

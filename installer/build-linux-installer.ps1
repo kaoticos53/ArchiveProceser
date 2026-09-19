@@ -235,15 +235,39 @@ if (Test-Path $appDirTarOutput) {
 
 # Compilación directa de .AppImage ejecutable mediante WSL si está presente
 $appImageFile = Join-Path $outputDir "FileFlow-v${Version}-x86_64.AppImage"
+$flatpakOutFile = Join-Path $outputDir "FileFlow-v${Version}-x86_64.flatpak"
+
+$isNativeLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)
 $wslAvailable = $false
-try {
-    $wslCheck = wsl uname 2>$null
-    if ($wslCheck -like "*Linux*") { $wslAvailable = $true }
-} catch {
-    $wslAvailable = $false
+if (-not $isNativeLinux) {
+    try {
+        $wslCheck = wsl uname 2>$null
+        if ($wslCheck -like "*Linux*") { $wslAvailable = $true }
+    } catch {
+        $wslAvailable = $false
+    }
 }
 
-if ($wslAvailable) {
+if ($isNativeLinux) {
+    Write-Host "  -> Compilando binario ejecutable .AppImage nativamente en Linux..." -ForegroundColor DarkGray
+    $buildScript = Join-Path $scriptDir "linux/build-appimage.sh"
+    & bash "$buildScript" "$appDir" "$appImageFile" 2>$null
+
+    if (Test-Path $appImageFile) {
+        $appImgSize = [math]::Round(((Get-Item $appImageFile).Length / 1MB), 2)
+        Write-Host "  [OK] Ejecutable AppImage generado: FileFlow-v${Version}-x86_64.AppImage ($appImgSize MB)" -ForegroundColor Green
+    }
+
+    if (Get-Command "flatpak-builder" -ErrorAction SilentlyContinue) {
+        Write-Host "  -> Compilando paquete .flatpak nativamente..." -ForegroundColor DarkGray
+        $flatpakScript = Join-Path $scriptDir "linux/flatpak/build-flatpak.sh"
+        & bash "$flatpakScript" "$Version" "$flatpakOutFile" 2>$null
+        if (Test-Path $flatpakOutFile) {
+            $flatpakSize = [math]::Round(((Get-Item $flatpakOutFile).Length / 1MB), 2)
+            Write-Host "  [OK] Paquete Flatpak generado: FileFlow-v${Version}-x86_64.flatpak ($flatpakSize MB)" -ForegroundColor Green
+        }
+    }
+} elseif ($wslAvailable) {
     Write-Host "  -> Compilando binario ejecutable .AppImage vía subsistema Linux (WSL)..." -ForegroundColor DarkGray
     $wslWorkDir = "/mnt/" + $workDir.Substring(0,1).ToLower() + $workDir.Substring(2).Replace('\', '/')
     $wslAppDir = "$wslWorkDir/FileFlow.AppDir"
@@ -258,7 +282,6 @@ if ($wslAvailable) {
     }
 
     # Compilación de Flatpak (.flatpak) si flatpak-builder está instalado en WSL
-    $flatpakOutFile = Join-Path $outputDir "FileFlow-v${Version}-x86_64.flatpak"
     $wslFlatpakScript = "/mnt/" + (Join-Path $scriptDir "linux\flatpak\build-flatpak.sh").Substring(0,1).ToLower() + (Join-Path $scriptDir "linux\flatpak\build-flatpak.sh").Substring(2).Replace('\', '/')
     $wslFlatpakOut = "/mnt/" + $flatpakOutFile.Substring(0,1).ToLower() + $flatpakOutFile.Substring(2).Replace('\', '/')
     

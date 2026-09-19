@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
-    <LangVersion>13</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
@@ -52,17 +52,17 @@
     </PropertyGroup>
     <MakeDir Directories="$(PluginsTargetFolder)" />
     <ItemGroup>
-      <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\net9.0\FileFlow.Plugin.FileSystem.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\net9.0\FileFlow.Plugin.Archives.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\net9.0\FileFlow.Plugin.Integrations.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Scripting\bin\$(Configuration)\net9.0\FileFlow.Plugin.Scripting.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.AI\bin\$(Configuration)\net9.0\FileFlow.Plugin.AI.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Documents\bin\$(Configuration)\net9.0\FileFlow.Plugin.Documents.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Network\bin\$(Configuration)\net9.0\FileFlow.Plugin.Network.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Data\bin\$(Configuration)\net9.0\FileFlow.Plugin.Data.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\net9.0\FileFlow.Plugin.Images.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\net9.0\FileFlow.Plugin.Logic.*" />
-      <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\net9.0\FileFlow.Plugin.Hashing.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.FileSystem\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.FileSystem.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Archives\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Archives.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Integrations\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Integrations.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Scripting\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Scripting.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.AI\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.AI.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Documents\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Documents.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Network\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Network.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Data\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Data.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Images.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Logic.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Hashing.*" />
     </ItemGroup>
     <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsTargetFolder)" SkipUnchangedFiles="false" />
   </Target>

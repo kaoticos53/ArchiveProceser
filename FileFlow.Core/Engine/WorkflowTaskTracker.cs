@@ -42,7 +42,25 @@ public sealed class WorkflowTaskTracker
             int remainingCount;
             lock (_tasksLock)
             {
-                _activeTasks.RemoveAll(t => t.IsCompleted);
+                for (int i = _activeTasks.Count - 1; i >= 0; i--)
+                {
+                    var task = _activeTasks[i];
+                    if (task.IsCompleted)
+                    {
+                        if (task.IsFaulted && task.Exception != null)
+                        {
+                            foreach (var inner in task.Exception.InnerExceptions)
+                            {
+                                if (inner is not OperationCanceledException)
+                                {
+                                    executionErrors.Add(inner);
+                                }
+                            }
+                        }
+                        _activeTasks.RemoveAt(i);
+                    }
+                }
+
                 remainingCount = _activeTasks.Count;
                 if (remainingCount == 0) break;
                 pending = [.. _activeTasks];
