@@ -81,7 +81,7 @@
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="2,1">
                                 <materialIcons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="13" Height="13" Margin="0,0,8,0" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                                <Border Grid.Column="2" Background="{DynamicResource ChipStrongBrush}" CornerRadius="{DynamicResource RadiusMd}" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <Border Grid.Column="2" Background="{DynamicResource ChipStrongBrush}" CornerRadius="{DynamicResource RadiusMd}" Padding="6,1" Margin="8,0,8,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Count}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </Border>
                             </Grid>
@@ -117,7 +117,7 @@
                                                 Background="{DynamicResource ChipBrush}" 
                                                 CornerRadius="{DynamicResource RadiusPill}" 
                                                 Padding="4,0.5" 
-                                                Margin="4,0,6,0" 
+                                                Margin="4,0,12,0" 
                                                 VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Items.Count}" 
                                                        FontSize="{DynamicResource FontSizeMicro}" 

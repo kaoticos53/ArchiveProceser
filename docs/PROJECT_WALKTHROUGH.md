@@ -1,6 +1,100 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
-## [2026-09-20] - Corrección Definitiva de Duplicados en Catálogo de Nodos: Carga en Dos Fases y Thread-Safety en PluginLoader (Hito 155)
+## [2026-09-20] - Restauración de Grupos de Favoritos y Más Usados y Calibración de Margen de Insignias (`ToolboxViewModel` y `NodeToolboxView`) (Hito 158)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**:
+1. Las categorías especiales "Favoritos" y "Frecuentes" (Más Usados) no se mostraban en la vista general del catálogo de nodos.
+2. La insignia numérica con el conteo de elementos dentro de cada categoría quedaba demasiado pegada al borde lateral derecho del panel.
+
+**Causa Raíz Identificada**:
+1. En refactorizaciones previas contra duplicados, los grupos virtuales `⭐ Favoritos` y `🔥 Más Usados` se habían condicionado exclusivamente a filtros individuales del ComboBox y se saltaban cuando su conteo era 0. En la vista general ("Todas"), no se agregaban a la cabecera del catálogo aun teniendo elementos favoritos o de uso frecuente.
+2. En `NodeToolboxView.axaml`, el margen derecho de la píldora de conteo dentro del `Expander.Header` estaba fijado a `Margin="4,0,6,0"` y en el ComboBox a `Margin="8,0,0,0"`, dejando el texto pegado al perímetro y a la barra de scroll.
+
+### 🎯 Solución e Implementación
+
+1. **Restauración Dinámica en Vista General (`ToolboxViewModel.cs`)**:
+   - En la vista "Todas", si existen nodos marcados como favoritos (`allItems.Any(i => i.IsFavorite)`), se inserta al inicio el grupo `⭐ Favoritos` (clave `"Favorites"`, icono `MaterialIconKind.Star`).
+   - Si existen nodos con métricas de ejecución (`allItems.Any(i => i.UsageCount > 0)`), se inserta a continuación el grupo `🔥 Más Usados` (clave `"Frequent"`, icono `MaterialIconKind.Fire`).
+   - Al seleccionar explícitamente "Favoritos" o "Frecuentes" en el desplegable, los grupos se generan de forma directa e independiente.
+   - Sincronización in-place limpia de `IsExpanded` para transiciones suaves de búsqueda y filtros.
+2. **Ajuste Ergonómico de Márgenes en XAML (`NodeToolboxView.axaml`)**:
+   - Actualizado el margen del `Border` de conteo en la cabecera del acordeón a `Margin="4,0,12,0"`.
+   - Actualizado el margen del `Border` de conteo en el desplegable de categorías a `Margin="8,0,8,0"`.
+3. **Regeneración de Líneas Base Visuales (`FileFlow.Tests`)**:
+   - Actualizadas las líneas base de `panel-toolbox-dark.png`, `app-shell-dark.png` y `app-shell-light.png`.
+
+### 🧪 Validación
+- **Suite completa (`dotnet test`)**: **1065 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 31 s)**.
+
+---
+
+## [2026-09-20] - Corrección de Duplicación Visual del Catálogo de Nodos y Sincronización In-Place en Toolbox (`ToolboxViewModel` & `AppVisualFixture`) (Hito 157)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**:
+Al arrancar la aplicación, los 78 nodos aparecían correctamente en la caja de herramientas, pero a los 1-2 segundos todo el catálogo se duplicaba en la interfaz visual mostrando todas las categorías y nodos repetidos.
+
+**Causa Raíz Identificada**:
+1. **Re-renderizado destructivo en `ToolboxViewModel`**:
+   - `LocalizationManager.SetCulture(...)` y `UserPreferencesService.Save()` disparan eventos reactivos (`LanguageChanged`, `PreferencesChanged`) 1-2 segundos después del inicio.
+   - Estos eventos invocaban `RefreshToolbox()`. Al ejecutarse desde hilos de fondo, `CategoryGroups.Clear()` emitía `NotifyCollectionChangedAction.Reset` en `ObservableCollection`.
+   - En Avalonia UI, un `Reset` o `Clear()` llamado en colecciones vinculadas a `ItemsControl` con `Expander` cuando el hilo o el árbol se actualizan concurrentemente provoca que los contenedores visuales antiguos no se desechen de inmediato del árbol visual, dibujándose los nuevos contenedores junto a los antiguos.
+2. **Falta de sincronización in-place (Diffing)**:
+   - Reemplazar toda la lista en cada evento destruía los estados de expansión del usuario y duplicaba elementos visuales en lugar de sincronizar las instancias existentes.
+
+### 🎯 Solución e Implementación
+
+1. **Afinidad de Hilo y Despacho Seguro en `ToolboxViewModel.cs`**:
+   - Se añadió la guarda `if (Application.Current != null && !Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(RefreshToolbox); return; }` para asegurar que cualquier refresco de catálogo ocurra estrictamente en el hilo de UI.
+2. **Sincronización In-Place (`CommitGroups` y `SyncGroupItems`)**:
+   - Implementado algoritmo de reconciliación in-place (diffing): en lugar de vaciar la colección con `Clear()`, se comparan las categorías y nodos por clave única (`CategoryKey`, `TypeName`), reutilizando los objetos `ToolboxCategoryGroup` y `NodeToolboxItem` existentes y actualizando únicamente sus propiedades reactivas (`DisplayName`, `Icon`, `Count`, `IsExpanded`).
+   - Implementado `IDisposable` en `ToolboxViewModel` para desuscribir limpiamente los manejadores de `LanguageChanged` y `PreferencesChanged`.
+3. **Determinismo en Pruebas de Regresión Visual (`AppVisualFixture.cs`)**:
+   - Añadido `FreezeToolbox()` dentro de `EnsureFrozen()` para resetear de forma determinista el estado de la caja de herramientas (filtro "Todas", modo compacto, perspectiva por categoría y expansión fija del primer grupo).
+
+### 🧪 Validación
+- **Suite completa (`dotnet test`)**: **1065 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 25 s, sin bloqueos ni duplicados)**.
+
+---
+
+## [2026-09-20] - Corrección de Bloqueos / Deadlocks en Ejecución de Tests Unitarios (`ThemeManager` y `Dispatcher.UIThread`) (Hito 156)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**:
+Al ejecutar la suite de pruebas (`dotnet test`), los tests se quedaban bloqueados indefinidamente (deadlock) en:
+- `FileFlow.Tests.Unit.App.DependencyInjectionAndPortsTests.ServiceCollectionExtensions_RegistersAllRequiredServicesAndPorts`
+- `FileFlow.Tests.Unit.App.ThemeVariantPropagationTests.SetDarkThemes_ShouldResolveAsDark`
+- Ejecutados por separado funcionaban, pero al ejecutarlos juntos o en suite completa se quedaban colgados y nunca terminaban.
+
+**Causa Raíz Identificada**:
+1. **Deadlock por `Dispatcher.UIThread.Invoke` en hilos secundarios de xUnit**:
+   - En Hito 153 se introdujeron comprobaciones `Dispatcher.UIThread.CheckAccess()` que redirigían mediante `Dispatcher.UIThread.Invoke(...)` sincrónico en `ThemeManager.SetTheme(AppTheme)`, `ThemeManager.SetThemeById(string)`, `ThemeManager.SetTheme(ThemeDefinition)` y `ThemeManager.ApplyResourceDictionary(ResourceDictionary)`.
+   - Cuando se ejecuta un test headless (ej. tests visuales o de vistas), Avalonia inicializa `HeadlessUnitTestSession` ligando el `Dispatcher.UIThread` a su propio hilo dedicado.
+   - En una sesión de pruebas xUnit, los tests corren en hilos de trabajo del ThreadPool. Cuando un test posterior invocaba `ThemeManager.SetTheme(...)`, `Dispatcher.UIThread.CheckAccess()` devolvía `false`.
+   - `Dispatcher.UIThread.Invoke(...)` encolaba la operación y bloqueaba sincrónicamente esperando que el dispatcher de UI la procesara.
+   - En entornos de tests (headless), el hilo de UI no corre un bucle de mensajes continuo de bombeo activo (pumping loop); solo procesa mensajes cuando se invoca explícitamente `session.Dispatch(...)` o `Dispatcher.UIThread.RunJobs()`.
+   - Por tanto, `Dispatcher.UIThread.Invoke(...)` se quedaba en **interbloqueo (deadlock) permanente**.
+   - Por separado no se colgaba porque si ningún test previo había inicializado la sesión headless de Avalonia, `Application.Current` era nulo o `CheckAccess()` devolvía `true`.
+
+### 🎯 Solución e Implementación
+
+#### [`FileFlow.App/Services/ThemeManager.cs`](file:///FileFlow.App/Services/ThemeManager.cs)
+1. **Eliminación de `Dispatcher.UIThread.Invoke` bloqueante**:
+   - `SetTheme(AppTheme)`, `SetThemeById(string)` y `SetTheme(ThemeDefinition)` actualizan el estado interno del gestor (`CurrentTheme`, `CurrentThemeId`, `ActiveThemeDefinition`) de forma síncrona y directa en el hilo llamador.
+2. **Propagación Asíncrona y Segura a la UI**:
+   - `ApplyResourceDictionary` y `PublishThemeChange` utilizan `Dispatcher.UIThread.Post(...)` no bloqueante cuando se invocan desde un hilo que no es el de UI (`!Dispatcher.UIThread.CheckAccess()`), evitando cualquier bloqueo del hilo ejecutor y permitiendo que la UI aplique los recursos de forma segura cuando bombee mensajes.
+3. **Regeneración de Líneas Base Visuales de AppShell / Toolbox**:
+   - Actualizadas las líneas base (`app-shell-dark.png`, `app-shell-light.png`, `panel-toolbox-dark.png`) tras la extracción del plugin de subflujos (`FileFlow.Plugin.Subflows`) y el blindaje anti-duplicados.
+
+### 🧪 Validación
+- **Suite completa (`dotnet test`)**: **1065 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 27 s, sin bloqueos)**.
+
+---
+
 
 ### 🎯 Diagnóstico y Causa Raíz
 

@@ -212,12 +212,28 @@ public sealed class AppVisualFixture : IDisposable
         SeedLogConsole();
         ReleaseAiModels();
         FreezeStatusBar();
+        FreezeToolbox();
 
         // El inspector abierto es el estado en el que se trabaja: la captura debe cubrir su panel.
         var inspected = Editor.Nodes.Count > 0 ? Editor.Nodes[0] : null;
         if (inspected != null)
         {
             Inspector.InspectNode(inspected, autoOpen: true);
+        }
+    }
+
+    /// <summary>Fija el estado de partida de la caja de herramientas.</summary>
+    private void FreezeToolbox()
+    {
+        Toolbox.SearchText = string.Empty;
+        Toolbox.SelectedCategoryFilter = "Todas";
+        Toolbox.CurrentPerspective = ToolboxPerspective.ByCategory;
+        Toolbox.IsCompactMode = true;
+        Toolbox.RefreshToolbox();
+
+        for (int i = 0; i < Toolbox.CategoryGroups.Count; i++)
+        {
+            Toolbox.CategoryGroups[i].IsExpanded = (i == 0);
         }
     }
 

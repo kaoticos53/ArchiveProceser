@@ -162,6 +162,12 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
     public void RefreshToolbox()
     {
+        if (Avalonia.Application.Current != null && !Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(RefreshToolbox);
+            return;
+        }
+
         lock (_lock)
         {
             _isRefreshing = true;
@@ -336,16 +342,14 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                         favGroupName, 
                         "Favorites", 
                         DetermineInitialExpanded("Favorites", true), 
-                        HandleGroupExpanded);
+                        HandleGroupExpanded,
+                        MaterialIconKind.Star);
 
                     foreach (var item in allItems.Where(i => i.IsFavorite))
                     {
                         favGroup.Items.Add(item);
                     }
-                    if (favGroup.Items.Count > 0)
-                    {
-                        targetGroups.Add(favGroup);
-                    }
+                    targetGroups.Add(favGroup);
                     CommitGroups(targetGroups);
                     return;
                 }
@@ -358,26 +362,64 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                         freqGroupName, 
                         "Frequent", 
                         DetermineInitialExpanded("Frequent", true), 
-                        HandleGroupExpanded);
+                        HandleGroupExpanded,
+                        MaterialIconKind.Fire);
 
                     foreach (var item in allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10))
                     {
                         freqGroup.Items.Add(item);
                     }
-                    if (freqGroup.Items.Count > 0)
-                    {
-                        targetGroups.Add(freqGroup);
-                    }
+                    targetGroups.Add(freqGroup);
                     CommitGroups(targetGroups);
                     return;
                 }
 
                 // 4. Agrupación Estándar o "Todas"
+                bool isFirstGroup = true;
+                if (SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) ||
+                    SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
+                {
+                    var favItems = allItems.Where(i => i.IsFavorite).ToList();
+                    if (favItems.Count > 0)
+                    {
+                        var favGroup = new ToolboxCategoryGroup(
+                            favGroupName,
+                            "Favorites",
+                            DetermineInitialExpanded("Favorites", isFirstGroup),
+                            HandleGroupExpanded,
+                            MaterialIconKind.Star);
+
+                        foreach (var item in favItems)
+                        {
+                            favGroup.Items.Add(item);
+                        }
+                        targetGroups.Add(favGroup);
+                        isFirstGroup = false;
+                    }
+
+                    var freqItems = allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10).ToList();
+                    if (freqItems.Count > 0)
+                    {
+                        var freqGroup = new ToolboxCategoryGroup(
+                            freqGroupName,
+                            "Frequent",
+                            DetermineInitialExpanded("Frequent", isFirstGroup),
+                            HandleGroupExpanded,
+                            MaterialIconKind.Fire);
+
+                        foreach (var item in freqItems)
+                        {
+                            freqGroup.Items.Add(item);
+                        }
+                        targetGroups.Add(freqGroup);
+                        isFirstGroup = false;
+                    }
+                }
+
                 var itemsByCategory = allItems
                     .GroupBy(i => i.Category, StringComparer.OrdinalIgnoreCase)
                     .OrderBy(g => LocalizationManager.Instance.GetString($"Category_{g.Key}", g.Key));
 
-                bool isFirstCat = true;
                 foreach (var categoryGroup in itemsByCategory)
                 {
                     if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
@@ -392,7 +434,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     var group = new ToolboxCategoryGroup(
                         localizedCategoryName, 
                         categoryGroup.Key, 
-                        DetermineInitialExpanded(categoryGroup.Key, isFirstCat), 
+                        DetermineInitialExpanded(categoryGroup.Key, isFirstGroup), 
                         HandleGroupExpanded);
 
                     foreach (var it in categoryGroup)
@@ -401,7 +443,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     }
 
                     targetGroups.Add(group);
-                    isFirstCat = false;
+                    isFirstGroup = false;
                 }
 
                 CommitGroups(targetGroups);
@@ -428,13 +470,114 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
     private void CommitGroups(List<ToolboxCategoryGroup> newGroups)
     {
-        CategoryGroups.Clear();
-        var seenGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var group in newGroups)
+        // Desduplicar grupos objetivo por clave de categoría
+        var uniqueNewGroups = new List<ToolboxCategoryGroup>();
+        var seenTargetKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var g in newGroups)
         {
-            if (seenGroups.Add(group.CategoryKey))
+            if (seenTargetKeys.Add(g.CategoryKey))
             {
-                CategoryGroups.Add(group);
+                uniqueNewGroups.Add(g);
+            }
+        }
+
+        // 1. Eliminar grupos que ya no forman parte del filtro actual
+        for (int i = CategoryGroups.Count - 1; i >= 0; i--)
+        {
+            if (!seenTargetKeys.Contains(CategoryGroups[i].CategoryKey))
+            {
+                CategoryGroups.RemoveAt(i);
+            }
+        }
+
+        // 2. Insertar o sincronizar grupos existentes in-place
+        for (int i = 0; i < uniqueNewGroups.Count; i++)
+        {
+            var target = uniqueNewGroups[i];
+            int existingIndex = -1;
+            for (int j = 0; j < CategoryGroups.Count; j++)
+            {
+                if (CategoryGroups[j].CategoryKey.Equals(target.CategoryKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    existingIndex = j;
+                    break;
+                }
+            }
+
+            if (existingIndex == -1)
+            {
+                if (i < CategoryGroups.Count)
+                {
+                    CategoryGroups.Insert(i, target);
+                }
+                else
+                {
+                    CategoryGroups.Add(target);
+                }
+            }
+            else
+            {
+                var existingGroup = CategoryGroups[existingIndex];
+                existingGroup.CategoryName = target.CategoryName;
+                existingGroup.Icon = target.Icon;
+                existingGroup.IsExpanded = target.IsExpanded;
+
+                SyncGroupItems(existingGroup.Items, target.Items);
+
+                if (existingIndex != i && i < CategoryGroups.Count)
+                {
+                    CategoryGroups.Move(existingIndex, i);
+                }
+            }
+        }
+    }
+
+    private static void SyncGroupItems(ObservableCollection<NodeToolboxItem> current, ObservableCollection<NodeToolboxItem> target)
+    {
+        var targetTypeNames = new HashSet<string>(target.Select(it => it.TypeName), StringComparer.OrdinalIgnoreCase);
+        for (int i = current.Count - 1; i >= 0; i--)
+        {
+            if (!targetTypeNames.Contains(current[i].TypeName))
+            {
+                current.RemoveAt(i);
+            }
+        }
+
+        for (int i = 0; i < target.Count; i++)
+        {
+            var item = target[i];
+            int existingIdx = -1;
+            for (int j = 0; j < current.Count; j++)
+            {
+                if (current[j].TypeName.Equals(item.TypeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    existingIdx = j;
+                    break;
+                }
+            }
+
+            if (existingIdx == -1)
+            {
+                if (i < current.Count)
+                {
+                    current.Insert(i, item);
+                }
+                else
+                {
+                    current.Add(item);
+                }
+            }
+            else
+            {
+                if (!current[existingIdx].Equals(item))
+                {
+                    current[existingIdx] = item;
+                }
+
+                if (existingIdx != i && i < current.Count)
+                {
+                    current.Move(existingIdx, i);
+                }
             }
         }
     }
@@ -537,8 +680,8 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        LocalizationManager.Instance.LanguageChanged -= _languageChangedHandler;
-        UserPreferencesService.Instance.PreferencesChanged -= _preferencesChangedHandler;
+        _loc.LanguageChanged -= _languageChangedHandler;
+        _userPreferencesService.PreferencesChanged -= _preferencesChangedHandler;
     }
 
     [RelayCommand]

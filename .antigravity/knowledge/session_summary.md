@@ -10,6 +10,49 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **158. Restauración de Favoritos, Más Usados y Calibración de Márgenes de Insignias (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - Las categorías "Favoritos" y "Frecuentes" (Más Usados) no se visualizaban en la vista general del catálogo de nodos.
+    - La insignia numérica con el conteo de elementos dentro de cada categoría quedaba muy pegada al borde lateral derecho.
+  - **Implementación**:
+    - `FileFlow.App/ViewModels/ToolboxViewModel.cs`:
+      - Restaurada la inyección dinámica de los grupos `⭐ Favoritos` (`Favorites`) y `🔥 Más Usados` (`Frequent`) en la cabecera de la vista general ("Todas") cuando existen elementos con estrella o con contador de uso > 0.
+      - Al seleccionar específicamente "Favoritos" o "Frecuentes" en el desplegable de filtro, el grupo respectivo se presenta directamente.
+      - Sincronización in-place completa de `IsExpanded` para búsquedas y filtros sin colisiones en modo acordeón.
+    - `FileFlow.App/Views/NodeToolboxView.axaml`:
+      - Ajustado el margen derecho de la insignia de conteo en la cabecera del acordeón a `Margin="4,0,12,0"`.
+      - Ajustado el margen derecho en el ComboBox desplegable a `Margin="8,0,8,0"`.
+    - Regeneradas líneas base de regresión visual de `panel-toolbox-dark.png`, `app-shell-dark.png` y `app-shell-light.png`.
+  - **Validación**:
+    - `dotnet test`: **1065 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 31 s)**.
+
+- **157. Sincronización In-Place del Catálogo de Nodos y Corrección de Duplicados en Toolbox (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - Al arrancar la aplicación aparecían los 78 nodos correctos, pero al cabo de 1-2 segundos todo el catálogo se duplicaba mostrando categorías y nodos repetidos.
+    - **Causa Raíz**:
+      - `LocalizationManager.SetCulture(...)` y `UserPreferencesService.Save()` disparan eventos reactivos (`LanguageChanged`, `PreferencesChanged`) 1-2 segundos tras el arranque.
+      - Al dispararse desde hilos de fondo, `ToolboxViewModel.RefreshToolbox()` ejecutaba `CategoryGroups.Clear()` emitiendo `NotifyCollectionChangedAction.Reset` en `ObservableCollection`.
+      - En Avalonia UI, un `Reset` o `Clear()` llamado sobre colecciones vinculadas a `ItemsControl` con `Expander` desde hilos secundarios o con el árbol activo provoca que los contenedores visuales antiguos no se desechen de inmediato, renderizándose los nuevos contenedores junto a los antiguos.
+  - **Implementación**:
+    - `FileFlow.App/ViewModels/ToolboxViewModel.cs`:
+      - Guarda de hilo de UI: `if (Application.Current != null && !Dispatcher.UIThread.CheckAccess()) { Dispatcher.UIThread.Post(RefreshToolbox); return; }`.
+      - Algoritmo de reconciliación in-place (diffing): `CommitGroups` y `SyncGroupItems` comparan por `CategoryKey` y `TypeName`, reutilizando instancias existentes de `ToolboxCategoryGroup` y `NodeToolboxItem` y mutando solo propiedades observables (`DisplayName`, `Icon`, `Count`, `IsExpanded`).
+      - Implementado `IDisposable` para desuscribir `LanguageChanged` y `PreferencesChanged`.
+    - `FileFlow.Tests/TestHelpers/AppVisualFixture.cs`:
+      - Añadido `FreezeToolbox()` dentro de `EnsureFrozen()` para resetear el estado de la caja de herramientas de forma reproducible.
+  - **Validación**:
+    - `dotnet test`: **1065 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 25 s)**.
+
+- **156. Corrección de Deadlocks en ThemeManager y Suite Completa de Tests al 100% (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - Al ejecutar la suite completa (`dotnet test`), los tests se quedaban bloqueados permanentemente en `DependencyInjectionAndPortsTests` o `ThemeVariantPropagationTests`. Por separado pasaban, pero juntos se colgaban.
+    - **Causa Raíz**: En Hito 153 se introdujeron llamadas `Dispatcher.UIThread.Invoke(...)` sincrónicas en `ThemeManager.SetTheme`, `SetThemeById`, `SetTheme(ThemeDefinition)` y `ApplyResourceDictionary`. En xUnit, los tests corren en hilos de trabajo del ThreadPool. Una vez que cualquier test anterior iniciaba la sesión headless de Avalonia (`HeadlessUnitTestSession`), `Dispatcher.UIThread.CheckAccess()` devolvía `false` para los siguientes tests. Al invocar `Dispatcher.UIThread.Invoke(...)`, el hilo de prueba quedaba esperando indefinidamente porque en headless no existe un bucle continuo de bombeo activo en el hilo de UI.
+  - **Implementación**:
+    - `FileFlow.App/Services/ThemeManager.cs`: Eliminados los bloqueos `Dispatcher.UIThread.Invoke` sincrónicos. El estado del tema se actualiza síncronamente en el hilo llamador, y la notificación/aplicación de recursos a Avalonia (`ApplyResourceDictionary` y `PublishThemeChange`) se propaga mediante `Dispatcher.UIThread.Post(...)` no bloqueante cuando se invoca fuera del hilo de UI.
+    - Regeneradas las líneas base de regresión visual de `AppShellVisualRegressionTests` (`app-shell-dark.png`, `app-shell-light.png`, `panel-toolbox-dark.png`).
+  - **Validación**:
+    - `dotnet test`: **1065 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 27 s, sin bloqueos)**.
+
 - **155. Corrección Definitiva de Duplicados: Carga en Dos Fases y Thread-Safety en PluginLoader (2026-09-20)**:
   - **Diagnóstico del Fallo**:
     - Los 78 nodos aparecían correctamente al arrancar y a los 1-2 segundos se duplicaban a ~156 en el catálogo.
