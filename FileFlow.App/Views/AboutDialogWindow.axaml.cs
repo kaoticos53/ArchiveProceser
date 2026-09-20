@@ -16,7 +16,7 @@ public partial class AboutDialogWindow : Window
             var txt = this.FindControl<TextBlock>("TxtVersion");
             if (txt != null)
             {
-                txt.Text = $"v{version.Major}.{version.Minor}.{version.Build} (net9.0 - Avalonia 12)";
+                txt.Text = $"v{version.Major}.{version.Minor}.{version.Build} (net10.0 - Avalonia 12)";
             }
         }
     }

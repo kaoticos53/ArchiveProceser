@@ -2,6 +2,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Plugin.Logic;
+using FileFlow.Plugin.Subflows;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Services;
@@ -197,7 +198,7 @@ public class SubflowExecutionTests
         var previousService = ISubflowExecutionService.Instance;
         ISubflowExecutionService.Instance = service;
 
-        var item = new FileItemContext("test.txt");
+        var item = new FileItemContext("test_" + Guid.NewGuid().ToString("N") + ".txt");
         item.Metadata["__SubflowExecutionService__"] = service;
         var context = new WorkflowExecutionContext("dummy", new WorkflowExecutor(), CancellationToken.None);
 

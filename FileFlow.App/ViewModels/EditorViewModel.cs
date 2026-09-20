@@ -921,7 +921,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public void PopulateSpotlightItems()
     {
         _allSpotlightItems.Clear();
-        var types = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
+        var types = _pluginLoader.UniqueNodeTypes.ToList();
         foreach (var type in types)
         {
             string typeName = type.FullName ?? type.Name;
@@ -1082,7 +1082,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             var inputNode = new WorkflowNode
             {
                 Id = Guid.NewGuid().ToString(),
-                NodeTypeName = "FileFlow.Plugin.Logic.SubflowInputNode",
+                NodeTypeName = "FileFlow.Plugin.Subflows.SubflowInputNode",
                 CustomTitle = "Entrada",
                 X = 100,
                 Y = 200,
@@ -1092,7 +1092,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             var outputNode = new WorkflowNode
             {
                 Id = Guid.NewGuid().ToString(),
-                NodeTypeName = "FileFlow.Plugin.Logic.SubflowOutputNode",
+                NodeTypeName = "FileFlow.Plugin.Subflows.SubflowOutputNode",
                 CustomTitle = "Salida",
                 X = 600,
                 Y = 200,
@@ -1225,7 +1225,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         var inputBoundary = new WorkflowNode
         {
             Id = Guid.NewGuid().ToString(),
-            NodeTypeName = "FileFlow.Plugin.Logic.SubflowInputNode",
+            NodeTypeName = "FileFlow.Plugin.Subflows.SubflowInputNode",
             CustomTitle = "Entrada",
             X = minX - 300,
             Y = minY,
@@ -1239,7 +1239,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         var outputBoundary = new WorkflowNode
         {
             Id = Guid.NewGuid().ToString(),
-            NodeTypeName = "FileFlow.Plugin.Logic.SubflowOutputNode",
+            NodeTypeName = "FileFlow.Plugin.Subflows.SubflowOutputNode",
             CustomTitle = "Salida",
             X = maxX + 300,
             Y = minY,
@@ -1309,7 +1309,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         string subflowJson = subflowGraph.ToJson();
 
         // Crear la instancia del nodo SubflowNode en el lienzo padre
-        IFlowNode? subflowInstance = _pluginLoader.CreateNodeInstance("FileFlow.Plugin.Logic.SubflowNode");
+        IFlowNode? subflowInstance = _pluginLoader.CreateNodeInstance("FileFlow.Plugin.Subflows.SubflowNode")
+                                  ?? _pluginLoader.CreateNodeInstance("SubflowNode");
         if (subflowInstance == null) return;
 
         subflowInstance.Parameters["EmbedDefinition"] = true;

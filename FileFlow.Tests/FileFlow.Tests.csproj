@@ -45,6 +45,7 @@
     <ProjectReference Include="..\FileFlow.Plugin.Network\FileFlow.Plugin.Network.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Subflows\FileFlow.Plugin.Subflows.csproj" />
     <ProjectReference Include="..\FileFlow.App\FileFlow.App.csproj" />
   </ItemGroup>
 

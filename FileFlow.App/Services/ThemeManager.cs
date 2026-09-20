@@ -41,6 +41,12 @@ public class ThemeManager : IThemeService
 
     public void SetTheme(AppTheme theme)
     {
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(() => SetTheme(theme));
+            return;
+        }
+
         CurrentTheme = theme;
         if (theme == AppTheme.System)
         {
@@ -84,6 +90,12 @@ public class ThemeManager : IThemeService
     {
         if (string.IsNullOrWhiteSpace(themeId)) return;
 
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(() => SetThemeById(themeId));
+            return;
+        }
+
         if (themeId.Equals("system", StringComparison.OrdinalIgnoreCase))
         {
             SetTheme(AppTheme.System);
@@ -106,6 +118,12 @@ public class ThemeManager : IThemeService
     public void SetTheme(ThemeDefinition theme)
     {
         ArgumentNullException.ThrowIfNull(theme);
+
+        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Invoke(() => SetTheme(theme));
+            return;
+        }
 
         ActiveThemeDefinition = theme.Clone();
         CurrentThemeId = theme.Id;

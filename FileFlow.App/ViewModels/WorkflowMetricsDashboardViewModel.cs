@@ -364,6 +364,7 @@ public partial class WorkflowMetricsDashboardViewModel : ObservableObject
             "languageai" or "llm" or "lenguaje" => ("#4C0519", "#F43F5E", "#FECDD3"),
             "security" or "seguridad" => ("#3F1D38", "#EC4899", "#FBCFE8"),
             "logic" or "lógica" => ("#172554", "#3B82F6", "#93C5FD"),
+            "subflows" or "subflujos" or "subflow" => ("#2E1065", "#8B5CF6", "#DDD6FE"),
             "archives" or "compresión" => ("#134E4A", "#14B8A6", "#99F6E4"),
             "network" or "red" => ("#1E3A8A", "#60A5FA", "#BFDBFE"),
             "integrations" or "integraciones" => ("#312E81", "#818CF8", "#C7D2FE"),

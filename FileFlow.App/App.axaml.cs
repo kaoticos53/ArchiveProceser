@@ -24,7 +24,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override async void OnFrameworkInitializationCompleted()
+    public override void OnFrameworkInitializationCompleted()
     {
         AppDomain.CurrentDomain.UnhandledException += (s, args) =>
         {
@@ -40,25 +40,14 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            SplashScreenWindow? splash = null;
             try
             {
-                splash = new SplashScreenWindow();
-                splash.Show();
-                await Task.Delay(60);
-
-                splash.UpdateStatus("Iniciando localización y servicios...", 15);
-                await Task.Delay(30);
-
                 var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(App).Assembly);
                 LocalizationManager.Instance.RegisterResourceManager(resourceManager);
 
                 var serviceCollection = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
                 serviceCollection.AddFileFlowServices();
                 Services = serviceCollection.BuildServiceProvider();
-
-                splash.UpdateStatus("Cargando preferencias y tema...", 35);
-                await Task.Delay(30);
 
                 var prefsService = Services.GetRequiredService<IUserPreferencesService>();
                 prefsService.Load();
@@ -73,11 +62,7 @@ public partial class App : Application
                     themeService.SetTheme(themeEnum);
                 }
 
-                splash.UpdateStatus("Descubriendo módulos y plugins...", 60);
-                await Task.Delay(30);
-
                 var pluginLoader = Services.GetRequiredService<FileFlow.Core.Plugins.PluginLoader>();
-                splash.SetNodeCount(pluginLoader.DiscoveredNodeTypes.Count);
 
                 if (prefsService.Preferences.CleanStaleTempOnStartup)
                 {
@@ -94,22 +79,14 @@ public partial class App : Application
                     });
                 }
 
-                splash.UpdateStatus("Inicializando lienzo DAG...", 85);
-                await Task.Delay(40);
-
                 var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
                 var mainWindow = new MainWindow
                 {
                     DataContext = mainVm
                 };
 
-                splash.UpdateStatus("¡Listo!", 100);
-                await Task.Delay(80);
-
                 desktop.MainWindow = mainWindow;
                 mainWindow.Show();
-
-                _ = splash.CloseWithFadeAsync();
 
                 // Comprobación de actualizaciones en segundo plano no bloqueante
                 if (prefsService.Preferences.AutoCheckForUpdates)
@@ -144,7 +121,6 @@ public partial class App : Application
             }
             catch (Exception ex)
             {
-                splash?.Close();
                 LogCrashToFile(ex);
                 throw;
             }

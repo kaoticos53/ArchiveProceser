@@ -26,6 +26,7 @@
     <ProjectReference Include="..\FileFlow.Plugin.Network\FileFlow.Plugin.Network.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Subflows\FileFlow.Plugin.Subflows.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -63,6 +64,7 @@
       <PluginFiles Include="..\FileFlow.Plugin.Images\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Images.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Logic\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Logic.*" />
       <PluginFiles Include="..\FileFlow.Plugin.Hashing\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Hashing.*" />
+      <PluginFiles Include="..\FileFlow.Plugin.Subflows\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.Subflows.*" />
     </ItemGroup>
     <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsTargetFolder)" SkipUnchangedFiles="false" />
   </Target>

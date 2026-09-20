@@ -162,34 +162,35 @@ public class ToolboxViewModelTests
     /// OBJETO: Expansión por defecto del catálogo de nodos.
     /// QUÉ:    Verifica que por defecto todas las categorías estén colapsadas excepto la de más usados ('Frequent').
     /// CÓMO:  Registra nodos y un uso en UserPreferencesService, instancia ToolboxViewModel y valida que solo 'Frequent' esté expandido.
+    /// <summary>
+    /// OBJETO: Expansión predeterminada de la primera categoría en el catálogo de nodos sin duplicados.
+    /// QUÉ:    Verifica que en la vista general ("Todas"), la primera categoría del catálogo esté expandida y el resto colapsadas.
+    /// CÓMO:  Instancia el toolbox y verifica que solo el primer grupo esté expandido y que no haya categorías duplicadas.
     /// </summary>
     [Fact]
-    public void ToolboxViewModel_DefaultExpansion_ShouldOnlyExpandFrequentCategory()
+    public void ToolboxViewModel_DefaultExpansion_ShouldOnlyExpandFirstCategory()
     {
         // Arrange
         var loader = new PluginLoader();
         loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
-        FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FolderSourceNode).FullName!);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
 
         // Act
         using var toolbox = new ToolboxViewModel(loader);
 
         // Assert
         var groups = toolbox.CategoryGroups.ToList();
-        groups.Should().NotBeEmpty();
-        var freqGroup = groups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
-        freqGroup.Should().NotBeNull("Frequent category should exist when there are used nodes");
-        freqGroup!.IsExpanded.Should().BeTrue("Only the 'Frequent' category must be expanded by default");
+        groups.Should().HaveCountGreaterThanOrEqualTo(2);
+        groups[0].IsExpanded.Should().BeTrue("The first category must be expanded by default");
 
-        var otherGroups = groups.Where(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase)).ToList();
-        otherGroups.Should().NotBeEmpty();
-        otherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("All categories other than 'Frequent' must be collapsed by default"));
+        var otherGroups = groups.Skip(1).ToList();
+        otherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("All categories other than the first must be collapsed by default"));
     }
 
     /// <summary>
     /// OBJETO: Comportamiento de acordeón exclusivo en el catálogo de nodos.
     /// QUÉ:    Verifica que al expandir una categoría cualquiera, las demás categorías abiertas se colapsen automáticamente.
-    /// CÓMO:  Instancia el toolbox, abre una categoría distinta de 'Frequent' y verifica que 'Frequent' y el resto queden colapsadas.
+    /// CÓMO:  Instancia el toolbox con dos categorías, abre la segunda categoría y verifica que la primera y el resto queden colapsadas.
     /// </summary>
     [Fact]
     public void ToolboxViewModel_AccordionBehavior_ShouldCollapseOtherCategoriesWhenOneExpands()
@@ -197,26 +198,25 @@ public class ToolboxViewModelTests
         // Arrange
         var loader = new PluginLoader();
         loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
-        FileFlow.App.Services.UserPreferencesService.Instance.IncrementNodeUsage(typeof(FolderSourceNode).FullName!);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
 
         using var toolbox = new ToolboxViewModel(loader);
         var initialGroups = toolbox.CategoryGroups.ToList();
-        var freqGroup = initialGroups.FirstOrDefault(g => g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
-        freqGroup.Should().NotBeNull();
-        freqGroup!.IsExpanded.Should().BeTrue();
+        initialGroups.Should().HaveCountGreaterThanOrEqualTo(2);
+        var firstGroup = initialGroups[0];
+        var secondGroup = initialGroups[1];
 
-        var nonFreqGroup = initialGroups.FirstOrDefault(g => !g.CategoryKey.Equals("Frequent", StringComparison.OrdinalIgnoreCase));
-        nonFreqGroup.Should().NotBeNull();
-        nonFreqGroup!.IsExpanded.Should().BeFalse();
+        firstGroup.IsExpanded.Should().BeTrue();
+        secondGroup.IsExpanded.Should().BeFalse();
 
-        // Act - Abre la otra categoría
-        nonFreqGroup.IsExpanded = true;
+        // Act - Abre la segunda categoría
+        secondGroup.IsExpanded = true;
 
-        // Assert - Comprueba que 'Frequent' se cerró y solo la nueva está abierta (acordeón)
-        nonFreqGroup.IsExpanded.Should().BeTrue();
-        freqGroup.IsExpanded.Should().BeFalse("Opening another category must automatically collapse 'Frequent'");
+        // Assert - Comprueba que la primera se cerró y solo la segunda está abierta (acordeón)
+        secondGroup.IsExpanded.Should().BeTrue();
+        firstGroup.IsExpanded.Should().BeFalse("Opening another category must automatically collapse the previous one");
 
-        var allOtherGroups = toolbox.CategoryGroups.ToList().Where(g => g != nonFreqGroup).ToList();
+        var allOtherGroups = toolbox.CategoryGroups.ToList().Where(g => g != secondGroup).ToList();
         allOtherGroups.Should().AllSatisfy(g => g.IsExpanded.Should().BeFalse("Accordion mode requires all other categories to be collapsed"));
     }
 

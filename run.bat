@@ -22,8 +22,8 @@ echo.
 echo Compilacion exitosa.
 
 :launch
-set EXE=FileFlow.App\bin\Debug\net9.0\FileFlow.App.exe
-if not exist "%EXE%" set EXE=FileFlow.App\bin\Release\net9.0\FileFlow.App.exe
+set EXE=FileFlow.App\bin\Debug\net10.0\FileFlow.App.exe
+if not exist "%EXE%" set EXE=FileFlow.App\bin\Release\net10.0\FileFlow.App.exe
 
 if not exist "%EXE%" (
     echo [ERROR] No se encontro el ejecutable compilado.

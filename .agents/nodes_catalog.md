@@ -1,6 +1,6 @@
 # Catálogo Rápido de Nodos de FileFlow Studio
 
-Este documento ofrece un mapa compacto de los nodos disponibles en los 11 plugins de **FileFlow Studio** con sus puertos, parámetros clave y enlaces a código fuente.
+Este documento ofrece un mapa compacto de los nodos disponibles en los 12 plugins de **FileFlow Studio** con sus puertos, parámetros clave y enlaces a código fuente.
 
 > [!NOTE]
 > Para consultar la especificación extendida detallada con descripciones de cada parámetro:
@@ -40,7 +40,17 @@ Este documento ofrece un mapa compacto de los nodos disponibles en los 11 plugin
 
 ---
 
-## 3. FileFlow.Plugin.Archives (5 Nodos)
+## 3. FileFlow.Plugin.Subflows (3 Nodos)
+
+| Nodo | Entradas | Salidas | Parámetros Clave | Código Fuente |
+| :--- | :--- | :--- | :--- | :--- |
+| **SubflowNode** | Dinámicas (`In_...`) | Dinámicas (`Out_...`) | `SubflowPath`, `ExecutionMode` (Isolated/SharedMemory), `TimeoutSeconds`, `PassThroughParentMetadata` | [`SubflowNode.cs`](file:///FileFlow.Plugin.Subflows/SubflowNode.cs) |
+| **SubflowInputNode** | — | `Out` | `PortIdentifier`, `DisplayName`, `ForwardMetadataOnly` | [`SubflowInputNode.cs`](file:///FileFlow.Plugin.Subflows/SubflowInputNode.cs) |
+| **SubflowOutputNode** | `In` | — | `PortIdentifier`, `DisplayName`, `ForwardMetadataOnly` | [`SubflowOutputNode.cs`](file:///FileFlow.Plugin.Subflows/SubflowOutputNode.cs) |
+
+---
+
+## 4. FileFlow.Plugin.Archives (5 Nodos)
 
 | Nodo | Entradas | Salidas | Parámetros Clave | Código Fuente |
 | :--- | :--- | :--- | :--- | :--- |
@@ -52,7 +62,7 @@ Este documento ofrece un mapa compacto de los nodos disponibles en los 11 plugin
 
 ---
 
-## 4. FileFlow.Plugin.Images (3 Nodos)
+## 5. FileFlow.Plugin.Images (3 Nodos)
 
 | Nodo | Entradas | Salidas | Parámetros Clave | Código Fuente |
 | :--- | :--- | :--- | :--- | :--- |
@@ -62,7 +72,7 @@ Este documento ofrece un mapa compacto de los nodos disponibles en los 11 plugin
 
 ---
 
-## 5. FileFlow.Plugin.AI (10 Nodos)
+## 6. FileFlow.Plugin.AI (10 Nodos)
 
 | Nodo | Entradas | Salidas | Parámetros Clave | Código Fuente |
 | :--- | :--- | :--- | :--- | :--- |
@@ -79,7 +89,7 @@ Este documento ofrece un mapa compacto de los nodos disponibles en los 11 plugin
 
 ---
 
-## 6. FileFlow.Plugin.Data, Documents, Audio, Video, Network, Scripting & Integrations
+## 7. FileFlow.Plugin.Data, Documents, Audio, Video, Network, Scripting & Integrations
 
 | Plugin / Nodo | Entradas | Salidas | Propósito Principal | Código Fuente |
 | :--- | :--- | :--- | :--- | :--- |

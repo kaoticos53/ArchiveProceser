@@ -3,9 +3,9 @@ using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
 
-namespace FileFlow.Plugin.Logic;
+namespace FileFlow.Plugin.Subflows;
 
-[NodeDefinition("SubflowNode_Name", "Logic", "SubflowNode_Desc", PipelineRole.Control,
+[NodeDefinition("SubflowNode_Name", "Subflows", "SubflowNode_Desc", PipelineRole.Control,
     "subflow", "subgrafo", "macro", "composite", "modular", "reutilizable", "anidado",
     SubCategory = "Subflows")]
 public sealed class SubflowNode : IFlowNode, ISubflowNode
@@ -16,7 +16,7 @@ public sealed class SubflowNode : IFlowNode, ISubflowNode
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SubflowNode_Name", "Subflujo Reutilizable");
-    public string Category => "Logic";
+    public string Category => "Subflows";
     public string Description => LocalizationManager.Instance.GetString("SubflowNode_Desc", "Encapsula un subgrafo DAG completo en un único nodo modular reutilizable con puertos dinámicos mapeados a sus entradas y salidas internas.");
 
     public IReadOnlyList<NodePort> Inputs

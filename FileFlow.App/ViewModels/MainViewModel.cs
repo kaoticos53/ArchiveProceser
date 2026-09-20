@@ -54,7 +54,7 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
-        LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()));
+        LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodesCount));
     }
 
     /// <summary>
@@ -83,6 +83,6 @@ public partial class MainViewModel : ObservableObject
             }
         };
 
-        LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodeTypes.Values.Distinct().Count()));
+        LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodesCount));
     }
 }

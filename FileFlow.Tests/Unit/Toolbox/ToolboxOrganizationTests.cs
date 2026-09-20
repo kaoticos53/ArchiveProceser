@@ -14,6 +14,7 @@ using FileFlow.Plugin.Integrations;
 using FileFlow.Plugin.Logic;
 using FileFlow.Plugin.Network;
 using FileFlow.Plugin.Scripting;
+using FileFlow.Plugin.Subflows;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FluentAssertions;
@@ -34,6 +35,7 @@ public class ToolboxOrganizationTests
         "LanguageAI",
         "Security",
         "Logic",
+        "Subflows",
         "Archives",
         "Network",
         "Integrations"
@@ -48,6 +50,7 @@ public class ToolboxOrganizationTests
         typeof(ExcelReaderNode).Assembly,
         typeof(HashCalculatorNode).Assembly,
         typeof(SwitchCaseNode).Assembly,
+        typeof(SubflowNode).Assembly,
         typeof(CliExecutionNode).Assembly,
         typeof(CustomScriptNode).Assembly,
         typeof(NetworkDownloadNode).Assembly,
@@ -97,7 +100,7 @@ public class ToolboxOrganizationTests
         {
             var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>()!;
             ExpectedCategories.Should().Contain(defAttr.Category,
-                $"Node '{type.Name}' declares category '{defAttr.Category}' which is not in the recognized 11 macro-categories.");
+                $"Node '{type.Name}' declares category '{defAttr.Category}' which is not in the recognized 12 macro-categories.");
         }
     }
 
@@ -201,4 +204,42 @@ public class ToolboxOrganizationTests
             AvaloniaTestHelper.RunOnUI(() => LocalizationManager.Instance.CurrentCulture = originalCulture);
         }
     }
+
+    [Fact]
+    public void ConfiguredLoader_ShouldNotHaveDuplicateNodeTypesOrCategories()
+    {
+        var loader = FileFlow.App.Services.PluginRegistryHelper.CreateConfiguredLoader();
+        
+        string appPluginsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "FileFlow.App", "bin", "Debug", "net10.0", "Plugins");
+        if (Directory.Exists(appPluginsDir))
+        {
+            loader.LoadPluginDirectory(appPluginsDir);
+        }
+
+        using var toolbox = new ToolboxViewModel(loader);
+
+        // 1. Available categories in ComboBox should be unique by key and display name
+        var categoryKeys = toolbox.AvailableCategories.Select(c => c.Key).ToList();
+        categoryKeys.Should().OnlyHaveUniqueItems();
+
+        // 2. Standard category groups under 'Todas' should have unique keys
+        var standardGroups = toolbox.CategoryGroups.ToList();
+        var groupKeys = standardGroups.Select(g => g.CategoryKey).ToList();
+        groupKeys.Should().OnlyHaveUniqueItems();
+
+        var groupNames = standardGroups.Select(g => g.CategoryName).ToList();
+        groupNames.Should().OnlyHaveUniqueItems("Each category group must have a unique localized name without duplicates.");
+
+        // 3. Items inside each category group must be unique
+        foreach (var group in standardGroups)
+        {
+            var itemTypeNames = group.Items.Select(i => i.TypeName).ToList();
+            itemTypeNames.Should().OnlyHaveUniqueItems($"Group '{group.CategoryKey}' should not contain duplicate nodes.");
+        }
+
+        // 4. DiscoveredNodesCount must equal UniqueNodeTypes count (78 nodes)
+        loader.DiscoveredNodesCount.Should().Be(loader.UniqueNodeTypes.Count());
+        loader.DiscoveredNodesCount.Should().Be(78, "there are exactly 78 official nodes across all 12 plugins");
+    }
 }
+

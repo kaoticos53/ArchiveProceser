@@ -2,9 +2,9 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
 
-namespace FileFlow.Plugin.Logic;
+namespace FileFlow.Plugin.Subflows;
 
-[NodeDefinition("SubflowOutputNode_Name", "Logic", "SubflowOutputNode_Desc", PipelineRole.Control,
+[NodeDefinition("SubflowOutputNode_Name", "Subflows", "SubflowOutputNode_Desc", PipelineRole.Control,
     "subflow", "subgrafo", "output", "salida", "boundary", "macro", "reutilizable",
     SubCategory = "Subflows")]
 public sealed class SubflowOutputNode : IFlowNode, ISubflowBoundaryNode
@@ -13,7 +13,7 @@ public sealed class SubflowOutputNode : IFlowNode, ISubflowBoundaryNode
 
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name => LocalizationManager.Instance.GetString("SubflowOutputNode_Name", "Salida de Subflujo");
-    public string Category => "Logic";
+    public string Category => "Subflows";
     public string Description => LocalizationManager.Instance.GetString("SubflowOutputNode_Desc", "Punto de salida frontera dentro de un subflujo. Los elementos procesados que llegan a este nodo se emiten hacia los puertos de salida del nodo subflujo exterior.");
 
     public IReadOnlyList<NodePort> Inputs
@@ -25,7 +25,10 @@ public sealed class SubflowOutputNode : IFlowNode, ISubflowBoundaryNode
         }
     }
 
-    public IReadOnlyList<NodePort> Outputs { get; } = Array.Empty<NodePort>();
+    public IReadOnlyList<NodePort> Outputs { get; } = new[]
+    {
+        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out)
+    };
 
     public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -66,6 +69,7 @@ public sealed class SubflowOutputNode : IFlowNode, ISubflowBoundaryNode
         else
         {
             context.Log($"[SubflowOutput] Salida completada de forma autónoma (sin contenedor anfitrión)", LogLevel.Information, item);
+            await context.EmitAsync(WellKnownPorts.Out, item).ConfigureAwait(false);
         }
     }
 }

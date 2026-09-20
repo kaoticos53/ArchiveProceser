@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-DLL_PATH="$SCRIPT_DIR/FileFlow.App/bin/$CONFIG/net9.0/FileFlow.App.dll"
+DLL_PATH="$SCRIPT_DIR/FileFlow.App/bin/$CONFIG/net10.0/FileFlow.App.dll"
 
 if [ ! -f "$DLL_PATH" ]; then
     if [ "$CONFIG" = "Debug" ]; then
@@ -41,7 +41,7 @@ if [ ! -f "$DLL_PATH" ]; then
     else
         FALLBACK_CONFIG="Debug"
     fi
-    FALLBACK_PATH="$SCRIPT_DIR/FileFlow.App/bin/$FALLBACK_CONFIG/net9.0/FileFlow.App.dll"
+    FALLBACK_PATH="$SCRIPT_DIR/FileFlow.App/bin/$FALLBACK_CONFIG/net10.0/FileFlow.App.dll"
     if [ -f "$FALLBACK_PATH" ]; then
         DLL_PATH="$FALLBACK_PATH"
         CONFIG="$FALLBACK_CONFIG"

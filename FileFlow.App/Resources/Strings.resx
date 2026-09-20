@@ -407,6 +407,8 @@
   <data name="Category_Metadata" xml:space="preserve"><value>Metadata</value></data>
   <data name="Category_Hashing" xml:space="preserve"><value>Hashing &amp; Security</value></data>
   <data name="Category_Scripting" xml:space="preserve"><value>Scripting</value></data>
+  <data name="Category_Subflows" xml:space="preserve"><value>Subflows</value></data>
+  <data name="Category_Subflow" xml:space="preserve"><value>Subflows</value></data>
   <data name="Category_General" xml:space="preserve"><value>General</value></data>
 
   <!-- Pipeline Roles (ETL / DAG) -->

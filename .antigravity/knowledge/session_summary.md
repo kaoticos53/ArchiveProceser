@@ -10,6 +10,75 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **155. Corrección Definitiva de Duplicados: Carga en Dos Fases y Thread-Safety en PluginLoader (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - Los 78 nodos aparecían correctamente al arrancar y a los 1-2 segundos se duplicaban a ~156 en el catálogo.
+    - **Causa Raíz 1 — Carga en Dos Fases**: La carpeta `/bin/Debug/net10.0/Plugins/` contiene las mismas 12 DLLs de plugins que `RegisterBuiltInAssemblies()` ya cargó por referencias de proyecto. `LoadPluginDirectory()` las encontraba, las volvía a registrar, y al final llamaba `ScanCurrentAppDomain()` que re-procesaba todos los ensamblados del AppDomain.
+    - **Causa Raíz 2 — Condición de Carrera**: `_discoveredNodeTypes` (un `Dictionary<string,Type>`) no tenía protección de concurrencia. El hilo de UI enumeraba `UniqueNodeTypes` (un `IEnumerable<Type>` lazy) mientras el fondo lo modificaba, produciendo estados intermedios con duplicados.
+  - **Implementación**:
+    - `FileFlow.Core/Plugins/PluginLoader.cs`: `Lock _dictLock` + `HashSet<string> _registeredAssemblyNames`; `UniqueNodeTypes` → `IReadOnlyList<Type>` (snapshot bajo lock); `LoadPluginDirectory()` ya NO llama `ScanCurrentAppDomain()`; guard para saltar DLLs ya registradas; escritura batch bajo lock en `RegisterNodeTypesFromAssembly()`; `CreateNodeInstance()`/`UnloadAll()` thread-safe.
+    - `FileFlow.App/Services/PluginRegistryHelper.cs`: `ScanCurrentAppDomain()` se llama UNA SOLA VEZ al final de `CreateConfiguredLoader()`.
+    - `FileFlow.App/ViewModels/ToolboxViewModel.cs`: Eliminado `.DistinctBy()` redundante en `RefreshToolbox()` (ya garantizado por `UniqueNodeTypes`).
+  - **Validación**:
+    - `dotnet build`: ✅ 0 errores.
+    - `dotnet test`: pendiente confirmación.
+
+- **154. Blindaje Definitivo Anti-Duplicados en Catálogo de Nodos y ComboBox (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - Al iniciar la aplicación aparecían los 78 nodos únicos pero al cabo de 1-2 segundos se duplicaban en el catálogo.
+    - Causa: Mutación destructiva de `AvailableCategories` con `Clear()` disparaba eventos de deselección en Avalonia (`SelectedCategoryFilter = null`), provocando bucles de `RefreshToolbox()`. Adicionalmente, `RefreshToolbox()` y `CommitGroups()` no tenían guardia de `HashSet` sobre nombres cualificados de tipos y claves de grupos.
+  - **Implementación**:
+    - `FileFlow.App/ViewModels/ToolboxViewModel.cs`: `UpdateAvailableCategories()` refactorizado para actualización in-place sin disparar eventos destructivos de `ComboBox`. `RefreshToolbox()` y `CommitGroups()` equipados con `seenTypeNames` y `seenGroups` basados en `HashSet<string>(OrdinalIgnoreCase)` y `UniqueNodeTypes.DistinctBy(...)`.
+    - `FileFlow.Core/Plugins/PluginLoader.cs`: `RegisterNodeTypesFromAssembly()` rechaza el reemplazo de tipos del `AssemblyLoadContext.Default` por instancias de ALCs secundarios.
+  - **Validación**:
+    - `dotnet build`: 0 errores, 0 advertencias.
+    - `dotnet test`: 1065 pruebas superadas (100% verde).
+
+- **153. Corrección de Cierre al Iniciar por Acceso entre Hilos a SolidColorBrush (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - La aplicación se cerraba sola instantes después de abrirse arrojando en `crash.log`:
+      `System.InvalidOperationException: The calling thread cannot access this object because a different thread owns it`
+      en `SolidColorBrush.get_Color()` durante `RenderCore()` y `ISolidColorBrushAnimator.Interpolate()`.
+    - **Causa Raíz**: `App.OnFrameworkInitializationCompleted` estaba implementado como `async void` con llamadas intermedias `await Task.Delay(...)`. Esto provocaba que el método cediera el control a Avalonia y las continuaciones asíncronas (carga de servicios, inicialización de temas `ThemeManager.SetTheme()` y construcción de `SolidColorBrush` en `ThemeResourceApplier`) se ejecutaran sobre hilos del ThreadPool. Al asociar dichos pinceles con afinidad de hilo no-UI a controles con transiciones visuales (`BrushTransition`), el hilo de renderizado de Avalonia fallaba con `VerifyAccess()`.
+  - **Implementación**:
+    - `FileFlow.App/App.axaml.cs`: Convertido `OnFrameworkInitializationCompleted()` en método 100% síncrono ejecutado de principio a fin sobre el hilo principal de UI.
+    - `FileFlow.App/Services/ThemeManager.cs`: Protegidos los puntos de entrada `SetTheme(AppTheme)`, `SetTheme(ThemeDefinition)` y `SetThemeById` con chequeo `Dispatcher.UIThread.CheckAccess()` para invocar la generación de recursos (`BuildResourceDictionary`) siempre en el hilo de UI.
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1065 pruebas superadas al 100%, 0 fallos, 1 omitida**.
+
+- **152. Eliminación de Duplicados en el Catálogo de Nodos (Toolbox) (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - En el catálogo de nodos (`ToolboxViewModel` / `NodeToolboxView.axaml`), las categorías y los nodos aparecían duplicados dos veces.
+    - **Causa Raíz**: En `RefreshToolbox()`, cuando el filtro seleccionado era `"Todas"`, se inyectaban los grupos virtuales `⭐ Favoritos` y `🔥 Más Usados` arriba del catálogo, duplicando visualmente todos los nodos que acumulaban uso o eran favoritos.
+  - **Implementación**:
+    - `FileFlow.App/ViewModels/ToolboxViewModel.cs`: Refactorizado `RefreshToolbox()` eliminando la duplicación en `"Todas"` y manteniendo vistas dedicadas solo cuando se seleccionan explícitamente los filtros `"Favoritos"` o `"Frecuentes"`.
+    - `FileFlow.Tests`: Añadido test `ConfiguredLoader_ShouldNotHaveDuplicateNodeTypesOrCategories` en `ToolboxOrganizationTests.cs`, adaptados tests de acordeón en `ToolboxViewModelTests.cs` y regeneradas las líneas base de regresión visual (`panel-toolbox-dark.png`, `app-shell-dark.png`, `app-shell-light.png`).
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1065 pruebas superadas al 100%, 0 fallos, 1 omitida**.
+
+- **151. Nueva Categoría y Plugin Standalone de Subflujos (`FileFlow.Plugin.Subflows`) (2026-09-20)**:
+  - **Requerimiento**:
+    - Extraer los nodos de subflujo (`SubflowNode`, `SubflowInputNode`, `SubflowOutputNode`) de la categoría `Logic` (`FileFlow.Plugin.Logic`) y encapsularlos en su propio plugin dedicado `FileFlow.Plugin.Subflows` bajo la categoría `"Subflows"` / `"Subflujos"`.
+  - **Implementación**:
+    - Creado `FileFlow.Plugin.Subflows` (.NET 10, C# 14, Nullable) referenciando únicamente `FileFlow.Sdk`.
+    - Añadidos recursos co-ubicados multilingües `Strings.resx` y `Strings.es.resx` en el nuevo plugin.
+    - Depurado `FileFlow.Plugin.Logic` de código y recursos de subflujos.
+    - Integrado el nuevo plugin en `FileFlow.slnx`, `FileFlow.App.csproj` y `FileFlow.Tests.csproj`.
+    - Localizada la categoría en `FileFlow.App` (`Category_Subflows` / `Category_Subflow`), asignado icono `VectorCombine` y color de badge `#7C4DFF`.
+    - Actualizados tests unitarios y regenerada la línea base visual de la caja de herramientas.
+  - **Validación**:
+    - Suite completa (`dotnet test`): **1065 superadas al 100%, 0 errores, 1 omitida**.
+
+- **150. Actualización de Scripts de Lanzamiento y UI a .NET 10 (2026-09-20)**:
+  - **Diagnóstico del Fallo**:
+    - Al ejecutar `.\run.ps1`, el lanzador no encontraba el binario de salida al buscar en `FileFlow.App\bin\Debug\net9.0\FileFlow.App.exe` debido a la migración previa a `.NET 10.0`.
+  - **Implementación**:
+    - Actualizadas las rutas a `net10.0` en `run.ps1`, `run-fast.ps1`, `run.bat`, `run-fast.bat`, `run.sh` y `run-fast.sh`.
+    - Actualizada la información de versión y badges en `AboutDialogWindow.axaml` y `AboutDialogWindow.axaml.cs` a `.NET 10.0`.
+    - Regenerada la línea base de regresión visual para la ventana Acerca de y mejorado el test de recursión de subflujos.
+  - **Validación**:
+    - Suite completa de pruebas (`dotnet test`): **1064 superadas, 0 fallos, 1 omitida (100% verde)**.
+
 - **149. Blindaje de Permisos de Escritura y Modos Instalado vs. Portable (Cierre en Inicio en Windows Program Files) (2026-09-19)**:
   - **Diagnóstico del Fallo**:
     - Al instalar la aplicación en Windows (ej. `C:\Program Files\FileFlow Studio\`), la pantalla de inicio (splash screen) se mostraba brevemente y la aplicación se cerraba abruptamente.

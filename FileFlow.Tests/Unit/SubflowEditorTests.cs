@@ -4,6 +4,7 @@ using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Plugin.Logic;
+using FileFlow.Plugin.Subflows;
 using FluentAssertions;
 using Xunit;
 

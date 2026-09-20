@@ -12,6 +12,7 @@
   <Project Path="FileFlow.Plugin.Logic/FileFlow.Plugin.Logic.csproj" />
   <Project Path="FileFlow.Plugin.Network/FileFlow.Plugin.Network.csproj" />
   <Project Path="FileFlow.Plugin.Scripting/FileFlow.Plugin.Scripting.csproj" />
+  <Project Path="FileFlow.Plugin.Subflows/FileFlow.Plugin.Subflows.csproj" />
   <Project Path="FileFlow.Sdk/FileFlow.Sdk.csproj" />
   <Project Path="FileFlow.Tests/FileFlow.Tests.csproj" />
 </Solution>

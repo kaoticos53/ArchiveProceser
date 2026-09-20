@@ -172,12 +172,19 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
                 var prefs = _userPreferencesService;
                 var allItems = new List<NodeToolboxItem>();
+                var seenTypeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                var uniqueTypes = _pluginLoader.DiscoveredNodeTypes.Values.Distinct().ToList();
+                // UniqueNodeTypes ya devuelve una snapshot desduplicada y thread-safe
+                var uniqueTypes = _pluginLoader.UniqueNodeTypes;
 
                 foreach (var type in uniqueTypes)
                 {
                     string typeName = type.FullName ?? type.Name;
+                    if (!seenTypeNames.Add(typeName))
+                    {
+                        continue;
+                    }
+
                     var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
 
                     string rawName = defAttr?.Name ?? type.Name;
@@ -237,7 +244,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                 bool isSpecificFilter = !SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
                                         !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase);
 
-                bool DetermineInitialExpanded(string groupKey)
+                bool DetermineInitialExpanded(string groupKey, bool isFirst = false)
                 {
                     if (!string.IsNullOrWhiteSpace(SearchText))
                     {
@@ -254,7 +261,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                         return string.Equals(groupKey, previouslyExpandedKey, StringComparison.OrdinalIgnoreCase);
                     }
 
-                    return string.Equals(groupKey, "Frequent", StringComparison.OrdinalIgnoreCase);
+                    return isFirst;
                 }
 
                 var targetGroups = new List<ToolboxCategoryGroup>();
@@ -295,6 +302,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
 
                     var roleGroups = filteredItems.GroupBy(i => i.Role).ToDictionary(g => g.Key, g => g.ToList());
 
+                    bool isFirstRole = true;
                     foreach (var r in roleOrder)
                     {
                         if (roleGroups.TryGetValue(r, out var roleItems) && roleItems.Count > 0)
@@ -304,7 +312,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                             var group = new ToolboxCategoryGroup(
                                 roleGroupName, 
                                 roleKey, 
-                                DetermineInitialExpanded(roleKey), 
+                                DetermineInitialExpanded(roleKey, isFirstRole), 
                                 HandleGroupExpanded);
 
                             foreach (var it in roleItems)
@@ -312,6 +320,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                                 group.Items.Add(it);
                             }
                             targetGroups.Add(group);
+                            isFirstRole = false;
                         }
                     }
 
@@ -326,7 +335,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     var favGroup = new ToolboxCategoryGroup(
                         favGroupName, 
                         "Favorites", 
-                        DetermineInitialExpanded("Favorites"), 
+                        DetermineInitialExpanded("Favorites", true), 
                         HandleGroupExpanded);
 
                     foreach (var item in allItems.Where(i => i.IsFavorite))
@@ -348,7 +357,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                     var freqGroup = new ToolboxCategoryGroup(
                         freqGroupName, 
                         "Frequent", 
-                        DetermineInitialExpanded("Frequent"), 
+                        DetermineInitialExpanded("Frequent", true), 
                         HandleGroupExpanded);
 
                     foreach (var item in allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10))
@@ -364,62 +373,35 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
                 }
 
                 // 4. Agrupación Estándar o "Todas"
-                var groupDict = new Dictionary<string, ToolboxCategoryGroup>(StringComparer.OrdinalIgnoreCase);
+                var itemsByCategory = allItems
+                    .GroupBy(i => i.Category, StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(g => LocalizationManager.Instance.GetString($"Category_{g.Key}", g.Key));
 
-                if (SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) ||
-                    SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase))
-                {
-                    var favItems = allItems.Where(i => i.IsFavorite).ToList();
-                    if (favItems.Count > 0)
-                    {
-                        var favGroup = new ToolboxCategoryGroup(
-                            favGroupName, 
-                            "Favorites", 
-                            DetermineInitialExpanded("Favorites"), 
-                            HandleGroupExpanded);
-
-                        foreach (var f in favItems) favGroup.Items.Add(f);
-                        targetGroups.Add(favGroup);
-                    }
-
-                    var freqItems = allItems.Where(i => i.UsageCount > 0).OrderByDescending(i => i.UsageCount).Take(10).ToList();
-                    if (freqItems.Count > 0)
-                    {
-                        var freqGroup = new ToolboxCategoryGroup(
-                            freqGroupName, 
-                            "Frequent", 
-                            DetermineInitialExpanded("Frequent"), 
-                            HandleGroupExpanded);
-
-                        foreach (var f in freqItems) freqGroup.Items.Add(f);
-                        targetGroups.Add(freqGroup);
-                    }
-                }
-
-                foreach (var item in allItems)
+                bool isFirstCat = true;
+                foreach (var categoryGroup in itemsByCategory)
                 {
                     if (!SelectedCategoryFilter.Equals("Todas", StringComparison.OrdinalIgnoreCase) &&
                         !SelectedCategoryFilter.Equals("All", StringComparison.OrdinalIgnoreCase) &&
-                        !item.Category.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
+                        !categoryGroup.Key.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
 
-                    string localizedCategoryName = LocalizationManager.Instance.GetString($"Category_{item.Category}", item.Category);
+                    string localizedCategoryName = LocalizationManager.Instance.GetString($"Category_{categoryGroup.Key}", categoryGroup.Key);
 
-                    if (!groupDict.TryGetValue(item.Category, out var group))
+                    var group = new ToolboxCategoryGroup(
+                        localizedCategoryName, 
+                        categoryGroup.Key, 
+                        DetermineInitialExpanded(categoryGroup.Key, isFirstCat), 
+                        HandleGroupExpanded);
+
+                    foreach (var it in categoryGroup)
                     {
-                        group = new ToolboxCategoryGroup(
-                            localizedCategoryName, 
-                            item.Category, 
-                            DetermineInitialExpanded(item.Category), 
-                            HandleGroupExpanded);
-
-                        groupDict[item.Category] = group;
-                        targetGroups.Add(group);
+                        group.Items.Add(it);
                     }
 
-                    group.Items.Add(item);
+                    targetGroups.Add(group);
+                    isFirstCat = false;
                 }
 
                 CommitGroups(targetGroups);
@@ -447,9 +429,13 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
     private void CommitGroups(List<ToolboxCategoryGroup> newGroups)
     {
         CategoryGroups.Clear();
+        var seenGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var group in newGroups)
         {
-            CategoryGroups.Add(group);
+            if (seenGroups.Add(group.CategoryKey))
+            {
+                CategoryGroups.Add(group);
+            }
         }
     }
 
@@ -474,8 +460,7 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
         };
 
         // Descubrir todas las categorías dinámicas de plugins cargados
-        var dynamicCategories = _pluginLoader.DiscoveredNodeTypes.Values
-            .Distinct()
+        var dynamicCategories = _pluginLoader.UniqueNodeTypes
             .Select(type =>
             {
                 var defAttr = type.GetCustomAttribute<NodeDefinitionAttribute>();
@@ -495,27 +480,55 @@ public partial class ToolboxViewModel : ObservableObject, IDisposable
             list.Add(new ToolboxCategoryFilterItem(cat, displayName, icon, count, isSelected));
         }
 
-        // Actualizar la colección observable de forma limpia
-        AvailableCategories.Clear();
-        ToolboxCategoryFilterItem? matchedItem = null;
-        foreach (var item in list)
+        // Actualizar la colección observable de forma limpia e in-place si ya existe la estructura
+        bool needsRebuild = AvailableCategories.Count != list.Count;
+        if (!needsRebuild)
         {
-            AvailableCategories.Add(item);
-            if (item.Key.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
+            for (int i = 0; i < list.Count; i++)
             {
-                matchedItem = item;
+                if (!AvailableCategories[i].Key.Equals(list[i].Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    needsRebuild = true;
+                    break;
+                }
             }
         }
 
+        if (needsRebuild)
+        {
+            AvailableCategories.Clear();
+            foreach (var item in list)
+            {
+                AvailableCategories.Add(item);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                var existing = AvailableCategories[i];
+                var updated = list[i];
+                existing.DisplayName = updated.DisplayName;
+                existing.Icon = updated.Icon;
+                existing.Count = updated.Count;
+                existing.IsSelected = updated.IsSelected;
+            }
+        }
+
+        var matchedItem = AvailableCategories.FirstOrDefault(c => c.Key.Equals(SelectedCategoryFilter, StringComparison.OrdinalIgnoreCase))
+                          ?? AvailableCategories.FirstOrDefault();
+
 #pragma warning disable MVVMTK0034
-        if (matchedItem != null)
+        if (matchedItem != null && !ReferenceEquals(_selectedCategoryItem, matchedItem))
         {
             _selectedCategoryItem = matchedItem;
+            OnPropertyChanged(nameof(SelectedCategoryItem));
         }
-        else if (AvailableCategories.Count > 0)
+        else if (AvailableCategories.Count > 0 && _selectedCategoryItem == null)
         {
             _selectedCategoryFilter = AvailableCategories[0].Key;
             _selectedCategoryItem = AvailableCategories[0];
+            OnPropertyChanged(nameof(SelectedCategoryItem));
         }
 #pragma warning restore MVVMTK0034
     }

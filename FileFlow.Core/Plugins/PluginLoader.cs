@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Resources;
+using System.Runtime.Loader;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Plugins;
@@ -11,21 +12,75 @@ public class PluginLoader
     private readonly List<PluginAssemblyLoadContext> _loadContexts = [];
     private readonly Dictionary<string, Type> _discoveredNodeTypes = new(StringComparer.OrdinalIgnoreCase);
 
-    public IReadOnlyDictionary<string, Type> DiscoveredNodeTypes => _discoveredNodeTypes;
+    /// <summary>Conjunto de nombres simples de ensamblados ya procesados para evitar re-escaneos.</summary>
+    private readonly HashSet<string> _registeredAssemblyNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Lock exclusivo para acceso concurrente a _discoveredNodeTypes y _registeredAssemblyNames.</summary>
+    private readonly Lock _dictLock = new();
+
+    public IReadOnlyDictionary<string, Type> DiscoveredNodeTypes
+    {
+        get
+        {
+            lock (_dictLock)
+            {
+                return new Dictionary<string, Type>(_discoveredNodeTypes, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Colección de tipos de nodo únicos descubiertos. Devuelve una snapshot inmutable bajo lock
+    /// para evitar condiciones de carrera entre el hilo de carga de plugins y el hilo de UI.
+    /// </summary>
+    public IReadOnlyList<Type> UniqueNodeTypes
+    {
+        get
+        {
+            lock (_dictLock)
+            {
+                return _discoveredNodeTypes.Values
+                    .DistinctBy(t => t.FullName ?? t.Name)
+                    .ToList();
+            }
+        }
+    }
+
+    /// <summary>Cantidad de nodos únicos descubiertos sin contar duplicados de nombres cortos o ALC.</summary>
+    public int DiscoveredNodesCount
+    {
+        get
+        {
+            lock (_dictLock)
+            {
+                return _discoveredNodeTypes.Values
+                    .DistinctBy(t => t.FullName ?? t.Name)
+                    .Count();
+            }
+        }
+    }
 
     public void LoadPluginDirectory(string pluginsDirectory)
     {
-        if (Directory.Exists(pluginsDirectory))
-        {
-            string[] dllFiles = Directory.GetFiles(pluginsDirectory, "*.dll", SearchOption.AllDirectories);
-            foreach (string dllPath in dllFiles)
-            {
-                LoadPluginAssembly(dllPath);
-            }
-        }
+        if (!Directory.Exists(pluginsDirectory)) return;
 
-        // Also scan loaded assemblies in current AppDomain for builtin/referenced plugins
-        ScanCurrentAppDomain();
+        string[] dllFiles = Directory.GetFiles(pluginsDirectory, "*.dll", SearchOption.AllDirectories);
+        foreach (string dllPath in dllFiles)
+        {
+            // Saltar DLLs cuyo ensamblado ya fue registrado (p.ej. por RegisterBuiltInAssemblies)
+            string asmSimpleName = Path.GetFileNameWithoutExtension(dllPath);
+            lock (_dictLock)
+            {
+                if (_registeredAssemblyNames.Contains(asmSimpleName))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PluginLoader] Skipping already-registered assembly: {asmSimpleName}");
+                    continue;
+                }
+            }
+            LoadPluginAssembly(dllPath);
+        }
+        // NOTA: ScanCurrentAppDomain() ya NO se llama aquí.
+        // Debe invocarse explícitamente desde CreateConfiguredLoader() una sola vez al final.
     }
 
     public void ScanCurrentAppDomain()
@@ -57,6 +112,21 @@ public class PluginLoader
             return;
         }
 
+        // Check if the assembly can be loaded into the default context directly
+        try
+        {
+            var defaultAsm = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName(asmSimpleName));
+            if (defaultAsm != null)
+            {
+                RegisterNodeTypesFromAssembly(defaultAsm);
+                return;
+            }
+        }
+        catch
+        {
+            // Not accessible in default context; fallback to isolated ALC
+        }
+
         try
         {
             var alc = new PluginAssemblyLoadContext(dllPath);
@@ -83,10 +153,22 @@ public class PluginLoader
                 return;
             }
 
+            // Marcar este ensamblado como ya procesado para que LoadPluginDirectory y ScanCurrentAppDomain lo salten
+            lock (_dictLock)
+            {
+                // Si ya fue procesado (p.ej. por RegisterBuiltInAssemblies), no repetir el trabajo
+                if (!_registeredAssemblyNames.Add(asmName))
+                {
+                    return;
+                }
+            }
+
             // 1. Auto-discover and register Plugin Resources (Strings.resx / embedded .resources)
             RegisterPluginResources(asm);
 
-            // 2. Discover and instantiate IPluginInitializer if present
+            // 2. Discover and instantiate IPluginInitializer if present; collect node types
+            var nodeTypesToRegister = new List<(string fullName, string shortName, Type type)>();
+
             foreach (Type type in asm.GetTypes())
             {
                 if (typeof(IPluginInitializer).IsAssignableFrom(type) && !type.IsAbstract && !type.IsInterface)
@@ -108,9 +190,40 @@ public class PluginLoader
 
                 if (isFlowNode)
                 {
-                    string fullName = type.FullName ?? type.Name;
+                    nodeTypesToRegister.Add((type.FullName ?? type.Name, type.Name, type));
+                }
+            }
+
+            // Escritura batch bajo lock para máxima thread-safety
+            lock (_dictLock)
+            {
+                foreach (var (fullName, shortName, type) in nodeTypesToRegister)
+                {
+                    // Prioridad Default ALC: no sobreescribir un tipo del ALC por defecto con uno de un ALC aislado
+                    if (_discoveredNodeTypes.TryGetValue(fullName, out var existingType))
+                    {
+                        var existingAlc = AssemblyLoadContext.GetLoadContext(existingType.Assembly);
+                        var newAlc = AssemblyLoadContext.GetLoadContext(type.Assembly);
+                        if (existingAlc == AssemblyLoadContext.Default && newAlc != AssemblyLoadContext.Default)
+                        {
+                            continue;
+                        }
+                    }
+
+                    if (_discoveredNodeTypes.TryGetValue(shortName, out var existingShortType))
+                    {
+                        var existingAlc = AssemblyLoadContext.GetLoadContext(existingShortType.Assembly);
+                        var newAlc = AssemblyLoadContext.GetLoadContext(type.Assembly);
+                        if (existingAlc == AssemblyLoadContext.Default && newAlc != AssemblyLoadContext.Default)
+                        {
+                            // Registrar solo el FullName (no sobreescribir el shortName)
+                            _discoveredNodeTypes[fullName] = type;
+                            continue;
+                        }
+                    }
+
                     _discoveredNodeTypes[fullName] = type;
-                    _discoveredNodeTypes[type.Name] = type;
+                    _discoveredNodeTypes[shortName] = type;
                 }
             }
         }
@@ -173,24 +286,38 @@ public class PluginLoader
     {
         Type type = typeof(T);
         string fullName = type.FullName ?? type.Name;
-        _discoveredNodeTypes[fullName] = type;
-        _discoveredNodeTypes[type.Name] = type;
+        lock (_dictLock)
+        {
+            _discoveredNodeTypes[fullName] = type;
+            _discoveredNodeTypes[type.Name] = type;
+        }
     }
 
     public IFlowNode? CreateNodeInstance(string typeName)
     {
         if (string.IsNullOrWhiteSpace(typeName)) return null;
 
-        if (_discoveredNodeTypes.TryGetValue(typeName, out Type? type))
+        // Obtener snapshot bajo lock para la búsqueda inicial
+        Type? type;
+        lock (_dictLock)
+        {
+            _discoveredNodeTypes.TryGetValue(typeName, out type);
+        }
+        if (type != null)
         {
             return (IFlowNode?)Activator.CreateInstance(type);
         }
 
         // Try matching by simple class name if FullName fails
-        var kvp = _discoveredNodeTypes.FirstOrDefault(x => x.Value.Name.Equals(typeName, StringComparison.OrdinalIgnoreCase));
-        if (kvp.Value != null)
+        Type? shortMatchType;
+        lock (_dictLock)
         {
-            return (IFlowNode?)Activator.CreateInstance(kvp.Value);
+            var kvp = _discoveredNodeTypes.FirstOrDefault(x => x.Value.Name.Equals(typeName, StringComparison.OrdinalIgnoreCase));
+            shortMatchType = kvp.Value;
+        }
+        if (shortMatchType != null)
+        {
+            return (IFlowNode?)Activator.CreateInstance(shortMatchType);
         }
 
         // Fallback: search AppDomain loaded types
@@ -213,8 +340,11 @@ public class PluginLoader
 
                 if (matchedType != null && typeof(IFlowNode).IsAssignableFrom(matchedType) && !matchedType.IsAbstract && !matchedType.IsInterface)
                 {
-                    _discoveredNodeTypes[typeName] = matchedType;
-                    _discoveredNodeTypes[matchedType.Name] = matchedType;
+                    lock (_dictLock)
+                    {
+                        _discoveredNodeTypes[typeName] = matchedType;
+                        _discoveredNodeTypes[matchedType.Name] = matchedType;
+                    }
                     return (IFlowNode?)Activator.CreateInstance(matchedType);
                 }
             }
@@ -229,7 +359,11 @@ public class PluginLoader
 
     public void UnloadAll()
     {
-        _discoveredNodeTypes.Clear();
+        lock (_dictLock)
+        {
+            _discoveredNodeTypes.Clear();
+            _registeredAssemblyNames.Clear();
+        }
         foreach (var alc in _loadContexts)
         {
             try

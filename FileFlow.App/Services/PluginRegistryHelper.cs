@@ -14,8 +14,19 @@ public static class PluginRegistryHelper
     public static PluginLoader CreateConfiguredLoader()
     {
         var loader = new PluginLoader();
+
+        // 1. Registrar ensamblados de plugins incorporados (ya en memoria, Default ALC)
+        // Esto también marca sus nombres en _registeredAssemblyNames para que LoadPluginsDirectory los salte.
         RegisterBuiltInAssemblies(loader);
+
+        // 2. Cargar plugins externos del directorio /Plugins/ (saltará los que ya están registrados)
         LoadPluginsDirectory(loader);
+
+        // 3. Escaneo único del AppDomain al final para capturar cualquier ensamblado cargado dinámicamente
+        // que no estuviera en memoria cuando se llamó a RegisterBuiltInAssemblies.
+        // Se hace UNA SOLA VEZ aquí, no dentro de LoadPluginDirectory, para evitar re-registros duplicados.
+        loader.ScanCurrentAppDomain();
+
         return loader;
     }
 
@@ -36,6 +47,7 @@ public static class PluginRegistryHelper
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Data.ExcelReaderNode).Assembly);
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Documents.PdfMergeNode).Assembly);
         loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Network.NetworkDownloadNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Subflows.SubflowNode).Assembly);
     }
 
     /// <summary>

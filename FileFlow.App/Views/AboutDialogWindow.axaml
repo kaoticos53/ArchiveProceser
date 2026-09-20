@@ -41,14 +41,14 @@
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="2">
                             <TextBlock Text="FileFlow Studio" FontSize="{DynamicResource FontSizeDisplay}" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock x:Name="TxtVersion" Text="v1.0.0 (net9.0 - Avalonia 12)" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock x:Name="TxtVersion" Text="v1.0.0 (net10.0 - Avalonia 12)" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Badges -->
                     <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,8">
                         <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,3" Margin="0,0,6,4">
-                            <TextBlock Text=".NET 9.0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
+                            <TextBlock Text=".NET 10.0" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentCyanBrush}" FontWeight="SemiBold" />
                         </Border>
                         <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,3" Margin="0,0,6,4">
                             <TextBlock Text="Avalonia UI 12" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource AccentPurpleBrush}" FontWeight="SemiBold" />
