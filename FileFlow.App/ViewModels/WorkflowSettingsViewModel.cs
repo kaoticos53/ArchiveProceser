@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Models;
 using FileFlow.App.Services;
 using FileFlow.App.Themes;
 using FileFlow.Core.Engine;
@@ -27,6 +28,24 @@ public partial class WorkflowSettingsViewModel : ObservableObject
 
     public ObservableCollection<ThemeDefinition> Themes { get; } = new();
     public ObservableCollection<ThemeDefinition> AvailableThemes => Themes;
+
+    /// <summary>Idiomas del selector. Es la misma lista que usa el menú: ver <see cref="SelectorOption"/>.</summary>
+    public ObservableCollection<SelectorOption> AvailableLanguages { get; } = [.. LanguageCatalog.All];
+
+    /// <summary>
+    /// Canales de actualización ofrecidos. El texto se resuelve con el idioma activo al abrir la ventana, que
+    /// es cuando se construye el view model.
+    /// </summary>
+    public ObservableCollection<SelectorOption> UpdateChannels { get; } = [];
+
+    /// <summary>Estrategias de conflicto ofrecidas, con su texto en el idioma activo al abrir la ventana.</summary>
+    public ObservableCollection<SelectorOption> ConflictStrategies { get; } = [];
+
+    /// <summary>
+    /// Niveles de registro ofrecidos. El código es el valor que guarda la preferencia (<c>Information</c>, no el
+    /// texto traducido): un selector atado por valor sólo muestra una opción si el valor existe en la lista.
+    /// </summary>
+    public ObservableCollection<SelectorOption> LogLevels { get; } = [];
 
     public event Action<bool>? RequestClose;
 
@@ -158,9 +177,7 @@ public partial class WorkflowSettingsViewModel : ObservableObject
         TempWorkingDir = !string.IsNullOrWhiteSpace(prefs.TemporaryDirectory)
             ? prefs.TemporaryDirectory
             : AppPaths.DefaultTempDirectory;
-        SelectedConflictStrategy = !string.IsNullOrWhiteSpace(prefs.DefaultConflictStrategy)
-            ? prefs.DefaultConflictStrategy
-            : "RenameIncremental";
+        LoadConflictStrategies(prefs.DefaultConflictStrategy);
         EnableAutoSave = prefs.EnableAutoSave;
         AutoSaveIntervalMinutes = prefs.AutoSaveIntervalMinutes > 0 ? prefs.AutoSaveIntervalMinutes : 5;
         AutoCleanIntermediateTempFiles = prefs.AutoCleanIntermediateTempFiles;
@@ -168,7 +185,8 @@ public partial class WorkflowSettingsViewModel : ObservableObject
 
         // Tab 2: Appearance
         ReloadThemes(prefs.ActiveTheme);
-        SelectedLanguage = !string.IsNullOrWhiteSpace(prefs.Language) ? prefs.Language : "es-ES";
+        // Traducido a una opción de la lista: un selector atado por valor no muestra un idioma que no esté.
+        SelectedLanguage = LanguageCatalog.Resolve(prefs.Language)?.Code ?? LanguageCatalog.All[0].Code;
         IsCompactToolbox = prefs.IsCompactToolbox;
         AutoScrollConsole = prefs.AutoScrollConsole;
         MaxLogEntries = prefs.MaxLogEntries >= 0 ? prefs.MaxLogEntries : 1000;
@@ -176,7 +194,7 @@ public partial class WorkflowSettingsViewModel : ObservableObject
         // Tab 3: Performance
         MaxParallelThreads = prefs.MaxParallelThreads > 0 ? prefs.MaxParallelThreads : Environment.ProcessorCount;
         DefaultDryRunState = prefs.DefaultDryRunState;
-        SelectedLogLevel = !string.IsNullOrWhiteSpace(prefs.DefaultLogLevel) ? prefs.DefaultLogLevel : "Information";
+        LoadLogLevels(prefs.DefaultLogLevel);
         EnableCheckpointing = prefs.EnableCheckpointing;
         AutoUnloadAiModelsOnCompletion = prefs.AutoUnloadAiModelsOnCompletion;
 
@@ -189,7 +207,7 @@ public partial class WorkflowSettingsViewModel : ObservableObject
 
         // Tab 5: Updates
         AutoCheckForUpdates = prefs.AutoCheckForUpdates;
-        SelectedUpdateChannel = !string.IsNullOrWhiteSpace(prefs.UpdateChannel) ? prefs.UpdateChannel : "Stable";
+        LoadUpdateChannels(prefs.UpdateChannel);
         CurrentVersionDisplay = AppUpdateService.Instance.CurrentVersion.ToString();
         PackagingFormatDisplay = AppUpdateService.Instance.CurrentPackagingFormat switch
         {
@@ -204,6 +222,59 @@ public partial class WorkflowSettingsViewModel : ObservableObject
         LastUpdateCheckDisplay = prefs.LastUpdateCheckUtc.HasValue
             ? prefs.LastUpdateCheckUtc.Value.ToLocalTime().ToString("g")
             : _loc.GetString("Settings_LastUpdateNever", "Nunca comprobado");
+    }
+
+    /// <summary>
+    /// Rellena los canales de actualización y traduce la preferencia guardada a una de las opciones.
+    ///
+    /// Un canal desconocido dejaría el desplegable en blanco y, peor, borraría la preferencia: el control
+    /// escribe <c>null</c> de vuelta al view model y ese <c>null</c> se guarda al aceptar la ventana.
+    /// </summary>
+    /// <summary>
+    /// Rellena las estrategias de conflicto y traduce la preferencia guardada a una de las opciones: un valor
+    /// que no esté en la lista dejaría el desplegable en blanco (y el control escribiría <c>null</c> encima de
+    /// la preferencia al aceptar la ventana).
+    /// </summary>
+    private void LoadConflictStrategies(string? storedStrategy)
+    {
+        ConflictStrategies.Clear();
+        ConflictStrategies.Add(new SelectorOption("RenameIncremental", _loc.GetString("Settings_ConflictRename", "Renombrar de forma incremental")));
+        ConflictStrategies.Add(new SelectorOption("Overwrite", _loc.GetString("Settings_ConflictOverwrite", "Sobrescribir")));
+        ConflictStrategies.Add(new SelectorOption("Skip", _loc.GetString("Settings_ConflictSkip", "Omitir")));
+
+        SelectedConflictStrategy = ConflictStrategies
+            .FirstOrDefault(s => string.Equals(s.Code, storedStrategy?.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?.Code ?? ConflictStrategies[0].Code;
+    }
+
+    private void LoadUpdateChannels(string? storedChannel)
+    {
+        UpdateChannels.Clear();
+        UpdateChannels.Add(new SelectorOption("Stable", _loc.GetString("Settings_ChannelStable", "Estable")));
+        UpdateChannels.Add(new SelectorOption("Beta", _loc.GetString("Settings_ChannelBeta", "Beta")));
+
+        // El desplegable sólo muestra una opción si el view model tiene ya un valor que exista en la lista.
+        SelectedUpdateChannel = UpdateChannels
+            .FirstOrDefault(c => string.Equals(c.Code, storedChannel?.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?.Code ?? UpdateChannels[0].Code;
+    }
+
+    /// <summary>
+    /// Rellena los niveles de registro y traduce la preferencia guardada a una de las opciones: un nivel que no
+    /// esté en la lista dejaría el desplegable en blanco (y el control escribiría <c>null</c> encima de la
+    /// preferencia al aceptar la ventana).
+    /// </summary>
+    private void LoadLogLevels(string? storedLevel)
+    {
+        LogLevels.Clear();
+        LogLevels.Add(new SelectorOption("Debug", _loc.GetString("Settings_LogLevelDebug", "Debug")));
+        LogLevels.Add(new SelectorOption("Information", _loc.GetString("Settings_LogLevelInfo", "Information")));
+        LogLevels.Add(new SelectorOption("Warning", _loc.GetString("Settings_LogLevelWarning", "Warning")));
+        LogLevels.Add(new SelectorOption("Error", _loc.GetString("Settings_LogLevelError", "Error")));
+
+        SelectedLogLevel = LogLevels
+            .FirstOrDefault(l => string.Equals(l.Code, storedLevel?.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?.Code ?? LogLevels[1].Code;
     }
 
     public void ReloadThemes(string selectedThemeId)
@@ -221,18 +292,12 @@ public partial class WorkflowSettingsViewModel : ObservableObject
             IsBuiltIn = true
         });
 
-        string mappedId = selectedThemeId.ToLowerInvariant() switch
-        {
-            "dark" => "dark_fluent",
-            "light" => "light_studio",
-            "cyber" => "cyber_neon",
-            "pastel" => "pastel_spring",
-            _ => selectedThemeId
-        };
+        // La traducción de identificadores heredados ('Dark' → 'dark_fluent') vive en el gestor de temas:
+        // es el mismo valor que guarda una preferencia antigua y el que aplica el arranque.
+        string? mappedId = ThemeManager.ResolveThemeId(selectedThemeId);
 
-        SelectedThemeId = Themes.Any(t => string.Equals(t.Id, mappedId, StringComparison.OrdinalIgnoreCase))
-            ? mappedId
-            : Themes.FirstOrDefault()?.Id ?? "dark_fluent";
+        SelectedThemeId = Themes.FirstOrDefault(t => string.Equals(t.Id, mappedId, StringComparison.OrdinalIgnoreCase))?.Id
+            ?? Themes.FirstOrDefault()?.Id ?? ThemeManager.DefaultThemeId;
 
         SelectedTheme = Themes.FirstOrDefault(t => string.Equals(t.Id, SelectedThemeId, StringComparison.OrdinalIgnoreCase))
             ?? Themes.FirstOrDefault();

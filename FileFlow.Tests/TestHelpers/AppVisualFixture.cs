@@ -32,7 +32,10 @@ public enum AppSurface
     StatusBar,
 
     /// <summary>La barra de control superior.</summary>
-    ControlBar
+    ControlBar,
+
+    /// <summary>La ventana principal con el cajón lateral desplegado.</summary>
+    Drawer
 }
 
 /// <summary>
@@ -173,8 +176,20 @@ public sealed class AppVisualFixture : IDisposable
             AppSurface.LogConsole => new LogView { DataContext = LogConsole },
             AppSurface.StatusBar => new StatusBarView { DataContext = StatusBar },
             AppSurface.ControlBar => new ControlBarView { DataContext = ControlBar },
+            AppSurface.Drawer => BuildDrawer(),
             _ => throw new ArgumentOutOfRangeException(nameof(surface), surface, "Superficie no soportada.")
         };
+    }
+
+    /// <summary>
+    /// La ventana principal con el <b>cajón abierto</b>: es la superficie por la que se alcanza el diseñador de
+    /// conjuntos de datos sintéticos y el resto de herramientas, y hasta ahora no tenía captura —un botón del
+    /// cajón podía desaparecer o salir recortado sin que ninguna prueba se enterara—.
+    /// </summary>
+    private Control BuildDrawer()
+    {
+        ControlBar.IsMenuOpen = true;
+        return BuildShell();
     }
 
     /// <summary>
@@ -207,6 +222,10 @@ public sealed class AppVisualFixture : IDisposable
     public void EnsureFrozen()
     {
         AvaloniaTestHelper.RequireUIThread($"{nameof(AppVisualFixture)}.{nameof(EnsureFrozen)}");
+
+        // El cajón arranca cerrado: la captura que lo abre es la única que lo despliega, y así el orden de las
+        // pruebas de la clase no cambia lo que se ve en ninguna de las demás.
+        ControlBar.IsMenuOpen = false;
 
         LoadSampleGraph();
         SeedLogConsole();

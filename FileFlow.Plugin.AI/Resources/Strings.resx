@@ -189,6 +189,7 @@
   <data name="VlmConfig_DetectingModels" xml:space="preserve"><value>Querying available models from server...</value></data>
   <data name="VlmConfig_ModelsDetectedCount" xml:space="preserve"><value>🟢 {0} model(s) detected on server.</value></data>
   <data name="VlmConfig_DetectModelsFailed" xml:space="preserve"><value>⚠️ Failed to query models: {0}</value></data>
+  <data name="VlmConfig_EndpointRecentlyUnreachable" xml:space="preserve"><value>Server {0} refused the connection recently; the probe is skipped to avoid flooding it with requests.</value></data>
   <data name="VlmConfig_TabSampleTest" xml:space="preserve"><value>🔬 Test Sample (1 Cycle)</value></data>
   <data name="VlmConfig_SampleFileLabel" xml:space="preserve"><value>Sample Image or Document File:</value></data>
   <data name="VlmConfig_BtnRunSample" xml:space="preserve"><value>▶ Run Test</value></data>

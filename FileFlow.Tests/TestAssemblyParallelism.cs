@@ -6,7 +6,10 @@ using Xunit;
 //
 // Colecciones exclusivas y el estado que confinan:
 //   · Unit.Views.VisualSnapshotsCollection — la sesión headless de Avalonia y su Dispatcher, el tema
-//     activo (ThemeManager) y el diccionario de recursos de la aplicación.
+//     activo (ThemeManager) y el diccionario de recursos de la aplicación. Cualquier clase que APLIQUE
+//     un tema (ThemeManager.Instance.SetTheme/SetThemeById) va aquí, corra o no capturas: mutar el tema
+//     desde una colección paralela lo cambia a mitad de una captura y el fallo cae en otra prueba
+//     (ThemeVariantPropagationTests se movió aquí por eso; la guardia lo vigila).
 //   · Unit.AI.OnnxInferenceCollection — el clúster de inferencia nativo: clases que alcanzan los
 //     registros de sesiones (ModelSessionRegistry, OnnxSessionManager, AiPluginInitializer) o los
 //     motores con caché propia (SemanticEmbeddingEngine, AudioInferenceEngine, Whisper). Ojo: no es

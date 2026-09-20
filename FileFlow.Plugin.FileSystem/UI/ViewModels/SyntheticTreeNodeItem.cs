@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FileFlow.Plugin.FileSystem.Services;
+using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.SyntheticData;
+using Material.Icons;
 
 namespace FileFlow.Plugin.FileSystem.UI.ViewModels;
 
@@ -59,46 +61,62 @@ public partial class SyntheticTreeNodeItem : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Telemetría del nodo (recuento y tamaño). El texto se resuelve con el idioma activo —este view model se
+    /// pinta directamente en el árbol— y no lleva pictogramas: el icono lo pone <see cref="IconKind"/>.
+    /// </summary>
     public string BadgeText
     {
         get
         {
             if (IsDirectory)
             {
-                int fileCount = CalculateTotalRecursiveFiles();
-                return $"{fileCount} arch. • {SizeFormatted}";
+                return string.Format(
+                    LocalizationManager.Instance.GetString("DataSetDesigner_BadgeFolder", "{0} arch. • {1}"),
+                    CalculateTotalRecursiveFiles(),
+                    SizeFormatted);
             }
             if (IsArchiveEntry)
             {
-                return $"[Interno] • {SizeFormatted}";
+                return string.Format(
+                    LocalizationManager.Instance.GetString("DataSetDesigner_BadgeArchiveEntry", "Interno • {0}"),
+                    SizeFormatted);
             }
             if (IsArchive && SimulatedArchiveEntries.Count > 0)
             {
-                return $"📦 {SimulatedArchiveEntries.Count} entradas • {SizeFormatted}";
+                return string.Format(
+                    LocalizationManager.Instance.GetString("DataSetDesigner_BadgeArchive", "{0} entradas • {1}"),
+                    SimulatedArchiveEntries.Count,
+                    SizeFormatted);
             }
             return SizeFormatted;
         }
     }
 
-    public string IconGlyph
+    /// <summary>
+    /// Icono vectorial del nodo. Es un <see cref="MaterialIconKind"/> y no un emoji: los emojis dependen de las
+    /// fuentes del sistema (a color en Windows, cuadraditos en Linux sin Noto Color Emoji) y el compilador valida
+    /// cada glifo, así que un nombre inventado no puede llegar a la pantalla.
+    /// </summary>
+    public MaterialIconKind IconKind
     {
         get
         {
-            if (IsDirectory) return "📁";
-            if (IsArchive) return "📦";
+            if (IsDirectory) return MaterialIconKind.Folder;
+            if (IsArchive) return MaterialIconKind.ZipBox;
 
             string ext = Path.GetExtension(Name).ToLowerInvariant();
             return ext switch
             {
-                ".mkv" or ".mp4" or ".avi" or ".mov" or ".wmv" or ".flv" or ".webm" or ".m4v" => "🎬",
-                ".mp3" or ".flac" or ".wav" or ".m4a" or ".aac" or ".ogg" or ".wma" => "🎵",
-                ".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".bmp" or ".tiff" or ".heic" => "🖼️",
-                ".pdf" or ".doc" or ".docx" or ".txt" or ".rtf" or ".odt" or ".epub" or ".md" => "📄",
-                ".xlsx" or ".xls" or ".csv" or ".tsv" or ".parquet" or ".json" or ".xml" => "📊",
-                ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" or ".xz" => "📦",
-                ".exe" or ".dll" or ".iso" or ".bin" or ".dat" => "💾",
-                ".cs" or ".py" or ".js" or ".ts" or ".html" or ".css" or ".sh" or ".ps1" => "📜",
-                _ => "📄"
+                ".mkv" or ".mp4" or ".avi" or ".mov" or ".wmv" or ".flv" or ".webm" or ".m4v" => MaterialIconKind.Movie,
+                ".mp3" or ".flac" or ".wav" or ".m4a" or ".aac" or ".ogg" or ".wma" => MaterialIconKind.Music,
+                ".jpg" or ".jpeg" or ".png" or ".webp" or ".gif" or ".bmp" or ".tiff" or ".heic" => MaterialIconKind.Image,
+                ".pdf" or ".doc" or ".docx" or ".txt" or ".rtf" or ".odt" or ".epub" or ".md" => MaterialIconKind.FileDocument,
+                ".xlsx" or ".xls" or ".csv" or ".tsv" or ".parquet" or ".json" or ".xml" => MaterialIconKind.FileTable,
+                ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" or ".xz" => MaterialIconKind.ZipBox,
+                ".exe" or ".dll" or ".iso" or ".bin" or ".dat" => MaterialIconKind.Application,
+                ".cs" or ".py" or ".js" or ".ts" or ".html" or ".css" or ".sh" or ".ps1" => MaterialIconKind.CodeBraces,
+                _ => MaterialIconKind.FileDocument
             };
         }
     }
@@ -150,8 +168,16 @@ public partial class SyntheticTreeNodeItem : ObservableObject
     partial void OnNameChanged(string value)
     {
         UpdateRelativePathFromParent();
-        OnPropertyChanged(nameof(IconGlyph));
+        OnPropertyChanged(nameof(IconKind));
         OnPropertyChanged(nameof(BadgeText));
+    }
+
+    partial void OnIsArchiveChanged(bool value)
+    {
+        // SyntheticFileDefinition.IsArchive se deriva de la extensión: no se reescribe desde el nodo.
+        OnPropertyChanged(nameof(IconKind));
+        OnPropertyChanged(nameof(BadgeText));
+        NotifyParentMetricsChanged();
     }
 
     partial void OnFileSizeBytesChanged(long value)
@@ -171,7 +197,7 @@ public partial class SyntheticTreeNodeItem : ObservableObject
         {
             UnderlyingDefinition.IsDirectory = value;
         }
-        OnPropertyChanged(nameof(IconGlyph));
+        OnPropertyChanged(nameof(IconKind));
         OnPropertyChanged(nameof(SizeFormatted));
         OnPropertyChanged(nameof(BadgeText));
         NotifyParentMetricsChanged();

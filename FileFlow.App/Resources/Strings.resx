@@ -560,62 +560,62 @@
 
   <!-- Workflow Settings Window -->
   <data name="Settings_WindowTitle" xml:space="preserve"><value>General Application Settings</value></data>
-  <data name="Settings_HeaderTitle" xml:space="preserve"><value>⚙️ FileFlow Studio General Settings</value></data>
+  <data name="Settings_HeaderTitle" xml:space="preserve"><value>FileFlow Studio General Settings</value></data>
   <data name="Settings_HeaderSubtitle" xml:space="preserve"><value>Configure persistent global parameters for storage, appearance, performance, and external tools.</value></data>
-  <data name="Settings_TabStorage" xml:space="preserve"><value>📂 Storage &amp; Paths</value></data>
-  <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>📁 Default Global Output Path</value></data>
+  <data name="Settings_TabStorage" xml:space="preserve"><value>Storage &amp; Paths</value></data>
+  <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>Default Global Output Path</value></data>
   <data name="Settings_GlobalOutputDirDesc" xml:space="preserve"><value>Persistent destination folder when executing workflows and saving converted files.</value></data>
-  <data name="Settings_TempWorkingDirTitle" xml:space="preserve"><value>📁 Temporary Working Directory</value></data>
+  <data name="Settings_TempWorkingDirTitle" xml:space="preserve"><value>Temporary Working Directory</value></data>
   <data name="Settings_TempWorkingDirDesc" xml:space="preserve"><value>Default directory where intermediate processing nodes (image optimizer, background remover, etc.) save temporary files when their output path is not set.</value></data>
   <data name="Settings_SelectTempWorkingDirTitle" xml:space="preserve"><value>Select Temporary Working Directory</value></data>
-  <data name="Settings_BrowseBtn" xml:space="preserve"><value>📁 Browse</value></data>
-  <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>⚡ Default File Conflict Strategy</value></data>
+  <data name="Settings_BrowseBtn" xml:space="preserve"><value>Browse</value></data>
+  <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>Default File Conflict Strategy</value></data>
   <data name="Settings_ConflictRename" xml:space="preserve"><value>RenameIncremental (Incremental rename e.g. photo_1.jpg)</value></data>
   <data name="Settings_ConflictOverwrite" xml:space="preserve"><value>Overwrite (Overwrite existing file)</value></data>
   <data name="Settings_ConflictSkip" xml:space="preserve"><value>Skip (Skip if file exists)</value></data>
   <data name="Settings_EnableAutoSave" xml:space="preserve"><value>Enable automatic project auto-save</value></data>
   <data name="Settings_AutoSaveInterval" xml:space="preserve"><value>Auto-save interval:</value></data>
   <data name="Settings_MinutesLabel" xml:space="preserve"><value>minutes</value></data>
-  <data name="Settings_AutoCleanIntermediateTempFiles" xml:space="preserve"><value>🧹 Auto-clean intermediate temporary files on workflow completion</value></data>
+  <data name="Settings_AutoCleanIntermediateTempFiles" xml:space="preserve"><value>Auto-clean intermediate temporary files on workflow completion</value></data>
   <data name="Settings_AutoCleanIntermediateTempFilesDesc" xml:space="preserve"><value>Automatically purges temporary execution workspace and intermediate node outputs when a workflow finishes, is cancelled, or errors.</value></data>
-  <data name="Settings_CleanStaleTempOnStartup" xml:space="preserve"><value>🧹 Purge orphan temporary directories on application startup</value></data>
-  <data name="Settings_CleanTempNowBtn" xml:space="preserve"><value>🧹 Clean Temporary Workspace Now</value></data>
+  <data name="Settings_CleanStaleTempOnStartup" xml:space="preserve"><value>Purge orphan temporary directories on application startup</value></data>
+  <data name="Settings_CleanTempNowBtn" xml:space="preserve"><value>Clean Temporary Workspace Now</value></data>
   <data name="Settings_TempCleanedTitle" xml:space="preserve"><value>Temporary Workspace</value></data>
   <data name="Settings_TempCleanedMsg" xml:space="preserve"><value>Temporary workspace cleaned successfully. Removed {0} stale execution folder(s).</value></data>
-  <data name="Settings_TabAppearance" xml:space="preserve"><value>🎨 Appearance &amp; UI</value></data>
-  <data name="Settings_DefaultThemeTitle" xml:space="preserve"><value>🎨 Default Visual Theme</value></data>
-  <data name="Settings_CustomizeThemesBtn" xml:space="preserve"><value>🎨 Customize Themes...</value></data>
+  <data name="Settings_TabAppearance" xml:space="preserve"><value>Appearance &amp; UI</value></data>
+  <data name="Settings_DefaultThemeTitle" xml:space="preserve"><value>Default Visual Theme</value></data>
+  <data name="Settings_CustomizeThemesBtn" xml:space="preserve"><value>Customize Themes...</value></data>
   <data name="Settings_CompactToolbox" xml:space="preserve"><value>Start Node Toolbox in Compact List Mode (28px)</value></data>
-  <data name="Settings_LogConsoleTitle" xml:space="preserve"><value>💻 Log Console</value></data>
+  <data name="Settings_LogConsoleTitle" xml:space="preserve"><value>Log Console</value></data>
   <data name="Settings_AutoScrollConsole" xml:space="preserve"><value>Auto-scroll console on receiving log messages</value></data>
   <data name="Settings_MaxLogEntries" xml:space="preserve"><value>Maximum lines in console:</value></data>
   <data name="Settings_LinesUnlimitedLabel" xml:space="preserve"><value>lines (0 = Unlimited)</value></data>
-  <data name="Settings_TabPerformance" xml:space="preserve"><value>⚡ Performance &amp; Execution</value></data>
-  <data name="Settings_ParallelCpuTitle" xml:space="preserve"><value>⚡ Parallel Processing &amp; CPU Concurrency</value></data>
+  <data name="Settings_TabPerformance" xml:space="preserve"><value>Performance &amp; Execution</value></data>
+  <data name="Settings_ParallelCpuTitle" xml:space="preserve"><value>Parallel Processing &amp; CPU Concurrency</value></data>
   <data name="Settings_ParallelCpuDesc" xml:space="preserve"><value>Maximum number of simultaneous threads to process batches in parallel.</value></data>
   <data name="Settings_MaxCpuThreads" xml:space="preserve"><value>Maximum CPU Threads:</value></data>
   <data name="Settings_ThreadsLabel" xml:space="preserve"><value>threads</value></data>
   <data name="Settings_DefaultDryRun" xml:space="preserve"><value>Always start application with Simulation (Dry-Run) Mode enabled</value></data>
-  <data name="Settings_LogLevelTitle" xml:space="preserve"><value>🔍 Minimum Log Level (Log Filter Level)</value></data>
+  <data name="Settings_LogLevelTitle" xml:space="preserve"><value>Minimum Log Level (Log Filter Level)</value></data>
   <data name="Settings_LogLevelInfo" xml:space="preserve"><value>Information (Standard flow logs and events)</value></data>
   <data name="Settings_LogLevelWarning" xml:space="preserve"><value>Warning (Warnings and errors only)</value></data>
   <data name="Settings_LogLevelError" xml:space="preserve"><value>Error (Critical failures exclusively)</value></data>
   <data name="Settings_LogLevelDebug" xml:space="preserve"><value>Debug (Exhaustive debugging details)</value></data>
-  <data name="Settings_CheckpointingTitle" xml:space="preserve"><value>🛡️ Execution Checkpoints &amp; Resumption</value></data>
+  <data name="Settings_CheckpointingTitle" xml:space="preserve"><value>Execution Checkpoints &amp; Resumption</value></data>
   <data name="Settings_CheckpointingDesc" xml:space="preserve"><value>Saves workflow progress in atomic checkpoints to allow resuming interrupted executions without reprocessing completed files.</value></data>
   <data name="Settings_EnableCheckpointing" xml:space="preserve"><value>Enable execution checkpoints to resume interrupted workflows</value></data>
-  <data name="Settings_ClearCheckpointsBtn" xml:space="preserve"><value>🗑️ Clear Checkpoints</value></data>
+  <data name="Settings_ClearCheckpointsBtn" xml:space="preserve"><value>Clear Checkpoints</value></data>
   <data name="Settings_CheckpointsClearedMsg" xml:space="preserve"><value>Successfully deleted {0} checkpoint file(s) from disk.</value></data>
   <data name="Checkpoint_ResumeTitle" xml:space="preserve"><value>Checkpoint Detected</value></data>
   <data name="Checkpoint_ResumePrompt" xml:space="preserve"><value>An interrupted previous execution of '{0}' was detected with {1} completed file(s).&#x0a;&#x0a;Do you want to RESUME the previous execution (skipping completed files)?&#x0a;&#x0a;• Yes: Resume from last checkpoint.&#x0a;• No: Restart clean execution from scratch.&#x0a;• Cancel: Abort execution.</value></data>
-  <data name="Settings_TabExternalTools" xml:space="preserve"><value>🛠️ External Tools</value></data>
+  <data name="Settings_TabExternalTools" xml:space="preserve"><value>External Tools</value></data>
   <data name="Settings_ExecutablesTitle" xml:space="preserve"><value>System Executable Paths</value></data>
-  <data name="Settings_AutoDetectBtn" xml:space="preserve"><value>🔍 Auto-Detect Tools</value></data>
-  <data name="Settings_FfmpegLabel" xml:space="preserve"><value>🎬 FFmpeg (Video/Audio Transcoding)</value></data>
-  <data name="Settings_FfprobeLabel" xml:space="preserve"><value>🔍 FFprobe (Media Metadata Inspection)</value></data>
-  <data name="Settings_SevenZipLabel" xml:space="preserve"><value>📦 7-Zip (ZIP/7z/RAR Compressed Archives)</value></data>
-  <data name="Settings_PythonLabel" xml:space="preserve"><value>🐍 Python (Scripts and CLI Automation)</value></data>
-  <data name="Settings_SaveBtn" xml:space="preserve"><value>✅ Save Permanent Settings</value></data>
+  <data name="Settings_AutoDetectBtn" xml:space="preserve"><value>Auto-Detect Tools</value></data>
+  <data name="Settings_FfmpegLabel" xml:space="preserve"><value>FFmpeg (Video/Audio Transcoding)</value></data>
+  <data name="Settings_FfprobeLabel" xml:space="preserve"><value>FFprobe (Media Metadata Inspection)</value></data>
+  <data name="Settings_SevenZipLabel" xml:space="preserve"><value>7-Zip (ZIP/7z/RAR Compressed Archives)</value></data>
+  <data name="Settings_PythonLabel" xml:space="preserve"><value>Python (Scripts and CLI Automation)</value></data>
+  <data name="Settings_SaveBtn" xml:space="preserve"><value>Save Permanent Settings</value></data>
 
   <!-- Theme Customizer Window -->
   <data name="ThemeCustomizer_WindowTitle" xml:space="preserve"><value>Theme Customization Studio - FileFlow</value></data>
@@ -690,13 +690,13 @@
   <data name="Common_Copy" xml:space="preserve"><value>Copy</value></data>
 
   <!-- AI Models -->
-  <data name="Settings_TabAiModels" xml:space="preserve"><value>🤖 AI Models</value></data>
+  <data name="Settings_TabAiModels" xml:space="preserve"><value>AI Models</value></data>
   <data name="Settings_AiModels_Title" xml:space="preserve"><value>Local Artificial Intelligence Models</value></data>
   <data name="Settings_AiModels_Desc" xml:space="preserve"><value>Manage and download AI model weights for photo classification, face/object detection, OCR and Whisper transcription before running workflows.</value></data>
-  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>⬇️ Download Missing</value></data>
-  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>🔄 Refresh</value></data>
-  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>📁 Open Folder</value></data>
-  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>🚀 Open Download Manager...</value></data>
+  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>Download Missing</value></data>
+  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>Open Folder</value></data>
+  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>Open Download Manager...</value></data>
   <data name="AiModelManager_WindowTitle" xml:space="preserve"><value>AI Models Download Manager</value></data>
   <data name="AiModelManager_HeaderTitle" xml:space="preserve"><value>Artificial Intelligence Models</value></data>
   <data name="AiModelManager_HeaderSubtitle" xml:space="preserve"><value>Pre-download models for high-speed, interruption-free offline pipeline execution.</value></data>
@@ -704,8 +704,12 @@
   <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>Not downloaded</value></data>
   <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Downloading...</value></data>
   <data name="AiModelManager_StatusError" xml:space="preserve"><value>Download error</value></data>
-  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Download</value></data>
-  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Delete</value></data>
+  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>Download</value></data>
+  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="AiModelManager_BtnConfigureUrls" xml:space="preserve"><value>Configure URLs</value></data>
+  <data name="AiModelManager_CustomUrlsBadge" xml:space="preserve"><value>{0} custom URL(s)</value></data>
+  <data name="AiModelManager_LastErrorTitle" xml:space="preserve"><value>The last download failed:</value></data>
+  <data name="AiModelManager_EmptyState" xml:space="preserve"><value>The model catalog is empty.</value></data>
   <data name="AiModelUrls_Title" xml:space="preserve"><value>Configure Download URLs</value></data>
   <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure one or more download URLs for this model. If a link fails or changes, the engine will automatically try the next mirror.</value></data>
   <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>Download URLs (one per line, in priority order):</value></data>
@@ -905,8 +909,8 @@
   <data name="Inspector_Tags" xml:space="preserve"><value>Tags:</value></data>
   <data name="Inspector_Folder" xml:space="preserve"><value>Directory: </value></data>
   <data name="Preview_InspectFileBtn" xml:space="preserve"><value>View</value></data>
-  <data name="Settings_AiModels_Downloading" xml:space="preserve"><value>⏳ Downloading models...</value></data>
-  <data name="Settings_AiModels_DirLabel" xml:space="preserve"><value>📁 Models folder: </value></data>
+  <data name="Settings_AiModels_Downloading" xml:space="preserve"><value>Downloading models...</value></data>
+  <data name="Settings_AiModels_DirLabel" xml:space="preserve"><value>Models folder: </value></data>
   <data name="Common_None" xml:space="preserve"><value>None</value></data>
   <data name="Msg_OpenPresetsError" xml:space="preserve"><value>Error opening Preset Manager: {0}</value></data>
   <data name="Msg_OpenPasswordsError" xml:space="preserve"><value>Error opening Password Manager: {0}</value></data>
@@ -1154,14 +1158,65 @@
   <data name="Update_ChecksumVerified" xml:space="preserve"><value>✅ Integrity verified successfully.</value></data>
   <data name="Update_ChecksumMismatchError" xml:space="preserve"><value>Security error: SHA-256 hash ({0}) does not match published hash ({1}). Update aborted.</value></data>
   <data name="Update_NoCompatibleAssetFound" xml:space="preserve"><value>No compatible installer package found for your platform in this release.</value></data>
-  <data name="Settings_TabUpdates" xml:space="preserve"><value>🔄 Updates</value></data>
+  <data name="Settings_TabUpdates" xml:space="preserve"><value>Updates</value></data>
   <data name="Settings_UpdatesTitle" xml:space="preserve"><value>Application Updates</value></data>
   <data name="Settings_UpdatesDesc" xml:space="preserve"><value>Manage automatic update checks and release channels (Stable / Beta).</value></data>
   <data name="Settings_UpdateChannelTitle" xml:space="preserve"><value>Update Channel:</value></data>
   <data name="Settings_ChannelStable" xml:space="preserve"><value>Stable (Recommended for production)</value></data>
   <data name="Settings_ChannelBeta" xml:space="preserve"><value>Beta / Pre-releases (Latest features and preview builds)</value></data>
   <data name="Settings_AutoCheckUpdates" xml:space="preserve"><value>Check for updates automatically on application startup</value></data>
-  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>🔍 Check for Updates Now</value></data>
+  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>Check for Updates Now</value></data>
   <data name="Settings_LastUpdateCheck" xml:space="preserve"><value>Last checked: {0}</value></data>
   <data name="Settings_LastUpdateNever" xml:space="preserve"><value>Never checked</value></data>
+  <data name="Startup_FailureTitle" xml:space="preserve"><value>FileFlow Studio could not start</value></data>
+  <data name="Startup_FailurePhase" xml:space="preserve"><value>Failed stage: {0}</value></data>
+  <data name="Startup_FailureHint" xml:space="preserve"><value>The full detail has been saved to the incident log. You can copy it to report the problem.</value></data>
+  <data name="Startup_FailureCopy" xml:space="preserve"><value>Copy details</value></data>
+  <data name="Startup_FailureOpenLog" xml:space="preserve"><value>Open log folder</value></data>
+  <data name="Startup_FailureExit" xml:space="preserve"><value>Close application</value></data>
+  <data name="Startup_FailureCopied" xml:space="preserve"><value>Details copied to the clipboard.</value></data>
+  <data name="Startup_FailureCopyFailed" xml:space="preserve"><value>Could not copy to the clipboard.</value></data>
+  <data name="Startup_FailureLogNotFound" xml:space="preserve"><value>The log folder could not be found.</value></data>
+  <data name="Startup_DetailsTitle" xml:space="preserve"><value>FileFlow Studio - startup failure</value></data>
+  <data name="Startup_DetailsPhase" xml:space="preserve"><value>Stage</value></data>
+  <data name="Startup_DetailsMoment" xml:space="preserve"><value>Moment (UTC)</value></data>
+  <data name="Startup_DetailsLog" xml:space="preserve"><value>Incident log</value></data>
+  <data name="Startup_DetailsLogUnavailable" xml:space="preserve"><value>(unavailable)</value></data>
+  <data name="Startup_DetailsEnvironment" xml:space="preserve"><value>Environment</value></data>
+  <data name="Startup_Phase_Resources" xml:space="preserve"><value>base resources and language</value></data>
+  <data name="Startup_Phase_Services" xml:space="preserve"><value>service container</value></data>
+  <data name="Startup_Phase_Preferences" xml:space="preserve"><value>user preferences</value></data>
+  <data name="Startup_Phase_Theme" xml:space="preserve"><value>theme and language</value></data>
+  <data name="Startup_Phase_Plugins" xml:space="preserve"><value>plugin loading</value></data>
+  <data name="Startup_Phase_Shell" xml:space="preserve"><value>main window (XAML)</value></data>
+  <data name="Startup_Phase_Runtime" xml:space="preserve"><value>runtime</value></data>
+
+  <!--
+    Labels the XAML referenced as Path=[key] but that existed in no dictionary at all.
+
+    The LocalizationManager indexer binding returns an empty string for a missing key (it is not a binding
+    failure), so FallbackValue never kicks in: those labels rendered BLANK and never changed language. The
+    SettingsLocalizationCoverageTests guard now walks every AXAML file in the repository so an untranslated
+    key cannot slip through unnoticed again.
+  -->
+  <data name="AddNode_Spotlight" xml:space="preserve"><value>Add Node...</value></data>
+  <data name="Common_Accept" xml:space="preserve"><value>Accept</value></data>
+  <data name="Common_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Inspector_ExecutionMetrics" xml:space="preserve"><value>Execution Metrics</value></data>
+  <data name="Inspector_ProcessedBytes" xml:space="preserve"><value>Processed bytes:</value></data>
+  <data name="Inspector_TotalDuration" xml:space="preserve"><value>Total duration:</value></data>
+  <data name="Inspector_TabSnapshots" xml:space="preserve"><value>Snapshots</value></data>
+  <data name="Inspector_TabTelemetry" xml:space="preserve"><value>Telemetry</value></data>
+  <data name="Preview_MetadataTitle" xml:space="preserve"><value>Metadata &amp; Information</value></data>
+  <data name="Preview_OriginalBadge" xml:space="preserve"><value>Original</value></data>
+  <data name="Preview_ProcessedBadge" xml:space="preserve"><value>Processed</value></data>
+  <data name="Metrics_TotalWorkflowDuration" xml:space="preserve"><value>Total workflow duration</value></data>
+  <data name="Metrics_TotalBytesProcessed" xml:space="preserve"><value>Data processed</value></data>
+  <data name="Metrics_TotalItemsProcessed" xml:space="preserve"><value>Items processed</value></data>
+  <data name="Metrics_SlowestNodeLabel" xml:space="preserve"><value>Slowest node</value></data>
+  <data name="Metrics_ColDuration" xml:space="preserve"><value>Duration (ms)</value></data>
+  <data name="Metrics_ColItems" xml:space="preserve"><value>Items</value></data>
+  <data name="Metrics_ColBytes" xml:space="preserve"><value>Data</value></data>
+  <data name="Metrics_ColTimePercent" xml:space="preserve"><value>% Time</value></data>
+  <data name="Metrics_ColStatus" xml:space="preserve"><value>Status</value></data>
 </root>

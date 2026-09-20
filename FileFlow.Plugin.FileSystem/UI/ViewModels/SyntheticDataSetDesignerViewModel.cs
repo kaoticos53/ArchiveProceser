@@ -67,6 +67,21 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         "Personalizada"
     ];
 
+    /// <summary>El catálogo tiene elementos tras aplicar la búsqueda (con la lista vacía se explica por qué).</summary>
+    public bool HasFilteredDataSets => FilteredDataSets.Count > 0;
+
+    /// <summary>Hay un dataset seleccionado (el panel de propiedades sólo se pinta entonces).</summary>
+    public bool HasSelectedDataSet => SelectedDataSet != null;
+
+    /// <summary>Hay un nodo seleccionado en el árbol (el inspector sólo se pinta entonces).</summary>
+    public bool HasSelectedNode => SelectedTreeNode != null;
+
+    /// <summary>El árbol tiene elementos (con el árbol vacío se muestra la invitación a añadir).</summary>
+    public bool HasTreeNodes => RootTreeNodes.Count > 0;
+
+    /// <summary>El nodo seleccionado admite una entrada interna (es un comprimido o una de sus entradas).</summary>
+    public bool CanAddArchiveEntry => SelectedTreeNode is { } node && (node.IsArchive || node.IsArchiveEntry);
+
     public int TotalFiles => EditableItems.Count(i => !i.IsDirectory);
     public int TotalDirectories => EditableItems.Count(i => i.IsDirectory);
     public string TotalSizeFormatted => SyntheticTreeDslParser.FormatSize(EditableItems.Where(i => !i.IsDirectory).Sum(i => i.FileSizeBytes));
@@ -96,6 +111,8 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
 
     partial void OnSelectedDataSetChanged(SyntheticDataSet? value)
     {
+        OnPropertyChanged(nameof(HasSelectedDataSet));
+
         if (value == null)
         {
             DataSetName = string.Empty;
@@ -126,6 +143,12 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         SyncViewsFromItems();
         NotifyMetrics();
         StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetLoaded", "Dataset '{0}' cargado.", value.Name);
+    }
+
+    partial void OnSelectedTreeNodeChanged(SyntheticTreeNodeItem? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedNode));
+        OnPropertyChanged(nameof(CanAddArchiveEntry));
     }
 
     partial void OnSelectedTabIndexChanged(int value)
@@ -166,6 +189,8 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         {
             SelectedDataSet = FilteredDataSets.FirstOrDefault(d => d.Id == currentSelectedId);
         }
+
+        OnPropertyChanged(nameof(HasFilteredDataSets));
     }
 
     public void BuildTreeFromItems()
@@ -860,6 +885,7 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         OnPropertyChanged(nameof(TotalFiles));
         OnPropertyChanged(nameof(TotalDirectories));
         OnPropertyChanged(nameof(TotalSizeFormatted));
+        OnPropertyChanged(nameof(HasTreeNodes));
     }
 }
 

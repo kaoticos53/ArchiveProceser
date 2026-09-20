@@ -66,6 +66,11 @@ public partial class AiModelItemViewModel : ObservableObject
 
     public bool CanDownload => !IsDownloading;
 
+    /// <summary>Texto del aviso de URLs propias, con el número de espejos configurados.</summary>
+    public string CustomUrlsLabel => string.Format(
+        LocalizationManager.Instance.GetString("AiModelManager_CustomUrlsBadge", "{0} URL(s) propias"),
+        ConfiguredUrlsCount);
+
     public void RefreshState()
     {
         bool available = AiModelManager.IsModelAvailable(ModelId);
@@ -109,6 +114,7 @@ public partial class AiModelItemViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(CanDownload));
+        OnPropertyChanged(nameof(CustomUrlsLabel));
     }
 }
 
@@ -134,6 +140,9 @@ public partial class AiModelManagerViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _hasDownloadError;
+
+    /// <summary>Hay catálogo que mostrar (la lista se pinta sólo cuando existe, con su estado vacío al lado).</summary>
+    public bool HasModels => Models.Count > 0;
 
     [RelayCommand]
     public void DismissError()

@@ -560,62 +560,62 @@
 
   <!-- Workflow Settings Window -->
   <data name="Settings_WindowTitle" xml:space="preserve"><value>Ajustes Generales de la Aplicación</value></data>
-  <data name="Settings_HeaderTitle" xml:space="preserve"><value>⚙️ Ajustes Generales de FileFlow Studio</value></data>
+  <data name="Settings_HeaderTitle" xml:space="preserve"><value>Ajustes Generales de FileFlow Studio</value></data>
   <data name="Settings_HeaderSubtitle" xml:space="preserve"><value>Configura los parámetros globales persistentes de almacenamiento, apariencia, rendimiento y ejecutables externos.</value></data>
-  <data name="Settings_TabStorage" xml:space="preserve"><value>📂 Almacenamiento &amp; Rutas</value></data>
-  <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>📁 Ruta de Salida Global por Defecto</value></data>
+  <data name="Settings_TabStorage" xml:space="preserve"><value>Almacenamiento &amp; Rutas</value></data>
+  <data name="Settings_GlobalOutputDirTitle" xml:space="preserve"><value>Ruta de Salida Global por Defecto</value></data>
   <data name="Settings_GlobalOutputDirDesc" xml:space="preserve"><value>Carpeta de destino predeterminada persistente al ejecutar flujos y guardar archivos convertidos.</value></data>
-  <data name="Settings_TempWorkingDirTitle" xml:space="preserve"><value>📁 Directorio de Trabajo Temporal</value></data>
+  <data name="Settings_TempWorkingDirTitle" xml:space="preserve"><value>Directorio de Trabajo Temporal</value></data>
   <data name="Settings_TempWorkingDirDesc" xml:space="preserve"><value>Directorio predeterminado donde los nodos intermedios (optimización, eliminación de fondo, etc.) almacenan archivos temporales cuando su ruta de salida no está definida.</value></data>
   <data name="Settings_SelectTempWorkingDirTitle" xml:space="preserve"><value>Seleccionar Directorio de Trabajo Temporal</value></data>
-  <data name="Settings_BrowseBtn" xml:space="preserve"><value>📁 Examinar</value></data>
-  <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>⚡ Estrategia de Colisión de Archivos por Defecto</value></data>
+  <data name="Settings_BrowseBtn" xml:space="preserve"><value>Examinar</value></data>
+  <data name="Settings_ConflictStrategyTitle" xml:space="preserve"><value>Estrategia de Colisión de Archivos por Defecto</value></data>
   <data name="Settings_ConflictRename" xml:space="preserve"><value>RenameIncremental (Renombrar Incremental ej: foto_1.jpg)</value></data>
   <data name="Settings_ConflictOverwrite" xml:space="preserve"><value>Overwrite (Sobrescribir archivo existente)</value></data>
   <data name="Settings_ConflictSkip" xml:space="preserve"><value>Skip (Omitir si el archivo existe)</value></data>
   <data name="Settings_EnableAutoSave" xml:space="preserve"><value>Activar Auto-guardado automático de proyectos</value></data>
   <data name="Settings_AutoSaveInterval" xml:space="preserve"><value>Intervalo de auto-guardado:</value></data>
   <data name="Settings_MinutesLabel" xml:space="preserve"><value>minutos</value></data>
-  <data name="Settings_AutoCleanIntermediateTempFiles" xml:space="preserve"><value>🧹 Limpieza automática de archivos temporales al finalizar el flujo</value></data>
+  <data name="Settings_AutoCleanIntermediateTempFiles" xml:space="preserve"><value>Limpieza automática de archivos temporales al finalizar el flujo</value></data>
   <data name="Settings_AutoCleanIntermediateTempFilesDesc" xml:space="preserve"><value>Purga automáticamente el espacio de trabajo temporal y archivos intermedios generados por nodos al finalizar, cancelar o fallar un flujo.</value></data>
-  <data name="Settings_CleanStaleTempOnStartup" xml:space="preserve"><value>🧹 Purgar carpetas temporales huérfanas al iniciar la aplicación</value></data>
-  <data name="Settings_CleanTempNowBtn" xml:space="preserve"><value>🧹 Limpiar Espacio Temporal Ahora</value></data>
+  <data name="Settings_CleanStaleTempOnStartup" xml:space="preserve"><value>Purgar carpetas temporales huérfanas al iniciar la aplicación</value></data>
+  <data name="Settings_CleanTempNowBtn" xml:space="preserve"><value>Limpiar Espacio Temporal Ahora</value></data>
   <data name="Settings_TempCleanedTitle" xml:space="preserve"><value>Espacio Temporal</value></data>
   <data name="Settings_TempCleanedMsg" xml:space="preserve"><value>Espacio de trabajo temporal limpiado correctamente. Se eliminaron {0} carpeta(s) de ejecución residuales.</value></data>
-  <data name="Settings_TabAppearance" xml:space="preserve"><value>🎨 Apariencia &amp; UI</value></data>
-  <data name="Settings_DefaultThemeTitle" xml:space="preserve"><value>🎨 Tema Visual por Defecto</value></data>
-  <data name="Settings_CustomizeThemesBtn" xml:space="preserve"><value>🎨 Personalizar Temas...</value></data>
+  <data name="Settings_TabAppearance" xml:space="preserve"><value>Apariencia &amp; UI</value></data>
+  <data name="Settings_DefaultThemeTitle" xml:space="preserve"><value>Tema Visual por Defecto</value></data>
+  <data name="Settings_CustomizeThemesBtn" xml:space="preserve"><value>Personalizar Temas...</value></data>
   <data name="Settings_CompactToolbox" xml:space="preserve"><value>Iniciar Catálogo de Nodos en Modo Lista Compacta (28px)</value></data>
-  <data name="Settings_LogConsoleTitle" xml:space="preserve"><value>💻 Consola de Registros (Logs)</value></data>
+  <data name="Settings_LogConsoleTitle" xml:space="preserve"><value>Consola de Registros (Logs)</value></data>
   <data name="Settings_AutoScrollConsole" xml:space="preserve"><value>Desplazamiento automático de consola al recibir registros</value></data>
   <data name="Settings_MaxLogEntries" xml:space="preserve"><value>Máximo de líneas en consola:</value></data>
   <data name="Settings_LinesUnlimitedLabel" xml:space="preserve"><value>líneas (0 = Ilimitado)</value></data>
-  <data name="Settings_TabPerformance" xml:space="preserve"><value>⚡ Rendimiento &amp; Ejecución</value></data>
-  <data name="Settings_ParallelCpuTitle" xml:space="preserve"><value>⚡ Procesamiento en Paralelo y Concurrencia de CPU</value></data>
+  <data name="Settings_TabPerformance" xml:space="preserve"><value>Rendimiento &amp; Ejecución</value></data>
+  <data name="Settings_ParallelCpuTitle" xml:space="preserve"><value>Procesamiento en Paralelo y Concurrencia de CPU</value></data>
   <data name="Settings_ParallelCpuDesc" xml:space="preserve"><value>Número máximo de hilos simultáneos para procesar lotes de archivos en paralelo.</value></data>
   <data name="Settings_MaxCpuThreads" xml:space="preserve"><value>Hilos máximos de CPU:</value></data>
   <data name="Settings_ThreadsLabel" xml:space="preserve"><value>hilos</value></data>
   <data name="Settings_DefaultDryRun" xml:space="preserve"><value>Iniciar la aplicación siempre con Modo Prueba (Simulación) activado</value></data>
-  <data name="Settings_LogLevelTitle" xml:space="preserve"><value>🔍 Nivel Mínimo de Registro (Log Filter Level)</value></data>
+  <data name="Settings_LogLevelTitle" xml:space="preserve"><value>Nivel Mínimo de Registro (Log Filter Level)</value></data>
   <data name="Settings_LogLevelInfo" xml:space="preserve"><value>Information (Registros de flujo y eventos estándar)</value></data>
   <data name="Settings_LogLevelWarning" xml:space="preserve"><value>Warning (Solo advertencias y errores)</value></data>
   <data name="Settings_LogLevelError" xml:space="preserve"><value>Error (Exclusivamente fallos críticos)</value></data>
   <data name="Settings_LogLevelDebug" xml:space="preserve"><value>Debug (Detalle exhaustivo de depuración)</value></data>
-  <data name="Settings_CheckpointingTitle" xml:space="preserve"><value>🛡️ Puntos de Control y Reanudación (Checkpoints)</value></data>
+  <data name="Settings_CheckpointingTitle" xml:space="preserve"><value>Puntos de Control y Reanudación (Checkpoints)</value></data>
   <data name="Settings_CheckpointingDesc" xml:space="preserve"><value>Guarda el progreso del flujo en puntos de control atómicos para permitir reanudar ejecuciones interrumpidas sin reprocesar archivos ya completados.</value></data>
   <data name="Settings_EnableCheckpointing" xml:space="preserve"><value>Habilitar puntos de control para reanudar flujos interrumpidos</value></data>
-  <data name="Settings_ClearCheckpointsBtn" xml:space="preserve"><value>🗑️ Limpiar Checkpoints</value></data>
+  <data name="Settings_ClearCheckpointsBtn" xml:space="preserve"><value>Limpiar Checkpoints</value></data>
   <data name="Settings_CheckpointsClearedMsg" xml:space="preserve"><value>Se han eliminado {0} punto(s) de control almacenados en disco.</value></data>
   <data name="Checkpoint_ResumeTitle" xml:space="preserve"><value>Punto de Control Detectado</value></data>
   <data name="Checkpoint_ResumePrompt" xml:space="preserve"><value>Se ha detectado una ejecución previa de '{0}' interrumpida con {1} archivo(s) ya completados.&#x0a;&#x0a;¿Deseas REANUDAR la ejecución previa (omitiendo archivos completados)?&#x0a;&#x0a;• Sí: Reanudar desde el último punto.&#x0a;• No: Reiniciar ejecución limpia desde cero.&#x0a;• Cancelar: Abortar ejecución.</value></data>
-  <data name="Settings_TabExternalTools" xml:space="preserve"><value>🛠️ Herramientas Externas</value></data>
+  <data name="Settings_TabExternalTools" xml:space="preserve"><value>Herramientas Externas</value></data>
   <data name="Settings_ExecutablesTitle" xml:space="preserve"><value>Rutas de Ejecutables del Sistema</value></data>
-  <data name="Settings_AutoDetectBtn" xml:space="preserve"><value>🔍 Auto-Detectar Herramientas</value></data>
-  <data name="Settings_FfmpegLabel" xml:space="preserve"><value>🎬 FFmpeg (Transcodificación de Vídeo/Audio)</value></data>
-  <data name="Settings_FfprobeLabel" xml:space="preserve"><value>🔍 FFprobe (Inspección de Metadatos de Media)</value></data>
-  <data name="Settings_SevenZipLabel" xml:space="preserve"><value>📦 7-Zip (Archivos Comprimidos ZIP/7z/RAR)</value></data>
-  <data name="Settings_PythonLabel" xml:space="preserve"><value>🐍 Python (Scripts y Automatización CLI)</value></data>
-  <data name="Settings_SaveBtn" xml:space="preserve"><value>✅ Guardar Ajustes Permanentes</value></data>
+  <data name="Settings_AutoDetectBtn" xml:space="preserve"><value>Auto-Detectar Herramientas</value></data>
+  <data name="Settings_FfmpegLabel" xml:space="preserve"><value>FFmpeg (Transcodificación de Vídeo/Audio)</value></data>
+  <data name="Settings_FfprobeLabel" xml:space="preserve"><value>FFprobe (Inspección de Metadatos de Media)</value></data>
+  <data name="Settings_SevenZipLabel" xml:space="preserve"><value>7-Zip (Archivos Comprimidos ZIP/7z/RAR)</value></data>
+  <data name="Settings_PythonLabel" xml:space="preserve"><value>Python (Scripts y Automatización CLI)</value></data>
+  <data name="Settings_SaveBtn" xml:space="preserve"><value>Guardar Ajustes Permanentes</value></data>
 
   <!-- Theme Customizer Window -->
   <data name="ThemeCustomizer_WindowTitle" xml:space="preserve"><value>Estudio de Personalización de Temas - FileFlow</value></data>
@@ -690,13 +690,13 @@
   <data name="Common_Copy" xml:space="preserve"><value>Copiar</value></data>
 
   <!-- Modelos de IA -->
-  <data name="Settings_TabAiModels" xml:space="preserve"><value>🤖 Modelos de IA</value></data>
+  <data name="Settings_TabAiModels" xml:space="preserve"><value>Modelos de IA</value></data>
   <data name="Settings_AiModels_Title" xml:space="preserve"><value>Modelos de Inteligencia Artificial Locales</value></data>
   <data name="Settings_AiModels_Desc" xml:space="preserve"><value>Gestiona y descarga los pesos de los modelos de IA para clasificación de fotos, detección facial y de objetos, OCR y transcripción Whisper antes de ejecutar tus flujos.</value></data>
-  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>⬇️ Descargar Faltantes</value></data>
-  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>🔄 Actualizar</value></data>
-  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>📁 Abrir Carpeta</value></data>
-  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>🚀 Abrir Asistente de Descarga...</value></data>
+  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>Descargar Faltantes</value></data>
+  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>Abrir Carpeta</value></data>
+  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>Abrir Asistente de Descarga...</value></data>
   <data name="AiModelManager_WindowTitle" xml:space="preserve"><value>Gestor de Descarga de Modelos de IA</value></data>
   <data name="AiModelManager_HeaderTitle" xml:space="preserve"><value>Modelos de Inteligencia Artificial</value></data>
   <data name="AiModelManager_HeaderSubtitle" xml:space="preserve"><value>Descarga previa de modelos para procesamiento offline de alta velocidad sin esperas en el flujo.</value></data>
@@ -704,8 +704,12 @@
   <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>No descargado</value></data>
   <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Descargando...</value></data>
   <data name="AiModelManager_StatusError" xml:space="preserve"><value>Error en descarga</value></data>
-  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>⬇️ Descargar</value></data>
-  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>🗑️ Eliminar</value></data>
+  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>Descargar</value></data>
+  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="AiModelManager_BtnConfigureUrls" xml:space="preserve"><value>Configurar URLs</value></data>
+  <data name="AiModelManager_CustomUrlsBadge" xml:space="preserve"><value>{0} URL(s) propias</value></data>
+  <data name="AiModelManager_LastErrorTitle" xml:space="preserve"><value>La última descarga falló:</value></data>
+  <data name="AiModelManager_EmptyState" xml:space="preserve"><value>El catálogo de modelos está vacío.</value></data>
   <data name="AiModelUrls_Title" xml:space="preserve"><value>Configurar URLs de Descarga</value></data>
   <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure una o varias URLs de descarga para este modelo. Si un enlace falla o cambia, el motor intentará automáticamente el siguiente espejo.</value></data>
   <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>URLs de descarga (una por línea, en orden de prioridad):</value></data>
@@ -905,8 +909,8 @@
   <data name="Inspector_Tags" xml:space="preserve"><value>Etiquetas (Tags):</value></data>
   <data name="Inspector_Folder" xml:space="preserve"><value>Carpeta: </value></data>
   <data name="Preview_InspectFileBtn" xml:space="preserve"><value>Ver</value></data>
-  <data name="Settings_AiModels_Downloading" xml:space="preserve"><value>⏳ Descargando modelos...</value></data>
-  <data name="Settings_AiModels_DirLabel" xml:space="preserve"><value>📁 Carpeta de modelos: </value></data>
+  <data name="Settings_AiModels_Downloading" xml:space="preserve"><value>Descargando modelos...</value></data>
+  <data name="Settings_AiModels_DirLabel" xml:space="preserve"><value>Carpeta de modelos: </value></data>
   <data name="Common_None" xml:space="preserve"><value>Ninguno</value></data>
   <data name="Msg_OpenPresetsError" xml:space="preserve"><value>Error al abrir el Gestor de Presets: {0}</value></data>
   <data name="Msg_OpenPasswordsError" xml:space="preserve"><value>Error al abrir el Gestor de Contraseñas: {0}</value></data>
@@ -1154,14 +1158,65 @@
   <data name="Update_ChecksumVerified" xml:space="preserve"><value>✅ Integridad verificada correctamente.</value></data>
   <data name="Update_ChecksumMismatchError" xml:space="preserve"><value>Fallo de seguridad: El hash SHA-256 ({0}) no coincide con el publicado ({1}). Actualización abortada.</value></data>
   <data name="Update_NoCompatibleAssetFound" xml:space="preserve"><value>No se encontró ningún paquete de instalación compatible con su plataforma en este lanzamiento.</value></data>
-  <data name="Settings_TabUpdates" xml:space="preserve"><value>🔄 Actualizaciones</value></data>
+  <data name="Settings_TabUpdates" xml:space="preserve"><value>Actualizaciones</value></data>
   <data name="Settings_UpdatesTitle" xml:space="preserve"><value>Actualizaciones de la Aplicación</value></data>
   <data name="Settings_UpdatesDesc" xml:space="preserve"><value>Gestiona las comprobaciones automáticas y los canales de lanzamiento (Estable / Beta).</value></data>
   <data name="Settings_UpdateChannelTitle" xml:space="preserve"><value>Canal de Actualización:</value></data>
   <data name="Settings_ChannelStable" xml:space="preserve"><value>Estable (Recomendado para producción)</value></data>
   <data name="Settings_ChannelBeta" xml:space="preserve"><value>Beta / Pre-lanzamientos (Novedades y compilaciones preliminares)</value></data>
   <data name="Settings_AutoCheckUpdates" xml:space="preserve"><value>Comprobar actualizaciones automáticamente al iniciar la aplicación</value></data>
-  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>🔍 Buscar Actualizaciones Ahora</value></data>
+  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>Buscar Actualizaciones Ahora</value></data>
   <data name="Settings_LastUpdateCheck" xml:space="preserve"><value>Última comprobación: {0}</value></data>
   <data name="Settings_LastUpdateNever" xml:space="preserve"><value>Nunca comprobado</value></data>
+  <data name="Startup_FailureTitle" xml:space="preserve"><value>FileFlow Studio no pudo iniciarse</value></data>
+  <data name="Startup_FailurePhase" xml:space="preserve"><value>Etapa fallida: {0}</value></data>
+  <data name="Startup_FailureHint" xml:space="preserve"><value>El detalle completo queda en el registro de incidentes. Puedes copiarlo para informar del problema.</value></data>
+  <data name="Startup_FailureCopy" xml:space="preserve"><value>Copiar detalles</value></data>
+  <data name="Startup_FailureOpenLog" xml:space="preserve"><value>Abrir carpeta del registro</value></data>
+  <data name="Startup_FailureExit" xml:space="preserve"><value>Cerrar la aplicación</value></data>
+  <data name="Startup_FailureCopied" xml:space="preserve"><value>Detalles copiados al portapapeles.</value></data>
+  <data name="Startup_FailureCopyFailed" xml:space="preserve"><value>No se pudo copiar al portapapeles.</value></data>
+  <data name="Startup_FailureLogNotFound" xml:space="preserve"><value>No se encontró la carpeta del registro.</value></data>
+  <data name="Startup_DetailsTitle" xml:space="preserve"><value>FileFlow Studio — fallo de arranque</value></data>
+  <data name="Startup_DetailsPhase" xml:space="preserve"><value>Etapa</value></data>
+  <data name="Startup_DetailsMoment" xml:space="preserve"><value>Momento (UTC)</value></data>
+  <data name="Startup_DetailsLog" xml:space="preserve"><value>Registro de incidentes</value></data>
+  <data name="Startup_DetailsLogUnavailable" xml:space="preserve"><value>(no disponible)</value></data>
+  <data name="Startup_DetailsEnvironment" xml:space="preserve"><value>Entorno</value></data>
+  <data name="Startup_Phase_Resources" xml:space="preserve"><value>recursos e idioma base</value></data>
+  <data name="Startup_Phase_Services" xml:space="preserve"><value>contenedor de servicios</value></data>
+  <data name="Startup_Phase_Preferences" xml:space="preserve"><value>preferencias del usuario</value></data>
+  <data name="Startup_Phase_Theme" xml:space="preserve"><value>tema e idioma</value></data>
+  <data name="Startup_Phase_Plugins" xml:space="preserve"><value>carga de plugins</value></data>
+  <data name="Startup_Phase_Shell" xml:space="preserve"><value>interfaz principal (XAML)</value></data>
+  <data name="Startup_Phase_Runtime" xml:space="preserve"><value>ejecución</value></data>
+
+  <!--
+    Etiquetas que el XAML referenciaba con Path=[clave] pero que no existían en ningún diccionario.
+
+    El enlazador del indexador de LocalizationManager devuelve cadena vacía ante una clave ausente (no es un
+    error de enlace), así que FallbackValue no entra en juego: esas etiquetas se pintaban EN BLANCO y no
+    cambiaban de idioma. La guardía SettingsLocalizationCoverageTests recorre ahora todo el AXAML del
+    repositorio para que una clave sin traducir no vuelva a pasar inadvertida.
+  -->
+  <data name="AddNode_Spotlight" xml:space="preserve"><value>Añadir Nodo...</value></data>
+  <data name="Common_Accept" xml:space="preserve"><value>Aceptar</value></data>
+  <data name="Common_Refresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="Inspector_ExecutionMetrics" xml:space="preserve"><value>Métricas de Ejecución</value></data>
+  <data name="Inspector_ProcessedBytes" xml:space="preserve"><value>Bytes procesados:</value></data>
+  <data name="Inspector_TotalDuration" xml:space="preserve"><value>Duración total:</value></data>
+  <data name="Inspector_TabSnapshots" xml:space="preserve"><value>Instantáneas</value></data>
+  <data name="Inspector_TabTelemetry" xml:space="preserve"><value>Telemetría</value></data>
+  <data name="Preview_MetadataTitle" xml:space="preserve"><value>Metadatos e Información</value></data>
+  <data name="Preview_OriginalBadge" xml:space="preserve"><value>Original</value></data>
+  <data name="Preview_ProcessedBadge" xml:space="preserve"><value>Procesado</value></data>
+  <data name="Metrics_TotalWorkflowDuration" xml:space="preserve"><value>Duración total del flujo</value></data>
+  <data name="Metrics_TotalBytesProcessed" xml:space="preserve"><value>Datos procesados</value></data>
+  <data name="Metrics_TotalItemsProcessed" xml:space="preserve"><value>Elementos procesados</value></data>
+  <data name="Metrics_SlowestNodeLabel" xml:space="preserve"><value>Nodo más lento</value></data>
+  <data name="Metrics_ColDuration" xml:space="preserve"><value>Duración (ms)</value></data>
+  <data name="Metrics_ColItems" xml:space="preserve"><value>Elementos</value></data>
+  <data name="Metrics_ColBytes" xml:space="preserve"><value>Datos</value></data>
+  <data name="Metrics_ColTimePercent" xml:space="preserve"><value>% Tiempo</value></data>
+  <data name="Metrics_ColStatus" xml:space="preserve"><value>Estado</value></data>
 </root>

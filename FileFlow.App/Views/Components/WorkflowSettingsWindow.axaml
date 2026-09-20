@@ -1,164 +1,434 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:FileFlow.App.ViewModels"
+        xmlns:views="using:FileFlow.App.Views.Components"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         x:Class="FileFlow.App.Views.Components.WorkflowSettingsWindow"
         x:DataType="vm:WorkflowSettingsViewModel"
         Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_WindowTitle]}"
-        Height="580" Width="700" MinHeight="520" MinWidth="650"
+        Height="640" Width="880" MinHeight="560" MinWidth="780"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource BgSurfaceBrush}">
 
     <Grid Margin="16" RowDefinitions="Auto,*,Auto">
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,12" Spacing="3">
-            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_HeaderTitle]}" FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource AccentPrimaryBrush}" />
-            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_HeaderSubtitle]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" />
-        </StackPanel>
+        <Border Grid.Row="0" Classes="card" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto,*">
+                <materialIcons:MaterialIcon Grid.Column="0" Kind="Cog" Width="20" Height="20"
+                                            VerticalAlignment="Center" Margin="0,0,10,0"
+                                            Foreground="{DynamicResource AccentPrimaryBrush}" />
+                <StackPanel Grid.Column="1" Spacing="3">
+                    <TextBlock Classes="subtitle accent"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_HeaderTitle]}" />
+                    <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_HeaderSubtitle]}" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
-        <!-- TabControl -->
-        <TabControl Grid.Row="1" Background="Transparent">
-            <!-- Tab 1: Storage & Paths -->
-            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabStorage]}" Padding="10,4">
-                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14" Margin="0,10,0,0">
+        <!--
+            TabControl de ajustes.
+
+            El conjunto de pestañas es el contrato: una sección sin pestaña es una preferencia que el view model
+            guarda y nadie puede editar. SettingsTabsCoverageTests lo fija (pestañas, cabeceras traducidas en los
+            dos idiomas y enlaces de cada una resueltos contra el view model). El nombre es además el punto de
+            anclaje para capturar cada cuerpo por separado en las pruebas visuales.
+        -->
+        <TabControl x:Name="SettingsTabs" Grid.Row="1" Classes="pill" Background="Transparent" BorderThickness="0">
+
+            <!-- ══════════════════════════════ 1. Almacenamiento ══════════════════════════════ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Harddisk" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabStorage]}" />
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Classes="card" Margin="0,10,0,0">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="10">
+                        <StackPanel Spacing="12">
                             <!-- Global Output Directory -->
                             <StackPanel Spacing="3">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_GlobalOutputDirTitle]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_GlobalOutputDirDesc]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_GlobalOutputDirTitle]}" />
+                                <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_GlobalOutputDirDesc]}" />
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBox Text="{Binding GlobalOutputDir, Mode=TwoWay}" 
-                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                             BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="{DynamicResource FontSizeCaption}" />
-                                    <Button Grid.Column="1" Command="{Binding BrowseGlobalOutputCommand}" Padding="10,5" Margin="6,0,0,0">
-                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" FontSize="{DynamicResource FontSizeCaption}" />
+                                    <TextBox Grid.Column="0" Text="{Binding GlobalOutputDir, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Margin="6,0,0,0"
+                                            Command="{Binding BrowseGlobalOutputCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" />
                                     </Button>
                                 </Grid>
                             </StackPanel>
 
                             <!-- Temp Working Directory -->
                             <StackPanel Spacing="3">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TempWorkingDirTitle]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TempWorkingDirDesc]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TempWorkingDirTitle]}" />
+                                <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TempWorkingDirDesc]}" />
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBox Text="{Binding TempWorkingDir, Mode=TwoWay}" 
-                                             Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" 
-                                             BorderBrush="{DynamicResource BorderDarkBrush}" Padding="8,5" FontSize="{DynamicResource FontSizeCaption}" />
-                                    <Button Grid.Column="1" Command="{Binding BrowseTempWorkingDirCommand}" Padding="10,5" Margin="6,0,0,0">
-                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" FontSize="{DynamicResource FontSizeCaption}" />
+                                    <TextBox Grid.Column="0" Text="{Binding TempWorkingDir, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Margin="6,0,0,0"
+                                            Command="{Binding BrowseTempWorkingDirCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" />
                                     </Button>
                                 </Grid>
                             </StackPanel>
 
                             <!-- Conflict Resolution -->
-                            <StackPanel Spacing="3">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictStrategyTitle]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <ComboBox SelectedValue="{Binding SelectedConflictStrategy, Mode=TwoWay}" 
-                                          SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
-                                          Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,4" FontSize="{DynamicResource FontSizeCaption}">
-                                    <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictRename]}" Tag="RenameIncremental" />
-                                    <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictOverwrite]}" Tag="Overwrite" />
-                                    <ComboBoxItem Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictSkip]}" Tag="Skip" />
-                                </ComboBox>
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConflictStrategyTitle]}" />
+                                <ComboBox ItemsSource="{Binding ConflictStrategies}"
+                                          SelectedValue="{Binding SelectedConflictStrategy, Mode=TwoWay}"
+                                          SelectedValueBinding="{Binding Code}"
+                                          DisplayMemberBinding="{Binding DisplayName}"
+                                          Width="380" HorizontalAlignment="Left" />
                             </StackPanel>
 
+                            <Border Classes="dividerH" />
+
                             <!-- Auto-Save -->
-                            <CheckBox IsChecked="{Binding EnableAutoSave, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableAutoSave]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <CheckBox IsChecked="{Binding EnableAutoSave, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableAutoSave]}" />
                             <Grid Margin="20,0,0,0" ColumnDefinitions="Auto,80,Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoSaveInterval]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBox Grid.Column="1" Text="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}" Background="{DynamicResource BgSurfaceBrush}" Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" Padding="6,3" FontSize="{DynamicResource FontSizeCaption}" />
-                                <TextBlock Grid.Column="2" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MinutesLabel]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                <TextBlock Grid.Column="0" Classes="micro secondary" VerticalAlignment="Center" Margin="0,0,8,0"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoSaveInterval]}" />
+                                <TextBox Grid.Column="1" Text="{Binding AutoSaveIntervalMinutes, Mode=TwoWay}" />
+                                <TextBlock Grid.Column="2" Classes="micro secondary" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MinutesLabel]}" />
+                            </Grid>
+
+                            <Border Classes="dividerH" />
+
+                            <!-- Temporary workspace lifecycle -->
+                            <CheckBox IsChecked="{Binding AutoCleanIntermediateTempFiles, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCleanIntermediateTempFiles]}" />
+                            <TextBlock Classes="micro muted" TextWrapping="Wrap" Margin="20,0,0,0"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCleanIntermediateTempFilesDesc]}" />
+                            <CheckBox IsChecked="{Binding CleanStaleTempOnStartup, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CleanStaleTempOnStartup]}" />
+                            <Button HorizontalAlignment="Left"
+                                    Command="{Binding CleanTemporaryFilesNowCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="Broom" Width="13" Height="13" VerticalAlignment="Center" />
+                                    <TextBlock Classes="caption"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CleanTempNowBtn]}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
+
+            <!-- ══════════════════════════════ 2. Apariencia & UI ══════════════════════════════ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Palette" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabAppearance]}" />
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Classes="card" Margin="0,10,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="12">
+                            <!-- Language -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" />
+                                <ComboBox ItemsSource="{Binding AvailableLanguages}"
+                                          SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}"
+                                          SelectedValueBinding="{Binding Code}"
+                                          DisplayMemberBinding="{Binding DisplayName}"
+                                          Width="260" HorizontalAlignment="Left" />
+                            </StackPanel>
+
+                            <!-- Theme -->
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_DefaultThemeTitle]}" />
+                                <ComboBox ItemsSource="{Binding AvailableThemes}"
+                                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                                          DisplayMemberBinding="{Binding Name}"
+                                          Width="260" HorizontalAlignment="Left" />
+                            </StackPanel>
+
+                            <Border Classes="dividerH" />
+
+                            <CheckBox IsChecked="{Binding IsCompactToolbox, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CompactToolbox]}" />
+
+                            <!-- Log console -->
+                            <TextBlock Classes="caption strong primaryText" Margin="0,4,0,0"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogConsoleTitle]}" />
+                            <CheckBox IsChecked="{Binding AutoScrollConsole, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoScrollConsole]}" />
+                            <Grid ColumnDefinitions="Auto,90,Auto" Margin="20,0,0,0">
+                                <TextBlock Grid.Column="0" Classes="micro secondary" VerticalAlignment="Center" Margin="0,0,8,0"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MaxLogEntries]}" />
+                                <TextBox Grid.Column="1" Text="{Binding MaxLogEntries, Mode=TwoWay}" />
+                                <TextBlock Grid.Column="2" Classes="micro secondary" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LinesUnlimitedLabel]}" />
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
             </TabItem>
 
-            <!-- Tab 2: General Preferences -->
-            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabGeneral]}" Padding="10,4">
-                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14" Margin="0,10,0,0">
+            <!-- ══════════════════════════════ 3. Rendimiento & Ejecución ══════════════════════════════ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Speedometer" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabPerformance]}" />
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Classes="card" Margin="0,10,0,0">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="12">
-                            <!-- Language -->
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" 
-                                          SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
-                                          Width="160" HorizontalAlignment="Left">
-                                    <ComboBoxItem Tag="es-ES">Español</ComboBoxItem>
-                                    <ComboBoxItem Tag="en-US">English</ComboBoxItem>
-                                </ComboBox>
+                            <!-- Parallelism -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ParallelCpuTitle]}" />
+                                <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ParallelCpuDesc]}" />
+                                <Grid ColumnDefinitions="Auto,90,Auto" Margin="0,2,0,0">
+                                    <TextBlock Grid.Column="0" Classes="micro secondary" VerticalAlignment="Center" Margin="0,0,8,0"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_MaxCpuThreads]}" />
+                                    <TextBox Grid.Column="1" Text="{Binding MaxParallelThreads, Mode=TwoWay}" />
+                                    <TextBlock Grid.Column="2" Classes="micro secondary" VerticalAlignment="Center" Margin="8,0,0,0"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ThreadsLabel]}" />
+                                </Grid>
                             </StackPanel>
 
-                            <!-- Theme -->
+                            <CheckBox IsChecked="{Binding DefaultDryRunState, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_DefaultDryRun]}" />
+
+                            <Border Classes="dividerH" />
+
+                            <!-- Log level -->
                             <StackPanel Spacing="4">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_ThemeLabel]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <ComboBox ItemsSource="{Binding AvailableThemes}" 
-                                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
-                                          DisplayMemberBinding="{Binding Name}"
-                                          Width="200" HorizontalAlignment="Left" />
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LogLevelTitle]}" />
+                                <ComboBox ItemsSource="{Binding LogLevels}"
+                                          SelectedValue="{Binding SelectedLogLevel, Mode=TwoWay}"
+                                          SelectedValueBinding="{Binding Code}"
+                                          DisplayMemberBinding="{Binding DisplayName}"
+                                          Width="420" HorizontalAlignment="Left" />
+                            </StackPanel>
+
+                            <Border Classes="dividerH" />
+
+                            <!-- Checkpoints -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckpointingTitle]}" />
+                                <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckpointingDesc]}" />
+                                <CheckBox IsChecked="{Binding EnableCheckpointing, Mode=TwoWay}" Margin="0,2,0,0"
+                                          Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_EnableCheckpointing]}" />
+                                <Button HorizontalAlignment="Left" Margin="0,2,0,0"
+                                        Command="{Binding ClearCheckpointsCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <materialIcons:MaterialIcon Kind="TrashCan" Width="13" Height="13" VerticalAlignment="Center" />
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ClearCheckpointsBtn]}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <Border Classes="dividerH" />
+
+                            <!-- AI session lifecycle -->
+                            <StackPanel Spacing="3">
+                                <CheckBox IsChecked="{Binding AutoUnloadAiModelsOnCompletion, Mode=TwoWay}"
+                                          Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels]}" />
+                                <TextBlock Classes="micro muted" TextWrapping="Wrap" Margin="20,0,0,0"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoUnloadAiModels_Desc]}" />
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>
             </TabItem>
 
-            <!-- Tab 3: Updates -->
-            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabUpdates]}" Padding="10,4">
-                <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14" Margin="0,10,0,0">
+            <!-- ══════════════════════════════ 4. Herramientas Externas ══════════════════════════════ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Wrench" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabExternalTools]}" />
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Classes="card" Margin="0,10,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="caption strong primaryText"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ExecutablesTitle]}" />
+
+                            <!-- FFmpeg -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="micro secondary"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_FfmpegLabel]}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding FfmpegPath, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding BrowseFfmpegCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- FFprobe -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="micro secondary"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_FfprobeLabel]}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding FfprobePath, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding BrowseFfprobeCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- 7-Zip -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="micro secondary"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_SevenZipLabel]}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding SevenZipPath, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding BrowseSevenZipCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Python -->
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="micro secondary"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_PythonLabel]}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding PythonPath, Mode=TwoWay}" />
+                                    <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding BrowsePythonCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_BrowseBtn]}" />
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <Border Classes="dividerH" />
+
+                            <Button HorizontalAlignment="Left"
+                                    Command="{Binding AutoDetectToolsCommand}"
+                                    IsEnabled="{Binding !IsAutoDetecting}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="Magnify" Width="13" Height="13" VerticalAlignment="Center" />
+                                    <TextBlock Classes="caption"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoDetectBtn]}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
+
+            <!-- ══════════════════════════════ 5. Modelos de IA ══════════════════════════════ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Robot" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabAiModels]}" />
+                    </StackPanel>
+                </TabItem.Header>
+
+                <!-- El gestor es la misma pieza que usa el asistente de descarga: una sola lista de modelos,
+                     un solo juego de acciones. Ver AiModelManagerView. -->
+                <views:AiModelManagerView Margin="0,10,0,0" DataContext="{Binding AiModelManager}" />
+            </TabItem>
+
+            <!-- ══════════════════════════════ 6. Actualizaciones ══════════════════════════════ -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Update" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_TabUpdates]}" />
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Classes="card" Margin="0,10,0,0">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Spacing="14">
                             <!-- Updates Header Info -->
                             <StackPanel Spacing="3">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdatesTitle]}" FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdatesDesc]}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                                <TextBlock Classes="subtitle primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdatesTitle]}" />
+                                <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdatesDesc]}" />
                             </StackPanel>
 
                             <!-- Version & Platform Info Box -->
-                            <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="12,10">
+                            <Border Classes="panel" Padding="12,10">
                                 <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
                                     <StackPanel Grid.Column="0" Spacing="2">
-                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_CurrentVersionLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
-                                        <TextBlock Text="{Binding CurrentVersionDisplay}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Classes="caption muted"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_CurrentVersionLabel]}" />
+                                        <TextBlock Classes="bodySm semiBold primaryText" Text="{Binding CurrentVersionDisplay}" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_PackagingFormatLabel]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
-                                        <TextBlock Text="{Binding PackagingFormatDisplay}" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Classes="caption muted"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Update_PackagingFormatLabel]}" />
+                                        <TextBlock Classes="bodySm primaryText" Text="{Binding PackagingFormatDisplay}" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="2" Spacing="2">
-                                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LastUpdateCheck]}" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextMutedBrush}" />
-                                        <TextBlock Text="{Binding LastUpdateCheckDisplay}" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Classes="caption muted"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_LastUpdateCheck]}" />
+                                        <TextBlock Classes="bodySm secondary" Text="{Binding LastUpdateCheckDisplay}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
 
                             <!-- Channel Selection -->
                             <StackPanel Spacing="4">
-                                <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdateChannelTitle]}" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                <ComboBox SelectedValue="{Binding SelectedUpdateChannel, Mode=TwoWay}"
-                                          SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
-                                          Width="260" HorizontalAlignment="Left">
-                                    <ComboBoxItem Tag="Stable" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ChannelStable]}" />
-                                    <ComboBoxItem Tag="Beta" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ChannelBeta]}" />
-                                </ComboBox>
+                                <TextBlock Classes="caption strong primaryText"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_UpdateChannelTitle]}" />
+                                <ComboBox ItemsSource="{Binding UpdateChannels}"
+                                          SelectedValue="{Binding SelectedUpdateChannel, Mode=TwoWay}"
+                                          SelectedValueBinding="{Binding Code}"
+                                          DisplayMemberBinding="{Binding DisplayName}"
+                                          Width="360" HorizontalAlignment="Left" />
                             </StackPanel>
 
                             <!-- Auto-check Toggle -->
-                            <CheckBox IsChecked="{Binding AutoCheckForUpdates, Mode=TwoWay}"
-                                      Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCheckUpdates]}"
-                                      FontWeight="SemiBold" FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <CheckBox IsChecked="{Binding AutoCheckForUpdates, Mode=TwoWay}" Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AutoCheckUpdates]}" />
+
+                            <Border Classes="dividerH" />
 
                             <!-- Check Now Action Area -->
-                            <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
-                                <Button Grid.Column="0" Command="{Binding CheckForUpdatesNowCommand}"
-                                        IsEnabled="{Binding !IsCheckingForUpdates}"
-                                        Content="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckUpdatesNowBtn]}"
-                                        Padding="14,8" Background="{DynamicResource AccentPrimaryBrush}" Foreground="{DynamicResource TextOnAccentBrush}" CornerRadius="{DynamicResource RadiusSm}" />
-                                <TextBlock Grid.Column="1" Text="{Binding CheckUpdatesStatusMessage}"
-                                           VerticalAlignment="Center" Margin="14,0,0,0" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Button Grid.Column="0" Classes="primary"
+                                        Command="{Binding CheckForUpdatesNowCommand}"
+                                        IsEnabled="{Binding !IsCheckingForUpdates}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <materialIcons:MaterialIcon Kind="Magnify" Width="13" Height="13" VerticalAlignment="Center" />
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CheckUpdatesNowBtn]}" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Grid.Column="1" Classes="bodySm secondary" TextWrapping="Wrap"
+                                           VerticalAlignment="Center" Margin="14,0,0,0"
+                                           Text="{Binding CheckUpdatesStatusMessage}" />
                             </Grid>
                         </StackPanel>
                     </ScrollViewer>
@@ -169,8 +439,17 @@
         <!-- Bottom Buttons -->
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Command="{Binding SaveSettingsCommand}" Content="Guardar" Padding="16,6" Background="{DynamicResource AccentPrimaryBrush}" Foreground="White" CornerRadius="{DynamicResource RadiusSm}" />
-                <Button Command="{Binding CancelSettingsCommand}" Content="Cancelar" Padding="14,6" CornerRadius="{DynamicResource RadiusSm}" />
+                <Button Classes="primary" Command="{Binding SaveCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="13" Height="13" VerticalAlignment="Center" />
+                        <TextBlock Classes="caption"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_SaveBtn]}" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding CancelCommand}">
+                    <TextBlock Classes="caption"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Cancel]}" />
+                </Button>
             </StackPanel>
         </Grid>
     </Grid>

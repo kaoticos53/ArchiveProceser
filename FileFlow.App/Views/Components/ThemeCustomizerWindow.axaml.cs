@@ -24,6 +24,28 @@ public partial class ThemeCustomizerWindow : Window
     /// <see cref="ThemeCustomizerViewModel.LivePreviewResources"/>), así que basta engancharla una vez:
     /// cada ajuste reemplaza valores en el sitio y los recursos se vuelven a resolver solos.
     /// </summary>
+    /// <summary>
+    /// Garantiza que el estudio se abra <b>siempre con su view model</b>, incluso cuando quien lo abre no
+    /// lo inyecta.
+    ///
+    /// El síntoma que esto evita: la ventana se mostraba sin <see cref="DataContext"/> y ningún
+    /// <c>{Binding}</c> resolvía contra nada, de modo que el catálogo de temas salía vacío, el editor por
+    /// secciones no se generaba y ningún botón (nuevo, duplicar, eliminar, aplicar) hacía nada. El estudio
+    /// no puede depender de que el llamante se acuerde de conectarlo.
+    ///
+    /// Se resuelve al <b>abrir</b> y no en el constructor a propósito: así, quien sí inyecta su view model
+    /// (las pruebas, las capturas y la barra de control) no paga el coste de construir uno de descarte.
+    /// </summary>
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        if (DataContext is null)
+        {
+            DataContext = new ThemeCustomizerViewModel();
+        }
+    }
+
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
         if (_viewModel != null)

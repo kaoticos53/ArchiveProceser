@@ -101,6 +101,26 @@ public class TestCollectionContractGuardTests
     }
 
     [Fact]
+    public void Analyzer_ShouldRequireVisualSnapshots_WhenClassAppliesAThemeFromAParallelCollection()
+    {
+        // Aplicar un tema desde una colección paralela cambia el tema activo y el diccionario de recursos
+        // mientras las capturas headless los están renderizando: el fallo aparece en otra prueba y sólo a veces.
+        string source = Snippet("[Collection(\"ThemeTokens\")]", "ThemeManager.Instance.SetTheme(AppTheme.Light);");
+
+        var violations = AnalyzeSnippet(source);
+
+        violations.Should().ContainSingle().Which.State.Should().Be(ExclusiveTestState.ActiveTheme);
+    }
+
+    [Fact]
+    public void Analyzer_ShouldAcceptApplyingAThemeFromAnExclusiveCollection()
+    {
+        string source = Snippet("[Collection(VisualSnapshotsCollection.Name)]", "ThemeManager.Instance.SetThemeById(\"dark_fluent\");");
+
+        AnalyzeSnippet(source).Should().BeEmpty();
+    }
+
+    [Fact]
     public void Analyzer_ShouldRequireVisualSnapshots_WhenClassUsesTheHeadlessSession()
     {
         string source = Snippet(null, "AvaloniaTestHelper.EnsureInitialized();");

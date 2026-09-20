@@ -31,8 +31,20 @@ public enum ModalSurface
     /// <summary>Diálogo de URLs personalizadas de un modelo.</summary>
     AiModelUrls,
 
-    /// <summary>Ajustes de flujo con dobles de todos sus puertos.</summary>
+    /// <summary>Ajustes de flujo con dobles de todos sus puertos (se abre en la primera pestaña: almacenamiento).</summary>
     WorkflowSettings,
+
+    /// <summary>Ajustes de flujo en la pestaña de apariencia e interfaz.</summary>
+    WorkflowSettingsAppearance,
+
+    /// <summary>Ajustes de flujo en la pestaña de rendimiento y ejecución.</summary>
+    WorkflowSettingsPerformance,
+
+    /// <summary>Ajustes de flujo en la pestaña de herramientas externas.</summary>
+    WorkflowSettingsExternalTools,
+
+    /// <summary>Ajustes de flujo en la pestaña de modelos de IA.</summary>
+    WorkflowSettingsAiModels,
 
     /// <summary>Configuración del nodo VLM multimodal (plugin de IA).</summary>
     MultimodalVlm,
@@ -43,8 +55,14 @@ public enum ModalSurface
     /// <summary>Ayuda de expresiones regulares (plugin de sistema de ficheros).</summary>
     RegexHelper,
 
+    /// <summary>Diseñador de conjuntos de datos sintéticos (plugin de sistema de ficheros).</summary>
+    SyntheticDataSetDesigner,
+
     /// <summary>Gestor de presets de media (plugin de integraciones).</summary>
-    MediaPresetManager
+    MediaPresetManager,
+
+    /// <summary>Ventana de error de arranque (la que hace visible un fallo de inicio).</summary>
+    StartupError
 }
 
 /// <summary>
@@ -78,11 +96,17 @@ public static class ModalVisualFixture
             ModalSurface.VariablePicker => BuildVariablePicker(),
             ModalSurface.AiModelManager => BuildAiModelManager(),
             ModalSurface.AiModelUrls => new AiModelUrlsConfigDialog(BuildAiModelUrlsViewModel()),
-            ModalSurface.WorkflowSettings => BuildWorkflowSettings(),
+            ModalSurface.WorkflowSettings => BuildWorkflowSettings(0),
+            ModalSurface.WorkflowSettingsAppearance => BuildWorkflowSettings(1),
+            ModalSurface.WorkflowSettingsPerformance => BuildWorkflowSettings(2),
+            ModalSurface.WorkflowSettingsExternalTools => BuildWorkflowSettings(3),
+            ModalSurface.WorkflowSettingsAiModels => BuildWorkflowSettings(4),
             ModalSurface.MultimodalVlm => BuildMultimodalVlm(),
             ModalSurface.PasswordManager => BuildPasswordManager(),
             ModalSurface.RegexHelper => BuildRegexHelper(),
+            ModalSurface.SyntheticDataSetDesigner => BuildSyntheticDataSetDesigner(),
             ModalSurface.MediaPresetManager => BuildMediaPresetManager(),
+            ModalSurface.StartupError => BuildStartupError(),
             _ => throw new ArgumentOutOfRangeException(nameof(surface), surface, "Superficie no soportada.")
         };
     }
@@ -92,13 +116,19 @@ public static class ModalVisualFixture
     {
         ModalSurface.About => (520, 300),
         ModalSurface.VariablePicker => (620, 560),
-        ModalSurface.AiModelManager => (840, 620),
+        ModalSurface.AiModelManager => (900, 660),
         ModalSurface.AiModelUrls => (680, 420),
-        ModalSurface.WorkflowSettings => (780, 560),
+        ModalSurface.WorkflowSettings => (880, 640),
+        ModalSurface.WorkflowSettingsAppearance => (880, 640),
+        ModalSurface.WorkflowSettingsPerformance => (880, 640),
+        ModalSurface.WorkflowSettingsExternalTools => (880, 640),
+        ModalSurface.WorkflowSettingsAiModels => (880, 640),
         ModalSurface.MultimodalVlm => (1060, 720),
         ModalSurface.PasswordManager => (560, 460),
         ModalSurface.RegexHelper => (860, 580),
+        ModalSurface.SyntheticDataSetDesigner => (1240, 820),
         ModalSurface.MediaPresetManager => (760, 520),
+        ModalSurface.StartupError => (720, 430),
         _ => (600, 400)
     };
 
@@ -229,20 +259,29 @@ public static class ModalVisualFixture
     /// <summary>
     /// Gestor de modelos con IDs falsos: el <c>RefreshState</c> de cada item consulta el disco real, así
     /// que IDs falsos garantizan «no instalado» y un resumen 0/3 — igual en cualquier máquina.
+    ///
+    /// Lo usan tanto el asistente de descarga como la pestaña «Modelos de IA» de los ajustes: leer el catálogo
+    /// real haría que la línea base de esa pestaña dependiera de qué modelos tenga descargados quien la genera.
     /// </summary>
-    private static Window BuildAiModelManager()
+    private static AiModelManagerViewModel BuildDeterministicAiModelManager()
     {
         var vm = new AiModelManagerViewModel();
         vm.Models.Clear();
 
-        foreach (var id in new[] { "fake-whisper-tiny", "fake-rmbg-1.4", "fake-yolo-world" })
+        foreach (var (id, name, category) in new[]
+                 {
+                     ("fake-whisper-tiny", "Whisper Tiny (muestra)", "Transcripción"),
+                     ("fake-rmbg-1.4", "RMBG 1.4 (muestra)", "Segmentación"),
+                     ("fake-yolo-world", "YOLO-World (muestra)", "Detección de objetos")
+                 })
         {
             vm.Models.Add(new AiModelItemViewModel
             {
                 ModelId = id,
-                Name = $"Modelo de muestra ({id})",
-                Category = "Muestra",
+                Name = name,
+                Category = category,
                 Description = "Entrada determinista para la captura: nunca existe en disco.",
+                FileName = id + ".onnx",
                 ExpectedSizeLabel = "12,0 MB",
                 StatusText = "No instalado"
             });
@@ -250,34 +289,45 @@ public static class ModalVisualFixture
 
         vm.ModelsDirectory = "/workflow/models";
         vm.RefreshStatus();
-
-        var window = new AiModelDownloadDialog { DataContext = vm, Width = 840, Height = 620 };
-        return window;
+        return vm;
     }
+
+    /// <summary>Asistente de descarga de modelos (la misma pieza que la pestaña de ajustes, en ventana).</summary>
+    private static Window BuildAiModelManager() =>
+        new AiModelDownloadDialog { DataContext = BuildDeterministicAiModelManager(), Width = 900, Height = 660 };
 
     /// <summary>URLs de descarga de un modelo falso (el VM no toca la red en el arranque).</summary>
     private static AiModelUrlsConfigViewModel BuildAiModelUrlsViewModel() =>
         new("fake-model-id");
 
 
-    /// <summary>Ajustes de flujo con dobles de todos sus puertos (nada del perfil del usuario).</summary>
-    private static Window BuildWorkflowSettings()
+    /// <summary>
+    /// Ajustes de flujo con dobles de todos sus puertos (nada del perfil del usuario) y en la pestaña pedida, de
+    /// modo que cada cuerpo del TabControl tenga su propia captura: sin esto, las cuatro pestañas nuevas serían
+    /// UI sin línea base.
+    /// </summary>
+    private static Window BuildWorkflowSettings(int selectedTab)
     {
         // Sin LogViewModel: crearlo sólo para no usarlo deja un suscriptor eterno en
         // LocalizationManager.Instance.LanguageChanged (su Dispose no se llama nunca) — y ese suscriptor
         // delata 'thread cannot access' en SetCulture desde el hilo runner para toda la suite.
         var vm = new WorkflowSettingsViewModel(
             new InMemoryUserPreferencesService(),
-            FileFlow.Core.Services.ExternalToolsService.Instance,
+            new InMemoryExternalToolsService(),
             ThemeManager.Instance,
             FileFlow.Sdk.Localization.LocalizationManager.Instance,
             new NullFileDialogService(),
             new AvaloniaDialogService(),
-            new AiModelManagerViewModel());
+            BuildDeterministicAiModelManager());
 
         var window = new FileFlow.App.Views.Components.WorkflowSettingsWindow(string.Empty, vm);
-        window.Width = 780;
-        window.Height = 560;
+        window.Width = 880;
+        window.Height = 640;
+
+        // La pestaña se elige por el nombre del control: el XAML no expone el TabControl y el árbol lógico
+        // no sirve aquí (la ventana aún no está mostrada, pero el ámbito de nombres ya existe).
+        window.FindControl<TabControl>("SettingsTabs")!.SelectedIndex = selectedTab;
+
         return window;
     }
 
@@ -312,6 +362,21 @@ public static class ModalVisualFixture
             Height = 580
         };
 
+    /// <summary>
+    /// Diseñador de datos sintéticos con almacenamiento temporal: los datasets oficiales se derivan de las
+    /// muestras embebidas (deterministas) y ningún dataset del usuario entra en la captura.
+    /// </summary>
+    private static Window BuildSyntheticDataSetDesigner() =>
+        new FileFlow.Plugin.FileSystem.UI.Views.SyntheticDataSetDesignerWindow(
+            new FileFlow.Plugin.FileSystem.UI.ViewModels.SyntheticDataSetDesignerViewModel(
+                new FileFlow.Plugin.FileSystem.Services.SyntheticDataSetStorageService(
+                    Path.Combine(Path.GetTempPath(), "FileFlow_SyntheticDataVisual_" + Guid.NewGuid().ToString("N"))),
+                new NullDialogService()))
+        {
+            Width = 1240,
+            Height = 820
+        };
+
     /// <summary>Gestor de presets de media sin diálogo (los avisos van a un NullDialogService).</summary>
     private static Window BuildMediaPresetManager() =>
         new MediaPresetManagerWindow(new NullDialogService())
@@ -319,4 +384,18 @@ public static class ModalVisualFixture
             Width = 760,
             Height = 520
         };
+
+    /// <summary>
+    /// Ventana de error de arranque con un informe fijo. El entorno va anclado a un texto determinista y la
+    /// ruta del registro es ficticia: la línea base no puede depender de la máquina que la generó.
+    /// </summary>
+    private static Window BuildStartupError() =>
+        FileFlow.App.Views.StartupErrorWindow.Create(new FileFlow.App.Services.StartupFailureReport(
+            FileFlow.App.Services.StartupPhase.Services,
+            FileFlow.App.Services.StartupPhaseDescriptions.Describe(FileFlow.App.Services.StartupPhase.Services),
+            new InvalidOperationException(
+                "A circular dependency was detected for the service of type 'FileFlow.App.ViewModels.EditorViewModel'."),
+            "/workflow/logs/crash.log",
+            new DateTime(2026, 9, 20, 19, 0, 0, DateTimeKind.Utc),
+            EnvironmentOverride: "Windows 11 · .NET 10.0.0 · FileFlow.App 1.0.0"));
 }

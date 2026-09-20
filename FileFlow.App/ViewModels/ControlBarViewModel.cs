@@ -3,6 +3,7 @@ using System.IO;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.App.Models;
 using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
@@ -26,6 +27,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     private readonly ILocalizationService _loc;
     private readonly IDialogService _dialogService;
     private readonly IProcessLauncherService _processLauncher;
+    private readonly CustomThemeService _customThemeService;
     private readonly WorkflowExecutionCoordinator _executionCoordinator;
 
     private CancellationTokenSource? _cts;
@@ -92,53 +94,129 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _workflowName = "Flujo de Procesamiento de Archivos";
 
+    /// <summary>
+    /// Último idioma válido aplicado. Es la red que impide que un valor vacío devuelto por el desplegable
+    /// borre el idioma activo: sin ella, el selector quedaba en blanco y ya no había nada que elegir.
+    /// </summary>
+    private string _appliedLanguage = LanguageCatalog.All[0].Code;
+
     [ObservableProperty]
-    private string _selectedLanguage = "es-ES";
+    private string _selectedLanguage = LanguageCatalog.All[0].Code;
 
     partial void OnSelectedLanguageChanged(string value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return;
-        _loc.SetCulture(value);
-        var prefs = _userPreferencesService.Preferences;
-        if (!string.Equals(prefs.Language, value, StringComparison.OrdinalIgnoreCase))
+        var option = LanguageCatalog.Resolve(value);
+
+        if (option is null)
         {
-            prefs.Language = value;
+            // Un ComboBox atado por valor escribe 'null' cuando no encuentra su valor entre los elementos: al
+            // montarse, al desmontarse (cerrar la ventana) o si la preferencia guardada ya no se ofrece. El
+            // idioma activo no se pierde: se restaura el último válido y el campo se vuelve a pintar.
+            if (!string.Equals(SelectedLanguage, _appliedLanguage, StringComparison.Ordinal))
+            {
+                SelectedLanguage = _appliedLanguage;
+            }
+
+            return;
+        }
+
+        _appliedLanguage = option.Code;
+
+        if (!string.Equals(option.Code, value, StringComparison.Ordinal))
+        {
+            // Normaliza la grafía ('es' → 'es-ES') y vuelve a entrar por aquí con un valor del catálogo.
+            SelectedLanguage = option.Code;
+            return;
+        }
+
+        _loc.SetCulture(option.Code);
+
+        var prefs = _userPreferencesService.Preferences;
+        if (!string.Equals(prefs.Language, option.Code, StringComparison.OrdinalIgnoreCase))
+        {
+            prefs.Language = option.Code;
             _userPreferencesService.Save();
         }
     }
 
+    /// <summary>Último tema válido (existente en la lista) mostrado por el selector.</summary>
+    private string _appliedThemeId = ThemeManager.DefaultThemeId;
+
     [ObservableProperty]
-    private string _selectedTheme = "dark_fluent";
+    private string _selectedTheme = ThemeManager.DefaultThemeId;
 
     public ObservableCollection<ThemeDefinition> AvailableThemes { get; } = [];
 
+    /// <summary>Identificador reservado del tema que sigue al sistema operativo.</summary>
+    private const string SystemThemeId = ThemeManager.SystemThemeId;
+
+    /// <summary>Idiomas del selector. Es una lista de objetos: ver <see cref="SelectorOption"/>.</summary>
+    public ObservableCollection<SelectorOption> AvailableLanguages { get; } = [.. LanguageCatalog.All];
+
+    /// <summary>
+    /// Rellena la lista de temas disponibles (catálogo + el tema que sigue al sistema).
+    ///
+    /// Sólo toca la colección si su contenido cambia. Reconstruirla —vaciar y volver a llenar— desde un
+    /// manejador que corre dentro de una actualización de selección (por ejemplo al guardar las preferencias
+    /// desde el enlace del propio desplegable) hace que Avalonia lance «Source collection was modified during
+    /// selection update» y deje la lista vacía: el campo aparecía en blanco y ya no había nada que elegir.
+    /// </summary>
     public void LoadAvailableThemes()
     {
-        AvailableThemes.Clear();
-        var all = CustomThemeService.Instance.GetAllThemes();
-        foreach (var theme in all)
+        List<ThemeDefinition> themes = [.. _customThemeService.GetAllThemes()];
+        themes.Add(new ThemeDefinition
         {
-            AvailableThemes.Add(theme);
-        }
-
-        AvailableThemes.Add(new ThemeDefinition
-        {
-            Id = "system",
+            Id = SystemThemeId,
             Name = "💻 Tema del Sistema (Windows)",
             Description = "Adapta automáticamente el tema según Windows.",
             IsBuiltIn = true
         });
+
+        bool unchanged = themes.Count == AvailableThemes.Count &&
+                         themes.Select(t => (t.Id, t.Name))
+                               .SequenceEqual(AvailableThemes.Select(t => (t.Id, t.Name)));
+
+        if (unchanged)
+        {
+            return;
+        }
+
+        AvailableThemes.Clear();
+        foreach (var theme in themes)
+        {
+            AvailableThemes.Add(theme);
+        }
     }
 
     partial void OnSelectedThemeChanged(string value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return;
-        _themeService.SetThemeById(value);
+        // Misma red que en el idioma: un valor que no está en la lista (incluido el 'null' que el control
+        // devuelve al desmontarse) no puede borrar el tema que el usuario está viendo.
+        if (!IsSelectableTheme(value))
+        {
+            if (!string.Equals(SelectedTheme, _appliedThemeId, StringComparison.Ordinal))
+            {
+                SelectedTheme = _appliedThemeId;
+            }
+
+            return;
+        }
+
+        string themeId = CanonicalThemeId(value);
+        _appliedThemeId = themeId;
+
+        if (!string.Equals(themeId, value, StringComparison.Ordinal))
+        {
+            SelectedTheme = themeId;
+            return;
+        }
+
+        _themeService.SetThemeById(themeId);
 
         var prefs = _userPreferencesService.Preferences;
-        if (!string.Equals(prefs.ActiveTheme, value, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(prefs.ActiveTheme, themeId, StringComparison.OrdinalIgnoreCase))
         {
-            prefs.ActiveTheme = value;
+            prefs.ActiveTheme = themeId;
             _userPreferencesService.Save();
         }
     }
@@ -146,11 +224,72 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void OpenThemeCustomizer()
     {
-        var win = new Views.Components.ThemeCustomizerWindow();
-        win.Show();
+        var studio = CreateThemeStudio();
 
+        // El menú se pone al día cuando el estudio se cierra, no al abrirse: es al cerrarse cuando el tema
+        // puede haber cambiado (aplicado desde el estudio) o cuando acaba de nacer uno nuevo, y el selector
+        // del menú tiene que enseñar lo que quedó aplicado de verdad.
+        studio.Closed += (_, _) => SyncThemeSelectionWithAppliedTheme();
+        studio.Show();
+    }
+
+    /// <summary>
+    /// Construye el Theme Studio <b>con su view model ya conectado</b>.
+    ///
+    /// Sin <see cref="Avalonia.Controls.Control.DataContext">DataContext</see> la ventana no resuelve ningún
+    /// <c>{Binding}</c>: el catálogo de temas aparece vacío, el editor por secciones no se genera y los botones
+    /// de nuevo/duplicar/eliminar/aplicar no responden —el estudio parecía roto—. Aquí se le entrega el mismo
+    /// catálogo de temas que usa el resto de la aplicación (no el singleton a pelo, para que las pruebas puedan
+    /// aislarlo) y los diálogos reales, de modo que eliminar pida confirmación y exportar informe.
+    ///
+    /// Es <c>virtual</c> para que las pruebas puedan observar la ventana que se abre y comprobar su estado.
+    /// </summary>
+    protected virtual Views.Components.ThemeCustomizerWindow CreateThemeStudio() => new()
+    {
+        DataContext = new ThemeCustomizerViewModel(_customThemeService, _dialogService)
+    };
+
+    /// <summary>
+    /// Alinea el selector de temas del menú con el tema <b>realmente aplicado</b> y con el catálogo vigente.
+    ///
+    /// Hace falta porque el estudio puede aplicar un tema o crear uno nuevo mientras está abierto: sin esto,
+    /// el menú seguía mostrando el tema anterior y un tema recién creado no aparecía hasta reiniciar.
+    /// </summary>
+    public void SyncThemeSelectionWithAppliedTheme()
+    {
         LoadAvailableThemes();
-        SelectedTheme = _themeService.CurrentThemeId;
+
+        string applied = _themeService.CurrentThemeId;
+        if (IsSelectableTheme(applied))
+        {
+            _appliedThemeId = CanonicalThemeId(applied);
+
+            // Se escribe el campo y no la propiedad con su efecto lateral: el estudio ya guardó la preferencia
+            // al aplicar, y volver a pasar por el asignador reescribiría el disco por nada.
+            SelectedTheme = _appliedThemeId;
+            return;
+        }
+
+        // El tema aplicado ya no está en el catálogo (el estudio puede borrar el tema que estaba en uso): se
+        // vuelve al último válido y se reaplica de verdad —no basta con mover el selector— para que el
+        // campo no quede en blanco y lo que se ve en la interfaz sea lo que dice el menú.
+        string fallback = IsSelectableTheme(_appliedThemeId)
+            ? _appliedThemeId
+            : AvailableThemes.FirstOrDefault()?.Id ?? ThemeManager.DefaultThemeId;
+
+        _appliedThemeId = fallback;
+        _themeService.SetThemeById(fallback);
+
+        if (string.Equals(SelectedTheme, fallback, StringComparison.Ordinal))
+        {
+            // Mismo valor visible que antes: el enlace no se re-ejecutaría, pero el control necesita saber que
+            // el valor que muestra sigue siendo válido tras recargar la lista.
+            OnPropertyChanged(nameof(SelectedTheme));
+        }
+        else
+        {
+            SelectedTheme = fallback;
+        }
     }
 
     public ControlBarViewModel(
@@ -164,7 +303,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IThemeService? themeService = null,
         ILocalizationService? localizationService = null,
         IDialogService? dialogService = null,
-        IProcessLauncherService? processLauncher = null)
+        IProcessLauncherService? processLauncher = null,
+        CustomThemeService? customThemeService = null)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
@@ -177,6 +317,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         _loc = localizationService ?? LocalizationManager.Instance;
         _dialogService = dialogService ?? AvaloniaDialogService.Instance;
         _processLauncher = processLauncher ?? ProcessLauncherService.Instance;
+        _customThemeService = customThemeService ?? CustomThemeService.Instance;
 
         _executionCoordinator = new WorkflowExecutionCoordinator(
             editorViewModel,
@@ -196,21 +337,66 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
         };
 
+        // La lista de temas se carga aquí y sólo se reconstruye al abrir el estudio de temas: hacerlo en
+        // 'SyncFromPreferences' la reconstruía dentro del guardado de preferencias que dispara el propio
+        // enlace del desplegable (ver LoadAvailableThemes).
+        LoadAvailableThemes();
         SyncFromPreferences();
         _userPreferencesService.PreferencesChanged += SyncFromPreferences;
     }
 
     private void SyncFromPreferences()
     {
-        LoadAvailableThemes();
         var prefs = _userPreferencesService.Preferences;
-        SelectedTheme = prefs.ActiveTheme;
+        SelectedTheme = ResolveSelectableThemeId(prefs.ActiveTheme);
         IsDryRun = prefs.DefaultDryRunState;
-        if (!string.IsNullOrWhiteSpace(prefs.Language) && !string.Equals(SelectedLanguage, prefs.Language, StringComparison.OrdinalIgnoreCase))
+
+        // La preferencia se traduce a una opción que esté en la lista: un idioma escrito como 'es' o que ya no
+        // se ofrece dejaría el desplegable en blanco y sin poder seleccionar nada.
+        string? storedLanguage = LanguageCatalog.Resolve(prefs.Language)?.Code;
+        if (storedLanguage != null)
         {
-            SelectedLanguage = prefs.Language;
+            _appliedLanguage = storedLanguage;
+        }
+
+        if (storedLanguage != null && !string.Equals(SelectedLanguage, storedLanguage, StringComparison.Ordinal))
+        {
+            SelectedLanguage = storedLanguage;
         }
     }
+
+    /// <summary>
+    /// Devuelve un identificador de tema que <b>existe en la lista del desplegable</b>.
+    ///
+    /// Un <c>ComboBox</c> atado por valor sólo muestra una selección si encuentra su valor entre los
+    /// elementos: con una preferencia heredada (<c>"Dark"</c>) o vacía no encontraba nada, el campo salía en
+    /// blanco y el propio control escribía <c>null</c> de vuelta al view model. Manda el tema que está
+    /// realmente aplicado —es lo que el usuario ve— y, si no está en la lista, la preferencia guardada
+    /// traducida a su identificador real.
+    /// </summary>
+    private string ResolveSelectableThemeId(string? storedThemeId)
+    {
+        string applied = _themeService.CurrentThemeId;
+        if (IsSelectableTheme(applied))
+        {
+            return CanonicalThemeId(applied);
+        }
+
+        string? stored = ThemeManager.ResolveThemeId(storedThemeId);
+        if (stored != null && IsSelectableTheme(stored))
+        {
+            return stored;
+        }
+
+        return AvailableThemes.FirstOrDefault()?.Id ?? ThemeManager.DefaultThemeId;
+    }
+
+    private bool IsSelectableTheme(string themeId) =>
+        AvailableThemes.Any(t => string.Equals(t.Id, themeId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Grafía real del identificador en el catálogo: una preferencia con otra capitalización se normaliza.</summary>
+    private string CanonicalThemeId(string themeId) =>
+        AvailableThemes.FirstOrDefault(t => string.Equals(t.Id, themeId, StringComparison.OrdinalIgnoreCase))?.Id ?? themeId;
 
     public EditorViewModel Editor => _editorViewModel;
     public NodeInspectorViewModel NodeInspector => _nodeInspectorViewModel;
@@ -560,16 +746,38 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Abre el diseñador de conjuntos de datos sintéticos declarado por el plugin del sistema de archivos.
+    ///
+    /// La acción vive en el nodo (es él quien conoce su ventana y su modelo de datos), así que la barra de control
+    /// la invoca a través de <see cref="INodeCustomActionProvider"/>: la instancia se crea del catálogo de tipos ya
+    /// descubierto por el cargador de plugins, que es la única fuente que conoce el tipo real —incluido el del
+    /// ensamblado aislado del plugin—. El contexto lleva la ventana principal como propietaria para que el diálogo
+    /// salga centrado sobre la aplicación y no como una ventana suelta.
+    /// </summary>
     [RelayCommand]
     public void OpenSyntheticDataSetDesigner()
     {
+        // El cajón se cierra al elegir su entrada, como el resto de las órdenes del menú.
+        IsMenuOpen = false;
+
         var syntheticNodeType = _pluginLoader.DiscoveredNodeTypes.Values
             .FirstOrDefault(t => t.Name.Equals("SyntheticDataSourceNode", StringComparison.OrdinalIgnoreCase));
+
         if (syntheticNodeType != null && Activator.CreateInstance(syntheticNodeType) is INodeCustomActionProvider provider)
         {
-            provider.ExecuteCustomAction("OpenDataSetDesigner", null);
+            OpenDataSetDesigner(provider);
         }
     }
+
+    /// <summary>
+    /// Invoca la acción de apertura del diseñador sobre el nodo proporcionado.
+    ///
+    /// Es <c>virtual</c> para que las pruebas puedan observar que la orden del cajón <b>llega</b> al plugin con el
+    /// identificador correcto sin quedarse como un botón mudo.
+    /// </summary>
+    protected virtual void OpenDataSetDesigner(INodeCustomActionProvider provider) =>
+        provider.ExecuteCustomAction("OpenDataSetDesigner", new NodeCustomActionContext(App.MainWindow, null));
 
     [RelayCommand]
     public async Task SaveWorkflowAsync()

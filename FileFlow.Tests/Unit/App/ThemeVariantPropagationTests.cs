@@ -8,6 +8,7 @@ using Avalonia.Styling;
 using FileFlow.App.Services;
 using FileFlow.App.Themes;
 using FileFlow.Tests.TestHelpers;
+using FileFlow.Tests.Unit.Views;
 using FluentAssertions;
 using Xunit;
 
@@ -26,8 +27,15 @@ namespace FileFlow.Tests.Unit.App;
 /// de la aplicación, por lo que se protegen además con una guardia de código fuente que impide
 /// que la publicación se elimine silenciosamente en el futuro.
 /// </para>
+/// <para>
+/// <b>Colección exclusiva</b>: esta clase aplica temas al <c>ThemeManager</c> (proceso entero), así que no
+/// puede correr en paralelo con las capturas headless —éstas están renderizando el tema activo—. Estaba en
+/// la colección paralela <c>ThemeTokens</c> y dejaba el tema en un preset claro a mitad de una captura, de
+/// modo que la comparación contra la línea base fallaba en otra prueba y sólo a veces.
+/// La guardia <c>TestCollectionContractGuardTests</c> vigila ahora esta regla.
+/// </para>
 /// </summary>
-[Collection("ThemeTokens")]
+[Collection(VisualSnapshotsCollection.Name)]
 public class ThemeVariantPropagationTests
 {
     private static readonly string[] DarkThemeIds = ["dark_fluent", "cyber_neon", "midnight_oled", "nord_slate", "dracula_purple", "emerald_forest"];

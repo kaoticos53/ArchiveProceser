@@ -161,7 +161,7 @@
   <data name="DataSetDesigner_WindowTitle" xml:space="preserve"><value>Synthetic Data Sets Designer</value></data>
   <data name="DataSetDesigner_HeaderTitle" xml:space="preserve"><value>Synthetic Data &amp; Hierarchical Tree Designer</value></data>
   <data name="DataSetDesigner_HeaderDesc" xml:space="preserve"><value>Create, customize and persist directory hierarchies, metadata and simulated compressed packages for testing.</value></data>
-  <data name="DataSetDesigner_SaveButton" xml:space="preserve"><value>💾 Save Dataset</value></data>
+  <data name="DataSetDesigner_SaveButton" xml:space="preserve"><value>Save Dataset</value></data>
   <data name="Msg_DataSetLoaded" xml:space="preserve"><value>Dataset '{0}' loaded.</value></data>
   <data name="Msg_NewDataSetCreated" xml:space="preserve"><value>New dataset created successfully.</value></data>
   <data name="Msg_DataSetDuplicated" xml:space="preserve"><value>Duplicate copy created: '{0}'.</value></data>
@@ -177,17 +177,48 @@
   <data name="Title_ImportDataSet" xml:space="preserve"><value>Import Synthetic Dataset</value></data>
   <data name="Msg_DataSetImported" xml:space="preserve"><value>Dataset '{0}' imported and saved.</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
-  <data name="DataSetDesigner_TabTree" xml:space="preserve"><value>🌳 File Explorer (Tree)</value></data>
-  <data name="DataSetDesigner_TabDsl" xml:space="preserve"><value>📝 Fast Tree DSL</value></data>
-  <data name="DataSetDesigner_TabJson" xml:space="preserve"><value>📄 Raw JSON</value></data>
-  <data name="DataSetDesigner_AddFile" xml:space="preserve"><value>➕ Add File</value></data>
-  <data name="DataSetDesigner_AddFolder" xml:space="preserve"><value>📁 Add Folder</value></data>
-  <data name="DataSetDesigner_AddArchive" xml:space="preserve"><value>📦 Add Archive</value></data>
-  <data name="DataSetDesigner_RemoveNode" xml:space="preserve"><value>🗑️ Delete</value></data>
-  <data name="DataSetDesigner_ExpandAll" xml:space="preserve"><value>↕️ Expand All</value></data>
-  <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>↕️ Collapse All</value></data>
+  <data name="DataSetDesigner_TabTree" xml:space="preserve"><value>File Explorer (Tree)</value></data>
+  <data name="DataSetDesigner_TabDsl" xml:space="preserve"><value>Fast Tree DSL</value></data>
+  <data name="DataSetDesigner_TabJson" xml:space="preserve"><value>Raw JSON</value></data>
+  <data name="DataSetDesigner_AddFile" xml:space="preserve"><value>Add File</value></data>
+  <data name="DataSetDesigner_AddFolder" xml:space="preserve"><value>Add Folder</value></data>
+  <data name="DataSetDesigner_AddArchive" xml:space="preserve"><value>Add Archive</value></data>
+  <data name="DataSetDesigner_RemoveNode" xml:space="preserve"><value>Delete</value></data>
+  <data name="DataSetDesigner_ExpandAll" xml:space="preserve"><value>Expand All</value></data>
+  <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>Collapse All</value></data>
   <data name="DataSetDesigner_InspectorTitle" xml:space="preserve"><value>Item Properties</value></data>
   <data name="DataSetDesigner_InspectorNoSelection" xml:space="preserve"><value>Select a file or folder in the tree to inspect and edit its properties.</value></data>
+  <data name="DataSetDesigner_SearchPlaceholder" xml:space="preserve"><value>Search datasets...</value></data>
+  <data name="DataSetDesigner_NewButton" xml:space="preserve"><value>New</value></data>
+  <data name="DataSetDesigner_DuplicateButton" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="DataSetDesigner_DeleteButton" xml:space="preserve"><value>Delete</value></data>
+  <data name="DataSetDesigner_DeleteToolTip" xml:space="preserve"><value>Delete the selected dataset</value></data>
+  <data name="DataSetDesigner_ImportButton" xml:space="preserve"><value>Import...</value></data>
+  <data name="DataSetDesigner_ExportButton" xml:space="preserve"><value>Export...</value></data>
+  <data name="DataSetDesigner_CatalogTitle" xml:space="preserve"><value>Dataset Catalog</value></data>
+  <data name="DataSetDesigner_NoDatasets" xml:space="preserve"><value>No dataset matches the search.</value></data>
+  <data name="DataSetDesigner_BuiltInBadge" xml:space="preserve"><value>Official · read-only</value></data>
+  <data name="DataSetDesigner_OfficialBadge" xml:space="preserve"><value>Official</value></data>
+  <data name="DataSetDesigner_SelectDataSet" xml:space="preserve"><value>Select or create a dataset to get started.</value></data>
+  <data name="DataSetDesigner_PropertiesTitle" xml:space="preserve"><value>Dataset Properties</value></data>
+  <data name="DataSetDesigner_NameLabel" xml:space="preserve"><value>Name</value></data>
+  <data name="DataSetDesigner_CategoryLabel" xml:space="preserve"><value>Category</value></data>
+  <data name="DataSetDesigner_DescriptionLabel" xml:space="preserve"><value>Description</value></data>
+  <data name="DataSetDesigner_AddArchiveEntry" xml:space="preserve"><value>Add Internal Entry</value></data>
+  <data name="DataSetDesigner_NodeNameLabel" xml:space="preserve"><value>Item name</value></data>
+  <data name="DataSetDesigner_NodeSizeLabel" xml:space="preserve"><value>Size (bytes)</value></data>
+  <data name="DataSetDesigner_NodePathLabel" xml:space="preserve"><value>Relative path</value></data>
+  <data name="DataSetDesigner_ArchiveEntriesTitle" xml:space="preserve"><value>Archive contents</value></data>
+  <data name="DataSetDesigner_RemoveEntryToolTip" xml:space="preserve"><value>Remove the archive entry</value></data>
+  <data name="DataSetDesigner_ApplyDsl" xml:space="preserve"><value>Apply DSL</value></data>
+  <data name="DataSetDesigner_ApplyJson" xml:space="preserve"><value>Apply JSON</value></data>
+  <data name="DataSetDesigner_EmptyTree" xml:space="preserve"><value>This dataset has no items yet. Add a file, a folder or an archive.</value></data>
+  <data name="DataSetDesigner_MetricsFiles" xml:space="preserve"><value>Files</value></data>
+  <data name="DataSetDesigner_MetricsFolders" xml:space="preserve"><value>Folders</value></data>
+  <data name="DataSetDesigner_MetricsSize" xml:space="preserve"><value>Total size</value></data>
+  <data name="DataSetDesigner_BadgeFolder" xml:space="preserve"><value>{0} files • {1}</value></data>
+  <data name="DataSetDesigner_BadgeArchiveEntry" xml:space="preserve"><value>Internal • {0}</value></data>
+  <data name="DataSetDesigner_BadgeArchive" xml:space="preserve"><value>{0} entries • {1}</value></data>
   <data name="LogOutputNode_Name" xml:space="preserve"><value>Log Output</value></data>
   <data name="LogOutputNode_Desc" xml:space="preserve"><value>Logs custom messages with template variables or detailed item context, metadata, and execution history.</value></data>
   <data name="Param_CustomMessage" xml:space="preserve"><value>Custom Message</value></data>

@@ -191,13 +191,13 @@
                         <!-- Language Selector in Drawer -->
                         <Grid Margin="4,4,4,8">
                             <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_LanguageLabel]}" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                            <ComboBox SelectedValue="{Binding ControlBar.SelectedLanguage, Mode=TwoWay}"
-                                      SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"
+                            <ComboBox ItemsSource="{Binding ControlBar.AvailableLanguages}"
+                                      SelectedValue="{Binding ControlBar.SelectedLanguage, Mode=TwoWay}"
+                                      SelectedValueBinding="{Binding Code}"
+                                      DisplayMemberBinding="{Binding DisplayName}"
                                       HorizontalAlignment="Right"
-                                      Width="140">
-                                <ComboBoxItem Tag="es-ES">Español</ComboBoxItem>
-                                <ComboBoxItem Tag="en-US">English</ComboBoxItem>
-                            </ComboBox>
+                                      Width="140"
+                                      Padding="6,4" />
                         </Grid>
 
                         <!-- Theme Studio Button in Drawer -->
@@ -230,6 +230,18 @@
                             <StackPanel Orientation="Horizontal">
                                 <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="FolderOpen" Width="16" Height="16" />
                                 <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VfsExplorer_HeaderTitle], FallbackValue='Explorador Virtual (VFS)'}" FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button x:Name="DrawerDataSetDesignerButton"
+                                Command="{Binding ControlBar.OpenSyntheticDataSetDesignerCommand}"
+                                HorizontalAlignment="Stretch" Margin="0,2"
+                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_DataSetDesignerToolTip]}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialIcons:MaterialIcon Margin="0,0,12,0"  Kind="FileTableBoxMultiple" Width="16" Height="16" />
+                                <TextBlock x:Name="DrawerDataSetDesignerLabel"
+                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Drawer_DataSetDesigner]}"
+                                           FontSize="{DynamicResource FontSizeBody}" FontWeight="Medium" />
                             </StackPanel>
                         </Button>
 

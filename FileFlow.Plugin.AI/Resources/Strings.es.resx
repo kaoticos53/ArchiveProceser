@@ -190,6 +190,7 @@
   <data name="VlmConfig_DetectingModels" xml:space="preserve"><value>Consultando modelos disponibles en el servidor...</value></data>
   <data name="VlmConfig_ModelsDetectedCount" xml:space="preserve"><value>🟢 Detectados {0} modelos en el servidor.</value></data>
   <data name="VlmConfig_DetectModelsFailed" xml:space="preserve"><value>⚠️ Error al consultar modelos: {0}</value></data>
+  <data name="VlmConfig_EndpointRecentlyUnreachable" xml:space="preserve"><value>El servidor {0} rechazó la conexión hace poco; se omite el sondeo para no inundarlo de peticiones.</value></data>
   <data name="VlmConfig_TabSampleTest" xml:space="preserve"><value>🔬 Probar Muestra (1 Ciclo)</value></data>
   <data name="VlmConfig_SampleFileLabel" xml:space="preserve"><value>Archivo de Imagen o Documento de Muestra:</value></data>
   <data name="VlmConfig_BtnRunSample" xml:space="preserve"><value>▶ Ejecutar Prueba</value></data>

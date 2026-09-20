@@ -33,7 +33,7 @@
                     <Button Command="{Binding ExportReportCsvCommand}" Padding="10,6">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <materialIcons:MaterialIcon  Kind="Download" Width="11" Height="11" />
-                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportCSV]}" FontSize="{DynamicResource FontSizeCaption}" />
+                            <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Metrics_ExportCsv]}" FontSize="{DynamicResource FontSizeCaption}" />
                         </StackPanel>
                     </Button>
                     <Button Click="Close_Click" Padding="8,6">

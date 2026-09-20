@@ -36,10 +36,18 @@ public class ModalVisualRegressionTests
         (ModalSurface.AiModelManager, "modal-ai-model-manager-dark", DarkTheme),
         (ModalSurface.AiModelUrls, "modal-ai-model-urls-dark", DarkTheme),
         (ModalSurface.WorkflowSettings, "modal-workflow-settings-dark", DarkTheme),
+        // Una captura por cuerpo del TabControl: las secciones nuevas (apariencia, rendimiento, herramientas
+        // externas y modelos de IA) eran UI sin línea base visual.
+        (ModalSurface.WorkflowSettingsAppearance, "modal-settings-appearance-dark", DarkTheme),
+        (ModalSurface.WorkflowSettingsPerformance, "modal-settings-performance-dark", DarkTheme),
+        (ModalSurface.WorkflowSettingsExternalTools, "modal-settings-external-tools-dark", DarkTheme),
+        (ModalSurface.WorkflowSettingsAiModels, "modal-settings-ai-models-dark", DarkTheme),
         (ModalSurface.MultimodalVlm, "modal-multimodal-vlm-dark", DarkTheme),
         (ModalSurface.PasswordManager, "modal-password-manager-dark", DarkTheme),
         (ModalSurface.RegexHelper, "modal-regex-helper-dark", DarkTheme),
+        (ModalSurface.SyntheticDataSetDesigner, "modal-synthetic-data-designer-dark", DarkTheme),
         (ModalSurface.MediaPresetManager, "modal-media-preset-manager-dark", DarkTheme),
+        (ModalSurface.StartupError, "modal-startup-error-dark", DarkTheme),
         // Una segunda modal en claro: cubre el camino del tema alternativo sin duplicar las nueve.
         (ModalSurface.About, "modal-about-light", LightTheme)
     ];

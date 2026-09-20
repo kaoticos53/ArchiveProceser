@@ -226,7 +226,7 @@
             </TabItem>
 
             <!-- PESTAÑA 3: PROBADOR INTERACTIVO -->
-            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_TabTester], FallbackValue='Probador Interactivo (1 Ciclo)'}">
+            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[VlmConfig_TabSampleTest]}">
                 <Grid Margin="0,12,0,0" ColumnDefinitions="*,12,*">
                     <!-- Entrada de Prueba -->
                     <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"

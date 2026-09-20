@@ -153,6 +153,24 @@ public class AppShellVisualRegressionTests : IClassFixture<SharedAppVisualFixtur
         VisualSnapshot.AssertMatchesBaseline("panel-control-bar-dark", capture);
     }
 
+    /// <summary>
+    /// El cajón desplegado, que es el índice de herramientas de la aplicación: por él se abren el inspector, las
+    /// métricas, el explorador virtual, el diseñador de datasets, los ajustes y la ayuda. Era la única superficie
+    /// principal sin captura, de modo que una entrada nueva podía nacer invisible, recortada o sin estilo.
+    /// </summary>
+    [Fact]
+    public void TheOpenDrawer_ShouldMatchItsBaseline()
+    {
+        byte[] capture = CaptureWithFixture(
+            _shared,
+            surface => surface.Build(AppSurface.Drawer),
+            AppVisualFixture.ShellWidth,
+            AppVisualFixture.ShellHeight,
+            DarkTheme);
+
+        VisualSnapshot.AssertMatchesBaseline("app-shell-drawer-dark", capture);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Sondas: la captura no puede quedarse vacía ni perder el tema por el camino
     // ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +187,8 @@ public class AppShellVisualRegressionTests : IClassFixture<SharedAppVisualFixtur
                      AppSurface.Inspector,
                      AppSurface.LogConsole,
                      AppSurface.StatusBar,
-                     AppSurface.ControlBar
+                     AppSurface.ControlBar,
+                     AppSurface.Drawer
                  })
         {
             byte[] capture = CaptureWithFixture(

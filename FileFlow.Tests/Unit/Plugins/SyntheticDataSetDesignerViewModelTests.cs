@@ -3,6 +3,7 @@ using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Plugin.FileSystem.UI.ViewModels;
 using FileFlow.Sdk.SyntheticData;
 using FluentAssertions;
+using Material.Icons;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.Plugins;
@@ -127,7 +128,7 @@ public class SyntheticDataSetDesignerViewModelTests : IDisposable
         var cap1 = dnNode.Children.FirstOrDefault(c => c.Name == "Cap1.mkv");
         cap1.Should().NotBeNull();
         cap1!.IsDirectory.Should().BeFalse();
-        cap1.IconGlyph.Should().Be("🎬");
+        cap1.IconKind.Should().Be(MaterialIconKind.Movie, "el icono del nodo es vectorial, no un emoji dependiente de las fuentes del sistema");
         cap1.RelativePath.Should().Be("Series/Anime/DeathNote/Cap1.mkv");
         cap1.FileSizeBytes.Should().Be(500000000);
 
@@ -190,7 +191,7 @@ public class SyntheticDataSetDesignerViewModelTests : IDisposable
         archiveNode.Name.Should().Be("paquete_simulado.zip");
         archiveNode.IsArchive.Should().BeTrue();
         archiveNode.SimulatedArchiveEntries.Should().NotBeEmpty();
-        archiveNode.IconGlyph.Should().Be("📦");
+        archiveNode.IconKind.Should().Be(MaterialIconKind.ZipBox);
     }
 
     [Fact]
@@ -234,12 +235,12 @@ public class SyntheticDataSetDesignerViewModelTests : IDisposable
         var docEntry = zipNode.Children.FirstOrDefault(c => c.Name == "doc.pdf");
         docEntry.Should().NotBeNull();
         docEntry!.IsArchiveEntry.Should().BeTrue();
-        docEntry.IconGlyph.Should().Be("📄");
+        docEntry.IconKind.Should().Be(MaterialIconKind.FileDocument);
 
         var fotoEntry = zipNode.Children.FirstOrDefault(c => c.Name == "foto.jpg");
         fotoEntry.Should().NotBeNull();
         fotoEntry!.IsArchiveEntry.Should().BeTrue();
-        fotoEntry.IconGlyph.Should().Be("🖼️");
+        fotoEntry.IconKind.Should().Be(MaterialIconKind.Image);
     }
 
     [Fact]

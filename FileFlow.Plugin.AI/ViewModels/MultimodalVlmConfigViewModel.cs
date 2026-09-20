@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -8,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FileFlow.Plugin.AI.Common;
 using FileFlow.Plugin.AI.Management;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
@@ -24,6 +26,43 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
     private readonly MultimodalVisionLlmNode? _targetNode;
     private readonly HttpClient _httpClient;
     private readonly IUiDispatcher _dispatcher;
+
+    /// <summary>
+    /// Memoria de fallos de sondeo por endpoint: si un servidor acaba de rechazar la conexión, no se vuelve a
+    /// sondear hasta pasado el enfriamiento. Sin esto, cada cambio de selección de proveedor dispara una petición
+    /// nueva contra un servidor apagado, y un pipeline que recorra cientos de elementos acaba generando cientos de
+    /// fallos de socket.
+    ///
+    /// Es <c>internal</c> a propósito: sólo el ensamblado de pruebas ajusta el enfriamiento y lo reinicia.
+    /// </summary>
+    internal static TimeSpan ProbeFailureCooldown { get; set; } = TimeSpan.FromSeconds(30);
+
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> s_probeFailures = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Sondas en vuelo por endpoint: evita que varias instancias simultáneas de la ventana (o cambios de
+    /// selección encadenados) disparen sondeos paralelos contra el mismo servidor.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, byte> s_probesInFlight = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Limpia la memoria de fallos y las sondas en vuelo (usado por las pruebas).</summary>
+    internal static void ResetProbeFailures()
+    {
+        s_probeFailures.Clear();
+        s_probesInFlight.Clear();
+    }
+
+    /// <summary>Indica si el endpoint quedó marcado como inalcanzable recientemente (usado por las pruebas).</summary>
+    internal static bool IsProbeFailureMemoizedForTests(string endpoint) => IsProbeFailureMemoized(endpoint);
+
+    private static bool IsProbeFailureMemoized(string endpoint) =>
+        s_probeFailures.TryGetValue(endpoint, out var until) && DateTimeOffset.UtcNow < until;
+
+    private static void MemoizeProbeFailure(string endpoint) =>
+        s_probeFailures[endpoint] = DateTimeOffset.UtcNow + ProbeFailureCooldown;
+
+    private static void ClearProbeFailure(string endpoint) =>
+        s_probeFailures.TryRemove(endpoint, out _);
 
     [ObservableProperty]
     private int _selectedTabIndex;
@@ -160,7 +199,11 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
             {
                 AvailableModels.Add(value.ModelName);
             }
-            _ = DetectModelsForProviderAsync(value);
+            SafeTaskRunner.Run(
+                () => DetectModelsForProviderAsync(value),
+                ex => ConnectionTestStatus = string.Format(
+                    LocalizationManager.Instance.GetString("VlmConfig_DetectModelsFailed", "Error al consultar modelos: {0}"),
+                    ex.Message));
         }
     }
 
@@ -264,7 +307,8 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
 
         try
         {
-            await DetectModelsForProviderAsync(SelectedProvider);
+            // Acción explícita del usuario: sondea aunque el endpoint esté marcado como caído recientemente.
+            await DetectModelsForProviderAsync(SelectedProvider, isExplicitRequest: true);
             StatusMessage = string.Format(
                 LocalizationManager.Instance.GetString("VlmConfig_ModelsDetectedCount", "Detectados {0} modelos en el servidor."),
                 AvailableModels.Count
@@ -280,7 +324,31 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
         }
     }
 
-    private async Task DetectModelsForProviderAsync(VlmProviderProfile provider)
+    /// <summary>
+    /// Sondeo del catálogo de modelos del proveedor. Se ejecuta siempre de forma <b>segura</b>: cualquier fallo
+    /// (servidor apagado, timeout, JSON inválido) queda contenido dentro de su propia tarea y se refleja como
+    /// estado en la ventana, nunca como excepción no observada que acabe volcada al log de incidentes.
+    /// </summary>
+    private async Task DetectModelsForProviderAsync(VlmProviderProfile provider, bool isExplicitRequest = false)
+    {
+        try
+        {
+            await DetectModelsForProviderCoreAsync(provider, isExplicitRequest).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ConnectionTestSuccess = false;
+            ConnectionTestStatus = string.Format(
+                LocalizationManager.Instance.GetString("VlmConfig_DetectModelsFailed", "Error al consultar modelos: {0}"),
+                ex.Message);
+        }
+    }
+
+    /// <param name="isExplicitRequest">
+    /// <c>true</c> cuando la petición viene del usuario (botón «Actualizar» o «Probar conexión»): se ignora
+    /// la memoria de fallos y la sonda en vuelo, porque una acción explícita siempre debe intentarlo.
+    /// </param>
+    private async Task DetectModelsForProviderCoreAsync(VlmProviderProfile provider, bool isExplicitRequest)
     {
         if (provider.ProviderId.Contains("In-Process", StringComparison.OrdinalIgnoreCase) ||
             provider.EndpointUrl.StartsWith("in-process", StringComparison.OrdinalIgnoreCase))
@@ -292,61 +360,113 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
             return;
         }
 
-        string baseUri = provider.EndpointUrl.TrimEnd('/');
-        string modelsUrl = baseUri.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
-            ? $"{baseUri}/models"
-            : $"{baseUri}/v1/models";
+        string probeKey = provider.EndpointUrl.TrimEnd('/');
+        if (!isExplicitRequest && IsProbeFailureMemoized(probeKey))
+        {
+            StatusMessage = string.Format(
+                LocalizationManager.Instance.GetString(
+                    "VlmConfig_EndpointRecentlyUnreachable",
+                    "El servidor {0} rechazó la conexión hace poco; se omite el sondeo para no inundarlo de peticiones."),
+                provider.DisplayName);
+            return;
+        }
 
-        var detected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Una sola sonda en vuelo por endpoint: las peticiones automáticas concurrentes para el mismo servidor
+        // se descartan (una acción explícita del usuario nunca se descarta).
+        bool ownsInFlightSlot = false;
+        if (isExplicitRequest || s_probesInFlight.TryAdd(probeKey, 0))
+        {
+            ownsInFlightSlot = !isExplicitRequest;
+        }
+        else
+        {
+            return;
+        }
+
+        bool probeFailed = false;
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, modelsUrl);
-            if (!string.IsNullOrWhiteSpace(provider.ApiKey) && provider.ApiKey != "none")
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.ApiKey);
-            }
+            string baseUri = provider.EndpointUrl.TrimEnd('/');
+            string modelsUrl = baseUri.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
+                ? $"{baseUri}/models"
+                : $"{baseUri}/v1/models";
 
-            using var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                string json = await response.Content.ReadAsStringAsync();
-                ParseOpenAiModels(json, detected);
-            }
-        }
-        catch { }
+            var detected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        if (detected.Count == 0)
-        {
             try
             {
-                string ollamaRoot = baseUri.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
-                    ? baseUri[..^3].TrimEnd('/')
-                    : baseUri;
-                string ollamaTagsUrl = $"{ollamaRoot}/api/tags";
-
-                using var reqOllama = new HttpRequestMessage(HttpMethod.Get, ollamaTagsUrl);
-                using var respOllama = await _httpClient.SendAsync(reqOllama);
-                if (respOllama.IsSuccessStatusCode)
+                using var request = new HttpRequestMessage(HttpMethod.Get, modelsUrl);
+                if (!string.IsNullOrWhiteSpace(provider.ApiKey) && provider.ApiKey != "none")
                 {
-                    string jsonOllama = await respOllama.Content.ReadAsStringAsync();
-                    ParseOllamaModels(jsonOllama, detected);
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.ApiKey);
+                }
+
+                using var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    string json = await response.Content.ReadAsStringAsync();
+                    ParseOpenAiModels(json, detected);
                 }
             }
-            catch { }
-        }
-
-        foreach (var m in detected)
-        {
-            if (!AvailableModels.Contains(m))
+            catch
             {
-                AvailableModels.Add(m);
+                probeFailed = true;
+            }
+
+            // Fallback a la API nativa de Ollama cuando la ruta OpenAI-compatible no devolvió catálogo.
+            if (detected.Count == 0)
+            {
+                try
+                {
+                    string ollamaRoot = baseUri.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
+                        ? baseUri[..^3].TrimEnd('/')
+                        : baseUri;
+                    string ollamaTagsUrl = $"{ollamaRoot}/api/tags";
+
+                    using var reqOllama = new HttpRequestMessage(HttpMethod.Get, ollamaTagsUrl);
+                    using var respOllama = await _httpClient.SendAsync(reqOllama);
+                    if (respOllama.IsSuccessStatusCode)
+                    {
+                        string jsonOllama = await respOllama.Content.ReadAsStringAsync();
+                        ParseOllamaModels(jsonOllama, detected);
+                    }
+                }
+                catch
+                {
+                    probeFailed = true;
+                }
+            }
+
+            // El endpoint está apagado: recordarlo un rato evita que cada cambio de selección vuelva a intentarlo.
+            if (probeFailed && detected.Count == 0)
+            {
+                MemoizeProbeFailure(probeKey);
+            }
+            else if (detected.Count > 0)
+            {
+                ClearProbeFailure(probeKey);
+            }
+
+            foreach (var m in detected)
+            {
+                if (!AvailableModels.Contains(m))
+                {
+                    AvailableModels.Add(m);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(provider.ModelName) && AvailableModels.Count > 0)
+            {
+                provider.ModelName = AvailableModels[0];
             }
         }
-
-        if (string.IsNullOrWhiteSpace(provider.ModelName) && AvailableModels.Count > 0)
+        finally
         {
-            provider.ModelName = AvailableModels[0];
+            if (ownsInFlightSlot)
+            {
+                s_probesInFlight.TryRemove(probeKey, out _);
+            }
         }
     }
 
@@ -413,7 +533,7 @@ public sealed partial class MultimodalVlmConfigViewModel : ObservableObject
                 await Task.Delay(250);
                 ConnectionTestSuccess = true;
                 ConnectionTestStatus = LocalizationManager.Instance.GetString("VlmConfig_InProcessReady", "✅ Motor interno listo. No requiere red ni procesos externos.");
-                await DetectModelsForProviderAsync(SelectedProvider);
+                await DetectModelsForProviderAsync(SelectedProvider, isExplicitRequest: true);
                 return;
             }
 

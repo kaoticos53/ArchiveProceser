@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="using:FileFlow.App.ViewModels"
+             xmlns:loc="using:FileFlow.Sdk.Localization"
+             x:Class="FileFlow.App.Views.Components.AiModelManagerView"
+             x:DataType="vm:AiModelManagerViewModel">
+
+    <!--
+        Gestor de modelos de IA: una sola pieza para la pestaña de ajustes y para el asistente de descarga.
+
+        Antes de esto la única lista de modelos vivía dentro del diálogo y referenciaba miembros que no existen
+        (SizeText, IsInstalled, DownloadCommand, DeleteCommand): con los enlaces compilados desactivados, un
+        camino que no resuelve no falla, simplemente deja el control mudo — campos vacíos y botones que no hacen
+        nada. SettingsTabsCoverageTests valida cada camino de enlace contra el view model.
+    -->
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+        <!-- Header -->
+        <Border Grid.Row="0" Classes="card" Padding="14,10" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <materialIcons:MaterialIcon Grid.Column="0" Kind="Robot" Width="18" Height="18" VerticalAlignment="Center"
+                                            Margin="0,0,10,0" Foreground="{DynamicResource AccentPrimaryBrush}" />
+                <StackPanel Grid.Column="1" Spacing="3">
+                    <TextBlock Classes="subtitle primaryText"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_HeaderTitle]}" />
+                    <TextBlock Classes="micro secondary" TextWrapping="Wrap"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_HeaderSubtitle]}" />
+                </StackPanel>
+                <Border Grid.Column="2" Classes="badge" Padding="10,6" VerticalAlignment="Center">
+                    <TextBlock Classes="caption semiBold primaryText" Text="{Binding InstalledSummary}" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="1" Classes="card" Padding="10,8" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="primary" Command="{Binding DownloadMissingModelsCommand}"
+                            IsEnabled="{Binding HasMissingModels}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="Download" Width="13" Height="13" VerticalAlignment="Center" />
+                            <TextBlock Classes="caption" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DownloadAll]}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding RefreshStatusCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="Refresh" Width="13" Height="13" VerticalAlignment="Center" />
+                            <TextBlock Classes="caption" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Refresh]}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Command="{Binding OpenModelsFolderCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="FolderOpen" Width="13" Height="13" VerticalAlignment="Center" />
+                            <TextBlock Classes="caption" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_OpenDir]}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Border Classes="led" VerticalAlignment="Center"
+                            Classes.onSuccess="{Binding !HasMissingModels}"
+                            Classes.on="{Binding HasMissingModels}"
+                            ToolTip.Tip="{Binding ModelsDirectory}" />
+                    <TextBlock Classes="micro muted" Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_DirLabel]}" />
+                    <TextBlock Classes="micro muted" Text="{Binding ModelsDirectory}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Último fallo de descarga (una sola banda, descartable) -->
+        <Border Grid.Row="2" Classes="card" Margin="0,0,0,10" Padding="12,8"
+                BorderBrush="{DynamicResource AccentErrorBrush}"
+                IsVisible="{Binding HasDownloadError}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <materialIcons:MaterialIcon Grid.Column="0" Kind="AlertCircle" Width="15" Height="15"
+                                            VerticalAlignment="Center" Margin="0,0,8,0"
+                                            Foreground="{DynamicResource AccentErrorBrush}" />
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Classes="caption semiBold" Foreground="{DynamicResource AccentErrorBrush}"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_LastErrorTitle]}" />
+                    <TextBlock Classes="micro secondary" TextWrapping="Wrap" Text="{Binding LastDownloadErrorMessage}" />
+                </StackPanel>
+                <Button Grid.Column="2" Classes="icon" VerticalAlignment="Top"
+                        Command="{Binding DismissErrorCommand}"
+                        ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close]}">
+                    <materialIcons:MaterialIcon Kind="Close" Width="13" Height="13" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Lista de modelos -->
+        <Border Grid.Row="3" Classes="card" Padding="8">
+            <Grid>
+                <TextBlock Classes="caption muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding !HasModels}"
+                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_EmptyState]}" />
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasModels}">
+                    <ItemsControl ItemsSource="{Binding Models}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AiModelItemViewModel">
+                                <Border Classes="panel" Padding="12,9" Margin="0,2">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+
+                                        <!-- Estado del modelo -->
+                                        <materialIcons:MaterialIcon Grid.Row="0" Grid.Column="0" Kind="{Binding StatusIcon}"
+                                                                    Width="15" Height="15" VerticalAlignment="Top"
+                                                                    Margin="0,2,10,0" />
+
+                                        <!-- Identidad y procedencia -->
+                                        <StackPanel Grid.Row="0" Grid.Column="1" Spacing="2">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Classes="bodySm strong primaryText" Text="{Binding Name}" />
+                                                <Border Classes="badge" VerticalAlignment="Center">
+                                                    <TextBlock Classes="micro muted" Text="{Binding Category}" />
+                                                </Border>
+                                                <Border Classes="badge" VerticalAlignment="Center"
+                                                        IsVisible="{Binding HasCustomUrls}"
+                                                        ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_CustomUrlsActiveToolTip]}">
+                                                    <TextBlock Classes="micro accentCyan" Text="{Binding CustomUrlsLabel}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Classes="micro secondary" TextWrapping="Wrap" Text="{Binding Description}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Classes="micro muted" Text="{Binding FileName}" />
+                                                <TextBlock Classes="micro muted" Text="{Binding ExpectedSizeLabel}" />
+                                                <TextBlock Classes="micro accentSuccess" Text="{Binding DiskSizeLabel}"
+                                                           IsVisible="{Binding IsDownloaded}" />
+                                            </StackPanel>
+
+                                            <!-- Progreso de descarga -->
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,3,0,0" IsVisible="{Binding IsDownloading}">
+                                                <ProgressBar Grid.Column="0" Minimum="0" Maximum="100" Height="5"
+                                                             Value="{Binding Progress}" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Classes="micro numeric secondary" Margin="8,0,0,0"
+                                                           Text="{Binding ProgressText}" />
+                                            </Grid>
+
+                                            <!-- Error de este modelo -->
+                                            <TextBlock Classes="micro accentError" TextWrapping="Wrap"
+                                                       IsVisible="{Binding HasError}" Text="{Binding ErrorMessage}" />
+                                        </StackPanel>
+
+                                        <!-- Acciones -->
+                                        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
+                                                    Spacing="6" VerticalAlignment="Top" Margin="8,0,0,0">
+                                            <Button Classes="primary" Padding="10,5"
+                                                    IsVisible="{Binding !IsDownloaded}"
+                                                    IsEnabled="{Binding CanDownload}"
+                                                    Command="{Binding $parent[UserControl].DataContext.DownloadModelCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                                    <materialIcons:MaterialIcon Kind="Download" Width="12" Height="12" VerticalAlignment="Center" />
+                                                    <TextBlock Classes="caption"
+                                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[AiModelManager_BtnDownload]}" />
+                                                </StackPanel>
+                                            </Button>
+
+                                            <Button Classes="icon" Padding="7,5"
+                                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_ConfigureUrlsToolTip]}"
+                                                    Command="{Binding $parent[UserControl].DataContext.ConfigureUrlsCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <materialIcons:MaterialIcon Kind="Cog" Width="13" Height="13" />
+                                            </Button>
+
+                                            <Button Classes="icon" Padding="7,5"
+                                                    IsVisible="{Binding IsDownloaded}"
+                                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_DeleteModelToolTip]}"
+                                                    Command="{Binding $parent[UserControl].DataContext.DeleteModelCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <materialIcons:MaterialIcon Kind="TrashCan" Width="13" Height="13" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Estado de la barra inferior -->
+        <TextBlock Grid.Row="4" Classes="micro muted" Margin="2,8,0,0" TextWrapping="Wrap"
+                   IsVisible="{Binding IsBusy}"
+                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Settings_AiModels_Downloading]}" />
+    </Grid>
+</UserControl>

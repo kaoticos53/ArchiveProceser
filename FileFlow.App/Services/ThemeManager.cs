@@ -17,6 +17,12 @@ public enum AppTheme
 
 public class ThemeManager : IThemeService
 {
+    /// <summary>Identificador del tema oscuro por defecto (el que se aplica cuando no hay nada guardado).</summary>
+    public const string DefaultThemeId = "dark_fluent";
+
+    /// <summary>Identificador reservado del tema que sigue al sistema operativo.</summary>
+    public const string SystemThemeId = "system";
+
     private static readonly Lazy<ThemeManager> _instance = new(() => new ThemeManager());
     public static ThemeManager Instance => _instance.Value;
 
@@ -49,13 +55,7 @@ public class ThemeManager : IThemeService
         }
         else
         {
-            string themeId = theme switch
-            {
-                AppTheme.Light => "light_studio",
-                AppTheme.Pastel => "pastel_spring",
-                AppTheme.Cyber => "cyber_neon",
-                _ => "dark_fluent"
-            };
+            string themeId = ThemeIdFor(theme);
 
             var themeDef = CustomThemeService.Instance.GetThemeById(themeId);
             if (themeDef != null)
@@ -84,24 +84,75 @@ public class ThemeManager : IThemeService
     {
         if (string.IsNullOrWhiteSpace(themeId)) return;
 
-        if (themeId.Equals("system", StringComparison.OrdinalIgnoreCase))
+        // Un identificador heredado ('Dark', 'Light'…) se resuelve a su tema real; si no existe, no hay nada
+        // que aplicar (antes se aceptaba cualquier nombre que casara con el enumerado y el selector quedaba
+        // mostrando un valor que no está en su lista: campo en blanco).
+        string? resolved = ResolveThemeId(themeId);
+        if (resolved is null)
+        {
+            return;
+        }
+
+        if (resolved.Equals(SystemThemeId, StringComparison.OrdinalIgnoreCase))
         {
             SetTheme(AppTheme.System);
             return;
         }
 
-        var themeDef = CustomThemeService.Instance.GetThemeById(themeId);
+        var themeDef = CustomThemeService.Instance.GetThemeById(resolved);
         if (themeDef != null)
         {
             SetTheme(themeDef);
             return;
         }
 
-        if (Enum.TryParse<AppTheme>(themeId, true, out var appTheme))
+        if (Enum.TryParse<AppTheme>(resolved, true, out var appTheme))
         {
             SetTheme(appTheme);
         }
     }
+
+    /// <summary>
+    /// Resuelve un identificador guardado (o heredado) al identificador real del tema que existe hoy en el
+    /// catálogo, o <c>null</c> si no corresponde a ningún tema.
+    ///
+    /// Las preferencias guardan el identificador tal como se escribió en su momento: las versiones antiguas
+    /// almacenaban el nombre del enumerado (<c>"Dark"</c>) y el catálogo usa identificadores propios
+    /// (<c>"dark_fluent"</c>). Sin esta traducción, un desplegable de temas atado a los identificadores del
+    /// catálogo no encuentra el valor guardado y aparece en blanco aunque el tema sí se haya aplicado.
+    /// </summary>
+    public static string? ResolveThemeId(string? storedId)
+    {
+        if (string.IsNullOrWhiteSpace(storedId))
+        {
+            return null;
+        }
+
+        string candidate = storedId.Trim();
+
+        if (candidate.Equals(SystemThemeId, StringComparison.OrdinalIgnoreCase))
+        {
+            return SystemThemeId;
+        }
+
+        // El catálogo manda: devuelve el identificador con su grafía real (una preferencia escrita con otra
+        // capitalización se normaliza en lugar de crear una entrada duplicada).
+        var definition = CustomThemeService.Instance.GetThemeById(candidate);
+        if (definition != null)
+        {
+            return definition.Id;
+        }
+
+        return Enum.TryParse<AppTheme>(candidate, true, out var legacy) ? ThemeIdFor(legacy) : null;
+    }
+
+    private static string ThemeIdFor(AppTheme theme) => theme switch
+    {
+        AppTheme.Light => "light_studio",
+        AppTheme.Pastel => "pastel_spring",
+        AppTheme.Cyber => "cyber_neon",
+        _ => DefaultThemeId
+    };
 
     public void SetTheme(ThemeDefinition theme)
     {
@@ -150,7 +201,7 @@ public class ThemeManager : IThemeService
     private void ApplySystemTheme()
     {
         bool isLight = IsOperatingSystemInLightMode();
-        string themeId = isLight ? "light_studio" : "dark_fluent";
+        string themeId = isLight ? "light_studio" : DefaultThemeId;
         var themeDef = CustomThemeService.Instance.GetThemeById(themeId);
         if (themeDef != null)
         {

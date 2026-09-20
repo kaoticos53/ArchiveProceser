@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -85,6 +86,52 @@ public static partial class MultimodalVlmClientEngine
     /// Registro en memoria de endpoints/modelos que han rechazado 'json_schema' en 'response_format' pero admiten 'json_object'.
     /// </summary>
     private static readonly ConcurrentDictionary<string, bool> s_unsupportedJsonSchemaCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Cortocircuito (circuit breaker) por endpoint inalcanzable: un servidor local apagado rechaza la conexión
+    /// al instante, y un pipeline de cientos de imágenes reintentaba contra él en vano. Con el endpoint marcado
+    /// como caído, las peticiones siguientes fallan de inmediato con el mismo mensaje de ayuda, sin abrir una sola
+    /// conexión. Esto es lo que convierte cientos de fallos de socket (y sus tareas fallidas no observadas) en uno solo.
+    ///
+    /// Es <c>internal</c> a propósito: sólo el ensamblado de pruebas ajusta el enfriamiento y lo reinicia.
+    /// </summary>
+    internal static TimeSpan UnreachableEndpointCooldown { get; set; } = TimeSpan.FromSeconds(15);
+
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> s_unreachableEndpoints = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Limpia el cortocircuito de todos los endpoints (usado por las pruebas).</summary>
+    internal static void ResetUnreachableEndpoints() => s_unreachableEndpoints.Clear();
+
+    private static bool IsEndpointCoolingDown(string endpoint) =>
+        s_unreachableEndpoints.TryGetValue(endpoint, out var until) && DateTimeOffset.UtcNow < until;
+
+    private static void MarkEndpointUnreachable(string endpoint) =>
+        s_unreachableEndpoints[endpoint] = DateTimeOffset.UtcNow + UnreachableEndpointCooldown;
+
+    private static void ClearEndpointUnreachable(string endpoint) =>
+        s_unreachableEndpoints.TryRemove(endpoint, out _);
+
+    /// <summary>
+    /// Determina si la excepción de transporte corresponde a un servidor apagado o inalcanzable
+    /// (y por tanto a un fallo que no se arregla reintentando).
+    /// </summary>
+    private static bool IsUnreachableServerFailure(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is SocketException socket &&
+                socket.SocketErrorCode is SocketError.ConnectionRefused
+                    or SocketError.HostNotFound
+                    or SocketError.HostUnreachable
+                    or SocketError.NetworkUnreachable
+                    or SocketError.TimedOut)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static HttpClient CreateDefaultHttpClient()
     {
@@ -333,6 +380,14 @@ public static partial class MultimodalVlmClientEngine
             cleanEndpoint += "/chat/completions";
         }
 
+        // Servidor local apagado detectado hace poco: fallar de inmediato en lugar de reintentar sin sentido.
+        if (IsEndpointCoolingDown(cleanEndpoint))
+        {
+            throw new InvalidOperationException(
+                $"No se pudo conectar con el servidor VLM en '{cleanEndpoint}'. Asegúrate de que LM Studio o el servidor local esté en ejecución: " +
+                $"el endpoint rechazó la conexión hace menos de {UnreachableEndpointCooldown.TotalSeconds:0} s y se omite el reintento para no inundar a un servidor apagado.");
+        }
+
         string effectiveModel = !string.IsNullOrWhiteSpace(modelName) ? modelName : "qwen2.5-vl-7b-instruct";
         string unsupportedCacheKey = $"{cleanEndpoint}::{effectiveModel}";
 
@@ -461,6 +516,15 @@ public static partial class MultimodalVlmClientEngine
                 }
                 catch (HttpRequestException ex)
                 {
+                    if (IsUnreachableServerFailure(ex))
+                    {
+                        // Un servidor apagado no se arregla reintentando: cada reintento es otra conexión rechazada
+                        // (y, en pipelines largos, otra tarea fallida que el finalizador acaba reportando).
+                        MarkEndpointUnreachable(cleanEndpoint);
+                        throw new InvalidOperationException(
+                            $"No se pudo conectar con el servidor VLM en '{cleanEndpoint}'. Asegúrate de que LM Studio o el servidor local esté en ejecución: {ex.Message}", ex);
+                    }
+
                     if (currentAttempt < maxAttempts && !cts.IsCancellationRequested)
                     {
                         await Task.Delay(Scaled(TimeSpan.FromSeconds(1.5 * currentAttempt)), cts.Token).ConfigureAwait(false);
@@ -536,6 +600,9 @@ public static partial class MultimodalVlmClientEngine
             }
             throttle.Release();
         }
+
+        // Cualquier respuesta HTTP (incluido un error 4xx/5xx) demuestra que el servidor está en marcha.
+        ClearEndpointUnreachable(cleanEndpoint);
 
         if (!response.IsSuccessStatusCode)
         {

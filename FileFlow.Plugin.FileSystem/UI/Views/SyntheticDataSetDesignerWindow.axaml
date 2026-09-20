@@ -1,98 +1,403 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels"
+        xmlns:sdk="using:FileFlow.Sdk.SyntheticData"
         xmlns:loc="using:FileFlow.Sdk.Localization"
         x:Class="FileFlow.Plugin.FileSystem.UI.Views.SyntheticDataSetDesignerWindow"
         x:DataType="vm:SyntheticDataSetDesignerViewModel"
-        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_WindowTitle], FallbackValue='Diseñador de Conjuntos de Datos Sintéticos'}"
-        Height="780" Width="1180"
-        MinHeight="620" MinWidth="920"
+        Title="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_WindowTitle]}"
+        Height="820" Width="1240"
+        MinHeight="640" MinWidth="960"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource BgDarkBrush}">
+        Background="{DynamicResource BgSurfaceBrush}">
+
+    <Window.Styles>
+        <!-- El estado de plegado vive en el nodo (lo usan «Expandir todo» / «Colapsar todo» y sobrevive al
+             reciclado de contenedores del árbol). -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay, DataType=vm:SyntheticTreeNodeItem}" />
+        </Style>
+    </Window.Styles>
 
     <Grid Margin="14" RowDefinitions="Auto,*,Auto">
-        <!-- Header -->
-        <Border Grid.Row="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
-                BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14,10" Margin="0,0,0,12">
+
+        <!-- ══════════════════════════ Cabecera ══════════════════════════ -->
+        <Border Grid.Row="0" Classes="card" Padding="14,10" Margin="0,0,0,12">
             <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-                    <materialIcons:MaterialIcon VerticalAlignment="Center"  Kind="ChartBar" Width="20" Height="20" />
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <materialIcons:MaterialIcon Kind="ChartBar" Width="20" Height="20" VerticalAlignment="Center"
+                                                Foreground="{DynamicResource AccentPrimaryBrush}" />
                     <StackPanel>
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_HeaderTitle], FallbackValue='Diseñador de Datasets Sintéticos'}"
-                                   FontWeight="Bold" FontSize="{DynamicResource FontSizeSubtitle}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <TextBlock Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_HeaderDesc], FallbackValue='Crea y estructura colecciones de prueba sintéticas para simulación de flujos.'}"
-                                   FontSize="{DynamicResource FontSizeCaption}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                        <TextBlock Classes="subtitle primaryText"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_HeaderTitle]}" />
+                        <TextBlock Classes="micro secondary" TextWrapping="Wrap" Margin="0,2,0,0"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_HeaderDesc]}" />
                     </StackPanel>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                    <Button Content="Guardar Dataset" Command="{Binding SaveCommand}"
-                            Background="{DynamicResource AccentPrimaryBrush}" Foreground="{DynamicResource TextOnAccentBrush}"
-                            FontWeight="SemiBold" Padding="14,6" CornerRadius="{DynamicResource RadiusSm}" />
+                    <Border Classes="badge" Padding="8,4" VerticalAlignment="Center"
+                            IsVisible="{Binding IsBuiltInSelected}">
+                        <TextBlock Classes="micro accentWarning"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_BuiltInBadge]}" />
+                    </Border>
+
+                    <Button Classes="primary" Command="{Binding SaveCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="13" Height="13" VerticalAlignment="Center" />
+                            <TextBlock Classes="caption"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_SaveButton]}" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Main Content -->
+        <!-- ══════════════════════════ Cuerpo ══════════════════════════ -->
         <Grid Grid.Row="1" ColumnDefinitions="330,6,*">
-            <!-- Left Panel -->
-            <Border Grid.Column="0" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
-                    BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="10">
-                <Grid RowDefinitions="Auto,Auto,*">
-                    <TextBox Grid.Row="0" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Buscar datasets..." Padding="8,5" Margin="0,0,0,8" />
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" Margin="0,0,0,8">
-                        <Button Content="Nuevo" Command="{Binding NewDataSetCommand}" Padding="8,4" />
-                        <Button Content="Duplicar" Command="{Binding DuplicateDataSetCommand}" Padding="8,4" />
-                        <Button Command="{Binding DeleteDataSetCommand}" Padding="8,4" >
-                            <materialIcons:MaterialIcon Kind="TrashCan" Width="14" Height="14" />
-                        </Button>
+
+            <!-- ─────────── Catálogo de datasets ─────────── -->
+            <Border Grid.Column="0" Classes="card" Padding="10">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+                    <TextBlock Grid.Row="0" Classes="sectionLabel" Margin="2,0,0,6"
+                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_CatalogTitle]}" />
+
+                    <TextBox Grid.Row="1" Margin="0,0,0,8"
+                             Text="{Binding SearchText, Mode=TwoWay}"
+                             PlaceholderText="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_SearchPlaceholder]}" />
+
+                    <StackPanel Grid.Row="2" Spacing="4" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Classes="primary" Padding="9,4" Command="{Binding NewDataSetCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <materialIcons:MaterialIcon Kind="Plus" Width="12" Height="12" VerticalAlignment="Center" />
+                                    <TextBlock Classes="caption"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_NewButton]}" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Padding="9,4" Command="{Binding DuplicateDataSetCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <materialIcons:MaterialIcon Kind="ContentCopy" Width="12" Height="12" VerticalAlignment="Center" />
+                                    <TextBlock Classes="caption"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_DuplicateButton]}" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Classes="icon" Padding="7,4"
+                                    Command="{Binding DeleteDataSetCommand}"
+                                    ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_DeleteToolTip]}">
+                                <materialIcons:MaterialIcon Kind="TrashCan" Width="13" Height="13" />
+                            </Button>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Padding="9,4" Command="{Binding ImportCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <materialIcons:MaterialIcon Kind="Upload" Width="12" Height="12" VerticalAlignment="Center" />
+                                    <TextBlock Classes="caption"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ImportButton]}" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Padding="9,4" Command="{Binding ExportCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <materialIcons:MaterialIcon Kind="Download" Width="12" Height="12" VerticalAlignment="Center" />
+                                    <TextBlock Classes="caption"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ExportButton]}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
-                    <ListBox Grid.Row="2" ItemsSource="{Binding FilteredDataSets}" SelectedItem="{Binding SelectedDataSet, Mode=TwoWay}" Background="Transparent">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{DynamicResource BgSurfaceBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="8,6" Margin="0,2">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="{DynamicResource FontSizeBodySm}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="{Binding Category}" FontSize="{DynamicResource FontSizeMicro}" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+
+                    <Grid Grid.Row="3">
+                        <TextBlock Classes="caption muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" TextAlignment="Center" Margin="10"
+                                   IsVisible="{Binding !HasFilteredDataSets}"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_NoDatasets]}" />
+
+                        <ListBox ItemsSource="{Binding FilteredDataSets}"
+                                 SelectedItem="{Binding SelectedDataSet, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="sdk:SyntheticDataSet">
+                                    <Border Classes="panel" Padding="8,6" Margin="0,2">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Classes="bodySm strong primaryText" Text="{Binding Name}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="micro secondary" Text="{Binding Category}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Classes="badge" VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsBuiltIn}">
+                                                <TextBlock Classes="micro accentWarning"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_OfficialBadge]}" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+
+                    <!-- Métricas del dataset seleccionado -->
+                    <Grid Grid.Row="4" ColumnDefinitions="*,*,*" Margin="0,8,0,0" IsVisible="{Binding HasSelectedDataSet}">
+                        <StackPanel Grid.Column="0" Spacing="1">
+                            <TextBlock Classes="micro muted"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_MetricsFiles]}" />
+                            <TextBlock Classes="bodySm numeric primaryText" Text="{Binding TotalFiles}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="1">
+                            <TextBlock Classes="micro muted"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_MetricsFolders]}" />
+                            <TextBlock Classes="bodySm numeric primaryText" Text="{Binding TotalDirectories}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="1">
+                            <TextBlock Classes="micro muted"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_MetricsSize]}" />
+                            <TextBlock Classes="bodySm numeric accentCyan" Text="{Binding TotalSizeFormatted}" />
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Border>
 
-            <!-- GridSplitter -->
             <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent" />
 
-            <!-- Right Panel: Dataset Details & Items -->
-            <Border Grid.Column="2" Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}"
-                    BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="14">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="10" IsVisible="{Binding SelectedDataSet, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="Propiedades del Dataset" FontWeight="Bold" FontSize="{DynamicResource FontSizeBody}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <TextBox Text="{Binding DataSetName, Mode=TwoWay}" PlaceholderText="Nombre..." Padding="8,5" />
-                        <TextBox Text="{Binding DataSetCategory, Mode=TwoWay}" PlaceholderText="Categoría..." Padding="8,5" />
-                        <TextBox Text="{Binding DataSetDescription, Mode=TwoWay}" PlaceholderText="Descripción..." AcceptsReturn="True" MinHeight="50" Padding="8,5" />
+            <!-- ─────────── Editor del dataset ─────────── -->
+            <Border Grid.Column="2" Classes="card" Padding="14">
+                <Grid>
+                    <!-- Sin dataset seleccionado -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                                IsVisible="{Binding !HasSelectedDataSet}">
+                        <materialIcons:MaterialIcon Kind="FileTable" Width="26" Height="26" HorizontalAlignment="Center"
+                                                    Foreground="{DynamicResource TextMutedBrush}" />
+                        <TextBlock Classes="caption muted" TextAlignment="Center" MaxWidth="420" TextWrapping="Wrap"
+                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_SelectDataSet]}" />
+                    </StackPanel>
 
-                        <TabControl SelectedIndex="{Binding SelectedTabIndex}" Margin="0,8,0,0">
-                            <TabItem Header="Definición DSL">
-                                <TextBox Text="{Binding DslText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="260" FontFamily="Cascadia Code, Consolas, monospace" FontSize="{DynamicResource FontSizeCaption}" Padding="8,6" Margin="0,8,0,0" />
+                    <Grid RowDefinitions="Auto,*" IsVisible="{Binding HasSelectedDataSet}">
+                        <!-- Propiedades del dataset -->
+                        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,10">
+                            <TextBlock Classes="strong primaryText"
+                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_PropertiesTitle]}" />
+
+                            <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto">
+                                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="3">
+                                    <TextBlock Classes="micro secondary"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_NameLabel]}" />
+                                    <TextBox Text="{Binding DataSetName, Mode=TwoWay}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0" Grid.Column="2" Spacing="3">
+                                    <TextBlock Classes="micro secondary"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_CategoryLabel]}" />
+                                    <ComboBox ItemsSource="{Binding AvailableCategories}"
+                                              SelectedItem="{Binding DataSetCategory, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Spacing="3" Margin="0,6,0,0">
+                                    <TextBlock Classes="micro secondary"
+                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_DescriptionLabel]}" />
+                                    <TextBox Text="{Binding DataSetDescription, Mode=TwoWay}" AcceptsReturn="True" MinHeight="46" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Editor por pestañas: árbol / DSL / JSON -->
+                        <TabControl Grid.Row="1" Classes="pill" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                                    Background="Transparent" BorderThickness="0">
+                            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_TabTree]}">
+                                <Grid RowDefinitions="Auto,*,Auto" Margin="0,6,0,0">
+
+                                    <!-- Acciones del árbol -->
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4" Margin="0,0,0,6">
+                                        <Button Padding="9,4" Command="{Binding AddFileCommand}">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="FileDocument" Width="12" Height="12" VerticalAlignment="Center" />
+                                                <TextBlock Classes="caption"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddFile]}" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Padding="9,4" Command="{Binding AddFolderCommand}">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="Folder" Width="12" Height="12" VerticalAlignment="Center" />
+                                                <TextBlock Classes="caption"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddFolder]}" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Padding="9,4" Command="{Binding AddArchiveToTreeCommand}">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="ZipBox" Width="12" Height="12" VerticalAlignment="Center" />
+                                                <TextBlock Classes="caption"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddArchive]}" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Padding="9,4" Command="{Binding AddArchiveEntryCommand}"
+                                                IsVisible="{Binding CanAddArchiveEntry}">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <materialIcons:MaterialIcon Kind="PackageVariantClosed" Width="12" Height="12" VerticalAlignment="Center" />
+                                                <TextBlock Classes="caption"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_AddArchiveEntry]}" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Classes="icon" Padding="7,4" Command="{Binding RemoveItemCommand}"
+                                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_RemoveNode]}">
+                                            <materialIcons:MaterialIcon Kind="TrashCan" Width="13" Height="13" />
+                                        </Button>
+
+                                        <Border Classes="dividerV" />
+
+                                        <Button Classes="icon" Padding="7,4" Command="{Binding ExpandAllTreeCommand}"
+                                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ExpandAll]}">
+                                            <materialIcons:MaterialIcon Kind="ArrowExpandAll" Width="13" Height="13" />
+                                        </Button>
+                                        <Button Classes="icon" Padding="7,4" Command="{Binding CollapseAllTreeCommand}"
+                                                ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_CollapseAll]}">
+                                            <materialIcons:MaterialIcon Kind="SelectGroup" Width="13" Height="13" />
+                                        </Button>
+                                    </StackPanel>
+
+                                    <!-- Árbol jerárquico editable -->
+                                    <Grid Grid.Row="1">
+                                        <Border Classes="panel" Padding="6">
+                                            <Grid>
+                                                <TextBlock Classes="caption muted" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           TextWrapping="Wrap" TextAlignment="Center" Margin="16"
+                                                           IsVisible="{Binding !HasTreeNodes}"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_EmptyTree]}" />
+
+                                                <TreeView ItemsSource="{Binding RootTreeNodes}"
+                                                          SelectedItem="{Binding SelectedTreeNode, Mode=TwoWay}"
+                                                          Background="Transparent"
+                                                          IsVisible="{Binding HasTreeNodes}">
+                                                    <TreeView.ItemTemplate>
+                                                        <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="vm:SyntheticTreeNodeItem">
+                                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,1">
+                                                                <materialIcons:MaterialIcon Grid.Column="0" Kind="{Binding IconKind}"
+                                                                                            Width="13" Height="13"
+                                                                                            VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                                <TextBlock Grid.Column="1" Classes="caption primaryText" Text="{Binding Name}"
+                                                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                                <Border Grid.Column="2" Classes="badge" VerticalAlignment="Center">
+                                                                    <TextBlock Classes="micro muted" Text="{Binding BadgeText}" />
+                                                                </Border>
+                                                            </Grid>
+                                                        </TreeDataTemplate>
+                                                    </TreeView.ItemTemplate>
+                                                </TreeView>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Inspector del nodo seleccionado -->
+                                    <Border Grid.Row="2" Classes="panel" Padding="10" Margin="0,8,0,0">
+                                        <Grid>
+                                            <TextBlock Classes="micro muted" TextWrapping="Wrap"
+                                                       IsVisible="{Binding !HasSelectedNode}"
+                                                       Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_InspectorNoSelection]}" />
+
+                                            <Grid ColumnDefinitions="*,12,140" RowDefinitions="Auto,Auto"
+                                                  IsVisible="{Binding HasSelectedNode}">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+                                                           Classes="strong primaryText" Margin="0,0,0,6"
+                                                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_InspectorTitle]}" />
+
+                                                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="3">
+                                                    <TextBlock Classes="micro secondary"
+                                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_NodeNameLabel]}" />
+                                                    <TextBox Text="{Binding SelectedTreeNode.Name, Mode=TwoWay}" />
+                                                    <TextBlock Classes="micro muted" Text="{Binding SelectedTreeNode.RelativePath}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Row="1" Grid.Column="2" Spacing="3">
+                                                    <TextBlock Classes="micro secondary"
+                                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_NodeSizeLabel]}" />
+                                                    <TextBox Text="{Binding SelectedTreeNode.FileSizeBytes, Mode=TwoWay}"
+                                                             IsEnabled="{Binding !SelectedTreeNode.IsDirectory}" />
+                                                    <TextBlock Classes="micro numeric accentCyan" Text="{Binding SelectedTreeNode.BadgeText}" />
+                                                </StackPanel>
+
+                                                <!-- Contenido simulado del comprimido -->
+                                                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Spacing="3" Margin="0,8,0,0"
+                                                            IsVisible="{Binding SelectedTreeNode.IsArchive}">
+                                                    <TextBlock Classes="micro secondary"
+                                                               Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ArchiveEntriesTitle]}" />
+                                                    <ItemsControl ItemsSource="{Binding SelectedTreeNode.SimulatedArchiveEntries}"
+                                                                  MaxHeight="140">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="sdk:SyntheticArchiveEntryDefinition">
+                                                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,1">
+                                                                    <TextBlock Grid.Column="0" Classes="micro primaryText" Text="{Binding InnerPath}"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Grid.Column="1" Classes="micro muted" Margin="8,0"
+                                                                               Text="{Binding FileSizeBytes}" />
+                                                                    <Button Grid.Column="2" Classes="icon" Padding="5,2"
+                                                                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_RemoveEntryToolTip]}"
+                                                                            Command="{Binding $parent[Window].DataContext.RemoveArchiveEntryCommand}"
+                                                                            CommandParameter="{Binding}">
+                                                                        <materialIcons:MaterialIcon Kind="Close" Width="11" Height="11" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
                             </TabItem>
-                            <TabItem Header="Definición JSON">
-                                <TextBox Text="{Binding JsonText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="260" FontFamily="Cascadia Code, Consolas, monospace" FontSize="{DynamicResource FontSizeCaption}" Padding="8,6" Margin="0,8,0,0" />
+
+                            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_TabDsl]}">
+                                <Grid RowDefinitions="*,Auto" Margin="0,6,0,0">
+                                    <TextBox Grid.Row="0" Classes="mono" Text="{Binding DslText, Mode=TwoWay}"
+                                             AcceptsReturn="True"
+                                             VerticalContentAlignment="Top" TextWrapping="NoWrap"
+                                             FontSize="{DynamicResource FontSizeCaption}" />
+                                    <Button Grid.Row="1" Classes="primary" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                            Command="{Binding ApplyDslToItemsCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ApplyDsl]}" />
+                                    </Button>
+                                </Grid>
+                            </TabItem>
+
+                            <TabItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_TabJson]}">
+                                <Grid RowDefinitions="*,Auto" Margin="0,6,0,0">
+                                    <TextBox Grid.Row="0" Classes="mono" Text="{Binding JsonText, Mode=TwoWay}"
+                                             AcceptsReturn="True"
+                                             VerticalContentAlignment="Top" TextWrapping="NoWrap"
+                                             FontSize="{DynamicResource FontSizeCaption}" />
+                                    <Button Grid.Row="1" Classes="primary" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                            Command="{Binding ApplyJsonToItemsCommand}">
+                                        <TextBlock Classes="caption"
+                                                   Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DataSetDesigner_ApplyJson]}" />
+                                    </Button>
+                                </Grid>
                             </TabItem>
                         </TabControl>
-                    </StackPanel>
-                </ScrollViewer>
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
 
-        <!-- Footer -->
+        <!-- ══════════════════════════ Pie ══════════════════════════ -->
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
-            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Click="Close_Click" Content="Cerrar" Padding="16,6" CornerRadius="{DynamicResource RadiusSm}" />
+            <TextBlock Grid.Column="0" Classes="micro secondary" VerticalAlignment="Center"
+                       TextWrapping="Wrap" Text="{Binding StatusMessage}" />
+            <Button Grid.Column="1" Click="Close_Click">
+                <TextBlock Classes="caption"
+                           Text="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[Common_Close]}" />
+            </Button>
         </Grid>
     </Grid>
 </Window>

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FileFlow.App.Services;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Telemetry;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.Tests.TestHelpers;
@@ -98,6 +99,47 @@ public sealed class NullFileDialogService : IFileDialogService
     public string? ShowSaveFileDialog(string title, string filter, string defaultExt = "", string defaultFileName = "") => null;
 
     public string? ShowFolderBrowserDialog(string title) => null;
+}
+
+/// <summary>
+/// Herramientas externas en memoria, con rutas fijas.
+///
+/// La pestaña «Herramientas Externas» de los ajustes y su captura muestran las rutas configuradas: leerlas del
+/// servicio real haría que la línea base dependiera de la máquina que la generó (y que la prueba escribiera en
+/// la configuración del usuario al guardar). Las rutas de este doble son deliberadamente ficticias.
+/// </summary>
+public sealed class InMemoryExternalToolsService : IExternalToolsService
+{
+    private ExternalToolsConfig _config = new()
+    {
+        FfmpegPath = "/workflow/tools/ffmpeg",
+        FfprobePath = "/workflow/tools/ffprobe",
+        SevenZipPath = "/workflow/tools/7z",
+        PythonPath = "/workflow/tools/python3"
+    };
+
+    public ExternalToolsConfig Config => _config;
+
+    public int SaveCount { get; private set; }
+
+    public string ResolveToolPath(string toolName) => toolName switch
+    {
+        "ffmpeg" => _config.FfmpegPath,
+        "ffprobe" => _config.FfprobePath,
+        "7z" => _config.SevenZipPath,
+        "python" => _config.PythonPath,
+        _ => string.Empty
+    };
+
+    public bool IsToolAvailable(string toolName) => !string.IsNullOrWhiteSpace(ResolveToolPath(toolName));
+
+    public void SaveConfig(ExternalToolsConfig config)
+    {
+        SaveCount++;
+        _config = config;
+    }
+
+    public Task<ExternalToolsConfig> AutoDetectToolsAsync() => Task.FromResult(_config);
 }
 
 /// <summary>

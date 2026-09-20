@@ -411,6 +411,29 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Añade el valor actual a las opciones si no está entre ellas, para que el desplegable pueda mostrarlo.
+    ///
+    /// Es la mitad de la regla que ya aplica <see cref="UpdateOptions"/>: allí el valor se inserta cuando
+    /// cambian las opciones, aquí cuando cambia el valor. Sin la segunda, cualquier escritura posterior (cargar
+    /// un flujo, pegar un nodo, deshacer) podía dejar el parámetro fuera de la lista y el campo en blanco.
+    /// Los desplegables editables quedan fuera: en ellos el valor es texto libre y se muestra en su caja.
+    /// </summary>
+    private void EnsureValueIsSelectable()
+    {
+        string value = Value?.ToString()?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrEmpty(value) ||
+            Options.Any(o => string.Equals(o, value, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        Options.Insert(0, value);
+        OnPropertyChanged(nameof(HasOptions));
+        OnPropertyChanged(nameof(IsDropdown));
+    }
+
     public void UpdateOptions(IEnumerable<string>? newOptions)
     {
         if (newOptions == null) return;
@@ -456,6 +479,16 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     {
         NodeOwner?.OnParameterValueChanged(Key, newValue);
         RecalculateEvaluatedValue();
+
+        // Un desplegable atado por valor no pinta nada si el valor no está entre sus opciones —y devuelve
+        // 'null' al view model—: un valor heredado (un flujo guardado con otras opciones, un nodo pegado, una
+        // opción que ya no existe) dejaba el campo en blanco y se perdía sin que el usuario pudiera verlo.
+        // El valor actual se añade a la lista, igual que hace 'UpdateOptions' cuando el nodo define opciones.
+        if (HasOptions && !IsEditableDropdown)
+        {
+            EnsureValueIsSelectable();
+        }
+
         if (IsFileVersionSelector)
         {
             UpdateVersionOptionsSelection();

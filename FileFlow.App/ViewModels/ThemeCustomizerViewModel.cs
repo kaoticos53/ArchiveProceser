@@ -63,9 +63,20 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     /// <summary>Familias monoespaciadas publicadas por el catálogo.</summary>
     public ObservableCollection<string> AvailableCodeFonts { get; }
 
-    public ThemeCustomizerViewModel() : this(CustomThemeService.Instance, null)
+    public ThemeCustomizerViewModel() : this(CustomThemeService.Instance, ResolveDialogService())
     {
     }
+
+    /// <summary>
+    /// Servicio de diálogos de la aplicación cuando el contenedor ya está levantado.
+    ///
+    /// El constructor sin argumentos es el que usa el estudio al abrirse por su cuenta, así que no puede
+    /// quedarse con el doble nulo: sin diálogo real, eliminar un tema no pide confirmación y un error al
+    /// importar o exportar no se le cuenta a nadie. Se resuelve del contenedor —igual que el resto de view
+    /// models de la aplicación— con el doble nulo como último recurso.
+    /// </summary>
+    private static IDialogService ResolveDialogService() =>
+        App.Services?.GetService(typeof(IDialogService)) as IDialogService ?? NullDialogService.Instance;
 
     public ThemeCustomizerViewModel(CustomThemeService themeService, IDialogService? dialogService = null)
     {

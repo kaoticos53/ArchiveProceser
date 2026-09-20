@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using FileFlow.Plugin.Integrations.UI.Services;
@@ -42,7 +44,12 @@ public partial class MediaPresetManagerWindow : Window
             TxtExtension.Text = preset.OutputExtension;
             TxtFfmpegArgs.Text = preset.FfmpegArguments;
 
-            if (CmbCategory?.Items != null)
+            // La categoría del preset se selecciona buscando el elemento con ese texto. Si el preset trae una
+            // categoría que no está en la lista (un preset importado o escrito a mano), se añade: sin ella el
+            // desplegable aparecía en blanco y al guardar la categoría se sustituía en silencio por «Video».
+            EnsureCategoryItem(preset.Category);
+
+            if (CmbCategory != null)
             {
                 foreach (var item in CmbCategory.Items)
                 {
@@ -53,6 +60,23 @@ public partial class MediaPresetManagerWindow : Window
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>Añade a la lista la categoría pedida si todavía no está (el desplegable no pinta valores ausentes).</summary>
+    private void EnsureCategoryItem(string? category)
+    {
+        if (string.IsNullOrWhiteSpace(category) || CmbCategory == null)
+        {
+            return;
+        }
+
+        bool exists = CmbCategory.Items.OfType<ComboBoxItem>()
+            .Any(i => string.Equals(i.Content?.ToString(), category, StringComparison.OrdinalIgnoreCase));
+
+        if (!exists)
+        {
+            CmbCategory.Items.Add(new ComboBoxItem { Content = category });
         }
     }
 
@@ -82,7 +106,10 @@ public partial class MediaPresetManagerWindow : Window
     {
         if (_selectedPreset == null) return;
 
-        string category = (CmbCategory.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Video";
+        // Nunca se inventa la categoría: se guarda lo seleccionado, o la del propio preset como respaldo.
+        string category = (CmbCategory.SelectedItem as ComboBoxItem)?.Content?.ToString()
+                          ?? _selectedPreset.Category
+                          ?? "Video";
 
         _selectedPreset.Name = TxtName.Text?.Trim() ?? string.Empty;
         _selectedPreset.Description = TxtDescription.Text?.Trim() ?? string.Empty;

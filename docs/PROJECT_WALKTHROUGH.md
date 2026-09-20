@@ -1,5 +1,338 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-20] - Entrada del Cajón para el Diseñador de Datasets y Primera Captura del Cajón (Hito 166)
+
+### 🎯 Diagnóstico
+
+El diseñador de conjuntos de datos sintéticos **funcionaba pero no se podía alcanzar desde la interfaz**: sólo respondía a la acción personalizada del nodo de origen y al botón del renamer avanzado. Tres piezas ya existían y ninguna estaba enlazada — código y traducciones **muertas**:
+
+| Pieza existente | Estado |
+| :--- | :--- |
+| `ControlBarViewModel.OpenSyntheticDataSetDesigner` (orden pública completa) | Sin ningún llamador en XAML |
+| `Drawer_DataSetDesigner` / `Drawer_DataSetDesignerToolTip` (traducidas en ES y EN) | Sin ninguna referencia |
+| Sección «Paneles y Herramientas» del cajón (inspector, métricas, VFS, ajustes) | Sin entrada para el diseñador |
+
+Y el **cajón no tenía ninguna captura**: era la única superficie principal sin línea base, de modo que una entrada nueva podía nacer invisible, recortada o sin estilo sin que ninguna prueba se enterara.
+
+### 🛠️ Implementación
+
+1. **Entrada en el cajón** (`MainWindow.axaml`, sección «Paneles y Herramientas»): botón con `x:Name="DrawerDataSetDesignerButton"` (ancla estable para las guardias), icono vectorial (`FileTableBoxMultiple`), etiqueta localizada con la clave que ya existía y ayuda emergente, junto al explorador virtual y antes de los ajustes. La etiqueta lleva `x:Name` propio para poder leer exactamente lo que se pinta.
+2. **La orden entrega el contexto correcto** (`ControlBarViewModel.OpenSyntheticDataSetDesigner`): cierra el cajón (`IsMenuOpen = false`, como el resto de órdenes del menú) e invoca la acción del plugin **con la ventana principal como propietaria** (`NodeCustomActionContext(App.MainWindow, null)`) en lugar de `null`: el diálogo sale centrado sobre la aplicación y no como ventana suelta —es lo que ya hacen el inspector y los parámetros de nodo—. La invocación se extrae a `OpenDataSetDesigner(provider)`, **virtual**, para que las pruebas puedan observar que la orden llega al plugin.
+
+### 🧪 Validación
+
+**`DrawerDataSetDesignerEntryTests` (2 pruebas, colección `VisualSnapshots`)** — la cadena completa, de la vista al plugin:
+- **Existe y está traducida**: con la ventana principal real (`new MainWindow(mainViewModel)` sobre los view models reales), la entrada aparece en **ES y EN** con el texto del idioma activo —una clave ausente deja la etiqueta en blanco y falla—, **sin pictogramas**, con un `MaterialIcon` dentro (icono vectorial) y con su ayuda emergente traducida.
+- **Ejecuta la apertura**: el `Command` de la entrada es **la misma instancia** que `OpenSyntheticDataSetDesignerCommand` (con `ReferenceEquals`: un botón con cualquier otro comando fallaría), al ejecutarla el cajón se cierra, llega un proveedor de acción y el identificador pedido es `OpenDataSetDesigner`, una acción **declarada por el propio nodo** `SyntheticDataSourceNode`. La parte final —que el nodo abra su ventana con un view model conectado— la cubre `WindowActivationContractTests`.
+
+**Comprobación por mutación (tres rondas)**: renombrando el `x:Name` de la entrada fallan las dos pruebas señalando la entrada ausente; apuntando el botón a `OpenWorkflowSettingsCommand` falla la prueba de apertura citando el comando equivocado (y sigue pasando la de traducción, que no depende de él); restaurando el enlace, todo en verde.
+
+**Superficie nueva con línea base**: `AppSurface.Drawer` en la muestra visual (la ventana real con el cajón desplegado) y captura `app-shell-drawer-dark` (1340×850, 5 685 colores, 81,6 % de tinta). Se añadió `IsMenuOpen = false` a `EnsureFrozen` para que el estado del cajón no dependa del orden en que corran las capturas de la clase. Evidencia de que la captura no es un lienzo plano: difiere de la del shell cerrado en un 22,7 % de los píxeles, con más cambio a la izquierda (25 %) que a la derecha (12 %), que es el perfil del panel desplegado sobre su fondo atenuado.
+
+**Resultado**: `dotnet test` → **1134 superadas + 1 omitida de 1135 en 1 m 10 s**; build de la solución **0 advertencias / 0 errores**; arranque real de 15 s sin salida por consola y **0 bytes** de crecimiento en `crash.log`.
+
+### 📌 Notas para la siguiente sesión
+
+- El cajón y la barra de control comparten orden: `OpenVirtualFileSystemExplorer` abre una ventana con datos de la última ejecución y avisa por diálogo cuando no los hay —es el patrón a seguir para futuras entradas—.
+- Sigue sin guardia equivalente el caso simétrico: **UserControl** con enlaces que se construye sin `DataContext` en algún punto de apertura.
+
+## [2026-09-20] - Diseñador de Datasets Sintéticos Inerte: la Ventana se Abría sin View Model (Hito 165)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**: la ventana del diseñador de datos sintéticos «se abre pero no hay datos ni se pueden editar ni crear nuevos».
+
+Es el **mismo patrón de fallo que el Theme Studio** (Hito 163) y esta vez en un plugin: el diseñador se construía con `new SyntheticDataSetDesignerWindow()` —desde el nodo `SyntheticDataSourceNode` (`ExecuteCustomAction`) y desde `AdvancedRenamerEditorViewModel`— y la ventana **no creaba ningún `DataContext`** (la única asignación vivía en la sobrecarga `SyntheticDataSetDesignerWindow(viewModel)`, que nadie llamaba). Sin `DataContext` ningún `{Binding}` del XAML resuelve y el síntoma es exactamente el reportado:
+
+| Lo que se ve | Lo que pasaba |
+| :--- | :--- |
+| La ventana se abre | El XAML carga; el fondo, los `Classes` y los textos con `Source=` explícito sí resuelven |
+| **No hay datos** | `ItemsSource="{Binding FilteredDataSets}"` no resuelve → catálogo vacío; `SelectedDataSet` nulo → el editor muestra «selecciona un dataset» |
+| **No se puede editar ni crear** | Todos los botones salen con `Command == null` (`SaveCommand`, `NewDataSetCommand`, `AddFileCommand`…) |
+
+**Por qué el suite no lo veía**: la única prueba del diseñador era una **captura visual con el view model inyectado a mano** (`ModalVisualFixture`), es decir, justo el camino que la aplicación **no** usaba. El camino real de apertura no tenía cobertura.
+
+**Estado de partida del árbol**: el proyecto de tests **no compilaba** (4 aserciones seguían pidiendo `IconGlyph`, el emoji que el Hito anterior sustituyó por `IconKind` vectorial), así que los tests del diseñador que se habían escrito en la misma tanda nunca llegaron a ejecutarse; dos de ellos, además, no eran correctos (ver Validación).
+
+### 🛠️ Solución e Implementación
+
+1. **La ventana garantiza su view model** (`SyntheticDataSetDesignerWindow.axaml.cs`): `OnOpened` crea `new SyntheticDataSetDesignerViewModel()` **sólo si nadie lo inyectó**. Se resuelve al abrir y no en el constructor para que quien sí lo inyecta (pruebas, capturas) no construya uno de descarte. La red de seguridad vive en la ventana porque los puntos de apertura son varios (nodo y renamer avanzado) y cualquiera de ellos puede olvidarla.
+2. **El nodo y el renamer no cambian**: siguen abriendo con el constructor sin argumentos; ahora eso es suficiente.
+3. **Restauración del proyecto de tests**: las 4 aserciones pasan a comprobar el **icono vectorial** (`MaterialIconKind.Movie`, `ZipBox`, `FileDocument`, `Image`) en lugar del emoji.
+
+### 🧪 Validación
+
+**`WindowActivationContractTests` (3 pruebas, colección `VisualSnapshots`)**:
+- **La ventana se defiende sola**: `new SyntheticDataSetDesignerWindow()` + `Show()` (el camino real) debe producir view model, catálogo con datasets oficiales, dataset seleccionado con sus elementos y **ocho comandos resueltos**.
+- **Render contra el view model inyectado**: cabecera, catálogo, propiedades e inspector presentes y traducidos; **un** `TreeView` alimentado por el view model y las tres pestañas (árbol, DSL, JSON) con su cabecera localizada.
+- **Lint de repositorio**: toda ventana con enlaces contra el `DataContext` que se construya **sin argumentos** debe garantizar ese contexto al abrirse (`OnOpened` + `DataContext = new …`) o bien que su constructor sin parámetros **delegue** (`: this(…)`) en otro que lo asigne. El lint distingue los enlaces que **no** dependen del `DataContext` (los de `Source=`, `$parent`, `RelativeSource`, y los de plantillas de elementos, que se resuelven contra el elemento): por eso el gestor de presets de media —escrito contra controles nombrados— no entra, y el diseñador sí.
+
+**Comprobación por mutación (dos, y una de ellas salvó al propio lint)**:
+- Comentando el `DataContext = new …` de `OnOpened`, el lint falla nombrando `FileFlow.Plugin.FileSystem/Nodes/Sources/SyntheticDataSourceNode.cs: new SyntheticDataSetDesignerWindow()`. **La primera versión del lint no lo detectaba**: el tramo de texto entre el constructor sin parámetros y su llave se acotaba con `\s\S`, de modo que cruzaba el cuerpo del primer constructor y llegaba hasta el `: this(…)` de **otra** sobrecarga, dando por buena una ventana rota. La mutación destapó el falso negativo; el tramo ahora se acota con `[^{]`. Arreglo restaurado.
+
+**Medición en la aplicación real** (no en el host de pruebas), con una sonda temporal ya retirada que abría el diseñador **por la vía de la aplicación** (tipo del nodo desde `PluginLoader` + `NodeCustomActionContext`, exactamente como el inspector):
+
+```
+ventana=SyntheticDataSetDesignerWindow  DataContext=SyntheticDataSetDesignerViewModel
+catalogo=7 builtIn=7   seleccionado='Cómics y Manga (Oficial)' items=40 arbol=1
+comandos: guardar=True nuevo=True duplicar=True anadirArchivo=True
+estado='Dataset 'Cómics y Manga (Oficial)' cargado.'
+tras Nuevo -> catalogo=8 seleccionado='Nuevo Conjunto de Pruebas' items=3 arbol=3  estado='Nuevo dataset creado con éxito.'
+tras AñadirArchivo -> items=4 arbol=3
+```
+
+Es decir: **la aplicación real crea su view model, carga los 7 datasets oficiales, selecciona uno con 40 elementos y crea y edita**. La carpeta del perfil que la sonda dejó con un dataset de prueba se restauró a su estado original (vacía).
+
+**Línea base nueva**: `modal-synthetic-data-designer-dark.png` (1240×820, 2 296 colores, 53,6 % de tinta) para el diseñador **rediseñado**: el modal no tenía captura porque el proyecto de tests no compilaba desde el rediseño. Se bendijo tras revisarla, junto con las cinco pendientes de los hitos anteriores.
+
+**Resultado**: `dotnet test` → **1131 superadas + 1 omitida de 1132 en 1 m 2 s**, con las dos comprobaciones de mutación en rojo y restauradas; build de la solución **0 advertencias / 0 errores**; arranque real de 15 s sin salida por consola y con **0 bytes** de crecimiento en `crash.log`.
+
+### 📌 Notas para la siguiente sesión
+
+- `ControlBarViewModel.OpenSyntheticDataSetDesigner` y las claves `Drawer_DataSetDesigner` / `Drawer_DataSetDesignerToolTip` existen pero **no están enlazadas en ninguna vista**: hoy el diseñador sólo se alcanza desde la acción personalizada del nodo de origen y desde el renamer avanzado. Falta la entrada del drawer (sección «Paneles y Herramientas»).
+- La regla del lint cubre ventanas; los **UserControl** con enlaces abiertos por constructor siguen sin guardia equivalente.
+
+## [2026-09-20] - Pestañas de Ajustes Desaparecidas: Preferencias Guardadas sin Interfaz (`WorkflowSettingsWindow`, `AiModelManagerView`, i18n) (Hito 164)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**: en la ventana de ajustes **faltaban pestañas**, entre ellas la de **descarga de modelos de IA**.
+
+Medido, no supuesto: el view model mantenía estado para **seis** secciones y el XAML declaraba **tres**:
+
+| Sección | Estado del view model | Pestaña en la ventana |
+| :--- | :--- | :--- |
+| Almacenamiento & Rutas | Sí (y con la limpieza temporal **no expuesta**) | ✅ (parcial) |
+| Apariencia & UI (toolbox compacto, auto-scroll, líneas de consola) | Sí | ❌ **faltaba** |
+| Rendimiento & Ejecución (hilos, modo prueba, nivel de log, checkpoints, descarga de sesiones IA) | Sí | ❌ **faltaba** |
+| Herramientas Externas (4 rutas de ejecutables + auto-detección) | Sí | ❌ **faltaba** |
+| Modelos de IA (gestor completo de descargas) | Sí (`AiModelManager`) | ❌ **faltaba** |
+| Actualizaciones | Sí | ✅ |
+
+Y el fallo tenía una segunda mitad silenciosa: la pestaña «General» pedía `Path=[Settings_TabGeneral]`, una clave que **no existe en ningún diccionario**. El indexador de `LocalizationManager` devuelve cadena vacía ante una clave ausente (no es un fallo de enlace), así que `FallbackValue` **no entra en juego**: la cabecera se pintaba **en blanco** y nunca cambiaba de idioma.
+
+**El gestor de modelos de IA no era alcanzable desde ninguna parte**: `AiModelDownloadDialog` (la única vista del gestor) **no tenía un solo llamador** en la aplicación, y además enlazaba miembros inexistentes del view model (`SizeText`, `IsInstalled`, `DownloadCommand`, `DeleteCommand`). Con los enlaces compilados desactivados (`AvaloniaUseCompiledBindingsByDefault=false`) eso no falla: deja la lista **sin tallas, sin estado y con botones mudos**. Por eso el suite no lo veía: la única prueba del diálogo lo capturaba con datos sembrados y nadie comparaba sus enlaces con el view model real.
+
+**Barrido del resto de la interfaz**: el mismo lint encontró **23 claves** referenciadas con `Path=[clave]` que no existían en ningún diccionario del repositorio — 22 del host (pestañas y telemetría del inspector, panel de métricas completo, distintivos del previsualizador, «Añadir Nodo…», botón Aceptar de Acerca de) y 1 del plugin de IA (`VlmConfig_TabTester`, cuando la clave real y ya traducida era `VlmConfig_TabSampleTest`). Todas eran etiquetas **en blanco** en la aplicación. Además, `Metrics_ExportCSV` era una variante por mayúsculas de la existente `Metrics_ExportCsv`: duplicado para el compilador de recursos (MSB3568) y, en tiempo de ejecución, enlace inexistente.
+
+### 🛠️ Solución e Implementación
+
+1. **Juego completo de pestañas** en `WorkflowSettingsWindow.axaml`: las seis secciones, con **icono vectorial** (`MaterialIcon`) y etiqueta localizada en la cabecera, y el `TabControl` con `x:Name="SettingsTabs"` (ancla estable para el contrato y para las capturas por pestaña). La pestaña de almacenamiento recupera además la limpieza temporal que el view model ya persistía (`AutoCleanIntermediateTempFiles`, `CleanStaleTempOnStartup`, `CleanTemporaryFilesNowCommand`).
+2. **`AiModelManagerView` (nueva pieza compartida)**: la lista de modelos pasa a un `UserControl` que usan **la pestaña de ajustes y el asistente de descarga** (que ahora sólo la envuelve). Sus enlaces son los reales del view model: estado instalado/descargado con icono, talla esperada y tamaño en disco, categoría, distintivo de URLs propias, **barra de progreso por modelo** con su texto, error por modelo, y las tres acciones (descargar / configurar URLs / eliminar) con su comando del gestor. Los comandos de plantilla se enlazan por `$parent[UserControl].DataContext.X` en lugar del castellano con tipo `((vm:…)DataContext)`: esa conversión exige resolver el tipo dentro de una plantilla diferida y lanzaba `Unable to resolve type vm:AiModelManagerViewModel` al medir la ventana (lo cazó la captura).
+3. **Nivel de registro data-driven**: nuevo `LogLevels` (`SelectorOption` con código `Debug`/`Information`/`Warning`/`Error`) y traducción de la preferencia guardada, siguiendo el patrón del selector de idioma y canal: un valor fuera de la lista dejaría el campo en blanco **y** el control escribiría `null` encima de la preferencia al aceptar. Dos miembros de apoyo en los view models: `AiModelManagerViewModel.HasModels` (estado vacío explícito) y `AiModelItemViewModel.CustomUrlsLabel` (aviso de URLs propias con su recuento, localizado).
+4. **Iconografía y traducción**: las claves que la ventana pinta pierden el emoji (el icono es vectorial, como el resto de la interfaz) y se añaden las que faltaban (`Settings_CancelBtn` no hacía falta: existe `Common_Cancel`); **22 claves recuperadas** en `Strings.resx`/`Strings.es.resx` y la referencia del plugin corregida a su clave existente; 5 claves nuevas del gestor (`AiModelManager_BtnConfigureUrls`, `CustomUrlsBadge`, `LastErrorTitle`, `EmptyState`).
+
+### 🧪 Validación
+
+**`SettingsTabsCoverageTests` (9 pruebas)**:
+- **Pestañas**: el `TabControl` declara exactamente las seis secciones; cada cabecera se resuelve en **español y en inglés** contra su clave (una cabecera en blanco falla) y **no contiene pictogramas**.
+- **Cuerpos**: para cada pestaña se recorre su árbol lógico buscando el **texto testigo** de su sección (`Settings_DefaultThemeTitle`, `Settings_ParallelCpuTitle`, `Settings_FfmpegLabel`, `AiModelManager_HeaderTitle`…): «la pestaña está» significa además que pinta lo que promete.
+- **Ajustes**: lista curada de las **24 preferencias persistentes** y su enlace obligatorio (incluido `AiModelManager`): borrar una pestaña falla nombrando la preferencia huérfana.
+- **Enlaces**: cada camino `{Binding …}` de la ventana y del gestor se valida por reflexión contra el tipo de su `x:DataType` (incluidos los de las plantillas y los `$parent[…].DataContext.X`), que es lo único que ve un enlace roto con los enlaces compilados desactivados.
+- **Claves de recursos (lint de repositorio)**: todo `Path=[clave]` de cualquier `.axaml` debe existir en algún diccionario, y se nombran también las **variantes por mayúsculas** (duplicado MSB3568).
+- **Evidencia por píxel**: cada superficie de ajustes se captura y se exige cuerpo pintado (medido: **1 685–2 478 colores** y **32,7 %–49,5 % de tinta** por pestaña; el umbral es 200 colores / 15 %).
+
+**Comprobación por mutación (tres, guardias no vacías)**:
+- `Path=[Settings_TabGeneral]` en la cabecera de IA → fallan el lint de claves (nombrándola) y la prueba de cabeceras.
+- `Text="{Binding SizeText}"` en el gestor → falla la prueba de enlaces citando propiedad y tipo (`'SizeText' no existe en AiModelManagerViewModel`).
+- Sustituir el gestor embebido por un `Border` vacío → fallan las dos pruebas de sección: `Sin control: AiModelManager` y «el cuerpo de la pestaña 4 … no aparece el texto testigo».
+
+Arreglos restaurados tras cada comprobación.
+
+**Líneas base visuales**: cuatro capturas nuevas (una por cuerpo de pestaña: `modal-settings-appearance|performance|external-tools|ai-models-dark`) y regeneradas las que **legítimamente** cambian por las etiquetas recuperadas — `modal-about-*` (botón Aceptar), `modal-multimodal-vlm-dark` (pestaña del probador), `app-shell-*`, `panel-inspector-dark` y las modales. La causalidad se comprobó, no se supuso: restaurando los `.resx` de `HEAD` el shell y el inspector **vuelven a pasar** contra las líneas base antiguas (el diff de `app-shell-dark` se concentra en x 993..1327, precisamente la columna del inspector cuyas etiquetas estaban en blanco).
+
+**Resultado**: suite completa **1128 superadas + 1 omitida de 1129 en ~31 s**; build **0 advertencias / 0 errores** (el duplicado `Metrics_ExportCSV` desaparece al apuntar el XAML a `Metrics_ExportCsv`); arranque real de la aplicación **14 s vivo** sin salida por consola y **sin una sola entrada nueva** en `crash.log`.
+
+### 📌 Reglas Aprendidas
+
+1. **Una sección de ajustes sin pestaña es una preferencia que el usuario no puede cambiar**: cada propiedad persistente necesita su enlace en la ventana y una prueba que lo exija por nombre.
+2. **Una clave de recurso inexistente no falla, deja la etiqueta en blanco** (el indexador devuelve cadena vacía; `FallbackValue` no interviene). El lint de repositorio es la única red que lo ve: la comprobación debe ser **exacta** (una variante por mayúsculas es duplicado y no resuelve).
+3. **Con los enlaces compilados desactivados, un camino de enlace inválido se valida por reflexión contra el `x:DataType`**: es la guardia que convierte «el control parece estar» en «el control está conectado».
+
+---
+
+## [2026-09-20] - Theme Studio Inerte: la Ventana se Abría sin View Model (`ThemeCustomizerWindow`, `ControlBarViewModel`) (Hito 163)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**: el diálogo de personalización de temas **no mostraba los temas predefinidos** y no se podía **crear, editar ni hacer nada** en él.
+
+**Causa raíz (única, medida leyendo el camino real de apertura)**: `ControlBarViewModel.OpenThemeCustomizer` abría la ventana con `new ThemeCustomizerWindow()` **sin asignarle `DataContext`**, y el constructor de la ventana tampoco creaba ninguno. Sin `DataContext`, ningún `{Binding}` del XAML resuelve contra nada:
+
+| Elemento del estudio | Estado real al abrirse |
+| :--- | :--- |
+| Lista de temas (`ItemsSource="{Binding AvailableThemes}"`) | **Vacía** — «no muestra los temas predefinidos» |
+| Editor por secciones (`Sections`, generado del catálogo) | **Sin generar** |
+| Botones nuevo / duplicar / eliminar / importar / exportar / aplicar | `Command == null` → **al pulsarlos no ocurre nada** |
+
+**Por qué el suite no lo detectó** (el dato clave): *todas* las pruebas del estudio —incluidas las capturas visuales, el contrato visual y la auditoría de desplegables— construyen la ventana **inyectándole el view model a mano** (`new ThemeCustomizerWindow { DataContext = new ThemeCustomizerViewModel(...) }`), que es precisamente lo que la aplicación **no** hacía. El camino de apertura real no tenía una sola prueba.
+
+### 🛠️ Solución e Implementación
+
+1. **La ventana garantiza su view model** — `ThemeCustomizerWindow.axaml.cs`: nuevo `OnOpened` que, si nadie inyectó `DataContext`, crea el view model por defecto. Se resuelve **al abrir** y no en el constructor para que quien sí lo inyecta (pruebas, capturas, barra de control) no pague un view model de descarte. El estudio deja de poder abrirse inerte, venga la apertura de donde venga.
+2. **La barra de control entrega el estudio ya conectado** — `ControlBarViewModel`: `CreateThemeStudio()` (virtual, para que las pruebas observen la ventana abierta) construye la ventana con `new ThemeCustomizerViewModel(catálogo, diálogos)`. Además se inyecta el **catálogo de temas** (`CustomThemeService`, por defecto el singleton) en lugar de tomarlo a pelo dentro del método: así `LoadAvailableThemes` y el estudio leen la **misma** fuente, y las pruebas pueden aislarla en un fichero temporal.
+3. **El menú se sincroniza al cerrar el estudio** — la actualización estaba **al abrir** la ventana (momento en el que el estudio aún no ha hecho nada, así que era inútil). Ahora se engancha a `Closed`: `SyncThemeSelectionWithAppliedTheme()` recarga el catálogo y selecciona el tema **realmente aplicado**. Sin esto, aplicar un tema desde el estudio dejaba el selector del menú mostrando el anterior y un tema recién creado no aparecía hasta reiniciar.
+4. **El constructor sin argumentos resuelve los diálogos de la aplicación** (`App.Services` → `NullDialogService`): el estudio abierto por su cuenta no puede quedarse con el doble nulo, o eliminar un tema no pediría confirmación y un error al importar/exportar no se le contaría a nadie.
+
+### 🧪 Validación
+
+- **`ThemeStudioOpenPathTests` (6 pruebas, colección exclusiva `VisualSnapshots`)**, todas ejercitando el camino real de apertura:
+  - **Ventana sin view model** → debe abrirse con catálogo de temas, secciones del editor generadas y **al menos 6 botones con comando resuelto** (dos pruebas: la del view model y la de la lista de temas enlazada).
+  - **View model inyectado se respeta** (la red de seguridad no pisa a quien trae el suyo).
+  - **Apertura desde la barra de control** (`OpenThemeCustomizerCommand`) → el estudio llega con su view model y sus temas.
+  - **Sincronización del menú**: crear un tema dentro del estudio y aplicarlo, cerrar la ventana y exigir que el menú **liste** el tema nuevo y su selector lo muestre seleccionado (con el tema previo restaurado al terminar: es estado global del proceso).
+  - **Caso límite (auto-sanación)**: aplicar un tema propio y **borrarlo acto seguido** desde el estudio; al cerrar, el selector del menú no puede quedarse con un identificador inexistente (campo en blanco): vuelve al último válido, lo **reaplica** y el tema activo del proceso coincide con lo que muestra el menú.
+- **Comprobación por mutación (dos mutaciones, guardias no vacías)**:
+  - Comentando el `DataContext` de `OnOpened` fallan 2 de las 6 (`…ShouldOpenWithAWorkingViewModel…` por `BeOfType` y la del catálogo), mientras que la apertura desde la barra de control sigue pasando —evidencia de que la red de seguridad de la ventana y la inyección de la barra de control se cubren por separado—.
+  - Comentando el enganche `studio.Closed → SyncThemeSelectionWithAppliedTheme()` fallan las 2 pruebas de sincronización, incluidas la del tema borrado.
+  - Arreglos restaurados tras cada comprobación.
+- **Suite completa (`dotnet test`)**: **1119 superadas + 1 omitida de 1120 en ~32 s**; build **0 advertencias / 0 errores**; ninguna línea base visual modificada; arranque real de la aplicación de 14 s sin salida por consola; el registro de incidentes recibió **80 bytes** (una línea de «fallo de red esperado» contra `localhost:1234` más el resumen de repeticiones suprimidas) en lugar de las ~100 entradas completas que habría escrito antes del contenedor del hito 159.
+
+---
+
+## [2026-09-20] - Auditoría de Todos los Desplegables: Valor Visible y Selección Efectiva (`ThemeChoiceRowViewModel`, `NodeParameterViewModel`, `MediaPresetManagerWindow`) (Hito 162)
+
+### 🎯 Alcance y Método
+
+Continuación del hito 161: si el mismo defecto (un `ComboBox` que **no muestra** su valor activo y **no escribe** al elegir) había aparecido en cuatro sitios distintos, había que revisar el resto. Se inventariaron los **25 desplegables** de las vistas de la aplicación y de los plugins (excluyendo los `ControlTheme` de `Styles/`) y se clasificaron por patrón de enlace:
+
+| Vista / ventana | Desplegables | Patrón | Veredicto |
+| :--- | :---: | :--- | :--- |
+| `MainWindow` (menú) | 2 | `SelectorOption` (hito 161) | ✅ corregidos |
+| `WorkflowSettingsWindow` | 4 | `SelectorOption` / objeto | ✅ corregidos |
+| `NodeParameterTemplates` + `NodeInspectorPanelView` | 4 | objeto + `UpdateOptions` | ⚠️ **hueco real** (ver abajo) |
+| `NodeToolboxView` (categorías) | 1 | objeto (`ToolboxCategoryFilterItem`) | ✅ correcto |
+| `ThemeCustomizerWindow` (Theme Studio) | 1 | cadena + `Options` del catálogo | ❌ **en blanco** (ver abajo) |
+| `ScriptStudioWindow` (plugin) | 2 | `x:String` / objeto | ✅ correcto |
+| `AdvancedRenamerEditorWindow` (plugin) | 10 | **enumerados tipados** | ✅ correcto |
+| `MediaPresetManagerWindow` (plugin) | 1 | `ComboBoxItem` + code-behind | ❌ **en blanco + dato sobrescrito** |
+
+Los desplegables de `AdvancedRenamerEditorWindow` ya usaban el patrón correcto (`ItemsSource` = valores del enumerado, `SelectedItem` = el valor del paso): el valor **es** uno de los elementos, así que no puede quedar fuera de la lista. Se documentan como referencia y la auditoría no los toca.
+
+### 🎯 Fallos encontrados y corregidos
+
+1. **Theme Studio: la tipografía de la interfaz aparecía en blanco.** Las opciones del catálogo son familias sueltas (`Segoe UI`, `Inter`, `Roboto`…) y un tema guarda la **pila completa** (`Segoe UI Variable Text, Segoe UI, sans-serif`). Ningún elemento casaba con el valor → el campo salía vacío y parecía que el tema no tuviera tipografía. Medido antes del arreglo: `tema dark_fluent, fila 'Familia tipográfica de la interfaz', valor='Segoe UI Variable Text, Segoe UI, sans-serif', enOpciones=False`. **Corrección**: `ThemeChoiceRowViewModel` construye sus opciones con el valor actual del tema incluido cuando el catálogo no lo ofrece (como primera opción, para poder volver a él).
+2. **Parámetros de nodo: un valor que llegaba después del catálogo se perdía.** `UpdateOptions` ya inserta el valor actual cuando cambian las opciones (al construir el nodo), pero cualquier escritura **posterior** (cargar un flujo guardado con otras opciones, pegar un nodo, deshacer) dejaba el parámetro fuera de la lista: campo en blanco y, al elegir, `null` sobre el parámetro. **Corrección**: `NodeParameterViewModel.EnsureValueIsSelectable()` se ejecuta al cambiar el valor y añade el valor actual a las opciones (los desplegables editables quedan fuera: allí el valor es texto libre y se muestra en su caja).
+3. **Gestor de presets de media: categoría en blanco y dato sobrescrito.** La categoría se seleccionaba buscando el texto del preset entre elementos fijos (`Audio`, `Video`, `Animation`, `Custom`); con cualquier otra categoría el desplegable quedaba vacío y, **al guardar, la categoría del preset se sustituía en silencio por «Video»**. **Corrección**: la categoría del preset se añade a la lista si no está, y al guardar nunca se inventa un valor (se usa lo seleccionado o, como respaldo, la categoría del propio preset).
+
+### 🧪 Validación
+
+- **`SelectorAuditTests` (5 pruebas)**, en la colección exclusiva `VisualSnapshots`:
+  - **Barrido del catálogo real de nodos**: se construye cada tipo de nodo de los plugins (filtro `FileFlow.Plugin.*`, porque el cargador de las pruebas registra además nodos falsos del propio suite) y se exige que cada parámetro con desplegable **ofrezca su valor actual** y que un valor heredado (`heredado-sin-opcion`) se añada a la lista al escribirlo después. Cubre ~150 nodos sin una prueba por nodo.
+  - **Theme Studio (VM)**: para **cada tema integrado**, cada fila de elección contiene su valor entre las opciones.
+  - **Theme Studio (UI)**: los desplegables reales tienen selección visible y muestran el valor de su fila.
+  - **Theme Studio (escritura)**: elegir otra tipografía la escribe en el tema en edición (`EditingTheme.FontFamily`).
+  - **Gestor de presets**: el desplegable de categoría muestra la del preset seleccionado (sin campo en blanco).
+- **Comprobación por mutación (la guardia no es vacía)**: desactivando el arreglo del Theme Studio fallan las dos pruebas correspondientes (`EveryThemeChoiceRow_…` con el nombre del tema y la fila, y `TheStudioChoiceSelectors_…` por falta de selección); desactivando `EnsureValueIsSelectable` falla el barrido señalando `FileFlow.Plugin.AI.BackgroundRemoverNode.Model`. Sondas retiradas tras la comprobación.
+- **Suite completa (`dotnet test`)**: **1113 superadas + 1 omitida de 1114 en ~31 s**, verde en **3 ejecuciones consecutivas**; build **0 advertencias / 0 errores**; ninguna línea base visual modificada (los arreglos hacen visible lo que ya estaba configurado, no cambian el aspecto por defecto); arranque real de 10 s sin salida ni excepciones.
+
+---
+
+## [2026-09-20] - Selectores del Menú: Campos en Blanco e Idioma Inerte (`SelectorOption`, `LanguageCatalog`, `ThemeManager.ResolveThemeId`, `ControlBarViewModel`) (Hito 161)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**:
+En el menú lateral, los campos **«Tema visual»** e **«Idioma»** permanecían **en blanco**. El tema funcionaba (se aplicaba el guardado) y el idioma se podía seleccionar pero **no actuaba**.
+
+**Medición (sondas headless, no teoría)** — una sonda temporal que montaba la `MainWindow` real e inspeccionaba los desplegables:
+
+1. **El valor de los cuatro desplegables viajaba en el `Tag` del contenedor** (`<ComboBoxItem Tag="es-ES">Español</ComboBoxItem>`) con `SelectedValueBinding="{Binding Tag, RelativeSource={RelativeSource Self}}"`. Ese enlace **no resuelve**: el control quedaba con `SelectedIndex=-1` (campo en blanco) y, al elegir una opción, escribía `null` de vuelta al view model, donde moría en el `if (string.IsNullOrWhiteSpace(value)) return;`. Medido: tras elegir «English», `VM.SelectedLanguage=''` → **nada ocurría**. Afectaba a los cuatro selectores: idioma del menú, idioma, **estrategia de conflicto** y **canal de actualización** de los ajustes de flujo (este último nunca llegaba a cambiar de canal).
+2. **El identificador guardado del tema no existe en el catálogo**: las preferencias antiguas guardan `"ActiveTheme": "Dark"` mientras el catálogo usa identificadores propios (`dark_fluent`, `light_studio`…). Ningún elemento casaba con el valor guardado → campo en blanco (el tema sí se aplicaba, por eso el fallo pasaba inadvertido). Lo mismo con el idioma de la máquina del usuario, que tenía **`"Language": null`** —el propio enlace roto había borrado la preferencia—.
+3. **Causa estructural (la que hacía el campo blanco incluso con una preferencia válida)**: al mostrar la ventana, el enlace del desplegable guardaba preferencias → `PreferencesChanged` → `SyncFromPreferences` → `LoadAvailableThemes()` (vaciar y rellenar). Esa reconstrucción ocurría **dentro de la propia actualización de selección del `ComboBox`**, y Avalonia lanzaba `InvalidOperationException: Source collection was modified during selection update`; la excepción dejaba la lista **con 0 temas** (`AvailableThemes=0` medido justo después de `Show()`) y el desplegable en blanco para siempre.
+4. **El control borra el estado al desmontarse**: medido con dos ventanas seguidas — `Tras cerrar la ventana: VM.Language='' VM.Theme=''` —. Un `ComboBox` atado por valor escribe `null` cuando no encuentra su valor entre los elementos (al montarse, al desmontarse o si el valor guardado ya no existe), de modo que **el view model perdía el idioma y el tema activos** (y con ellos la preferencia, en cuanto algo llamaba a `Save()`).
+
+### 🛠️ Solución e Implementación
+
+1. **Opciones tipadas para los selectores (`SelectorOption`, `LanguageCatalog`)** — `FileFlow.App/Models/AppModels.cs`: un desplegable necesita un **valor** al que atarse (`Code`) y un **texto** que mostrar (`DisplayName`), no la etiqueta visible del contenedor. `LanguageCatalog.Resolve` traduce la cultura guardada a una opción existente (tolerante: `es` → `es-ES`) o devuelve `null` si el idioma ya no se ofrece.
+2. **Selectores data-driven** — `MainWindow.axaml` (idioma) y `WorkflowSettingsWindow.axaml` (idioma, estrategia de conflicto y canal de actualización) pasan a `ItemsSource` + `SelectedValueBinding="{Binding Code}"` + `DisplayMemberBinding="{Binding DisplayName}"`. Los textos de conflicto y canal se resuelven con el idioma activo al abrir la ventana (`LoadConflictStrategies`, `LoadUpdateChannels`), y su preferencia guardada se normaliza antes de asignarla (un valor desconocido dejaría el campo en blanco y **borraría la preferencia** al aceptar).
+3. **Identificadores heredados del tema (`ThemeManager.ResolveThemeId`, `DefaultThemeId`, `SystemThemeId`)** — Traduce `"Dark"`/`"light"`/`"pastel"`… al identificador real del catálogo (o `null` si no corresponde a ningún tema) y es la **única** fuente de la tabla `AppTheme → id`. `SetThemeById` la usa; `App.ApplySavedTheme` normaliza y **reescribe la preferencia una sola vez** (deja de arrastrar el valor heredado); `App.LoadPreferences` hace lo propio con el idioma (`"Language": null` → `es-ES`).
+4. **La barra de control muestra lo que está aplicado y no pierde el estado (`ControlBarViewModel`)** — `ResolveSelectableThemeId` devuelve siempre un identificador **presente en la lista** (manda el tema realmente aplicado, después la preferencia traducida) y los `OnSelected*Changed` llevan una **red de seguridad**: un valor que no esté en el catálogo (incluido el `null` que devuelve el control al desmontarse) restaura el último válido y vuelve a pintar el campo, en lugar de dejar el idioma/tema en blanco.
+5. **La lista de temas ya no se reconstruye al guardar preferencias** — `LoadAvailableThemes` sólo toca la colección si su contenido cambió (idempotente) y se carga **en el constructor** y al abrir el Estudio de Temas, no dentro de `SyncFromPreferences`: era el disparador del `InvalidOperationException` que vaciaba la lista. Elimina además medio centenar de `Clear`+`Add` innecesarios por cambio de preferencias.
+
+### 🧪 Validación
+
+- **Guardias del contrato de los selectores (`SelectorBindingGuardTests`, 6 pruebas)**: el desplegable de tema **muestra el tema aplicado** (`SelectedIndex ≥ 0`, `SelectedValue` = tema activo y nombre visible); el de idioma muestra el idioma activo; **elegir otro idioma cambia la cultura, persiste la preferencia y retraduce la interfaz en caliente** (testigo: el texto del propio panel del menú, con textos distintos por idioma); los cuatro selectores de los ajustes de flujo muestran su valor almacenado; `ResolveThemeId` traduce todos los identificadores heredados y **todo identificador del catálogo resuelve a sí mismo**; y un **lint de XAML** falla si un desplegable vuelve a llevar su valor en el `Tag` de un `ComboBoxItem` o a usar un `SelectedValueBinding` con `RelativeSource`.
+- **Carrera de colecciones descubierta y corregida**: al ejecutar el suite completo, `theme-studio-dark` fallaba de forma **intermitente (~14 % de píxeles, previsualización en claro)**. Bisectado con filtros hasta `ThemeVariantPropagationTests`, que **aplicaba temas al `ThemeManager` desde la colección paralela `ThemeTokens`** mientras las capturas headless renderizaban el tema activo. Se movió a la colección exclusiva `VisualSnapshots` (como se hizo con la cultura en 2026-09-16) y se añadió la regla `ActiveTheme` al analizador del contrato (`TestCollectionContractGuardTests`): aplicar un tema desde una colección paralela falla ahora en el fichero culpable.
+- **Aplicación real**: build `0 advertencias / 0 errores`; arranque de 12 s sin salida ni excepciones; las preferencias del usuario pasan de `"Language": null` a `"es-ES"` (reparación automática verificada en el perfil real).
+- **Suite completa (`dotnet test`)**: **1108 superadas + 1 omitida de 1109 en ~32 s**, verde en **4 ejecuciones consecutivas** (la comprobación que descarta la carrera). Ninguna línea base visual modificada: la reparación no cambia el aspecto, sólo hace visibles los valores.
+
+---
+
+## [2026-09-20] - Arranque Visible: Ventana de Error y Prueba de Humo del Shell (`StartupOrchestrator`, `StartupFailureReporter`, `StartupErrorWindow`) (Hito 160)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**:
+Al iniciar la aplicación no se abría nada: el proceso aparecía un momento en el explorador de procesos y desaparecía sin mostrar ninguna ventana ni explicación.
+
+**Causa Raíz Identificada**:
+El arranque completo —servicios, preferencias, tema, plugins y ventana principal— vivía en un único `try` con un `catch` que registraba la excepción y volvía a lanzarla (`throw`). Cualquier fallo de cualquiera de esas fases producía el mismo síntoma: **el proceso moría sin interfaz y sin decir por qué**. Así ocurrió con el ciclo de dependencias del contenedor (`MainViewModel -> EditorViewModel -> IEditorGraphService -> …`) y con el animador inexistente de `RenderTransform` en el XAML. En ambos casos el crash log tenía la traza, pero el usuario sólo veía desaparecer la aplicación: **el fallo no era visible**.
+
+### 🛠️ Solución e Implementación
+
+1. **Arranque por etapas aisladas (`StartupPhase`, `StartupOrchestrator`)** — Siete etapas (`Resources`, `Services`, `Preferences`, `Theme`, `Plugins`, `Shell`, `Runtime`). Cada una se ejecuta por separado: si falla, el informe dice **en qué etapa** se rompió, el arranque se marca como abortado y no se ejecuta ninguna etapa posterior.
+2. **Fallo visible (`StartupFailureReporter` + `StartupFailureReport`)** — El fallo se registra (con el log acotado del hito 159) y se hace visible: la ruta del log, la etapa, la excepción y un **detalle técnico completo** (momento, entorno, versión, traza) listo para copiar a un informe. Sólo se muestra **un diálogo**: una cascada de fallos no abre una ventana por excepción. Reportar nunca puede lanzar (se ejecuta en el último recurso).
+3. **Ventana de error construida en código (`StartupErrorWindow`)** — Única vista de la aplicación **sin XAML, sin `DynamicResource`, sin contenedor de servicios y sin recursos del tema**, precisamente porque lo que ha fallado puede ser el tema, la localización o el XAML. Colores explícitos, icono vectorial y tres acciones: copiar el informe, abrir la carpeta del registro y cerrar la aplicación. `ShowFailure` es invocable desde cualquier hilo.
+4. **Salida controlada (`App.OnFrameworkInitializationCompleted`)** — Si una etapa falla, la aplicación **no vuelve a lanzar**: muestra el diálogo y se cierra con código `1` (`StartupFailureExitCode`) cuando el usuario lo cierre (`ShutdownMode.OnExplicitShutdown`). Un fallo no controlado posterior (`Runtime`) también se hace visible una sola vez, en lugar de desaparecer en silencio.
+5. **i18n completa (ES/EN)** — 22 claves nuevas del host (`Startup_Failure*`, `Startup_Details*`, `Startup_Phase_*`), con **respaldo literal** en código: la ventana de error debe seguir siendo legible cuando la etapa que falló es la de recursos.
+
+### 🧪 Validación
+
+- **Fallo real inyectado (verificación end-to-end)**: se provocó un fallo en la etapa de tema y se lanzó la aplicación → el proceso **permaneció vivo mostrando el diálogo** (en lugar de morir al instante) y el registro recibió la entrada completa con la **atribución de la etapa** (`ApplySavedTheme` ← `StartupOrchestrator.TryExecute`). Sonda retirada tras la comprobación.
+- **Guardias del arranque visible (`StartupOrchestratorTests`, 14 casos)**: el fallo se atribuye a su etapa y detiene el arranque; un arranque correcto no reporta nada; la cascada de fallos muestra **un solo** diálogo aunque todos se registren; un sink que lanza no propaga; el informe contiene etapa, momento, ruta del log, excepción y entorno; y **ninguna etapa se queda sin nombre legible** incluso sin localización.
+- **Guardias de la ventana (`StartupErrorWindowTests`, 4 pruebas)**: muestra etapa, excepción y ruta del log; el detalle copiable lleva lo necesario para informar; **se pinta sin el tema de la aplicación** (fotograma real capturado, que es lo que demuestra que el caso «sin tema» sigue siendo legible); `ShowFailure` crea y muestra la ventana, también desde fuera del hilo de UI.
+- **Prueba de humo del shell (`StartupSmokeTests`, 5 pruebas)**: la `MainWindow` de producción **se abre y se pinta** con sus seis paneles presentes una sola vez y enlazados a su view model; el catálogo de plugins se descubre con el mismo cargador del arranque y sin tipos duplicados; la caja de herramientas lista **cada tipo de nodo una sola vez** (regresión histórica de duplicado) y cada categoría una sola vez; y el grafo de ejemplo arranca con puertos tipados.
+- **Línea base visual nueva**: `modal-startup-error-dark.png` (el entorno del informe va anclado a un texto determinista para que la línea base no dependa de la máquina).
+- **Suite completa (`dotnet test`)**: **1100 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 44 s)**; 0 advertencias y 0 errores.
+
+---
+
+## [2026-09-20] - Erradicación del Flood de Excepciones No Observadas y Log de Incidentes Acotado (`CrashLogWriter`, `SafeTaskRunner`, `MultimodalVlmClientEngine` y `MultimodalVlmConfigViewModel`) (Hito 159)
+
+### 🎯 Diagnóstico y Causa Raíz
+
+**Fallo reportado**:
+El registro de incidentes `%APPDATA%/FileFlow/logs/crash.log` había alcanzado **49.257.062 bytes y 18.433 entradas**. Todas las entradas relevantes son `AggregateException` no observadas que envuelven `HttpRequestException` → `SocketException (10061)` contra **`localhost:1234`**, el endpoint por defecto de LM Studio (`vlm_providers.json`, `MultimodalVlmClientEngine`).
+
+**Medición (no teoría)**:
+- La cadencia es exacta y constante: **~350 entradas por ráfaga/sesión** (15:24, 15:26, 15:29, 15:31, 15:58, 16:00, 16:28, 16:33, 18:09…).
+- La traza de las entradas **no contiene ningún frame de `FileFlow`**: el fallo proviene de una tarea descartada cuyo stack es 100% interno de `HttpClient` (`HttpConnectionPool.ConnectToTcpHostAsync` → `HttpClient.<SendAsync>`), que es exactamente la firma de una tarea lanzada sin observar.
+- Se intentó atribuir el emisor con dos sondas temporales (`FirstChanceException` en `App.OnFrameworkInitializationCompleted` y en `Program.Main`, escribiendo el stack completo en el instante del throw): **ninguna capturó una sola excepción**, porque el flood **no se reproduce de forma determinista** — arranques en frío y suite completa terminaron sin escribir nada, mientras que una ráfaga real sí quedó registrada (18:29, ≥101 fallos idénticos). Conclusión honesta: el emisor exacto no está atribuido; lo que sí está garantizado es que **ya no puede inundar el disco**.
+
+**Fallo estructural subyacente**:
+1. El log **no tenía deduplicación, ni rotación, ni límite de tamaño**: cada `TaskScheduler.UnobservedTaskException` escribía una entrada completa con traza. Un fallo esperado (servicio local apagado) crecía sin control.
+2. El sondeo del catálogo de modelos VLM (`_ = DetectModelsForProviderAsync(...)`) se lanzaba como **tarea descartada** sin garantía de contención: cualquier fallo futuro de esa ruta quedaba a merced del finalizador.
+3. El motor VLM **reintentaba 3 veces** una conexión rechazada y no recordaba que el endpoint estaba caído, por lo que un pipeline de cientos de imágenes multiplicaba las conexiones rechazadas.
+
+### 🛠️ Solución e Implementación
+
+1. **`FileFlow.App/Services/CrashLogWriter.cs` (nuevo)** — registro de incidentes acotado con tres garantías:
+   - **Deduplicación por firma** (tipo + mensaje, sin traza) con ventana de 5 minutos; las repeticiones se cuentan y sólo se vuelca un resumen cada 100 ocurrencias.
+   - **Rotación** a `crash.log.1` al superar 2 MB (`DefaultMaxBytes`), con truncado de seguridad si la rotación falla.
+   - **Clasificación de ruido de red** (`IsExpectedNetworkNoise`): un fallo de socket/HTTP esperado se registra como **una línea informativa sin traza** en lugar de un crash con stack interno inútil; los defectos reales conservan la entrada completa.
+   - Hilo-seguro con `System.Threading.Lock`, envoltura de `AggregateException`/`TargetInvocationException` y fallback a `%TEMP%/fileflow_crash.log`.
+2. **`FileFlow.App/App.axaml.cs`** — los dos handlers (`UnhandledException` y `UnobservedTaskException`) delegan en el escritor acotado.
+3. **`FileFlow.Plugin.AI/Common/SafeTaskRunner.cs` (nuevo)** — ejecutor de tareas descartadas seguras: una acción en segundo plano nunca deja una tarea fallida sin observar; el error se entrega al llamador para reflejarlo como estado.
+4. **`MultimodalVlmConfigViewModel`** — el sondeo del catálogo queda contenido en su propia tarea (jamás escala al finalizador), y además:
+   - **Memoria de fallos por endpoint** (`ProbeFailureCooldown`, 30 s): un servidor que acaba de rechazar la conexión no se sondea de nuevo.
+   - **Una sola sonda en vuelo por endpoint**: 25 ventanas abiertas contra un servidor apagado realizan **2 peticiones en total**, no 25.
+   - Ambas salvaguardas **se ignoran ante una acción explícita del usuario** («Actualizar» / «Probar conexión»), que siempre debe intentarlo.
+   - Nueva clave de localización `VlmConfig_EndpointRecentlyUnreachable` (ES/EN).
+5. **`MultimodalVlmClientEngine`** — cortocircuito por endpoint inalcanzable (`UnreachableEndpointCooldown`, 15 s):
+   - Una conexión rechazada **no se reintenta dentro de la misma petición** (no es un error transitorio).
+   - Con el endpoint marcado como caído, las peticiones siguientes **fallan de inmediato sin abrir una conexión**, con el mismo mensaje accionable; cualquier respuesta HTTP (incluso 4xx/5xx) limpia la marca.
+
+### 🧪 Validación
+
+- **Guardia del log (nuevas `CrashLogWriterTests`, 8 pruebas)**: la ráfaga medida de **350 fallos idénticos deja el fichero por debajo de 4 KB** (1 entrada + resúmenes acotados), las excepciones distintas se registran todas, la rotación mantiene el tamaño limitado, el ruido de red no incluye traza, el fallback a `%TEMP%` funciona y las escrituras concurrentes no pierden entradas.
+- **Guardia del sondeo (nuevas `VlmEndpointFloodGuardTests`, 4 pruebas)**: una conexión rechazada produce **1 intento** (no 3) y no se repite dentro del enfriamiento; al expirar éste se vuelve a intentar; 25 ventanas contra un endpoint apagado hacen ≤2 peticiones y **no dejan ninguna tarea fallida sin observar** (verificado forzando dos ciclos de GC con `TaskScheduler.UnobservedTaskException` suscrito); tras expirar la memoria de fallo los modelos se descubren de nuevo.
+- **Efecto medido en la máquina**: el fichero histórico de 49 MB quedó rotado a `crash.log.1` y el `crash.log` nuevo contiene **475 bytes** — una línea informativa y un resumen de repeticiones suprimidas donde antes habría 350 entradas completas.
+- **Suite completa (`dotnet test`)**: **1077 pruebas superadas al 100%, 0 fallos, 1 omitida (tiempo total: 41 s)**; compilación con 0 advertencias y 0 errores.
+- **Pendiente documentado**: el emisor exacto de la ráfaga no está identificado (no se reproduce de forma determinista). Si se quiere eliminar en origen en lugar de contenerlo, el camino es instrumentar `HttpClient` por `DiagnosticListener` para registrar el emisor en la primera ocurrencia.
+
+---
+
 ## [2026-09-20] - Restauración de Grupos de Favoritos y Más Usados y Calibración de Margen de Insignias (`ToolboxViewModel` y `NodeToolboxView`) (Hito 158)
 
 ### 🎯 Diagnóstico y Causa Raíz

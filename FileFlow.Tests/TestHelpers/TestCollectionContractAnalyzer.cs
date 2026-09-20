@@ -18,7 +18,10 @@ public enum ExclusiveTestState
     RealUserPreferences,
 
     /// <summary>Sesión headless de Avalonia y su Dispatcher (helper, capturas, fixtures, UI).</summary>
-    HeadlessUiSession
+    HeadlessUiSession,
+
+    /// <summary>Tema activo del proceso y el diccionario de recursos de la aplicación (<c>ThemeManager</c>).</summary>
+    ActiveTheme
 }
 
 /// <summary>
@@ -109,7 +112,18 @@ public static class TestCollectionContractAnalyzer
                 new(@"\bHeadlessUnitTestSession\b", RegexOptions.Compiled),
                 new(@"\bDispatcher\.UIThread\b", RegexOptions.Compiled),
                 new(@"\bApplication\.Current\b", RegexOptions.Compiled)
-            ])
+            ]),
+
+        new(
+            ExclusiveTestState.ActiveTheme,
+            CanonicalCollection: "VisualSnapshots",
+            Reason: "Aplicar un tema escribe estado global de proceso: la definición activa (ThemeManager) y el " +
+                    "diccionario de recursos de la aplicación, que las capturas headless están renderizando. " +
+                    "Hacerlo desde una colección paralela cambia el tema a mitad de una captura y la " +
+                    "comparación falla en la prueba equivocada —y sólo a veces—; debe declararse la colección " +
+                    "exclusiva que confina el tema (VisualSnapshots; ver TestAssemblyParallelism.cs), que es la " +
+                    "misma que usan VisualSnapshot y las capturas para aplicarlo.",
+            Patterns: [new(@"\bThemeManager\s*\.\s*Instance\s*\.\s*SetTheme\w*\s*\(", RegexOptions.Compiled)])
     ];
 
     /// <summary>Regla de un estado: patrones que lo delatan y colección canónica que lo confina.</summary>
