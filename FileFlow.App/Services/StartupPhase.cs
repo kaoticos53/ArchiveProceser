@@ -10,6 +10,9 @@ namespace FileFlow.App.Services;
 /// </summary>
 public enum StartupPhase
 {
+    /// <summary>Pantalla de bienvenida: ventana visible mientras el resto de etapas cargan.</summary>
+    Splash,
+
     /// <summary>Registro de los recursos de texto del host (i18n) y cultura base.</summary>
     Resources,
 
@@ -48,6 +51,7 @@ public static class StartupPhaseDescriptions
     /// <summary>Texto de respaldo si la localización no está disponible.</summary>
     public static string Fallback(StartupPhase phase) => phase switch
     {
+        StartupPhase.Splash => "splash screen",
         StartupPhase.Resources => "recursos e idioma base",
         StartupPhase.Services => "contenedor de servicios",
         StartupPhase.Preferences => "preferencias del usuario",

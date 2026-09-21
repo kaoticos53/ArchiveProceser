@@ -1183,6 +1183,7 @@
   <data name="Startup_DetailsLog" xml:space="preserve"><value>Incident log</value></data>
   <data name="Startup_DetailsLogUnavailable" xml:space="preserve"><value>(unavailable)</value></data>
   <data name="Startup_DetailsEnvironment" xml:space="preserve"><value>Environment</value></data>
+  <data name="Startup_Phase_Splash" xml:space="preserve"><value>splash screen</value></data>
   <data name="Startup_Phase_Resources" xml:space="preserve"><value>base resources and language</value></data>
   <data name="Startup_Phase_Services" xml:space="preserve"><value>service container</value></data>
   <data name="Startup_Phase_Preferences" xml:space="preserve"><value>user preferences</value></data>
@@ -1190,6 +1191,22 @@
   <data name="Startup_Phase_Plugins" xml:space="preserve"><value>plugin loading</value></data>
   <data name="Startup_Phase_Shell" xml:space="preserve"><value>main window (XAML)</value></data>
   <data name="Startup_Phase_Runtime" xml:space="preserve"><value>runtime</value></data>
+
+  <!--
+    Splash screen. Shown while the startup phases run; the fallbacks live in App.axaml.cs because the
+    splash must stay readable even if the resource stage itself failed (that is exactly what it reports).
+  -->
+  <data name="Splash_StatusLocalization" xml:space="preserve"><value>Starting localization and services...</value></data>
+  <data name="Splash_StatusServices" xml:space="preserve"><value>Building the service container...</value></data>
+  <data name="Splash_StatusPreferences" xml:space="preserve"><value>Loading preferences...</value></data>
+  <data name="Splash_StatusTheme" xml:space="preserve"><value>Applying the saved theme...</value></data>
+  <data name="Splash_StatusPlugins" xml:space="preserve"><value>Discovering modules and plugins...</value></data>
+  <data name="Splash_StatusInterface" xml:space="preserve"><value>Initializing the DAG canvas...</value></data>
+  <data name="Splash_StatusReady" xml:space="preserve"><value>Ready!</value></data>
+  <data name="Splash_NodesBadge" xml:space="preserve"><value>{0} DAG nodes</value></data>
+  <data name="Splash_LoadingNodes" xml:space="preserve"><value>Loading nodes...</value></data>
+  <data name="Splash_InitializingEngine" xml:space="preserve"><value>Initializing the DAG flow engine...</value></data>
+  <data name="Splash_Footer" xml:space="preserve"><value>© 2026 RGLara • Cross-Platform Engine</value></data>
 
   <!--
     Labels the XAML referenced as Path=[key] but that existed in no dictionary at all.

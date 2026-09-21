@@ -10,6 +10,25 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **168. Splash Temática: Cero Literales y Barrido de Barra Determinista (2026-09-21)**:
+  - **Objetivo**: la splash reintegrada en el hito 167 seguía siendo la vista con más colores literales de la app (11 hex en la línea base del lint). Rediseño con tokens del tema y barra animada.
+  - **Implementación**:
+    - `SplashScreenWindow.axaml`: 100% tokens y clases del sistema de diseño — contenedor `modal` + `ElevGlowAccent`, marca `brandLg`, tipografía por clases (`display`/`body`/`caption`/`micro`, colores `primaryText`/`secondary`/`muted`/`accentCyan`), barra con `AccentPrimaryBrush`/`BgDarkBrush`. **0 hex, 0 FontSize literales**; entrada retirada de `UiStyleLintTests.Baseline` (el trinquete la cierra para siempre).
+    - `SplashScreenWindow.axaml.cs`: barrido de acento (shimmer) de la barra — gradiente `AccentPrimary → AccentGlow → AccentPrimary` construido una vez con tokens del tema, tick de 40 ms que solo mueve offsets (sin `new` por fotograma). En código y no en estilos porque la sesión headless purga las animaciones declaradas (sin animador de RenderTransform en Avalonia 12; capturas deterministas). El temporizador no arranca en el constructor: `StartShimmer()` lo activa, y la app real lo llama tras `splash.Show()`; `CloseWithFadeAsync`/`OnClosed` lo detienen.
+    - `SplashScreenStartupTests` (+2): lint de tokens (sin hex ni FontSize literales, consume `Classes=`) y contrato del shimmer (`StartShimmer` único arranque del timer, cuerpo acotado por rango; constructor limpio; app real lo llama tras Show).
+  - **Mutación**: reponer colores literales en el XAML hace fallar el lint de tokens; restaurado, verde.
+  - **Validación**: guardias de estilo 37/37; `dotnet test` → **1143 superadas + 1 omitida de 1144 en 2 m 07 s**; build 0/0.
+  - **Pendiente**: línea base visual de la splash (el primer fotograma es determinista por diseño, candidato ideal).
+- **167. Splash Screen Ausente: la Reescritura del Arranque la Dejó Fuera (2026-09-21)**:
+  - **Síntoma reportado**: la aplicación ya no muestra la splash screen al iniciar.
+  - **Causa raíz (medida en git)**: el hito 160 reescribió el arranque con `StartupOrchestrator` (síncrono, por etapas, tras los crashes de afinidad de hilo del hito 153 con el `async void` de la splash) y en esa reescritura **la splash se eliminó por completo**: `SplashScreenWindow` seguía en el repo con su XAML, su API y su entrada en el lint de estilos, pero **ningún código la instanciaba**. Ninguna prueba cubría el arranque real, así que una superficie entera desapareció en silencio.
+  - **Implementación**:
+    - `App.axaml.cs`: reintegración síncrona por etapas, sin `async void`. Orden: `Resources` (diccionarios del host primero, para que los textos del splash salgan traducidos) → `Splash` (ventana + `PumpFrame`) → `Services` → `Preferences` → `Theme` → `Plugins` → `Shell` → `CloseWithFadeAsync`. Cada etapa actualiza estado/porcentaje y bombea el dispatcher (`PumpFrame`, nuevo, con try/catch) para que el progreso llegue a pantalla. Fallo del arranque: `splash?.Close()` antes de la ventana de error (la splash es Topmost).
+    - `StartupPhase.Splash` (nueva fase con nombre legible ES/EN); claves `Splash_*` nuevas (12) en `Strings.resx`/`Strings.es.resx`; XAML del splash localizado con bindings del `LocalizationManager` (adiós textos fijos) y sin el emoji 🧩 del badge (iconografía vectorial); `SetNodeCount` usa `GetFormattedString`.
+    - `SplashScreenStartupTests` (7 guardias): render real headless, API de progreso, badge localizado ES/EN, claves presentes en ambos diccionarios, lint de XAML (claves, no literales, sin pictogramas) y **lint de integración sobre `App.axaml.cs`** con stripper de comentarios.
+  - **Mutación (dos rondas)**: comentar la creación del splash debía hacer fallar el lint de integración; la primera versión pasaba con el código comentado (falso negativo, `Contain` sobre el fichero crudo — lección del hito 165). Añadido `StripComments` (respeta literales de cadena) y la mutación falla como debe; restaurado, todo verde.
+  - **Validación**: guardias relacionadas 40/40; `dotnet test` → **1141 superadas + 1 omitida de 1142 en 2 m 16 s**; build 0/0.
+  - **Pendiente señalado**: la splash es la última superficie sin línea base visual; si se quiere blindar su aspecto, añadir captura `splash-dark` en `VisualSnapshots`.
 - **166. Entrada del Cajón para el Diseñador de Datasets y Primera Captura del Cajón (2026-09-20)**:
   - **Diagnóstico**: el diseñador funcionaba pero no se alcanzaba desde la interfaz. Tres piezas existían y ninguna estaba enlazada: `ControlBarViewModel.OpenSyntheticDataSetDesigner` **sin ningún llamador en XAML**, las claves `Drawer_DataSetDesigner`/`Drawer_DataSetDesignerToolTip` (traducidas en ES y EN) **sin ninguna referencia**, y la sección «Paneles y Herramientas» del cajón **sin entrada** para el diseñador. Y el cajón era la única superficie principal **sin captura**.
   - **Implementación**:

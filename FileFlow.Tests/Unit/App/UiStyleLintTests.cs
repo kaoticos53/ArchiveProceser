@@ -44,7 +44,6 @@ public class UiStyleLintTests
         ["FileFlow.App/Views/Components/NodeCardView.axaml"] = (14, 3),
         ["FileFlow.App/Views/Components/WorkflowMetricsDashboardWindow.axaml"] = (0, 1),
         ["FileFlow.App/Views/NodeInspectorPanelView.axaml"] = (1, 0),
-        ["FileFlow.App/Views/SplashScreenWindow.axaml"] = (11, 0),
     };
 
     private static readonly Regex HexLiteralRegex = new(@"#[0-9A-Fa-f]{6,8}\b", RegexOptions.Compiled);

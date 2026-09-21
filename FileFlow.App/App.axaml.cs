@@ -59,24 +59,88 @@ public partial class App : Application
         {
             var startup = new StartupOrchestrator(s_startupFailures);
 
+            // Los recursos del host van primero: la splash se construye inmediatamente después y así sus
+            // textos XAML resuelven ya traducidos (sin ellos saldrían con la clave cruda en el primer
+            // fotograma, porque el indexador devuelve la clave cuando el diccionario no está registrado).
+            startup.TryExecute(StartupPhase.Resources, RegisterHostResources);
+
+            // La splash es la primera superficie visible: se muestra antes de las etapas pesadas para que
+            // el usuario vea progreso en lugar de una pantalla vacía. Todo corre síncrono en el hilo de UI
+            // (las continuaciones async del arranque creaban pinceles fuera del hilo de UI y tumbaban el
+            // render, hito 153); los descansos entre etapas son despachos que dejan pintar el fotograma real.
+            SplashScreenWindow? splash = null;
+            startup.TryExecute(StartupPhase.Splash, () =>
+            {
+                splash = new SplashScreenWindow();
+                splash.Show();
+
+                // Barrido de acento de la barra: sólo en la aplicación real. En headless no arranca, para
+                // que las capturas de la splash sean deterministas (ver SplashScreenWindow.StartShimmer).
+                splash.StartShimmer();
+
+                PumpFrame();
+            });
+
             // Cada etapa va aislada: si una falla, el informe dice CUÁL, y el arranque se detiene de forma
             // controlada en lugar de morir sin abrir ninguna ventana.
-            startup.TryExecute(StartupPhase.Resources, RegisterHostResources);
-            startup.TryExecute(StartupPhase.Services, BuildServices);
+            startup.TryExecute(StartupPhase.Services, () =>
+            {
+                splash?.UpdateStatus(LocalizationString("Splash_StatusServices", "Construyendo el contenedor de servicios..."), 20);
+                PumpFrame();
+                BuildServices();
+            });
 
             IUserPreferencesService? preferences = null;
-            startup.TryExecute(StartupPhase.Preferences, () => preferences = LoadPreferences());
-            startup.TryExecute(StartupPhase.Theme, ApplySavedTheme);
-            startup.TryExecute(StartupPhase.Plugins, LoadPlugins);
-            startup.TryExecute(StartupPhase.Shell, () => CreateAndShowMainWindow(desktop), out Window? _);
+            startup.TryExecute(StartupPhase.Preferences, () =>
+            {
+                splash?.UpdateStatus(LocalizationString("Splash_StatusPreferences", "Cargando preferencias..."), 40);
+                PumpFrame();
+                preferences = LoadPreferences();
+            });
+            startup.TryExecute(StartupPhase.Theme, () =>
+            {
+                splash?.UpdateStatus(LocalizationString("Splash_StatusTheme", "Aplicando el tema guardado..."), 55);
+                PumpFrame();
+                ApplySavedTheme();
+            });
+
+            FileFlow.Core.Plugins.PluginLoader? pluginLoader = null;
+            startup.TryExecute(StartupPhase.Plugins, () =>
+            {
+                splash?.UpdateStatus(LocalizationString("Splash_StatusPlugins", "Descubriendo módulos y plugins..."), 70);
+                PumpFrame();
+                pluginLoader = LoadPlugins();
+            });
+            startup.TryExecute(StartupPhase.Shell, () =>
+            {
+                if (pluginLoader is not null && splash is not null)
+                {
+                    // El catálogo real de nodos, no una cuenta genérica.
+                    splash.SetNodeCount(pluginLoader.DiscoveredNodesCount);
+                }
+
+                splash?.UpdateStatus(LocalizationString("Splash_StatusInterface", "Inicializando el lienzo DAG..."), 90);
+                PumpFrame();
+                return CreateAndShowMainWindow(desktop);
+            }, out Window? _);
 
             if (startup.IsAborted)
             {
+                // Antes de la ventana de error: es Topmost y taparía el informe del fallo.
+                splash?.Close();
                 AbortStartup(desktop);
             }
-            else if (preferences is not null)
+            else
             {
-                StartBackgroundWork(preferences);
+                if (preferences is not null)
+                {
+                    StartBackgroundWork(preferences);
+                }
+
+                // La ventana principal ya está en pantalla: el splash se retira desvaneciéndose sobre ella.
+                // Fire-and-forget deliberado; la retirada no puede abortar un arranque ya completado.
+                splash?.UpdateStatus(LocalizationString("Splash_StatusReady", "¡Listo!"), 100);
+                _ = splash?.CloseWithFadeAsync();
             }
         }
 
@@ -150,10 +214,29 @@ public partial class App : Application
     }
 
     /// <summary>Resuelve el cargador de plugins: aquí se descubre el catálogo de nodos.</summary>
-    private static void LoadPlugins()
+    private static FileFlow.Core.Plugins.PluginLoader LoadPlugins() =>
+        Services.GetRequiredService<FileFlow.Core.Plugins.PluginLoader>();
+
+    /// <summary>
+    /// Deja que el hilo de UI pinte lo pendiente antes de una etapa de arranque bloqueante: sin esto el
+    /// splash se muestra con el último fotograma (o con ninguno) hasta el final, y el progreso nunca llega
+    /// a verse. No puede lanzar: el arranque sigue aunque el despachador no pueda bombear (pruebas headless).
+    /// </summary>
+    private static void PumpFrame()
     {
-        _ = Services.GetRequiredService<FileFlow.Core.Plugins.PluginLoader>();
+        try
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        catch
+        {
+            // Sin bucle de mensajes disponible: no hay nada que pintar.
+        }
     }
+
+    /// <summary>Texto localizado con respaldo literal: el splash no puede quedarse en blanco.</summary>
+    private static string LocalizationString(string key, string fallback) =>
+        LocalizationManager.Instance.GetString(key, fallback);
 
     /// <summary>
     /// Construye y muestra la ventana principal. Es la etapa que cubre el XAML: una plantilla o un estilo

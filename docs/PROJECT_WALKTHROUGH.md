@@ -1,5 +1,54 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-21] - Splash Temática: Cero Literales y Barrido de Barra Determinista (Hito 168)
+
+### 🎯 Objetivo
+
+La splash reintegrada en el hito 167 seguía siendo la vista con **más colores literales de toda la app** (11 hex en su línea base del lint de estilos: `#0F172A`, `#6366F1`, `#94A3B8`…). El Theme Studio no podía ajustarla y en un tema claro el contenido quedaba ilegible. Objetivo: 0 literales, clases del sistema de diseño y una barra con vida propia.
+
+### 🛠️ Implementación
+
+1. **XAML 100% tokens** (`SplashScreenWindow.axaml`): el contenedor pasa a la clase **`modal`** del sistema de diseño (BgCard + borde + RadiusXxl + Elev4) con el resplandor `ElevGlowAccent`; la marca usa `brandLg` con radio `RadiusXl`; textos con clases tipográficas (`display`/`body`/`caption`/`micro`) y clases de color (`primaryText`/`secondary`/`muted`/`accentCyan`/`numeric`); barra de progreso con `AccentPrimaryBrush` sobre `BgDarkBrush`; espaciados con la escala del tema. **0 hex, 0 FontSize literales** — la entrada del splash desaparece de la línea base de `UiStyleLintTests` (el trinquete no la volverá a admitir).
+2. **Barrido de acento (shimmer) determinista** (`SplashScreenWindow.axaml.cs`): un gradiente de tres paradas (`AccentPrimary → AccentGlow → AccentPrimary`) recorre la barra mientras avanza el progreso. Vive **en código y no en estilos** porque la sesión headless purga las animaciones declaradas (sin animador público para `RenderTransform` en Avalonia 12; una captura con animaciones en vuelo no sería determinista). El pincel se construye una vez con los tokens del tema (`TryCreateShimmerBrush`; sin tema publicado aún, la barra conserva el pincel del XAML) y cada tick solo mueve los offsets — sin `new` por fotograma. El temporizador (`DispatcherTimer`, 40 ms) **no arranca en el constructor**: lo activa `StartShimmer()`, llamado por `App.OnFrameworkInitializationCompleted` justo tras `splash.Show()`, de modo que las capturas headless ven siempre el primer fotograma quieto. `CloseWithFadeAsync` y `OnClosed` detienen el temporizador.
+3. **Guardias nuevas** (`SplashScreenStartupTests`, +2): (1) **lint de tokens** — el XAML del splash no contiene colores hex ni tamaños literales y consume `Classes=`; (2) **contrato del shimmer** — `StartShimmer` es el único punto que arranca el temporizador (cuerpo acotado por rango entre miembros: las llaves anidadas impiden el tramo por regex), el constructor no lo arranca, y la app real lo llama después de `splash.Show()` (lint sobre `App.axaml.cs` con stripper de comentarios).
+
+### 🧪 Validación
+
+- **Mutación**: reponer dos colores literales en el XAML hace fallar el lint de tokens citándolos; restaurados los tokens, verde.
+- Guardias de estilo/iconografía/contrato (`SplashScreenStartupTests`, `UiStyleLintTests`, `UiStyleContractTests`, `UiIconographyTests`, `HeadlessInfrastructureTests`): **37/37**.
+- `dotnet test` completo: **1143 superadas + 1 omitida de 1144 en 2 m 07 s**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- La splash sigue sin línea base visual; el shimmer por código la hace candidata ideal (el primer fotograma es determinista por diseño).
+- Si el Theme Studio permite someday fijar `AccentGlowBrush` a un tono muy cercano a `AccentPrimaryBrush`, el shimmer perderá contraste: aceptable, pero conviene saberlo.
+
+## [2026-09-21] - Splash Screen Ausente: la Reescritura del Arranque la Dejó Fuera (Hito 167)
+
+### 🎯 Diagnóstico
+
+**Síntoma reportado**: la aplicación ya no muestra la pantalla de carga al iniciar.
+
+**Causa raíz (medida en git)**: el hito 160 reescribió el arranque con `StartupOrchestrator` (arranque síncrono por etapas) y en esa reescritura **la splash se eliminó por completo**: `SplashScreenWindow` quedó en el repositorio con su XAML, su API (`UpdateStatus`, `SetNodeCount`, `CloseWithFadeAsync`) y hasta su línea base del lint de estilos, pero **ningún código la instanciaba**. El commit 8843039 la había integrado (con `async void` + `await Task.Delay`, lo que provocó los crashes de afinidad de hilo del hito 153 y motivó la reescritura); el trabajo posterior la borró sin sustituto y sin guardia: ninguna prueba del suite montaba el arranque real, así que una superficie entera desapareció sin que nada fallara.
+
+### 🛠️ Implementación
+
+1. **Reintegración síncrona por etapas** (`App.axaml.cs`): la splash vuelve al ciclo del arranque **sin el `async void`** que motivó retirarla. Orden real: `Resources` (registro de diccionarios del host, trivial) → `Splash` (ventana + `PumpFrame`) → `Services` → `Preferences` → `Theme` → `Plugins` → `Shell` → `CloseWithFadeAsync`. Los recursos van primero para que los textos XAML del splash resuelvan ya traducidos (el indexador devuelve la clave cruda si el diccionario no está registrado). Cada etapa actualiza estado/porcentaje y llama `PumpFrame()` (nuevo: `Dispatcher.UIThread.RunJobs()` envuelto en try/catch para que el bombeo no pueda abortar el arranque) para que el fotograma con el progreso llegue a pantalla antes de la etapa bloqueante. Todo sobre el hilo de UI, sin continuaciones en el ThreadPool.
+2. **Fase propia en el orquestador**: `StartupPhase.Splash` con nombre legible y respaldo (`"splash screen"` / `"pantalla de carga"`); si la splash misma falla, el informe de error lo atribuye por su nombre. En fallo del arranque, `splash?.Close()` retira la splash (Topmost) antes de mostrar la ventana de error.
+3. **i18n completa del splash** (`SplashScreenWindow.axaml`): los textos fijos ("Inicializando Motor de Flujo DAG…", "Cargando nodos…", footer) pasan a bindings `{Binding [Clave], Source={x:Static loc:LocalizationManager.Instance}}` con 12 claves nuevas `Splash_*` en `Strings.resx`/`Strings.es.resx` (más `Startup_Phase_Splash`); `SetNodeCount` formatea con `GetFormattedString("Splash_NodesBadge", …)` y el emoji 🧩 del badge sale de la UI (norma de iconografía vectorial). Los estados del arranque citan las claves con fallback literal en `App.axaml.cs`, legible incluso si la etapa de recursos fue la que falló. La línea base del lint de estilos no cambia: 11 hex, 0 formas.
+4. **Guardias nuevas** (`SplashScreenStartupTests`, 7 pruebas, colección `VisualSnapshots`): (1) la splash **se muestra y pinta un fotograma real** con texto y barra; (2) `UpdateStatus` mueve barra/estado/porcentaje y acota fuera de rango; (3) `SetNodeCount` formatea el badge con la plantilla localizada en ES y EN; (4) **toda clave `Splash_*` existe en ambos diccionarios con contenido real**; (5) **lint de XAML**: el splash consume las claves localizadas (sin literales) y no lleva pictogramas; (6) **lint de integración sobre `App.axaml.cs` real** (con stripper de comentarios propio, ver mutación): instancia la splash, usa `StartupPhase.Splash`, retira con fade al terminar y con `Close()` al fallar, registra recursos antes de la splash y en el orden Resources → Splash → Shell; (7) la fase Splash tiene nombre legible.
+
+### 🧪 Validación
+
+- **Mutación (dos rondas, con lección)**: comentar `splash = new SplashScreenWindow(); splash.Show();` debe hacer fallar el lint de integración. La primera versión del lint usaba `Contain` sobre el fichero crudo y **pasaba con el código comentado** (falso negativo: el texto seguía en el fichero) — exactamente la lección del hito 165 sobre lints que miran el tramo equivocado. Añadido `StripComments` (retira comentarios de línea/bloque respetando literales de cadena) y la mutación ahora falla como debe; restaurado el código, todo en verde.
+- Suites de guardia relacionadas (`StartupOrchestratorTests`, `UiStyleLintTests`, `UiIconographyTests`, `StartupSmokeTests`, `StartupErrorWindowTests`, `SplashScreenStartupTests`): **40/40**.
+- `dotnet test` completo: **1141 superadas + 1 omitida de 1142 en 2 m 16 s**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- La splash sigue siendo la última superficie sin línea base visual (`VisualBaselines`); si se quiere blindar su aspecto (no sólo su existencia), el punto natural es una captura `splash-dark` en la colección `VisualSnapshots`.
+- El fade de salida (`CloseWithFadeAsync`) descansa en `Task.Delay` (16 ms/paso, ~180 ms); si algún día vuelve a notarse un salto de hilo, la alternativa es animar `Opacity` con el `DispatcherTimer` de UI.
+
 ## [2026-09-20] - Entrada del Cajón para el Diseñador de Datasets y Primera Captura del Cajón (Hito 166)
 
 ### 🎯 Diagnóstico
