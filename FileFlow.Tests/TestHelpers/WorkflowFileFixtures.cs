@@ -23,12 +23,21 @@ public static class WorkflowFileFixtures
     /// El mismo archivo, sin el campo que declara la versión del formato: exactamente en eso se diferencia un
     /// archivo guardado antes de que el formato se versionara de uno actual. Se construye con el escritor
     /// real para que no se diferencie en nada más.
+    ///
+    /// El campo se busca <b>en cualquier caja</b>, como lo buscan los lectores: nombrarlo aquí como lo nombra
+    /// el dialecto de turno es lo que hacía que, al unificar la escritura (fase 3E), esta herramienta dejara de
+    /// producir un archivo anterior sin que nada avisara —el campo seguía ahí, con otro nombre—.
     /// </summary>
     public static WorkflowGraph FileFromOlderFormat(WorkflowGraph graph)
     {
         var storage = new WorkflowStorageService();
         var json = JsonNode.Parse(storage.SerializeGraph(graph))!.AsObject();
-        json.Remove("Schema").Should().BeTrue("un archivo anterior al formato versionado no declara su versión");
+
+        string? declared = json
+            .Select(property => property.Key)
+            .FirstOrDefault(key => key.Equals("schema", StringComparison.OrdinalIgnoreCase));
+
+        json.Remove(declared!).Should().BeTrue("un archivo anterior al formato versionado no declara su versión");
 
         return storage.DeserializeGraph(json.ToJsonString());
     }

@@ -34,6 +34,21 @@ public static class WorkflowFormat
 
     /// <summary>Versión con la que está escrito un grafo.</summary>
     public static int VersionOf(WorkflowGraph graph)
+    /// <summary>
+    /// Declara la versión que este escritor escribe, si el grafo no trae ya una. Es la última cosa que pasa
+    /// antes de escribir y la hacen los <b>dos</b> escritores por el mismo sitio: escribir el campo es parte
+    /// del formato, no un detalle de quien escribe, y una versión que se olvide en uno de los caminos convierte
+    /// un archivo actual en uno al que se le aplican reparaciones pensadas para archivos que ya no se producen.
+    ///
+    /// No pisa una versión declarada: un grafo leído de un archivo anterior se guarda como lo que era hasta que
+    /// alguien lo repare, que es lo que hace que la reparación no se pierda por el camino.
+    /// </summary>
+    public static void DeclareCurrent(WorkflowGraph graph)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        graph.Schema ??= CurrentSchema;
+    }
+
     {
         ArgumentNullException.ThrowIfNull(graph);
         return VersionOf(graph.Schema);

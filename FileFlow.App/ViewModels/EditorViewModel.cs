@@ -845,7 +845,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             try
             {
-                var innerGraph = System.Text.Json.JsonSerializer.Deserialize<WorkflowGraph>(node.InnerGraphJson);
+                // Por el mismo lector que todo lo demás: un grafo que viaja dentro de un flujo es un flujo, y
+                // leerlo con opciones propias era tener un segundo lector del mismo formato.
+                var innerGraph = WorkflowGraph.FromJson(node.InnerGraphJson);
                 if (innerGraph != null)
                 {
                     LoadFromGraphModel(innerGraph);
