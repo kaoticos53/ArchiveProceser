@@ -28,7 +28,7 @@ public static class WorkflowFileFixtures
     /// el dialecto de turno es lo que hacía que, al unificar la escritura (fase 3E), esta herramienta dejara de
     /// producir un archivo anterior sin que nada avisara —el campo seguía ahí, con otro nombre—.
     /// </summary>
-    public static WorkflowGraph FileFromOlderFormat(WorkflowGraph graph)
+    public static string WithoutVersionDeclaration(WorkflowGraph graph)
     {
         var storage = new WorkflowStorageService();
         var json = JsonNode.Parse(storage.SerializeGraph(graph))!.AsObject();
@@ -39,6 +39,10 @@ public static class WorkflowFileFixtures
 
         json.Remove(declared!).Should().BeTrue("un archivo anterior al formato versionado no declara su versión");
 
-        return storage.DeserializeGraph(json.ToJsonString());
+        return json.ToJsonString();
     }
+
+    /// <summary>El mismo grafo, leído de ese archivo anterior al versionado.</summary>
+    public static WorkflowGraph FileFromOlderFormat(WorkflowGraph graph) =>
+        new WorkflowStorageService().DeserializeGraph(WithoutVersionDeclaration(graph));
 }
