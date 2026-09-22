@@ -42,7 +42,9 @@ Cada tarjeta de nodo en el lienzo cuenta con dos botones circulares rápidos:
 
 ---
 
-## 3. Catálogo Completo de los 27 Nodos de Producción
+## 3. Catálogo de Nodos de Producción
+
+> El catálogo **completo y actualizado** de los 70 nodos del producto —puertos, parámetros y enlace al código de cada uno— está en [`.agents/nodes_catalog.md`](../.agents/nodes_catalog.md): se genera desde el código y una guardia falla si deja de coincidir con lo que descubre la aplicación.
 
 ### 📁 Sistema de Archivos (`FileSystem`)
 1. **Origen Carpeta (`FolderSourceNode`)**: Escanea directorios locales/red con soporte recursivo y filtros de extensión.

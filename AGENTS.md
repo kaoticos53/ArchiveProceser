@@ -35,7 +35,7 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 ## ⚡ Optimización de Tokens (Regla Estricta)
 
 > No leas archivos de código fuente completos de forma preventiva. Utiliza primero las herramientas del servidor MCP (memoria/búsqueda rápida, `ripgrep`) para ubicar funciones, clases o líneas exactas antes de abrir un archivo.
-| [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) | Catálogo de todos los nodos disponibles, puertos de entrada/salida y categorías. | **Lectura:** Al crear o modificar nodos o plugins. |
+| [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) | Catálogo de los nodos del producto: puertos, parámetros (clave y control) y enlace al fichero que declara cada uno. **Generado** desde el código y atado por `NodeCatalogGuardTests`; no se edita a mano (regenerar: `FILEFLOW_UPDATE_NODE_CATALOG=1 dotnet test --filter NodeCatalogGuardTests`). | **Lectura:** Al crear o modificar nodos o plugins. |
 | [`.agents/prompts/agent_prompts.md`](file:///.agents/prompts/agent_prompts.md) | Guías y secuencias de prompts especializadas para auditoría, refactorización y extensión. | **Lectura:** Para guiar auditorías por fases o tareas complejas. |
 | [`docs/architecture.md`](file:///docs/architecture.md) y [`docs/ARCHITECTURE_DEEP_DIVE.md`](file:///docs/ARCHITECTURE_DEEP_DIVE.md) | Documentación técnica profunda del diseño del sistema y flujo de datos. | **Lectura:** En tareas que involucren rediseño o extensiones mayores. |
 | [`docs/api_reference.md`](file:///docs/api_reference.md) | Referencia de interfaces públicas del SDK y Core. | **Lectura:** Al consultar contratos de interfaces (`IFlowNode`, `IFlowExecutionContext`, etc.). |

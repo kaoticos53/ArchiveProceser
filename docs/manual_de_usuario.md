@@ -214,11 +214,13 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-## 5. Catálogo Exhaustivo de Nodos (57 Nodos DAG)
+## 5. Catálogo de Nodos por Categoría
+
+> Esta sección describe los nodos más usados. El catálogo **completo y actualizado** —puertos, parámetros y enlace al código de cada nodo— está en [`.agents/nodes_catalog.md`](../.agents/nodes_catalog.md), que se genera desde el propio código y una guardia impide que se quede desfasado.
 
 ---
 
-### 📁 Categoría 1: FileSystem (15 Nodos)
+### 📁 Categoría 1: FileSystem
 
 1. **`FolderSourceNode`**: Inicia el pipeline escaneando directorios con filtros por extensión, recursividad y soporte de monitorización reactiva en tiempo real.
 2. **`DestinationSinkNode`**: Receptor final de archivos con estrategias de resolución de colisiones (`Overwrite`, `Skip`, `RenameIncremental`) y soporte no destructivo transparente para el VFS.
@@ -238,7 +240,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 🗜️ Categoría 2: Archives (3 Nodos)
+### 🗜️ Categoría 2: Archives
 
 1. **`SmartUnpackNode`**: Descompresión universal (ZIP, RAR, 7Z, TAR, GZ) con aplanado de carpetas redundantes y protección anti *Zip Slip*.
 2. **`ArchiveCompressorNode`**: Empaqueta y comprime archivos individuales o lotes en formatos ZIP, 7Z, TAR o GZ con nivel de compresión configurable.
@@ -246,7 +248,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 🖼️ Categoría 3: Images (4 Nodos)
+### 🖼️ Categoría 3: Images
 
 1. **`ImageOptimizerNode`**: Optimiza, redimensiona y convierte imágenes a WebP, JPEG o PNG calculando el porcentaje exacto de ahorro de bytes.
 2. **`ExifMetadataNode`**: Extrae metadatos EXIF de cámaras (fabricante, modelo, coordenadas GPS, fecha de captura).
@@ -255,7 +257,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 🌐 Categoría 4: Network & Remote Storage (2 Nodos Unificados)
+### 🌐 Categoría 4: Network & Remote Storage
 
 1. **`NetworkDownloadNode`** *(Hub Universal de Descarga)*:
    - Soporta 5 protocolos simétricos: **HTTP/HTTPS**, **FTP/FTPS**, **SFTP (SSH)**, **WebDAV (Nextcloud/ownCloud)** y **SMB (Red Local/NAS)**.
@@ -266,7 +268,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 🤖 Categoría 5: AI & Machine Learning (8 Nodos)
+### 🤖 Categoría 5: AI & Machine Learning
 
 1. **`SmartImageClassifierNode`**: Clasifica imágenes sin conexión mediante modelos ONNX locales (ej. ResNet, MobileNet).
 2. **`PromptObjectDetectorNode`**: Detección de objetos guiada por texto mediante YOLO-World o Grounding DINO en ONNX.
@@ -279,7 +281,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 📄 Categoría 6: Documents & PDFs (4 Nodos)
+### 📄 Categoría 6: Documents & PDFs
 
 1. **`PdfMergeNode`**: Fusiona múltiples archivos PDF en un único documento maestro consolidado.
 2. **`PdfSplitNode`**: Divide documentos PDF en páginas individuales o por rangos especificados.
@@ -288,7 +290,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 📊 Categoría 7: Data & Tabular Files (3 Nodos)
+### 📊 Categoría 7: Data & Tabular Files
 
 1. **`ExcelReaderNode`**: Lector de hojas de cálculo Excel (`.xlsx`, `.xls`) de ultra-alto rendimiento en streaming con `MiniExcel`.
 2. **`CsvProcessorNode`**: Ingesta, procesado y conversión avanzada de archivos delimitados CSV/TSV.
@@ -296,7 +298,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### ⚙️ Categoría 8: Logic & Control Flow (6 Nodos)
+### ⚙️ Categoría 8: Logic & Control Flow
 
 1. **`SwitchCaseNode`**: Enrutador condicional multidireccional basado en reglas de coincidencia de extensiones o metadatos.
 2. **`ExpressionFilterNode`**: Filtro booleano con operadores lógicos (`Equal`, `Contains`, `GreaterThan`, `RegexMatch`).
@@ -307,7 +309,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 🔐 Categoría 9: Hashing & Security (3 Nodos)
+### 🔐 Categoría 9: Hashing & Security
 
 1. **`HashCalculatorNode`**: Calcula sumas criptográficas (SHA-256, SHA-512, MD5, SHA-1, xxHash).
 2. **`DeduplicationFilterNode`**: Filtra y desvía archivos duplicados en tiempo real comparando sus firmas hash en memoria.
@@ -315,7 +317,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 📜 Categoría 10: Scripting & Extensibility (3 Nodos)
+### 📜 Categoría 10: Scripting & Extensibility
 
 1. **`CustomScriptNode`**: Ejecución de código a medida con soporte dual para **C# (Roslyn JIT)** y **JavaScript (Jint sandbox)**.
 2. **`ScriptStudio`**: Entorno integrado de desarrollo con resaltado sintáctico, plantillas `.ffscript` y pruebas en vivo.
@@ -323,7 +325,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 ---
 
-### 🔌 Categoría 11: Integrations & CLI (5 Nodos)
+### 🔌 Categoría 11: Integrations & CLI
 
 1. **`CliExecutionNode`**: Ejecuta scripts y binarios del sistema (PowerShell, CMD, ejecutables nativos) capturando stdout/stderr.
 2. **`WebhookNotificationNode`**: Envío de alertas y eventos HTTP POST/PUT a Discord, Slack o webhooks personalizados.

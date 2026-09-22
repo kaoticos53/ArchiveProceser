@@ -213,11 +213,13 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-## 5. Complete Node Catalog (58 DAG Nodes)
+## 5. Node Catalog by Category
+
+> This section describes the most used nodes. The **complete, up-to-date** catalog —ports, parameters and a link to each node's source— lives in [`.agents/nodes_catalog.md`](../.agents/nodes_catalog.md), which is generated from the code itself and kept honest by a guard.
 
 ---
 
-### 📁 Category 1: FileSystem (15 Nodes)
+### 📁 Category 1: FileSystem
 
 1. **`FolderSourceNode`**: Discovers and emits files with extension filters, recursive scanning, and real-time folder watching.
 2. **`DestinationSinkNode`**: Consolidates processed files with collision strategies (`Overwrite`, `Skip`, `RenameIncremental`) and transparent non-destructive VFS support.
@@ -237,7 +239,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 🗜️ Category 2: Archives (3 Nodes)
+### 🗜️ Category 2: Archives
 
 1. **`SmartUnpackNode`**: Universal archive extraction (ZIP, RAR, 7Z, TAR, GZ) with redundant folder flattening and Zip Slip protection.
 2. **`ArchiveCompressorNode`**: Compresses single or batch files into ZIP, 7Z, TAR, or GZ archives with configurable compression algorithms.
@@ -245,7 +247,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 🖼️ Category 3: Images (4 Nodes)
+### 🖼️ Category 3: Images
 
 1. **`ImageOptimizerNode`**: Resizes, optimizes, and converts images to WebP, JPEG, or PNG, reporting exact byte savings.
 2. **`ExifMetadataNode`**: Extracts EXIF camera metadata (make, model, GPS coordinates, date taken).
@@ -254,7 +256,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 🌐 Category 4: Network & Remote Storage (2 Unified Nodes)
+### 🌐 Category 4: Network & Remote Storage
 
 1. **`NetworkDownloadNode`** *(Universal Download Hub)*:
    - Supports 5 symmetric protocols: **HTTP/HTTPS**, **FTP/FTPS**, **SFTP (SSH)**, **WebDAV (Nextcloud/ownCloud)**, and **SMB (Windows Network Shares / NAS)**.
@@ -265,7 +267,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 🤖 Category 5: AI & Machine Learning (8 Nodes)
+### 🤖 Category 5: AI & Machine Learning
 
 1. **`SmartImageClassifierNode`**: Offline image classification using local ONNX neural networks (e.g. ResNet, MobileNet).
 2. **`PromptObjectDetectorNode`**: Text-prompted zero-shot object detection via YOLO-World or Grounding DINO in ONNX.
@@ -278,7 +280,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 📄 Category 6: Documents & PDFs (4 Nodes)
+### 📄 Category 6: Documents & PDFs
 
 1. **`PdfMergeNode`**: Merges multiple PDF files into a single master document.
 2. **`PdfSplitNode`**: Splits multi-page PDF documents into single pages or specified page ranges.
@@ -287,7 +289,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 📊 Category 7: Data & Tabular Files (3 Nodes)
+### 📊 Category 7: Data & Tabular Files
 
 1. **`ExcelReaderNode`**: High-performance streaming reader for `.xlsx` / `.xls` spreadsheets via `MiniExcel`.
 2. **`CsvProcessorNode`**: Parses, filters, converts, and formats delimited text files (CSV/TSV).
@@ -295,7 +297,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### ⚙️ Category 8: Logic & Control Flow (6 Nodes)
+### ⚙️ Category 8: Logic & Control Flow
 
 1. **`SwitchCaseNode`**: Multi-way conditional branch router matching extensions, file sizes, or metadata.
 2. **`ExpressionFilterNode`**: Boolean predicate filter with logical operators (`Equal`, `Contains`, `GreaterThan`, `RegexMatch`).
@@ -306,7 +308,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 🔐 Category 9: Hashing & Security (3 Nodes)
+### 🔐 Category 9: Hashing & Security
 
 1. **`HashCalculatorNode`**: Computes cryptographic checksums (SHA-256, SHA-512, MD5, SHA-1, xxHash).
 2. **`DeduplicationFilterNode`**: Filters duplicate files in real time by comparing memory-cached hash signatures.
@@ -314,7 +316,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 📜 Category 10: Scripting & Extensibility (3 Nodes)
+### 📜 Category 10: Scripting & Extensibility
 
 1. **`CustomScriptNode`**: Custom logic execution with dual support for **C# (Roslyn JIT)** and **JavaScript (Jint sandbox)**.
 2. **`ScriptStudio`**: Integrated IDE with syntax highlighting, live testing console, and `.ffscript` templates.
@@ -322,7 +324,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 ---
 
-### 🔌 Category 11: Integrations & CLI (5 Nodes)
+### 🔌 Category 11: Integrations & CLI
 
 1. **`CliExecutionNode`**: Executes command-line processes (PowerShell, CMD, binaries) capturing stdout/stderr into metadata.
 2. **`WebhookNotificationNode`**: Dispatches HTTP POST/PUT alerts with custom JSON payloads to Discord, Slack, or webhook endpoints.

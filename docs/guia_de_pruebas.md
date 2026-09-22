@@ -247,6 +247,20 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
 
 ---
 
+#### 3.13. `NodeCatalogGuardTests.cs`
+- **`TheCatalog_ShouldBeWhatTheLoaderDiscovers`**:
+  - **Objeto:** El catálogo de nodos comprometido (`.agents/nodes_catalog.md`) frente a lo que descubre el cargador de la aplicación.
+  - **Qué:** El documento tiene que ser **exactamente** el que genera `NodeCatalogDocument` —una fila por nodo con su categoría, sus puertos, sus parámetros con su control y el enlace al fichero que lo declara—, así que añadir, quitar o cambiar un nodo sin regenerarlo pone la suite en rojo. El fallo imprime la **primera línea que difiere, con su número**, y el comando para regenerarlo.
+  - **Cómo:** *Arrange:* Ruta del catálogo y el generador. *Act:* Se compara el archivo con el texto generado (saltos de línea normalizados; sin `FILEFLOW_UPDATE_NODE_CATALOG=1` no escribe). *Assert:* Texto idéntico. Si el archivo no existe, lo escribe y falla a propósito la primera vez, para que no se bendiga solo.
+- **`EveryCatalogRow_ShouldBeADiscoveredNodeWithItsDeclaringSource`**:
+  - **Objeto:** Cada fila del catálogo y su enlace.
+  - **Qué:** La fila nombra un nodo que el cargador descubre —una fila de otro tiempo o un nodo que ya no existe falla— y su enlace apunta a un archivo que existe y **declara ese nodo**: un enlace roto o cruzado tampoco pasa. Se comprueba en los dos sentidos: un nodo descubierto sin fila también falla.
+  - **Cómo:** *Arrange:* El catálogo y el conjunto de nodos del producto. *Act:* Se resuelve cada enlace y se analiza la fuente. *Assert:* Sin problemas, y el fallo los enumera uno a uno.
+- **`TheSectionCounts_ShouldMatchTheRowsOfEachSection`**:
+  - **Objeto:** Los recuentos por plugin del documento.
+  - **Qué:** Cada encabezado de sección declara el número de filas que contiene —el documento desfasado decía 15 donde había 13— y la suma de las secciones es el catálogo **entero**, no una parte.
+  - **Cómo:** *Act:* Se leen los encabezados y se cuentan sus filas. *Assert:* Recuento declarado = filas listadas, y total = nodos descubiertos.
+
 ### 🖥️ Módulo 4: UI y Presentación MVVM (`FileFlow.Tests/Unit/App`)
 
 #### 4.1. `EditorViewModelTests.cs`
