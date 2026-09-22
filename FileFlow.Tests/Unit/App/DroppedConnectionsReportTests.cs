@@ -179,8 +179,11 @@ public class DroppedConnectionsReportTests
             await new WorkflowStorageService().SaveWorkflowAsync(filePath, graph);
 
             var loader = CreateLoader();
-            var editor = new EditorViewModel(loader);
             var log = new LogViewModel(new InMemoryLogStore());
+
+            // La consola va al editor, como en la aplicación: abrir un archivo se cuenta desde el lienzo, que
+            // es quien tiene los puertos perdidos y el arreglo, además de la consola.
+            var editor = new EditorViewModel(loader, logViewModel: log);
 
             var fileDialog = new Mock<IFileDialogService>();
             fileDialog

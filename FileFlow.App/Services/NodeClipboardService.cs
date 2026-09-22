@@ -2,6 +2,7 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Input.Platform;
 using FileFlow.App.ViewModels;
+using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 
@@ -48,6 +49,31 @@ public sealed class NodeClipboardPackage
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public List<NodeClipboardItem> Nodes { get; set; } = [];
     public List<EdgeClipboardItem> Edges { get; set; } = [];
+}
+
+/// <summary>
+/// Lo que dejó un pegado o una duplicación: los nodos nuevos y lo que no se pudo reconectar entre ellos.
+///
+/// Los nodos y el informe van juntos, y no por comodidad: quien pega recibe <b>siempre</b> la cuenta de lo
+/// que se perdió, sin poder pedirla por separado ni olvidarse de mirarla. Un pegado que descarta un cable en
+/// silencio es exactamente el fallo que este informe cierra.
+/// </summary>
+public sealed class ClipboardPasteResult
+{
+    /// <summary>Un pegado que no dejó nada: ni nodos ni cables perdidos.</summary>
+    public static ClipboardPasteResult Empty { get; } = new([], ConnectionRebuildReport.Complete);
+
+    internal ClipboardPasteResult(IReadOnlyList<NodeViewModel> nodes, ConnectionRebuildReport report)
+    {
+        Nodes = nodes;
+        Report = report;
+    }
+
+    /// <summary>Nodos nuevos, en el orden en que se pegaron. El último es el que queda seleccionado.</summary>
+    public IReadOnlyList<NodeViewModel> Nodes { get; }
+
+    /// <summary>Conexiones internas que el paquete declaraba y no se pudieron reconstruir.</summary>
+    public ConnectionRebuildReport Report { get; }
 }
 
 /// <summary>
@@ -196,14 +222,14 @@ public sealed class NodeClipboardService : INodeClipboardService
         return false;
     }
 
-    public List<NodeViewModel> Paste(EditorViewModel editor, Point? targetPosition = null)
+    public ClipboardPasteResult Paste(EditorViewModel editor, Point? targetPosition = null)
     {
         ArgumentNullException.ThrowIfNull(editor);
 
         NodeClipboardPackage? package = GetCurrentPackage();
         if (package == null || package.Nodes.Count == 0)
         {
-            return [];
+            return ClipboardPasteResult.Empty;
         }
 
         lock (_lock)
@@ -217,6 +243,11 @@ public sealed class NodeClipboardService : INodeClipboardService
         Dictionary<string, NodeViewModel> idMapping = new(StringComparer.OrdinalIgnoreCase);
         List<NodeViewModel> createdNodes = [];
 
+        // El nombre de cada nodo tal y como lo llevaba el paquete: un nodo que no llegue a crearse —su tipo
+        // no está registrado en esta máquina— se describe con él al contar el cable que se pierda.
+        Dictionary<string, string> uncreatedNodeNames = new(StringComparer.OrdinalIgnoreCase);
+        List<DroppedConnection> droppedConnections = [];
+
         // Deseleccionar nodos previamente existentes
         foreach (var existingNode in editor.Nodes)
         {
@@ -226,6 +257,8 @@ public sealed class NodeClipboardService : INodeClipboardService
         // 1. Instanciar y configurar los nodos
         foreach (var item in package.Nodes)
         {
+            uncreatedNodeNames[item.OriginalId] = DescribeCopiedNode(item);
+
             IFlowNode? instance = _pluginLoader.CreateNodeInstance(item.NodeTypeName);
             if (instance == null) continue;
 
@@ -324,30 +357,47 @@ public sealed class NodeClipboardService : INodeClipboardService
             editor.BringToFront(node);
         }
 
-        // 3. Recrear las aristas/conexiones internas con los nuevos IDs
+        // 3. Recrear las aristas/conexiones internas con los nuevos IDs, con la misma regla con la que se
+        // reconstruye un flujo abierto: emparejar los puertos por nombre. Un cable que no empareja no se
+        // descarta en silencio —se deja dicho quién era y por qué— porque el usuario acaba de pegar y es
+        // quien puede volver a conectarlo.
         foreach (var edge in package.Edges)
         {
-            if (idMapping.TryGetValue(edge.SourceNodeOriginalId, out var srcNode) &&
-                idMapping.TryGetValue(edge.TargetNodeOriginalId, out var tgtNode))
-            {
-                var srcPort = srcNode.OutputPorts.FirstOrDefault(p => p.Name.Equals(edge.SourcePortName, StringComparison.OrdinalIgnoreCase));
-                var tgtPort = tgtNode.InputPorts.FirstOrDefault(p => p.Name.Equals(edge.TargetPortName, StringComparison.OrdinalIgnoreCase));
+            var dropped = ConnectionReconstructor.TryRebuild(
+                edge.SourceNodeOriginalId, edge.SourcePortName,
+                edge.TargetNodeOriginalId, edge.TargetPortName,
+                idMapping, uncreatedNodeNames,
+                register: connection => editor.CreateConnection(connection.Source, connection.Target));
 
-                if (srcPort != null && tgtPort != null)
-                {
-                    editor.CreateConnection(srcPort, tgtPort);
-                }
+            if (dropped != null)
+            {
+                droppedConnections.Add(dropped);
             }
         }
 
-        return createdNodes;
+        return new ClipboardPasteResult(createdNodes, new ConnectionRebuildReport(droppedConnections));
     }
 
-    public List<NodeViewModel> Duplicate(IEnumerable<NodeViewModel> nodes, IEnumerable<ConnectionViewModel> connections, EditorViewModel editor)
+    public ClipboardPasteResult Duplicate(IEnumerable<NodeViewModel> nodes, IEnumerable<ConnectionViewModel> connections, EditorViewModel editor)
     {
         ArgumentNullException.ThrowIfNull(editor);
         Copy(nodes, connections);
         return Paste(editor, targetPosition: null);
+    }
+
+    /// <summary>
+    /// Nombre con el que reconocer un nodo del paquete: el título que el usuario le puso y, si no lo tenía,
+    /// su tipo —que es lo que se busca para saber qué plugin falta—. Es el mismo criterio que al abrir un
+    /// archivo, para que el mismo nodo ausente se cuente igual por los dos caminos.
+    /// </summary>
+    private static string DescribeCopiedNode(NodeClipboardItem item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.CustomTitle))
+        {
+            return item.CustomTitle;
+        }
+
+        return string.IsNullOrWhiteSpace(item.NodeTypeName) ? item.OriginalId : item.NodeTypeName;
     }
 
     private NodeClipboardPackage? GetCurrentPackage()

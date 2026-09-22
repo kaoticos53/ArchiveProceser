@@ -143,7 +143,7 @@ public class NodeTitleCustomizationTests
         editor.Nodes.Add(nodeVm);
 
         clipboard.Copy([nodeVm], editor.Connections);
-        var pasted = clipboard.Paste(editor);
+        var pasted = clipboard.Paste(editor).Nodes;
 
         pasted.Should().HaveCount(1);
         pasted[0].Id.Should().NotBe(nodeVm.Id);

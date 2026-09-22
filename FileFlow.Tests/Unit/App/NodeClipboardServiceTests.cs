@@ -46,7 +46,7 @@ public class NodeClipboardServiceTests
         clipboard.Copy([nodeVm], editor.Connections);
         clipboard.CanPaste().Should().BeTrue();
 
-        var pastedNodes = clipboard.Paste(editor);
+        var pastedNodes = clipboard.Paste(editor).Nodes;
 
         // Assert
         pastedNodes.Should().HaveCount(1);
@@ -100,7 +100,7 @@ public class NodeClipboardServiceTests
 
         // Act: Copiar los 3 nodos seleccionados
         clipboard.Copy([srcNode, optNode, destNode], editor.Connections);
-        var pastedNodes = clipboard.Paste(editor);
+        var pastedNodes = clipboard.Paste(editor).Nodes;
 
         // Assert: 3 nuevos nodos y 2 nuevas conexiones internas entre ellos
         pastedNodes.Should().HaveCount(3);
@@ -144,7 +144,7 @@ public class NodeClipboardServiceTests
 
         // Act
         clipboard.Copy([nodeVm], editor.Connections);
-        var pastedNodes = clipboard.Paste(editor);
+        var pastedNodes = clipboard.Paste(editor).Nodes;
 
         // Assert
         pastedNodes.Should().HaveCount(1);
@@ -176,7 +176,7 @@ public class NodeClipboardServiceTests
 
         // Act
         clipboard.Copy([nodeVm], editor.Connections);
-        var pastedNodes = clipboard.Paste(editor);
+        var pastedNodes = clipboard.Paste(editor).Nodes;
 
         // Assert
         pastedNodes.Should().HaveCount(1);
@@ -204,7 +204,7 @@ public class NodeClipboardServiceTests
         editor.Nodes.Add(node);
 
         // Act
-        var duplicates = clipboard.Duplicate([node], editor.Connections, editor);
+        var duplicates = clipboard.Duplicate([node], editor.Connections, editor).Nodes;
 
         // Assert
         duplicates.Should().HaveCount(1);
@@ -266,7 +266,7 @@ public class NodeClipboardServiceTests
         clipboard.Copy([node1, node2], editor.Connections);
 
         // Act: Pegar en punto objetivo (500, 500)
-        var pasted = clipboard.Paste(editor, targetPosition: new Point(500, 500));
+        var pasted = clipboard.Paste(editor, targetPosition: new Point(500, 500)).Nodes;
 
         // Assert
         pasted.Should().HaveCount(2);

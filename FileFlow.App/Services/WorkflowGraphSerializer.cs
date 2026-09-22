@@ -147,7 +147,7 @@ public static class WorkflowGraphSerializer
     /// Devuelve lo que <b>no</b> se pudo reconstruir, que es poco para el flujo pero mucho para el usuario:
     /// un cable descartado en silencio convierte un flujo reabierto en uno incompleto que parece completo.
     /// </summary>
-    public static WorkflowGraphImportResult Import(
+    public static ConnectionRebuildReport Import(
         WorkflowGraph graph,
         PluginLoader pluginLoader,
         EditorViewModel editor,
@@ -158,10 +158,10 @@ public static class WorkflowGraphSerializer
     {
         Dictionary<string, NodeViewModel> nodeLookup = [];
 
-        // Los nodos tal y como los declara el archivo. Hace falta tenerlos a mano porque un nodo que no se
-        // pudo crear no está en `nodeLookup`, y sin él no habría con qué describir el extremo de un cable
-        // que se descarta.
-        Dictionary<string, WorkflowNode> nodeDtos = new(StringComparer.OrdinalIgnoreCase);
+        // El nombre de cada nodo tal y como lo declara el archivo. Hace falta tenerlo a mano porque un nodo
+        // que no se pudo crear no está en `nodeLookup`, y sin él no habría con qué describir el extremo de un
+        // cable que se descarta.
+        Dictionary<string, string> uncreatedNodeNames = new(StringComparer.OrdinalIgnoreCase);
 
         List<DroppedConnection> droppedConnections = [];
 
@@ -225,7 +225,7 @@ public static class WorkflowGraphSerializer
 
         foreach (var nodeDto in graph.Nodes)
         {
-            nodeDtos[nodeDto.Id] = nodeDto;
+            uncreatedNodeNames[nodeDto.Id] = DescribeUncreatedNode(nodeDto);
 
             IFlowNode? instance = pluginLoader.CreateNodeInstance(nodeDto.NodeTypeName);
             if (instance == null) continue;
@@ -270,92 +270,36 @@ public static class WorkflowGraphSerializer
 
         foreach (var edgeDto in graph.Edges)
         {
-            if (TryConnect(edgeDto, nodeLookup, registerConnectionCallback))
+            // La arista se reconstruye con la misma regla con la que se reconstruye un cable pegado, y
+            // cuando no puede, aquí no se calla: se deja dicho quién era y por qué, para que quien haya
+            // pedido la reconstrucción pueda contárselo al usuario.
+            var dropped = ConnectionReconstructor.TryRebuild(
+                edgeDto.SourceNodeId, edgeDto.SourcePortName,
+                edgeDto.TargetNodeId, edgeDto.TargetPortName,
+                nodeLookup, uncreatedNodeNames,
+                register: registerConnectionCallback);
+
+            if (dropped != null)
             {
-                continue;
+                droppedConnections.Add(dropped);
             }
-
-            // La arista se descarta y aquí no se calla: se deja dicho quién era y por qué, para que quien
-            // haya pedido la reconstrucción pueda contárselo al usuario.
-            droppedConnections.Add(new DroppedConnection(
-                DescribeEnd(edgeDto.SourceNodeId, edgeDto.SourcePortName, input: false, nodeLookup, nodeDtos),
-                DescribeEnd(edgeDto.TargetNodeId, edgeDto.TargetPortName, input: true, nodeLookup, nodeDtos)));
         }
 
-        return new WorkflowGraphImportResult(droppedConnections);
-    }
-
-    /// <summary>
-    /// Registra la conexión si los dos puertos existen. Un puerto que no existe no lanza nada: la arista se
-    /// descarta, y contarlo es cosa de quien reconstruye el flujo (ver
-    /// <see cref="WorkflowGraphImportResult"/>).
-    /// </summary>
-    private static bool TryConnect(
-        WorkflowEdge edgeDto,
-        Dictionary<string, NodeViewModel> nodeLookup,
-        Action<ConnectionViewModel> registerConnectionCallback)
-    {
-        if (!nodeLookup.TryGetValue(edgeDto.SourceNodeId, out var srcNode) ||
-            !nodeLookup.TryGetValue(edgeDto.TargetNodeId, out var targetNode))
-        {
-            return false;
-        }
-
-        var srcPort = srcNode.OutputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.SourcePortName, StringComparison.OrdinalIgnoreCase));
-        var targetPort = targetNode.InputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.TargetPortName, StringComparison.OrdinalIgnoreCase));
-
-        if (srcPort == null || targetPort == null)
-        {
-            return false;
-        }
-
-        registerConnectionCallback(new ConnectionViewModel(srcPort, targetPort));
-        return true;
-    }
-
-    /// <summary>
-    /// Diagnóstico de un extremo de una arista descartada: si su nodo no llegó a crearse, si el nodo está
-    /// pero no expone ese puerto, o nada —porque el problema estaba en el otro extremo—.
-    /// </summary>
-    private static DroppedConnectionEnd DescribeEnd(
-        string nodeId,
-        string portName,
-        bool input,
-        Dictionary<string, NodeViewModel> nodeLookup,
-        Dictionary<string, WorkflowNode> nodeDtos)
-    {
-        if (!nodeLookup.TryGetValue(nodeId, out var nodeVm))
-        {
-            return new DroppedConnectionEnd(
-                nodeId, DescribeUncreatedNode(nodeId, nodeDtos), portName, DroppedConnectionEndProblem.MissingNode);
-        }
-
-        var ports = input ? nodeVm.InputPorts : nodeVm.OutputPorts;
-        bool exposed = ports.Any(port => port.Name.Equals(portName, StringComparison.OrdinalIgnoreCase));
-
-        return new DroppedConnectionEnd(
-            nodeId,
-            nodeVm.Title,
-            portName,
-            exposed ? DroppedConnectionEndProblem.None : DroppedConnectionEndProblem.MissingPort);
+        return new ConnectionRebuildReport(droppedConnections);
     }
 
     /// <summary>
     /// Nombre con el que reconocer un nodo que no se pudo crear: lo que el archivo decía de él. El título que
     /// el usuario le puso, si lo tenía, y si no su tipo —que es lo que se busca para saber qué plugin falta—.
+    /// Sin nada de eso queda su identificador, que lo resuelve <see cref="ConnectionReconstructor"/>.
     /// </summary>
-    private static string DescribeUncreatedNode(string nodeId, Dictionary<string, WorkflowNode> nodeDtos)
+    private static string DescribeUncreatedNode(WorkflowNode dto)
     {
-        if (!nodeDtos.TryGetValue(nodeId, out var dto))
-        {
-            return nodeId;
-        }
-
         if (!string.IsNullOrWhiteSpace(dto.CustomTitle))
         {
             return dto.CustomTitle;
         }
 
-        return string.IsNullOrWhiteSpace(dto.NodeTypeName) ? nodeId : dto.NodeTypeName;
+        return string.IsNullOrWhiteSpace(dto.NodeTypeName) ? dto.Id : dto.NodeTypeName;
     }
 }

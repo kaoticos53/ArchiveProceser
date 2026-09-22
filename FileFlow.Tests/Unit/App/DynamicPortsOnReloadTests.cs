@@ -126,7 +126,7 @@ public class DynamicPortsOnReloadTests
 
         var target = new EditorViewModel(loader);
 
-        var pasted = clipboard.Paste(target);
+        var pasted = clipboard.Paste(target).Nodes;
 
         pasted.Should().HaveCount(2);
         var pastedContainer = pasted.Single(node => node.IsSubflowNode);

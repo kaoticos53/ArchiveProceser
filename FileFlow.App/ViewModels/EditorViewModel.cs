@@ -770,7 +770,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     /// del lienzo —los grafos que carga desde memoria (subflujos, migas de pan) los exportó esta misma sesión
     /// y no pierden cables—, sino de quien abre un archivo.
     /// </summary>
-    public WorkflowGraphImportResult LoadFromGraphModel(WorkflowGraph graph)
+    public ConnectionRebuildReport LoadFromGraphModel(WorkflowGraph graph)
     {
         ClearGraph();
 
