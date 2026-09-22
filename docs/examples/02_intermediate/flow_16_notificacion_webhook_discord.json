@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Notificación por Webhook",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 350,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Url": "https://discord.com/api/webhooks/demo"
       }
@@ -26,6 +30,7 @@
       "x": 600,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -45,5 +50,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

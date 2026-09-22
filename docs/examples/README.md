@@ -53,3 +53,20 @@ Esta biblioteca contiene **40 ejemplos prácticos y listos para usar** que demue
 3. Navega al directorio `docs/examples/[nivel]/` y selecciona el archivo `.json` que desees probar.
 4. Revisa los parámetros configurados en las tarjetas de nodo.
 5. Presiona **Ejecutar Flujo (F5)** o activa **Modo Simulación (Dry-Run)** para probar la canalización de datos.
+
+---
+
+## 📄 Formato de los Archivos de Ejemplo
+
+Los 40 flujos del catálogo están guardados con el **escritor del producto** y declaran la versión vigente del
+formato (`"schema": "FileFlow.Workflow.v2"`), así que se abren tal cual —sin reparaciones— y volver a guardarlos
+desde la aplicación produce el mismo texto. Un ejemplo que no declarara versión se leería como anterior al
+versionado y arrastraría las reparaciones de un formato que ya no se produce: por eso el catálogo está atado por
+pruebas (`WorkflowExamplesValidationTests`), que abren cada archivo en el editor y fallan si un ejemplo pierde un
+nodo o un cable al cargarse.
+
+Los nodos se nombran por su **clase** (`ImageOptimizerNode`) y no por su nombre completo
+(`FileFlow.Plugin.Images.ImageOptimizerNode`): el cargador resuelve las dos formas y aquí la corta es la que se
+lee; la aplicación escribe la larga al guardar. El ciclo del formato —versión, reparación y por qué un archivo
+reparado converge— está en
+[**El archivo de flujo**](../architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación).

@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Pipeline ETL para Archivos Mixtos",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 250,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 320,
       "y": 250,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -24,6 +28,7 @@
       "x": 550,
       "y": 100,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -32,6 +37,7 @@
       "x": 550,
       "y": 250,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -40,6 +46,7 @@
       "x": 550,
       "y": 400,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -48,6 +55,7 @@
       "x": 780,
       "y": 250,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -56,6 +64,7 @@
       "x": 1000,
       "y": 250,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -110,5 +119,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

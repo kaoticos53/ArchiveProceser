@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Deduplicación y Archivado Frisado 7Z",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 300,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Algorithm": "SHA512"
       }
@@ -26,6 +30,7 @@
       "x": 500,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -34,6 +39,7 @@
       "x": 720,
       "y": 120,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "ArchiveFormat": "7Z"
       }
@@ -44,6 +50,7 @@
       "x": 720,
       "y": 280,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "ActionType": "MoveToQuarantine"
       }
@@ -54,6 +61,7 @@
       "x": 940,
       "y": 120,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -94,5 +102,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

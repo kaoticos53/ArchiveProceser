@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Transcodificación Multiformato",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 330,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Preset": "Convertir 1080p H.264 (Universal MP4)"
       }
@@ -26,6 +30,7 @@
       "x": 560,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Preset": "Convertir a GIF Animado"
       }
@@ -36,6 +41,7 @@
       "x": 780,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -62,5 +68,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

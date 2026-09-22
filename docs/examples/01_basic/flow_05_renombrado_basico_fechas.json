@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Renombrado con Fechas",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 350,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "PipelineName": "Renombrado con Fechas",
         "CollisionStrategy": "AutoIncrement",
@@ -28,6 +32,7 @@
       "x": 600,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -47,5 +52,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

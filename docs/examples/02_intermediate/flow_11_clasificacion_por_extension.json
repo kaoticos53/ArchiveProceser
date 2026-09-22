@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Clasificación por Extensión",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 320,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -24,6 +28,7 @@
       "x": 550,
       "y": 100,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Preset": "Convertir 720p H.264 (MP4 Rápido)"
       }
@@ -34,6 +39,7 @@
       "x": 550,
       "y": 300,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "TargetFormat": "WebP"
       }
@@ -44,6 +50,7 @@
       "x": 800,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -84,5 +91,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

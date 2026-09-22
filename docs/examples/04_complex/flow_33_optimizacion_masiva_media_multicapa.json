@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Optimización Multimedia Multicapa",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 320,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Operator": ">",
         "ComparisonValue": "52428800",
@@ -28,6 +32,7 @@
       "x": 550,
       "y": 100,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -36,6 +41,7 @@
       "x": 550,
       "y": 300,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -44,6 +50,7 @@
       "x": 780,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -52,6 +59,7 @@
       "x": 1000,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "DeleteOriginalPath": false
       }
@@ -101,5 +109,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Optimización y Conversión de Imágenes",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "SourcePath": "{RelativeDir}\\Input",
         "Recursive": true
@@ -19,6 +22,7 @@
       "x": 350,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "TargetFormat": "WebP",
         "Quality": 80,
@@ -32,6 +36,7 @@
       "x": 600,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "DestinationRoot": "{RelativeDir}\\Output"
       }
@@ -53,5 +58,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Cadena de Custodia y Doble Hash",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 300,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "StoreInMetadataKey": "Hash:PreHash"
       }
@@ -26,6 +30,7 @@
       "x": 500,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -34,6 +39,7 @@
       "x": 700,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -42,6 +48,7 @@
       "x": 900,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "StoreInMetadataKey": "Hash:PostHash"
       }
@@ -52,6 +59,7 @@
       "x": 1100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -60,6 +68,7 @@
       "x": 1300,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -107,5 +116,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

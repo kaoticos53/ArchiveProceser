@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Extracción de Audio MP3",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "SourcePath": "{RelativeDir}\\Input"
       }
@@ -18,6 +21,7 @@
       "x": 350,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Preset": "Extraer Audio MP3",
         "CustomArguments": "-vn -c:a libmp3lame -b:a 192k"
@@ -29,6 +33,7 @@
       "x": 600,
       "y": 150,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "DestinationRoot": "{RelativeDir}\\Output"
       }
@@ -50,5 +55,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

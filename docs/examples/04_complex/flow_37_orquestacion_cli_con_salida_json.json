@@ -1,6 +1,8 @@
 {
+  "schema": "FileFlow.Workflow.v2",
   "name": "Orquestación CLI con Captura de Salida",
   "globalOutputDir": "{RelativeDir}",
+  "temporaryDirectory": "",
   "nodes": [
     {
       "id": "node-src",
@@ -8,6 +10,7 @@
       "x": 100,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -16,6 +19,7 @@
       "x": 320,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "CaptureOutputToMetadata": true
       }
@@ -26,6 +30,7 @@
       "x": 550,
       "y": 200,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {
         "Operator": "Contains",
         "ComparisonValue": "OK",
@@ -38,6 +43,7 @@
       "x": 780,
       "y": 120,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     },
     {
@@ -46,6 +52,7 @@
       "x": 780,
       "y": 280,
       "hasBreakpoint": false,
+      "isLoggingEnabled": true,
       "parameters": {}
     }
   ],
@@ -79,5 +86,8 @@
       "targetPortName": "In"
     }
   ],
-  "breakpointNodeIds": []
+  "annotations": [],
+  "groups": [],
+  "breakpointNodeIds": [],
+  "disabledLoggingNodeIds": []
 }

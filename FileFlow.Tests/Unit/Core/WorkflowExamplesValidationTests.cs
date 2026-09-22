@@ -1,34 +1,32 @@
 using System.IO;
 using System.Text.Json;
+using FileFlow.App.Services;
+using FileFlow.App.ViewModels;
+using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
+using FileFlow.Tests.TestHelpers;
+using FluentAssertions;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.Core;
 
+/// <summary>
+/// Los ejemplos que se entregan son documentación ejecutable: tienen que ser archivos del <b>formato</b> que
+/// el producto escribe hoy y tienen que abrirse en el editor <b>sin perder nada</b>. Un ejemplo sin versión se
+/// lee como anterior al versionado y arrastra reparaciones pensadas para archivos que ya no se producen, y uno
+/// que pierda cables al abrirse enseña un flujo incompleto que parece completo.
+/// </summary>
 public class WorkflowExamplesValidationTests
 {
     [Fact]
     public void AllExampleFlows_ShouldLoadAndHaveValidNodesAndPorts()
     {
-        var loader = new PluginLoader();
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.FileSystem.FolderSourceNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Archives.SmartUnpackNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Images.ImageOptimizerNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.MediaTranscoderNode).Assembly);
-        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Scripting.CustomScriptNode).Assembly);
+        var loader = CreateLoader();
 
-        string examplesDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../..", "docs", "examples"));
-        if (!Directory.Exists(examplesDir))
-        {
-            examplesDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "docs", "examples"));
-        }
+        Assert.True(Directory.Exists(ExamplesDirectory()), $"Examples dir not found: {ExamplesDirectory()}");
 
-        Assert.True(Directory.Exists(examplesDir), $"Examples dir not found: {examplesDir}");
-
-        var jsonFiles = Directory.GetFiles(examplesDir, "*.json", SearchOption.AllDirectories);
+        var jsonFiles = ExampleFiles();
         Assert.NotEmpty(jsonFiles);
 
         var errors = new List<string>();
@@ -141,5 +139,104 @@ public class WorkflowExamplesValidationTests
         }
 
         Assert.True(errors.Count == 0, $"Validation errors found in example flows:\n" + string.Join("\n", errors));
+    }
+
+    /// <summary>
+    /// El ejemplo es lo que el producto escribe y declara el formato que escribe: se lee por el camino de
+    /// lectura de la aplicación, se vuelve a escribir con su escritor y el texto tiene que salir idéntico. Un
+    /// ejemplo escrito a mano con el dialecto de otra época enseña la forma que no es.
+    /// </summary>
+    [Fact]
+    public void AllExampleFlows_ShouldBeWrittenByTheProductWriter()
+    {
+        var storage = new WorkflowStorageService();
+        var problems = new List<string>();
+
+        foreach (string file in ExampleFiles())
+        {
+            string name = Path.GetFileName(file);
+            string text = File.ReadAllText(file);
+            var graph = storage.DeserializeGraph(text);
+
+            if (WorkflowFormat.VersionOf(graph) != WorkflowFormat.CurrentVersion)
+            {
+                problems.Add($"[{name}] declara '{graph.Schema}' y no '{WorkflowFormat.CurrentSchema}': " +
+                    "se leería como anterior al versionado y llevaría encima sus reparaciones");
+                continue;
+            }
+
+            string rewritten = storage.SerializeGraph(storage.DeserializeGraph(text));
+            if (rewritten != text)
+            {
+                problems.Add($"[{name}] no es lo que el escritor del producto produce: vuelve a guardarlo desde la app");
+            }
+        }
+
+        problems.Should().BeEmpty(string.Join("\n", problems));
+    }
+
+    /// <summary>
+    /// Se abren como los abre la aplicación —materializando puertos dinámicos y emparejando cables por nombre—
+    /// y vuelven enteros: ni un nodo menos, ni un cable descartado. Es la misma propiedad que persigue la fase
+    /// 2E-P4, fijada sobre el material que se entrega y no sobre un flujo de prueba.
+    /// </summary>
+    [Fact]
+    public void AllExampleFlows_ShouldOpenInTheEditorWithoutLosingAnything()
+    {
+        var storage = new WorkflowStorageService();
+        var problems = new List<string>();
+
+        foreach (string file in ExampleFiles())
+        {
+            string name = Path.GetFileName(file);
+            var graph = storage.DeserializeGraph(File.ReadAllText(file));
+            var editor = new EditorViewModel(CreateLoader());
+
+            var report = editor.LoadFromGraphModel(graph);
+
+            if (editor.Nodes.Count != graph.Nodes.Count)
+            {
+                problems.Add($"[{name}] el lienzo quedó con {editor.Nodes.Count} nodos de {graph.Nodes.Count}");
+            }
+
+            if (!report.IsComplete)
+            {
+                problems.Add($"[{name}] cables descartados al abrir: " +
+                    string.Join(", ", report.DroppedConnections.Select(d => $"{d.Source.PortName}->{d.Target.PortName}")));
+            }
+
+            if (editor.Connections.Count != graph.Edges.Count)
+            {
+                problems.Add($"[{name}] el lienzo quedó con {editor.Connections.Count} cables de {graph.Edges.Count}");
+            }
+        }
+
+        problems.Should().BeEmpty(string.Join("\n", problems));
+    }
+
+    /// <summary>Directorio de los ejemplos que se entregan, buscado desde la raíz del repositorio.</summary>
+    private static string ExamplesDirectory() =>
+        Path.Combine(TestRepositoryLocator.RepositoryRoot(), "docs", "examples");
+
+    /// <summary>
+    /// Los flujos de ejemplo que se entregan, tal y como los enumera el catálogo. El `docs/flujo_test.json` de
+    /// la raíz de la documentación no entra: es un archivo de prueba con parámetros que ningún nodo declara hoy
+    /// (`DestinationFolder`, `CleanWrapper`) y una ruta absoluta de otra máquina, así que validarlo obligaría a
+    /// inventarle la traducción a los nombres vigentes.
+    /// </summary>
+    private static List<string> ExampleFiles() =>
+        [.. Directory.GetFiles(ExamplesDirectory(), "*.json", SearchOption.AllDirectories).OrderBy(path => path)];
+
+    private static PluginLoader CreateLoader()
+    {
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.FileSystem.FolderSourceNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Archives.SmartUnpackNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Images.ImageOptimizerNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Logic.SwitchCaseNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Hashing.HashCalculatorNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Integrations.MediaTranscoderNode).Assembly);
+        loader.RegisterNodeTypesFromAssembly(typeof(FileFlow.Plugin.Scripting.CustomScriptNode).Assembly);
+        return loader;
     }
 }
