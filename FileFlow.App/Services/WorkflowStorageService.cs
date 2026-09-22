@@ -28,9 +28,22 @@ public class WorkflowStorageService : IWorkflowStorageService
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(graph);
 
-        // El escritor declara la versión que escribe: un archivo sin versión se lee como anterior al
-        // versionado y se le aplican reparaciones pensadas para archivos que ya no se producen.
-        graph.Schema ??= WorkflowFormat.CurrentSchema;
+        // La comprobación mira el <b>destino</b> y no el grafo que se está guardando: guardar siempre pregunta
+        // la ruta, así que lo que hay que proteger es el archivo concreto al que se va a escribir —y eso cubre
+        // también el caso de un archivo que cambió mientras la aplicación estaba abierta—.
+        string? targetSchema = File.Exists(filePath) ? DeclaredSchemaOf(filePath) : null;
+        if (WorkflowFormat.VersionOf(targetSchema) > WorkflowFormat.CurrentVersion)
+        {
+            throw new InvalidDataException(string.Format(
+                "El archivo '{0}' lo escribió una versión más nueva de FileFlow (formato {1}); guárdalo en otra ruta para no perderlo.",
+                filePath,
+                targetSchema));
+        }
+
+        // El escritor declara la versión que escribe, por la misma puerta que el otro escritor: un archivo sin
+        // versión se lee como anterior al versionado y se le aplican reparaciones pensadas para archivos que ya
+        // no se producen.
+        WorkflowFormat.DeclareCurrent(graph);
 
         var directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -90,5 +103,28 @@ public class WorkflowStorageService : IWorkflowStorageService
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         var graph = JsonSerializer.Deserialize<WorkflowGraph>(json, WorkflowGraph.SerializationOptions);
         return graph ?? throw new InvalidDataException("El contenido JSON no contiene un grafo válido.");
+    }
+
+    /// <summary>
+    /// Valor de <c>schema</c> que declara el archivo de destino, leído del JSON sin interpretar el resto: un
+    /// flujo de un formato posterior puede traer formas que este modelo no sabe enlazar, y ese es justo el
+    /// archivo que no se puede sobrescribir.
+    ///
+    /// Un archivo ilegible o que no declara ninguna versión devuelve <c>null</c>: no se le puede atribuir una
+    /// versión que no dice, y el guardado sigue como siempre —reparar un archivo corrupto no puede quedar
+    /// bloqueado por una protección pensada para archivos vivos—.
+    /// </summary>
+    private static string? DeclaredSchemaOf(string filePath)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(filePath));
+            return WorkflowFormat.DeclaredSchema(document.RootElement);
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException or NotSupportedException)
+        {
+            // No se puede leer lo que hay: no hay nada que proteger que se pueda leer.
+            return null;
+        }
     }
 }

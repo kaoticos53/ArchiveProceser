@@ -218,6 +218,24 @@
   <data name="LogLoadedWorkflow" xml:space="preserve">
     <value>Loaded workflow from {0}</value>
   </data>
+  <data name="LogWorkflowFromNewerFormat" xml:space="preserve">
+    <value>⚠️ This workflow was written by a newer version of FileFlow (format {0}): it opens as is, but it cannot be overwritten.</value>
+  </data>
+  <data name="Diagnosis_NoNodes" xml:space="preserve">
+    <value>The workflow contains no nodes, so there is nothing to run.</value>
+  </data>
+  <data name="Diagnosis_NoSource" xml:space="preserve">
+    <value>None of the {0} nodes is a source, so nothing ingests data: the engine will start the workflow with an empty item.</value>
+  </data>
+  <data name="Diagnosis_StartsEmpty" xml:space="preserve">
+    <value>The engine will start {0} node(s) with an empty item, because they declare inputs and nothing feeds them: {1}.</value>
+  </data>
+  <data name="Diagnosis_DeadEnd" xml:space="preserve">
+    <value>No node closes the workflow, so the result of the last nodes reaches no destination.</value>
+  </data>
+  <data name="Diagnosis_Summary" xml:space="preserve">
+    <value>🔎 {0} node(s) · {1} connection(s) · {2} starting node(s) · {3} node(s) that close the workflow</value>
+  </data>
   <data name="LogDroppedConnection" xml:space="preserve">
     <value>🔌 Could not rebuild connection {0}: {1}</value>
   </data>
@@ -226,6 +244,27 @@
   </data>
   <data name="LogDroppedConnectionMissingPort" xml:space="preserve">
     <value>node '{0}' no longer exposes port '{1}'</value>
+  </data>
+  <data name="CanvasNoticeLostConnections" xml:space="preserve">
+    <value>🔌 These connections could not be rebuilt</value>
+  </data>
+  <data name="FixGoToNodeBtn" xml:space="preserve">
+    <value>Go to the node</value>
+  </data>
+  <data name="FixReconnectBtn" xml:space="preserve">
+    <value>Reconnect to "{0}"</value>
+  </data>
+  <data name="LogSubflowDefinitionChanged" xml:space="preserve">
+    <value>🔄 Subflow '{0}' changed on disk: the container recomputed its ports.</value>
+  </data>
+  <data name="LogConnectionLostWithSubflowChange" xml:space="preserve">
+    <value>🔌 Connection {0} was lost: {1}</value>
+  </data>
+  <data name="CanvasNoticeSubflowDefinitionChanged" xml:space="preserve">
+    <value>🔄 Subflow '{0}' changed on disk: these connections were lost</value>
+  </data>
+  <data name="CanvasNoticeDismiss" xml:space="preserve">
+    <value>Dismiss this notice</value>
   </data>
 
   <!-- Node Names & Descriptions -->
@@ -678,6 +717,9 @@
   <data name="StatusBar_ReadyToExecute" xml:space="preserve"><value>🟢 Ready to execute</value></data>
   <data name="StatusBar_Running" xml:space="preserve"><value>⚡ Running workflow...</value></data>
   <data name="StatusBar_Paused" xml:space="preserve"><value>⏸️ Workflow paused</value></data>
+  <data name="StatusBar_UnrebuiltConnection" xml:space="preserve"><value>🔌 1 lost connection</value></data>
+  <data name="StatusBar_UnrebuiltConnections" xml:space="preserve"><value>🔌 {0} lost connections</value></data>
+  <data name="StatusBar_UnrebuiltConnectionsToolTip" xml:space="preserve"><value>Connections that could not be rebuilt: the canvas notice has the details and the fix</value></data>
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Evaluated Value:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copy evaluated value to clipboard</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contains dynamic expression / variables</value></data>

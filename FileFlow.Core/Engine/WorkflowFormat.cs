@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace FileFlow.Core.Engine;
 
 /// <summary>
@@ -73,6 +75,44 @@ public static class WorkflowFormat
             && int.TryParse(tail[1..], out int version) && version > 0
                 ? version
                 : UndeclaredVersion;
+    }
+
+    /// <summary>
+    /// ¿Lo escribió una versión del formato <b>posterior</b> a la que ésta entiende?
+    ///
+    /// No es lo mismo que «no necesita reparaciones»: un archivo posterior se lee y se deja tal cual, porque su
+    /// versión sabe más que ésta, pero <b>no se puede volver a escribir</b> sin perder lo que esa versión añadió.
+    /// Es la pregunta que separa mirar un archivo de sobrescribirlo.
+    /// </summary>
+    public static bool IsFromNewerFormat(WorkflowGraph graph)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        return VersionOf(graph) > CurrentVersion;
+    }
+
+    /// <summary>
+    /// Valor de <c>schema</c> que declara la raíz de un archivo de flujo, sin interpretar el resto: se lee del
+    /// JSON crudo y no del modelo porque un archivo de un formato posterior es justo el que puede traer formas
+    /// que este modelo no sabe enlazar, y hay que poder reconocerlo igual. Acepta el nombre en cualquier caja,
+    /// como los lectores. <c>null</c> si no lo declara.
+    /// </summary>
+    public static string? DeclaredSchema(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in root.EnumerateObject())
+        {
+            if (property.Name.Equals("schema", StringComparison.OrdinalIgnoreCase) &&
+                property.Value.ValueKind == JsonValueKind.String)
+            {
+                return property.Value.GetString();
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

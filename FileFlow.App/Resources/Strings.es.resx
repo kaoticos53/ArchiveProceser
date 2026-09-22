@@ -218,6 +218,24 @@
   <data name="LogLoadedWorkflow" xml:space="preserve">
     <value>Flujo cargado desde {0}</value>
   </data>
+  <data name="LogWorkflowFromNewerFormat" xml:space="preserve">
+    <value>⚠️ Este flujo lo escribió una versión más nueva de FileFlow (formato {0}): se abre tal cual, pero no se podrá sobrescribir.</value>
+  </data>
+  <data name="Diagnosis_NoNodes" xml:space="preserve">
+    <value>El flujo no contiene ningún nodo, así que no hay nada que ejecutar.</value>
+  </data>
+  <data name="Diagnosis_NoSource" xml:space="preserve">
+    <value>Ninguno de los {0} nodos es un origen, así que nada ingiere datos: el motor arrancará el flujo con un elemento vacío.</value>
+  </data>
+  <data name="Diagnosis_StartsEmpty" xml:space="preserve">
+    <value>El motor arrancará {0} nodo(s) con un elemento vacío, porque declaran entradas y nada se las da: {1}.</value>
+  </data>
+  <data name="Diagnosis_DeadEnd" xml:space="preserve">
+    <value>Ningún nodo cierra el flujo, así que el resultado de los últimos nodos no llega a ningún destino.</value>
+  </data>
+  <data name="Diagnosis_Summary" xml:space="preserve">
+    <value>🔎 {0} nodo(s) · {1} conexión(es) · {2} nodo(s) de arranque · {3} nodo(s) que cierran el flujo</value>
+  </data>
   <data name="LogDroppedConnection" xml:space="preserve">
     <value>🔌 No se pudo reconstruir la conexión {0}: {1}</value>
   </data>
@@ -226,6 +244,27 @@
   </data>
   <data name="LogDroppedConnectionMissingPort" xml:space="preserve">
     <value>el nodo '{0}' ya no expone el puerto '{1}'</value>
+  </data>
+  <data name="CanvasNoticeLostConnections" xml:space="preserve">
+    <value>🔌 No se pudieron reconstruir estas conexiones</value>
+  </data>
+  <data name="FixGoToNodeBtn" xml:space="preserve">
+    <value>Ir al nodo</value>
+  </data>
+  <data name="FixReconnectBtn" xml:space="preserve">
+    <value>Reconectar a «{0}»</value>
+  </data>
+  <data name="LogSubflowDefinitionChanged" xml:space="preserve">
+    <value>🔄 El subflujo '{0}' cambió en disco: el contenedor volvió a calcular sus puertos.</value>
+  </data>
+  <data name="LogConnectionLostWithSubflowChange" xml:space="preserve">
+    <value>🔌 La conexión {0} se perdió: {1}</value>
+  </data>
+  <data name="CanvasNoticeSubflowDefinitionChanged" xml:space="preserve">
+    <value>🔄 El subflujo '{0}' cambió en disco: se perdieron estas conexiones</value>
+  </data>
+  <data name="CanvasNoticeDismiss" xml:space="preserve">
+    <value>Descartar este aviso</value>
   </data>
 
   <!-- Node Names & Descriptions -->
@@ -678,6 +717,9 @@
   <data name="StatusBar_ReadyToExecute" xml:space="preserve"><value>🟢 Listo para ejecutar</value></data>
   <data name="StatusBar_Running" xml:space="preserve"><value>⚡ Ejecutando flujo de trabajo...</value></data>
   <data name="StatusBar_Paused" xml:space="preserve"><value>⏸️ Flujo pausado</value></data>
+  <data name="StatusBar_UnrebuiltConnection" xml:space="preserve"><value>🔌 1 conexión perdida</value></data>
+  <data name="StatusBar_UnrebuiltConnections" xml:space="preserve"><value>🔌 {0} conexiones perdidas</value></data>
+  <data name="StatusBar_UnrebuiltConnectionsToolTip" xml:space="preserve"><value>Conexiones que no se pudieron reconstruir: el detalle y el arreglo están en el aviso del lienzo</value></data>
   <data name="Inspector_EvaluatedLabel" xml:space="preserve"><value>Valor Evaluado:</value></data>
   <data name="Inspector_CopyEvaluatedToolTip" xml:space="preserve"><value>Copiar valor evaluado al portapapeles</value></data>
   <data name="Inspector_ExpressionBadgeToolTip" xml:space="preserve"><value>Contiene expresión dinámica / variables</value></data>
