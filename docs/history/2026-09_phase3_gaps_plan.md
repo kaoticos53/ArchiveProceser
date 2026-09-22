@@ -320,6 +320,53 @@ el último; y una pérdida que el lienzo no puede arreglar sigue contada —y su
 
 ---
 
+## Fase 3I — Un archivo reparado converge ✅ HECHA
+
+> Ejecutada el 2026-09-22: la reparación tenía una promesa escrita y ninguna forma de cumplirla —`DeclareCurrent`
+> no pisa una versión declarada «hasta que alguien lo repare», y reparar no era una operación que existiera—. Ahora
+> hay `WorkflowFormat.DeclareRepaired` y la llama el único sitio que aplica el plan; un grafo que llega de un archivo
+> recuerda de qué versión viene (`Schema == null` deja de significar a la vez «viene de un archivo anterior» y «no
+> viene de ningún archivo»), y lo que se recupera se queda en el **grafo** y no sólo en el lienzo. Medido antes de
+> tocar nada: la app ya convergía —porque guardar exporta el lienzo—, pero el camino que escribe el grafo que se
+> **leyó** declaraba el formato actual sin la reparación dentro y el archivo reabierto se quedaba con **0 cables**.
+> 9 pruebas nuevas y 4 mutaciones, y con ella se pusieron al día los **41 ejemplos de flujo** —reescritos por el
+> camino de la aplicación y atados por 2 pruebas más: declaran la versión vigente y se abren sin perder un nodo ni
+> un cable— y la **documentación viva** (arquitectura, API, guía de nodos, manuales, guía de pruebas, walkthrough y
+> el resumen de arquitectura para agentes), incluido el ejemplo de nodo de la referencia de API, que seguía
+> enseñando `: IFlowNode`. Suite **1470 superadas / 0 fallos / 1 omitida**. Detalle y evidencia en
+> [`2026-08_phase1_audit_plan.md`](2026-08_phase1_audit_plan.md).
+
+**Objetivo.** Que un archivo anterior, una vez reparado y guardado, quede declarado con la versión actual: que
+**converja** en vez de repararse en cada apertura, y que entre así en la protección de 3A —un archivo que se declara
+anterior nunca puede ser «posterior» para nadie, y uno que se declara actual sí—.
+
+**Por qué importa.** La reparación de 2E-P8 se rehace en cada apertura mientras el archivo siga declarándose
+anterior, y las dos mitades de la regla —«no declares actual lo que no reparaste» y «declara lo que reparaste»—
+tenía sólo la primera. La segunda no existía como operación: no había dónde decir «esto ya se reparó».
+
+**Cambios.** (1) `WorkflowFormat.DeclareRepaired`: aplicada la reparación, el grafo se declara lo que ahora es, y no
+baja versiones —un archivo posterior se queda con la suya—; la llama `WorkflowGraphSerializer.Import`, que es el
+único sitio que aplica el plan. (2) `WorkflowFormat.NoteSource` y `WorkflowGraph : IJsonOnDeserialized`: un grafo que
+llega de un texto recuerda de qué versión viene, y el archivo que no declaraba ninguna se anota con la del formato
+anterior al versionado (`WorkflowFormat.UndeclaredSchema`), de modo que **guardar lo que no se reparó no declara
+actual**. (3) Lo que se recupera se queda en el grafo y no sólo en el lienzo, y para eso los nombres y el formato de
+las claves de la memoria de puertos pasan del nodo al **contrato** (`ISubflowNode`).
+
+**Cómo se verifica.** Un grafo leído de un archivo anterior se declara reparado al importarlo **y lleva los puertos
+recuperados dentro**; guardarlo y reabrirlo da el mismo flujo —los dos cables siguen ahí— y volver a guardarlo deja
+el archivo **byte a byte** igual, que es la definición de «convergió»; guardar un grafo leído sin repararlo **no**
+declara el formato actual, y su reparación sigue pendiente para el próximo que lo abra; y un archivo posterior no
+baja de versión.
+
+**Riesgo.** Bajo: no cambia el formato ni la lectura, y la app sigue escribiendo lo mismo que escribía —su guardado
+exporta el lienzo—. Lo que cambia es lo que declaran los caminos que escriben el grafo **leído**, que antes perdían
+lo reparado.
+
+**Lo que queda fuera, declarado.** No se convierte lo que ya está en disco: un archivo anterior se repara al
+abrirlo y converge cuando el usuario lo **guarda** —abrir y no guardar no escribe, así que ese archivo sigue
+anterior, y se volverá a reparar la próxima vez—. Y declarar el formato actual cierra el hueco del **formato**, no el
+del **dato**: los casos de un switch o una definición incrustada que el archivo nunca tuvo siguen sin recuperarse.
+
 ## Fase 3J — El catálogo de nodos, generado desde el código ✅ HECHA
 
 > Ejecutada el 2026-09-22: el catálogo de nodos (`.agents/nodes_catalog.md`) era el documento que más mentía del
@@ -330,9 +377,6 @@ el último; y una pérdida que el lienzo no puede arreglar sigue contada —y su
 > `NodeCatalogGuardTests` falla —nombrando la primera línea que difiere, con su número— si deja de coincidir con lo
 > que descubre el cargador. 3 pruebas y 5 mutaciones (una de ellas, añadir un nodo, deja las tres en rojo). Suite
 > **1473 superadas / 0 fallos / 1 omitida**. Detalle y evidencia en
-9. **3J** — el catálogo de nodos: no es un hueco de ejecución sino de confianza, y va al final porque ahora el
-   cargador ya descubre exactamente los nodos que la arquitectura impone y el formato ya está fijado —generarlo
-   antes habría sido fotografiar un catálogo que estaba a punto de cambiar—.
 > [`2026-08_phase1_audit_plan.md`](2026-08_phase1_audit_plan.md).
 
 **Objetivo.** Que el catálogo de nodos sea lo que el código dice y no lo que alguien recordaba al escribirlo: una fila
@@ -375,6 +419,11 @@ mal en ocho de once— y apuntan al catálogo generado, que es el único que se 
    protegiendo los archivos de otra versión.
 6. **3F** — estado vivo en el editor: lo último que añade complejidad al bucle de edición.
 7. **3G** — usabilidad sobre lo que 2E-P9 ya produce.
+8. **3I** — cierre del ciclo del formato: sin esto, la reparación de 2E-P8 se rehace en cada apertura y `DeclareCurrent`
+   promete una operación que no existía.
+9. **3J** — el catálogo de nodos: no es un hueco de ejecución sino de confianza, y va al final porque ahora el
+   cargador ya descubre exactamente los nodos que la arquitectura impone y el formato ya está fijado —generarlo
+   antes habría sido fotografiar un catálogo que estaba a punto de cambiar—.
 
 ## Regla de la casa para cada fase
 
