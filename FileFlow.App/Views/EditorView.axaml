@@ -325,5 +325,62 @@
                 </Border>
             </Grid>
         </Border>
+
+        <!-- Aviso del lienzo: lo que una acción hecha aquí —pegar, duplicar— no pudo reconstruir. Vive en el
+             lienzo y no sólo en la consola porque es donde el usuario acaba de actuar y donde está a un
+             Ctrl+Z de deshacerlo. No se esconde por reloj: un aviso de pérdida que se va solo deja al
+             usuario sin la noticia justo cuando iba a leerla. -->
+        <Border x:Name="CanvasNoticeBanner"
+                HorizontalAlignment="Center" VerticalAlignment="Top"
+                MaxWidth="640" Margin="0,16,0,0" Padding="12,8"
+                Background="{DynamicResource BgCardBrush}"
+                BorderBrush="{DynamicResource AccentWarningBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusMd}"
+                BoxShadow="{DynamicResource Elev4}"
+                IsVisible="{Binding HasCanvasNotice}"
+                ZIndex="60">
+            <StackPanel>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <materialIcons:MaterialIcon Grid.Column="0" Kind="AlertCircle" Width="14" Height="14"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource AccentWarningBrush}" />
+                    <TextBlock Grid.Column="1" Text="{Binding CanvasNotice}"
+                               MaxWidth="540" TextWrapping="Wrap" VerticalAlignment="Center"
+                               FontSize="{DynamicResource FontSizeCaption}"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <Button Grid.Column="2" Command="{Binding DismissCanvasNoticeCommand}"
+                            Background="Transparent" BorderThickness="0" Padding="4,1" Cursor="Hand"
+                            ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[CanvasNoticeDismiss]}">
+                        <materialIcons:MaterialIcon Kind="Close" Width="11" Height="11"
+                                                    Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </Button>
+                </Grid>
+
+                <!-- Cada cable perdido, con lo que se puede hacer con él: ir al nodo cuyo puerto falta y
+                     reconectar al puerto vigente que más se le parece. El detalle vive en la fila y no en la
+                     cabecera para que arreglar un cable no deje al texto contando lo que ya no es verdad. -->
+                <ItemsControl ItemsSource="{Binding CanvasNoticeFixes}"
+                              IsVisible="{Binding HasCanvasNoticeFixes}"
+                              Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="0,2">
+                                <TextBlock Grid.Column="0" Text="{Binding Description}"
+                                           MaxWidth="420" TextWrapping="Wrap" VerticalAlignment="Center"
+                                           FontSize="{DynamicResource FontSizeCaption}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <Button Grid.Column="1" Content="{Binding GoToNodeText}"
+                                        Command="{Binding GoToNodeCommand}" Padding="8,2" />
+                                <Button Grid.Column="2" Classes="primary" Content="{Binding ReconnectText}"
+                                        Command="{Binding ReconnectCommand}" Padding="8,2"
+                                        IsVisible="{Binding CanReconnect}"
+                                        ToolTip.Tip="{Binding Description}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

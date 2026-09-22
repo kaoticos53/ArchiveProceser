@@ -123,12 +123,24 @@ public partial class LogViewModel : ObservableObject, IDisposable
         _flushTimer.Start();
     }
 
-    public void AddLog(LogLevel level, string message)
+    public void AddLog(LogLevel level, string message) => AddNodeLog(level, message, nodeId: null, nodeName: null);
+
+    /// <summary>
+    /// Lo mismo, pero con el nodo al que se refiere el mensaje: la fila de la consola queda atada a un nodo del
+    /// lienzo, y seleccionarla abre ese nodo en el inspector (ver <see cref="NodeInspectorViewModel.InspectLogRecord"/>).
+    ///
+    /// El identificador tiene que ser el del nodo <b>tal y como existe en el lienzo</b>: uno que no esté se
+    /// ignora al seleccionar la fila —y si el nombre coincide con otro nodo, abre el que no es—, así que un
+    /// mensaje sobre algo que no está se cuenta sin nodo, con el nombre en el propio texto.
+    /// </summary>
+    public void AddNodeLog(LogLevel level, string message, string? nodeId, string? nodeName)
     {
         var record = StructuredLogRecord.Create(
             executionId: string.Empty,
             level: level,
-            message: message
+            message: message,
+            nodeId: nodeId,
+            nodeName: nodeName
         );
         _pendingLogs.Enqueue(record);
         _logStore.EnqueueLog(record);

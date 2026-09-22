@@ -37,13 +37,31 @@
                 </StackPanel>
             </Border>
 
-            <!-- Isla: Estado del Motor -->
-            <Border Grid.Column="1" Classes="statusPill" Margin="0,0,10,0">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
-                    <Border Classes="led onInfo" />
-                    <TextBlock Text="{Binding StatusMessage}" Classes="caption strong" VerticalAlignment="Center" />
-                </StackPanel>
-            </Border>
+            <!-- Isla: Estado del Motor, y los cables que quedaron sin reconstruir -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}" Margin="0,0,10,0">
+                <Border Classes="statusPill">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="{DynamicResource Space3}">
+                        <Border Classes="led onInfo" />
+                        <TextBlock Text="{Binding StatusMessage}" Classes="caption strong" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Lo que una acción dejó sin reconstruir: el mismo recuento del aviso del lienzo, aquí
+                     para que siga a la vista cuando se mire el flujo desde otro sitio. No se apaga solo: el
+                     grafo sigue teniendo cables de menos hasta que se arreglen, se deshaga, o se abra otro. -->
+                <Border x:Name="UnrebuiltConnectionsPill"
+                        Classes="statusPill"
+                        BorderBrush="{DynamicResource AccentWarningBrush}"
+                        IsVisible="{Binding HasUnrebuiltConnections}"
+                        ToolTip.Tip="{Binding UnrebuiltConnectionsToolTip}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                        <materialIcons:MaterialIcon VerticalAlignment="Center" Kind="AlertCircle" Width="14" Height="14"
+                                                    Foreground="{DynamicResource AccentWarningBrush}" />
+                        <TextBlock Text="{Binding UnrebuiltConnectionsText}" Classes="micro strong" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentWarningBrush}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
             <!-- Isla: Ruta de Salida Global (Expansible) -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,10,0">

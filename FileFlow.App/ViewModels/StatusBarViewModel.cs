@@ -49,6 +49,18 @@ public partial class StatusBarViewModel : ObservableObject
     private string _loadedAiModelsToolTip = string.Empty;
 
     [ObservableProperty]
+    private int _unrebuiltConnectionsCount;
+
+    [ObservableProperty]
+    private bool _hasUnrebuiltConnections;
+
+    [ObservableProperty]
+    private string _unrebuiltConnectionsText = string.Empty;
+
+    [ObservableProperty]
+    private string _unrebuiltConnectionsToolTip = string.Empty;
+
+    [ObservableProperty]
     private string _globalOutputDir = @"C:\FileFlowOutput";
 
     [ObservableProperty]
@@ -86,6 +98,10 @@ public partial class StatusBarViewModel : ObservableObject
             else if (e.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
                 UpdateSelectedNodeInfo();
+            }
+            else if (e.PropertyName == nameof(EditorViewModel.UnrebuiltConnectionsCount))
+            {
+                UpdateUnrebuiltConnections();
             }
         };
 
@@ -130,6 +146,7 @@ public partial class StatusBarViewModel : ObservableObject
         ConnectionCount = _editorViewModel.Connections.Count;
         GlobalOutputDir = _editorViewModel.GlobalOutputDir;
         UpdateSelectedNodeInfo();
+        UpdateUnrebuiltConnections();
 
         // Subscripciones a eventos de ControlBarViewModel
         _controlBarViewModel.PropertyChanged += (s, e) =>
@@ -195,6 +212,7 @@ public partial class StatusBarViewModel : ObservableObject
             {
                 UpdateAiModelCount();
                 UpdateSelectedNodeInfo();
+                UpdateUnrebuiltConnections();
                 if (_controlBarViewModel.IsRunning)
                 {
                     UpdateActiveStatusMessage(_logViewModel.StatusMessage);
@@ -247,6 +265,30 @@ public partial class StatusBarViewModel : ObservableObject
         }
         FileFlow.Core.Utils.MemoryReclamationHelper.ReclaimMemory(trimWorkingSet: true);
         UpdateAiModelCount();
+    }
+
+    /// <summary>
+    /// El resumen de lo que la última acción no pudo reconstruir, en la barra de estado: el mismo recuento que
+    /// el aviso del lienzo, que no se lleva aquí sino que se lee de allí.
+    ///
+    /// Está en la barra y no sólo en el cartel porque son dos sitios distintos para lo mismo: el cartel dice
+    /// <b>qué</b> pasó y ofrece el arreglo donde el usuario acaba de actuar, y la barra —que está a la vista
+    /// aunque ese lienzo no lo esté— deja constancia de que el grafo que se está mirando tiene cables de
+    /// menos. Es un dato del grafo, no del último cartel, y por eso vive junto a los nodos y las conexiones que
+    /// ya se cuentan ahí.
+    /// </summary>
+    public void UpdateUnrebuiltConnections()
+    {
+        int count = _editorViewModel.UnrebuiltConnectionsCount;
+
+        UnrebuiltConnectionsCount = count;
+        HasUnrebuiltConnections = count > 0;
+        UnrebuiltConnectionsText = count == 1
+            ? _loc.GetString("StatusBar_UnrebuiltConnection", "🔌 1 conexión perdida")
+            : _loc.GetFormattedString("StatusBar_UnrebuiltConnections", "🔌 {0} conexiones perdidas", count);
+        UnrebuiltConnectionsToolTip = _loc.GetString(
+            "StatusBar_UnrebuiltConnectionsToolTip",
+            "Conexiones que no se pudieron reconstruir: el detalle y el arreglo están en el aviso del lienzo");
     }
 
     private void UpdateActiveStatusMessage(string? rawMessage)

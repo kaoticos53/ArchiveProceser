@@ -64,7 +64,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         WorkflowStorageService = new WorkflowStorageService();
         PerformanceMonitor = new SystemPerformanceMonitor();
         LogConsole = new LogViewModel();
-        Editor = new EditorViewModel(PluginLoader);
+        Editor = new EditorViewModel(PluginLoader, logViewModel: LogConsole);
         Toolbox = new ToolboxViewModel(PluginLoader);
         NodeInspector = new NodeInspectorViewModel(Editor, FileDialogService, LogConsole);
         ControlBar = new ControlBarViewModel(Editor, PluginLoader, LogConsole, NodeInspector, FileDialogService, WorkflowStorageService);

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Threading;
@@ -27,16 +28,17 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly ILocalizationService _loc;
     private readonly IDialogService _dialogService;
     private readonly IUndoRedoService _undoRedoService;
+    private readonly LogViewModel? _logViewModel;
     private readonly Action _preferencesChangedHandler;
 
-    public Services.INodeClipboardService ClipboardService => _clipboardService;
-    public Services.IVariableDiscoveryService VariableDiscoveryService => _variableDiscoveryService;
     /// <summary>
     /// El latido que detecta que un subflujo abierto cambió en disco por fuera del lienzo. Ver
     /// <see cref="RefreshSubflowsChangedOnDisk"/>.
     /// </summary>
     private readonly DispatcherTimer _subflowWatchTimer;
 
+    public Services.INodeClipboardService ClipboardService => _clipboardService;
+    public Services.IVariableDiscoveryService VariableDiscoveryService => _variableDiscoveryService;
     public IUndoRedoService UndoRedoService => _undoRedoService;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
@@ -112,6 +114,104 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _showGrid = true;
 
+    /// <summary>
+    /// Lo que la última acción dejó a medias y el usuario tiene que saber <b>aquí</b>, donde está el grafo y
+    /// donde se puede arreglar: hoy, los cables que no se pudieron reconstruir al abrir un flujo, al pegar o
+    /// al duplicar. Es efímero en el sentido de que se retira solo en cuanto la acción deja de estar —se
+    /// deshace el pegado, se abre otro flujo, el usuario lo descarta— y nunca con un temporizador: esconder un
+    /// aviso de pérdida por reloj deja al usuario sin la noticia justo cuando iba a leerla.
+    ///
+    /// <para>
+    /// No es la única superficie del mismo hecho: la consola guarda el registro, que sobrevive al cartel. Y no
+    /// es sólo un texto: cada cable perdido es una fila con su arreglo (ver <see cref="CanvasNoticeFixes"/>).
+    /// </para>
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCanvasNotice))]
+    private string? _canvasNotice;
+
+    /// <summary>Si hay algo que el lienzo tenga que contar de la última acción.</summary>
+    public bool HasCanvasNotice => !string.IsNullOrWhiteSpace(CanvasNotice);
+
+    /// <summary>
+    /// Los cables perdidos de la última acción que se pueden arreglar aquí: cada uno con el nodo al que hay que
+    /// ir y la reconexión a un clic.
+    ///
+    /// Van <b>con</b> el aviso y no aparte, y por eso se ponen con <see cref="SetCanvasNotice"/>: el texto de
+    /// una pérdida y las filas de otra no pueden acabar juntos, que es lo que pasaría si fueran dos estados.
+    /// </summary>
+    public ObservableCollection<DroppedConnectionFixViewModel> CanvasNoticeFixes { get; } = [];
+
+    /// <summary>Si el aviso trae algo que hacer, además de algo que leer.</summary>
+    public bool HasCanvasNoticeFixes => CanvasNoticeFixes.Count > 0;
+
+    /// <summary>
+    /// Cables que la última acción perdió y que <b>siguen</b> sin reconstruir: los que tienen fila —mientras no
+    /// se arreglen— más los que no la tienen, que son los que el lienzo no puede arreglar porque su nodo no
+    /// está. Baja al reconectar un cable y desaparece con el aviso.
+    ///
+    /// Se cuenta <b>aquí</b> y no en quien lo mira —la barra de estado— porque el dato sale de lo mismo que
+    /// hace el aviso: las filas que hay y las pérdidas que no pudieron tener fila se saben en el momento de
+    /// ponerlo, así que nadie más tiene que llevar la cuenta de nada.
+    /// </summary>
+    public int UnrebuiltConnectionsCount => CanvasNoticeFixes.Count + _lostWithoutFixCount;
+
+    /// <summary>Si queda algún cable perdido por el que hacer algo.</summary>
+    public bool HasUnrebuiltConnections => UnrebuiltConnectionsCount > 0;
+
+    /// <summary>Pérdidas de la última acción que no pudieron tener fila, fijadas al poner el aviso.</summary>
+    private int _lostWithoutFixCount;
+
+    private void OnCanvasNoticeFixesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasCanvasNoticeFixes));
+        NotifyUnrebuiltConnections();
+    }
+
+    private void NotifyUnrebuiltConnections()
+    {
+        OnPropertyChanged(nameof(UnrebuiltConnectionsCount));
+        OnPropertyChanged(nameof(HasUnrebuiltConnections));
+    }
+
+    /// <summary>Retira el aviso del lienzo, que es cosa del usuario: se queda hasta que lo lea.</summary>
+    [RelayCommand]
+    public void DismissCanvasNotice() => ClearCanvasNotice();
+
+    /// <summary>
+    /// Pone el aviso y, con él, lo que se puede hacer de él: recibe las conexiones que se perdieron —el dato, no
+    /// las filas ya hechas— y saca de ahí las dos cosas que el resto del mundo mira, las filas que se pueden
+    /// arreglar y cuántas no pueden tenerlas.
+    ///
+    /// Recibir el <b>dato</b> y no las filas es lo que impide que un aviso acabe con las filas de otro o con un
+    /// recuento que no le corresponde: es la única puerta, y quien la cruza no puede traer una cuenta y un
+    /// detalle que no cuadren.
+    /// </summary>
+    private void SetCanvasNotice(string? message, IReadOnlyList<DroppedConnection>? lostConnections = null)
+    {
+        var lost = lostConnections ?? [];
+        var fixes = BuildFixes(lost);
+
+        _lostWithoutFixCount = lost.Count - fixes.Count;
+
+        CanvasNoticeFixes.Clear();
+
+        foreach (var fix in fixes)
+        {
+            CanvasNoticeFixes.Add(fix);
+        }
+
+        CanvasNotice = message;
+
+        // Un aviso que sustituye a otro con el mismo texto y sin filas nuevas no dispara ninguna de las dos
+        // notificaciones de arriba —el texto no cambió y la colección tampoco—, así que el recuento se avisa
+        // siempre: es un número, repetirlo no cuesta nada y no hacerlo deja la barra de estado contando la
+        // pérdida anterior.
+        NotifyUnrebuiltConnections();
+    }
+
+    private void ClearCanvasNotice() => SetCanvasNotice(null);
+
     [ObservableProperty]
     private int _selectedNodesCount;
 
@@ -144,7 +244,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         IUserPreferencesService? userPreferencesService = null,
         ILocalizationService? localizationService = null,
         IDialogService? dialogService = null,
-        IUndoRedoService? undoRedoService = null)
+        IUndoRedoService? undoRedoService = null,
+        LogViewModel? logViewModel = null)
     {
         _pluginLoader = pluginLoader;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
@@ -153,7 +254,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         _loc = localizationService ?? LocalizationManager.Instance;
         _dialogService = dialogService ?? AvaloniaDialogService.Instance;
         _undoRedoService = undoRedoService ?? new UndoRedoService();
+        _logViewModel = logViewModel;
         _globalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
+        CanvasNoticeFixes.CollectionChanged += OnCanvasNoticeFixesChanged;
+
         _preferencesChangedHandler = () =>
         {
             GlobalOutputDir = _userPreferencesService.Preferences.DefaultGlobalOutputDir;
@@ -198,6 +302,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(TotalNodesCount));
             UpdateSelectedCount();
         };
+
+        // Un subflujo puede editarse por fuera de este lienzo —en otra pestaña del editor, en otro
+        // programa— y el contenedor vivo se quedaba con la frontera vieja hasta que alguien le preguntara.
+        // El latido es la pregunta, y es barato porque no lee el archivo: sólo compara su huella.
+        _subflowWatchTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = SubflowWatchInterval
+        };
+        _subflowWatchTimer.Tick += OnSubflowWatchTick;
+        _subflowWatchTimer.Start();
     }
 
     public bool CanUndo => _undoRedoService.CanUndo;
@@ -209,6 +323,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (_undoRedoService.CanUndo)
         {
             _undoRedoService.Undo();
+
+            // El aviso contaba lo que hizo la acción que se acaba de deshacer: si el pegado ya no está, el
+            // aviso tampoco puede quedar ahí, contando algo que el usuario ya revirtió.
+            ClearCanvasNotice();
         }
     }
 
@@ -290,124 +408,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
-    public void CreateConnection(PortViewModel source, PortViewModel target)
-    {
-        if (source == null || target == null || source == target) return;
-        if (source.NodeOwner == target.NodeOwner) return;
-
-        // Ensure Source is Output and Target is Input
-        PortViewModel outputPort = source.Direction == PortDirection.Output ? source : target;
-        PortViewModel inputPort = source.Direction == PortDirection.Output ? target : source;
-
-        if (outputPort.Direction != PortDirection.Output || inputPort.Direction != PortDirection.Input)
-            return;
-
-
-        // Un subflujo puede editarse por fuera de este lienzo —en otra pestaña del editor, en otro
-        // programa— y el contenedor vivo se quedaba con la frontera vieja hasta que alguien le preguntara.
-        // El latido es la pregunta, y es barato porque no lee el archivo: sólo compara su huella.
-        _subflowWatchTimer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = SubflowWatchInterval
-        };
-        _subflowWatchTimer.Tick += OnSubflowWatchTick;
-        _subflowWatchTimer.Start();
-        if (Connections.Any(c => c.Source == outputPort && c.Target == inputPort))
-            return;
-
-        using var tx = _undoRedoService.BeginTransaction($"Conectar {outputPort.NodeOwner.Title} -> {inputPort.NodeOwner.Title}");
-
-        // Remove any existing connection to the same input port
-        var existing = Connections.FirstOrDefault(c => c.Target == inputPort);
-        if (existing != null)
-        {
-            Connections.Remove(existing);
-            _undoRedoService.Record(new DeleteConnectionAction(this, existing));
-        }
-
-        var newConn = new ConnectionViewModel(outputPort, inputPort);
-        Connections.Add(newConn);
-        _undoRedoService.Record(new AddConnectionAction(this, newConn));
-    }
-
-    private static (PortViewModel? Source, PortViewModel? Target) ExtractPortsFromParameter(object? param)
-    {
-        if (param is PortViewModel singlePort)
-        {
-            return (null, singlePort);
-        }
-
-        if (param is System.Runtime.CompilerServices.ITuple tuple && tuple.Length > 0)
-        {
-            PortViewModel? p1 = tuple[0] as PortViewModel;
-            PortViewModel? p2 = tuple.Length > 1 ? tuple[1] as PortViewModel : null;
-            return (p1, p2);
-        }
-
-        return (null, null);
-    }
-
-    [RelayCommand]
-    public void StartConnection(object? source)
-    {
-        var (p1, p2) = ExtractPortsFromParameter(source);
-        var port = p1 ?? p2;
-        if (port != null)
-        {
-            PendingConnection = new PendingConnectionViewModel(port);
-            ApplyPortCompatibilityHighlight(port);
-        }
-    }
-
-    [RelayCommand]
-    public void FinishConnection(object? target)
-    {
-        var (p1, p2) = ExtractPortsFromParameter(target);
-        PortViewModel? sourcePort = p1 ?? PendingConnection?.Source;
-        PortViewModel? targetPort = p2;
-
-        if (p1 != null && p2 == null)
-        {
-            if (PendingConnection?.Source != null && PendingConnection.Source != p1)
-            {
-                sourcePort = PendingConnection.Source;
-                targetPort = p1;
-            }
-            else
-            {
-                targetPort = p1;
-            }
-        }
-
-        if (sourcePort != null && targetPort != null && sourcePort != targetPort)
-        {
-            CreateConnection(sourcePort, targetPort);
-        }
-        if (PendingConnection != null)
-        {
-            PendingConnection.IsVisible = false;
-        }
-        PendingConnection = null;
-        ClearPortCompatibilityHighlight();
-    }
-
-    [RelayCommand]
-    public void CancelConnection()
-    {
-        if (PendingConnection != null)
-        {
-            PendingConnection.IsVisible = false;
-        }
-        PendingConnection = null;
-        ClearPortCompatibilityHighlight();
-    }
-
-    /// <summary>
-    /// Marca cada puerto del lienzo con su compatibilidad respecto al puerto que se está arrastrando, para
-    /// que la tarjeta pueda resaltar los destinos válidos y atenuar el resto mientras se dibuja el cable.
-    /// </summary>
-    private void ApplyPortCompatibilityHighlight(PortViewModel source)
-    {
     /// <summary>
     /// Cada cuánto se le pregunta a los contenedores de subflujo si su definición cambió en disco. La
     /// comprobación es una huella —fecha y tamaño del archivo, sin leerlo—, así que un segundo es barato; y es
@@ -571,6 +571,114 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             exposed.Contains(port) ? DroppedConnectionEndProblem.None : DroppedConnectionEndProblem.MissingPort);
     }
 
+    public void CreateConnection(PortViewModel source, PortViewModel target)
+    {
+        if (source == null || target == null || source == target) return;
+        if (source.NodeOwner == target.NodeOwner) return;
+
+        // Ensure Source is Output and Target is Input
+        PortViewModel outputPort = source.Direction == PortDirection.Output ? source : target;
+        PortViewModel inputPort = source.Direction == PortDirection.Output ? target : source;
+
+        if (outputPort.Direction != PortDirection.Output || inputPort.Direction != PortDirection.Input)
+            return;
+
+        if (Connections.Any(c => c.Source == outputPort && c.Target == inputPort))
+            return;
+
+        using var tx = _undoRedoService.BeginTransaction($"Conectar {outputPort.NodeOwner.Title} -> {inputPort.NodeOwner.Title}");
+
+        // Remove any existing connection to the same input port
+        var existing = Connections.FirstOrDefault(c => c.Target == inputPort);
+        if (existing != null)
+        {
+            Connections.Remove(existing);
+            _undoRedoService.Record(new DeleteConnectionAction(this, existing));
+        }
+
+        var newConn = new ConnectionViewModel(outputPort, inputPort);
+        Connections.Add(newConn);
+        _undoRedoService.Record(new AddConnectionAction(this, newConn));
+    }
+
+    private static (PortViewModel? Source, PortViewModel? Target) ExtractPortsFromParameter(object? param)
+    {
+        if (param is PortViewModel singlePort)
+        {
+            return (null, singlePort);
+        }
+
+        if (param is System.Runtime.CompilerServices.ITuple tuple && tuple.Length > 0)
+        {
+            PortViewModel? p1 = tuple[0] as PortViewModel;
+            PortViewModel? p2 = tuple.Length > 1 ? tuple[1] as PortViewModel : null;
+            return (p1, p2);
+        }
+
+        return (null, null);
+    }
+
+    [RelayCommand]
+    public void StartConnection(object? source)
+    {
+        var (p1, p2) = ExtractPortsFromParameter(source);
+        var port = p1 ?? p2;
+        if (port != null)
+        {
+            PendingConnection = new PendingConnectionViewModel(port);
+            ApplyPortCompatibilityHighlight(port);
+        }
+    }
+
+    [RelayCommand]
+    public void FinishConnection(object? target)
+    {
+        var (p1, p2) = ExtractPortsFromParameter(target);
+        PortViewModel? sourcePort = p1 ?? PendingConnection?.Source;
+        PortViewModel? targetPort = p2;
+
+        if (p1 != null && p2 == null)
+        {
+            if (PendingConnection?.Source != null && PendingConnection.Source != p1)
+            {
+                sourcePort = PendingConnection.Source;
+                targetPort = p1;
+            }
+            else
+            {
+                targetPort = p1;
+            }
+        }
+
+        if (sourcePort != null && targetPort != null && sourcePort != targetPort)
+        {
+            CreateConnection(sourcePort, targetPort);
+        }
+        if (PendingConnection != null)
+        {
+            PendingConnection.IsVisible = false;
+        }
+        PendingConnection = null;
+        ClearPortCompatibilityHighlight();
+    }
+
+    [RelayCommand]
+    public void CancelConnection()
+    {
+        if (PendingConnection != null)
+        {
+            PendingConnection.IsVisible = false;
+        }
+        PendingConnection = null;
+        ClearPortCompatibilityHighlight();
+    }
+
+    /// <summary>
+    /// Marca cada puerto del lienzo con su compatibilidad respecto al puerto que se está arrastrando, para
+    /// que la tarjeta pueda resaltar los destinos válidos y atenuar el resto mientras se dibuja el cable.
+    /// </summary>
+    private void ApplyPortCompatibilityHighlight(PortViewModel source)
+    {
         foreach (var port in AllPorts())
         {
             port.IsDragActive = true;
@@ -755,10 +863,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
 
         using var tx = _undoRedoService.BeginTransaction("Pegar Nodos");
-        var newNodes = _clipboardService.Paste(this, targetPoint);
-        if (newNodes.Count > 0)
+        var result = _clipboardService.Paste(this, targetPoint);
+        RecordPastedNodes(result.Nodes, "Pegar Nodos");
+        AnnounceWhatCouldNotBeRebuilt(result.Report);
+        if (result.Nodes.Count > 0)
         {
-            SelectedNode = newNodes.Last();
+            SelectedNode = result.Nodes[^1];
         }
     }
 
@@ -769,13 +879,212 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (targets.Count > 0)
         {
             using var tx = _undoRedoService.BeginTransaction("Duplicar Nodos");
-            var newNodes = _clipboardService.Duplicate(targets, Connections, this);
-            if (newNodes.Count > 0)
+            var result = _clipboardService.Duplicate(targets, Connections, this);
+            RecordPastedNodes(result.Nodes, "Duplicar Nodos");
+            AnnounceWhatCouldNotBeRebuilt(result.Report);
+            if (result.Nodes.Count > 0)
             {
-                SelectedNode = newNodes.Last();
+                SelectedNode = result.Nodes[^1];
             }
         }
     }
+
+    /// <summary>
+    /// Inscribe en el historial los nodos que acaban de entrar al lienzo por un pegado o una duplicación,
+    /// como una sola acción.
+    ///
+    /// Sin esto el pegado no dejaba nada que deshacer por los nodos: los cables que reconstruye se
+    /// registraban solos —pasan por <see cref="CreateConnection"/>—, pero los nodos entraban al lienzo sin
+    /// registro, así que un Ctrl+Z tras un Ctrl+V deshacía <b>la acción anterior</b> y dejaba los nodos
+    /// pegados donde estaban. Los cables no se repiten aquí: <see cref="AddNodesAction.Undo"/> retira
+    /// además los que toquen a estos nodos.
+    /// </summary>
+    private void RecordPastedNodes(IReadOnlyList<NodeViewModel> pastedNodes, string description)
+    {
+        if (pastedNodes.Count > 0)
+        {
+            _undoRedoService.Record(new AddNodesAction(this, pastedNodes, description: description));
+        }
+    }
+
+    /// <summary>
+    /// Cuenta los cables que una reconstrucción no pudo rehacer —al abrir un flujo, al pegar y al duplicar— en
+    /// el lienzo, que es donde está el grafo y donde se pueden arreglar, y en la consola, que es el registro
+    /// que queda.
+    ///
+    /// El cartel lleva sólo la <b>cabecera</b> —qué pasó— y el detalle de cada cable vive en su fila, junto al
+    /// botón que lo arregla. Antes el texto enumeraba los cables perdidos, y eso tiene un defecto que se ve en
+    /// cuanto se arregla uno: la frase sigue contando lo que ya no es verdad, y reescribirla es llevar la
+    /// cuenta en dos sitios.
+    ///
+    /// Un resultado sano <b>retira</b> el aviso anterior en vez de dejar el de la vez pasada: el aviso cuenta
+    /// la última acción, y uno viejo sobre un grafo que ya no es el que se ve es una mentira.
+    /// </summary>
+    private void AnnounceWhatCouldNotBeRebuilt(ConnectionRebuildReport report)
+    {
+        if (report.IsComplete)
+        {
+            ClearCanvasNotice();
+            return;
+        }
+
+        foreach (var connection in report.DroppedConnections)
+        {
+            LogLostConnection("LogDroppedConnection", "🔌 No se pudo reconstruir la conexión {0}: {1}", connection);
+        }
+
+        SetCanvasNotice(
+            _loc.GetString("CanvasNoticeLostConnections", "🔌 No se pudieron reconstruir estas conexiones"),
+            report.DroppedConnections);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // El arreglo de un cable perdido, en el propio aviso
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Convierte cada cable perdido en una fila que se puede pulsar: el nodo cuyo puerto falta, el puerto
+    /// vigente que más se le parece y los dos botones.
+    ///
+    /// Sólo se ofrece lo que se puede cumplir. Hay fila si el nodo del puerto que falta está en el lienzo —a un
+    /// nodo que no se pudo crear no se puede ir—; hay botón de reconectar si además el otro extremo existe o se
+    /// le puede proponer un puerto; y hay propuesta si algún puerto vigente se parece lo suficiente como para no
+    /// ser una trampa (ver <see cref="PortNameProposal"/>).
+    /// </summary>
+    private IReadOnlyList<DroppedConnectionFixViewModel> BuildFixes(IReadOnlyList<DroppedConnection> lostConnections)
+    {
+        var fixes = new List<DroppedConnectionFixViewModel>();
+        var lookup = Nodes.ToDictionary(node => node.Id, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var connection in lostConnections)
+        {
+            var output = ResolveEnd(connection.Source, isOutput: true, lookup);
+            var input = ResolveEnd(connection.Target, isOutput: false, lookup);
+
+            // La fila se ancla en el primer extremo cuyo puerto falta: es el que hay que mirar. Si el cable no
+            // perdió ningún puerto —el problema es un nodo que no está— no hay fila, porque no hay a dónde ir.
+            if (output is not { Existing: null } && input is not { Existing: null })
+            {
+                continue;
+            }
+
+            var anchor = output is { Existing: null } ? output : input!;
+
+            PortViewModel? proposedOutput = output is { Existing: null } ? ProposedPortFor(output) : null;
+            PortViewModel? proposedInput = input is { Existing: null } ? ProposedPortFor(input) : null;
+            PortViewModel? liveOutput = output?.Existing ?? proposedOutput;
+            PortViewModel? liveInput = input?.Existing ?? proposedInput;
+            bool canReconnect = liveOutput != null && liveInput != null;
+
+            fixes.Add(new DroppedConnectionFixViewModel(
+                anchor.Node,
+                anchor.PortName,
+                DroppedConnectionText.Describe(_loc, connection),
+                (anchor.IsOutput ? proposedOutput : proposedInput)?.Name,
+                node => FocusNode(node),
+                ReconnectLostConnection,
+                _loc)
+            {
+                CanReconnect = canReconnect,
+                LiveEnds = canReconnect ? (liveOutput!, liveInput!) : null
+            });
+        }
+
+        return fixes;
+    }
+
+    /// <summary>
+    /// El extremo del cable tal y como está hoy en el lienzo: su nodo —si sigue ahí—, el puerto que nombraba y,
+    /// si ese puerto existe, el puerto mismo. Un puerto que falta se queda sin resolver a propósito: proponer
+    /// uno es decisión de <see cref="BuildFixes"/>, no de esta lectura.
+    /// </summary>
+    private static LostEnd? ResolveEnd(
+        DroppedConnectionEnd end,
+        bool isOutput,
+        IReadOnlyDictionary<string, NodeViewModel> lookup)
+    {
+        if (!lookup.TryGetValue(end.NodeId, out var node))
+        {
+            return null;
+        }
+
+        var ports = isOutput ? node.OutputPorts : node.InputPorts;
+
+        return new LostEnd(
+            node,
+            end.PortName,
+            isOutput,
+            ports.FirstOrDefault(port => port.Name.Equals(end.PortName, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// El puerto vigente más parecido al que falta, de entre los que se pueden usar: una entrada que ya tiene
+    /// cable no es candidata, porque reconectar ahí tiraría el cable que ya estaba y el usuario no lo pidió.
+    /// </summary>
+    private PortViewModel? ProposedPortFor(LostEnd end)
+    {
+        var candidates = (end.IsOutput ? end.Node.OutputPorts : end.Node.InputPorts)
+            .Where(port => port.Direction == PortDirection.Output || Connections.All(connection => connection.Target != port))
+            .ToList();
+
+        string? proposed = PortNameProposal.Suggest(end.PortName, candidates.Select(port => port.Name));
+
+        return proposed == null
+            ? null
+            : candidates.First(port => port.Name.Equals(proposed, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Lleva la vista al nodo: lo selecciona y lo centra. Es la mitad del aviso que no depende de adivinar
+    /// nada —el puerto que falta se ve al llegar— y la que queda cuando no hay nada que proponer.
+    /// </summary>
+    [RelayCommand]
+    public void FocusNode(NodeViewModel? node)
+    {
+        if (node == null) return;
+
+        foreach (var other in Nodes)
+        {
+            other.IsSelected = ReferenceEquals(other, node);
+        }
+
+        SelectedNode = node;
+        BringToFront(node);
+        ViewportLocation = EditorViewportCalculator.CenterOn(node, ViewportZoom);
+    }
+
+    /// <summary>
+    /// Vuelve a trazar el cable perdido contra los puertos de la fila y retira esa fila. Si no se pudo trazar
+    /// —el motor del lienzo rechaza una conexión por sus puertos— la fila <b>se queda</b>: quitarla sería decir
+    /// que se arregló.
+    /// </summary>
+    public void ReconnectLostConnection(DroppedConnectionFixViewModel fix)
+    {
+        if (fix?.LiveEnds is not { } ends) return;
+
+        CreateConnection(ends.Output, ends.Input);
+
+        if (!Connections.Any(connection => connection.Source == ends.Output && connection.Target == ends.Input))
+        {
+            return;
+        }
+
+        CanvasNoticeFixes.Remove(fix);
+
+        // Cuando ya no queda ningún cable perdido, el aviso tampoco: quedarse contando lo que ya está
+        // arreglado es la misma mentira que un aviso viejo sobre otro grafo.
+        //
+        // Que no queden <b>filas</b> no es que no queden pérdidas: un cable cuyo nodo no está se pierde sin
+        // ofrecer nada que pulsar, y retirar el aviso al arreglar el último arreglable escondería justo el
+        // cable que el usuario no puede recuperar. El aviso se retira cuando ya no queda nada perdido.
+        if (CanvasNoticeFixes.Count == 0 && _lostWithoutFixCount == 0)
+        {
+            ClearCanvasNotice();
+        }
+    }
+
+    /// <summary>Un extremo del cable perdido, ya resuelto contra el lienzo.</summary>
+    private sealed record LostEnd(NodeViewModel Node, string PortName, bool IsOutput, PortViewModel? Existing);
 
     [ObservableProperty]
     private NodeViewModel? _selectedNode;
@@ -794,6 +1103,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Groups.Clear();
         CanvasDecorators.Clear();
         SelectedNode = null;
+        ClearCanvasNotice();
         _undoRedoService.Clear();
     }
 
@@ -982,6 +1292,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 CanvasDecorators.Insert(0, groupVm);
             }
         );
+
+        // Abrir un archivo es donde más cables se pierden —el flujo viene de otra máquina, o su subflujo
+        // cambió de sitio— y hasta ahora sólo lo contaba la consola, porque «no había acción del lienzo a la
+        // que apuntar». Con el arreglo a un clic, la hay: el informe se cuenta donde se puede hacer algo.
+        AnnounceWhatCouldNotBeRebuilt(importResult);
 
         RefreshAllNodeFileVersions();
         _undoRedoService.Clear();
@@ -1612,9 +1927,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _subflowWatchTimer.Tick -= OnSubflowWatchTick;
+        _subflowWatchTimer.Stop();
         _userPreferencesService.PreferencesChanged -= _preferencesChangedHandler;
         GC.SuppressFinalize(this);
     }
 }
-        _subflowWatchTimer.Tick -= OnSubflowWatchTick;
-        _subflowWatchTimer.Stop();

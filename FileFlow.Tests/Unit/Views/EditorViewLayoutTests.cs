@@ -439,6 +439,130 @@ public class EditorViewLayoutTests
         });
     }
 
+    /// <summary>
+    /// El aviso del lienzo —lo que pegar o duplicar no pudo reconstruir— tiene que existir de verdad. Una
+    /// ruta de binding mal escrita no rompe ninguna prueba de view model: el aviso se pone y no se ve nada.
+    /// Este es el único sitio donde se puede comprobar, y por eso mira la superficie y no el modelo.
+    /// </summary>
+    [Fact]
+    public void CanvasNoticeBanner_ShouldBeWiredToTheEditorNotice()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var editorVm = new EditorViewModel(CreateLoader());
+            var editorView = new EditorView { DataContext = editorVm };
+            var window = new Window { Content = editorView, Width = 1000, Height = 800 };
+            window.Show();
+
+            var banner = editorView.GetVisualDescendants().OfType<Border>()
+                .FirstOrDefault(border => border.Name == "CanvasNoticeBanner");
+            banner.Should().NotBeNull("el lienzo tiene que tener dónde contar lo que una acción dejó a medias");
+            banner!.IsVisible.Should().BeFalse(
+                "un lienzo sin nada que contar no lleva cartel: si sale aquí, la visibilidad no está atada al aviso "
+                + "—una ruta de binding que no resuelve deja el valor por defecto, que es visible—");
+
+            editorVm.CanvasNotice = "🔌 no se pudo reconstruir el cable";
+            window.UpdateLayout();
+
+            banner.IsVisible.Should().BeTrue("el aviso se ve en cuanto el editor tiene algo que contar");
+            banner.Bounds.Width.Should().BeGreaterThan(0, "y ocupa sitio: un aviso invisible no avisa");
+
+            var node = editorVm.AddNode("FolderSourceNode", new Point(100, 100))!;
+            var fixWithProposal = AFixFor(node, proposedPort: "Alternates");
+            var fixWithoutProposal = AFixFor(node, proposedPort: null);
+            editorVm.CanvasNoticeFixes.Add(fixWithProposal);
+            editorVm.CanvasNoticeFixes.Add(fixWithoutProposal);
+            window.UpdateLayout();
+
+            var buttons = banner.GetVisualDescendants().OfType<Button>().ToList();
+            buttons.Should().Contain(button => ReferenceEquals(button.Command, editorVm.DismissCanvasNoticeCommand),
+                "el botón del cartel descarta el aviso de este lienzo");
+            buttons.Should().Contain(button => ReferenceEquals(button.Command, fixWithProposal.GoToNodeCommand),
+                "cada cable perdido lleva al nodo cuyo puerto falta");
+            buttons.Should().Contain(button => ReferenceEquals(button.Command, fixWithProposal.ReconnectCommand),
+                "y ofrece la reconexión al puerto que más se le parece");
+            buttons.Single(button => ReferenceEquals(button.Command, fixWithProposal.ReconnectCommand))
+                .IsVisible.Should().BeTrue();
+
+            // La fila sin propuesta no enseña el botón: un botón que no puede cumplir es un botón muerto.
+            buttons.Single(button => ReferenceEquals(button.Command, fixWithoutProposal.ReconnectCommand))
+                .IsVisible.Should().BeFalse("sin puerto al que reconectar, el botón no se muestra");
+            buttons.Single(button => ReferenceEquals(button.Command, fixWithoutProposal.GoToNodeCommand))
+                .IsVisible.Should().BeTrue("ir al nodo siempre se puede");
+
+            editorVm.DismissCanvasNoticeCommand.Execute(null);
+            window.UpdateLayout();
+
+            banner.IsVisible.Should().BeFalse("descartarlo lo retira");
+            editorVm.HasCanvasNoticeFixes.Should().BeFalse("y se lleva sus filas: el aviso y su arreglo van juntos");
+
+            window.Close();
+        });
+    }
+
+    /// <summary>
+    /// El resumen de lo que quedó sin reconstruir también tiene que verse en la <b>barra de estado</b>: el aviso
+    /// del lienzo cuenta lo mismo, pero sólo mientras ese lienzo se esté mirando, y la barra deja constancia
+    /// desde cualquier sitio. Una ruta de binding mal escrita no rompe ninguna prueba de view model —el resumen
+    /// se calcula y no se enseña—, así que hay que mirar la superficie.
+    /// </summary>
+    [Fact]
+    public void StatusBarLossPill_ShouldBeWiredToWhatTheCanvasCouldNotRebuild()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var log = new LogViewModel(new InMemoryLogStore());
+            var editorVm = new EditorViewModel(CreateLoader(), logViewModel: log);
+            var controlBar = new ControlBarViewModel(
+                editorVm,
+                CreateLoader(),
+                log,
+                new NodeInspectorViewModel(editorVm, new NullFileDialogService(), log),
+                new NullFileDialogService(),
+                new InMemoryWorkflowStorageService());
+            var statusBar = new StatusBarViewModel(editorVm, controlBar, new FrozenPerformanceMonitor(), log);
+
+            var statusBarView = new StatusBarView { DataContext = statusBar };
+            var window = new Window { Content = statusBarView, Width = 1400, Height = 60 };
+            window.Show();
+
+            var pill = statusBarView.GetVisualDescendants().OfType<Border>()
+                .FirstOrDefault(border => border.Name == "UnrebuiltConnectionsPill");
+            pill.Should().NotBeNull("la barra de estado tiene que contar lo que el grafo perdió");
+            pill!.IsVisible.Should().BeFalse(
+                "un grafo entero no lleva resumen: si sale aquí, la visibilidad no está atada —una ruta de binding "
+                + "que no resuelve deja el valor por defecto, que es visible—");
+
+            // Un texto que no puede estar escrito en el XAML: si la píldora enseñara una frase fija, la prueba
+            // no lo notaría con un texto que se le parezca.
+            statusBar.UnrebuiltConnectionsCount = 7;
+            statusBar.UnrebuiltConnectionsText = "🔌 7 conexiones perdidas";
+            statusBar.HasUnrebuiltConnections = true;
+            window.UpdateLayout();
+
+            pill.IsVisible.Should().BeTrue("el resumen se ve en cuanto al grafo le faltan cables");
+            pill.Bounds.Width.Should().BeGreaterThan(0, "y ocupa sitio: un resumen invisible no resume");
+            pill.GetVisualDescendants().OfType<TextBlock>()
+                .Should().Contain(text => text.Text == "🔌 7 conexiones perdidas",
+                    "el texto de la píldora es el del editor, no una frase escrita en el XAML");
+
+            window.Close();
+        });
+    }
+
+    /// <summary>Una fila del aviso, montada como la monta el lienzo, para poder mirar sus dos botones.</summary>
+    private static DroppedConnectionFixViewModel AFixFor(NodeViewModel node, string? proposedPort) => new(
+        node,
+        "Alternate",
+        "origen(Out) → Origen(Alternate)",
+        proposedPort,
+        _ => { },
+        _ => { },
+        FileFlow.Sdk.Localization.LocalizationManager.Instance)
+    {
+        CanReconnect = proposedPort != null
+    };
+
     [Fact]
     public void ContextMenu_OnConnection_ShouldHaveDeleteCommand_AndExecuteProperly()
     {
