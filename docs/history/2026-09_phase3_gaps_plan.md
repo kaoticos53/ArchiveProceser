@@ -1,9 +1,10 @@
 # FASE 3 — Cerrar los silencios que quedan
 
 > [!NOTE]
-> **Estado (2026-09-22): 3A, 3B, 3C, 3D, 3E, 3F, 3G y 3H ✅ HECHAS. La fase 3 queda cerrada.** Recoge los huecos que quedaron abiertos tras las fases
+> **Estado (2026-09-22): fase 0 y fases 3A a 3H ✅ HECHAS. La fase 3 queda cerrada.** Recoge los huecos que quedaron abiertos tras las fases
 > 2E-P8 a 2E-P12 y los ordena para ejecutarlos de uno en uno. **La fase 0** —poner en orden con commits lo ya
-> hecho— sigue **pendiente** aunque 3A se haya ejecutado encima: el árbol acumula los cambios de todas las fases. Cada sub-fase se cierra igual que las anteriores:
+> hecho— se ejecutó al cerrar la fase 3: el árbol acumulaba los cambios de todas las fases y ahora son diez
+> cortes, con `.build_number` fuera por no ser de este trabajo. Cada sub-fase se cierra igual que las anteriores:
 > con pruebas nuevas, **verificación por mutación** (cada afirmación de las pruebas tiene que fallar cuando se
 > rompe el código que la sostiene), build sin errores ni advertencias, suite completa en verde, y la fase
 > documentada en [`2026-08_phase1_audit_plan.md`](2026-08_phase1_audit_plan.md) con su evidencia.
@@ -34,7 +35,7 @@ límites declarados, con prueba y con su porqué escrito en el código y en las 
 
 ---
 
-## Fase 0 (preliminar, no es un hueco) — Poner en orden lo que ya está hecho
+## Fase 0 (preliminar, no es un hueco) — Poner en orden lo que ya está hecho ✅ HECHA
 
 **Objetivo.** Que el trabajo de las fases 2E-P8 a 2E-P12 deje de estar sólo en el árbol de trabajo.
 
@@ -44,6 +45,19 @@ tocan).
 
 **Por qué va primero.** Cualquier fase de abajo se apoya en un `git diff` legible para saber qué cambió y poder
 revertir un experimento. Sin eso, cada mutación y cada reversión es a ciegas.
+
+> Ejecutada el **2026-09-22**, al cerrar la fase 3: diez cortes en `feature/crossplatform-avalonia` —el formato
+> (2E-P10 + 3E), la protección de 3A, la ejecución desde la interfaz (3B), el diagnóstico (2E-P11/P12 + 3D), el
+> portapapeles (3C), el contenedor (3F), los avisos (3G + 3H) y las tres guardias del formato (3E-G1, 3E-G2 +
+> 3E-G3)— más el plan y el ledger. `.build_number` queda fuera: no es de este trabajo.
+>
+> **El árbol era una masa soldada** —un mismo fichero acumula cinco fases—, así que los cortes se hicieron por
+> **hunks** donde hacía falta (`EditorViewModel`, `ControlBarViewModel`, `WorkflowStorageService`,
+> `WorkflowFormat`), y hay tres que cubren dos fases porque su código es el mismo bloque: el lector tolerante y
+> la definición única, el aviso que se puede arreglar y su recuento, y la forma del archivo con su testigo. Lo
+> que **no** está verificado eslabón a eslabón es que cada corte intermedio compile por su cuenta; lo verificado
+> es el árbol entero —build sin errores ni advertencias, suite en verde— y que `git status` queda limpio salvo
+> `.build_number`.
 
 ## Fase 3A — Un flujo más nuevo que la aplicación no se sobrescribe ✅ HECHA
 
