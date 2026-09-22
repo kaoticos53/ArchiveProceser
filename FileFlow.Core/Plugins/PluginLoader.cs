@@ -373,6 +373,11 @@ public class PluginLoader
             catch { }
         }
         _loadContexts.Clear();
+
+        // La descarga de AssemblyLoadContext es cooperativa: el runtime solo libera los ensamblados
+        // cuando ya no quedan referencias vivas y se ejecuta una recolección completa seguida de los
+        // finalizadores pendientes. Es el único punto del código donde GC.Collect() está justificado,
+        // porque UnloadAll() es una operación explícita de recarga de plugins, nunca una ruta crítica.
         GC.Collect();
         GC.WaitForPendingFinalizers();
     }

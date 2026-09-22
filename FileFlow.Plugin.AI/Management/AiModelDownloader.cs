@@ -53,15 +53,15 @@ public static class AiModelDownloader
         Action<string>? statusLogger = null,
         CancellationToken cancellationToken = default)
     {
-        if (!AiModelManager.Catalog.TryGetValue(modelId, out var info))
+        if (!AiModelCatalog.Catalog.TryGetValue(modelId, out var info))
         {
             statusLogger?.Invoke($"Modelo desconocido: '{modelId}'");
             return null;
         }
 
-        string targetPath = AiModelManager.GetModelPath(info.FileName);
+        string targetPath = AiModelCatalog.GetModelPath(info.FileName);
 
-        if (AiModelManager.IsModelAvailable(modelId))
+        if (AiModelCatalog.IsModelAvailable(modelId))
         {
             LastError = null;
             progress?.Report(100.0);

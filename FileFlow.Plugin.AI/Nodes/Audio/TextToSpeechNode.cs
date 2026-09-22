@@ -15,96 +15,36 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("TextToSpeechNode_Name", "AudioVoice", "TextToSpeechNode_Desc", PipelineRole.Transform,
     "tts", "piper", "voz", "hablar", "sintesis", "texto a voz", "audio", "locucion", "speech")]
-public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
+public sealed class TextToSpeechNode : AudioAiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("TextToSpeechNode_Name", "Conversor de Texto a Voz (Piper TTS)");
+    public override string Category => "AudioVoice";
+    public override string Description => LocalizationManager.Instance.GetString("TextToSpeechNode_Desc", "Sintetiza locuciones de voz natural a partir de texto o metadatos usando Piper TTS.");
+    public override AiTaskType TaskType => AiTaskType.TextToSpeech;
 
     public TextToSpeechNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => AudioInferenceEngine.SessionStateChanged += h,
-
-            h => AudioInferenceEngine.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["InputSource"] = "FileContent";
+        Parameters["MetadataKeyName"] = "AI:Translation";
+        Parameters["CustomTextTemplate"] = "";
+        Parameters["SpeechRate"] = 1.0;
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        Parameters["SkipIfExists"] = false;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextToSpeech);
-            return modelPath != null && AudioInferenceEngine.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.TextToSpeech);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.TextToSpeech, cancellationToken: cancellationToken).ConfigureAwait(false);
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextToSpeech);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            AudioInferenceEngine.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("TextToSpeechNode_Name", "Conversor de Texto a Voz (Piper TTS)");
-    public string Category => "AudioVoice";
-    public string Description => LocalizationManager.Instance.GetString("TextToSpeechNode_Desc", "Sintetiza locuciones de voz natural a partir de texto o metadatos usando Piper TTS.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["InputSource"] = "FileContent",
-        ["MetadataKeyName"] = "AI:Translation",
-        ["CustomTextTemplate"] = "",
-        ["SpeechRate"] = 1.0,
-        ["OutputDirectory"] = "{GlobalOutputDir}",
-        ["SkipIfExists"] = false
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "piper-es-davefx", "piper-en-lessac"],
@@ -124,19 +64,19 @@ public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
             HelpText: "Si el archivo resultante ya existe en destino, omite la síntesis TTS y reutiliza el archivo.", DisplayOrder: 7)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            string inputSource = Parameters.TryGetValue("InputSource", out var isVal) ? isVal?.ToString() ?? "FileContent" : "FileContent";
+            string inputSource = GetParameter("InputSource", "FileContent");
             string textToSynthesize = string.Empty;
 
             if (string.Equals(inputSource, "FileContent", StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
                 {
-                    context.Log($"[PiperTTS] Archivo de texto no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-                    await context.EmitAsync("Error", item).ConfigureAwait(false);
+                    Log(context, $"[PiperTTS] Archivo de texto no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+                    await EmitAsync(context, item, "Error").ConfigureAwait(false);
                     return;
                 }
 
@@ -144,53 +84,35 @@ public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
             }
             else if (string.Equals(inputSource, "MetadataKey", StringComparison.OrdinalIgnoreCase))
             {
-                string key = Parameters.TryGetValue("MetadataKeyName", out var kVal) ? kVal?.ToString() ?? "AI:Translation" : "AI:Translation";
+                string key = GetParameter("MetadataKeyName", "AI:Translation");
                 if (item.Metadata.TryGetValue(key, out var metaVal) && metaVal != null)
                 {
                     textToSynthesize = metaVal.ToString() ?? string.Empty;
                 }
                 else
                 {
-                    context.Log($"[PiperTTS] ⚠️ Clave de metadatos '{key}' no encontrada en el elemento.", LogLevel.Warning, item);
+                    Log(context, $"[PiperTTS] ⚠️ Clave de metadatos '{key}' no encontrada en el elemento.", LogLevel.Warning, item);
                 }
             }
             else if (string.Equals(inputSource, "CustomText", StringComparison.OrdinalIgnoreCase))
             {
-                textToSynthesize = Parameters.TryGetValue("CustomTextTemplate", out var ctVal) ? ctVal?.ToString() ?? string.Empty : string.Empty;
-                textToSynthesize = textToSynthesize
+                textToSynthesize = (GetParameter("CustomTextTemplate", string.Empty) ?? string.Empty)
                     .Replace("{FileName}", item.FileName)
                     .Replace("{OriginalPath}", item.OriginalPath);
             }
 
             if (string.IsNullOrWhiteSpace(textToSynthesize))
             {
-                context.Log($"[PiperTTS] ⚠️ No hay texto disponible para sintetizar en {item.FileName}.", LogLevel.Warning, item);
-                await context.EmitAsync("Error", item).ConfigureAwait(false);
+                Log(context, $"[PiperTTS] ⚠️ No hay texto disponible para sintetizar en {item.FileName}.", LogLevel.Warning, item);
+                await EmitAsync(context, item, "Error").ConfigureAwait(false);
                 return;
             }
 
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            double speechRate = Parameters.TryGetValue("SpeechRate", out var srVal) ? ParameterHelper.GetDouble(srVal, 1.0) : 1.0;
-            string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
-            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+            double speechRate = GetParameter("SpeechRate", 1.0);
+            string outputDirRaw = GetParameter("OutputDirectory", "{GlobalOutputDir}");
+            bool skipIfExists = GetParameter("SkipIfExists", false);
 
-            string targetDir;
-            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-            {
-                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
-                {
-                    targetDir = godVal.ToString()!;
-                }
-                else
-                {
-                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
-                }
-            }
-            else
-            {
-                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
-            }
-
+            string targetDir = ResolveTargetDirectory(outputDirRaw, item);
             Directory.CreateDirectory(targetDir);
 
             string targetFileName = $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_tts.wav";
@@ -198,24 +120,14 @@ public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
 
             if (skipIfExists && File.Exists(targetPath))
             {
-                context.Log($"[PiperTTS] ⏭️ El archivo de audio ya existe ('{targetFileName}'). Omitiendo síntesis.", LogLevel.Information, item);
-                var existingItem = item.DeepClone();
-                existingItem.CurrentPath = targetPath;
-                existingItem.PhysicalPath = targetPath;
-                existingItem.FileSizeBytes = new FileInfo(targetPath).Length;
-                existingItem.Metadata["AI:AudioGenerated"] = true;
-                await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
+                Log(context, $"[PiperTTS] ⏭️ El archivo de audio ya existe ('{targetFileName}'). Omitiendo síntesis.", LogLevel.Information, item);
+                await EmitAsync(context, CreateGeneratedAudioItem(item, targetPath)).ConfigureAwait(false);
                 return;
             }
 
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.TextToSpeech,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
-            context.Log($"[PiperTTS] 🔊 Sintetizando audio para '{item.FileName}' ({textToSynthesize.Length} caracteres)...", LogLevel.Information, item);
+            Log(context, $"[PiperTTS] 🔊 Sintetizando audio para '{item.FileName}' ({textToSynthesize.Length} caracteres)...", LogLevel.Information, item);
 
             double audioDuration = await AudioInferenceEngine.SynthesizeSpeechAsync(
                 modelPath,
@@ -224,21 +136,45 @@ public sealed class TextToSpeechNode : IFlowNode, IModelLifecycleNode
                 speechRate,
                 cancellationToken).ConfigureAwait(false);
 
-            var newItem = item.DeepClone();
-            newItem.CurrentPath = targetPath;
-            newItem.PhysicalPath = targetPath;
-            newItem.FileSizeBytes = new FileInfo(targetPath).Length;
-            newItem.Metadata["AI:AudioGenerated"] = true;
+            var newItem = CreateGeneratedAudioItem(item, targetPath);
             newItem.Metadata["AI:AudioDurationSeconds"] = audioDuration;
             newItem.Metadata["AI:TtsModel"] = string.IsNullOrWhiteSpace(modelPath) ? "piper-tts" : Path.GetFileNameWithoutExtension(modelPath);
 
-            context.Log($"[PiperTTS] ✅ Audio sintetizado con éxito: '{targetFileName}' ({audioDuration:F1}s).", LogLevel.Information, newItem);
-            await context.EmitAsync("Out", newItem).ConfigureAwait(false);
+            Log(context, $"[PiperTTS] ✅ Audio sintetizado con éxito: '{targetFileName}' ({audioDuration:F1}s).", LogLevel.Information, newItem);
+            await EmitAsync(context, newItem).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[PiperTTS] ❌ Error generando audio para {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[PiperTTS] ❌ Error generando audio para {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Deriva el elemento de salida apuntando al .wav recién generado (o reutilizado) en disco.
+    /// </summary>
+    private static FileItemContext CreateGeneratedAudioItem(FileItemContext source, string generatedAudioPath)
+    {
+        var generated = source.DeepClone();
+        generated.CurrentPath = generatedAudioPath;
+        generated.PhysicalPath = generatedAudioPath;
+        generated.FileSizeBytes = new FileInfo(generatedAudioPath).Length;
+        generated.Metadata["AI:AudioGenerated"] = true;
+        return generated;
+    }
+
+    private static string ResolveTargetDirectory(string outputDirRaw, FileItemContext item)
+    {
+        if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+        {
+            if (item.Metadata.TryGetValue("GlobalOutputDir", out var globalOut) && !string.IsNullOrWhiteSpace(globalOut?.ToString()))
+            {
+                return globalOut.ToString()!;
+            }
+
+            return Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+        }
+
+        return ParameterHelper.ResolveOutputPath(outputDirRaw, item);
     }
 }

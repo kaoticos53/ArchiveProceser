@@ -9,8 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using FileFlow.Plugin.AI.Common;
 using FileFlow.Plugin.AI.Management;
+using FileFlow.Sdk.Diagnostics;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
 

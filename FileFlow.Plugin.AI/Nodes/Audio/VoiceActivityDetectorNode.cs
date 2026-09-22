@@ -16,98 +16,38 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("VoiceActivityDetectorNode_Name", "AudioVoice", "VoiceActivityDetectorNode_Desc", PipelineRole.Filter,
     "vad", "silero", "voz", "silencio", "recortar silencios", "audio", "speech", "speech detection")]
-public sealed class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
+public sealed class VoiceActivityDetectorNode : AudioAiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("VoiceActivityDetectorNode_Name", "Detector de Actividad Vocal (Silero VAD)");
+    public override string Category => "AudioVoice";
+    public override string Description => LocalizationManager.Instance.GetString("VoiceActivityDetectorNode_Desc", "Detecta voz humana y recorta silencios en archivos de audio con Silero VAD.");
+    public override AiTaskType TaskType => AiTaskType.VoiceActivityDetection;
 
     public VoiceActivityDetectorNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Speech", typeof(FileItemContext), PortDirection.Output, "Speech"),
+            new NodePort("Silent", typeof(FileItemContext), PortDirection.Output, "Silent"),
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => AudioInferenceEngine.SessionStateChanged += h,
-
-            h => AudioInferenceEngine.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["Mode"] = "DetectOnly";
+        Parameters["SensitivityThreshold"] = 0.5;
+        Parameters["MinSpeechDurationMs"] = 250;
+        Parameters["PaddingDurationMs"] = 200;
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        Parameters["SkipIfExists"] = false;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.VoiceActivityDetection);
-            return modelPath != null && AudioInferenceEngine.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.VoiceActivityDetection);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.VoiceActivityDetection, cancellationToken: cancellationToken).ConfigureAwait(false);
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.VoiceActivityDetection);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            AudioInferenceEngine.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("VoiceActivityDetectorNode_Name", "Detector de Actividad Vocal (Silero VAD)");
-    public string Category => "AudioVoice";
-    public string Description => LocalizationManager.Instance.GetString("VoiceActivityDetectorNode_Desc", "Detecta voz humana y recorta silencios en archivos de audio con Silero VAD.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Speech", typeof(FileItemContext), PortDirection.Output, "Speech"),
-        new NodePort("Silent", typeof(FileItemContext), PortDirection.Output, "Silent"),
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["Mode"] = "DetectOnly",
-        ["SensitivityThreshold"] = 0.5,
-        ["MinSpeechDurationMs"] = 250,
-        ["PaddingDurationMs"] = 200,
-        ["OutputDirectory"] = "{GlobalOutputDir}",
-        ["SkipIfExists"] = false
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "silero-vad"],
@@ -132,82 +72,56 @@ public sealed class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
         ".wav", ".mp3", ".m4a", ".ogg", ".flac", ".wma", ".aac", ".mp4", ".mkv", ".avi"
     };
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[SileroVAD] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[SileroVAD] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (!_supportedAudioExtensions.Contains(ext))
         {
-            context.Log($"[SileroVAD] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
+            Log(context, $"[SileroVAD] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
             item.Metadata["AI:VoiceDetected"] = false;
-            await context.EmitAsync("Silent", item).ConfigureAwait(false);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Silent").ConfigureAwait(false);
+            await EmitAsync(context, item, "Out").ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string mode = Parameters.TryGetValue("Mode", out var modeVal) ? modeVal?.ToString() ?? "DetectOnly" : "DetectOnly";
-            double threshold = Parameters.TryGetValue("SensitivityThreshold", out var stVal) ? ParameterHelper.GetDouble(stVal, 0.5) : 0.5;
-            int minSpeechMs = Parameters.TryGetValue("MinSpeechDurationMs", out var msmVal) ? ParameterHelper.GetInt32(msmVal, 250) : 250;
-            int paddingMs = Parameters.TryGetValue("PaddingDurationMs", out var pdVal) ? ParameterHelper.GetInt32(pdVal, 200) : 200;
-            string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
-            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+            string mode = GetParameter("Mode", "DetectOnly");
+            double threshold = GetParameter("SensitivityThreshold", 0.5);
+            int minSpeechMs = GetParameter("MinSpeechDurationMs", 250);
+            int paddingMs = GetParameter("PaddingDurationMs", 200);
+            string outputDirRaw = GetParameter("OutputDirectory", "{GlobalOutputDir}");
+            bool skipIfExists = GetParameter("SkipIfExists", false);
 
             string? trimmedWavPath = null;
             if (string.Equals(mode, "TrimSilence", StringComparison.OrdinalIgnoreCase))
             {
-                string targetDir;
-                if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
-                    {
-                        targetDir = godVal.ToString()!;
-                    }
-                    else
-                    {
-                        targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
-                    }
-                }
-                else
-                {
-                    targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
-                }
-
+                string targetDir = ResolveTargetDirectory(outputDirRaw, item);
                 Directory.CreateDirectory(targetDir);
                 trimmedWavPath = Path.Combine(targetDir, $"{Path.GetFileNameWithoutExtension(item.CurrentPath)}_trimmed.wav");
 
                 if (skipIfExists && File.Exists(trimmedWavPath))
                 {
-                    context.Log($"[SileroVAD] ⏭️ El archivo de salida ya existe ('{Path.GetFileName(trimmedWavPath)}'). Omitiendo inferencia.", LogLevel.Information, item);
-                    var trimmedItem = item.DeepClone();
-                    trimmedItem.CurrentPath = trimmedWavPath;
-                    trimmedItem.PhysicalPath = trimmedWavPath;
-                    trimmedItem.FileSizeBytes = new FileInfo(trimmedWavPath).Length;
-                    trimmedItem.Metadata["AI:VoiceDetected"] = true;
-                    trimmedItem.Metadata["AI:SilenceTrimmed"] = true;
-                    await context.EmitAsync("Speech", trimmedItem).ConfigureAwait(false);
-                    await context.EmitAsync("Out", trimmedItem).ConfigureAwait(false);
+                    Log(context, $"[SileroVAD] ⏭️ El archivo de salida ya existe ('{Path.GetFileName(trimmedWavPath)}'). Omitiendo inferencia.", LogLevel.Information, item);
+
+                    var trimmedItem = CreateTrimmedAudioItem(item, trimmedWavPath);
+                    await EmitAsync(context, trimmedItem, "Speech").ConfigureAwait(false);
+                    await EmitAsync(context, trimmedItem, "Out").ConfigureAwait(false);
                     return;
                 }
             }
 
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.VoiceActivityDetection,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
-            context.Log($"[SileroVAD] 🎙️ Analizando actividad vocal en '{item.FileName}'...", LogLevel.Information, item);
+            Log(context, $"[SileroVAD] 🎙️ Analizando actividad vocal en '{item.FileName}'...", LogLevel.Information, item);
 
             var analysis = await AudioInferenceEngine.DetectVoiceActivityAsync(
                 modelPath,
@@ -229,33 +143,57 @@ public sealed class VoiceActivityDetectorNode : IFlowNode, IModelLifecycleNode
             var emitItem = item;
             if (!string.IsNullOrWhiteSpace(analysis.TrimmedAudioPath) && File.Exists(analysis.TrimmedAudioPath))
             {
-                var trimmedItem = item.DeepClone();
-                trimmedItem.CurrentPath = analysis.TrimmedAudioPath;
-                trimmedItem.PhysicalPath = analysis.TrimmedAudioPath;
-                trimmedItem.FileSizeBytes = new FileInfo(analysis.TrimmedAudioPath).Length;
-                trimmedItem.Metadata["AI:SilenceTrimmed"] = true;
-                emitItem = trimmedItem;
+                emitItem = CreateTrimmedAudioItem(item, analysis.TrimmedAudioPath);
             }
 
-            context.Log($"[SileroVAD] Voz detectada: {analysis.VoiceDetected} (ratio: {analysis.SpeechRatio:P1}, duración voz: {analysis.SpeechDurationSeconds:F1}s / {analysis.TotalDurationSeconds:F1}s, segmentos: {analysis.Segments.Count}).",
+            Log(context, $"[SileroVAD] Voz detectada: {analysis.VoiceDetected} (ratio: {analysis.SpeechRatio:P1}, duración voz: {analysis.SpeechDurationSeconds:F1}s / {analysis.TotalDurationSeconds:F1}s, segmentos: {analysis.Segments.Count}).",
                 LogLevel.Information, emitItem);
 
             // Bifurcación
             if (analysis.VoiceDetected)
             {
-                await context.EmitAsync("Speech", emitItem).ConfigureAwait(false);
+                await EmitAsync(context, emitItem, "Speech").ConfigureAwait(false);
             }
             else
             {
-                await context.EmitAsync("Silent", emitItem).ConfigureAwait(false);
+                await EmitAsync(context, emitItem, "Silent").ConfigureAwait(false);
             }
 
-            await context.EmitAsync("Out", emitItem).ConfigureAwait(false);
+            await EmitAsync(context, emitItem, "Out").ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[SileroVAD] ❌ Error procesando {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[SileroVAD] ❌ Error procesando {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Deriva el elemento de salida apuntando al .wav recortado, preservando los metadatos ya escritos sobre el original.
+    /// </summary>
+    private static FileItemContext CreateTrimmedAudioItem(FileItemContext source, string trimmedAudioPath)
+    {
+        var trimmed = source.DeepClone();
+        trimmed.CurrentPath = trimmedAudioPath;
+        trimmed.PhysicalPath = trimmedAudioPath;
+        trimmed.FileSizeBytes = new FileInfo(trimmedAudioPath).Length;
+        trimmed.Metadata["AI:VoiceDetected"] = true;
+        trimmed.Metadata["AI:SilenceTrimmed"] = true;
+        return trimmed;
+    }
+
+    private static string ResolveTargetDirectory(string outputDirRaw, FileItemContext item)
+    {
+        if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
+        {
+            if (item.Metadata.TryGetValue("GlobalOutputDir", out var globalOut) && !string.IsNullOrWhiteSpace(globalOut?.ToString()))
+            {
+                return globalOut.ToString()!;
+            }
+
+            return Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
+        }
+
+        return ParameterHelper.ResolveOutputPath(outputDirRaw, item);
     }
 }

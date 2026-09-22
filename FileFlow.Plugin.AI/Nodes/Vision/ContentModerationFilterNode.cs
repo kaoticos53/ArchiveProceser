@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace FileFlow.Plugin.AI;
 
@@ -19,106 +17,32 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("ContentModerationFilterNode_Name", "Security", "ContentModerationFilterNode_Desc", PipelineRole.Filter,
     "moderacion", "nsfw", "sensible", "inapropiado", "seguridad", "filtro", "opennsfw")]
-public sealed class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
+public sealed class ContentModerationFilterNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("ContentModerationFilterNode_Name", "Filtro de Moderación IA");
+    public override string Category => "Security";
+    public override string Description => LocalizationManager.Instance.GetString("ContentModerationFilterNode_Desc", "Evalúa contenido sensible con OpenNSFW2 y bifurca el flujo en puertos Seguro y Sensible.");
+    public override AiTaskType TaskType => AiTaskType.ContentModeration;
 
     public ContentModerationFilterNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Safe", typeof(FileItemContext), PortDirection.Output, "Safe"),
+            new NodePort("Sensitive", typeof(FileItemContext), PortDirection.Output, "Sensitive"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["SensitivityThreshold"] = 0.6;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ContentModeration);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public bool IsGpuAccelerated
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ContentModeration);
-            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.ContentModeration);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.ContentModeration, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ContentModeration);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ContentModerationFilterNode_Name", "Filtro de Moderación IA");
-    public string Description => LocalizationManager.Instance.GetString("ContentModerationFilterNode_Desc", "Evalúa contenido sensible con OpenNSFW2 y bifurca el flujo en puertos Seguro y Sensible.");
-    public string Category => "Security";
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Safe", typeof(FileItemContext), PortDirection.Output, "Safe"),
-        new NodePort("Sensitive", typeof(FileItemContext), PortDirection.Output, "Sensitive"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["SensitivityThreshold"] = 0.6
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "opennsfw2"],
@@ -132,48 +56,42 @@ public sealed class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
         ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"
     };
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[ContentModeration] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[ContentModeration] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (!_supportedExtensions.Contains(ext))
         {
-            context.Log($"[ContentModeration] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
+            Log(context, $"[ContentModeration] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
             item.Metadata["AI:IsSensitiveContent"] = false;
             item.Metadata["AI:NsfwScore"] = 0.0;
-            await context.EmitAsync("Safe", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Safe").ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            double threshold = Parameters.TryGetValue("SensitivityThreshold", out var stVal) ? ParameterHelper.GetDouble(stVal, 0.6) : 0.6;
+            double threshold = GetParameter("SensitivityThreshold", 0.6);
 
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.ContentModeration,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[ContentModeration] ⚠️ Modelo de moderación no disponible. Se asume seguro por defecto.", LogLevel.Warning, item);
+                Log(context, "[ContentModeration] ⚠️ Modelo de moderación no disponible. Se asume seguro por defecto.", LogLevel.Warning, item);
                 item.Metadata["AI:IsSensitiveContent"] = false;
                 item.Metadata["AI:NsfwScore"] = 0.0;
-                await context.EmitAsync("Safe", item).ConfigureAwait(false);
+                await EmitAsync(context, item, "Safe").ConfigureAwait(false);
                 return;
             }
 
-            context.Log($"[ContentModeration] 🛡️ Analizando contenido de '{item.FileName}'...", LogLevel.Information, item);
+            Log(context, $"[ContentModeration] 🛡️ Analizando contenido de '{item.FileName}'...", LogLevel.Information, item);
 
             await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
             using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
@@ -195,19 +113,19 @@ public sealed class ContentModerationFilterNode : IFlowNode, IModelLifecycleNode
 
             if (isSensitive)
             {
-                context.Log($"[ContentModeration] ⚠️ Contenido sensible detectado en {item.FileName} (probabilidad: {nsfwScore * 100:F1}% >= umbral {threshold * 100:F1}%).", LogLevel.Warning, item);
-                await context.EmitAsync("Sensitive", item).ConfigureAwait(false);
+                Log(context, $"[ContentModeration] ⚠️ Contenido sensible detectado en {item.FileName} (probabilidad: {nsfwScore * 100:F1}% >= umbral {threshold * 100:F1}%).", LogLevel.Warning, item);
+                await EmitAsync(context, item, "Sensitive").ConfigureAwait(false);
             }
             else
             {
-                context.Log($"[ContentModeration] ✅ Contenido seguro: {item.FileName} (probabilidad: {nsfwScore * 100:F1}% < umbral {threshold * 100:F1}%).", LogLevel.Information, item);
-                await context.EmitAsync("Safe", item).ConfigureAwait(false);
+                Log(context, $"[ContentModeration] ✅ Contenido seguro: {item.FileName} (probabilidad: {nsfwScore * 100:F1}% < umbral {threshold * 100:F1}%).", LogLevel.Information, item);
+                await EmitAsync(context, item, "Safe").ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[ContentModeration] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[ContentModeration] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

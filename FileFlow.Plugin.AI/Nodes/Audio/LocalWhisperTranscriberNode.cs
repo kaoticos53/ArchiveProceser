@@ -11,33 +11,32 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("LocalWhisperTranscriberNode_Name", "AudioVoice", "LocalWhisperTranscriberNode_Desc", PipelineRole.Analyze,
     "audio", "voz", "transcribir", "subtitulos", "srt", "speech", "whisper", "mp3", "wav")]
-public sealed class LocalWhisperTranscriberNode : IFlowNode
+public sealed class LocalWhisperTranscriberNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Name", "Transcriptor de Voz a Texto (Whisper)");
-    public string Category => "AudioVoice";
-    public string Description => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Desc", "Transcribe archivos de audio a texto y subtítulos .srt usando el modelo Whisper de forma local y privada.");
+    public override string Name => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Name", "Transcriptor de Voz a Texto (Whisper)");
+    public override string Category => "AudioVoice";
+    public override string Description => LocalizationManager.Instance.GetString("LocalWhisperTranscriberNode_Desc", "Transcribe archivos de audio a texto y subtítulos .srt usando el modelo Whisper de forma local y privada.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public LocalWhisperTranscriberNode()
     {
-        ["ModelSize"] = "Auto",
-        ["Language"] = "Auto",
-        ["GenerateSrtSubtitles"] = false,
-        ["OutputDirectory"] = "{GlobalOutputDir}"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
+
+        Parameters["ModelSize"] = "Auto";
+        Parameters["Language"] = "Auto";
+        Parameters["GenerateSrtSubtitles"] = false;
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("ModelSize", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "Tiny", "Base", "Small"],
@@ -53,35 +52,35 @@ public sealed class LocalWhisperTranscriberNode : IFlowNode
         ".wav", ".mp3", ".m4a", ".ogg", ".flac", ".wma", ".mp4", ".mkv", ".avi"
     };
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
         {
-            context.Log($"[Whisper] Archivo de audio no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[Whisper] Archivo de audio no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (!_audioExtensions.Contains(ext))
         {
-            context.Log($"[Whisper] Formato no compatible para transcripción ({ext}): {item.FileName}", LogLevel.Warning, item);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            Log(context, $"[Whisper] Formato no compatible para transcripción ({ext}): {item.FileName}", LogLevel.Warning, item);
+            await EmitAsync(context, item).ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string modelSize = Parameters.TryGetValue("ModelSize", out var ms) ? ms?.ToString() ?? "Auto" : "Auto";
-            string lang = Parameters.TryGetValue("Language", out var l) ? l?.ToString() ?? "Auto" : "Auto";
-            bool generateSrt = Parameters.TryGetValue("GenerateSrtSubtitles", out var gs) && ParameterHelper.GetBoolean(gs, false);
+            string modelSize = GetParameter("ModelSize", "Auto");
+            string lang = GetParameter("Language", "Auto");
+            bool generateSrt = GetParameter("GenerateSrtSubtitles", false);
             string detectedLang = lang.Equals("Auto", StringComparison.OrdinalIgnoreCase) ? "auto" : lang;
 
             string targetSelection = modelSize.Equals("Auto", StringComparison.OrdinalIgnoreCase)
                 ? "Auto"
                 : $"whisper-{modelSize.ToLowerInvariant()}";
 
-            context.Log($"[Whisper] Iniciando transcripción de '{item.FileName}' (modelo: {modelSize}, idioma: {lang})...", LogLevel.Information, item);
+            Log(context, $"[Whisper] Iniciando transcripción de '{item.FileName}' (modelo: {modelSize}, idioma: {lang})...", LogLevel.Information, item);
 
             // Resolver modelo automáticamente o desde selección/archivo
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
@@ -93,8 +92,8 @@ public sealed class LocalWhisperTranscriberNode : IFlowNode
 
             if (modelPath == null)
             {
-                context.Log($"[Whisper] ⚠️ Modelo Whisper ({modelSize}) no disponible. El nodo pasa el archivo sin transcribir.", LogLevel.Warning, item);
-                await context.EmitAsync("Out", item).ConfigureAwait(false);
+                Log(context, $"[Whisper] ⚠️ Modelo Whisper ({modelSize}) no disponible. El nodo pasa el archivo sin transcribir.", LogLevel.Warning, item);
+                await EmitAsync(context, item).ConfigureAwait(false);
                 return;
             }
 
@@ -142,10 +141,10 @@ public sealed class LocalWhisperTranscriberNode : IFlowNode
                 {
                     string srtPath = await GenerateSrtFileAsync(item, segments, context, cancellationToken).ConfigureAwait(false);
                     item.Metadata["Transcript:SrtPath"] = srtPath;
-                    context.Log($"[Whisper] Subtítulos SRT generados: {Path.GetFileName(srtPath)}", LogLevel.Information, item);
+                    Log(context, $"[Whisper] Subtítulos SRT generados: {Path.GetFileName(srtPath)}", LogLevel.Information, item);
                 }
 
-                context.Log($"[Whisper] ✅ Transcripción completada: {wordCount} palabras, {segments.Count} segmentos.", LogLevel.Information, item);
+                Log(context, $"[Whisper] ✅ Transcripción completada: {wordCount} palabras, {segments.Count} segmentos.", LogLevel.Information, item);
             }
             finally
             {
@@ -157,12 +156,12 @@ public sealed class LocalWhisperTranscriberNode : IFlowNode
                 }
             }
 
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[Whisper] Error transcribiendo {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[Whisper] Error transcribiendo {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 

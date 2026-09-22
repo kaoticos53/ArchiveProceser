@@ -1,5 +1,4 @@
 using System.IO;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -11,106 +10,32 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("SmartImageClassifierNode_Name", "ImageVision", "SmartImageClassifierNode_Desc", PipelineRole.Analyze,
     "clasificar", "imagen", "foto", "vision", "ia", "mobilenet", "etiquetas", "classifier")]
-public sealed class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
+public sealed class SmartImageClassifierNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Name", "Clasificador Visual de Fotos (IA)");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Desc", "Analiza el contenido visual de fotografías e imágenes asignando una categoría temática (Paisajes, Documentos, Vehículos, Comida, etc.) en los metadatos.");
+    public override AiTaskType TaskType => AiTaskType.ImageClassification;
 
     public SmartImageClassifierNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["MinimumConfidence"] = 0.5;
+        Parameters["FallbackCategory"] = "Fotografía General";
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ImageClassification);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public bool IsGpuAccelerated
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ImageClassification);
-            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.ImageClassification);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.ImageClassification, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ImageClassification);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Name", "Clasificador Visual de Fotos (IA)");
-    public string Category => "ImageVision";
-    public string Description => LocalizationManager.Instance.GetString("SmartImageClassifierNode_Desc", "Analiza el contenido visual de fotografías e imágenes asignando una categoría temática (Paisajes, Documentos, Vehículos, Comida, etc.) en los metadatos.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["MinimumConfidence"] = 0.5,
-        ["FallbackCategory"] = "Fotografía General"
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "mobilenetv2"],
@@ -119,41 +44,34 @@ public sealed class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
         new("FallbackCategory", ParameterEditorType.Text, DefaultValue: "Fotografía General", DisplayOrder: 3)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[ImageClassifier] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[ImageClassifier] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp"))
         {
-            context.Log($"[ImageClassifier] Formato no compatible ({ext}): {item.FileName}", LogLevel.Debug, item);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            Log(context, $"[ImageClassifier] Formato no compatible ({ext}): {item.FileName}", LogLevel.Debug, item);
+            await EmitAsync(context, item).ConfigureAwait(false);
             return;
         }
 
         try
         {
-            context.Log($"[ImageClassifier] Clasificando: {item.FileName}...", LogLevel.Information, item);
+            Log(context, $"[ImageClassifier] Clasificando: {item.FileName}...", LogLevel.Information, item);
 
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.ImageClassification,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[ImageClassifier] ⚠️ Modelo de clasificación visual no disponible. El nodo pasa el archivo sin clasificar.", LogLevel.Warning, item);
-                await context.EmitAsync("Out", item).ConfigureAwait(false);
+                Log(context, "[ImageClassifier] ⚠️ Modelo de clasificación visual no disponible. El nodo pasa el archivo sin clasificar.", LogLevel.Warning, item);
+                await EmitAsync(context, item).ConfigureAwait(false);
                 return;
             }
 
@@ -165,12 +83,12 @@ public sealed class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
                 () => OnnxInferenceEngine.ClassifyImage(modelPath, image),
                 cancellationToken).ConfigureAwait(false);
 
-            double minConfidence = Parameters.TryGetValue("MinimumConfidence", out var mc) ? ParameterHelper.GetDouble(mc, 0.5) : 0.5;
-            string fallback = Parameters.TryGetValue("FallbackCategory", out var fb) ? fb?.ToString() ?? "Fotografía General" : "Fotografía General";
+            double minConfidence = GetParameter("MinimumConfidence", 0.5);
+            string fallback = GetParameter("FallbackCategory", "Fotografía General");
 
             if (confidence < minConfidence)
             {
-                context.Log($"[ImageClassifier] Confianza {confidence * 100:F0}% < umbral {minConfidence * 100:F0}%. Usando categoría de respaldo: '{fallback}'.", LogLevel.Debug, item);
+                Log(context, $"[ImageClassifier] Confianza {confidence * 100:F0}% < umbral {minConfidence * 100:F0}%. Usando categoría de respaldo: '{fallback}'.", LogLevel.Debug, item);
                 category = fallback;
             }
 
@@ -184,14 +102,14 @@ public sealed class SmartImageClassifierNode : IFlowNode, IModelLifecycleNode
                 item.Metadata["AI:Device"] = "GPU (DirectML)";
             }
 
-            context.Log($"[ImageClassifier] ✅ Clasificación: '{category}' ({label}) — confianza: {confidence * 100:F1}%", LogLevel.Information, item);
+            Log(context, $"[ImageClassifier] ✅ Clasificación: '{category}' ({label}) — confianza: {confidence * 100:F1}%", LogLevel.Information, item);
 
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[ImageClassifier] Error clasificando imagen {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[ImageClassifier] Error clasificando imagen {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

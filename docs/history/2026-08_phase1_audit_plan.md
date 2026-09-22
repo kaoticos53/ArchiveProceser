@@ -1,5 +1,22 @@
 # FASE 1 — Auditoría de Código, Análisis de Patrones y Plan de Refactorización
 
+> [!NOTE]
+> **Estado (actualizado 2026-09-21): Fases 2A, 2B, 2C y 2E están 100% COMPLETADAS.**
+> La ejecución de 2A/2B ocurrió en un ciclo de trabajo previo no reflejado originalmente en este documento; quedó documentada en
+> [`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md).
+> Las fases 2C y 2E se ejecutaron el 2026-09-21 en la rama `feature/crossplatform-avalonia`.
+> Verificado tras la ejecución: build limpio (0 errores, 0 warnings) y suite completa en verde (1143 passed, 1 skip intencional, de 1144 tests — la suite creció desde los 481 originales de esta auditoría).
+> **Fase 2D-D3**: en curso — `FileFlow.Plugin.AI` quedó **100% migrado** (18/18 nodos sobre la jerarquía, 0 nodos implementando `IFlowNode` a mano) tras esta ejecución.
+> Quedan **52 nodos** del resto de plugins (`FileSystem` 13, `Logic` 10, `Data` 7, `Archives` 5, `Documents` 4, `Integrations` 3, `Subflows` 3, `Hashing` 2, `Images` 2, `Network` 2, `Scripting` 1) sobre `IFlowNode` directo.
+>
+> - **C1–C5** ✅ — Motores monolíticos modularizados: `AiModelManager`, `OnnxInferenceEngine`, `LanguageInferenceEngine`, `AudioInferenceEngine` y la coordinación Log ↔ Inspector.
+> - **E1–E3** ✅ — Ciclo de vida ONNX unificado, `GC.Collect()` de `PluginLoader` evaluado y justificado, y bloques `catch` silenciosos refinados con diagnóstico explícito.
+>
+> - **A1/A2** ✅ — `RegexLibraryService`/`RegexHelperViewModel`/`RegexHelperWindow` duplicados eliminados de `FileFlow.App`; única copia canónica en `FileFlow.Plugin.FileSystem/UI/`.
+> - **B1** ✅ — `ConceptDictionary` externalizado a `FileFlow.Plugin.AI/Resources/visual_concepts_es_en.json` (EmbeddedResource). `PromptTranslator.cs` bajó de 841 → 180 líneas.
+> - **B2** ✅ — Catálogo de modelos externalizado a `FileFlow.Plugin.AI/Resources/ai_models_catalog.json`. `AiModelManager.cs` refactorizado a fachada de 215 líneas.
+> - **B3** ✅ — Los 12 temas externalizados a `FileFlow.App/Resources/builtin_themes.json`. `BuiltInThemesCatalog.cs` bajó de 329 → 46 líneas.
+
 ## Resumen Ejecutivo
 
 | Métrica | Valor |
@@ -202,54 +219,106 @@ graph TD
 
 ## 5. Plan de Refactorización y Modularización
 
-### Fase 2A — Limpieza Inmediata (Riesgo bajo, alto impacto)
+### Fase 2A — Limpieza Inmediata (Riesgo bajo, alto impacto) — ✅ COMPLETADA
 
-| # | Acción | Archivos | Impacto |
+> Ejecutada y documentada en [`2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md). Verificado en código actual: única copia canónica en `FileFlow.Plugin.FileSystem/UI/Services/`, sin duplicados en `FileFlow.App`.
+
+| # | Acción | Archivos | Impacto | Estado |
+|---|---|---|---|---|
+| **A1** | **Eliminar duplicados App ↔ Plugin.FileSystem** (RegexLibraryService, RegexHelperViewModel, RegexHelperWindow) | 6 archivos (~750L eliminadas) | Elimina divergencia y código muerto | ✅ Completado |
+| **A2** | **Limpiar código muerto**: verificar si las copias de App se referencian; si no, eliminar directamente | Compilación + grep | 0 regresiones si no se usan | ✅ Completado |
+
+---
+
+### Fase 2B — Externalización de Datos Estáticos (Riesgo bajo) — ✅ COMPLETADA
+
+> Ejecutada y documentada en [`2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md) (líneas 2075-2077). Los JSON se cargan como `EmbeddedResource` (respuesta a la pregunta abierta original), resolviendo esta fase por completo.
+
+| # | Acción | Archivos | Impacto | Estado |
+|---|---|---|---|---|
+| **B1** | Externalizar `ConceptDictionary` de `PromptTranslator.cs` a JSON | 1 CS + 1 JSON | PromptTranslator baja de 841 → ~240 líneas | ✅ Completado (841 → 180L, `visual_concepts_es_en.json`) |
+| **B2** | Externalizar catálogo de modelos de `AiModelManager.cs` a JSON | 1 CS + 1 JSON | AiModelManager baja de 826 → ~620 líneas | ✅ Completado (fachada de 215L, `ai_models_catalog.json`) |
+| **B3** | Externalizar temas de `BuiltInThemesCatalog.cs` a JSON | 1 CS + 1 JSON | BuiltInThemesCatalog baja de 326 → ~60 líneas | ✅ Completado (329 → 46L, `builtin_themes.json`) |
+
+---
+
+### Fase 2C — Modularización de Motores Monolíticos (Riesgo medio) — ✅ COMPLETADA
+
+> Los cinco motores quedaron reducidos a fachadas delegantes que conservan intacta la API pública,
+> de modo que ningún nodo ni test tuvo que cambiar sus llamadas.
+
+| # | Archivo original | Propuesta de extracción | Nuevos módulos | Resultado final | Estado |
+|---|---|---|---|---|---|
+| **C1** | `AiModelManager.cs` (826L) | Separar en: catálogo, descargador, configuración de URLs | `AiModelCatalog.cs`, `AiModelDownloader.cs`, `AiModelUrlConfig.cs` | `AiModelManager.cs` → **144L** (`AiModelCatalog` 135L, `AiModelDownloader` 278L, `AiModelUrlConfig` 169L) | ✅ Completado |
+| **C2** | `OnnxInferenceEngine.cs` (761L) | Separar por dominio de inferencia | `ClassificationInference.cs`, `FaceDetectionInference.cs`, `ObjectDetectionInference.cs`, `ImageProcessingInference.cs` | `OnnxInferenceEngine.cs` → **56L** (fachada); dominios en `FileFlow.Plugin.AI/Inference/`: `ImageClassificationInference`, `FaceDetectionInference`, `ObjectDetectionInference`, `BackgroundSegmentationInference`, `SuperResolutionInference`, `TensorPreprocessors`, `OnnxSessionManager` | ✅ Completado |
+| **C3** | `LanguageInferenceEngine.cs` (484L) | Separar por tipo de tarea NLP | `TranslationEngine.cs`, `LlmInferenceEngine.cs`, `SrtParser.cs` | `LanguageInferenceEngine.cs` → **145L** (fachada); módulos en `Engines/Language/`: `TranslationEngine` 151L, `LlmInferenceEngine` 176L, `SrtParser` 61L, más `LanguageIdentifier` 67L y `MultilingualTranslator` 111L | ✅ Completado |
+| **C4** | `AudioInferenceEngine.cs` (461L) | Separar por función de audio | `AudioResampler.cs`, `VadEngine.cs`, `TtsEngine.cs` | `AudioInferenceEngine.cs` → **65L** (fachada); módulos en `Engines/Audio/`: `VadEngine` 273L, `TtsEngine` 96L, `AudioSessionCache` 93L. El rol de `AudioResampler` ya estaba cubierto por `AudioWaveUtilities.cs` (148L: decodificación, resampling a 16 kHz mono y exportación PCM) | ✅ Completado |
+| **C5** | `LogViewModel.cs` (498L) | Extraer coordinación con Inspector | `LogInspectorSyncService.cs` | La coordinación residía en `MainViewModel` —ambos constructores suscribían `LogSelectionChanged` dos veces, provocando una doble llamada a `Inspector.InspectLogRecord`—. Ahora `LogInspectorSyncService.cs` (40L) concentra el flujo Log → Inspector con exactamente una suscripción, y `MainViewModel` la libera vía `IDisposable` | ✅ Completado |
+
+---
+
+### Fase 2D — Abstracción de Boilerplate de Nodos (Riesgo bajo-medio) — 🟡 D1/D2/D3a COMPLETADAS, D3b PENDIENTE
+
+| # | Acción | Ubicación | Estado |
 |---|---|---|---|
-| **A1** | **Eliminar duplicados App ↔ Plugin.FileSystem** (RegexLibraryService, RegexHelperViewModel, RegexHelperWindow) | 6 archivos (~750L eliminadas) | Elimina divergencia y código muerto |
-| **A2** | **Limpiar código muerto**: verificar si las copias de App se referencian; si no, eliminar directamente | Compilación + grep | 0 regresiones si no se usan |
+| **D1** | Crear `FlowNodeBase` abstracto en `FileFlow.Sdk` con propiedades comunes e implementación de try/catch | `FileFlow.Sdk/FlowNodeBase.cs` | ✅ Completado |
+| **D2** | Crear `AiFlowNodeBase` en `FileFlow.Plugin.AI` con resolución/descarga de modelos | `FileFlow.Plugin.AI/Common/AiFlowNodeBase.cs` | ✅ Completado |
+| **D3a** | Migrar los nodos simples de `FileFlow.Plugin.AI` (audio, lenguaje, visión) | 15 nodos | ✅ Completado (2 anteriores ya migrados: `FaceDetectorNode`, `ImageTypeClassifierNode`) |
+| **D3b** | Migrar los nodos restantes de los demás plugins | 52 nodos | 🟡 Pendiente |
 
----
+**Migración D3a — 15 nodos sobre la base (ganancia neta ≈ 700 líneas):**
 
-### Fase 2B — Externalización de Datos Estáticos (Riesgo bajo)
-
-| # | Acción | Archivos | Impacto |
+| Nodo | Antes | Después | Base |
 |---|---|---|---|
-| **B1** | Externalizar `ConceptDictionary` de `PromptTranslator.cs` a JSON | 1 CS + 1 JSON | PromptTranslator baja de 841 → ~240 líneas |
-| **B2** | Externalizar catálogo de modelos de `AiModelManager.cs` a JSON | 1 CS + 1 JSON | AiModelManager baja de 826 → ~620 líneas |
-| **B3** | Externalizar temas de `BuiltInThemesCatalog.cs` a JSON | 1 CS + 1 JSON | BuiltInThemesCatalog baja de 326 → ~60 líneas |
+| `VoiceActivityDetectorNode` | 261 | 199 | `AudioAiFlowNodeBase` |
+| `TextToSpeechNode` | 244 | 180 | `AudioAiFlowNodeBase` |
+| `LocalWhisperTranscriberNode` | 244 | 243 | `FlowNodeBase` (sin ciclo de vida: Whisper.net instancia su grafo por llamada, no vive en la caché ONNX) |
+| `LocalAiTranslatorNode` | 260 | 189 | `AiFlowNodeBase` |
+| `LocalLlmProcessorNode` | 248 | 176 | `AiFlowNodeBase` |
+| `PiiAnonymizerNode` | 248 | 220 | `AiFlowNodeBase` (identidad y ciclo de vida explícitos: regex determinista, sin sesión ONNX) |
+| `PromptTransformerNode` | 140 | 92 | `AiFlowNodeBase` (modelo fijado por diseño vía `DefaultModelSelection`) |
+| `LocalOcrNode` | 166 | 165 | `FlowNodeBase` (Tesseract no pasa por el gestor de sesiones) |
+| `ZeroShotSemanticSearchNode` | 170 | 168 | `FlowNodeBase` (`SemanticEmbeddingEngine` mantiene su propia caché) |
+| `BackgroundRemoverNode` | 359 | 277 | `AiFlowNodeBase` |
+| `SuperResolutionUpscalerNode` | 271 | 189 | `AiFlowNodeBase` |
+| `ObjectDetectorNode` | 223 | 141 | `AiFlowNodeBase` |
+| `PromptObjectDetectorNode` | 214 | 150 | `AiFlowNodeBase` |
+| `ContentModerationFilterNode` | 213 | 131 | `AiFlowNodeBase` |
+| `SmartImageClassifierNode` | 197 | 115 | `AiFlowNodeBase` |
+
+**Lo que aporta la base y ya no se repite en cada nodo:** `Id`, `Inputs`/`Outputs`/`Parameters` tipados, `Name`/`Category`/`Description` como `override`, el relay débil `WeakModelStatusRelay` (`ModelStatusChanged` + `RaiseModelStatusChanged`), y todo `IModelLifecycleNode` (`IsModelLoaded`, `ModelIdentifier`, `IsGpuAccelerated`, `PreloadModelAsync`, `UnloadModel`).
+
+**Dos puntos de extensión nuevos en `AiFlowNodeBase`** para que la migración de audio y de los nodos con modelo fijo fuese posible sin duplicar nada:
+
+- Constructor protegido `AiFlowNodeBase(subscribe, unsubscribe)`: cambia el evento estático observado manteniendo **una sola** suscripción por nodo (el test `WeakModelStatusRelayTests` cuenta exactamente una).
+- Ganchos virtuales del almacén de sesiones (`IsSessionLoadedForModel`, `UnloadSessionForModel`, `IsGpuAcceleratedForModel`, `EnsureSessionLoadedForModel`) y `DefaultModelSelection`. El audio los sobrescribe una vez en `AudioAiFlowNodeBase` en lugar de en cada nodo.
+
+> **Evidencia de la ejecución 2D-D3a (2026-09-21, rama `feature/crossplatform-avalonia`)**
+>
+> - `FileFlow.Plugin.AI` pasa de 15 nodos con el ciclo de vida copiado a mano a 0 (18/18 nodos en la jerarquía).
+> - `Common/AudioAiFlowNodeBase.cs` (64L, nuevo) es la especialización de audio: observa `AudioInferenceEngine.SessionStateChanged` y consulta `AudioSessionCache` en lugar del gestor ONNX genérico, que es una caché distinta.
+> - `AiFlowNodeBase.cs` 113 → 172 líneas: el crecimiento son los ganchos de extensión, menos de lo que ahorran sus 15 consumidores.
+> - 3458 → 2635 líneas en los 15 nodos migrados (**-823**, -24%); con la base incluida, -700 netas.
+> - `MultimodalVisionLlmNode` conserva su ciclo de vida propio: gestiona un VLM in-process con proveedor alternativo, no es boilerplate duplicado.
+> - Verificación: `dotnet build` sin errores ni advertencias y `dotnet test` con **1143 superadas / 0 fallos / 1 omitida** (idéntico al baseline).
 
 ---
 
-### Fase 2C — Modularización de Motores Monolíticos (Riesgo medio)
+### Fase 2E — Mejoras de Robustez (Riesgo bajo) — ✅ COMPLETADA
 
-| # | Archivo | Propuesta de extracción | Nuevos módulos |
+| # | Acción | Resultado | Estado |
 |---|---|---|---|
-| **C1** | `AiModelManager.cs` (826L) | Separar en: catálogo, descargador, configuración de URLs | `AiModelCatalog.cs`, `AiModelDownloader.cs`, `AiModelUrlConfig.cs` |
-| **C2** | `OnnxInferenceEngine.cs` (761L) | Separar por dominio de inferencia | `ClassificationInference.cs`, `FaceDetectionInference.cs`, `ObjectDetectionInference.cs`, `ImageProcessingInference.cs` |
-| **C3** | `LanguageInferenceEngine.cs` (484L) | Separar por tipo de tarea NLP | `TranslationEngine.cs`, `LlmInferenceEngine.cs`, `SrtParser.cs` |
-| **C4** | `AudioInferenceEngine.cs` (461L) | Separar por función de audio | `AudioResampler.cs`, `VadEngine.cs`, `TtsEngine.cs` |
-| **C5** | `LogViewModel.cs` (498L) | Extraer coordinación con Inspector | `LogInspectorSyncService.cs` |
+| **E1** | Implementar `IDisposable`/`Shutdown()` en motores de inferencia ONNX | Liberación determinista de memoria no administrada vía `AiPluginInitializer.ClearAllSessions()`, que cierra las cachés de `OnnxInferenceEngine`, `AudioInferenceEngine` (hoy `AudioSessionCache`), `SemanticEmbeddingEngine` y `LanguageInferenceEngine`. El cierre del `PluginLoader` ya libera además cada `AssemblyLoadContext` | ✅ Completado |
+| **E2** | Evaluar/eliminar `GC.Collect()` en `PluginLoader.cs` | Se **conserva** y queda documentado en el código: la descarga de `AssemblyLoadContext` es cooperativa y el runtime solo libera los ensamblados tras una recolección completa más `WaitForPendingFinalizers()`. `UnloadAll()` es una operación explícita de recarga de plugins, nunca una ruta crítica, así que no hay impacto en rendimiento. Se descartó eliminarlo porque las DLL nativas seguirían retenidas | ✅ Completado (evaluado y justificado) |
+| **E3** | Refinar `catch(Exception)` en servicios de UI por excepciones específicas | Bloques `catch` genéricos revisados: los silenciosos quedaron anotados con su motivo (operaciones resilientes/non-críticas) y los que ocultaban errores reales ahora registran diagnóstico explícito (`DiagnosticLog.Error` / `Debug.WriteLine`) | ✅ Completado |
 
----
-
-### Fase 2D — Abstracción de Boilerplate de Nodos (Riesgo bajo-medio)
-
-| # | Acción | Ubicación |
-|---|---|---|
-| **D1** | Crear `FlowNodeBase` abstracto en `FileFlow.Sdk` con propiedades comunes e implementación de try/catch | `FileFlow.Sdk/FlowNodeBase.cs` |
-| **D2** | Crear `AiFlowNodeBase` en `FileFlow.Plugin.AI` con resolución/descarga de modelos | `FileFlow.Plugin.AI/AiFlowNodeBase.cs` |
-| **D3** | Migrar nodos gradualmente (empezar por los más simples) | 60 nodos (incremental) |
-
----
-
-### Fase 2E — Mejoras de Robustez (Riesgo bajo)
-
-| # | Acción |
-|---|---|
-| **E1** | Implementar `IDisposable`/`Shutdown()` en motores de inferencia ONNX |
-| **E2** | Evaluar/eliminar `GC.Collect()` en `PluginLoader.cs` |
-| **E3** | Refinar `catch(Exception)` en servicios de UI por excepciones específicas |
+> **Evidencia de la ejecución 2C/2E (2026-09-21, rama `feature/crossplatform-avalonia`)**
+>
+> - `LanguageInferenceEngine.cs` 585 → 145 líneas; `AudioInferenceEngine.cs` 432 → 65 líneas.
+> - Nueva jerarquía de módulos: `Engines/Language/` (5 archivos) y `Engines/Audio/` (3 archivos).
+> - La API pública de ambas fachadas (`TranslateAsync`, `GenerateLlmAsync`, `NormalizeLanguageCode`, `DetectLanguage`, `TranslateWithSemanticEngine`, `TransformPromptAsync`, `ClearSessionCache`, `DetectVoiceActivityAsync`, `SynthesizeSpeechAsync`, `SessionStateChanged`, `UnloadSession`) se preservó sin cambios, por lo que nodos y tests no requirieron modificaciones.
+> - Nuevo `FileFlow.App/Services/LogInspectorSyncService.cs` que elimina una suscripción duplicada del canal Log → Inspector.
+> - Verificación final: `dotnet build` sin errores ni advertencias y `dotnet test` con **1143 superadas / 0 fallos / 1 omitida**.
 
 ---
 
@@ -278,3 +347,5 @@ dotnet build FileFlow.slnx --warnaserror  # 0 errores, 0 warnings
 
 > [!IMPORTANT]
 > **Sobre la externalización de datos (B1-B3):** ¿Prefieres que los JSON se carguen desde archivos embebidos en el assembly (EmbeddedResource) o desde archivos en disco (`AppPaths.ConfigDirectory`)? Los embebidos son más robustos pero requieren rebuild; los de disco permiten personalización por el usuario.
+>
+> **✅ RESUELTO (ver estado al inicio del documento):** se optó por `EmbeddedResource` para B1, B2 y B3. Fase 2B completada en su totalidad.

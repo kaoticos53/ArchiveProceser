@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace FileFlow.Plugin.AI;
 
@@ -19,110 +17,36 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("BackgroundRemoverNode_Name", "ImageVision", "BackgroundRemoverNode_Desc", PipelineRole.Transform,
     "fondo", "recortar", "transparente", "png", "mascara", "alpha", "quitar fondo", "cutout")]
-public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
+public sealed class BackgroundRemoverNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("BackgroundRemoverNode_Name", "Eliminador de Fondo IA");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("BackgroundRemoverNode_Desc", "Segmenta el sujeto y elimina el fondo de imágenes con redes neuronales RMBG y MODNet.");
+    public override AiTaskType TaskType => AiTaskType.BackgroundRemoval;
 
     public BackgroundRemoverNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Bypass", typeof(FileItemContext), PortDirection.Output, "Bypass"),
+            new NodePort("Mask", typeof(FileItemContext), PortDirection.Output, "Mask"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["OutputMode"] = "TransparentPng";
+        Parameters["BackgroundColor"] = "#FFFFFF";
+        Parameters["OutputDirectory"] = "";
+        Parameters["SkipIfExists"] = false;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.BackgroundRemoval);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.BackgroundRemoval);
-        }
-    }
-
-    public bool IsGpuAccelerated
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.BackgroundRemoval);
-            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.BackgroundRemoval, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.BackgroundRemoval);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("BackgroundRemoverNode_Name", "Eliminador de Fondo IA");
-    public string Description => LocalizationManager.Instance.GetString("BackgroundRemoverNode_Desc", "Segmenta el sujeto y elimina el fondo de imágenes con redes neuronales RMBG y MODNet.");
-    public string Category => "ImageVision";
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Bypass", typeof(FileItemContext), PortDirection.Output, "Bypass"),
-        new NodePort("Mask", typeof(FileItemContext), PortDirection.Output, "Mask"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["OutputMode"] = "TransparentPng",
-        ["BackgroundColor"] = "#FFFFFF",
-        ["OutputDirectory"] = "",
-        ["SkipIfExists"] = false
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "rmbg-1.4", "modnet"],
@@ -143,32 +67,31 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
         ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"
     };
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[BackgroundRemover] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[BackgroundRemover] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (!_supportedExtensions.Contains(ext))
         {
-            context.Log($"[BackgroundRemover] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
-            await context.EmitAsync("Bypass", item).ConfigureAwait(false);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[BackgroundRemover] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
+            await EmitAsync(context, item, "Bypass").ConfigureAwait(false);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string outputMode = Parameters.TryGetValue("OutputMode", out var omVal) ? omVal?.ToString() ?? "TransparentPng" : "TransparentPng";
-            string bgColorHex = Parameters.TryGetValue("BackgroundColor", out var bgVal) ? bgVal?.ToString() ?? "#FFFFFF" : "#FFFFFF";
-            string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
-            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+            string outputMode = GetParameter("OutputMode", "TransparentPng");
+            string bgColorHex = GetParameter("BackgroundColor", "#FFFFFF");
+            string outputDirRaw = GetParameter("OutputDirectory", "{GlobalOutputDir}");
+            bool skipIfExists = GetParameter("SkipIfExists", false);
 
             string targetDir = ParameterHelper.ResolveIntermediateOutputDir(outputDirRaw, item, context);
             await storage.CreateDirectoryAsync(targetDir, cancellationToken).ConfigureAwait(false);
@@ -181,7 +104,7 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
 
             if (skipIfExists && await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false))
             {
-                context.Log($"[BackgroundRemover] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo inferencia.", LogLevel.Information, item);
+                Log(context, $"[BackgroundRemover] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo inferencia.", LogLevel.Information, item);
 
                 if (maskOnly)
                 {
@@ -190,7 +113,7 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                     maskItem.PhysicalPath = targetPath;
                     maskItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                     maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
-                    await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
+                    await EmitAsync(context, maskItem, "Mask").ConfigureAwait(false);
                 }
                 else
                 {
@@ -199,7 +122,7 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                     outItem.PhysicalPath = targetPath;
                     outItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
                     outItem.Metadata["AI:BackgroundRemoved"] = true;
-                    await context.EmitAsync("Out", outItem).ConfigureAwait(false);
+                    await EmitAsync(context, outItem).ConfigureAwait(false);
 
                     string maskFileName = Path.GetFileNameWithoutExtension(item.CurrentPath) + "_mask.png";
                     string maskPath = Path.Combine(targetDir, maskFileName);
@@ -210,37 +133,32 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                         maskItem.PhysicalPath = maskPath;
                         maskItem.FileSizeBytes = await storage.GetFileSizeAsync(maskPath, cancellationToken).ConfigureAwait(false);
                         maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
-                        await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
+                        await EmitAsync(context, maskItem, "Mask").ConfigureAwait(false);
                     }
                 }
 
-                await context.EmitAsync("Bypass", item).ConfigureAwait(false);
+                await EmitAsync(context, item, "Bypass").ConfigureAwait(false);
                 return;
             }
 
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.BackgroundRemoval,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[BackgroundRemover] ⚠️ Modelo de eliminación de fondo no disponible. El archivo se emite por Bypass.", LogLevel.Warning, item);
-                await context.EmitAsync("Bypass", item).ConfigureAwait(false);
-                await context.EmitAsync("Error", item).ConfigureAwait(false);
+                Log(context, "[BackgroundRemover] ⚠️ Modelo de eliminación de fondo no disponible. El archivo se emite por Bypass.", LogLevel.Warning, item);
+                await EmitAsync(context, item, "Bypass").ConfigureAwait(false);
+                await EmitAsync(context, item, "Error").ConfigureAwait(false);
                 return;
             }
 
-            bool isDml = OnnxSessionManager.ShouldUseDirectMl(modelPath);
+            bool isDml = IsGpuAccelerated;
             if (isDml)
             {
                 item.Metadata["AI:DirectMlAccelerated"] = true;
                 item.Metadata["AI:Device"] = "GPU (DirectML)";
             }
 
-            context.Log($"[BackgroundRemover] ✂️ Eliminando fondo de '{item.FileName}'...", LogLevel.Information, item);
+            Log(context, $"[BackgroundRemover] ✂️ Eliminando fondo de '{item.FileName}'...", LogLevel.Information, item);
 
             Rgba32? bgColor = null;
             if (string.Equals(outputMode, "ColorBackground", StringComparison.OrdinalIgnoreCase))
@@ -283,8 +201,8 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                 maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                 maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
 
-                context.Log($"[BackgroundRemover] ✅ Máscara generada con éxito: '{targetFileName}'", LogLevel.Information, maskItem);
-                await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
+                Log(context, $"[BackgroundRemover] ✅ Máscara generada con éxito: '{targetFileName}'", LogLevel.Information, maskItem);
+                await EmitAsync(context, maskItem, "Mask").ConfigureAwait(false);
             }
             else
             {
@@ -341,19 +259,19 @@ public sealed class BackgroundRemoverNode : IFlowNode, IModelLifecycleNode
                 maskItem.Metadata["AI:AlphaMaskGenerated"] = true;
                 maskItem.Metadata["AI:BackgroundModel"] = Path.GetFileNameWithoutExtension(modelPath);
 
-                context.Log($"[BackgroundRemover] ✅ Fondo procesado con éxito: '{targetFileName}' y máscara '{maskFileName}'", LogLevel.Information, outItem);
+                Log(context, $"[BackgroundRemover] ✅ Fondo procesado con éxito: '{targetFileName}' y máscara '{maskFileName}'", LogLevel.Information, outItem);
 
-                await context.EmitAsync("Out", outItem).ConfigureAwait(false);
-                await context.EmitAsync("Mask", maskItem).ConfigureAwait(false);
+                await EmitAsync(context, outItem).ConfigureAwait(false);
+                await EmitAsync(context, maskItem, "Mask").ConfigureAwait(false);
             }
 
             // Emitir siempre el archivo original tal cual por el puerto Bypass
-            await context.EmitAsync("Bypass", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Bypass").ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[BackgroundRemover] ❌ Error procesando {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[BackgroundRemover] ❌ Error procesando {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

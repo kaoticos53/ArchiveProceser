@@ -6,8 +6,10 @@ using FileFlow.Sdk.Localization;
 
 namespace FileFlow.App.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
+    private readonly LogInspectorSyncService _logInspectorSync;
+
     public PluginLoader PluginLoader { get; }
     public EditorViewModel Editor { get; }
     public ToolboxViewModel Toolbox { get; }
@@ -46,13 +48,7 @@ public partial class MainViewModel : ObservableObject
         WorkflowStorageService = workflowStorageService;
         LocalizationService = localizationService ?? FileFlow.Sdk.Localization.LocalizationManager.Instance;
 
-        LogConsole.LogSelectionChanged += log =>
-        {
-            if (log != null)
-            {
-                NodeInspector.InspectLogRecord(log);
-            }
-        };
+        _logInspectorSync = new LogInspectorSyncService(LogConsole, NodeInspector);
 
         LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodesCount));
     }
@@ -75,14 +71,16 @@ public partial class MainViewModel : ObservableObject
         StatusBar = new StatusBarViewModel(Editor, ControlBar, PerformanceMonitor, LogConsole);
         LocalizationService = FileFlow.Sdk.Localization.LocalizationManager.Instance;
 
-        LogConsole.LogSelectionChanged += log =>
-        {
-            if (log != null)
-            {
-                NodeInspector.InspectLogRecord(log);
-            }
-        };
+        _logInspectorSync = new LogInspectorSyncService(LogConsole, NodeInspector);
 
         LogConsole.AddLog(Sdk.LogLevel.Information, LocalizationService.GetFormattedString("Log_AppInitialized", "FileFlow Studio initialized with {0} active plugin nodes.", PluginLoader.DiscoveredNodesCount));
+    }
+
+    /// <summary>
+    /// Desuscribe la sincronización entre consola de logs e inspector de nodos.
+    /// </summary>
+    public void Dispose()
+    {
+        _logInspectorSync.Dispose();
     }
 }

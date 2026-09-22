@@ -1,7 +1,4 @@
-using System;
-using System.Threading.Tasks;
-
-namespace FileFlow.Plugin.AI.Common;
+namespace FileFlow.Sdk.Diagnostics;
 
 /// <summary>
 /// Ejecutor de <b>tareas descartadas seguras</b>: envuelve un <c>_ = AlgoAsync()</c> de forma que la tarea
@@ -16,7 +13,7 @@ namespace FileFlow.Plugin.AI.Common;
 /// error— queda contenida aquí y se entrega al llamador por <paramref name="onError"/> para que la refleje como
 /// estado. Nada se filtra al finalizador.</para>
 /// </summary>
-internal static class SafeTaskRunner
+public static class SafeTaskRunner
 {
     /// <summary>Ejecuta <paramref name="action"/> sin que pueda escapar ninguna excepción.</summary>
     /// <param name="action">Acción asíncrona a ejecutar en segundo plano.</param>

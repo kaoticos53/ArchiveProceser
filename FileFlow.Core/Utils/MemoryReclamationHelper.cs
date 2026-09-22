@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using FileFlow.Core.Platform;
+using FileFlow.Sdk.Diagnostics;
 
 namespace FileFlow.Core.Utils;
 
@@ -50,7 +50,7 @@ public static class MemoryReclamationHelper
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MemoryReclamationHelper] Error en callback de limpieza: {ex.Message}");
+                DiagnosticLog.Error(nameof(MemoryReclamationHelper), "Error en callback de limpieza", ex);
             }
         }
 
@@ -63,7 +63,7 @@ public static class MemoryReclamationHelper
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[MemoryReclamationHelper] Error en recolección de GC: {ex.Message}");
+            DiagnosticLog.Error(nameof(MemoryReclamationHelper), "Error en recolección de GC", ex);
         }
 
         // Fase 3: Recorte de Working Set mediante el servicio de plataforma
@@ -75,7 +75,7 @@ public static class MemoryReclamationHelper
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MemoryReclamationHelper] Error al recortar Working Set: {ex.Message}");
+                DiagnosticLog.Error(nameof(MemoryReclamationHelper), "Error al recortar Working Set", ex);
             }
         }
     }

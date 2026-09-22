@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -20,97 +19,34 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PromptObjectDetectorNode_Name", "ImageVision", "PromptObjectDetectorNode_Desc", PipelineRole.Analyze,
     "dino", "grounding dino", "prompt", "objeto", "detectar", "texto a objeto", "vision")]
-public sealed class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
+public sealed class PromptObjectDetectorNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Name", "Detector de Objetos por Prompt (Grounding DINO)");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Desc", "Detecta objetos y conceptos descritos en lenguaje natural libre con traducción automática Español-Inglés usando MarianMT.");
+    public override AiTaskType TaskType => AiTaskType.ObjectDetection;
 
     public PromptObjectDetectorNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("ObjectsFound", typeof(FileItemContext), PortDirection.Output, "ObjectsFound"),
+            new NodePort("NoObjects", typeof(FileItemContext), PortDirection.Output, "NoObjects"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Prompt"] = "perro, coche, persona, gafas de sol";
+        Parameters["MinimumConfidence"] = 0.35;
+        Parameters["AutoTranslateToEnglish"] = true;
+        Parameters["MaxDetections"] = 10;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string? modelPath = AiModelManager.ResolveModelPathSync("Auto", AiTaskType.ObjectDetection);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public bool IsGpuAccelerated
-    {
-        get
-        {
-            string? modelPath = AiModelManager.ResolveModelPathSync("Auto", AiTaskType.ObjectDetection);
-            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier => AiModelManager.GetModelDisplayName("Auto", AiTaskType.ObjectDetection);
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string? modelPath = await AiModelManager.ResolveModelPathAsync("Auto", AiTaskType.ObjectDetection, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string? modelPath = AiModelManager.ResolveModelPathSync("Auto", AiTaskType.ObjectDetection);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Name", "Detector de Objetos por Prompt (Grounding DINO)");
-    public string Category => "ImageVision";
-    public string Description => LocalizationManager.Instance.GetString("PromptObjectDetectorNode_Desc", "Detecta objetos y conceptos descritos en lenguaje natural libre con traducción automática Español-Inglés usando MarianMT.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("ObjectsFound", typeof(FileItemContext), PortDirection.Output, "ObjectsFound"),
-        new NodePort("NoObjects", typeof(FileItemContext), PortDirection.Output, "NoObjects"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Prompt"] = "perro, coche, persona, gafas de sol",
-        ["MinimumConfidence"] = 0.35,
-        ["AutoTranslateToEnglish"] = true,
-        ["MaxDetections"] = 10
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Prompt", ParameterEditorType.MultiLineText, DefaultValue: "perro, coche, persona, gafas de sol", DisplayOrder: 1),
         new("MinimumConfidence", ParameterEditorType.Slider, DefaultValue: 0.35, Min: 0.10, Max: 1.0, Step: 0.05, DisplayOrder: 2),
@@ -118,48 +54,48 @@ public sealed class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
         new("MaxDetections", ParameterEditorType.Number, DefaultValue: 10, Min: 1, Max: 100, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[PromptObjectDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[PromptObjectDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" or ".tiff"))
         {
-            context.Log($"[PromptObjectDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
-            await context.EmitAsync("NoObjects", item).ConfigureAwait(false);
+            Log(context, $"[PromptObjectDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
+            await EmitAsync(context, item, "NoObjects").ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string prompt = Parameters.TryGetValue("Prompt", out var pVal) ? pVal?.ToString() ?? "object" : "object";
-            double threshold = Parameters.TryGetValue("MinimumConfidence", out var ct) ? ParameterHelper.GetDouble(ct, 0.35) : 0.35;
-            bool autoTranslate = Parameters.TryGetValue("AutoTranslateToEnglish", out var at) ? ParameterHelper.GetBoolean(at, true) : true;
-            int maxDets = Parameters.TryGetValue("MaxDetections", out var md) ? ParameterHelper.GetInt32(md, 10) : 10;
+            string prompt = GetParameter("Prompt", "object");
+            double threshold = GetParameter("MinimumConfidence", 0.35);
+            bool autoTranslate = GetParameter("AutoTranslateToEnglish", true);
+            int maxDets = GetParameter("MaxDetections", 10);
 
             string targetPrompt = prompt;
             if (autoTranslate)
             {
                 targetPrompt = await PromptTranslator.TranslateToEnglishAsync(prompt, cancellationToken).ConfigureAwait(false);
-                context.Log($"[PromptObjectDetector] 🌐 Prompt traducido (ES→EN): '{prompt}' ➔ '{targetPrompt}'", LogLevel.Information, item);
+                Log(context, $"[PromptObjectDetector] 🌐 Prompt traducido (ES→EN): '{prompt}' ➔ '{targetPrompt}'", LogLevel.Information, item);
             }
             else
             {
-                context.Log($"[PromptObjectDetector] 🎯 Evaluando prompt directo: '{prompt}'", LogLevel.Information, item);
+                Log(context, $"[PromptObjectDetector] 🎯 Evaluando prompt directo: '{prompt}'", LogLevel.Information, item);
             }
 
             // Asegurar modelo de visión ONNX óptimo (YOLOv8)
-            string? modelPath = await AiModelManager.ResolveModelPathAsync("Auto", AiTaskType.ObjectDetection, context, item, cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
             if (modelPath == null)
             {
-                context.Log($"[PromptObjectDetector] ⚠️ Modelo de visión no disponible. Pasando por puerto NoObjects.", LogLevel.Warning, item);
-                await context.EmitAsync("NoObjects", item).ConfigureAwait(false);
+                Log(context, "[PromptObjectDetector] ⚠️ Modelo de visión no disponible. Pasando por puerto NoObjects.", LogLevel.Warning, item);
+                await EmitAsync(context, item, "NoObjects").ConfigureAwait(false);
                 return;
             }
 
@@ -195,20 +131,20 @@ public sealed class PromptObjectDetectorNode : IFlowNode, IModelLifecycleNode
                 item.Metadata["AI:FaceBoxes"] = null!;
                 item.Metadata.Remove("AI:FaceBoxes");
 
-                context.Log($"[PromptObjectDetector] ✅ {detected.Count} objeto(s) coincidente(s) con prompt '{prompt}': {item.Metadata["AI:PromptObjects"]}", LogLevel.Information, item);
-                await context.EmitAsync("ObjectsFound", item).ConfigureAwait(false);
+                Log(context, $"[PromptObjectDetector] ✅ {detected.Count} objeto(s) coincidente(s) con prompt '{prompt}': {item.Metadata["AI:PromptObjects"]}", LogLevel.Information, item);
+                await EmitAsync(context, item, "ObjectsFound").ConfigureAwait(false);
             }
             else
             {
                 item.Metadata.Remove("AI:DetectedBoxes");
-                context.Log($"[PromptObjectDetector] ℹ️ 0 objetos coincidentes con prompt '{prompt}' en {item.FileName} (umbral {threshold * 100:F0}%).", LogLevel.Information, item);
-                await context.EmitAsync("NoObjects", item).ConfigureAwait(false);
+                Log(context, $"[PromptObjectDetector] ℹ️ 0 objetos coincidentes con prompt '{prompt}' en {item.FileName} (umbral {threshold * 100:F0}%).", LogLevel.Information, item);
+                await EmitAsync(context, item, "NoObjects").ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[PromptObjectDetector] Error procesando imagen {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[PromptObjectDetector] Error procesando imagen {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

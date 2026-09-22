@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -18,101 +16,37 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("LocalLlmProcessorNode_Name", "LanguageAI", "LocalLlmProcessorNode_Desc", PipelineRole.Analyze,
     "llm", "ia", "phi", "resumen", "extraer json", "razonamiento", "generativo", "chat")]
-public sealed class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
+public sealed class LocalLlmProcessorNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("LocalLlmProcessorNode_Name", "Procesador LLM Local (Qwen 2.5 / Phi-3.5)");
+    public override string Category => "LanguageAI";
+    public override string Description => LocalizationManager.Instance.GetString("LocalLlmProcessorNode_Desc", "Genera resúmenes ejecutivos, extrae datos estructurados a JSON y procesa prompts locales con LLM in-process.");
+    public override AiTaskType TaskType => AiTaskType.TextGenerationLlm;
 
     public LocalLlmProcessorNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Processed", typeof(FileItemContext), PortDirection.Output, "Processed"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["TaskType"] = "Summarize";
+        Parameters["SystemPrompt"] = "Eres un analista documental experto y conciso.";
+        Parameters["UserPrompt"] = "Resume el siguiente contenido: {Ocr:Text}";
+        Parameters["OutputFormat"] = "Markdown";
+        Parameters["SaveAsNewFile"] = false;
+        Parameters["Temperature"] = 0.2;
+        Parameters["MaxTokens"] = 1024;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextGenerationLlm);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.TextGenerationLlm);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.TextGenerationLlm, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextGenerationLlm);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("LocalLlmProcessorNode_Name", "Procesador LLM Local (Qwen 2.5 / Phi-3.5)");
-    public string Category => "LanguageAI";
-    public string Description => LocalizationManager.Instance.GetString("LocalLlmProcessorNode_Desc", "Genera resúmenes ejecutivos, extrae datos estructurados a JSON y procesa prompts locales con LLM in-process.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Processed", typeof(FileItemContext), PortDirection.Output, "Processed"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["TaskType"] = "Summarize",
-        ["SystemPrompt"] = "Eres un analista documental experto y conciso.",
-        ["UserPrompt"] = "Resume el siguiente contenido: {Ocr:Text}",
-        ["OutputFormat"] = "Markdown",
-        ["SaveAsNewFile"] = false,
-        ["Temperature"] = 0.2,
-        ["MaxTokens"] = 1024
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "qwen2.5-1.5b-instruct"],
@@ -135,18 +69,17 @@ public sealed class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
         new("MaxTokens", ParameterEditorType.Number, DefaultValue: 1024, Min: 64, Max: 4096, DisplayOrder: 8)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string taskType = Parameters.TryGetValue("TaskType", out var ttVal) ? ttVal?.ToString() ?? "Summarize" : "Summarize";
-            string systemPrompt = Parameters.TryGetValue("SystemPrompt", out var spVal) ? spVal?.ToString() ?? string.Empty : string.Empty;
-            string rawUserPrompt = Parameters.TryGetValue("UserPrompt", out var upVal) ? upVal?.ToString() ?? string.Empty : string.Empty;
-            string outputFormat = Parameters.TryGetValue("OutputFormat", out var ofVal) ? ofVal?.ToString() ?? "Markdown" : "Markdown";
-            bool saveAsNewFile = Parameters.TryGetValue("SaveAsNewFile", out var sfVal) ? ParameterHelper.GetBoolean(sfVal, false) : false;
-            double temperature = Parameters.TryGetValue("Temperature", out var tVal) ? ParameterHelper.GetDouble(tVal, 0.2) : 0.2;
-            int maxTokens = Parameters.TryGetValue("MaxTokens", out var mtVal) ? ParameterHelper.GetInt32(mtVal, 1024) : 1024;
+            string taskType = GetParameter("TaskType", "Summarize");
+            string systemPrompt = GetParameter("SystemPrompt", string.Empty);
+            string rawUserPrompt = GetParameter("UserPrompt", string.Empty);
+            string outputFormat = GetParameter("OutputFormat", "Markdown");
+            bool saveAsNewFile = GetParameter("SaveAsNewFile", false);
+            double temperature = GetParameter("Temperature", 0.2);
+            int maxTokens = GetParameter("MaxTokens", 1024);
 
             var storage = context.GetStorage();
 
@@ -167,7 +100,7 @@ public sealed class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
             // Si el prompt evaluado es igual al original y tenemos contenido de archivo, anexarlo
             if (!string.IsNullOrWhiteSpace(fileContent))
             {
-                if (string.IsNullOrWhiteSpace(evaluatedPrompt) || 
+                if (string.IsNullOrWhiteSpace(evaluatedPrompt) ||
                     evaluatedPrompt == rawUserPrompt ||
                     (!evaluatedPrompt.Contains(fileContent) && !item.Metadata.ContainsKey("Ocr:Text")))
                 {
@@ -179,19 +112,14 @@ public sealed class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
 
             if (string.IsNullOrWhiteSpace(evaluatedPrompt))
             {
-                context.Log($"[LocalLlmProcessor] Prompt vacío o sin contenido a procesar para {item.FileName}.", LogLevel.Warning, item);
-                await context.EmitAsync("Error", item).ConfigureAwait(false);
+                Log(context, $"[LocalLlmProcessor] Prompt vacío o sin contenido a procesar para {item.FileName}.", LogLevel.Warning, item);
+                await EmitAsync(context, item, "Error").ConfigureAwait(false);
                 return;
             }
 
-            string? resolvedModelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.TextGenerationLlm,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? resolvedModelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
-            context.Log($"[LocalLlmProcessor] 🧠 Procesando LLM ({taskType} | Temp {temperature:F2}) para '{item.FileName}'...", LogLevel.Information, item);
+            Log(context, $"[LocalLlmProcessor] 🧠 Procesando LLM ({taskType} | Temp {temperature:F2}) para '{item.FileName}'...", LogLevel.Information, item);
 
             // 2. Ejecutar inferencia LLM
             var result = await LanguageInferenceEngine.GenerateLlmAsync(
@@ -234,15 +162,15 @@ public sealed class LocalLlmProcessorNode : IFlowNode, IModelLifecycleNode
                 string targetPath = Path.Combine(originalDir, $"{origNameWithoutExt}_analisis{targetExt}");
                 await storage.WriteAllTextAsync(targetPath, result.ResponseText, ct: cancellationToken).ConfigureAwait(false);
 
-                context.Log($"[LocalLlmProcessor] 💾 Resultado LLM guardado en: '{targetPath}'", LogLevel.Information, item);
+                Log(context, $"[LocalLlmProcessor] 💾 Resultado LLM guardado en: '{targetPath}'", LogLevel.Information, item);
             }
 
-            await context.EmitAsync("Processed", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Processed").ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[LocalLlmProcessor] ❌ Error en procesamiento LLM: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[LocalLlmProcessor] ❌ Error en procesamiento LLM: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

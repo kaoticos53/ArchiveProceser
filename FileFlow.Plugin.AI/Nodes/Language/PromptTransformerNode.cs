@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -16,104 +14,58 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PromptTransformerNode_Name", "LanguageAI", "PromptTransformerNode_Desc", PipelineRole.Transform,
     "prompt", "enriquecer", "estilo", "transformar prompt", "asistente", "ia", "plantilla")]
-public sealed class PromptTransformerNode : IFlowNode, IModelLifecycleNode
+public sealed class PromptTransformerNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
+    /// <summary>Par MarianMT español→inglés que consumen los motores de prompts visuales (Grounding DINO / YOLO).</summary>
+    private const string TranslatorModelId = "marian-es-en";
 
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
+    public override string Name => LocalizationManager.Instance.GetString("PromptTransformerNode_Name", "Transformador Dinámico de Prompts");
+    public override string Category => "LanguageAI";
+    public override string Description => LocalizationManager.Instance.GetString("PromptTransformerNode_Desc", "Evalúa plantillas dinámicas con variables de metadatos, traduce a inglés y expande sinónimos visuales.");
+    public override AiTaskType TaskType => AiTaskType.TextTranslation;
 
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    /// <summary>
+    /// El idioma destino del prompt está fijado por diseño, así que el nodo no declara un parámetro 'Model'.
+    /// </summary>
+    protected override string DefaultModelSelection => TranslatorModelId;
 
     public PromptTransformerNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Transformed", typeof(FileItemContext), PortDirection.Output, "Transformed"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["PromptTemplate"] = "{AI:Category}, gafas de sol, {UserTag}, coche rojo";
+        Parameters["TargetLanguage"] = "English";
+        Parameters["ExpandSynonyms"] = false;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string? modelPath = AiModelManager.ResolveModelPathSync("marian-es-en", AiTaskType.TextTranslation);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier => AiModelManager.GetModelDisplayName("marian-es-en", AiTaskType.TextTranslation);
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string? modelPath = await AiModelManager.ResolveModelPathAsync("marian-es-en", AiTaskType.TextTranslation, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string? modelPath = AiModelManager.ResolveModelPathSync("marian-es-en", AiTaskType.TextTranslation);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PromptTransformerNode_Name", "Transformador Dinámico de Prompts");
-    public string Category => "LanguageAI";
-    public string Description => LocalizationManager.Instance.GetString("PromptTransformerNode_Desc", "Evalúa plantillas dinámicas con variables de metadatos, traduce a inglés y expande sinónimos visuales.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Transformed", typeof(FileItemContext), PortDirection.Output, "Transformed"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["PromptTemplate"] = "{AI:Category}, gafas de sol, {UserTag}, coche rojo",
-        ["TargetLanguage"] = "English",
-        ["ExpandSynonyms"] = false
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("PromptTemplate", ParameterEditorType.MultiLineText, DefaultValue: "{AI:Category}, gafas de sol, {UserTag}, coche rojo", DisplayOrder: 1),
         new("TargetLanguage", ParameterEditorType.Dropdown, DefaultValue: "English", Options: ["English", "Spanish", "French", "German"], DisplayOrder: 2),
         new("ExpandSynonyms", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            string template = Parameters.TryGetValue("PromptTemplate", out var ptVal) ? ptVal?.ToString() ?? string.Empty : string.Empty;
-            string targetLang = Parameters.TryGetValue("TargetLanguage", out var tlVal) ? tlVal?.ToString() ?? "English" : "English";
-            bool expandSynonyms = Parameters.TryGetValue("ExpandSynonyms", out var esVal) ? ParameterHelper.GetBoolean(esVal, false) : false;
+            string template = GetParameter("PromptTemplate", string.Empty);
+            string targetLang = GetParameter("TargetLanguage", "English");
+            bool expandSynonyms = GetParameter("ExpandSynonyms", false);
 
             if (string.IsNullOrWhiteSpace(template))
             {
-                context.Log($"[PromptTransformer] Plantilla de prompt vacía para {item.FileName}.", LogLevel.Warning, item);
-                await context.EmitAsync("Error", item).ConfigureAwait(false);
+                Log(context, $"[PromptTransformer] Plantilla de prompt vacía para {item.FileName}.", LogLevel.Warning, item);
+                await EmitAsync(context, item, "Error").ConfigureAwait(false);
                 return;
             }
 
@@ -127,14 +79,14 @@ public sealed class PromptTransformerNode : IFlowNode, IModelLifecycleNode
             item.Metadata["AI:EvaluatedPrompt"] = evaluated;
             item.Metadata["AI:TranslatedPrompt"] = translated;
 
-            context.Log($"[PromptTransformer] ✨ Prompt transformado: '{evaluated}' ➔ '{translated}'", LogLevel.Information, item);
+            Log(context, $"[PromptTransformer] ✨ Prompt transformado: '{evaluated}' ➔ '{translated}'", LogLevel.Information, item);
 
-            await context.EmitAsync("Transformed", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Transformed").ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[PromptTransformer] ❌ Error evaluando prompt: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[PromptTransformer] ❌ Error evaluando prompt: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

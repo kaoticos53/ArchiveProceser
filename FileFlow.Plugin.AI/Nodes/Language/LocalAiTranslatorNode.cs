@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -17,101 +16,37 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("LocalAiTranslatorNode_Name", "LanguageAI", "LocalAiTranslatorNode_Desc", PipelineRole.Transform,
     "traducir", "traduccion", "idiomas", "marian", "nllb", "ingles", "español", "translator")]
-public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
+public sealed class LocalAiTranslatorNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("LocalAiTranslatorNode_Name", "Traductor Neuronal Local (NLLB-200 / MarianMT)");
+    public override string Category => "LanguageAI";
+    public override string Description => LocalizationManager.Instance.GetString("LocalAiTranslatorNode_Desc", "Traduce documentos, subtítulos y metadatos con modelos neuronales locales NLLB-200 y MarianMT.");
+    public override AiTaskType TaskType => AiTaskType.TextTranslation;
 
     public LocalAiTranslatorNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Translated", typeof(FileItemContext), PortDirection.Output, "Translated"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["SourceLanguage"] = "AutoDetect";
+        Parameters["TargetLanguage"] = "Spanish";
+        Parameters["InputSource"] = "FileContent";
+        Parameters["MetadataKeyName"] = "Ocr:Text";
+        Parameters["OutputMode"] = "InjectMetadata";
+        Parameters["TargetFileNamePattern"] = "{FileNameWithoutExt}_{TargetLang}{Ext}";
+        Parameters["TranslateSrtTimestamps"] = true;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextTranslation);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.TextTranslation);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.TextTranslation, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.TextTranslation);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("LocalAiTranslatorNode_Name", "Traductor Neuronal Local (NLLB-200 / MarianMT)");
-    public string Category => "LanguageAI";
-    public string Description => LocalizationManager.Instance.GetString("LocalAiTranslatorNode_Desc", "Traduce documentos, subtítulos y metadatos con modelos neuronales locales NLLB-200 y MarianMT.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Translated", typeof(FileItemContext), PortDirection.Output, "Translated"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["SourceLanguage"] = "AutoDetect",
-        ["TargetLanguage"] = "Spanish",
-        ["InputSource"] = "FileContent",
-        ["MetadataKeyName"] = "Ocr:Text",
-        ["OutputMode"] = "InjectMetadata",
-        ["TargetFileNamePattern"] = "{FileNameWithoutExt}_{TargetLang}{Ext}",
-        ["TranslateSrtTimestamps"] = true
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "nllb-200-600m", "marian-es-en", "marian-en-es"],
@@ -136,18 +71,17 @@ public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
         new("TranslateSrtTimestamps", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 8)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string sourceLang = Parameters.TryGetValue("SourceLanguage", out var sVal) ? sVal?.ToString() ?? "AutoDetect" : "AutoDetect";
-            string targetLang = Parameters.TryGetValue("TargetLanguage", out var tVal) ? tVal?.ToString() ?? "Spanish" : "Spanish";
-            string inputSource = Parameters.TryGetValue("InputSource", out var isVal) ? isVal?.ToString() ?? "FileContent" : "FileContent";
-            string metadataKey = Parameters.TryGetValue("MetadataKeyName", out var mkVal) ? mkVal?.ToString() ?? "Ocr:Text" : "Ocr:Text";
-            string outputMode = Parameters.TryGetValue("OutputMode", out var omVal) ? omVal?.ToString() ?? "InjectMetadata" : "InjectMetadata";
-            string fileNamePattern = Parameters.TryGetValue("TargetFileNamePattern", out var fnVal) ? fnVal?.ToString() ?? "{FileNameWithoutExt}_{TargetLang}{Ext}" : "{FileNameWithoutExt}_{TargetLang}{Ext}";
-            bool translateSrtTimestamps = Parameters.TryGetValue("TranslateSrtTimestamps", out var srtVal) ? ParameterHelper.GetBoolean(srtVal, true) : true;
+            string sourceLang = GetParameter("SourceLanguage", "AutoDetect");
+            string targetLang = GetParameter("TargetLanguage", "Spanish");
+            string inputSource = GetParameter("InputSource", "FileContent");
+            string metadataKey = GetParameter("MetadataKeyName", "Ocr:Text");
+            string outputMode = GetParameter("OutputMode", "InjectMetadata");
+            string fileNamePattern = GetParameter("TargetFileNamePattern", "{FileNameWithoutExt}_{TargetLang}{Ext}");
+            bool translateSrtTimestamps = GetParameter("TranslateSrtTimestamps", true);
 
             string textToTranslate = string.Empty;
             bool isSrt = false;
@@ -160,8 +94,8 @@ public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
                 }
                 else
                 {
-                    context.Log($"[LocalAiTranslator] Metadato '{metadataKey}' no encontrado en el elemento.", LogLevel.Warning, item);
-                    await context.EmitAsync("Error", item).ConfigureAwait(false);
+                    Log(context, $"[LocalAiTranslator] Metadato '{metadataKey}' no encontrado en el elemento.", LogLevel.Warning, item);
+                    await EmitAsync(context, item, "Error").ConfigureAwait(false);
                     return;
                 }
             }
@@ -170,8 +104,8 @@ public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
                 // FileContent
                 if (string.IsNullOrWhiteSpace(item.CurrentPath) || !File.Exists(item.CurrentPath))
                 {
-                    context.Log($"[LocalAiTranslator] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-                    await context.EmitAsync("Error", item).ConfigureAwait(false);
+                    Log(context, $"[LocalAiTranslator] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+                    await EmitAsync(context, item, "Error").ConfigureAwait(false);
                     return;
                 }
 
@@ -183,19 +117,14 @@ public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
 
             if (string.IsNullOrWhiteSpace(textToTranslate))
             {
-                context.Log($"[LocalAiTranslator] Texto vacío a traducir para {item.FileName}.", LogLevel.Warning, item);
-                await context.EmitAsync("Error", item).ConfigureAwait(false);
+                Log(context, $"[LocalAiTranslator] Texto vacío a traducir para {item.FileName}.", LogLevel.Warning, item);
+                await EmitAsync(context, item, "Error").ConfigureAwait(false);
                 return;
             }
 
-            string? resolvedModelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.TextTranslation,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? resolvedModelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
-            context.Log($"[LocalAiTranslator] 🌐 Traduciendo ({sourceLang} ➔ {targetLang}) para '{item.FileName}'...", LogLevel.Information, item);
+            Log(context, $"[LocalAiTranslator] 🌐 Traduciendo ({sourceLang} ➔ {targetLang}) para '{item.FileName}'...", LogLevel.Information, item);
 
             string translatedText = await LanguageInferenceEngine.TranslateAsync(
                 textToTranslate,
@@ -240,7 +169,7 @@ public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
                 string targetPath = Path.Combine(originalDir, resolvedFileName);
 
                 await File.WriteAllTextAsync(targetPath, translatedText, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-                context.Log($"[LocalAiTranslator] 💾 Archivo traducido guardado en: '{targetPath}'", LogLevel.Information, item);
+                Log(context, $"[LocalAiTranslator] 💾 Archivo traducido guardado en: '{targetPath}'", LogLevel.Information, item);
 
                 if (string.Equals(outputMode, "CreateNewFile", StringComparison.OrdinalIgnoreCase))
                 {
@@ -249,12 +178,12 @@ public sealed class LocalAiTranslatorNode : IFlowNode, IModelLifecycleNode
                 }
             }
 
-            await context.EmitAsync("Translated", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Translated").ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[LocalAiTranslator] ❌ Error en traducción: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[LocalAiTranslator] ❌ Error en traducción: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

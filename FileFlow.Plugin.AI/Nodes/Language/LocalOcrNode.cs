@@ -9,31 +9,30 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("LocalOcrNode_Name", "Documents", "LocalOcrNode_Desc", PipelineRole.Analyze,
     "ocr", "texto", "imagen a texto", "escaner", "paddle", "leer", "text", "reconocimiento")]
-public sealed class LocalOcrNode : IFlowNode
+public sealed class LocalOcrNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("LocalOcrNode_Name", "Reconocimiento Óptico (OCR Local)");
-    public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("LocalOcrNode_Desc", "Extrae texto desde imágenes y documentos escaneados usando Tesseract OCR 5 de forma local y privada.");
+    public override string Name => LocalizationManager.Instance.GetString("LocalOcrNode_Name", "Reconocimiento Óptico (OCR Local)");
+    public override string Category => "Documents";
+    public override string Description => LocalizationManager.Instance.GetString("LocalOcrNode_Desc", "Extrae texto desde imágenes y documentos escaneados usando Tesseract OCR 5 de forma local y privada.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public LocalOcrNode()
     {
-        ["Language"] = "Auto",
-        ["EngineMode"] = "Neural"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
+
+        Parameters["Language"] = "Auto";
+        Parameters["EngineMode"] = "Neural";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Language", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "spa", "eng", "fra", "deu", "ita"], DisplayOrder: 1),
         new("EngineMode", ParameterEditorType.Dropdown, DefaultValue: "Neural", Options: ["Neural", "Legacy", "Both"], DisplayOrder: 2)
@@ -44,29 +43,29 @@ public sealed class LocalOcrNode : IFlowNode
         ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"
     };
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[LocalOcr] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[LocalOcr] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (!_supportedExtensions.Contains(ext))
         {
-            context.Log($"[LocalOcr] Formato no compatible para OCR ({ext}): {item.FileName}", LogLevel.Warning, item);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            Log(context, $"[LocalOcr] Formato no compatible para OCR ({ext}): {item.FileName}", LogLevel.Warning, item);
+            await EmitAsync(context, item).ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string languageParam = Parameters.TryGetValue("Language", out var lp) ? lp?.ToString() ?? "Auto" : "Auto";
+            string languageParam = GetParameter("Language", "Auto");
             string ocrLang = languageParam.Equals("Auto", StringComparison.OrdinalIgnoreCase) ? "spa" : languageParam;
-            string engineModeParam = Parameters.TryGetValue("EngineMode", out var em) ? em?.ToString() ?? "Neural" : "Neural";
+            string engineModeParam = GetParameter("EngineMode", "Neural");
             EngineMode mode = engineModeParam switch
             {
                 "Legacy" => EngineMode.TesseractOnly,
@@ -74,7 +73,7 @@ public sealed class LocalOcrNode : IFlowNode
                 _ => EngineMode.LstmOnly
             };
 
-            context.Log($"[LocalOcr] Analizando texto en {item.FileName} (idioma: {ocrLang})...", LogLevel.Information, item);
+            Log(context, $"[LocalOcr] Analizando texto en {item.FileName} (idioma: {ocrLang})...", LogLevel.Information, item);
 
             // Descargar tessdata para el idioma seleccionado
             string tessdataModelId = $"tessdata-{ocrLang}";
@@ -83,15 +82,15 @@ public sealed class LocalOcrNode : IFlowNode
             if (tessdataPath == null)
             {
                 // Intentar con inglés como fallback
-                context.Log($"[LocalOcr] ⚠️ Tessdata para '{ocrLang}' no disponible. Intentando inglés como fallback...", LogLevel.Warning, item);
+                Log(context, $"[LocalOcr] ⚠️ Tessdata para '{ocrLang}' no disponible. Intentando inglés como fallback...", LogLevel.Warning, item);
                 tessdataPath = await AiModelManager.EnsureModelAsync("tessdata-eng", context, item, cancellationToken).ConfigureAwait(false);
                 ocrLang = "eng";
             }
 
             if (tessdataPath == null)
             {
-                context.Log($"[LocalOcr] ⚠️ Tessdata OCR no disponible. El nodo pasa el archivo sin OCR.", LogLevel.Warning, item);
-                await context.EmitAsync("Out", item).ConfigureAwait(false);
+                Log(context, "[LocalOcr] ⚠️ Tessdata OCR no disponible. El nodo pasa el archivo sin OCR.", LogLevel.Warning, item);
+                await EmitAsync(context, item).ConfigureAwait(false);
                 return;
             }
 
@@ -114,7 +113,7 @@ public sealed class LocalOcrNode : IFlowNode
                 {
                     if (ext is ".webp" or ".tga" or ".pbm")
                     {
-                        using var img = SixLabors.ImageSharp.Image.Load(imageBytes);
+                        using var img = Image.Load(imageBytes);
                         using var pngMs = new MemoryStream();
                         img.SaveAsPng(pngMs);
                         pix = Pix.LoadFromMemory(pngMs.ToArray());
@@ -127,7 +126,7 @@ public sealed class LocalOcrNode : IFlowNode
                         }
                         catch
                         {
-                            using var img = SixLabors.ImageSharp.Image.Load(imageBytes);
+                            using var img = Image.Load(imageBytes);
                             using var pngMs = new MemoryStream();
                             img.SaveAsPng(pngMs);
                             pix = Pix.LoadFromMemory(pngMs.ToArray());
@@ -153,14 +152,14 @@ public sealed class LocalOcrNode : IFlowNode
             item.Metadata["Ocr:Language"] = ocrLang;
             item.Metadata["Ocr:Engine"] = "Tesseract-5";
 
-            context.Log($"[LocalOcr] ✅ OCR completado: {wordCount} palabras, {lineCount} líneas ({ocrLang}).", LogLevel.Information, item);
+            Log(context, $"[LocalOcr] ✅ OCR completado: {wordCount} palabras, {lineCount} líneas ({ocrLang}).", LogLevel.Information, item);
 
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[LocalOcr] Error ejecutando OCR en {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[LocalOcr] Error ejecutando OCR en {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

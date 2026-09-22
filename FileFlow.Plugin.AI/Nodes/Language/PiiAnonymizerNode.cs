@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -18,87 +16,48 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("PiiAnonymizerNode_Name", "Security", "PiiAnonymizerNode_Desc", PipelineRole.Transform,
     "gdpr", "rgpd", "dni", "nie", "iban", "tarjeta", "privacidad", "ofuscar", "anonimizar", "luhn", "email", "telefono")]
-public sealed class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
+public sealed class PiiAnonymizerNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
+    public override string Name => LocalizationManager.Instance.GetString("PiiAnonymizerNode_Name", "Anonimizador de Datos RGPD (PII)");
+    public override string Category => "Security";
+    public override string Description => LocalizationManager.Instance.GetString("PiiAnonymizerNode_Desc", "Detecta y anonimiza datos personales sensibles (DNI, IBAN, tarjetas, emails, teléfonos) en documentos.");
+    public override AiTaskType TaskType => AiTaskType.PiiAnonymization;
 
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    /// <summary>
+    /// La detección es determinista (regex + validadores de dígito de control), no una red neuronal: el nodo
+    /// no materializa ninguna sesión ONNX y por eso declara explícitamente su identidad y su ciclo de vida.
+    /// </summary>
+    public override string? ModelIdentifier => "RGPD Regex / NER";
 
     public PiiAnonymizerNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Clean", typeof(FileItemContext), PortDirection.Output, "Clean"),
+            new NodePort("SensitiveFound", typeof(FileItemContext), PortDirection.Output, "SensitiveFound"),
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["AnonymizationMode"] = "TagReplacement";
+        Parameters["FilterDniNie"] = true;
+        Parameters["FilterIban"] = true;
+        Parameters["FilterCreditCards"] = true;
+        Parameters["FilterEmails"] = true;
+        Parameters["FilterPhones"] = true;
+        Parameters["FilterIpAddresses"] = true;
+        Parameters["FilterPersonNames"] = true;
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        Parameters["SkipIfExists"] = false;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string? modelPath = AiModelManager.ResolveModelPathSync("marian-es-en", AiTaskType.TextTranslation);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier => "RGPD Regex / NER";
-
-    public Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        ModelStatusChanged?.Invoke();
-        return Task.CompletedTask;
-    }
-
-    public void UnloadModel()
-    {
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PiiAnonymizerNode_Name", "Anonimizador de Datos RGPD (PII)");
-    public string Category => "Security";
-    public string Description => LocalizationManager.Instance.GetString("PiiAnonymizerNode_Desc", "Detecta y anonimiza datos personales sensibles (DNI, IBAN, tarjetas, emails, teléfonos) en documentos.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Clean", typeof(FileItemContext), PortDirection.Output, "Clean"),
-        new NodePort("SensitiveFound", typeof(FileItemContext), PortDirection.Output, "SensitiveFound"),
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["AnonymizationMode"] = "TagReplacement",
-        ["FilterDniNie"] = true,
-        ["FilterIban"] = true,
-        ["FilterCreditCards"] = true,
-        ["FilterEmails"] = true,
-        ["FilterPhones"] = true,
-        ["FilterIpAddresses"] = true,
-        ["FilterPersonNames"] = true,
-        ["OutputDirectory"] = "{GlobalOutputDir}",
-        ["SkipIfExists"] = false
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "pii-ner-multilingual", "RegexOnly"],
@@ -131,38 +90,51 @@ public sealed class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
         ".txt", ".md", ".csv", ".json", ".xml", ".html", ".log", ".yaml", ".yml", ".srt"
     };
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    /// <summary>
+    /// Sin sesión que cargar, la precarga se limita a refrescar el estado del modelo en la UI: heredar la
+    /// implementación base descargaría el modelo de NER que este nodo nunca llega a usar.
+    /// </summary>
+    public override Task PreloadModelAsync(CancellationToken cancellationToken = default)
+    {
+        RaiseModelStatusChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Igual que la precarga: sin sesión en memoria, sólo se notifica el cambio de estado.</summary>
+    public override void UnloadModel() => RaiseModelStatusChanged();
+
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[PiiAnonymizer] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[PiiAnonymizer] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (!_textExtensions.Contains(ext))
         {
-            context.Log($"[PiiAnonymizer] Formato binario o no analizable como texto ({ext}): {item.FileName}", LogLevel.Warning, item);
+            Log(context, $"[PiiAnonymizer] Formato binario o no analizable como texto ({ext}): {item.FileName}", LogLevel.Warning, item);
             item.Metadata["AI:PiiDetected"] = false;
-            await context.EmitAsync("Clean", item).ConfigureAwait(false);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item, "Clean").ConfigureAwait(false);
+            await EmitAsync(context, item).ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string mode = Parameters.TryGetValue("AnonymizationMode", out var amVal) ? amVal?.ToString() ?? "TagReplacement" : "TagReplacement";
-            bool filterDni = Parameters.TryGetValue("FilterDniNie", out var dniVal) && ParameterHelper.GetBoolean(dniVal, true);
-            bool filterIban = Parameters.TryGetValue("FilterIban", out var ibanVal) && ParameterHelper.GetBoolean(ibanVal, true);
-            bool filterCards = Parameters.TryGetValue("FilterCreditCards", out var cardVal) && ParameterHelper.GetBoolean(cardVal, true);
-            bool filterEmails = Parameters.TryGetValue("FilterEmails", out var emailVal) && ParameterHelper.GetBoolean(emailVal, true);
-            bool filterPhones = Parameters.TryGetValue("FilterPhones", out var phoneVal) && ParameterHelper.GetBoolean(phoneVal, true);
-            bool filterIps = Parameters.TryGetValue("FilterIpAddresses", out var ipVal) && ParameterHelper.GetBoolean(ipVal, true);
-            bool filterNames = Parameters.TryGetValue("FilterPersonNames", out var nameVal) && ParameterHelper.GetBoolean(nameVal, true);
-            string outputDirRaw = Parameters.TryGetValue("OutputDirectory", out var odVal) ? odVal?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
-            bool skipIfExists = Parameters.TryGetValue("SkipIfExists", out var skVal) && (skVal is true || string.Equals(skVal?.ToString(), "True", StringComparison.OrdinalIgnoreCase));
+            string mode = GetParameter("AnonymizationMode", "TagReplacement");
+            bool filterDni = GetParameter("FilterDniNie", true);
+            bool filterIban = GetParameter("FilterIban", true);
+            bool filterCards = GetParameter("FilterCreditCards", true);
+            bool filterEmails = GetParameter("FilterEmails", true);
+            bool filterPhones = GetParameter("FilterPhones", true);
+            bool filterIps = GetParameter("FilterIpAddresses", true);
+            bool filterNames = GetParameter("FilterPersonNames", true);
+            string outputDirRaw = GetParameter("OutputDirectory", "{GlobalOutputDir}");
+            bool skipIfExists = GetParameter("SkipIfExists", false);
 
             string targetDir;
             if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
@@ -188,13 +160,13 @@ public sealed class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
 
             if (skipIfExists && await storage.FileExistsAsync(targetPath, cancellationToken).ConfigureAwait(false))
             {
-                context.Log($"[PiiAnonymizer] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo análisis.", LogLevel.Information, item);
+                Log(context, $"[PiiAnonymizer] ⏭️ El archivo de salida ya existe ('{targetFileName}'). Omitiendo análisis.", LogLevel.Information, item);
                 var existingItem = item.DeepClone();
                 existingItem.CurrentPath = targetPath;
                 existingItem.PhysicalPath = targetPath;
                 existingItem.FileSizeBytes = await storage.GetFileSizeAsync(targetPath, cancellationToken).ConfigureAwait(false);
-                await context.EmitAsync("Clean", existingItem).ConfigureAwait(false);
-                await context.EmitAsync("Out", existingItem).ConfigureAwait(false);
+                await EmitAsync(context, existingItem, "Clean").ConfigureAwait(false);
+                await EmitAsync(context, existingItem).ConfigureAwait(false);
                 return;
             }
 
@@ -208,7 +180,7 @@ public sealed class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
                 FilterIpAddresses: filterIps,
                 FilterPersonNames: filterNames);
 
-            context.Log($"[PiiAnonymizer] 🛡️ Escaneando datos sensibles en '{item.FileName}'...", LogLevel.Information, item);
+            Log(context, $"[PiiAnonymizer] 🛡️ Escaneando datos sensibles en '{item.FileName}'...", LogLevel.Information, item);
 
             string rawText = await storage.ReadAllTextAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
 
@@ -227,22 +199,22 @@ public sealed class PiiAnonymizerNode : IFlowNode, IModelLifecycleNode
 
             if (result.PiiDetected)
             {
-                context.Log($"[PiiAnonymizer] ⚠️ Detectadas {result.TotalCount} entidades sensibles ({string.Join(", ", result.Categories)}). Sanitizado generado: '{targetFileName}'.",
+                Log(context, $"[PiiAnonymizer] ⚠️ Detectadas {result.TotalCount} entidades sensibles ({string.Join(", ", result.Categories)}). Sanitizado generado: '{targetFileName}'.",
                     LogLevel.Warning, newItem);
-                await context.EmitAsync("SensitiveFound", newItem).ConfigureAwait(false);
+                await EmitAsync(context, newItem, "SensitiveFound").ConfigureAwait(false);
             }
             else
             {
-                context.Log($"[PiiAnonymizer] ✅ Documento limpio de datos sensibles identificables.", LogLevel.Information, newItem);
-                await context.EmitAsync("Clean", newItem).ConfigureAwait(false);
+                Log(context, "[PiiAnonymizer] ✅ Documento limpio de datos sensibles identificables.", LogLevel.Information, newItem);
+                await EmitAsync(context, newItem, "Clean").ConfigureAwait(false);
             }
 
-            await context.EmitAsync("Out", newItem).ConfigureAwait(false);
+            await EmitAsync(context, newItem).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[PiiAnonymizer] ❌ Error anonimizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[PiiAnonymizer] ❌ Error anonimizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }

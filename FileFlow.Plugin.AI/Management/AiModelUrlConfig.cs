@@ -90,7 +90,7 @@ public static class AiModelUrlConfig
     /// </summary>
     public static IReadOnlyList<string> GetDefaultUrls(string modelId)
     {
-        if (AiModelManager.Catalog.TryGetValue(modelId, out var info))
+        if (AiModelCatalog.Catalog.TryGetValue(modelId, out var info))
         {
             if (info.DefaultUrls != null && info.DefaultUrls.Count > 0)
             {

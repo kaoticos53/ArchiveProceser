@@ -18,36 +18,35 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("ZeroShotSemanticSearchNode_Name", "LanguageAI", "ZeroShotSemanticSearchNode_Desc", PipelineRole.Filter,
     "semantica", "embeddings", "clip", "bge", "similitud", "zero shot", "buscar", "clasificar")]
-public sealed class ZeroShotSemanticSearchNode : IFlowNode
+public sealed class ZeroShotSemanticSearchNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Name", "Búsqueda y Clasificación Semántica (Zero-Shot)");
-    public string Category => "LanguageAI";
-    public string Description => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Desc", "Clasifica y enruta documentos o imágenes mediante similitud semántica en lenguaje natural.");
+    public override string Name => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Name", "Búsqueda y Clasificación Semántica (Zero-Shot)");
+    public override string Category => "LanguageAI";
+    public override string Description => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Desc", "Clasifica y enruta documentos o imágenes mediante similitud semántica en lenguaje natural.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Matched", typeof(FileItemContext), PortDirection.Output, "Matched"),
-        new NodePort("Unmatched", typeof(FileItemContext), PortDirection.Output, "Unmatched"),
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public ZeroShotSemanticSearchNode()
     {
-        ["Model"] = "Auto",
-        ["SearchQuery"] = "",
-        ["CandidateLabels"] = "Factura, Contrato, Nómina, Presupuesto, Documento",
-        ["SimilarityThreshold"] = 0.55,
-        ["TopK"] = 3
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Matched", typeof(FileItemContext), PortDirection.Output, "Matched"),
+            new NodePort("Unmatched", typeof(FileItemContext), PortDirection.Output, "Unmatched"),
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
+
+        Parameters["Model"] = "Auto";
+        Parameters["SearchQuery"] = "";
+        Parameters["CandidateLabels"] = "Factura, Contrato, Nómina, Presupuesto, Documento";
+        Parameters["SimilarityThreshold"] = 0.55;
+        Parameters["TopK"] = 3;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "clip-vit-b32", "bge-small-multilingual"],
@@ -62,30 +61,29 @@ public sealed class ZeroShotSemanticSearchNode : IFlowNode
             HelpText: "Número de categorías principales a registrar en los metadatos.", DisplayOrder: 5)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         bool fileExists = await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !fileExists)
         {
-            context.Log($"[SemanticSearch] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[SemanticSearch] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         try
         {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string searchQuery = Parameters.TryGetValue("SearchQuery", out var sqVal) ? sqVal?.ToString() ?? string.Empty : string.Empty;
-            string candidateLabelsRaw = Parameters.TryGetValue("CandidateLabels", out var clVal) ? clVal?.ToString() ?? string.Empty : string.Empty;
-            double threshold = Parameters.TryGetValue("SimilarityThreshold", out var stVal) ? ParameterHelper.GetDouble(stVal, 0.55) : 0.55;
+            string searchQuery = GetParameter("SearchQuery", string.Empty);
+            string candidateLabelsRaw = GetParameter("CandidateLabels", string.Empty);
+            double threshold = GetParameter("SimilarityThreshold", 0.55);
 
             var candidateLabels = candidateLabelsRaw
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
 
             string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
+                GetParameter("Model", "Auto"),
                 AiTaskType.SemanticEmbeddings,
                 context,
                 item,
@@ -96,7 +94,7 @@ public sealed class ZeroShotSemanticSearchNode : IFlowNode
             // Esto evita que el embedding se calcule sobre la ruta del archivo, que no tiene valor semántico.
             string contentForEmbedding = await ResolveContentForEmbeddingAsync(storage, item, cancellationToken).ConfigureAwait(false);
 
-            context.Log($"[SemanticSearch] 🔍 Analizando semántica de '{item.FileName}' contra {candidateLabels.Count} categorías...", LogLevel.Information, item);
+            Log(context, $"[SemanticSearch] 🔍 Analizando semántica de '{item.FileName}' contra {candidateLabels.Count} categorías...", LogLevel.Information, item);
 
             var result = await Task.Run(
                 () => SemanticEmbeddingEngine.ClassifyZeroShot(modelPath, contentForEmbedding, candidateLabels, searchQuery, threshold),
@@ -108,24 +106,24 @@ public sealed class ZeroShotSemanticSearchNode : IFlowNode
             item.Metadata["AI:CategoryScoresJson"] = JsonSerializer.Serialize(result.CategoryScores);
             item.Metadata["AI:EmbeddingModel"] = string.IsNullOrWhiteSpace(modelPath) ? "semantic-embedder" : Path.GetFileNameWithoutExtension(modelPath);
 
-            context.Log($"[SemanticSearch] Clasificación: '{result.TopCategory}' ({result.TopScore:P1} confianza). Coincidencia con consulta: {result.IsQueryMatch}.",
+            Log(context, $"[SemanticSearch] Clasificación: '{result.TopCategory}' ({result.TopScore:P1} confianza). Coincidencia con consulta: {result.IsQueryMatch}.",
                 LogLevel.Information, item);
 
             if (result.IsQueryMatch)
             {
-                await context.EmitAsync("Matched", item).ConfigureAwait(false);
+                await EmitAsync(context, item, "Matched").ConfigureAwait(false);
             }
             else
             {
-                await context.EmitAsync("Unmatched", item).ConfigureAwait(false);
+                await EmitAsync(context, item, "Unmatched").ConfigureAwait(false);
             }
 
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[SemanticSearch] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[SemanticSearch] ❌ Error analizando {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 

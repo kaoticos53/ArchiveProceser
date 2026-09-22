@@ -1,5 +1,4 @@
 using System.IO;
-using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -11,107 +10,33 @@ namespace FileFlow.Plugin.AI;
 
 [NodeDefinition("ObjectDetectorNode_Name", "ImageVision", "ObjectDetectorNode_Desc", PipelineRole.Analyze,
     "objetos", "yolo", "detectar", "vision", "ia", "personas", "coches", "bounding box")]
-public sealed class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
+public sealed class ObjectDetectorNode : AiFlowNodeBase
 {
-    public event Action? ModelStatusChanged;
-
-    /// <summary>Puente para el relay débil: los eventos sólo se pueden invocar desde la clase que los declara.</summary>
-
-    public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
+    public override string Name => LocalizationManager.Instance.GetString("ObjectDetectorNode_Name", "Detector de Objetos (SSD)");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("ObjectDetectorNode_Desc", "Detecta e identifica objetos (personas, vehículos, animales, objetos cotidianos) presentes en imágenes usando SSD MobileNet ONNX.");
+    public override AiTaskType TaskType => AiTaskType.ObjectDetection;
 
     public ObjectDetectorNode()
     {
-        // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-        // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-        _ = WeakModelStatusRelay.Subscribe(
-
-            h => OnnxSessionManager.SessionStateChanged += h,
-
-            h => OnnxSessionManager.SessionStateChanged -= h,
-
-            this,
-
-            static self => self.RaiseModelStatusChanged());
+        Parameters["Model"] = "Auto";
+        Parameters["MinimumConfidence"] = 0.4;
+        Parameters["FilterLabel"] = "";
+        Parameters["MaxDetections"] = 10;
     }
 
-    public bool IsModelLoaded
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ObjectDetection);
-            return modelPath != null && OnnxSessionManager.IsSessionLoaded(modelPath);
-        }
-    }
-
-    public bool IsGpuAccelerated
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ObjectDetection);
-            return modelPath != null && OnnxSessionManager.ShouldUseDirectMl(modelPath);
-        }
-    }
-
-    public string? ModelIdentifier
-    {
-        get
-        {
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-            return AiModelManager.GetModelDisplayName(modelChoice, AiTaskType.ObjectDetection);
-        }
-    }
-
-    public async Task PreloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = await AiModelManager.ResolveModelPathAsync(modelChoice, AiTaskType.ObjectDetection, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
-        {
-            OnnxSessionManager.GetOrCreateSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public void UnloadModel()
-    {
-        string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-        string? modelPath = AiModelManager.ResolveModelPathSync(modelChoice, AiTaskType.ObjectDetection);
-        if (!string.IsNullOrWhiteSpace(modelPath))
-        {
-            OnnxSessionManager.UnloadSession(modelPath);
-        }
-        ModelStatusChanged?.Invoke();
-    }
-
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ObjectDetectorNode_Name", "Detector de Objetos (SSD)");
-    public string Category => "ImageVision";
-    public string Description => LocalizationManager.Instance.GetString("ObjectDetectorNode_Desc", "Detecta e identifica objetos (personas, vehículos, animales, objetos cotidianos) presentes en imágenes usando SSD MobileNet ONNX.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Model"] = "Auto",
-        ["MinimumConfidence"] = 0.4,
-        ["FilterLabel"] = "",
-        ["MaxDetections"] = 10
-    };
-
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Model", ParameterEditorType.Dropdown, DefaultValue: "Auto",
             Options: ["Auto", "yolov8n", "yolov8s", "yolov8m"],
@@ -121,47 +46,40 @@ public sealed class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
         new("MaxDetections", ParameterEditorType.Number, DefaultValue: 10, Min: 1, Max: 100, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false))
         {
-            context.Log($"[ObjectDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[ObjectDetector] Archivo no encontrado: '{item.CurrentPath}'", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
             return;
         }
 
         string ext = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp"))
         {
-            context.Log($"[ObjectDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            Log(context, $"[ObjectDetector] Formato no compatible ({ext}): {item.FileName}", LogLevel.Warning, item);
+            await EmitAsync(context, item).ConfigureAwait(false);
             return;
         }
 
         try
         {
-            context.Log($"[ObjectDetector] Detectando objetos en {item.FileName}...", LogLevel.Information, item);
+            Log(context, $"[ObjectDetector] Detectando objetos en {item.FileName}...", LogLevel.Information, item);
 
-            string modelChoice = Parameters.TryGetValue("Model", out var mVal) ? mVal?.ToString() ?? "Auto" : "Auto";
-
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                modelChoice,
-                AiTaskType.ObjectDetection,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
             if (modelPath == null)
             {
-                context.Log($"[ObjectDetector] ⚠️ Modelo de detección de objetos no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
-                await context.EmitAsync("Out", item).ConfigureAwait(false);
+                Log(context, "[ObjectDetector] ⚠️ Modelo de detección de objetos no disponible. El nodo pasa el archivo sin detección.", LogLevel.Warning, item);
+                await EmitAsync(context, item).ConfigureAwait(false);
                 return;
             }
 
-            double threshold = Parameters.TryGetValue("MinimumConfidence", out var ct) ? ParameterHelper.GetDouble(ct, 0.4) : 0.4;
-            string filter = Parameters.TryGetValue("FilterLabel", out var fl) ? fl?.ToString() ?? string.Empty : string.Empty;
-            int maxDets = Parameters.TryGetValue("MaxDetections", out var md) ? ParameterHelper.GetInt32(md, 10) : 10;
+            double threshold = GetParameter("MinimumConfidence", 0.4);
+            string filter = GetParameter("FilterLabel", string.Empty);
+            int maxDets = GetParameter("MaxDetections", 10);
 
             await using var stream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken).ConfigureAwait(false);
             using var image = await Image.LoadAsync<Rgb24>(stream, cancellationToken).ConfigureAwait(false);
@@ -205,19 +123,19 @@ public sealed class ObjectDetectorNode : IFlowNode, IModelLifecycleNode
 
             if (detected.Count > 0)
             {
-                context.Log($"[ObjectDetector] ✅ {detected.Count} objeto(s) detectado(s): {item.Metadata["AI:DetectedObjects"]}", LogLevel.Information, item);
+                Log(context, $"[ObjectDetector] ✅ {detected.Count} objeto(s) detectado(s): {item.Metadata["AI:DetectedObjects"]}", LogLevel.Information, item);
             }
             else
             {
-                context.Log($"[ObjectDetector] ℹ️ 0 objetos detectados en {item.FileName} con umbral de confianza {threshold * 100:F0}%.", LogLevel.Information, item);
+                Log(context, $"[ObjectDetector] ℹ️ 0 objetos detectados en {item.FileName} con umbral de confianza {threshold * 100:F0}%.", LogLevel.Information, item);
             }
 
-            await context.EmitAsync("Out", item).ConfigureAwait(false);
+            await EmitAsync(context, item).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            context.Log($"[ObjectDetector] Error en detección de objetos para {item.FileName}: {ex.Message}", LogLevel.Error, item);
-            await context.EmitAsync("Error", item).ConfigureAwait(false);
+            Log(context, $"[ObjectDetector] Error en detección de objetos para {item.FileName}: {ex.Message}", LogLevel.Error, item);
+            await EmitAsync(context, item, "Error").ConfigureAwait(false);
         }
     }
 }
