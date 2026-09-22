@@ -255,6 +255,32 @@ Tres cosas que conviene tener presentes al escribir el tuyo:
 
 ---
 
+### 5. Guardar el Estado de Diseño del Nodo
+
+No todo lo que un nodo lleva consigo es configuración del usuario. Un switch guarda los casos por los que
+enruta y un contenedor de subflujo guarda los puertos que expone: son **estado de diseño**, no ajustes, y
+tienen que viajar en el archivo para poder reconstruir un flujo al reabrirlo. Se declara con dos decisiones:
+
+- **No entran en `ParameterDescriptors`.** El inspector muestra la configuración del usuario; el estado de
+diseño se escribe en `Parameters` como cualquier otro valor, pero sin descriptor no tiene fila ni etiqueta.
+- **Se escriben con el nodo, y el escritor decide qué sobrevive.** El guardado del archivo escribe los
+  parámetros **efectivos** del nodo —las filas del inspector y, por encima, lo que la instancia tenga—, así que
+  basta con dejarlo en `Parameters` en el único momento en que cambia. El contenedor de subflujo lo hace en
+  `RefreshDynamicPorts`, y los nombres y el formato de esas claves viven en su contrato
+  (`ISubflowNode.RememberedInputPortsKey`, `ISubflowNode.EncodePortNames`), no dentro del nodo: hay **dos**
+  escritores —el nodo al materializar sus puertos y el editor al reparar un archivo antiguo— y dos definiciones
+  del mismo nombre acabarían divergiendo.
+
+**Añadir un campo que el archivo guarde es cambiar el formato, no un detalle del nodo.** La versión que el
+archivo declara (`schema`) dice qué forma tiene, y hay guardias que la atan: la forma que el escritor produce
+está registrada versión a versión (`WorkflowFormatShapeTests`), cada versión entregada tiene su archivo testigo
+en `FileFlow.Tests/FormatBaselines`, y un campo que aparezca o desaparezca sin subir el `schema` pone la suite
+en rojo diciendo cuál es y con la fila que hay que registrar. El ciclo completo —quién escribe, cómo se lee un
+archivo anterior y por qué un archivo reparado converge al guardarlo— está en
+[**El archivo de flujo**](../architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación).
+
+---
+
 ## 📦 Despliegue del Nodo
 
 Para que FileFlow Studio cargue tu nuevo nodo:

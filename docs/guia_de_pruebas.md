@@ -145,6 +145,24 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
 
 ---
 
+#### 2.7. `WorkflowFormatShapeTests.cs`, `FlowFormatSerializationGuardTests.cs` y `WorkflowFileInteropTests.cs`
+- **`TheCurrentShape_ShouldBeTheRegisteredOneForTheVersion`**:
+  - **Objeto:** Forma del archivo de flujo contra la versión que declara.
+  - **Qué:** Un grafo que rellena todos los campos del modelo se escribe y se registra la forma resultante (senderos canónicos con su tipo JSON); esa lista es el contrato de la versión, así que un campo que aparezca, desaparezca o cambie de tipo sin subir el `schema` pone la suite en rojo diciendo cuál es y con la fila que hay que registrar.
+  - **Cómo:** *Arrange:* Grafo completo y la tabla de formas por versión. *Act:* Se serializa con el escritor del producto y se compara. *Assert:* La forma viva es la registrada para `CurrentVersion`; toda propiedad pública del modelo aparece en el archivo o está marcada `[JsonIgnore]`.
+- **`TheWitnessOfTheCurrentVersion_ShouldBeWhatTheWriterProduces`**:
+  - **Objeto:** Archivo testigo de cada versión entregada (`FileFlow.Tests/FormatBaselines`).
+  - **Qué:** Cada versión registrada tiene su flujo **de verdad** —guardado por el escritor de esa versión y comprometido en el repositorio—, y el de la versión que se escribe tiene que ser lo que el escritor produce hoy: es lo que hace que reescribir la fila a mano falle.
+  - **Cómo:** *Arrange:* Testigo `flow-format-v2.json`. *Act:* Se compara el documento con lo que produce el camino de guardado. *Assert:* Mismo documento (se compara el documento, no el formateo) y el producto abre el testigo como el flujo que contiene.
+- **`WritingAFlowWithItsOwnSerializationOptions_ShouldFailTheGuard`**:
+  - **Objeto:** Fuentes que (des)serializan un flujo.
+  - **Qué:** Falla si una llamada a `JsonSerializer` sobre un flujo no nombra la definición única (`WorkflowGraph.SerializationOptions`) o si alguien muta la instancia compartida: encontró un lector suelto real en el árbol.
+  - **Cómo:** *Arrange:* Fragmentos de código y el barrido del árbol completo. *Act:* Análisis sintáctico con Roslyn. *Assert:* Cero infracciones, señalando fichero y línea cuando las hay.
+- **`SavingAnOlderWorkflowFromTheAppAndFromTheCore_ShouldProduceTheSameText`** (interop):
+  - **Objeto:** Los dos caminos de escritura del producto.
+  - **Qué:** El mismo grafo guardado por el servicio de la aplicación y por `WorkflowGraph.ToJson()` da **el mismo texto**, y un archivo del dialecto anterior se sigue leyendo entero.
+  - **Cómo:** *Act:* Se escribe por los dos caminos. *Assert:* Textos idénticos y el archivo antiguo se lee completo.
+
 ### 🧩 Módulo 3: Plugins y Nodos (`FileFlow.Tests/Unit/Plugins`)
 
 #### 3.1. `OperationReportNodeTests.cs` (12 Pruebas)
@@ -247,6 +265,20 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
 
 ---
 
+#### 3.12. `NodeArchitectureGuardTests.cs` y `NodeRuntimeCatalogGuardTests.cs`
+- **`NoNodeShouldImplementIFlowNodeByHand`**:
+  - **Objeto:** Arquitectura de los nodos de los plugins.
+  - **Qué:** Falla si un nodo implementa `IFlowNode` directamente, redeclara `Id`, `Parameters`, `Inputs` u `Outputs` en vez de heredar de `FlowNodeBase`/`AiFlowNodeBase`, o deriva puertos que no son fijos sin anunciarlos nunca.
+  - **Cómo:** *Arrange:* Barrido de las fuentes de los plugins. *Act:* Análisis sintáctico con Roslyn. *Assert:* Cero infracciones, y cuando las hay el fallo nombra fichero y línea.
+- **`EveryDeclaredNode_ShouldBeDiscoverableAndInstantiable`**:
+  - **Objeto:** Catálogo de nodos declarado frente al descubierto en runtime.
+  - **Qué:** El conjunto de nodos de los plugins y el que el cargador descubre tienen que ser **exactamente** el mismo —sin huérfanos ni intrusos— y cada uno tiene que poder instanciarse por su nombre con `CreateNodeInstance`.
+  - **Cómo:** *Act:* Se comparan ambos conjuntos. *Assert:* Igualdad exacta y una instancia por nodo.
+- **`TheDocumentedExampleNode_ShouldPassTheSameRulesAsTheRealNodes`**:
+  - **Objeto:** El ejemplo de la guía de nodos (`docs/nodes/examples/SampleMultiPortNode.cs`).
+  - **Qué:** La documentación es material de partida: el ejemplo que copian los autores de nodos pasa las mismas reglas que los nodos reales, y ningún fragmento `csharp` de la guía reintroduce el patrón que la migración eliminó.
+  - **Cómo:** *Act:* Se analizan el ejemplo y los bloques de código de la guía. *Assert:* Cero infracciones en ambos.
+
 #### 3.13. `NodeCatalogGuardTests.cs`
 - **`TheCatalog_ShouldBeWhatTheLoaderDiscovers`**:
   - **Objeto:** El catálogo de nodos comprometido (`.agents/nodes_catalog.md`) frente a lo que descubre el cargador de la aplicación.
@@ -294,6 +326,28 @@ dotnet test --filter "FullyQualifiedName~FileFlow.Tests.Performance"
   - **Cómo:** *Arrange:* Store poblado con archivos virtuales. *Act:* Se inicializa el ViewModel con el store. *Assert:* El árbol de carpetas refleja las rutas exactas y el total de archivos coincide con las métricas del almacén.
 
 ---
+
+#### 4.6. `WorkflowFormatMigrationTests.cs`, `WorkflowRepairDeclarationTests.cs`, `NewerFormatProtectionTests.cs` y `WorkflowExamplesValidationTests.cs`
+- **`AWorkflowSavedWithoutAVersion_ShouldRecoverTheContainerPortsOnlyItsEdgesName`**:
+  - **Objeto:** Reparación de un archivo anterior al formato versionado.
+  - **Qué:** Un flujo guardado sin `schema` recupera de sus propias aristas los puertos de puerto que exponía un contenedor de subflujo —es lo único que ese archivo conserva de ellos— y con ellos vuelven sus cables.
+  - **Cómo:** *Arrange:* Flujo con contenedor sin definición resoluble y dos cables que nombran sus puertos. *Act:* Se le quita el campo de versión con el escritor real y se abre en el editor. *Assert:* El contenedor expone los puertos recuperados y los dos cables están en el lienzo.
+- **`RepairingAGraphFromAnOlderFile_ShouldDeclareTheGraphRepaired`** y **`ASavedRepairedFile_ShouldBeUnchangedByASecondSave`**:
+  - **Objeto:** Convergencia del archivo reparado.
+  - **Qué:** Al reparar, el grafo queda declarado con la versión actual **y** con lo que se recuperó dentro (no sólo en el lienzo); guardarlo, reabrirlo y volver a guardarlo deja el archivo idéntico, así que deja de repararse en cada apertura.
+  - **Cómo:** *Arrange:* Archivo anterior con cables. *Act:* Abrir, guardar y reabrir. *Assert:* Declara `FileFlow.Workflow.v2`, conserva los dos cables y el segundo guardado produce el mismo texto.
+- **`SavingAGraphThatCameFromAnOlderFileWithoutRepairingIt_ShouldNotDeclareTheCurrentFormat`**:
+  - **Objeto:** La otra mitad de la regla de versión.
+  - **Qué:** Escribir un archivo anterior no lo repara: se guarda declarándose anterior, porque declararlo actual enterraría su reparación.
+  - **Cómo:** *Act:* Se serializa un grafo leído de un archivo anterior sin pasar por el editor. *Assert:* Declara el formato anterior y su reparación sigue calculándose desde sus aristas.
+- **`OpeningAWorkflowFromANewerFormat_ShouldWarnThatItCannotBeOverwritten`**:
+  - **Objeto:** Protección del archivo de una versión posterior.
+  - **Qué:** Se abre entero y se avisa de que no se puede sobrescribir; guardarlo encima falla **sin cambiar sus bytes** y guardarlo en otra ruta sí escribe, declarando la versión actual.
+  - **Cómo:** *Act:* Abrir y guardar sobre un archivo que declara `FileFlow.Workflow.v3`. *Assert:* Aviso al abrir, `InvalidDataException` al sobrescribir y archivo intacto.
+- **`AllExampleFlows_ShouldBeWrittenByTheProductWriter`** y **`AllExampleFlows_ShouldOpenInTheEditorWithoutLosingAnything`**:
+  - **Objeto:** Los 40 flujos del catálogo de ejemplos.
+  - **Qué:** Cada ejemplo declara la versión que se escribe, es exactamente lo que el escritor produce y se abre en el editor **sin perder un nodo ni un cable**.
+  - **Cómo:** *Arrange:* `docs/examples/**/*.json`. *Act:* Se lee por el camino de la aplicación y se vuelve a escribir. *Assert:* Texto idéntico y reconstrucción completa (informe sin cables descartados).
 
 ### 🔗 Módulo 5: Pruebas de Integración y Rendimiento (`Integration/` y `Performance/`)
 

@@ -100,6 +100,12 @@ Cada conexión física entre nodos cuenta con un indicador numérico en tiempo r
 - Pulsa la tecla `Espacio` o el botón `👁️ QuickLook` en cualquier nodo o elemento del registro para previsualizar instantáneamente imágenes, texto, PDFs o tablas de metadatos.
 - El **Inspector Lateral** expone todos los parámetros del nodo seleccionado con controles enriquecidos (selectores de archivo, sliders, checkboxes y desplegables reactivos).
 
+### Abrir y Guardar Flujos: la Versión del Archivo
+Cada flujo guardado declara con qué formato está escrito, y la aplicación se ocupa del resto:
+- **Un flujo guardado con una versión anterior del formato se repara al abrirlo.** Se recuperan de sus propios cables los datos de diseño que aquella versión no guardaba —por ejemplo, los puertos que exponía un contenedor de subflujo—, y si algo no se pudo reconstruir la aplicación lo dice en la consola y en la barra de estado en vez de perderlo en silencio.
+- **Al guardarlo, el archivo pasa al formato actual** y deja de repararse: se abre una vez, se guarda y queda al día. Recién abierto y sin guardar, en disco sigue como estaba.
+- **Un flujo escrito por una versión más nueva no se sobrescribe.** Se abre entero, y si intentas guardarlo encima la aplicación te avisa y te propone guardarlo en otra ruta, para no perder los campos que esa versión añadió.
+
 ---
 
 ## 3. Modos de Ejecución y Seguridad de Datos

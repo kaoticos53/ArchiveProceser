@@ -227,6 +227,8 @@ The top progress bar fills with green and the bottom console outputs a final sum
 ### 3. Can I save my workflows for daily use?
 Yes! Click **"Save Workflow As..."** in the side drawer (or press `Ctrl+S`). You can save as many workflows as you want (e.g., *"CleanDownloads.flow"* or *"OrganizePhotos.flow"*). To reuse it, simply open the saved file and click Run or Watchdog.
 
+A workflow saved with an older version of FileFlow Studio **brings itself up to date when you open and save it**: your wires stay where they were and the file ends up current without you doing anything else. And if a file was written by a newer version, the application warns you before overwriting it and offers to save it under another name, so nothing is ever lost.
+
 ### 4. What do the colored status circles on each box mean?
 * ⚪ **Gray (Idle):** The box is waiting for incoming files.
 * 🟡 **Yellow / Blue (Working):** The box is actively processing an item right now.

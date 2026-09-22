@@ -1,5 +1,31 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-22] - El Archivo de Flujo: Versión, Reparación y Convergencia (Fases 2E-P8 → 3I)
+
+### 🎯 Objetivo
+
+Que un flujo guardado hace meses se abra **sin perder nada**, que lo que se guarde hoy quede declarado como lo que es y que un archivo escrito por una versión más nueva no se pueda sobrescribir. Hasta aquí el archivo de flujo no declaraba su formato, así que un guardado antiguo —al que le faltaban los datos de diseño del nodo— y uno completo se leían igual.
+
+### 🛠️ Implementación (resumen)
+
+1. **El archivo declara su versión** (`"schema": "FileFlow.Workflow.v2"`). No declararla es el formato anterior al versionado, que es el único que pudo escribirlo.
+2. **Al abrir un archivo anterior se repara con lo que el propio archivo todavía dice**: las aristas nombran los puertos que exponía un contenedor de subflujo, y de ahí se recuperan. Un archivo del formato actual (o de uno posterior) **no** se repara: guarda su propio estado de diseño.
+3. **Un archivo reparado converge**: al guardarlo deja de declararse anterior y no se vuelve a reparar en cada apertura. Lo que se recuperó se queda en el grafo y no sólo en el lienzo, que es la mitad que impide perder esos cables.
+4. **Un archivo de una versión posterior no se sobrescribe**: se abre entero, se avisa al abrirlo y el guardado propone otra ruta en vez de perder los campos que esa versión añadió.
+5. **Un solo formato**: la definición de serialización vive en `WorkflowGraph.SerializationOptions` y la comparten la aplicación y el CLI, así que el mismo grafo da el mismo texto por los dos caminos. Los acentos y los símbolos se escriben tal cual, como en el resto del JSON del producto.
+
+### 🧪 Validación
+
+- **Guardias del formato**: la forma que el escritor produce está atada versión a versión, cada versión entregada tiene su **archivo testigo** en `FileFlow.Tests/FormatBaselines` —un flujo de verdad que el producto abre—, y ninguna fuente puede (des)serializar un flujo con opciones propias.
+- **Los 40 ejemplos del catálogo** (`docs/examples/`) se reescribieron con el escritor del producto: declaran la versión vigente y se abren en el editor sin perder un nodo ni un cable, algo que comprueba la suite en cada ejecución.
+- `dotnet build FileFlow.slnx` sin errores ni advertencias y `dotnet test` completo en verde.
+
+### 📌 Notas para la siguiente sesión
+
+- El detalle de cada fase —decisiones, mutaciones y límites declarados— está en [`2026-08_phase1_audit_plan.md`](history/2026-08_phase1_audit_plan.md) y el plan de huecos en [`2026-09_phase3_gaps_plan.md`](history/2026-09_phase3_gaps_plan.md).
+- Lo que **no** hace: no convierte los archivos que ya están en disco —se leen y convergen cuando el usuario los guarda— y no recupera lo que el archivo nunca tuvo (los casos de un switch sin `CasesJson`, una definición incrustada perdida, un puerto sin cable).
+- El ciclo del formato, ya en la documentación de referencia: [**El archivo de flujo**](architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación) en `architecture.md`, la tabla de API en `api_reference.md` y el apartado de estado de diseño en `nodes/CREATING_NODES.md`.
+
 ## [2026-09-21] - Splash Temática: Cero Literales y Barrido de Barra Determinista (Hito 168)
 
 ### 🎯 Objetivo

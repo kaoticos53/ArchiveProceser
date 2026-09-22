@@ -49,6 +49,11 @@ FileFlow Studio se estructura en 4 capas estrictamente desacopladas:
 └────────────────────────────────────────────────────────┘
 ```
 
+### El Archivo de Flujo
+Un flujo se guarda como JSON y el archivo declara con qué versión del formato está escrito (`"schema": "FileFlow.Workflow.v2"`). La definición de cómo se escribe vive junto al modelo (`WorkflowGraph.SerializationOptions`) y la comparten la aplicación y el CLI, así que el mismo grafo produce el mismo texto por los dos caminos; el lector es **tolerante**, porque un lector estricto no falla al encontrar un nombre inesperado: devuelve un flujo vacío.
+
+Un archivo guardado antes de que el formato se versionara (sin `schema`) se **repara al abrirlo** con lo que él mismo todavía dice —las aristas nombran los puertos que exponía un contenedor de subflujo—, y al guardarlo pasa al formato actual y deja de repararse. Un archivo escrito por una versión **posterior** se abre entero y no se sobrescribe: el guardado lo rechaza y propone otra ruta. El detalle está en [**El archivo de flujo**](architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación).
+
 ### Contrato del Contexto de Elementos (`FileItemContext`)
 Toda la información que fluye entre nodos viaja empaquetada en una instancia de `FileItemContext`:
 - `CurrentPath`: Ruta actual del archivo o carpeta.

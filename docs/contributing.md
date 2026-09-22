@@ -38,18 +38,19 @@ Utilizamos el estándar *Conventional Commits*:
 - `fix: corrige desincronización de radio buttons en filtros de telemetría`
 - `perf: optimiza canalización transaccional en SqliteLogStore a >82k logs/s`
 - `test: añade tests de integración para deduplicación criptográfica`
-- `docs: actualiza manual de usuario con catálogo de 24 nodos`
+- `docs: actualiza manual de usuario con el catálogo de nodos`
 
 ---
 
 ## 3. Pasos para Crear un Nuevo Nodo de Procesamiento
 
 1. **Ubicación**: Crea la clase en el proyecto de plugin correspondiente dentro de `FileFlow.Plugin.<Dominio>`.
-2. **Implementación de Interfaz**: Implementa `IFlowNode`.
+2. **Clase base**: Deriva de `FlowNodeBase` (o de `AiFlowNodeBase` en el plugin de IA) y decora la clase con `[NodeDefinition]`. No declares `Id`, `Parameters`, `Inputs` ni `Outputs`: los aporta la base. La guía paso a paso está en [Creación de Nodos](nodes/CREATING_NODES.md), y `NodeArchitectureGuardTests` falla con fichero y línea si un nodo vuelve al patrón antiguo.
 3. **Manejo de Telemetría**:
    - Mide el tiempo de ejecución con `Stopwatch`.
    - Emite logs estructurados mediante `context.Log(...)` indicando `nodeId`, `nodeName`, `durationMs`, `itemId` y un JSON estructurado con `detailsJson`.
-4. **Pruebas Unitarias**: Añade una suite de pruebas xUnit en `FileFlow.Tests/Unit/Nodes/` que valide:
+4. **Estado de diseño**: si el nodo lleva algo que no es configuración del usuario pero tiene que viajar en el archivo (los casos de un switch, los puertos que expone un contenedor), escríbelo en `Parameters` sin descriptor de parámetro. Añadir un campo que el archivo guarde **es subir la versión del formato**: ver [El archivo de flujo](architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación).
+5. **Pruebas Unitarias**: Añade una suite de pruebas xUnit en `FileFlow.Tests/Unit/Nodes/` que valide:
    - Procesamiento exitoso de archivos válidos.
    - Manejo de excepciones y errores controlados.
    - Respeto al token de cancelación `CancellationToken`.
@@ -71,4 +72,4 @@ dotnet test FileFlow.slnx -c Release
 dotnet format --verify-no-changes
 ```
 
-Asegúrate de que todas las pruebas (146+ tests) pasen con éxito al 100%.
+Asegúrate de que todas las pruebas pasen con éxito al 100% (la suite completa supera las 1.400 hoy).

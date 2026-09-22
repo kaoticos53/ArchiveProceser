@@ -113,7 +113,7 @@ sequenceDiagram
 ### 4.1. `FileFlow.Sdk` (Capa de Contratos Puros)
 - **Propósito**: Define los contratos de interfaces, modelos de dominio fundamentales y utilidades compartidas. Cero dependencias externas pesadas.
 - **Componentes Clave**:
-  - `IFlowNode`: Contrato unificado que deben implementar todos los nodos ejecutables (`ExecuteAsync`, `ValidateConfiguration`, `Category`, `Inputs`, `Outputs`).
+  - `IFlowNode`: Contrato unificado de todo nodo ejecutable (`ExecuteAsync`, `OnWorkflowCompletedAsync`, `MaxConcurrency`, `Category`, `Inputs`, `Outputs`, `Parameters`). Los nodos del producto **no lo implementan a mano**: derivan de `FlowNodeBase` (o de `AiFlowNodeBase` en el plugin de IA), que aporta la identidad, los puertos, el anuncio de topología (`IPortTopologyNode`), `OnWorkflowCompletedAsync` y los ayudantes `GetParameter<T>`, `SetParameter`, `EmitAsync`, `Log` y `GetLocalizedString`. Un nodo que implemente `IFlowNode` directamente, o que redeclare `Id`, `Parameters`, `Inputs` u `Outputs`, lo rechaza `NodeArchitectureGuardTests` con fichero y línea.
   - `FileItemContext`: Encapsula el ciclo de vida de un archivo en el grafo (`Id`, `OriginalPath`, `CurrentPath`, `Size`, `Variables`, `Metadata`, `IsVirtual`). Incluye memoización zero-alloc para `IdString`, `ShortIdString` y resolución reactiva de `FileName`.
   - `IFlowExecutionContext`: Proporciona al nodo acceso al token de cancelación (`CancellationToken`), resolución de variables, almacenamiento de estado en memoria compartida, emisión de elementos, acceso al sistema de archivos virtual (`VirtualFileSystem`) y telemetría estructurada (`context.Log`).
   - `IVirtualFileSystemStore` & `VirtualFileEntry`: Contrato canónico y modelo para operaciones de archivo y directorios en memoria durante pruebas sin I/O físico.
@@ -150,7 +150,64 @@ Colección modular de 24 nodos de procesamiento organizados por dominio:
 
 ---
 
-## 5. Registros de Decisiones Arquitectónicas (ADRs)
+## 5. El Archivo de Flujo: Formato, Versión y Reparación
+
+Un flujo es un JSON que se lee y se escribe por **un solo camino**. La definición de cómo se escribe vive junto
+al modelo (`WorkflowGraph.SerializationOptions`) y la usan la aplicación y el CLI, así que el mismo grafo
+produce el mismo texto desde cualquier puerta. El lector es **tolerante** a propósito —acepta los nombres en
+cualquier caja e infiere los tipos de los parámetros—, porque un lector estricto no falla: devuelve un grafo
+**vacío**.
+
+### 5.1. La versión
+
+El archivo declara la versión con la que está escrito (`"schema": "FileFlow.Workflow.v2"`). Sin ese campo no se
+puede distinguir un archivo al que le faltan datos de uno completo, y la diferencia importa: hasta la versión 1
+el guardado escribía sólo lo que el inspector muestra, y el nodo lleva además **estado de diseño** —la
+definición incrustada de un subflujo, los casos de un switch, los puertos que expone un contenedor— que nadie
+puede rellenar después. Un archivo que no declara versión se lee como el formato anterior al versionado
+(versión 1), que es lo único que pudo escribirlo.
+
+### 5.2. La reparación
+
+Al abrir, `WorkflowFormat.Plan` decide si hay algo que reparar, y lo deduce **sólo del propio archivo**: las
+aristas de un flujo antiguo nombran los puertos que el contenedor exponía —en su momento se conectaron cables
+a ellos—, así que de ahí se recuperan, en el grafo y en el lienzo, antes de emparejar las aristas. Un archivo
+del formato actual (o de uno posterior) **no se repara**: guarda su propio estado de diseño y lo que dicen sus
+aristas puede estar desfasado, así que recuperarlo sería resucitar un puerto que su definición no declara. Los
+huecos que el archivo nunca tuvo —los casos de un switch sin `CasesJson`, una definición incrustada perdida, un
+puerto sin cable— **no se recuperan**: ninguna reparación puede sacar del archivo lo que el archivo no
+escribió.
+
+### 5.3. La convergencia
+
+Un archivo reparado **converge**: al guardarlo deja de declararse anterior y la próxima apertura no lo vuelve a
+reparar. Son dos mitades que sólo funcionan juntas:
+
+- El que **escribe** no declara el formato actual por escribir (`WorkflowFormat.DeclareCurrent` no pisa una
+  versión declarada): mientras nadie repare, un archivo anterior se guarda como lo que era, porque declararlo
+  actual enterraría su reparación.
+- El que **repara** deja en el grafo lo que recuperó —no sólo en el lienzo— y lo declara reparado
+  (`WorkflowFormat.DeclareRepaired`). Un grafo declarado actual sin la reparación dentro pierde justo los cables
+  que esa reparación recuperaba.
+
+Un archivo escrito por una versión **posterior** se lee entero y no se sobrescribe: el guardado lo rechaza y la
+salida honesta es guardar en otra ruta.
+
+### 5.4. Los otros artefactos
+
+El paquete del portapapeles (`FileFlow.NodeClipboard.v1`) y los puntos de control de una ejecución **no son el
+archivo de flujo**: llevan su propio formato y su propia versión.
+
+> El formato tiene guardias propias: la forma que el escritor produce está registrada **versión a versión**,
+cada versión entregada tiene su **archivo testigo** en `FileFlow.Tests/FormatBaselines` —un flujo de verdad que
+el producto abre—, un campo que aparezca o desaparezca sin subir el `schema` pone la suite en rojo diciendo cuál
+es, y ninguna fuente puede (des)serializar un flujo con opciones propias (`FlowFormatSerializationGuardTests`).
+> Los ejemplos que se entregan se validan contra esto: son archivos del formato actual y se abren en el editor
+sin perder un solo cable (`WorkflowExamplesValidationTests`).
+
+---
+
+## 6. Registros de Decisiones Arquitectónicas (ADRs)
 
 ### ADR-001: Adopción de .NET 9 y C# 13
 - **Contexto**: El procesamiento masivo de archivos requiere máxima eficiencia de memoria, paralelismo sin sobrecarga y sincronización ligera.

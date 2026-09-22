@@ -105,5 +105,14 @@ Activa la casilla **Simulación (*Dry Run*)** en la barra superior antes de pres
 ### El nodo Transcodificador Multimedia muestra advertencia de FFmpeg no encontrado
 Asegúrate de descargar `ffmpeg.exe` y colocarlo en la misma carpeta que `FileFlow.App.exe` o añadir su directorio a la variable de entorno `PATH` de Windows.
 
+### Abrí un flujo antiguo y veo los puertos de un subflujo que antes no estaban
+Es la **reparación** de un archivo guardado con una versión anterior del formato: la aplicación recupera de sus propios cables los datos de diseño que esa versión no guardaba. Si algo no se pudo reconstruir, te lo dice en la consola y en la barra de estado.
+
+### ¿Por qué un flujo guardado hace meses se ve igual que uno de hoy?
+Porque al guardarlo la aplicación lo pasa al **formato actual** (el archivo declara su versión): se abre una vez, se guarda y deja de repararse en cada apertura. Si no lo guardas, en disco se queda como estaba.
+
+### Intenté guardar un flujo y la aplicación me pidió otra ruta
+Ese archivo lo escribió una versión **más nueva** de FileFlow Studio. Se abre entero, pero no se sobrescribe para no perder los campos que esa versión añadió: guárdalo con otro nombre.
+
 ### ¿Dónde se guardan los archivos de log exportados?
 Al presionar el botón **`💾 Exportar`** en la consola, se abrirá un diálogo para guardar el informe en formato `.log` o `.txt` con todas las marcas de tiempo e identificadores.

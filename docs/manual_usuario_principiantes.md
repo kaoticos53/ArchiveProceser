@@ -227,6 +227,8 @@ En la barra superior verás que la barra de progreso se llena en verde y en la c
 ### 3. ¿Puedo guardar mis flujos para usarlos todos los días?
 ¡Sí! Pulsa en el menú lateral **"Guardar Flujo Como..."** (o `Ctrl+S`). Puedes guardar todos los flujos que quieras (por ejemplo: *"LimpiarDescargas.flow"* o *"OrganizarFotos.flow"*). Cuando quieras volver a usarlo, solo tienes que cargarlo y pulsar Ejecutar o Vigilante.
 
+Un flujo guardado con una versión más antigua se **actualiza solo al abrirlo y guardarlo**: verás tus cables donde estaban y el archivo quedará al día sin que tengas que hacer nada más. Y si algún archivo lo escribió una versión más nueva de FileFlow Studio, la aplicación te avisará antes de sobrescribirlo y te propondrá guardarlo con otro nombre, para no perder nada.
+
 ### 4. ¿Qué significa el circulito de colores en cada caja?
 * ⚪ **Gris (Inactivo):** La caja está esperando a que le lleguen archivos.
 * 🟡 **Amarillo / Azul (Trabajando):** La caja está procesando un archivo en este momento.

@@ -55,7 +55,9 @@ ArchiveProceser/
   - `Guid Id`, `string CurrentPath`, `string OriginalPath`, `bool IsDirectory`, `long FileSizeBytes`
   - `Dictionary<string, object?> Metadata`, `HashSet<string> Tags`, `List<string> ExecutionLog`
   - `FileItemContext DeepClone()`: Clonación profunda para snapshots y bifurcaciones de puertos.
-- [`IFlowNode`](file:///FileFlow.Sdk/IFlowNode.cs): Contrato base de los nodos de procesamiento con soporte de `MaxConcurrency`.
+- [`IFlowNode`](file:///FileFlow.Sdk/IFlowNode.cs): Contrato base de los nodos de procesamiento con soporte de `MaxConcurrency` y `OnWorkflowCompletedAsync`.
+- [`FlowNodeBase`](file:///FileFlow.Sdk/FlowNodeBase.cs) (y `AiFlowNodeBase` en el plugin de IA): clase base de **todos** los nodos del producto. Aporta `Id`, `Parameters`, `Inputs`/`Outputs` (`protected set`), `GetParameter<T>`/`SetParameter`/`EmitAsync`/`Log`, y el anuncio de topología de [`IPortTopologyNode`](file:///FileFlow.Sdk/IPortTopologyNode.cs). Un nodo que implemente `IFlowNode` a mano o redeclare esos miembros lo rechaza `NodeArchitectureGuardTests` con fichero y línea.
+- [`ISubflowNode`](file:///FileFlow.Sdk/ISubflowNode.cs): contrato del contenedor de subflujo, incluida la memoria de los puertos que expone (`RememberedInputPortsKey`/`RememberedOutputPortsKey`, `EncodePortNames`).
 - [`IFlowExecutionContext`](file:///FileFlow.Sdk/IFlowExecutionContext.cs): Contexto de ejecución inyectado a los nodos.
   - `bool IsDryRun { get; }`, `ITempWorkspaceManager TempWorkspace { get; }`
   - `Task EmitAsync(string outputPortName, FileItemContext item)`
@@ -76,7 +78,9 @@ ArchiveProceser/
 - [`WorkflowWorkspaceManager`](file:///FileFlow.Core/Engine/WorkflowWorkspaceManager.cs): Aislador y gestor de carpetas de ejecución temporal (`Runs/{ExecutionId}/`).
 - [`WorkflowTelemetryTracker`](file:///FileFlow.Core/Engine/WorkflowTelemetryTracker.cs): Telemetría atómica con deduplicación concurrente de elementos completados.
 - [`SqliteLogStore`](file:///FileFlow.Core/Telemetry/SqliteLogStore.cs): Base de datos SQLite in-memory / WAL con throughput >82.000 logs/seg.
-- [`PluginLoader`](file:///FileFlow.Core/Plugins/PluginLoader.cs): Carga aislada mediante `AssemblyLoadContext` con auto-registro de localización.
+- [`PluginLoader`](file:///FileFlow.Core/Plugins/PluginLoader.cs): Carga aislada mediante `AssemblyLoadContext` con auto-registro de localización. Un `CreateNodeInstance(typeName)` resuelve el nombre completo y también el nombre corto de la clase.
+- [`WorkflowGraph`](file:///FileFlow.Core/Engine/WorkflowGraph.cs): modelo del flujo y **definición única** de cómo se lee y se escribe (`SerializationOptions`, `ToJson`/`FromJson`). Todo grafo que llega de un texto recuerda de qué versión viene (`IJsonOnDeserialized` → `WorkflowFormat.NoteSource`).
+- [`WorkflowFormat`](file:///FileFlow.Core/Engine/WorkflowFormat.cs): versión del formato del archivo (`FileFlow.Workflow.v2`), plan de reparación de un archivo anterior (`Plan`) y la declaración de que la reparación se aplicó (`DeclareRepaired`, la que hace **converger** el archivo). Detalle y porqués en [docs/architecture.md](file:///docs/architecture.md#el-archivo-de-flujo-formato-versión-y-reparación).
 
 ---
 

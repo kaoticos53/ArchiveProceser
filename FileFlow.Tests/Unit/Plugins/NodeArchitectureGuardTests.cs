@@ -631,10 +631,18 @@ public class NodeArchitectureGuardTests
     public void TheGuideCodeBlocks_ShouldNotTeachTheRejectedPattern()
     {
         string root = TestRepositoryLocator.RepositoryRoot();
-        string guide = File.ReadAllText(Path.Combine(root, "docs", "nodes", "CREATING_NODES.md"));
-        var codeBlocks = CSharpCodeBlocks(guide);
+        var codeBlocks = new List<(string Document, string Code)>();
 
-        codeBlocks.Should().NotBeEmpty("la guía debe enseñar código, no sólo describirlo");
+        // Las dos guías que enseñan la forma vigente de un nodo. La referencia de API se cae con la misma
+        // facilidad que la guía —tenía un ejemplo con `: IFlowNode`, `NodePinDefinition` y `ValidateConfiguration`,
+        // que ya no existen—, así que se vigila igual: la documentación es material de partida.
+        foreach (string document in new[] { "docs/nodes/CREATING_NODES.md", "docs/api_reference.md" })
+        {
+            string markdown = File.ReadAllText(Path.Combine(root, document.Replace('/', Path.DirectorySeparatorChar)));
+            codeBlocks.AddRange(CSharpCodeBlocks(markdown).Select(code => (document, code)));
+        }
+
+        codeBlocks.Should().NotBeEmpty("la documentación debe enseñar código, no sólo describirlo");
 
         string[] rejectedPatterns =
         [
@@ -646,16 +654,16 @@ public class NodeArchitectureGuardTests
             "Parameters.TryGetValue"                                // lectura de parámetro a mano
         ];
 
-        foreach (string block in codeBlocks)
+        foreach (var (document, block) in codeBlocks)
         {
-            Analyze("docs/nodes/CREATING_NODES.md", block).Should().BeEmpty(
-                "ningún fragmento de la guía puede reintroducir una infracción que la guardia rechaza");
+            Analyze(document, block).Should().BeEmpty(
+                $"ningún fragmento de '{document}' puede reintroducir una infracción que la guardia rechaza");
 
             foreach (string pattern in rejectedPatterns)
             {
                 block.Should().NotContain(
                     pattern,
-                    "un fragmento con el patrón antiguo es una plantilla para el siguiente autor de nodos");
+                    $"un fragmento de '{document}' con el patrón antiguo es una plantilla para el siguiente autor de nodos");
             }
         }
     }

@@ -7,7 +7,13 @@ Esta guía documenta los contratos principales de `FileFlow.Sdk`, tipos de datos
 ## 1. Contratos Fundamentales del SDK
 
 ### 1.1. `IFlowNode`
-Contrato primordial que debe implementar cualquier nodo que procese datos dentro del grafo de ejecución.
+Contrato primordial que implementa cualquier nodo que procese datos dentro del grafo de ejecución. **Los nodos
+del producto no lo implementan a mano**: derivan de [`FlowNodeBase`](../../FileFlow.Sdk/FlowNodeBase.cs) (o
+de `AiFlowNodeBase` en el plugin de IA), que ya aporta `Id`, el diccionario `Parameters`, los puertos
+(`Inputs`/`Outputs` con `protected set`), `MaxConcurrency` y los ayudantes `GetParameter<T>`, `SetParameter`,
+`EmitAsync`, `Log` y `GetLocalizedString`. Implementarlo directamente sólo se justifica en dobles de prueba; la
+guía de nodos explica el porqué en
+[**Pasos para Crear un Nodo**](nodes/CREATING_NODES.md#-pasos-para-crear-un-nodo).
 
 ```csharp
 namespace FileFlow.Sdk;
@@ -24,19 +30,25 @@ public interface IFlowNode
     IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => Array.Empty<NodeParameterDescriptor>();
     IReadOnlyList<NodeActionDescriptor> CustomActions => Array.Empty<NodeActionDescriptor>();
 
+    /// <summary>Concurrencia máxima simultánea del nodo; ≤ 0 usa la del flujo.</summary>
+    int MaxConcurrency => 0;
+
     Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken);
 
-    ValidationResult ValidateConfiguration() => ValidationResult.Success();
+    /// <summary>Hook para nodos acumuladores, al terminar la ejecución aguas arriba.</summary>
+    Task OnWorkflowCompletedAsync(IFlowExecutionContext context, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }
 ```
 
 #### Métodos:
 - **`ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)`**: Ejecuta la lógica asíncrona del nodo cuando recibe un elemento por un puerto específico. Debe propagar obligatoriamente el `CancellationToken`.
-- **`ValidateConfiguration()`**: Valida que los parámetros requeridos (rutas, expresiones, patrones) estén correctamente formateados antes de iniciar el grafo.
+- **`OnWorkflowCompletedAsync(IFlowExecutionContext context, CancellationToken cancellationToken)`**: Lo invoca el motor cuando todos los elementos aguas arriba terminaron, para que un nodo acumulador (un informe consolidado, un archivador por lotes) emita sus resultados finales.
+- **`MaxConcurrency`**: Serializa el nodo cuando accede a un recurso exclusivo (GPU local, API con límite estricto) devolviendo `1`.
 
 ---
 
@@ -164,36 +176,57 @@ public static class VariableTemplateResolver
 
 ## 3. Ejemplo Práctico: Creación de un Nodo Personalizado
 
-Ejemplo completo de implementación de un nodo que valida la integridad de archivos de texto:
+Ejemplo de un nodo que valida la integridad de archivos de texto, en la forma vigente: **hereda de
+`FlowNodeBase`**, declara sus puertos en el constructor, lee sus parámetros con `GetParameter<T>` y registra
+con `Log(...)` y `EmitAsync(...)`. Es el mismo patrón que siguen los nodos de los plugins, y el ciclo completo
+—puertos dinámicos, estado de diseño, anuncio de topología, despliegue— está en
+[**Creación de Nodos**](nodes/CREATING_NODES.md).
 
 ```csharp
 using System.Diagnostics;
-using System.Text.Json;
 using FileFlow.Sdk;
-using FileFlow.Sdk.Telemetry;
+using FileFlow.Sdk.Localization;
 
 namespace FileFlow.Plugin.Custom;
 
-public class TextFileValidatorNode : IFlowNode
+[NodeDefinition("TextFileValidatorNode_Name", "Validación", "TextFileValidatorNode_Desc", PipelineRole.Filter,
+    "validador", "texto", "integridad")]
+public sealed class TextFileValidatorNode : FlowNodeBase
 {
-    public string Id => "custom.text_validator";
-    public string Name => "Validador de Texto";
-    public string Category => "Validación";
-    public string Description => "Comprueba que un archivo de texto no contenga caracteres nulos y cuenta líneas.";
+    public override string Name =>
+        LocalizationManager.Instance.GetString("TextFileValidatorNode_Name", "Validador de Texto");
 
-    public int MaxAllowedLines { get; set; } = 10000;
+    public override string Category => "Validación";
 
-    public IReadOnlyList<NodePinDefinition> Inputs { get; } = [
-        new("Input", "Entrada", PinDataType.File)
-    ];
+    public override string Description => LocalizationManager.Instance.GetString(
+        "TextFileValidatorNode_Desc",
+        "Comprueba que un archivo de texto no contenga caracteres nulos y cuenta sus líneas.");
 
-    public IReadOnlyList<NodePinDefinition> Outputs { get; } = [
-        new("Valid", "Válido", PinDataType.File),
-        new("Invalid", "Inválido", PinDataType.File)
-    ];
-
-    public async ValueTask ExecuteAsync(FileItemContext item, IFlowExecutionContext context)
+    public TextFileValidatorNode()
     {
+        Inputs = [new NodePort("In", typeof(FileItemContext), PortDirection.Input, "Entrada")];
+        Outputs =
+        [
+            new NodePort("Valid", typeof(FileItemContext), PortDirection.Output, "Válido"),
+            new NodePort("Invalid", typeof(FileItemContext), PortDirection.Output, "Inválido")
+        ];
+
+        Parameters["MaxAllowedLines"] = 10000;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    [
+        new("MaxAllowedLines", ParameterEditorType.Number, DefaultValue: 10000, DisplayOrder: 1,
+            Min: 1, Step: 1, HelpText: "Número máximo de líneas admitido.")
+    ];
+
+    public override async Task ExecuteAsync(
+        string inputPortName,
+        FileItemContext item,
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        int maxAllowedLines = GetParameter("MaxAllowedLines", 10000);
         var sw = Stopwatch.StartNew();
         int lineCount = 0;
         bool hasNullChars = false;
@@ -201,7 +234,7 @@ public class TextFileValidatorNode : IFlowNode
         using (var reader = new StreamReader(item.CurrentPath))
         {
             string? line;
-            while ((line = await reader.ReadLineAsync(context.CancellationToken).ConfigureAwait(false)) != null)
+            while ((line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
             {
                 lineCount++;
                 if (line.Contains('\0'))
@@ -213,38 +246,57 @@ public class TextFileValidatorNode : IFlowNode
         }
 
         sw.Stop();
-        bool isValid = !hasNullChars && lineCount <= MaxAllowedLines;
-        string targetPin = isValid ? "Valid" : "Invalid";
+        bool isValid = !hasNullChars && lineCount <= maxAllowedLines;
 
-        var details = new
-        {
-            lineCount,
-            maxAllowed = MaxAllowedLines,
-            hasNullChars,
-            status = isValid ? "Approved" : "Rejected"
-        };
-
-        context.Log(
-            isValid ? LogLevel.Information : LogLevel.Warning,
+        // El registro estructurado lo arma la base: nodo, duración, elemento y el delta del flujo. Un nodo
+        // sólo aporta el mensaje, la severidad y, si quiere detalle, un objeto serializable.
+        Log(context,
             $"[Validador] Archivo {(isValid ? "aprobado" : "rechazado")}: {lineCount} líneas",
-            nodeId: Id,
-            nodeName: Name,
-            filePath: item.CurrentPath,
-            durationMs: sw.Elapsed.TotalMilliseconds,
-            itemId: item.IdString,
-            fileSizeBytes: item.SizeBytes,
-            detailsJson: JsonSerializer.Serialize(details)
-        );
+            isValid ? LogLevel.Information : LogLevel.Warning,
+            item,
+            new { lineCount, maxAllowed = maxAllowedLines, hasNullChars, elapsedMs = sw.Elapsed.TotalMilliseconds });
 
-        await context.EmitAsync(item, targetPin).ConfigureAwait(false);
-    }
-
-    public ValidationResult ValidateConfiguration()
-    {
-        if (MaxAllowedLines <= 0)
-            return ValidationResult.Failure("MaxAllowedLines debe ser mayor a 0.");
-
-        return ValidationResult.Success();
+        // Los errores esperables salen por un puerto, no como excepción: el flujo decide qué hacer con ellos.
+        await EmitAsync(context, item, isValid ? "Valid" : "Invalid");
     }
 }
 ```
+
+> Los parámetros se leen con `GetParameter<T>`, que entiende el valor tal como llegue —de la interfaz, de un
+> perfil guardado (`JsonElement`) o embebido en texto (`"50%"` → 50)— y devuelve el valor por defecto si el
+> valor está fuera de rango.
+
+---
+
+## 4. El Archivo de Flujo: Versión, Reparación y Convergencia
+
+Un flujo se guarda como JSON y el archivo declara la versión del formato con la que está escrito
+(`"schema": "FileFlow.Workflow.v2"`). La aplicación y el CLI comparten **el mismo** lector y **el mismo**
+escritor, así que el mismo grafo produce el mismo texto desde cualquier puerta.
+
+| Miembro | Qué hace |
+|---|---|
+| `WorkflowGraph.Schema` | Versión con la que está escrito el grafo, o con la que se leyó. `null` sólo lo tiene un grafo construido en memoria y todavía sin escribir. |
+| `WorkflowGraph.SerializationOptions` | La **definición única** del formato: camelCase, lector tolerante (acepta los nombres en cualquier caja), tipos inferidos y sin escapar acentos. |
+| `WorkflowGraph.ToJson()` / `FromJson(json)` | Escribir y leer un flujo; `ToJson` declara la versión que escribe. |
+| `WorkflowFormat.CurrentVersion` / `CurrentSchema` | Versión vigente (`2`) y su nombre. |
+| `WorkflowFormat.UndeclaredVersion` / `UndeclaredSchema` | El formato anterior al versionado (`1`, `FileFlow.Workflow.v1`), que es lo que se deduce de un archivo que no declara versión. |
+| `WorkflowFormat.VersionOf(graph \| schema)` | Qué versión declara un grafo o un valor de `schema`. Un valor ausente o ilegible se lee como no declarado. |
+| `WorkflowFormat.Plan(graph)` | Lo que hay que reparar de un archivo anterior, deducido **sólo del propio archivo**. |
+| `WorkflowFormat.DeclareRepaired(graph)` | La reparación ya se aplicó: el grafo pasa a declarar la versión actual. No baja versiones. |
+| `WorkflowFormat.IsFromNewerFormat(graph)` | Lo escribió una versión posterior: se puede leer y **no** se puede sobrescribir. |
+
+Tres reglas que conviene tener presentes:
+
+1. **Ausencia de versión = versión 1**, la que se repara. A un archivo que no dice su versión no se le puede
+   inventar otra: el formato sin versionar es el único que pudo escribirlo.
+2. **El que escribe no declara; el que repara declara.** `WorkflowFormat.DeclareCurrent` no pisa una versión ya
+   declarada, así que un archivo anterior que nadie reparó se guarda como lo que era —y su reparación sigue
+   pendiente para el que lo abra—; `DeclareRepaired` es lo que hace que un archivo reparado **converja** y deje
+   de repararse en cada apertura.
+3. **Un archivo de una versión posterior no se sobrescribe**: `WorkflowStorageService.SaveWorkflowAsync` lo
+   rechaza con `InvalidDataException` y la salida honesta es guardar en otra ruta.
+
+El ciclo completo, con el porqué de cada decisión y los límites declarados, está en
+[**El archivo de flujo**](architecture.md#el-archivo-de-flujo-formato-versión-y-reparación), en
+[**Creación de Nodos**](nodes/CREATING_NODES.md) y en el [registro de fases por fecha](history/2026-08_phase1_audit_plan.md).

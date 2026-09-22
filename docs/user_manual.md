@@ -100,6 +100,12 @@ Each wire dynamically renders a live counter badge (e.g., `⚡ 2,450 items`) sho
 - Press `Spacebar` or click `👁️ QuickLook` on any node or log entry to inspect images, documents, raw text, or metadata tables.
 - The **Node Inspector Panel** exposes parameters with rich controls (file pickers, sliders, checkboxes, and reactive protocol dropdowns).
 
+### Opening and Saving Flows: the File Format Version
+Every saved flow declares the format it was written in, and the application takes care of the rest:
+- **A flow saved with an older version of the format is repaired when opened.** Design data that version never stored —for example, the ports a sub-workflow container exposed— is recovered from its own wires, and anything that could not be rebuilt is reported in the console and in the status bar instead of being dropped silently.
+- **Saving it moves the file to the current format**, so it stops being repaired: open once, save, and the file is up to date. Right after opening and before saving, the file on disk is left as it was.
+- **A flow written by a newer version is never overwritten.** It opens in full, and if you try to save over it the application warns you and offers another path, so the fields that version added are not lost.
+
 ---
 
 ## 3. Execution Modes & Data Safety
