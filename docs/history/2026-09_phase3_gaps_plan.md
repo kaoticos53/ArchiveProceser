@@ -95,7 +95,7 @@ deja en rojo las de los formatos anteriores.
 **Riesgo.** Bajo: no cambia el formato ni la lectura, añade una lectura del destino en el guardado (el archivo
 se va a escribir de todas formas) y una negativa a sobrescribir.
 
-## Fase 3B — Que la ejecución desde la interfaz se pueda probar de punta a punta
+## Fase 3B — Que la ejecución desde la interfaz se pueda probar de punta a punta ✅ HECHA
 
 **Objetivo.** Poder ejecutar un flujo completo **desde la app** en una prueba, sin un bucle de mensajes de
 interfaz.

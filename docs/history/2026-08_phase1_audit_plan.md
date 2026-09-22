@@ -893,11 +893,17 @@ dotnet build FileFlow.slnx --warnaserror  # 0 errores, 0 warnings
 
 ## Open Questions
 
+> **Estado (2026-09-22): las tres están resueltas.** Se conservan —con la decisión que las cerró anotada debajo de cada una— porque son el registro de lo que se preguntó cuando el trabajo estaba por hacer, y de por qué se eligió lo que se eligió.
+
 > [!IMPORTANT]
 > **¿Cuáles de las fases (A-E) deseas aprobar para ejecutar?** Puedo proceder en orden secuencial (A → B → C → D → E) o priorizar alguna fase específica.
+>
+> **✅ RESUELTO:** se hicieron las cinco, y encima las fases 2D, 2E y 3 completas. El estado está al inicio del documento y cada fase tiene su entrada con su evidencia; la pregunta dejó de tener sentido en cuanto la primera fase se ejecutó.
 
 > [!IMPORTANT]
 > **¿La clase base `FlowNodeBase` (D1) debe ser abstracta obligatoria o una opción opt-in?** Una clase base abstracta fuerza coherencia pero modifica la firma de 60 nodos. Un enfoque opt-in (helper methods estáticos o extension methods) es menos invasivo pero menos uniforme.
+>
+> **✅ RESUELTO en los hechos:** obligatoria. La migración 2D llevó los **70 ficheros de nodo** de los plugins a heredar de `FlowNodeBase`/`AiFlowNodeBase` —68 de ellos son clases descubribles— y la guardia de arquitectura lo impone: un nodo que implemente `IFlowNode` a mano, o que vuelva a declarar `Id`, `Parameters`, `Inputs` u `Outputs`, falla con su fichero y su línea. Se prefirió la coherencia al precio de tocar la firma de todos.
 
 > [!IMPORTANT]
 > **Sobre la externalización de datos (B1-B3):** ¿Prefieres que los JSON se carguen desde archivos embebidos en el assembly (EmbeddedResource) o desde archivos en disco (`AppPaths.ConfigDirectory`)? Los embebidos son más robustos pero requieren rebuild; los de disco permiten personalización por el usuario.
