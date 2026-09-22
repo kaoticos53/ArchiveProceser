@@ -4,6 +4,8 @@ using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 
 namespace FileFlow.App.Services;
 
@@ -42,6 +44,9 @@ public sealed class WorkflowExecutionCoordinator
     private readonly PluginLoader _pluginLoader;
     private readonly LogViewModel _logViewModel;
     private readonly NodeInspectorViewModel _nodeInspectorViewModel;
+    private readonly ILocalizationService _loc;
+    private readonly IUiDispatcher _ui;
+    private readonly IUserPreferencesService _prefs;
 
     private WorkflowExecutor? _activeExecutor;
     private WorkflowDebugSession? _activeDebugSession;
@@ -50,16 +55,38 @@ public sealed class WorkflowExecutionCoordinator
     public WorkflowDebugSession? ActiveDebugSession => _activeDebugSession;
     public FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? LastVirtualFileSystem { get; private set; }
 
+    /// <summary>
+    /// Los dos colaboradores del entorno son inyectables porque son lo único que ataba esta orquestación al
+    /// proceso: el despachador de la interfaz y las preferencias del usuario. Sin ellos, ejecutar un flujo
+    /// completo sólo era posible dentro de la aplicación en marcha.
+    ///
+    /// Del despachador, lo único que exigía de verdad el hilo de la interfaz es el despacho <b>esperado</b> del
+    /// cierre —publicar el estado final de los modelos—: ése no vuelve nunca si nadie bombea el bucle, y se
+    /// llevaba consigo la ejecución entera. Publicar sin esperar (<c>Post</c>) y el cronómetro del lienzo no
+    /// necesitan nada, porque no hacen nada hasta que el bucle los atienda. Con <see cref="NullUiDispatcher"/>
+    /// —que ejecuta en línea— el cierre termina, y es lo mismo que el <see cref="AvaloniaUiDispatcher"/> de
+    /// producción hace cuando ya está sobre el hilo de la interfaz.
+    ///
+    /// De las preferencias se leen el directorio temporal, la limpieza de intermedios y la descarga de modelos
+    /// al terminar: leerlas del proceso hacía que una prueba tocara —y pudiera escribir— la configuración real
+    /// del usuario.
+    /// </summary>
     public WorkflowExecutionCoordinator(
         EditorViewModel editorViewModel,
         PluginLoader pluginLoader,
         LogViewModel logViewModel,
-        NodeInspectorViewModel nodeInspectorViewModel)
+        NodeInspectorViewModel nodeInspectorViewModel,
+        ILocalizationService? localizationService = null,
+        IUiDispatcher? uiDispatcher = null,
+        IUserPreferencesService? userPreferencesService = null)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
         _logViewModel = logViewModel;
         _nodeInspectorViewModel = nodeInspectorViewModel;
+        _loc = localizationService ?? LocalizationManager.Instance;
+        _ui = uiDispatcher ?? AvaloniaUiDispatcher.Instance;
+        _prefs = userPreferencesService ?? UserPreferencesService.Instance;
     }
 
     public async Task<WorkflowExecutionResult> RunAsync(
@@ -70,13 +97,38 @@ public sealed class WorkflowExecutionCoordinator
         _editorViewModel.ClearDebugStates();
         _editorViewModel.ResetAllNodeMetrics();
         var graph = _editorViewModel.ExportToGraphModel(options.WorkflowName);
+
+        // Qué va a hacer este flujo, antes de crear nada: la misma regla que usa el CLI, para que los dos
+        // puntos de entrada no puedan decir cosas distintas del mismo grafo. Un flujo que no puede ejecutarse
+        // se devuelve por el camino del fallo que ya existía —el mismo que un error de validación, que deja el
+        // aviso en la consola y explica en un diálogo, y que sin esto terminaba en verde por no hacer nada—.
+        var diagnosis = WorkflowDiagnosis.Analyze(graph, _pluginLoader);
+
+        if (!diagnosis.CanRun)
+        {
+            return new WorkflowExecutionResult(
+                Succeeded: false,
+                Cancelled: false,
+                ErrorMessage: diagnosis.ErrorSummary,
+                JournalService: null,
+                PlannedActionsCount: 0);
+        }
+
+        // Los avisos se dejan en la consola antes de arrancar, y no bloquean: el diagnóstico cuenta lo que
+        // conviene saber, no lo que se puede prohibir. Cuando el flujo no puede ejecutarse no se llega aquí: el
+        // error ya lo cuenta quien maneja el fallo, y repetirlo aquí serían dos veces la misma frase.
+        _logViewModel.AddLog(LogLevel.Information, diagnosis.Summary);
+        foreach (var warning in diagnosis.Warnings)
+        {
+            _logViewModel.AddLog(LogLevel.Warning, $"⚠️ {warning.Message}");
+        }
         string effectiveGlobalDir = !string.IsNullOrWhiteSpace(graph.GlobalOutputDir)
             ? graph.GlobalOutputDir
             : _editorViewModel.GlobalOutputDir;
 
         string effectiveTempDir = !string.IsNullOrWhiteSpace(graph.TemporaryDirectory)
             ? graph.TemporaryDirectory
-            : UserPreferencesService.Instance.Preferences.TemporaryDirectory;
+            : _prefs.Preferences.TemporaryDirectory;
 
         _activeExecutor = new WorkflowExecutor
         {
@@ -85,7 +137,7 @@ public sealed class WorkflowExecutionCoordinator
             IsDryRun = options.IsDryRun,
             MaxDegreeOfParallelism = options.IsDebug ? 1 : options.MaxParallelThreads,
             EnableCheckpointing = options.EnableCheckpointing,
-            AutoCleanIntermediateTempFiles = UserPreferencesService.Instance.Preferences.AutoCleanIntermediateTempFiles
+            AutoCleanIntermediateTempFiles = _prefs.Preferences.AutoCleanIntermediateTempFiles
         };
 
         if (options.IsDebug)
@@ -98,7 +150,7 @@ public sealed class WorkflowExecutionCoordinator
 
             _activeDebugSession.NodeStatusChanged += (nodeId, status, details) =>
             {
-                Dispatcher.UIThread.InvokeAsync(() =>
+                _ui.Post(() =>
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
                     if (node != null)
@@ -120,7 +172,7 @@ public sealed class WorkflowExecutionCoordinator
 
             _activeDebugSession.SnapshotRecorded += (snapshot) =>
             {
-                Dispatcher.UIThread.InvokeAsync(() =>
+                _ui.Post(() =>
                 {
                     var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(snapshot.NodeId, StringComparison.OrdinalIgnoreCase));
                     node?.AddSnapshot(snapshot);
@@ -271,7 +323,7 @@ public sealed class WorkflowExecutionCoordinator
             FlushPendingUiUpdates(pendingEdgeUpdates, pendingStatusUpdates, pendingNodeProgressUpdates);
             _logViewModel.FlushAllPendingLogs();
 
-            if (UserPreferencesService.Instance.Preferences.AutoUnloadAiModelsOnCompletion)
+            if (_prefs.Preferences.AutoUnloadAiModelsOnCompletion)
             {
                 try
                 {
@@ -290,7 +342,7 @@ public sealed class WorkflowExecutionCoordinator
                 }
             }
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            await _ui.InvokeAsync(() =>
             {
                 foreach (var node in _editorViewModel.Nodes)
                 {

@@ -9,6 +9,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 using FileFlow.App.Themes;
 
 namespace FileFlow.App.ViewModels;
@@ -304,7 +305,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         ILocalizationService? localizationService = null,
         IDialogService? dialogService = null,
         IProcessLauncherService? processLauncher = null,
-        CustomThemeService? customThemeService = null)
+        CustomThemeService? customThemeService = null,
+        IUiDispatcher? uiDispatcher = null)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
@@ -323,7 +325,10 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             editorViewModel,
             pluginLoader,
             logViewModel,
-            nodeInspectorViewModel
+            nodeInspectorViewModel,
+            _loc,
+            uiDispatcher,
+            _userPreferencesService
         );
 
         _editorViewModel.PropertyChanged += (s, e) =>

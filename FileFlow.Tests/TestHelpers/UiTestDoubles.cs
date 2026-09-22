@@ -91,6 +91,31 @@ public sealed class InMemoryLogStore : ILogStore
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
+/// <summary>
+/// Servicio de diálogos que se acuerda de lo que se le mostró, en vez de abrir una ventana que ninguna
+/// prueba puede cerrar. Los mensajes se separan por nivel a propósito: casi todo lo que hay que fijar en
+/// estas pruebas es <b>que no se avisó</b> de algo, y un único saco de textos no distingue un error de una
+/// información.
+/// </summary>
+public sealed class RecordingDialogService : IDialogService
+{
+    public List<string> ErrorMessages { get; } = [];
+
+    public List<string> WarningMessages { get; } = [];
+
+    public List<string> InformationMessages { get; } = [];
+
+    public void ShowInformation(string message, string title = "FileFlow Studio") => InformationMessages.Add(message);
+
+    public void ShowWarning(string message, string title = "FileFlow Studio") => WarningMessages.Add(message);
+
+    public void ShowError(string message, string title = "Error") => ErrorMessages.Add(message);
+
+    public bool ShowConfirmation(string message, string title = "FileFlow Studio") => true;
+
+    public DialogResult ShowYesNoCancel(string message, string title = "FileFlow Studio") => DialogResult.Yes;
+}
+
 /// <summary>Diálogos de archivo que nunca se abren: devuelven «cancelado» y no bloquean la prueba.</summary>
 public sealed class NullFileDialogService : IFileDialogService
 {
