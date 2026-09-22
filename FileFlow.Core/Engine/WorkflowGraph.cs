@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FileFlow.Sdk.Serialization;
@@ -100,7 +101,13 @@ public class WorkflowGraph
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
         Converters = { new ObjectToInferredTypesConverter() },
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+
+        // Los acentos y los símbolos se escriben tal cual, como en el resto del JSON del producto
+        // (<see cref="JsonDefaults"/>): el valor por defecto de <c>System.Text.Json</c> los escapa —una ruta
+        // con eñe se guarda como <c>\u00F1</c>— y un flujo es un archivo que el usuario abre y lee, con sus
+        // rutas y sus títulos en su idioma. No cambia el documento, sólo cómo se escribe.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     /// <summary>
