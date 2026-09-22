@@ -1,0 +1,77 @@
+{
+  "schema": "FileFlow.Workflow.v2",
+  "name": "Flujo de muestra del formato",
+  "globalOutputDir": "C:\\Salida",
+  "temporaryDirectory": "C:\\Temporal",
+  "nodes": [
+    {
+      "id": "nodo-1",
+      "nodeTypeName": "FileCopy",
+      "customTitle": "Copia los recibos",
+      "x": 120.5,
+      "y": 80.25,
+      "hasBreakpoint": true,
+      "isLoggingEnabled": true,
+      "parameters": {
+        "RutaOrigen": "C:\\Entrada",
+        "Reintentos": 3,
+        "Sobrescribir": true,
+        "Etiqueta": null
+      }
+    },
+    {
+      "id": "nodo-2",
+      "nodeTypeName": "MoveFile",
+      "customTitle": "Mueve a Archivo",
+      "x": 420.5,
+      "y": 80.25,
+      "hasBreakpoint": false,
+      "isLoggingEnabled": false,
+      "parameters": {
+        "Destino": "C:\\Archivo"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "arista-1",
+      "sourceNodeId": "nodo-1",
+      "sourcePortName": "Done",
+      "targetNodeId": "nodo-2",
+      "targetPortName": "In"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "nota-1",
+      "title": "Recuerda",
+      "content": "Este flujo es el que se guarda como testigo de la versi\u00F3n del formato.",
+      "x": 60.5,
+      "y": 220.75,
+      "width": 280.5,
+      "height": 160.25,
+      "color": "#FEF08A"
+    }
+  ],
+  "groups": [
+    {
+      "id": "grupo-1",
+      "title": "Entrada y archivo",
+      "x": 80.25,
+      "y": 40.5,
+      "width": 520.75,
+      "height": 220.5,
+      "color": "#3B82F6",
+      "nodeIds": [
+        "nodo-1",
+        "nodo-2"
+      ]
+    }
+  ],
+  "breakpointNodeIds": [
+    "nodo-1"
+  ],
+  "disabledLoggingNodeIds": [
+    "nodo-2"
+  ]
+}
