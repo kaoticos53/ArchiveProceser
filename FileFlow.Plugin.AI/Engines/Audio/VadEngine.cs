@@ -139,7 +139,7 @@ internal static class VadEngine
         int numChunks,
         float[] outputProbabilities)
     {
-        var session = AudioSessionCache.GetOrCreateSession(modelPath);
+        var session = AudioSessionStore.Instance.GetOrCreateSession(modelPath);
 
         // Tensores de estado Silero VAD v4 / v5
         DenseTensor<float>? stateTensor = null;
@@ -160,7 +160,7 @@ internal static class VadEngine
         var srTensor = new DenseTensor<long>(new[] { 16000L }, [1]);
         var chunkTensor = new DenseTensor<float>([1, chunkSize]);
 
-        lock (AudioSessionCache.InferenceLock)
+        lock (AudioSessionStore.Instance.InferenceLock)
         {
             for (int i = 0; i < numChunks; i++)
             {

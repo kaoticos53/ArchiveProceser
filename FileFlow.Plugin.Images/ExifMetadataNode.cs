@@ -9,36 +9,35 @@ namespace FileFlow.Plugin.Images;
 
 [NodeDefinition("ExifMetadataNode_Name", "ImageVision", "ExifMetadataNode_Desc", PipelineRole.Analyze,
     "exif", "gps", "camara", "fecha", "metadatos", "geolocalizacion", "metadata", "photo", "camera")]
-public sealed class ExifMetadataNode : IFlowNode
+public sealed class ExifMetadataNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ExifMetadataNode_Name", "EXIF Metadata");
-    public string Category => "ImageVision";
-    public string Description => LocalizationManager.Instance.GetString("ExifMetadataNode_Desc", "Extracts EXIF metadata (Date Taken, Camera Model, Dimensions, Orientation) from images.");
+    public override string Name => LocalizationManager.Instance.GetString("ExifMetadataNode_Name", "EXIF Metadata");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("ExifMetadataNode_Desc", "Extracts EXIF metadata (Date Taken, Camera Model, Dimensions, Orientation) from images.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public ExifMetadataNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["FallbackToCreationDate"] = true
-    };
+        Parameters["FallbackToCreationDate"] = true;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
         string filePath = item.CurrentPath;
-        bool fallbackToCreation = Parameters.TryGetValue("FallbackToCreationDate", out var fVal) && ParameterHelper.GetBoolean(fVal, true);
+        bool fallbackToCreation = GetParameter("FallbackToCreationDate", false);
         var storage = context.GetStorage();
 
         var sw = System.Diagnostics.Stopwatch.StartNew();

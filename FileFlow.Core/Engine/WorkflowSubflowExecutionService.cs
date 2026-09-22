@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Text.Json;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Services;
@@ -12,7 +10,6 @@ namespace FileFlow.Core.Engine;
 public sealed class WorkflowSubflowExecutionService : ISubflowExecutionService
 {
     private readonly PluginLoader _loader;
-    private readonly ConcurrentDictionary<string, WorkflowGraph> _graphCache = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkflowSubflowExecutionService(PluginLoader? loader = null)
     {
@@ -96,108 +93,25 @@ public sealed class WorkflowSubflowExecutionService : ISubflowExecutionService
             entryInputPortName: inputPortName).ConfigureAwait(false);
     }
 
-    public (List<string> Inputs, List<string> Outputs) DiscoverSubflowPorts(ISubflowNode subflowNode)
-    {
-        try
-        {
-            var graph = ResolveGraph(subflowNode, null, null);
-            if (graph == null || graph.Nodes.Count == 0)
-            {
-                return (["In"], ["Out"]);
-            }
-
-            var inputs = new List<string>();
-            var outputs = new List<string>();
-
-            foreach (var node in graph.Nodes)
-            {
-                if (node.NodeTypeName.Contains("SubflowInputNode", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (node.Parameters.TryGetValue("PortNames", out var val) && val != null)
-                    {
-                        var parts = val.ToString()!.Split([';', ',', '|'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                        inputs.AddRange(parts);
-                    }
-                    else
-                    {
-                        inputs.Add("In");
-                    }
-                }
-                else if (node.NodeTypeName.Contains("SubflowOutputNode", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (node.Parameters.TryGetValue("PortNames", out var val) && val != null)
-                    {
-                        var parts = val.ToString()!.Split([';', ',', '|'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                        outputs.AddRange(parts);
-                    }
-                    else
-                    {
-                        outputs.Add("Out");
-                    }
-                }
-            }
-
-            if (inputs.Count == 0) inputs.Add("In");
-            if (outputs.Count == 0) outputs.Add("Out");
-
-            return (inputs.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-                    outputs.Distinct(StringComparer.OrdinalIgnoreCase).ToList());
-        }
-        catch
-        {
-            return (["In"], ["Out"]);
-        }
-    }
+    /// <summary>
+    /// Puertos frontera del subflujo del nodo. La regla vive en <see cref="SubflowPortResolver"/>, que es
+    /// también la que usa el editor en tiempo de diseño: el motor y el lienzo no pueden discrepar sobre
+    /// qué puertos expone un subflujo.
+    /// </summary>
+    public (List<string> Inputs, List<string> Outputs) DiscoverSubflowPorts(ISubflowNode subflowNode) =>
+        SubflowPortResolver.Discover(subflowNode);
 
     private WorkflowGraph? ResolveGraph(ISubflowNode subflowNode, IFlowExecutionContext? context, FileItemContext? item)
     {
-        if (subflowNode.EmbedDefinition && !string.IsNullOrWhiteSpace(subflowNode.SubflowDefinitionJson))
+        var graph = SubflowPortResolver.ResolveGraph(subflowNode);
+
+        // El servicio sí avisa en el registro de ejecución cuando la definición no se pudo resolver; el
+        // resolutor devuelve null en silencio porque el editor pregunta sin contexto de ejecución.
+        if (graph == null && context != null && !string.IsNullOrWhiteSpace(subflowNode.SubflowPath))
         {
-            return WorkflowGraph.FromJson(subflowNode.SubflowDefinitionJson);
+            context.Log($"[Subflow] Archivo de subflujo no encontrado: '{subflowNode.SubflowPath}'", LogLevel.Warning, item);
         }
 
-        if (!string.IsNullOrWhiteSpace(subflowNode.SubflowDefinitionJson))
-        {
-            try
-            {
-                return WorkflowGraph.FromJson(subflowNode.SubflowDefinitionJson);
-            }
-            catch { }
-        }
-
-        if (!string.IsNullOrWhiteSpace(subflowNode.SubflowPath))
-        {
-            string resolvedPath = subflowNode.SubflowPath;
-
-            if (!File.Exists(resolvedPath))
-            {
-                // Buscar relativo al directorio base o AppData
-                string candidate = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, subflowNode.SubflowPath);
-                if (File.Exists(candidate))
-                {
-                    resolvedPath = candidate;
-                }
-                else
-                {
-                    string subflowDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Subflows", subflowNode.SubflowPath);
-                    if (File.Exists(subflowDir))
-                    {
-                        resolvedPath = subflowDir;
-                    }
-                }
-            }
-
-            if (File.Exists(resolvedPath))
-            {
-                string json = File.ReadAllText(resolvedPath);
-                return WorkflowGraph.FromJson(json);
-            }
-            else if (context != null)
-            {
-                context.Log($"[Subflow] Archivo de subflujo no encontrado: '{subflowNode.SubflowPath}'", LogLevel.Warning, item);
-            }
-        }
-
-        return null;
+        return graph;
     }
 }

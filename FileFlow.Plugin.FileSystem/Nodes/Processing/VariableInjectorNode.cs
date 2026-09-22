@@ -6,34 +6,34 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("VariableInjectorNode_Name", "Integrations", "VariableInjectorNode_Desc", PipelineRole.Control,
     "variables", "inyectar", "tokens", "metadata", "clave", "valor", "inject")]
-public sealed class VariableInjectorNode : IFlowNode
+public sealed class VariableInjectorNode : FlowNodeBase
 {
     private readonly Lock _lock = new();
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Variable Injector");
-    public string Category => "Integrations";
-    public string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calculates and injects dynamic custom variables into item metadata for downstream nodes.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public override string Name => LocalizationManager.Instance.GetString("VariableInjectorNode_Name", "Variable Injector");
+    public override string Category => "Integrations";
+    public override string Description => LocalizationManager.Instance.GetString("VariableInjectorNode_Desc", "Calculates and injects dynamic custom variables into item metadata for downstream nodes.");
+
+    public VariableInjectorNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["CustomCategory"] = "{FileNameNoExt}_processed"
-    };
+        Parameters["CustomCategory"] = "{FileNameNoExt}_processed";
+    }
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("AddVariable", "➕ Variable", "➕", "Añadir nueva variable personalizada")
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,

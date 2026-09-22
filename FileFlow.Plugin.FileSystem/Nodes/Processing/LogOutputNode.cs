@@ -7,33 +7,32 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("LogOutputNode_Name", "Integrations", "LogOutputNode_Desc", PipelineRole.Control,
     "log", "consola", "mensaje", "registro", "diagnostico", "telemetria", "print")]
-public sealed class LogOutputNode : IFlowNode
+public sealed class LogOutputNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("LogOutputNode_Name", "Log Inspector");
-    public string Category => "Integrations";
-    public string Description => LocalizationManager.Instance.GetString("LogOutputNode_Desc", "Logs detailed context, metadata, tags, and history of incoming items to console.");
+    public override string Name => LocalizationManager.Instance.GetString("LogOutputNode_Name", "Log Inspector");
+    public override string Category => "Integrations";
+    public override string Description => LocalizationManager.Instance.GetString("LogOutputNode_Desc", "Logs detailed context, metadata, tags, and history of incoming items to console.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public LogOutputNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["CustomMessage"] = string.Empty,
-        ["LogLevel"] = "Information",
-        ["LogMetadata"] = true,
-        ["LogExecutionHistory"] = true,
-        ["CompactFormat"] = false
-    };
+        Parameters["CustomMessage"] = string.Empty;
+        Parameters["LogLevel"] = "Information";
+        Parameters["LogMetadata"] = true;
+        Parameters["LogExecutionHistory"] = true;
+        Parameters["CompactFormat"] = false;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("CustomMessage", ParameterEditorType.MultiLineText, DefaultValue: string.Empty, DisplayOrder: 1,
             HelpText: "Mensaje personalizado a registrar en el log (admite variables de plantilla {FileName}, {Extension}, {FileSize}, {AI:VlmTags}, etc.). Si se deja vacío, registrará el resumen de inspección estándar."),
         new("LogLevel", ParameterEditorType.Dropdown, DefaultValue: "Information", DisplayOrder: 2,
@@ -52,17 +51,17 @@ public sealed class LogOutputNode : IFlowNode
         WriteIndented = true
     };
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string customMsg = Parameters.TryGetValue("CustomMessage", out var cmVal) ? ParameterHelper.GetString(cmVal, string.Empty) : string.Empty;
-        bool logMetadata = Parameters.TryGetValue("LogMetadata", out var mVal) && ParameterHelper.GetBoolean(mVal, true);
-        bool logHistory = Parameters.TryGetValue("LogExecutionHistory", out var hVal) && ParameterHelper.GetBoolean(hVal, true);
-        bool compactFormat = Parameters.TryGetValue("CompactFormat", out var cVal) && ParameterHelper.GetBoolean(cVal, false);
-        string levelStr = Parameters.TryGetValue("LogLevel", out var lVal) ? ParameterHelper.GetString(lVal, "Information") : "Information";
+        string customMsg = GetParameter("CustomMessage", string.Empty);
+        bool logMetadata = GetParameter("LogMetadata", false);
+        bool logHistory = GetParameter("LogExecutionHistory", false);
+        bool compactFormat = GetParameter("CompactFormat", false);
+        string levelStr = GetParameter("LogLevel", "Information");
 
         if (!Enum.TryParse<LogLevel>(levelStr, true, out var parsedLevel))
         {

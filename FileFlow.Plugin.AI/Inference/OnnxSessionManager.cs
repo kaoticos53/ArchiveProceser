@@ -1,127 +1,85 @@
-using System.Collections.Concurrent;
 using Microsoft.ML.OnnxRuntime;
 
 namespace FileFlow.Plugin.AI.Inference;
 
 /// <summary>
-/// Gestor centralizado y concurrente de sesiones InferenceSession de ONNX Runtime.
-/// Soporta aceleración por hardware con DirectML y fallback automático y resiliente a CPU multihilo
-/// en caso de operadores no compatibles en tiempo de ejecución.
+/// Fachada del almacén de sesiones ONNX de visión y texto: aceleración DirectML con fallback
+/// automático a CPU multihilo para operadores no compatibles en tiempo de ejecución.
+///
+/// <para>
+/// La caché, el evento y el bloqueo de inferencia ya no viven aquí: son responsabilidad de
+/// <see cref="OnnxSessionStore"/>, del que este tipo sólo conserva una instancia por defecto. La API
+/// pública se mantiene intacta para los adaptadores y nodos existentes, pero el evento
+/// <see cref="SessionStateChanged"/> se reexpide desde <see cref="OnnxSessionRegistry"/>, de modo que
+/// sus observadores reciben también los cambios de los almacenes de audio y embeddings.
+/// </para>
 /// </summary>
 public static class OnnxSessionManager
 {
-    private static readonly ConcurrentDictionary<string, Lazy<InferenceSession>> _sessionCache = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Lock _inferenceLock = new();
-
     /// <summary>
-    /// Evento notificado globalmente cuando una sesión ONNX se carga o descarga de la memoria.
+    /// Almacén compartido por los motores de visión y texto. Se registra en el constructor estático
+    /// para que el registro global pueda contarlo y liberarlo.
     /// </summary>
-    public static event Action? SessionStateChanged;
+    internal static readonly OnnxSessionStore Default = new(
+        "Vision",
+        CreateVisionSession,
+        accelerationProbe: ShouldUseDirectMl,
+        cpuFallbackFactory: OnnxSessionFactory.CreateCpuSession,
+        releaseRetainedResources: ReleaseRetainedImageResources);
 
-    /// <summary>
-    /// Bloqueo global de inferencia para sincronizar ejecuciones de tensores en modelos no reentrantes.
-    /// </summary>
-    public static Lock InferenceLock => _inferenceLock;
-
-    /// <summary>
-    /// Indica si la sesión ONNX del modelo especificado se encuentra actualmente cargada en memoria.
-    /// </summary>
-    public static bool IsSessionLoaded(string modelPath)
+    static OnnxSessionManager()
     {
-        if (string.IsNullOrWhiteSpace(modelPath)) return false;
-        return _sessionCache.TryGetValue(modelPath, out var lazy) && lazy.IsValueCreated;
+        OnnxSessionRegistry.Register(Default);
     }
 
     /// <summary>
-    /// Obtiene el número de sesiones ONNX activas cargadas en memoria.
+    /// Evento único de estado de sesiones del plugin. Se conserva como alias del registro para no
+    /// romper la API previa de los nodos y adaptadores.
     /// </summary>
-    public static int GetLoadedSessionCount()
+    public static event Action? SessionStateChanged
     {
-        return _sessionCache.Values.Count(lazy => lazy.IsValueCreated);
+        add => OnnxSessionRegistry.SessionStateChanged += value;
+        remove => OnnxSessionRegistry.SessionStateChanged -= value;
     }
+
+    /// <summary>Bloqueo compartido de inferencia del almacén por defecto.</summary>
+    public static Lock InferenceLock => Default.InferenceLock;
+
+    /// <summary>Indica si la sesión ONNX del modelo está materializada en el almacén por defecto.</summary>
+    public static bool IsSessionLoaded(string modelPath) => Default.IsSessionLoaded(modelPath);
+
+    /// <summary>Número de sesiones materializadas en el almacén por defecto.</summary>
+    public static int GetLoadedSessionCount() => Default.GetLoadedSessionCount();
+
+    /// <summary>Rutas de los modelos materializados en el almacén por defecto.</summary>
+    public static IReadOnlyList<string> GetLoadedModelPaths() => Default.GetLoadedModelPaths();
+
+    /// <summary>Descarga y libera deterministamente la sesión del modelo.</summary>
+    public static bool UnloadSession(string modelPath) => Default.UnloadSession(modelPath);
 
     /// <summary>
-    /// Obtiene la lista de rutas de modelos actualmente cargados en memoria.
+    /// Obtiene o materializa la sesión del modelo aplicando aceleración GPU DirectML a los modelos
+    /// pesados compatibles y CPU multihilo al resto.
     /// </summary>
-    public static IReadOnlyList<string> GetLoadedModelPaths()
-    {
-        return _sessionCache.Where(kv => kv.Value.IsValueCreated).Select(kv => kv.Key).ToList();
-    }
+    public static InferenceSession GetOrCreateSession(string modelPath) => Default.GetOrCreateSession(modelPath);
 
     /// <summary>
-    /// Descarga y libera deterministamente la sesión ONNX asociada a la ruta de modelo especificada.
+    /// Ejecuta la inferencia serializada, conmutando a CPU si DirectML falla por un operador no
+    /// soportado (Shape/NMS).
     /// </summary>
-    public static bool UnloadSession(string modelPath)
-    {
-        if (string.IsNullOrWhiteSpace(modelPath)) return false;
+    public static IDisposableReadOnlyCollection<DisposableNamedOnnxValue> RunInference(
+        string modelPath,
+        IReadOnlyList<NamedOnnxValue> inputs)
+        => Default.RunInference(modelPath, inputs);
 
-        if (_sessionCache.TryRemove(modelPath, out var lazy))
-        {
-            if (lazy.IsValueCreated)
-            {
-                try { lazy.Value.Dispose(); } catch { }
-            }
-            try
-            {
-                SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
-            }
-            catch { }
-            SessionStateChanged?.Invoke();
-            return true;
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Obtiene o inicializa de forma diferida (thread-safe) la sesión ONNX asociada al modelo,
-    /// aplicando aceleración GPU DirectML para modelos pesados compatibles y CPU multihilo para modelos ligeros/heredados.
-    /// </summary>
-    public static InferenceSession GetOrCreateSession(string modelPath)
-    {
-        bool isNew = !_sessionCache.ContainsKey(modelPath);
-        var lazy = _sessionCache.GetOrAdd(modelPath, path => new Lazy<InferenceSession>(() =>
-        {
-            InferenceSession session;
-            if (ShouldUseDirectMl(path))
-            {
-                try
-                {
-                    session = CreateDirectMlSession(path);
-                }
-                catch
-                {
-                    session = CreateCpuSession(path);
-                }
-            }
-            else
-            {
-                session = CreateCpuSession(path);
-            }
-
-            SessionStateChanged?.Invoke();
-            return session;
-        }));
-
-        try
-        {
-            var instance = lazy.Value;
-            if (isNew)
-            {
-                SessionStateChanged?.Invoke();
-            }
-            return instance;
-        }
-        catch
-        {
-            _sessionCache.TryRemove(modelPath, out _);
-            throw;
-        }
-    }
+    /// <summary>Libera todas las sesiones de visión y texto en caché.</summary>
+    public static void ClearSessionCache() => Default.Clear();
 
     /// <summary>
     /// Determina si un modelo debe beneficiarse de aceleración por GPU DirectML.
-    /// Habilita GPU para modelos pesados de visión de convolución pura (Super-Resolución, Remoción de fondos, Matting, etc.)
-    /// y reserva CPU para modelos con grafos complejos, atención dinámica o topologías heredadas.
+    /// Habilita GPU para modelos pesados de visión de convolución pura (Super-Resolución, Remoción de
+    /// fondos, Matting, etc.) y reserva CPU para modelos con grafos complejos, atención dinámica o
+    /// topologías heredadas.
     /// </summary>
     public static bool ShouldUseDirectMl(string modelPath)
     {
@@ -137,100 +95,37 @@ public static class OnnxSessionManager
                fileName.Contains("mobilenetv2", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Crea una sesión configurada con acelerador GPU DirectML (DML).
-    /// </summary>
+    /// <summary>Crea una sesión configurada con acelerador GPU DirectML (DML).</summary>
     public static InferenceSession CreateDirectMlSession(string modelPath)
-    {
-        var dmlOptions = new SessionOptions
-        {
-            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
-            ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
-            InterOpNumThreads = 1,
-            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4),
-            LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR
-        };
-        dmlOptions.AppendExecutionProvider_DML(0);
-        return new InferenceSession(modelPath, dmlOptions);
-    }
+        => OnnxSessionFactory.CreateDirectMlSession(modelPath);
 
-    /// <summary>
-    /// Crea una sesión configurada exclusivamente para ejecución en CPU multihilo.
-    /// </summary>
+    /// <summary>Crea una sesión configurada exclusivamente para ejecución en CPU multihilo.</summary>
     public static InferenceSession CreateCpuSession(string modelPath)
+        => OnnxSessionFactory.CreateCpuSession(modelPath);
+
+    private static InferenceSession CreateVisionSession(string modelPath)
     {
-        var cpuOptions = new SessionOptions
+        if (!ShouldUseDirectMl(modelPath))
         {
-            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
-            ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
-            InterOpNumThreads = 1,
-            IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4),
-            LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR
-        };
-        return new InferenceSession(modelPath, cpuOptions);
-    }
+            return OnnxSessionFactory.CreateCpuSession(modelPath);
+        }
 
-    /// <summary>
-    /// Ejecuta la inferencia de forma segura. Si el proveedor DirectML falla por un operador no soportado (ej. Shape/NMS),
-    /// conmuta automáticamente la sesión del modelo a CPU puro y reejecuta la inferencia sin fallar.
-    /// </summary>
-    public static IDisposableReadOnlyCollection<DisposableNamedOnnxValue> RunInference(string modelPath, IReadOnlyList<NamedOnnxValue> inputs)
-    {
-        var session = GetOrCreateSession(modelPath);
-
-        lock (_inferenceLock)
+        try
         {
-            try
-            {
-                return session.Run(inputs);
-            }
-            catch (Exception ex) when (IsDmlExecutionError(ex))
-            {
-                // Conmutar sesión en caché a CPU puro para este modelo
-                var cpuSession = CreateCpuSession(modelPath);
-                _sessionCache[modelPath] = new Lazy<InferenceSession>(() => cpuSession);
-
-                try
-                {
-                    session.Dispose();
-                }
-                catch { }
-
-                // Reintentar la ejecución en CPU
-                return cpuSession.Run(inputs);
-            }
+            return OnnxSessionFactory.CreateDirectMlSession(modelPath);
+        }
+        catch
+        {
+            return OnnxSessionFactory.CreateCpuSession(modelPath);
         }
     }
 
-    private static bool IsDmlExecutionError(Exception ex)
+    private static void ReleaseRetainedImageResources()
     {
-        string msg = ex.ToString();
-        return msg.Contains("DmlExecutionProvider", StringComparison.OrdinalIgnoreCase) ||
-               msg.Contains("MLOperatorAuthorImpl", StringComparison.OrdinalIgnoreCase) ||
-               msg.Contains("80070057", StringComparison.OrdinalIgnoreCase) ||
-               msg.Contains("DirectML", StringComparison.OrdinalIgnoreCase) ||
-               msg.Contains("node_Shape", StringComparison.OrdinalIgnoreCase) ||
-               (ex is OnnxRuntimeException);
-    }
-
-    /// <summary>
-    /// Libera todas las sesiones ONNX en caché de forma determinista.
-    /// </summary>
-    public static void ClearSessionCache()
-    {
-        foreach (var lazy in _sessionCache.Values)
-        {
-            if (lazy.IsValueCreated)
-            {
-                try { lazy.Value.Dispose(); } catch { }
-            }
-        }
-        _sessionCache.Clear();
         try
         {
             SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
         }
         catch { }
-        SessionStateChanged?.Invoke();
     }
 }

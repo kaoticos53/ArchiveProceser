@@ -7,31 +7,31 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("FolderSourceNode_Name", "Files", "FolderSourceNode_Desc", PipelineRole.Source,
     "carpeta", "directorio", "escanear", "origen", "ingesta", "trigger", "watcher", "realtime", "folder", "files")]
-public sealed class FolderSourceNode : IFlowNode
+public sealed class FolderSourceNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("FolderSourceNode_Name", "Folder Source");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("FolderSourceNode_Desc", "Scans directory tree and emits each file or folder found.");
+    public override string Name => LocalizationManager.Instance.GetString("FolderSourceNode_Name", "Folder Source");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("FolderSourceNode_Desc", "Scans directory tree and emits each file or folder found.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = Array.Empty<NodePort>();
-
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
+    public FolderSourceNode()
     {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    };
+        // Nodo origen: no expone puertos de entrada.
+        Inputs = [];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["SourcePath"] = @"{RelativeDir}\Input",
-        ["ExtensionFilter"] = "",
-        ["Recursive"] = true,
-        ["EmitMode"] = "FilesOnly",
-        ["MaxRecursionDepth"] = -1,
-        ["WatchRealtime"] = false
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        Parameters["SourcePath"] = @"{RelativeDir}\Input";
+        Parameters["ExtensionFilter"] = "";
+        Parameters["Recursive"] = true;
+        Parameters["EmitMode"] = "FilesOnly";
+        Parameters["MaxRecursionDepth"] = -1;
+        Parameters["WatchRealtime"] = false;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("SourcePath", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Input", DisplayOrder: 1),
         new("ExtensionFilter", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 2),
         new("Recursive", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 3),
@@ -40,20 +40,20 @@ public sealed class FolderSourceNode : IFlowNode
         new("WatchRealtime", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string rawSourcePattern = Parameters.TryGetValue("SourcePath", out var val) ? ParameterHelper.GetString(val, @"{RelativeDir}\Input") : @"{RelativeDir}\Input";
+        string rawSourcePattern = GetParameter("SourcePath", @"{RelativeDir}\Input");
         string sourcePath = ParameterHelper.ResolveOutputPath(rawSourcePattern, item);
-        string rawExtFilter = Parameters.TryGetValue("ExtensionFilter", out var extVal) ? ParameterHelper.GetString(extVal, string.Empty) : string.Empty;
+        string rawExtFilter = GetParameter("ExtensionFilter", string.Empty);
         var filterSet = ParseExtensionFilter(rawExtFilter);
-        bool recursive = !Parameters.TryGetValue("Recursive", out var recVal) || ParameterHelper.GetBoolean(recVal, true);
-        string emitMode = Parameters.TryGetValue("EmitMode", out var modeVal) ? ParameterHelper.GetString(modeVal, "FilesOnly") : "FilesOnly";
+        bool recursive = GetParameter("Recursive", true);
+        string emitMode = GetParameter("EmitMode", "FilesOnly");
         
-        int maxDepth = Parameters.TryGetValue("MaxRecursionDepth", out var depthVal) ? ParameterHelper.GetInt32(depthVal, -1) : -1;
+        int maxDepth = GetParameter("MaxRecursionDepth", -1);
 
         if (!recursive)
         {

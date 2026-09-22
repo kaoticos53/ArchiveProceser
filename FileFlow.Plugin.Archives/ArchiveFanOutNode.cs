@@ -12,36 +12,35 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveFanOutNode_Name", "Archives", "ArchiveFanOutNode_Desc", PipelineRole.Source,
     "descomprimir", "fanout", "stream", "extraer", "zip", "rar", "7z", "cbz", "cbr", "cb7", "unpack", "split", "lote")]
-public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
+public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
 {
     private readonly Lock _lock = new();
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Name", "Archive Stream Unpack (Fan-Out)");
-    public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Desc", "Extrae el contenido de un archivo comprimido y emite CADA elemento extraído como un ítem de flujo individual (Fan-Out 1:N).");
+    public override string Name => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Name", "Archive Stream Unpack (Fan-Out)");
+    public override string Category => "Archives";
+    public override string Description => LocalizationManager.Instance.GetString("ArchiveFanOutNode_Desc", "Extrae el contenido de un archivo comprimido y emite CADA elemento extraído como un ítem de flujo individual (Fan-Out 1:N).");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos comprimidos")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos individuales extraídos (Fan-Out)")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new()
+    public ArchiveFanOutNode()
     {
-        ["OutputDirectory"] = "",
-        ["ArchiveFormat"] = "Auto",
-        ["PreserveDirectoryStructure"] = true,
-        ["FilterPattern"] = "*.*",
-        ["PasswordList"] = "",
-        ["PasswordFile"] = ""
-    };
+        Inputs =
+        [
+            new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos comprimidos")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos individuales extraídos (Fan-Out)")
+        ];
+
+        Parameters["OutputDirectory"] = "";
+        Parameters["ArchiveFormat"] = "Auto";
+        Parameters["PreserveDirectoryStructure"] = true;
+        Parameters["FilterPattern"] = "*.*";
+        Parameters["PasswordList"] = "";
+        Parameters["PasswordFile"] = "";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 1),
         new("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "Auto", DisplayOrder: 2, Options: ["Auto", "Zip", "Rar", "7Zip", "Tar", "GZip"]),
@@ -51,7 +50,7 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
         new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 7)
     ];
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions =>
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions =>
     [
         new("ManagePasswords", "🔑 Claves...", "🔑", "Gestionar lista de contraseñas para descompresión de archivos cifrados")
     ];
@@ -76,7 +75,7 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
                     onCompleted = callback;
                 }
 
-                string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+                string currentPasswords = GetParameter("PasswordList", string.Empty);
                 var window = new PasswordManagerWindow(currentPasswords);
 
                 Avalonia.Controls.Window? owner = parentWindow as Avalonia.Controls.Window;
@@ -111,7 +110,7 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
         }
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -123,18 +122,18 @@ public sealed class ArchiveFanOutNode : IFlowNode, INodeCustomActionProvider
         string archiveRelDir = FileFlow.Sdk.TemplateEngine.Resolvers.PathRelativeCalculator.CalculateRelativeDirectory(origArchivePath, sourceRoot);
         string archiveRelFile = FileFlow.Sdk.TemplateEngine.Resolvers.PathRelativeCalculator.CalculateRelativeFilePath(origArchivePath, sourceRoot);
 
-        string workingPattern = Parameters.TryGetValue("WorkingFolder", out var wfVal) ? ParameterHelper.GetString(wfVal, @"{TempDir}\FileFlow_Sessions") : @"{TempDir}\FileFlow_Sessions";
+        string workingPattern = GetParameter("WorkingFolder", @"{TempDir}\FileFlow_Sessions");
         string baseWorkingDir = ParameterHelper.ResolveOutputPath(workingPattern, item);
-        bool cleanWrapper = Parameters.TryGetValue("CleanWrapper", out var cwVal) && ParameterHelper.GetBoolean(cwVal, false);
-        bool deleteOriginal = Parameters.TryGetValue("DeleteOriginalArchive", out var doVal) && ParameterHelper.GetBoolean(doVal, false);
+        bool cleanWrapper = GetParameter("CleanWrapper", false);
+        bool deleteOriginal = GetParameter("DeleteOriginalArchive", false);
         bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
 
-        string engineStr = Parameters.TryGetValue("ExtractionEngine", out var eeVal) ? ParameterHelper.GetString(eeVal, "Auto") : "Auto";
+        string engineStr = GetParameter("ExtractionEngine", "Auto");
         var engine = Enum.TryParse<ArchiveExtractionEngine>(engineStr, true, out var parsedEngine) ? parsedEngine : ArchiveExtractionEngine.Auto;
-        string customSevenZipPath = Parameters.TryGetValue("CustomSevenZipPath", out var szVal) ? ParameterHelper.GetString(szVal, "") : "";
+        string customSevenZipPath = GetParameter("CustomSevenZipPath", "");
 
-        string pwdListParam = Parameters.TryGetValue("PasswordList", out var plVal) ? ParameterHelper.GetString(plVal, "") : "";
-        string pwdFileParam = Parameters.TryGetValue("PasswordFile", out var pfVal) ? ParameterHelper.GetString(pfVal, "") : "";
+        string pwdListParam = GetParameter("PasswordList", "");
+        string pwdFileParam = GetParameter("PasswordFile", "");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var storage = context.GetStorage();

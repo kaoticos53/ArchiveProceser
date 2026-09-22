@@ -9,39 +9,38 @@ namespace FileFlow.Plugin.Logic;
 [NodeDefinition("FileForkNode_Name", "Logic", "FileForkNode_Desc", PipelineRole.Control,
     tags: ["fork", "duplicar", "clonar", "bifurcar", "versiones", "original", "paralelo", "avanzado"],
     SubCategory = "Advanced")]
-public sealed class FileForkNode : IFlowNode
+public sealed class FileForkNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("FileForkNode_Name", "Bifurcador de Flujo (Original vs Actual)");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("FileForkNode_Desc", "Clona el contexto en ramas paralelas independientes para procesar simultáneamente el archivo original y la versión actual procesada (ej. archivar original en NAS y publicar versión optimizada).");
+    public override string Name => LocalizationManager.Instance.GetString("FileForkNode_Name", "Bifurcador de Flujo (Original vs Actual)");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("FileForkNode_Desc", "Clona el contexto en ramas paralelas independientes para procesar simultáneamente el archivo original y la versión actual procesada (ej. archivar original en NAS y publicar versión optimizada).");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public FileForkNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Original", typeof(FileItemContext), PortDirection.Output, "Original"),
-        new NodePort("Current", typeof(FileItemContext), PortDirection.Output, "Current"),
-        new NodePort("Version", typeof(FileItemContext), PortDirection.Output, "Version")
-    };
+        Outputs =
+        [
+            new NodePort("Original", typeof(FileItemContext), PortDirection.Output, "Original"),
+            new NodePort("Current", typeof(FileItemContext), PortDirection.Output, "Current"),
+            new NodePort("Version", typeof(FileItemContext), PortDirection.Output, "Version")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["ForkOriginal"] = true,
-        ["ForkCurrent"] = true,
-        ["ForkAllVersions"] = false
-    };
+        Parameters["ForkOriginal"] = true;
+        Parameters["ForkCurrent"] = true;
+        Parameters["ForkAllVersions"] = false;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("ForkOriginal", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 1, HelpText: "Emite una copia independiente por el puerto 'Original' restableciendo el archivo activo al original intacto"),
         new("ForkCurrent", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 2, HelpText: "Emite una copia independiente por el puerto 'Current' con el archivo procesado actual"),
         new("ForkAllVersions", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 3, HelpText: "Emite copias adicionales por el puerto 'Version' para cada versión intermedia registrada en el flujo")
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -49,9 +48,9 @@ public sealed class FileForkNode : IFlowNode
     {
         var storage = context.GetStorage();
 
-        bool forkOriginal = Parameters.TryGetValue("ForkOriginal", out var fo) ? ParameterHelper.GetBoolean(fo, true) : true;
-        bool forkCurrent = Parameters.TryGetValue("ForkCurrent", out var fc) ? ParameterHelper.GetBoolean(fc, true) : true;
-        bool forkAllVersions = Parameters.TryGetValue("ForkAllVersions", out var fa) ? ParameterHelper.GetBoolean(fa, false) : false;
+        bool forkOriginal = GetParameter("ForkOriginal", true);
+        bool forkCurrent = GetParameter("ForkCurrent", true);
+        bool forkAllVersions = GetParameter("ForkAllVersions", false);
 
         if (forkOriginal)
         {

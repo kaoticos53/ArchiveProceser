@@ -12,38 +12,38 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("SmartUnpackNode_Name", "Archives", "SmartUnpackNode_Desc", PipelineRole.Source,
     "descomprimir", "extraer", "zip", "rar", "7z", "tar", "cbz", "cbr", "cb7", "unpack", "extract", "comprimido")]
-public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
+public sealed class SmartUnpackNode : FlowNodeBase, INodeCustomActionProvider
 {
     private readonly Lock _lock = new();
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SmartUnpackNode_Name", "Smart Unpack");
-    public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("SmartUnpackNode_Desc", "Extrae archivos comprimidos eliminando carpetas redundantes y resolviendo contraseñas automáticamente.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos comprimidos de entrada")
-    ];
+    public override string Name => LocalizationManager.Instance.GetString("SmartUnpackNode_Name", "Smart Unpack");
+    public override string Category => "Archives";
+    public override string Description => LocalizationManager.Instance.GetString("SmartUnpackNode_Desc", "Extrae archivos comprimidos eliminando carpetas redundantes y resolviendo contraseñas automáticamente.");
 
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos extraídos"),
-        new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos con error de descompresión")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new()
+    public SmartUnpackNode()
     {
-        ["OutputDirectory"] = "",
-        ["ArchiveFormat"] = "Auto",
-        ["PreserveDirectoryStructure"] = true,
-        ["FilterPattern"] = "*.*",
-        ["PasswordList"] = "",
-        ["CleanRedundantFolder"] = true,
-        ["DeleteArchiveAfterExtraction"] = false,
-        ["PasswordFile"] = ""
-    };
+        Inputs =
+        [
+            new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos comprimidos de entrada")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos extraídos"),
+            new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos con error de descompresión")
+        ];
+
+        Parameters["OutputDirectory"] = "";
+        Parameters["ArchiveFormat"] = "Auto";
+        Parameters["PreserveDirectoryStructure"] = true;
+        Parameters["FilterPattern"] = "*.*";
+        Parameters["PasswordList"] = "";
+        Parameters["CleanRedundantFolder"] = true;
+        Parameters["DeleteArchiveAfterExtraction"] = false;
+        Parameters["PasswordFile"] = "";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "", DisplayOrder: 1),
         new("ArchiveFormat", ParameterEditorType.Dropdown, DefaultValue: "Auto", DisplayOrder: 2, Options: ["Auto", "Zip", "Rar", "7Zip", "Tar", "GZip"]),
@@ -55,7 +55,7 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         new("PasswordFile", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 8)
     ];
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("ManagePasswords", "🔑 Claves...", "🔑", "Gestionar lista de contraseñas para descompresión de archivos cifrados")
     ];
 
@@ -79,7 +79,7 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
                     onCompleted = callback;
                 }
 
-                string currentPasswords = Parameters.TryGetValue("PasswordList", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+                string currentPasswords = GetParameter("PasswordList", string.Empty);
                 var window = new PasswordManagerWindow(currentPasswords);
 
                 Avalonia.Controls.Window? owner = parentWindow as Avalonia.Controls.Window;
@@ -114,26 +114,26 @@ public sealed class SmartUnpackNode : IFlowNode, INodeCustomActionProvider
         }
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
         string archivePath = item.CurrentPath;
-        string destPattern = Parameters.TryGetValue("DestinationFolder", out var val) ? ParameterHelper.GetString(val, @"{RelativeDir}\Unpacked") : @"{RelativeDir}\Unpacked";
+        string destPattern = GetParameter("DestinationFolder", @"{RelativeDir}\Unpacked");
         string destFolder = ParameterHelper.ResolveOutputPath(destPattern, item);
-        bool cleanWrapper = Parameters.TryGetValue("CleanWrapper", out var cwVal) ? ParameterHelper.GetBoolean(cwVal, true) : true;
-        bool autoDelete = Parameters.TryGetValue("AutoDeleteAfterExtraction", out var adVal) && ParameterHelper.GetBoolean(adVal, false);
-        bool recursiveUnpack = !Parameters.TryGetValue("RecursiveUnpack", out var ruVal) || ParameterHelper.GetBoolean(ruVal, true);
+        bool cleanWrapper = GetParameter("CleanWrapper", true);
+        bool autoDelete = GetParameter("AutoDeleteAfterExtraction", false);
+        bool recursiveUnpack = GetParameter("RecursiveUnpack", true);
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
-        string engineStr = Parameters.TryGetValue("ExtractionEngine", out var eeVal) ? ParameterHelper.GetString(eeVal, "Auto") : "Auto";
+        string engineStr = GetParameter("ExtractionEngine", "Auto");
         var engine = Enum.TryParse<ArchiveExtractionEngine>(engineStr, true, out var parsedEngine) ? parsedEngine : ArchiveExtractionEngine.Auto;
-        string customSevenZipPath = Parameters.TryGetValue("CustomSevenZipPath", out var szVal) ? ParameterHelper.GetString(szVal, "") : "";
+        string customSevenZipPath = GetParameter("CustomSevenZipPath", "");
 
-        string pwdListParam = Parameters.TryGetValue("PasswordList", out var plVal) ? ParameterHelper.GetString(plVal, "") : "";
-        string pwdFileParam = Parameters.TryGetValue("PasswordFile", out var pfVal) ? ParameterHelper.GetString(pfVal, "") : "";
+        string pwdListParam = GetParameter("PasswordList", "");
+        string pwdFileParam = GetParameter("PasswordFile", "");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var storage = context.GetStorage();

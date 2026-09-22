@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using FileFlow.App.Messages;
 using FileFlow.App.Services;
+using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 
@@ -17,6 +18,7 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     private bool _disposed;
     private readonly IFlowNode _nodeInstance;
     private readonly NodeParameterManager _parameterManager;
+    private readonly IPortTopologyNode? _portTopologyNode;
 
     [ObservableProperty]
     private string _id = Guid.NewGuid().ToString();
@@ -448,6 +450,14 @@ public partial class NodeViewModel : ObservableObject, IDisposable
             UpdateModelStatus();
         }
 
+        // Los puertos del lienzo son una proyección de los del nodo: se reconstruyen cuando el nodo anuncia
+        // que su topología cambió, en lugar de esperar a que alguien llame a un método de sincronización.
+        if (node is IPortTopologyNode portTopology)
+        {
+            _portTopologyNode = portTopology;
+            portTopology.PortsChanged += OnPortsChanged;
+        }
+
         LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
     }
 
@@ -482,49 +492,99 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Redescubre los puertos frontera del subgrafo y los aplica al nodo. No reconcilia aquí: al cambiar la
+    /// topología el nodo lo anuncia y el manejador reconstruye los puertos del lienzo, de modo que este
+    /// método y cualquier otro camino que cambie los puertos acaban en el mismo sitio.
+    ///
+    /// El descubrimiento es el del <see cref="SubflowPortResolver"/> y no el del servicio global de
+    /// subflujos: ese servicio sólo existe mientras corre una ejecución, así que en el editor devolvía los
+    /// puertos genéricos y este método <i>borraba</i> los puertos configurados del contenedor.
+    /// </summary>
     public void SyncSubflowPorts()
     {
         if (_nodeInstance is ISubflowNode subflowNode)
         {
-            var (inputs, outputs) = FileFlow.Sdk.Services.ISubflowExecutionService.Instance.DiscoverSubflowPorts(subflowNode);
-            subflowNode.RefreshDynamicPorts(inputs, outputs);
+            SubflowPortResolver.Materialize(subflowNode);
+        }
+    }
 
-            var existingInNames = InputPorts.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var newInNames = inputs.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Reconstruye los puertos del lienzo a partir de los que expone el nodo: elimina los que ya no existen,
+    /// añade los nuevos y respeta el orden del nodo. Los puertos que siguen existiendo <b>conservan su
+    /// instancia</b>, porque las conexiones y los casos de un switch apuntan a ella: recrearlos dejaría el
+    /// cable colgando de un puerto fantasma.
+    /// </summary>
+    public void SyncPortsFromNodeInstance()
+    {
+        ReconcilePorts(InputPorts, _nodeInstance.Inputs);
+        ReconcilePorts(OutputPorts, _nodeInstance.Outputs);
+        PruneSwitchCasesWithoutPort();
+    }
 
-            for (int i = InputPorts.Count - 1; i >= 0; i--)
-            {
-                if (!newInNames.Contains(InputPorts[i].Name))
-                {
-                    InputPorts.RemoveAt(i);
-                }
-            }
-            foreach (var inName in inputs)
-            {
-                if (!existingInNames.Contains(inName))
-                {
-                    InputPorts.Add(new PortViewModel(this, inName, inName, PortDirection.Input, typeof(FileItemContext)));
-                }
-            }
+    private void ReconcilePorts(ObservableCollection<PortViewModel> currentPorts, IReadOnlyList<NodePort> declaredPorts)
+    {
+        var declaredNames = declaredPorts.Select(p => p.Name).ToList();
 
-            var existingOutNames = OutputPorts.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var newOutNames = outputs.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            for (int i = OutputPorts.Count - 1; i >= 0; i--)
+        for (int i = currentPorts.Count - 1; i >= 0; i--)
+        {
+            if (!declaredNames.Contains(currentPorts[i].Name, StringComparer.OrdinalIgnoreCase))
             {
-                if (!newOutNames.Contains(OutputPorts[i].Name))
-                {
-                    OutputPorts.RemoveAt(i);
-                }
-            }
-            foreach (var outName in outputs)
-            {
-                if (!existingOutNames.Contains(outName))
-                {
-                    OutputPorts.Add(new PortViewModel(this, outName, outName, PortDirection.Output, typeof(FileItemContext)));
-                }
+                currentPorts.RemoveAt(i);
             }
         }
+
+        // Al llegar al índice i, la colección ya tiene los i primeros puertos en su sitio: un puerto que
+        // sobrevive se mueve si hace falta y los que falten se insertan ahí mismo.
+        for (int i = 0; i < declaredPorts.Count; i++)
+        {
+            var declared = declaredPorts[i];
+            var existing = currentPorts.FirstOrDefault(p => p.Name.Equals(declared.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (existing is null)
+            {
+                currentPorts.Insert(i, new PortViewModel(this, declared.Name, declared.DisplayName, declared.Direction, declared.DataType, declared.Description));
+                continue;
+            }
+
+            existing.DisplayName = declared.DisplayName;
+            existing.DataType = declared.DataType;
+
+            int currentIndex = currentPorts.IndexOf(existing);
+            if (currentIndex != i)
+            {
+                currentPorts.Move(currentIndex, i);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Descarta los casos de switch cuyo puerto ya no existe (por ejemplo, si el nodo se reconstruyó desde
+    /// sus parámetros): un caso sin puerto es una fila del inspector que ya no enruta a ningún sitio.
+    /// </summary>
+    private void PruneSwitchCasesWithoutPort()
+    {
+        if (SwitchCases.Count == 0) return;
+
+        for (int i = SwitchCases.Count - 1; i >= 0; i--)
+        {
+            var caseItem = SwitchCases[i];
+            if (caseItem.Port != null && !OutputPorts.Contains(caseItem.Port))
+            {
+                caseItem.Port = null;
+                SwitchCases.RemoveAt(i);
+            }
+        }
+    }
+
+    /// <summary>
+    /// El nodo anuncia que sus puertos cambiaron: se reconstruye la tarjeta y el lienzo revalida sus cables,
+    /// porque los que apunten a un puerto que ya no existe no pueden sobrevivir.
+    /// </summary>
+    private void OnPortsChanged(object? sender, PortTopologyChangedEventArgs e)
+    {
+        SyncPortsFromNodeInstance();
+        ParentEditor?.RevalidateConnections(this);
     }
 
     public void SyncParametersFromNodeInstance()
@@ -614,6 +674,10 @@ public partial class NodeViewModel : ObservableObject, IDisposable
         if (_nodeInstance is IModelLifecycleNode lifecycleNode)
         {
             lifecycleNode.ModelStatusChanged -= OnModelStatusChanged;
+        }
+        if (_portTopologyNode != null)
+        {
+            _portTopologyNode.PortsChanged -= OnPortsChanged;
         }
         _parameterManager.Dispose();
         InputSnapshots.Clear();

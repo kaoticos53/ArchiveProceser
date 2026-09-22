@@ -8,43 +8,42 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("SwitchActiveFileNode_Name", "Logic", "SwitchActiveFileNode_Desc", PipelineRole.Control,
     "switch", "cambiar", "activar", "version", "original", "intercambiar")]
-public sealed class SwitchActiveFileNode : IFlowNode
+public sealed class SwitchActiveFileNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SwitchActiveFileNode_Name", "Cambiar Archivo Activo");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("SwitchActiveFileNode_Desc", "Cambia el archivo activo del contexto (CurrentPath) por el archivo original o una versión registrada, con opción de eliminar el archivo intermedio actual.");
+    public override string Name => LocalizationManager.Instance.GetString("SwitchActiveFileNode_Name", "Cambiar Archivo Activo");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("SwitchActiveFileNode_Desc", "Cambia el archivo activo del contexto (CurrentPath) por el archivo original o una versión registrada, con opción de eliminar el archivo intermedio actual.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public SwitchActiveFileNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out)
-    };
+        Outputs =
+        [
+            new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out)
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["TargetFile"] = "{OriginalPath}",
-        ["DeleteCurrentFileFirst"] = false
-    };
+        Parameters["TargetFile"] = "{OriginalPath}";
+        Parameters["DeleteCurrentFileFirst"] = false;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("TargetFile", ParameterEditorType.FileVersionSelector, DefaultValue: "{OriginalPath}", DisplayOrder: 1, HelpText: "Versión del archivo a establecer como activa (ej. Original, Actual o versiones intermedias upstream)"),
         new("DeleteCurrentFileFirst", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 2, HelpText: "Elimina el archivo intermedio actual antes de cambiar (nunca elimina el archivo original inmutable)")
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
-        string targetPattern = Parameters.TryGetValue("TargetFile", out var tf) ? ParameterHelper.GetString(tf, "{OriginalPath}") : "{OriginalPath}";
-        bool deleteCurrentFirst = Parameters.TryGetValue("DeleteCurrentFileFirst", out var dc) ? ParameterHelper.GetBoolean(dc, false) : false;
+        string targetPattern = GetParameter("TargetFile", "{OriginalPath}");
+        bool deleteCurrentFirst = GetParameter("DeleteCurrentFileFirst", false);
 
         string previousPath = item.CurrentPath;
         string targetPath = await ResolveVersionOrPathAsync(storage, targetPattern, item, cancellationToken).ConfigureAwait(false);

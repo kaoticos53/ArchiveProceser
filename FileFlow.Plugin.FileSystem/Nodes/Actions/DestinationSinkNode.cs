@@ -7,36 +7,35 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("DestinationSinkNode_Name", "Files", "DestinationSinkNode_Desc", PipelineRole.Sink,
     "destino", "guardar", "mover", "escribir", "consolidar", "salida", "output", "sink", "destination")]
-public sealed class DestinationSinkNode : IFlowNode
+public sealed class DestinationSinkNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("DestinationSinkNode_Name", "Destination Sink");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("DestinationSinkNode_Desc", "Writes or moves final processed file to projected target path.");
+    public override string Name => LocalizationManager.Instance.GetString("DestinationSinkNode_Name", "Destination Sink");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("DestinationSinkNode_Desc", "Writes or moves final processed file to projected target path.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public DestinationSinkNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Done", typeof(FileItemContext), PortDirection.Output, "Done"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Done", typeof(FileItemContext), PortDirection.Output, "Done"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["DestinationRoot"] = @"{RelativeDir}\Output",
-        ["ConflictStrategy"] = "RenameIncremental"
-    };
+        Parameters["DestinationRoot"] = @"{RelativeDir}\Output";
+        Parameters["ConflictStrategy"] = "RenameIncremental";
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("DestinationRoot", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Output", DisplayOrder: 1),
         new("ConflictStrategy", ParameterEditorType.Dropdown, DefaultValue: "RenameIncremental", DisplayOrder: 2, Options: ["RenameIncremental", "Overwrite", "Skip", "ThrowError"])
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -44,9 +43,9 @@ public sealed class DestinationSinkNode : IFlowNode
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        string destPattern = Parameters.TryGetValue("DestinationRoot", out var dirVal) ? ParameterHelper.GetString(dirVal, @"{RelativeDir}\Output") : @"{RelativeDir}\Output";
+        string destPattern = GetParameter("DestinationRoot", @"{RelativeDir}\Output");
         string destRoot = ParameterHelper.ResolveOutputPath(destPattern, item);
-        string strategy = Parameters.TryGetValue("ConflictStrategy", out var sVal) ? ParameterHelper.GetString(sVal, "RenameIncremental") : "RenameIncremental";
+        string strategy = GetParameter("ConflictStrategy", "RenameIncremental");
 
         StorageCollisionStrategy collisionStrategy = strategy.ToUpperInvariant() switch
         {

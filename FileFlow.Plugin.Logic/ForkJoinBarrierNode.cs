@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("ForkJoinBarrierNode_Name", "Logic", "ForkJoinBarrierNode_Desc", PipelineRole.Control,
     "fork", "join", "sincronizar", "barrera", "paralelo", "barrier", "merge")]
-public sealed class ForkJoinBarrierNode : IFlowNode
+public sealed class ForkJoinBarrierNode : FlowNodeBase
 {
     private sealed class BarrierState
     {
@@ -17,34 +17,32 @@ public sealed class ForkJoinBarrierNode : IFlowNode
     private readonly ConcurrentDictionary<Guid, BarrierState> _activeBarriers = new();
     private readonly Lock _lock = new();
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ForkJoinBarrierNode_Name", "Barrera de Sincronización (Fork & Join)");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("ForkJoinBarrierNode_Desc", "Bifurca un archivo hacia múltiples ramas paralelas independientes y actúa como barrera de sincronización, esperando a que todas las ramas finalicen su tarea antes de liberar el flujo.");
+    public override string Name => LocalizationManager.Instance.GetString("ForkJoinBarrierNode_Name", "Barrera de Sincronización (Fork & Join)");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("ForkJoinBarrierNode_Desc", "Bifurca un archivo hacia múltiples ramas paralelas independientes y actúa como barrera de sincronización, esperando a que todas las ramas finalicen su tarea antes de liberar el flujo.");
 
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public ForkJoinBarrierNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In"),
-        new NodePort("Branch1_Done", typeof(FileItemContext), PortDirection.Input, "Branch1_Done"),
-        new NodePort("Branch2_Done", typeof(FileItemContext), PortDirection.Input, "Branch2_Done")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In"),
+            new NodePort("Branch1_Done", typeof(FileItemContext), PortDirection.Input, "Branch1_Done"),
+            new NodePort("Branch2_Done", typeof(FileItemContext), PortDirection.Input, "Branch2_Done")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Fork1", typeof(FileItemContext), PortDirection.Output, "Fork1"),
-        new NodePort("Fork2", typeof(FileItemContext), PortDirection.Output, "Fork2"),
-        new NodePort("AllCompleted", typeof(FileItemContext), PortDirection.Output, "AllCompleted")
-    };
+        Outputs =
+        [
+            new NodePort("Fork1", typeof(FileItemContext), PortDirection.Output, "Fork1"),
+            new NodePort("Fork2", typeof(FileItemContext), PortDirection.Output, "Fork2"),
+            new NodePort("AllCompleted", typeof(FileItemContext), PortDirection.Output, "AllCompleted")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["RequiredBranchesCount"] = 2
-    };
+        Parameters["RequiredBranchesCount"] = 2;
+    }
 
     private string? _lastExecutionId;
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -56,7 +54,7 @@ public sealed class ForkJoinBarrierNode : IFlowNode
             _activeBarriers.Clear();
         }
 
-        int requiredBranches = Parameters.TryGetValue("RequiredBranchesCount", out var rVal) ? ParameterHelper.GetInt32(rVal, 2) : 2;
+        int requiredBranches = GetParameter("RequiredBranchesCount", 2);
 
         if (inputPortName.Equals("In", StringComparison.OrdinalIgnoreCase))
         {

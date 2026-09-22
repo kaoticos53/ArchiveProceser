@@ -11,36 +11,35 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("SqliteDatabaseSinkNode_Name", "Data", "SqliteDatabaseSinkNode_Desc", PipelineRole.Sink,
     "sqlite", "sql", "base de datos", "db", "guardar", "insertar", "auditoria")]
-public sealed class SqliteDatabaseSinkNode : IFlowNode
+public sealed class SqliteDatabaseSinkNode : FlowNodeBase
 {
     private static readonly Lock _initLock = new();
     private static readonly ConcurrentDictionary<string, bool> _initializedDbs = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Regex _validTableNameRegex = new(@"^[a-zA-Z_]\w{0,127}$", RegexOptions.Compiled);
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Name", "Registro de Auditoría SQLite");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Desc", "Inserta un registro histórico y de auditoría en una base de datos SQLite con los metadatos y trazabilidad de cada archivo procesado.");
+    public override string Name => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Name", "Registro de Auditoría SQLite");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("SqliteDatabaseSinkNode_Desc", "Inserta un registro histórico y de auditoría en una base de datos SQLite con los metadatos y trazabilidad de cada archivo procesado.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public SqliteDatabaseSinkNode()
     {
-        ["DatabasePath"] = @"{GlobalOutputDir}\fileflow_audit.db",
-        ["TableName"] = "FileProcessingLog",
-        ["AutoCreateTable"] = true,
-        ["StoreMetadataAsJson"] = true
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
+
+        Parameters["DatabasePath"] = @"{GlobalOutputDir}\fileflow_audit.db";
+        Parameters["TableName"] = "FileProcessingLog";
+        Parameters["AutoCreateTable"] = true;
+        Parameters["StoreMetadataAsJson"] = true;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("DatabasePath", ParameterEditorType.FilePath, DefaultValue: @"{GlobalOutputDir}\fileflow_audit.db", DisplayOrder: 1),
         new("TableName", ParameterEditorType.Text, DefaultValue: "FileProcessingLog", DisplayOrder: 2),
@@ -48,9 +47,9 @@ public sealed class SqliteDatabaseSinkNode : IFlowNode
         new("StoreMetadataAsJson", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        string dbPath = Parameters.TryGetValue("DatabasePath", out var dp) ? dp?.ToString() ?? string.Empty : string.Empty;
+        string dbPath = GetParameter("DatabasePath", string.Empty);
         dbPath = Environment.ExpandEnvironmentVariables(dbPath);
 
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
@@ -70,7 +69,7 @@ public sealed class SqliteDatabaseSinkNode : IFlowNode
             await storage.CreateDirectoryAsync(dir, cancellationToken).ConfigureAwait(false);
         }
 
-        string tableName = Parameters.TryGetValue("TableName", out var tn) ? tn?.ToString() ?? "FileProcessingLog" : "FileProcessingLog";
+        string tableName = GetParameter("TableName", "FileProcessingLog");
         if (string.IsNullOrWhiteSpace(tableName)) tableName = "FileProcessingLog";
 
         // CRIT-01: Validación estricta del nombre de tabla para prevenir inyección SQL
@@ -81,8 +80,8 @@ public sealed class SqliteDatabaseSinkNode : IFlowNode
             return;
         }
 
-        bool autoCreate = Parameters.TryGetValue("AutoCreateTable", out var ac) && ParameterHelper.GetBoolean(ac, true);
-        bool storeMetadata = Parameters.TryGetValue("StoreMetadataAsJson", out var sm) && ParameterHelper.GetBoolean(sm, true);
+        bool autoCreate = GetParameter("AutoCreateTable", false);
+        bool storeMetadata = GetParameter("StoreMetadataAsJson", false);
 
         string connectionString = new SqliteConnectionStringBuilder
         {

@@ -10,35 +10,33 @@ namespace FileFlow.Plugin.Hashing;
 
 [NodeDefinition("DeduplicationFilterNode_Name", "Security", "DeduplicationFilterNode_Desc", PipelineRole.Filter,
     "duplicados", "deduplicar", "unicos", "repetidos", "checksum", "duplicate", "filter", "hash")]
-public sealed class DeduplicationFilterNode : IFlowNode
+public sealed class DeduplicationFilterNode : FlowNodeBase
 {
     private readonly ConcurrentDictionary<string, string> _seenHashes = new(StringComparer.OrdinalIgnoreCase);
     private string? _lastExecutionId;
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Name", "Filtro de Deduplicación por Hash");
-    public string Category => "Security";
-    public string Description => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Desc", "Compara el hash del contenido para detectar archivos repetidos en el lote actual, separando los archivos originales (Unique) de las copias duplicadas redundantes (Duplicate).");
+    public override string Name => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Name", "Filtro de Deduplicación por Hash");
+    public override string Category => "Security";
+    public override string Description => LocalizationManager.Instance.GetString("DeduplicationFilterNode_Desc", "Compara el hash del contenido para detectar archivos repetidos en el lote actual, separando los archivos originales (Unique) de las copias duplicadas redundantes (Duplicate).");
 
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public DeduplicationFilterNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Unique", typeof(FileItemContext), PortDirection.Output, "Unique"),
-        new NodePort("Duplicate", typeof(FileItemContext), PortDirection.Output, "Duplicate"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Unique", typeof(FileItemContext), PortDirection.Output, "Unique"),
+            new NodePort("Duplicate", typeof(FileItemContext), PortDirection.Output, "Duplicate"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["HashMetadataKey"] = "Hash:SHA256"
-    };
+        Parameters["HashMetadataKey"] = "Hash:SHA256";
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -62,7 +60,7 @@ public sealed class DeduplicationFilterNode : IFlowNode
 
         try
         {
-            string key = Parameters.TryGetValue("HashMetadataKey", out var kVal) ? ParameterHelper.GetString(kVal, WellKnownMetadataKeys.HashSha256) : WellKnownMetadataKeys.HashSha256;
+            string key = GetParameter("HashMetadataKey", WellKnownMetadataKeys.HashSha256);
             string hashValue;
 
             if (item.Metadata.TryGetValue(key, out var hObj) && hObj != null && !string.IsNullOrWhiteSpace(hObj.ToString()))

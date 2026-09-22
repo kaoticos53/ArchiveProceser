@@ -9,35 +9,34 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("FileRelocatorNode_Name", "Files", "FileRelocatorNode_Desc", PipelineRole.Sink,
     "mover", "copiar", "relocate", "move", "copy", "folder", "reubicar")]
-public sealed class FileRelocatorNode : IFlowNode
+public sealed class FileRelocatorNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("FileRelocatorNode_Name", "File Relocator");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("FileRelocatorNode_Desc", "Safely moves or copies files with SHA-256 integrity verification, automatic folder creation, and rollback support.");
+    public override string Name => LocalizationManager.Instance.GetString("FileRelocatorNode_Name", "File Relocator");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("FileRelocatorNode_Desc", "Safely moves or copies files with SHA-256 integrity verification, automatic folder creation, and rollback support.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public FileRelocatorNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["SourcePath"] = "{CurrentPath}",
-        ["Operation"] = "Copy",
-        ["DestinationDirectory"] = @"{SourceDir}\{Year}\{Month}",
-        ["VerifyIntegrity"] = true,
-        ["CreateDirectories"] = true,
-        ["CleanupSource"] = false
-    };
+        Parameters["SourcePath"] = "{CurrentPath}";
+        Parameters["Operation"] = "Copy";
+        Parameters["DestinationDirectory"] = @"{SourceDir}\{Year}\{Month}";
+        Parameters["VerifyIntegrity"] = true;
+        Parameters["CreateDirectories"] = true;
+        Parameters["CleanupSource"] = false;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("SourcePath", ParameterEditorType.FileVersionSelector, DefaultValue: "{CurrentPath}", DisplayOrder: 1),
         new("Operation", ParameterEditorType.Dropdown, DefaultValue: "Copy", DisplayOrder: 2, Options: ["Copy", "Move"]),
         new("DestinationDirectory", ParameterEditorType.FolderPath, DefaultValue: @"{SourceDir}\{Year}\{Month}", DisplayOrder: 3),
@@ -46,7 +45,7 @@ public sealed class FileRelocatorNode : IFlowNode
         new("CleanupSource", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 6)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -54,7 +53,7 @@ public sealed class FileRelocatorNode : IFlowNode
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        string sourcePathPattern = Parameters.TryGetValue("SourcePath", out var spVal) ? ParameterHelper.GetString(spVal, "{CurrentPath}") : "{CurrentPath}";
+        string sourcePathPattern = GetParameter("SourcePath", "{CurrentPath}");
         string resolvedSource = VariableTemplateResolver.Resolve(sourcePathPattern, item);
         string? versionPath = item.GetVersionPath(sourcePathPattern);
         if (!string.IsNullOrWhiteSpace(versionPath))
@@ -79,13 +78,18 @@ public sealed class FileRelocatorNode : IFlowNode
         string operation = "Move";
         try
         {
-            operation = Parameters.TryGetValue("Operation", out var opVal) ? ParameterHelper.GetString(opVal, "Move") : "Move";
-            string destDirTemplate = Parameters.TryGetValue("DestinationDirectory", out var dirVal)
-                ? ParameterHelper.GetString(dirVal, @"{CurrentDir}")
-                : (Parameters.TryGetValue("DestinationFolder", out var dfVal) ? ParameterHelper.GetString(dfVal, @"{CurrentDir}") : @"{CurrentDir}");
-            bool verifyIntegrity = Parameters.TryGetValue("VerifyIntegrity", out var vVal) && ParameterHelper.GetBoolean(vVal, true);
-            bool createDirs = Parameters.TryGetValue("CreateDirectories", out var crVal) && ParameterHelper.GetBoolean(crVal, true);
-            bool cleanupSource = Parameters.TryGetValue("CleanupSource", out var csVal) && ParameterHelper.GetBoolean(csVal, false);
+            operation = GetParameter("Operation", "Move");
+
+            // "DestinationFolder" es el nombre heredado del parámetro y sigue funcionando como respaldo.
+            string destDirTemplate = GetParameter("DestinationDirectory", @"{CurrentDir}");
+            if (string.IsNullOrWhiteSpace(destDirTemplate))
+            {
+                destDirTemplate = GetParameter("DestinationFolder", @"{CurrentDir}");
+            }
+
+            bool verifyIntegrity = GetParameter("VerifyIntegrity", false);
+            bool createDirs = GetParameter("CreateDirectories", false);
+            bool cleanupSource = GetParameter("CleanupSource", false);
 
             string targetDir = VariableTemplateResolver.Resolve(destDirTemplate, item);
             string fileName = CrossPlatformPath.GetFileName(sourcePath);

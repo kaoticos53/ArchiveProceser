@@ -8,34 +8,33 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("CsvExportNode_Name", "Data", "CsvExportNode_Desc", PipelineRole.Sink,
     "csv", "exportar", "guardar", "tabla", "delimitado", "valores")]
-public sealed class CsvExportNode : IFlowNode
+public sealed class CsvExportNode : FlowNodeBase
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("CsvExportNode_Name", "Exportador CSV / TSV");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("CsvExportNode_Desc", "Exporta y acumula los metadatos de cada archivo procesado en un archivo CSV delimitado con formato configurable.");
+    public override string Name => LocalizationManager.Instance.GetString("CsvExportNode_Name", "Exportador CSV / TSV");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("CsvExportNode_Desc", "Exporta y acumula los metadatos de cada archivo procesado en un archivo CSV delimitado con formato configurable.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public CsvExportNode()
     {
-        ["DestinationPath"] = @"{GlobalOutputDir}\export.csv",
-        ["Delimiter"] = ",",
-        ["Columns"] = "FileName, FileSizeBytes, Timestamp",
-        ["AppendMode"] = true
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
+
+        Parameters["DestinationPath"] = @"{GlobalOutputDir}\export.csv";
+        Parameters["Delimiter"] = ",";
+        Parameters["Columns"] = "FileName, FileSizeBytes, Timestamp";
+        Parameters["AppendMode"] = true;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("DestinationPath", ParameterEditorType.FilePath, DefaultValue: @"{GlobalOutputDir}\export.csv", DisplayOrder: 1),
         new("Delimiter", ParameterEditorType.Dropdown, DefaultValue: ",", Options: [",", ";", "\t", "|"], DisplayOrder: 2),
@@ -43,9 +42,9 @@ public sealed class CsvExportNode : IFlowNode
         new("AppendMode", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        string destPath = Parameters.TryGetValue("DestinationPath", out var dp) ? dp?.ToString() ?? string.Empty : string.Empty;
+        string destPath = GetParameter("DestinationPath", string.Empty);
         destPath = Environment.ExpandEnvironmentVariables(destPath);
 
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
@@ -65,15 +64,15 @@ public sealed class CsvExportNode : IFlowNode
             await storage.CreateDirectoryAsync(dir, cancellationToken);
         }
 
-        string delimiter = Parameters.TryGetValue("Delimiter", out var dVal) ? dVal?.ToString() ?? "," : ",";
+        string delimiter = GetParameter("Delimiter", ",");
         if (delimiter == "\\t") delimiter = "\t";
 
-        string colsConfig = Parameters.TryGetValue("Columns", out var cols) ? cols?.ToString() ?? string.Empty : string.Empty;
+        string colsConfig = GetParameter("Columns", string.Empty);
         var selectedCols = string.IsNullOrWhiteSpace(colsConfig)
             ? ["FileName", "CurrentPath", "FileSizeBytes"]
             : colsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        bool appendMode = Parameters.TryGetValue("AppendMode", out var am) && ParameterHelper.GetBoolean(am, true);
+        bool appendMode = GetParameter("AppendMode", false);
 
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try

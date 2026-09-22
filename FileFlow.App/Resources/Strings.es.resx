@@ -218,6 +218,15 @@
   <data name="LogLoadedWorkflow" xml:space="preserve">
     <value>Flujo cargado desde {0}</value>
   </data>
+  <data name="LogDroppedConnection" xml:space="preserve">
+    <value>🔌 No se pudo reconstruir la conexión {0}: {1}</value>
+  </data>
+  <data name="LogDroppedConnectionMissingNode" xml:space="preserve">
+    <value>el nodo '{0}' no está disponible (puede faltar el plugin que lo aporta)</value>
+  </data>
+  <data name="LogDroppedConnectionMissingPort" xml:space="preserve">
+    <value>el nodo '{0}' ya no expone el puerto '{1}'</value>
+  </data>
 
   <!-- Node Names & Descriptions -->
   <data name="FolderSourceNode_Name" xml:space="preserve"><value>Carpeta Origen</value></data>

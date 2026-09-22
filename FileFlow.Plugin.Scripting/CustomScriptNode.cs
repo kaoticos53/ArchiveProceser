@@ -8,35 +8,28 @@ namespace FileFlow.Plugin.Scripting;
 
 [NodeDefinition("CustomScriptNode_Name", "Logic", "CustomScriptNode_Desc", PipelineRole.Control,
     "script", "c#", "csharp", "javascript", "js", "codigo", "programar", "roslyn", "custom", "logica")]
-public sealed class CustomScriptNode : IFlowNode, INodeCustomActionProvider
+public sealed class CustomScriptNode : FlowNodeBase, INodeCustomActionProvider
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("CustomScriptNode_Name", "Script Personalizado (C# / JavaScript)");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("CustomScriptNode_Desc", "Ejecuta lógica a medida en C# (Roslyn) o JavaScript con editor de código, puertos dinámicos configurables y biblioteca de scripts.");
+    public override string Name => LocalizationManager.Instance.GetString("CustomScriptNode_Name", "Script Personalizado (C# / JavaScript)");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("CustomScriptNode_Desc", "Ejecuta lógica a medida en C# (Roslyn) o JavaScript con editor de código, puertos dinámicos configurables y biblioteca de scripts.");
 
-    private List<NodePort> _inputs = [new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")];
-    private List<NodePort> _outputs = [new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")];
-
-    public IReadOnlyList<NodePort> Inputs => _inputs.AsReadOnly();
-    public IReadOnlyList<NodePort> Outputs => _outputs.AsReadOnly();
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    private void SetDefaultParameters()
     {
-        ["Language"] = "CSharp", // "CSharp" o "JavaScript"
-        ["ScriptCode"] = @"// Script en C#
+        Parameters["Language"] = "CSharp"; // "CSharp" o "JavaScript"
+        Parameters["ScriptCode"] = @"// Script en C#
 // Disponibles: Item (o File), Context (o Flow), EmitAsync(port), Log(msg)
 
 Log($""Procesando archivo: {Item.FileName} ({Item.FileSizeBytes} bytes)"");
 Item.Metadata[""ProcesadoPorScript""] = true;
 
-await EmitAsync(""Out"");",
-        ["InputPorts"] = "In",
-        ["OutputPorts"] = "Out",
-        ["TimeoutSeconds"] = 30
-    };
+await EmitAsync(""Out"");";
+        Parameters["InputPorts"] = "In";
+        Parameters["OutputPorts"] = "Out";
+        Parameters["TimeoutSeconds"] = 30;
+    }
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions =>
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions =>
     [
         new(
             "OpenScriptStudio",
@@ -45,7 +38,7 @@ await EmitAsync(""Out"");",
             LocalizationManager.Instance.GetString("ScriptStudio_Tooltip", "Abrir el estudio de programación de scripts con editor de código, plantillas y probador"))
     ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Language", ParameterEditorType.Dropdown, "CSharp", 0, ["CSharp", "JavaScript"], null, null, null, "Lenguaje de programación a ejecutar"),
         new("TimeoutSeconds", ParameterEditorType.Number, 30, 1, null, 1, 300, 1, "Límite de tiempo en segundos por archivo"),
@@ -55,33 +48,46 @@ await EmitAsync(""Out"");",
 
     public CustomScriptNode()
     {
+        SetDefaultParameters();
         SyncPortsFromParameters();
     }
 
+    /// <summary>
+    /// Puertos dinámicos: los define el usuario desde los parámetros InputPorts/OutputPorts. Se asignan con
+    /// los setters protegidos de la base en lugar de sobrescribir las propiedades de puertos.
+    ///
+    /// Este nodo <b>materializa</b> sus puertos (a diferencia de los que los calculan al leerlos), así que
+    /// reevaluar la topología es volver a derivarlos de los parámetros: por eso sobrescribe
+    /// <see cref="FlowNodeBase.RefreshPortTopology"/>. Anunciar sin rederivar dejaría al editor con los
+    /// puertos viejos, que es exactamente el fallo que la notificación viene a evitar.
+    /// </summary>
+    public override void RefreshPortTopology() => SyncPortsFromParameters();
+
     public void SyncPortsFromParameters()
     {
-        string inputsStr = Parameters.TryGetValue("InputPorts", out var inVal) ? ParameterHelper.GetString(inVal, "In") : "In";
-        string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
+        Inputs = ParsePorts(GetParameter("InputPorts", "In"), PortDirection.Input, "In");
+        Outputs = ParsePorts(GetParameter("OutputPorts", "Out"), PortDirection.Output, "Out");
 
-        var inPortNames = inputsStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (inPortNames.Length == 0) inPortNames = ["In"];
-
-        var outPortNames = outputsStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (outPortNames.Length == 0) outPortNames = ["Out"];
-
-        _inputs = inPortNames.Select(name => new NodePort(name, typeof(FileItemContext), PortDirection.Input, name)).ToList();
-        _outputs = outPortNames.Select(name => new NodePort(name, typeof(FileItemContext), PortDirection.Output, name)).ToList();
+        NotifyPortsChanged();
     }
 
-    public async Task ExecuteAsync(
+    private static List<NodePort> ParsePorts(string names, PortDirection direction, string fallback)
+    {
+        string[] portNames = names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (portNames.Length == 0) portNames = [fallback];
+
+        return portNames.Select(name => new NodePort(name, typeof(FileItemContext), direction, name)).ToList();
+    }
+
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string language = Parameters.TryGetValue("Language", out var lVal) ? ParameterHelper.GetString(lVal, "CSharp") : "CSharp";
-        string code = Parameters.TryGetValue("ScriptCode", out var cVal) ? ParameterHelper.GetString(cVal, "") : "";
-        int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 30) : 30;
+        string language = GetParameter("Language", "CSharp");
+        string code = GetParameter("ScriptCode", "");
+        int timeoutSec = GetParameter("TimeoutSeconds", 30);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, timeoutSec)));
@@ -141,10 +147,10 @@ await EmitAsync(""Out"");",
                     onCompleted = callback;
                 }
 
-                string language = Parameters.TryGetValue("Language", out var lVal) ? ParameterHelper.GetString(lVal, "CSharp") : "CSharp";
-                string code = Parameters.TryGetValue("ScriptCode", out var cVal) ? ParameterHelper.GetString(cVal, "") : "";
-                string inputsStr = Parameters.TryGetValue("InputPorts", out var inVal) ? ParameterHelper.GetString(inVal, "In") : "In";
-                string outputsStr = Parameters.TryGetValue("OutputPorts", out var outVal) ? ParameterHelper.GetString(outVal, "Out") : "Out";
+                string language = GetParameter("Language", "CSharp");
+                string code = GetParameter("ScriptCode", "");
+                string inputsStr = GetParameter("InputPorts", "In");
+                string outputsStr = GetParameter("OutputPorts", "Out");
 
                 var window = new ScriptStudioWindow(language, code, inputsStr, outputsStr);
                 Avalonia.Controls.Window? owner = parentWindow as Avalonia.Controls.Window;

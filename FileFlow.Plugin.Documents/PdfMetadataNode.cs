@@ -9,34 +9,33 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfMetadataNode_Name", "Documents", "PdfMetadataNode_Desc", PipelineRole.Analyze,
     "pdf", "metadatos", "autor", "titulo", "asunto", "palabras clave", "metadata")]
-public sealed class PdfMetadataNode : IFlowNode
+public sealed class PdfMetadataNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PdfMetadataNode_Name", "Metadatos de PDF (PDF Metadata)");
-    public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("PdfMetadataNode_Desc", "Inspecciona y actualiza los metadatos de documentos PDF (Título, Autor, Asunto, Palabras Clave).");
+    public override string Name => LocalizationManager.Instance.GetString("PdfMetadataNode_Name", "Metadatos de PDF (PDF Metadata)");
+    public override string Category => "Documents";
+    public override string Description => LocalizationManager.Instance.GetString("PdfMetadataNode_Desc", "Inspecciona y actualiza los metadatos de documentos PDF (Título, Autor, Asunto, Palabras Clave).");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public PdfMetadataNode()
     {
-        ["UpdateMetadata"] = false,
-        ["Title"] = "",
-        ["Author"] = "",
-        ["Subject"] = "",
-        ["Keywords"] = "",
-        ["OutputDirectory"] = "{GlobalOutputDir}"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
+
+        Parameters["UpdateMetadata"] = false;
+        Parameters["Title"] = "";
+        Parameters["Author"] = "";
+        Parameters["Subject"] = "";
+        Parameters["Keywords"] = "";
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("UpdateMetadata", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 1),
         new("Title", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 2),
@@ -46,7 +45,7 @@ public sealed class PdfMetadataNode : IFlowNode
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 6)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -66,7 +65,7 @@ public sealed class PdfMetadataNode : IFlowNode
             return;
         }
 
-        bool update = Parameters.TryGetValue("UpdateMetadata", out var updObj) && ParameterHelper.GetBoolean(updObj, false);
+        bool update = GetParameter("UpdateMetadata", false);
 
         if (!update)
         {
@@ -85,7 +84,7 @@ public sealed class PdfMetadataNode : IFlowNode
         }
 
         // Actualización y exportación
-        string rawOutDir = Parameters.TryGetValue("OutputDirectory", out var outDirObj) ? ParameterHelper.GetString(outDirObj, "{GlobalOutputDir}") : "{GlobalOutputDir}";
+        string rawOutDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
         string outDir = ParameterHelper.ResolveOutputPath(rawOutDir, item);
         if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
         {
@@ -97,21 +96,28 @@ public sealed class PdfMetadataNode : IFlowNode
         await using (var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken))
         using (var pdfDoc = PdfReader.Open(inStream, PdfDocumentOpenMode.Modify))
         {
-            if (Parameters.TryGetValue("Title", out var title) && !string.IsNullOrWhiteSpace(title?.ToString()))
+            string title = GetParameter("Title", string.Empty);
+            if (!string.IsNullOrWhiteSpace(title))
             {
-                pdfDoc.Info.Title = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(title.ToString()!, item);
+                pdfDoc.Info.Title = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(title, item);
             }
-            if (Parameters.TryGetValue("Author", out var author) && !string.IsNullOrWhiteSpace(author?.ToString()))
+
+            string author = GetParameter("Author", string.Empty);
+            if (!string.IsNullOrWhiteSpace(author))
             {
-                pdfDoc.Info.Author = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(author.ToString()!, item);
+                pdfDoc.Info.Author = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(author, item);
             }
-            if (Parameters.TryGetValue("Subject", out var subj) && !string.IsNullOrWhiteSpace(subj?.ToString()))
+
+            string subject = GetParameter("Subject", string.Empty);
+            if (!string.IsNullOrWhiteSpace(subject))
             {
-                pdfDoc.Info.Subject = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(subj.ToString()!, item);
+                pdfDoc.Info.Subject = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(subject, item);
             }
-            if (Parameters.TryGetValue("Keywords", out var kw) && !string.IsNullOrWhiteSpace(kw?.ToString()))
+
+            string keywords = GetParameter("Keywords", string.Empty);
+            if (!string.IsNullOrWhiteSpace(keywords))
             {
-                pdfDoc.Info.Keywords = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(kw.ToString()!, item);
+                pdfDoc.Info.Keywords = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(keywords, item);
             }
 
             await using var outStream = await storage.OpenWriteAsync(destPath, cancellationToken);

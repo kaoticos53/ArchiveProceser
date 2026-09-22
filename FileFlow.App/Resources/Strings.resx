@@ -218,6 +218,15 @@
   <data name="LogLoadedWorkflow" xml:space="preserve">
     <value>Loaded workflow from {0}</value>
   </data>
+  <data name="LogDroppedConnection" xml:space="preserve">
+    <value>🔌 Could not rebuild connection {0}: {1}</value>
+  </data>
+  <data name="LogDroppedConnectionMissingNode" xml:space="preserve">
+    <value>node '{0}' is not available (perhaps its plugin is missing)</value>
+  </data>
+  <data name="LogDroppedConnectionMissingPort" xml:space="preserve">
+    <value>node '{0}' no longer exposes port '{1}'</value>
+  </data>
 
   <!-- Node Names & Descriptions -->
   <data name="FolderSourceNode_Name" xml:space="preserve"><value>Folder Source</value></data>

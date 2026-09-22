@@ -72,10 +72,7 @@ public static class WorkflowGraphSerializer
                 Y = n.Location.Y,
                 HasBreakpoint = n.HasBreakpoint,
                 IsLoggingEnabled = n.IsLoggingEnabled,
-                Parameters = n.Parameters
-                    .Where(p => !string.IsNullOrWhiteSpace(p.Key))
-                    .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase)
+                Parameters = EffectiveParameters(n)
             };
             graph.Nodes.Add(nodeDto);
 
@@ -105,7 +102,52 @@ public static class WorkflowGraphSerializer
         return graph;
     }
 
-    public static void Import(
+    /// <summary>
+    /// Parámetros con los que se guarda un nodo. No son sólo las filas que muestra el inspector: el nodo
+    /// guarda además **estado de diseño que no es un parámetro de usuario** —los casos de un switch, la
+    /// definición incrustada de un subflujo, los puertos que expone un contenedor— y ese estado tiene que
+    /// viajar en el archivo o el flujo reabierto pierde lo que el usuario configuró. La instancia es la
+    /// autoridad para el motor, así que sus valores van al final; es el mismo criterio y el mismo orden que
+    /// usa el portapapeles al copiar un nodo.
+    /// </summary>
+    private static Dictionary<string, object?> EffectiveParameters(NodeViewModel node)
+    {
+        var parameters = node.Parameters
+            .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+            .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
+
+        lock (node.NodeInstance.Parameters)
+        {
+            foreach (var (key, value) in node.NodeInstance.Parameters)
+            {
+                if (!string.IsNullOrWhiteSpace(key) && value != null)
+                {
+                    parameters[key] = value;
+                }
+            }
+        }
+
+        return parameters;
+    }
+
+    /// <summary>
+    /// Reconstruye el grafo en el editor.
+    ///
+    /// El orden importa: primero se vuelcan los parámetros de cada nodo, después se materializan sus
+    /// puertos dinámicos y sólo entonces se emparejan las aristas contra ellos. Las conexiones se
+    /// reconstruyen por nombre de puerto, así que un nodo cuyos puertos todavía no existen —el script con
+    /// puertos declarados, el contenedor de subflujo con su frontera— <b>no coincide con ninguna arista</b>
+    /// y el cable desaparece al reabrir sin que nada avise.
+    ///
+    /// Las aristas se leen <b>ya migradas</b> cuando el archivo es anterior al formato actual: hay huecos
+    /// —los puertos de un contenedor, por ejemplo— que ese archivo no guardaba y que se rellenan con lo que
+    /// él sí conserva, antes de que la materialización los use.
+    ///
+    /// Devuelve lo que <b>no</b> se pudo reconstruir, que es poco para el flujo pero mucho para el usuario:
+    /// un cable descartado en silencio convierte un flujo reabierto en uno incompleto que parece completo.
+    /// </summary>
+    public static WorkflowGraphImportResult Import(
         WorkflowGraph graph,
         PluginLoader pluginLoader,
         EditorViewModel editor,
@@ -115,6 +157,15 @@ public static class WorkflowGraphSerializer
         Action<GroupViewModel>? registerGroupCallback = null)
     {
         Dictionary<string, NodeViewModel> nodeLookup = [];
+
+        // Los nodos tal y como los declara el archivo. Hace falta tenerlos a mano porque un nodo que no se
+        // pudo crear no está en `nodeLookup`, y sin él no habría con qué describir el extremo de un cable
+        // que se descarta.
+        Dictionary<string, WorkflowNode> nodeDtos = new(StringComparer.OrdinalIgnoreCase);
+
+        List<DroppedConnection> droppedConnections = [];
+
+        var migration = WorkflowFormat.Plan(graph);
 
         if (graph.Annotations != null)
         {
@@ -174,6 +225,8 @@ public static class WorkflowGraphSerializer
 
         foreach (var nodeDto in graph.Nodes)
         {
+            nodeDtos[nodeDto.Id] = nodeDto;
+
             IFlowNode? instance = pluginLoader.CreateNodeInstance(nodeDto.NodeTypeName);
             if (instance == null) continue;
 
@@ -182,6 +235,25 @@ public static class WorkflowGraphSerializer
             {
                 instance.Parameters[k] = v;
             }
+
+            // Lo que este archivo no guardaba y ya no está en ningún sitio —los puertos que exponía un
+            // contenedor— se siembra desde las aristas que los nombran antes de materializar: si la
+            // definición del subflujo resuelve, sus puertos la sustituyen; si no resuelve, es lo único que
+            // queda de ellos y sin sembrarla el contenedor volvería a los genéricos y perdería sus cables.
+            // El plan no devuelve nada que recuperar cuando el archivo no lo necesita, así que no hay aquí
+            // ninguna decisión de versión que replicar.
+            if (instance is ISubflowNode container)
+            {
+                var (recoveredInputs, recoveredOutputs) = migration.PortsNamedByEdges(nodeDto.Id);
+                if (recoveredInputs.Count > 0 || recoveredOutputs.Count > 0)
+                {
+                    container.RememberedPorts = (recoveredInputs, recoveredOutputs);
+                }
+            }
+
+            // Antes de construir la tarjeta —y por tanto antes de emparejar cualquier arista—, los puertos
+            // que el nodo deriva de lo que se acaba de volcar en sus parámetros tienen que existir.
+            DynamicPortMaterializer.Materialize(instance);
 
             var nodeVm = new NodeViewModel(instance, new Point(nodeDto.X, nodeDto.Y))
             {
@@ -198,17 +270,92 @@ public static class WorkflowGraphSerializer
 
         foreach (var edgeDto in graph.Edges)
         {
-            if (nodeLookup.TryGetValue(edgeDto.SourceNodeId, out var srcNode) &&
-                nodeLookup.TryGetValue(edgeDto.TargetNodeId, out var targetNode))
+            if (TryConnect(edgeDto, nodeLookup, registerConnectionCallback))
             {
-                var srcPort = srcNode.OutputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.SourcePortName, StringComparison.OrdinalIgnoreCase));
-                var targetPort = targetNode.InputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.TargetPortName, StringComparison.OrdinalIgnoreCase));
-
-                if (srcPort != null && targetPort != null)
-                {
-                    registerConnectionCallback(new ConnectionViewModel(srcPort, targetPort));
-                }
+                continue;
             }
+
+            // La arista se descarta y aquí no se calla: se deja dicho quién era y por qué, para que quien
+            // haya pedido la reconstrucción pueda contárselo al usuario.
+            droppedConnections.Add(new DroppedConnection(
+                DescribeEnd(edgeDto.SourceNodeId, edgeDto.SourcePortName, input: false, nodeLookup, nodeDtos),
+                DescribeEnd(edgeDto.TargetNodeId, edgeDto.TargetPortName, input: true, nodeLookup, nodeDtos)));
         }
+
+        return new WorkflowGraphImportResult(droppedConnections);
+    }
+
+    /// <summary>
+    /// Registra la conexión si los dos puertos existen. Un puerto que no existe no lanza nada: la arista se
+    /// descarta, y contarlo es cosa de quien reconstruye el flujo (ver
+    /// <see cref="WorkflowGraphImportResult"/>).
+    /// </summary>
+    private static bool TryConnect(
+        WorkflowEdge edgeDto,
+        Dictionary<string, NodeViewModel> nodeLookup,
+        Action<ConnectionViewModel> registerConnectionCallback)
+    {
+        if (!nodeLookup.TryGetValue(edgeDto.SourceNodeId, out var srcNode) ||
+            !nodeLookup.TryGetValue(edgeDto.TargetNodeId, out var targetNode))
+        {
+            return false;
+        }
+
+        var srcPort = srcNode.OutputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.SourcePortName, StringComparison.OrdinalIgnoreCase));
+        var targetPort = targetNode.InputPorts.FirstOrDefault(p => p.Name.Equals(edgeDto.TargetPortName, StringComparison.OrdinalIgnoreCase));
+
+        if (srcPort == null || targetPort == null)
+        {
+            return false;
+        }
+
+        registerConnectionCallback(new ConnectionViewModel(srcPort, targetPort));
+        return true;
+    }
+
+    /// <summary>
+    /// Diagnóstico de un extremo de una arista descartada: si su nodo no llegó a crearse, si el nodo está
+    /// pero no expone ese puerto, o nada —porque el problema estaba en el otro extremo—.
+    /// </summary>
+    private static DroppedConnectionEnd DescribeEnd(
+        string nodeId,
+        string portName,
+        bool input,
+        Dictionary<string, NodeViewModel> nodeLookup,
+        Dictionary<string, WorkflowNode> nodeDtos)
+    {
+        if (!nodeLookup.TryGetValue(nodeId, out var nodeVm))
+        {
+            return new DroppedConnectionEnd(
+                nodeId, DescribeUncreatedNode(nodeId, nodeDtos), portName, DroppedConnectionEndProblem.MissingNode);
+        }
+
+        var ports = input ? nodeVm.InputPorts : nodeVm.OutputPorts;
+        bool exposed = ports.Any(port => port.Name.Equals(portName, StringComparison.OrdinalIgnoreCase));
+
+        return new DroppedConnectionEnd(
+            nodeId,
+            nodeVm.Title,
+            portName,
+            exposed ? DroppedConnectionEndProblem.None : DroppedConnectionEndProblem.MissingPort);
+    }
+
+    /// <summary>
+    /// Nombre con el que reconocer un nodo que no se pudo crear: lo que el archivo decía de él. El título que
+    /// el usuario le puso, si lo tenía, y si no su tipo —que es lo que se busca para saber qué plugin falta—.
+    /// </summary>
+    private static string DescribeUncreatedNode(string nodeId, Dictionary<string, WorkflowNode> nodeDtos)
+    {
+        if (!nodeDtos.TryGetValue(nodeId, out var dto))
+        {
+            return nodeId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.CustomTitle))
+        {
+            return dto.CustomTitle;
+        }
+
+        return string.IsNullOrWhiteSpace(dto.NodeTypeName) ? nodeId : dto.NodeTypeName;
     }
 }

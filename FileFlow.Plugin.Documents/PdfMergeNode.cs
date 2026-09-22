@@ -9,36 +9,35 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfMergeNode_Name", "Documents", "PdfMergeNode_Desc", PipelineRole.Transform,
     "pdf", "unir", "fusionar", "juntar", "combinar", "merge", "join")]
-public sealed class PdfMergeNode : IFlowNode
+public sealed class PdfMergeNode : FlowNodeBase
 {
     static PdfMergeNode()
     {
         FileFlowFontResolver.EnsureInitialized();
     }
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PdfMergeNode_Name", "Unir PDFs (PDF Merge)");
-    public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("PdfMergeNode_Desc", "Combina múltiples documentos PDF en un único archivo PDF consolidado.");
+    public override string Name => LocalizationManager.Instance.GetString("PdfMergeNode_Name", "Unir PDFs (PDF Merge)");
+    public override string Category => "Documents";
+    public override string Description => LocalizationManager.Instance.GetString("PdfMergeNode_Desc", "Combina múltiples documentos PDF en un único archivo PDF consolidado.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("PassThrough", typeof(FileItemContext), PortDirection.Output, "PassThrough")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public PdfMergeNode()
     {
-        ["OutputDirectory"] = "{GlobalOutputDir}",
-        ["OutputFileName"] = "Merged_Document.pdf"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("PassThrough", typeof(FileItemContext), PortDirection.Output, "PassThrough")
+        ];
+
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        Parameters["OutputFileName"] = "Merged_Document.pdf";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 1),
         new("OutputFileName", ParameterEditorType.Text, DefaultValue: "Merged_Document.pdf", DisplayOrder: 2)
@@ -48,7 +47,7 @@ public sealed class PdfMergeNode : IFlowNode
     private readonly Lock _lock = new();
     private string? _lastExecutionId;
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -79,7 +78,7 @@ public sealed class PdfMergeNode : IFlowNode
         await context.EmitAsync("PassThrough", item);
     }
 
-    public async Task OnWorkflowCompletedAsync(
+    public override async Task OnWorkflowCompletedAsync(
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
@@ -91,8 +90,8 @@ public sealed class PdfMergeNode : IFlowNode
             _collectedPdfPaths.Clear();
         }
 
-        string outDir = Parameters.TryGetValue("OutputDirectory", out var dVal) ? ParameterHelper.GetString(dVal, "{GlobalOutputDir}") : "{GlobalOutputDir}";
-        string outFileName = Parameters.TryGetValue("OutputFileName", out var fVal) ? ParameterHelper.GetString(fVal, "Merged_Document.pdf") : "Merged_Document.pdf";
+        string outDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
+        string outFileName = GetParameter("OutputFileName", "Merged_Document.pdf");
 
         var dummyItem = new FileItemContext(string.Empty);
         string resolvedDir = ParameterHelper.ResolveOutputPath(outDir, dummyItem);

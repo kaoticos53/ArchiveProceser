@@ -169,9 +169,10 @@ public class WeakModelStatusRelayTests
     }
 
     /// <summary>
-    /// Fuerza el barrido de las suscripciones muertas disparando ambos eventos estáticos: cada relay sólo
-    /// se desuscribe cuando <b>su</b> evento se invoca, y los nodos de audio escuchan el de
-    /// <c>AudioInferenceEngine</c>, que <c>OnnxSessionManager.ClearSessionCache</c> no toca.
+    /// Fuerza el barrido de las suscripciones muertas disparando el estado de sesiones de cada almacén.
+    /// Desde la unificación, ambos accesos reexpiden el mismo evento del <c>OnnxSessionRegistry</c>, así
+    /// que cualquiera de las dos llamadas basta; se conservan las dos para liberar también las sesiones
+    /// reales de cada motor.
     /// </summary>
     private static void SweepBothSessionEvents()
     {

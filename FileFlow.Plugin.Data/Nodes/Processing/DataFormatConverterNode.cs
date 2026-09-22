@@ -10,36 +10,35 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("DataFormatConverterNode_Name", "Data", "DataFormatConverterNode_Desc", PipelineRole.Transform,
     "convertir", "formato", "excel a csv", "csv a json", "json a excel", "transformar", "tabular")]
-public sealed class DataFormatConverterNode : IFlowNode
+public sealed class DataFormatConverterNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("DataFormatConverterNode_Name", "Conversor de Formatos de Datos");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("DataFormatConverterNode_Desc", "Convierte archivos tabulares y estructurados directamente entre formatos Excel (.xlsx), CSV y JSON.");
+    public override string Name => LocalizationManager.Instance.GetString("DataFormatConverterNode_Name", "Conversor de Formatos de Datos");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("DataFormatConverterNode_Desc", "Convierte archivos tabulares y estructurados directamente entre formatos Excel (.xlsx), CSV y JSON.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public DataFormatConverterNode()
     {
-        ["TargetFormat"] = "JSON",
-        ["OutputDirectory"] = "{GlobalOutputDir}"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+        ];
+
+        Parameters["TargetFormat"] = "JSON";
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("TargetFormat", ParameterEditorType.Dropdown, DefaultValue: "JSON", Options: ["JSON", "CSV", "ExcelXlsx"], DisplayOrder: 1),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 2)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         if (string.IsNullOrWhiteSpace(item.CurrentPath) || !await storage.FileExistsAsync(item.CurrentPath, cancellationToken))
@@ -48,7 +47,7 @@ public sealed class DataFormatConverterNode : IFlowNode
             return;
         }
 
-        string outDir = Parameters.TryGetValue("OutputDirectory", out var od) ? od?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+        string outDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
         outDir = Environment.ExpandEnvironmentVariables(outDir);
 
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
@@ -66,7 +65,7 @@ public sealed class DataFormatConverterNode : IFlowNode
             await storage.CreateDirectoryAsync(outDir, cancellationToken);
         }
 
-        string targetFormat = Parameters.TryGetValue("TargetFormat", out var tf) ? tf?.ToString() ?? "JSON" : "JSON";
+        string targetFormat = GetParameter("TargetFormat", "JSON");
         string inputExt = Path.GetExtension(item.CurrentPath).ToLowerInvariant();
         string baseName = Path.GetFileNameWithoutExtension(item.FileName);
 

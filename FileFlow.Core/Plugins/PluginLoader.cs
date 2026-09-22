@@ -153,6 +153,17 @@ public class PluginLoader
                 return;
             }
 
+            // Un ensamblado de pruebas no aporta nodos de producto: sus dobles (FakeFlowNode, MockNode,
+            // FakePortNode…) son tipos concretos que implementan IFlowNode y, sin este filtro, el barrido
+            // del AppDomain los mete en el catálogo —el catálogo de los 12 plugins pasaba de 70 nodos
+            // reales a 78— y aparecerían en el Toolbox del host de pruebas. Un test que de verdad necesite
+            // un nodo-doble en el catálogo lo registra explícitamente con RegisterNodeType<T>().
+            if (IsTestAssembly(asm))
+            {
+                System.Diagnostics.Debug.WriteLine($"[PluginLoader] Skipping test assembly: {asmName}");
+                return;
+            }
+
             // Marcar este ensamblado como ya procesado para que LoadPluginDirectory y ScanCurrentAppDomain lo salten
             lock (_dictLock)
             {
@@ -230,6 +241,25 @@ public class PluginLoader
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Assembly node registration error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Detecta un ensamblado de pruebas por su dependencia de un framework de test (xUnit), no por su
+    /// nombre: así funciona igual con proyectos de integración, de rendimiento o con cualquier nombre que
+    /// se les dé. Ningún plugin del producto referencia un framework de test.
+    /// </summary>
+    private static bool IsTestAssembly(Assembly asm)
+    {
+        try
+        {
+            return asm.GetReferencedAssemblies().Any(reference =>
+                reference.Name?.StartsWith("xunit", StringComparison.OrdinalIgnoreCase) == true);
+        }
+        catch
+        {
+            // Si no se pueden leer las referencias, se trata como ensamblado normal.
+            return false;
         }
     }
 

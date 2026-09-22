@@ -812,10 +812,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         {
             try
             {
-                var graph = await _workflowStorageService.LoadWorkflowAsync(filePath);
-                _editorViewModel.LoadFromGraphModel(graph);
-                WorkflowName = graph.Name;
-                _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("LogLoadedWorkflow", "Flujo cargado desde {0}", filePath));
+                await LoadWorkflowFromFileAsync(filePath);
             }
             catch (Exception ex)
             {
@@ -825,6 +822,64 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Abre un flujo desde disco y deja constancia de lo que no se pudo reconstruir.
+    ///
+    /// Los cables se reconstruyen por nombre de puerto, así que uno cuyo puerto ya no existe se descarta: si
+    /// eso ocurriera sin decirlo, el flujo reabierto parecería completo y ya no lo estaría. Un aviso por
+    /// conexión, con los dos extremos y el motivo, para que se pueda volver a conectar a mano.
+    ///
+    /// Es un método y no parte del comando porque abrir un diálogo no es parte de cargar un flujo: quien
+    /// tenga una ruta ya no necesita pasar por la interfaz.
+    /// </summary>
+    public async Task LoadWorkflowFromFileAsync(string filePath)
+    {
+        var graph = await _workflowStorageService.LoadWorkflowAsync(filePath);
+        var importResult = _editorViewModel.LoadFromGraphModel(graph);
+        WorkflowName = graph.Name;
+        _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("LogLoadedWorkflow", "Flujo cargado desde {0}", filePath));
+
+        LogDroppedConnections(importResult);
+    }
+
+    /// <summary>
+    /// Cuenta las conexiones que no se pudieron reconstruir. El motivo se cuenta por extremo, así que una
+    /// arista que falla por sus dos lados produce dos avisos: cada uno de los dos nodos hay que arreglarlo.
+    /// </summary>
+    private void LogDroppedConnections(WorkflowGraphImportResult importResult)
+    {
+        foreach (var connection in importResult.DroppedConnections)
+        {
+            string endpoints = string.Format(
+                "{0}({1}) → {2}({3})",
+                connection.Source.NodeName, connection.Source.PortName,
+                connection.Target.NodeName, connection.Target.PortName);
+
+            foreach (var impediment in connection.Impediments)
+            {
+                _logViewModel.AddLog(LogLevel.Warning, _loc.GetFormattedString(
+                    "LogDroppedConnection",
+                    "🔌 No se pudo reconstruir la conexión {0}: {1}",
+                    endpoints,
+                    DescribeImpediment(impediment)));
+            }
+        }
+    }
+
+    /// <summary>Por qué un extremo no pudo conectarse, dicho para que se pueda arreglar.</summary>
+    private string DescribeImpediment(DroppedConnectionEnd impediment) => impediment.Problem switch
+    {
+        DroppedConnectionEndProblem.MissingNode => _loc.GetFormattedString(
+            "LogDroppedConnectionMissingNode",
+            "el nodo '{0}' no está disponible (puede faltar el plugin que lo aporta)",
+            impediment.NodeName),
+        _ => _loc.GetFormattedString(
+            "LogDroppedConnectionMissingPort",
+            "el nodo '{0}' ya no expone el puerto '{1}'",
+            impediment.NodeName,
+            impediment.PortName)
+    };
 
     [RelayCommand]
     public void OpenUserManual()

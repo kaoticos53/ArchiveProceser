@@ -241,6 +241,11 @@ public sealed class NodeClipboardService : INodeClipboardService
                 }
             }
 
+            // Los puertos declarados (script, subflujo contenedor) salen de esos parámetros: si no se
+            // materializan aquí, el emparejamiento por nombre de más abajo no encuentra el puerto y el
+            // cable pegado se pierde en silencio.
+            DynamicPortMaterializer.Materialize(instance);
+
             // Calcular posición de pegado
             Point newLocation;
             if (targetPosition.HasValue)

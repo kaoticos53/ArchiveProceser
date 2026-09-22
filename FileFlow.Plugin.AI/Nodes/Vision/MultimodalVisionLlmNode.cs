@@ -42,12 +42,10 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
     {
         get
         {
-            if (Parameters.TryGetValue("MaxConcurrency", out var mcVal) && mcVal is not null)
-            {
-                int custom = ParameterHelper.GetInt32(mcVal, 0);
-                if (custom > 0) return custom;
-            }
-            string provider = Parameters.TryGetValue("Provider", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+            int custom = GetParameter("MaxConcurrency", 0);
+            if (custom > 0) return custom;
+
+            string provider = GetParameter("Provider", string.Empty);
             var profile = VlmConfigurationStorageService.Instance.GetProviderProfile(provider);
             return Math.Max(1, profile.ConcurrencyLimit);
         }
@@ -57,7 +55,7 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
     {
         get
         {
-            string provider = Parameters.TryGetValue("Provider", out var pVal) ? pVal?.ToString() ?? string.Empty : string.Empty;
+            string provider = GetParameter("Provider", string.Empty);
             if (provider.Contains("In-Process", StringComparison.OrdinalIgnoreCase) || provider.Contains("Internal", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -70,8 +68,8 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
     {
         get
         {
-            string provider = Parameters.TryGetValue("Provider", out var pVal) ? pVal?.ToString() ?? VlmAdapterFactory.ProviderLmStudio : VlmAdapterFactory.ProviderLmStudio;
-            string model = Parameters.TryGetValue("ModelName", out var mVal) ? mVal?.ToString() ?? "qwen2.5-vl-7b-instruct" : "qwen2.5-vl-7b-instruct";
+            string provider = GetParameter("Provider", VlmAdapterFactory.ProviderLmStudio);
+            string model = GetParameter("ModelName", "qwen2.5-vl-7b-instruct");
             if (provider.Contains("In-Process", StringComparison.OrdinalIgnoreCase) || provider.Contains("Internal", StringComparison.OrdinalIgnoreCase))
             {
                 return "FileFlow In-Process VLM";
@@ -234,50 +232,31 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
         try
         {
             // 1. Leer parámetros y sincronizar con perfil de proveedor si es necesario
-            string provider = Parameters.TryGetValue("Provider", out var pVal) ? pVal?.ToString() ?? VlmAdapterFactory.ProviderLmStudio : VlmAdapterFactory.ProviderLmStudio;
+            string provider = GetParameter("Provider", VlmAdapterFactory.ProviderLmStudio);
             var providerProfile = VlmConfigurationStorageService.Instance.GetProviderProfile(provider);
 
-            string endpointUrl = Parameters.TryGetValue("EndpointUrl", out var eVal) && !string.IsNullOrWhiteSpace(eVal?.ToString())
-                ? eVal.ToString()!
-                : providerProfile.EndpointUrl;
+            // Un valor en blanco se trata como ausente: cae al valor del perfil del proveedor.
+            string endpointUrl = GetParameter("EndpointUrl", providerProfile.EndpointUrl);
+            if (string.IsNullOrWhiteSpace(endpointUrl)) endpointUrl = providerProfile.EndpointUrl;
 
-            string modelName = Parameters.TryGetValue("ModelName", out var mVal) && !string.IsNullOrWhiteSpace(mVal?.ToString())
-                ? mVal.ToString()!
-                : providerProfile.ModelName;
+            string modelName = GetParameter("ModelName", providerProfile.ModelName);
+            if (string.IsNullOrWhiteSpace(modelName)) modelName = providerProfile.ModelName;
 
-            string apiKey = Parameters.TryGetValue("ApiKey", out var kVal) && !string.IsNullOrWhiteSpace(kVal?.ToString())
-                ? kVal.ToString()!
-                : providerProfile.ApiKey;
+            string apiKey = GetParameter("ApiKey", providerProfile.ApiKey);
+            if (string.IsNullOrWhiteSpace(apiKey)) apiKey = providerProfile.ApiKey;
 
-            string taskPresetStr = Parameters.TryGetValue("TaskPreset", out var tpVal) ? tpVal?.ToString() ?? "ExtractInvoiceReceiptJson" : "ExtractInvoiceReceiptJson";
-            string customSystemPrompt = Parameters.TryGetValue("SystemPrompt", out var spVal) ? spVal?.ToString() ?? string.Empty : string.Empty;
-            string rawUserPrompt = Parameters.TryGetValue("UserPrompt", out var upVal) ? upVal?.ToString() ?? string.Empty : string.Empty;
-            string additionalPrompt = Parameters.TryGetValue("AdditionalPrompt", out var apVal) ? apVal?.ToString() ?? string.Empty : string.Empty;
-            string targetLanguage = Parameters.TryGetValue("TargetLanguage", out var tlVal) ? tlVal?.ToString() ?? "Español" : "Español";
+            string taskPresetStr = GetParameter("TaskPreset", "ExtractInvoiceReceiptJson");
+            string customSystemPrompt = GetParameter("SystemPrompt", string.Empty);
+            string rawUserPrompt = GetParameter("UserPrompt", string.Empty);
+            string additionalPrompt = GetParameter("AdditionalPrompt", string.Empty);
+            string targetLanguage = GetParameter("TargetLanguage", "Español");
 
-            bool forceJsonOutput = Parameters.TryGetValue("ForceJsonOutput", out var fjVal)
-                ? ParameterHelper.GetBoolean(fjVal, false)
-                : false;
-
-            int maxImageDimension = Parameters.TryGetValue("MaxImageDimension", out var midVal)
-                ? ParameterHelper.GetInt32(midVal, providerProfile.MaxImageDimension)
-                : providerProfile.MaxImageDimension;
-
-            double temperature = Parameters.TryGetValue("Temperature", out var tVal)
-                ? ParameterHelper.GetDouble(tVal, providerProfile.Temperature)
-                : providerProfile.Temperature;
-
-            int maxTokens = Parameters.TryGetValue("MaxTokens", out var mtVal)
-                ? ParameterHelper.GetInt32(mtVal, providerProfile.MaxTokens)
-                : providerProfile.MaxTokens;
-
-            bool saveAsNewFile = Parameters.TryGetValue("SaveAsNewFile", out var sfVal)
-                ? ParameterHelper.GetBoolean(sfVal, false)
-                : false;
-
-            int timeoutSeconds = Parameters.TryGetValue("TimeoutSeconds", out var tsVal)
-                ? ParameterHelper.GetInt32(tsVal, providerProfile.TimeoutSeconds)
-                : providerProfile.TimeoutSeconds;
+            bool forceJsonOutput = GetParameter("ForceJsonOutput", false);
+            int maxImageDimension = GetParameter("MaxImageDimension", providerProfile.MaxImageDimension);
+            double temperature = GetParameter("Temperature", providerProfile.Temperature);
+            int maxTokens = GetParameter("MaxTokens", providerProfile.MaxTokens);
+            bool saveAsNewFile = GetParameter("SaveAsNewFile", false);
+            int timeoutSeconds = GetParameter("TimeoutSeconds", providerProfile.TimeoutSeconds);
 
             // Ajustar endpoint por defecto según proveedor si no se especificó uno personalizado
             if (provider.Contains("Ollama", StringComparison.OrdinalIgnoreCase) && endpointUrl == "http://localhost:1234/v1")

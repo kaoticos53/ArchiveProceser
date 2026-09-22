@@ -9,36 +9,35 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("BestVersionSelectorNode_Name", "Logic", "BestVersionSelectorNode_Desc", PipelineRole.Filter,
     "comparar", "version", "mejor", "tamaño", "peso", "resolucion", "autopurga", "selector", "best", "version")]
-public sealed class BestVersionSelectorNode : IFlowNode
+public sealed class BestVersionSelectorNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("BestVersionSelectorNode_Name", "Selector de Mejor Versión");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("BestVersionSelectorNode_Desc", "Compara dos candidatos de archivo (ej. versión optimizada vs original) según criterios como menor tamaño o porcentaje de ahorro, establece el ganador como archivo activo y puede autopurgar el archivo intermedio perdedor.");
+    public override string Name => LocalizationManager.Instance.GetString("BestVersionSelectorNode_Name", "Selector de Mejor Versión");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("BestVersionSelectorNode_Desc", "Compara dos candidatos de archivo (ej. versión optimizada vs original) según criterios como menor tamaño o porcentaje de ahorro, establece el ganador como archivo activo y puede autopurgar el archivo intermedio perdedor.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public BestVersionSelectorNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
-        new NodePort("WonA", typeof(FileItemContext), PortDirection.Output, "WonA"),
-        new NodePort("WonB", typeof(FileItemContext), PortDirection.Output, "WonB")
-    };
+        Outputs =
+        [
+            new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
+            new NodePort("WonA", typeof(FileItemContext), PortDirection.Output, "WonA"),
+            new NodePort("WonB", typeof(FileItemContext), PortDirection.Output, "WonB")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["CandidateA"] = "{CurrentPath}",
-        ["CandidateB"] = "{OriginalPath}",
-        ["Criterion"] = "SmallestSize", // SmallestSize, LargestSize, SavedPercentThreshold, CandidateA, CandidateB
-        ["Threshold"] = 0.0,
-        ["DiscardLoser"] = true,
-        ["SetWinnerAsCurrent"] = true
-    };
+        Parameters["CandidateA"] = "{CurrentPath}";
+        Parameters["CandidateB"] = "{OriginalPath}";
+        Parameters["Criterion"] = "SmallestSize"; // SmallestSize, LargestSize, SavedPercentThreshold, CandidateA, CandidateB
+        Parameters["Threshold"] = 0.0;
+        Parameters["DiscardLoser"] = true;
+        Parameters["SetWinnerAsCurrent"] = true;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("CandidateA", ParameterEditorType.FileVersionSelector, DefaultValue: "{CurrentPath}", DisplayOrder: 1, HelpText: "Primer archivo o versión candidato a comparar (por defecto la versión activa actual)"),
         new("CandidateB", ParameterEditorType.FileVersionSelector, DefaultValue: "{OriginalPath}", DisplayOrder: 2, HelpText: "Segundo archivo o versión candidato a comparar (por defecto el archivo original)"),
         new("Criterion", ParameterEditorType.Dropdown, DefaultValue: "SmallestSize", DisplayOrder: 3, Options: ["SmallestSize", "LargestSize", "SavedPercentThreshold", "CandidateA", "CandidateB"], HelpText: "Criterio de selección para determinar el ganador"),
@@ -47,7 +46,7 @@ public sealed class BestVersionSelectorNode : IFlowNode
         new("SetWinnerAsCurrent", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 6, HelpText: "Establece el archivo ganador como archivo activo del contexto para los siguientes nodos")
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -55,12 +54,12 @@ public sealed class BestVersionSelectorNode : IFlowNode
     {
         var storage = context.GetStorage();
 
-        string candAPattern = Parameters.TryGetValue("CandidateA", out var ca) ? ParameterHelper.GetString(ca, "{CurrentPath}") : "{CurrentPath}";
-        string candBPattern = Parameters.TryGetValue("CandidateB", out var cb) ? ParameterHelper.GetString(cb, "{OriginalPath}") : "{OriginalPath}";
-        string criterion = Parameters.TryGetValue("Criterion", out var cr) ? ParameterHelper.GetString(cr, "SmallestSize") : "SmallestSize";
-        double threshold = Parameters.TryGetValue("Threshold", out var th) ? ParameterHelper.GetDouble(th, 0.0) : 0.0;
-        bool discardLoser = Parameters.TryGetValue("DiscardLoser", out var dl) ? ParameterHelper.GetBoolean(dl, true) : true;
-        bool setWinnerAsCurrent = Parameters.TryGetValue("SetWinnerAsCurrent", out var sw) ? ParameterHelper.GetBoolean(sw, true) : true;
+        string candAPattern = GetParameter("CandidateA", "{CurrentPath}");
+        string candBPattern = GetParameter("CandidateB", "{OriginalPath}");
+        string criterion = GetParameter("Criterion", "SmallestSize");
+        double threshold = GetParameter("Threshold", 0.0);
+        bool discardLoser = GetParameter("DiscardLoser", true);
+        bool setWinnerAsCurrent = GetParameter("SetWinnerAsCurrent", true);
 
         string pathA = await ResolveCandidatePathAsync(storage, candAPattern, item, cancellationToken).ConfigureAwait(false);
         string pathB = await ResolveCandidatePathAsync(storage, candBPattern, item, cancellationToken).ConfigureAwait(false);

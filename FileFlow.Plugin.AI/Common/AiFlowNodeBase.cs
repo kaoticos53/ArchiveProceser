@@ -21,56 +21,31 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
     public void RaiseModelStatusChanged() => ModelStatusChanged?.Invoke();
 
     /// <summary>
-    /// Construye el nodo observando el gestor ONNX estándar, que es el almacén de sesiones de los nodos
-    /// de visión y texto.
+    /// Construye el nodo observando el evento único de estado de sesiones del plugin
+    /// (<see cref="OnnxSessionRegistry.SessionStateChanged"/>), que agrega los cambios de los almacenes
+    /// de visión, audio y embeddings. El nodo no necesita saber qué motor materializó la sesión: escucha
+    /// siempre el mismo evento y consulta su propio almacén.
     /// </summary>
     protected AiFlowNodeBase()
-        : this(
-            h => OnnxSessionManager.SessionStateChanged += h,
-            h => OnnxSessionManager.SessionStateChanged -= h)
-    {
-    }
-
-    /// <summary>
-    /// Construye el nodo observando un evento de sesión distinto del gestor ONNX estándar (los motores
-    /// especializados, como el de audio, mantienen su propia caché). Uno de los dos pares debe venir del
-    /// evento estático del motor; pasar una lambda que capture al nodo reintroduciría la fuga que
-    /// <see cref="WeakModelStatusRelay"/> elimina.
-    /// </summary>
-    protected AiFlowNodeBase(Action<Action> sessionStateSubscribe, Action<Action> sessionStateUnsubscribe)
     {
         // Relay débil: el nodo es alcanzable desde el evento estático sólo vía WeakReference, así que
-
         // desaparece con el editor sin dejar el delegado anclado para siempre (ver WeakModelStatusRelay).
-
         _ = WeakModelStatusRelay.Subscribe(
-
-            sessionStateSubscribe,
-
-            sessionStateUnsubscribe,
-
+            h => OnnxSessionRegistry.SessionStateChanged += h,
+            h => OnnxSessionRegistry.SessionStateChanged -= h,
             this,
-
             static self => self.RaiseModelStatusChanged());
     }
 
-    #region Almacén de sesiones (punto de extensión para motores especializados)
+    #region Almacén de sesiones (punto de extensión único por motor)
 
-    /// <summary>Indica si la sesión del modelo ya está materializada en memoria.</summary>
-    protected virtual bool IsSessionLoadedForModel(string modelPath)
-        => OnnxSessionManager.IsSessionLoaded(modelPath);
-
-    /// <summary>Libera deterministamente la sesión del modelo.</summary>
-    protected virtual bool UnloadSessionForModel(string modelPath)
-        => OnnxSessionManager.UnloadSession(modelPath);
-
-    /// <summary>Indica si el modelo aprovecha aceleración por hardware.</summary>
-    protected virtual bool IsGpuAcceleratedForModel(string modelPath)
-        => OnnxSessionManager.ShouldUseDirectMl(modelPath);
-
-    /// <summary>Materializa la sesión del modelo en memoria.</summary>
-    protected virtual void EnsureSessionLoadedForModel(string modelPath)
-        => OnnxSessionManager.GetOrCreateSession(modelPath);
+    /// <summary>
+    /// Almacén que respalda el ciclo de vida de modelos de este nodo. Por defecto es el de visión y
+    /// texto; los motores con política de sesión propia (audio, embeddings) lo sobrescriben apuntando a
+    /// su almacén registrado. Es el único punto de extensión: la observación del estado y las consultas
+    /// de carga, aceleración y descarga se derivan de él.
+    /// </summary>
+    protected virtual OnnxSessionStore SessionStore => OnnxSessionManager.Default;
 
     #endregion
 
@@ -79,7 +54,7 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
         get
         {
             string? modelPath = AiModelManager.ResolveModelPathSync(ModelSelection, TaskType);
-            return modelPath != null && IsSessionLoadedForModel(modelPath);
+            return modelPath != null && SessionStore.IsSessionLoaded(modelPath);
         }
     }
 
@@ -90,7 +65,7 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
         get
         {
             string? modelPath = AiModelManager.ResolveModelPathSync(ModelSelection, TaskType);
-            return modelPath != null && IsGpuAcceleratedForModel(modelPath);
+            return modelPath != null && SessionStore.IsHardwareAccelerated(modelPath);
         }
     }
 
@@ -99,7 +74,7 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
         string? modelPath = await AiModelManager.ResolveModelPathAsync(ModelSelection, TaskType, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(modelPath) && File.Exists(modelPath))
         {
-            EnsureSessionLoadedForModel(modelPath);
+            SessionStore.GetOrCreateSession(modelPath);
         }
         ModelStatusChanged?.Invoke();
     }
@@ -109,7 +84,7 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
         string? modelPath = AiModelManager.ResolveModelPathSync(ModelSelection, TaskType);
         if (!string.IsNullOrWhiteSpace(modelPath))
         {
-            UnloadSessionForModel(modelPath);
+            SessionStore.UnloadSession(modelPath);
         }
         ModelStatusChanged?.Invoke();
     }
@@ -126,9 +101,10 @@ public abstract class AiFlowNodeBase : FlowNodeBase, IModelLifecycleNode
     {
         get
         {
-            if (Parameters.TryGetValue("Model", out var mVal) && mVal is not null)
-                return mVal.ToString() ?? "Auto";
-            return GetParameter("ModelSelection", DefaultModelSelection);
+            // "Model" es el nombre heredado del parámetro y, si está informado, tiene prioridad sobre
+            // "ModelSelection". Un valor vacío o ausente se trata igual y cae al modelo por defecto.
+            string model = GetParameter("Model", string.Empty);
+            return string.IsNullOrWhiteSpace(model) ? GetParameter("ModelSelection", DefaultModelSelection) : model;
         }
         set
         {

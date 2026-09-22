@@ -7,33 +7,32 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("DataLookupNode_Name", "Data", "DataLookupNode_Desc", PipelineRole.Analyze,
     "lookup", "vlookup", "buscar", "cruzar", "enriquecer", "tabla", "clave")]
-public sealed class DataLookupNode : IFlowNode
+public sealed class DataLookupNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("DataLookupNode_Name", "Cruce de Datos (Lookup / BUSCARV)");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("DataLookupNode_Desc", "Busca y cruza información del archivo actual contra una tabla externa (Excel, CSV o JSON) inyectando sus columnas en los metadatos.");
+    public override string Name => LocalizationManager.Instance.GetString("DataLookupNode_Name", "Cruce de Datos (Lookup / BUSCARV)");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("DataLookupNode_Desc", "Busca y cruza información del archivo actual contra una tabla externa (Excel, CSV o JSON) inyectando sus columnas en los metadatos.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Matched", typeof(FileItemContext), PortDirection.Output, "Matched"),
-        new NodePort("Unmatched", typeof(FileItemContext), PortDirection.Output, "Unmatched")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public DataLookupNode()
     {
-        ["DataSourcePath"] = @"{RelativeDir}\lookup_table.xlsx",
-        ["LookupKeyColumn"] = "Id",
-        ["MatchExpression"] = "{FileNameWithoutExtension}",
-        ["PrefixColumns"] = "Lookup_"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Matched", typeof(FileItemContext), PortDirection.Output, "Matched"),
+            new NodePort("Unmatched", typeof(FileItemContext), PortDirection.Output, "Unmatched")
+        ];
+
+        Parameters["DataSourcePath"] = @"{RelativeDir}\lookup_table.xlsx";
+        Parameters["LookupKeyColumn"] = "Id";
+        Parameters["MatchExpression"] = "{FileNameWithoutExtension}";
+        Parameters["PrefixColumns"] = "Lookup_";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("DataSourcePath", ParameterEditorType.FilePath, DefaultValue: @"{RelativeDir}\lookup_table.xlsx", DisplayOrder: 1),
         new("LookupKeyColumn", ParameterEditorType.Text, DefaultValue: "Id", DisplayOrder: 2),
@@ -41,9 +40,9 @@ public sealed class DataLookupNode : IFlowNode
         new("PrefixColumns", ParameterEditorType.Text, DefaultValue: "Lookup_", DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        string dataSourcePath = Parameters.TryGetValue("DataSourcePath", out var dsp) ? dsp?.ToString() ?? string.Empty : string.Empty;
+        string dataSourcePath = GetParameter("DataSourcePath", string.Empty);
         dataSourcePath = Environment.ExpandEnvironmentVariables(dataSourcePath);
 
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
@@ -59,9 +58,9 @@ public sealed class DataLookupNode : IFlowNode
             return;
         }
 
-        string keyColumn = Parameters.TryGetValue("LookupKeyColumn", out var kc) ? kc?.ToString() ?? "Id" : "Id";
-        string matchExpr = Parameters.TryGetValue("MatchExpression", out var me) ? me?.ToString() ?? "{FileNameWithoutExtension}" : "{FileNameWithoutExtension}";
-        string prefix = Parameters.TryGetValue("PrefixColumns", out var prf) ? prf?.ToString() ?? string.Empty : string.Empty;
+        string keyColumn = GetParameter("LookupKeyColumn", "Id");
+        string matchExpr = GetParameter("MatchExpression", "{FileNameWithoutExtension}");
+        string prefix = GetParameter("PrefixColumns", string.Empty);
 
         // Evaluar la clave de búsqueda sobre el item actual
         string searchKey = ResolveSearchKey(matchExpr, item);

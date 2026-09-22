@@ -1,12 +1,11 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.TemplateEngine;
-using Microsoft.ML.OnnxRuntime;
 
 namespace FileFlow.Plugin.AI;
 
@@ -20,9 +19,6 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 public static class LanguageInferenceEngine
 {
-    private static readonly Lock _syncLock = new();
-    private static readonly ConcurrentDictionary<string, Lazy<InferenceSession>> _sessions = new();
-
     static LanguageInferenceEngine()
     {
         AiPluginInitializer.Register();
@@ -129,17 +125,10 @@ public static class LanguageInferenceEngine
         => MultilingualTranslator.Translate(text, sourceLang, targetLang);
 
     /// <summary>
-    /// Libera deterministamente todas las sesiones ONNX en caché de LanguageInferenceEngine.
+    /// Libera deterministamente las sesiones ONNX del motor de lenguaje. Sus tareas (traducción y LLM) se
+    /// resuelven sobre el almacén por defecto, el mismo de visión y texto, así que la liberación se delega
+    /// en él. La caché privada que este tipo mantenía nunca llegó a poblarse —ningún camino de traducción
+    /// materializaba sesiones— y se eliminó al unificar los almacenes de sesiones.
     /// </summary>
-    public static void ClearSessionCache()
-    {
-        foreach (var lazy in _sessions.Values)
-        {
-            if (lazy.IsValueCreated)
-            {
-                try { lazy.Value.Dispose(); } catch { }
-            }
-        }
-        _sessions.Clear();
-    }
+    public static void ClearSessionCache() => OnnxSessionManager.ClearSessionCache();
 }

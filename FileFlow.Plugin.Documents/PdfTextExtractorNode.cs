@@ -9,42 +9,41 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfTextExtractorNode_Name", "Documents", "PdfTextExtractorNode_Desc", PipelineRole.Analyze,
     "pdf", "texto", "extraer", "ocr", "txt", "leer", "text", "extract")]
-public sealed class PdfTextExtractorNode : IFlowNode
+public sealed class PdfTextExtractorNode : FlowNodeBase
 {
     static PdfTextExtractorNode()
     {
         FileFlowFontResolver.EnsureInitialized();
     }
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PdfTextExtractorNode_Name", "Extraer Texto de PDF (PDF Text Extractor)");
-    public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("PdfTextExtractorNode_Desc", "Extrae el contenido textual de documentos PDF para indexación, búsqueda o exportación.");
+    public override string Name => LocalizationManager.Instance.GetString("PdfTextExtractorNode_Name", "Extraer Texto de PDF (PDF Text Extractor)");
+    public override string Category => "Documents";
+    public override string Description => LocalizationManager.Instance.GetString("PdfTextExtractorNode_Desc", "Extrae el contenido textual de documentos PDF para indexación, búsqueda o exportación.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("TextFile", typeof(FileItemContext), PortDirection.Output, "TextFile")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public PdfTextExtractorNode()
     {
-        ["ExportTextFile"] = false,
-        ["OutputDirectory"] = "{GlobalOutputDir}"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("TextFile", typeof(FileItemContext), PortDirection.Output, "TextFile")
+        ];
+
+        Parameters["ExportTextFile"] = false;
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("ExportTextFile", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 1),
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 2)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -85,10 +84,10 @@ public sealed class PdfTextExtractorNode : IFlowNode
 
         await context.EmitAsync("Out", item);
 
-        bool exportTxt = Parameters.TryGetValue("ExportTextFile", out var expObj) && ParameterHelper.GetBoolean(expObj, false);
+        bool exportTxt = GetParameter("ExportTextFile", false);
         if (exportTxt)
         {
-            string rawOutDir = Parameters.TryGetValue("OutputDirectory", out var outDirObj) ? ParameterHelper.GetString(outDirObj, "{GlobalOutputDir}") : "{GlobalOutputDir}";
+            string rawOutDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
             string outDir = ParameterHelper.ResolveOutputPath(rawOutDir, item);
             if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
             {

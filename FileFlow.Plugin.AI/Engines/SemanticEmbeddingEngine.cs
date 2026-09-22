@@ -1,10 +1,10 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using FileFlow.Plugin.AI.Inference;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
@@ -29,25 +29,18 @@ public record SemanticClassificationResult(
 /// </summary>
 public static class SemanticEmbeddingEngine
 {
-    private static readonly ConcurrentDictionary<string, Lazy<InferenceSession>> _sessionCache = new();
-    private static readonly Lock _inferenceLock = new();
+    /// <summary>
+    /// Almacén de sesiones del motor de embeddings. Comparte la abstracción de visión y audio, con
+    /// sesiones de CPU y con evento: antes su caché era privada y silenciosa, así que la carga de un
+    /// modelo de embeddings no se notificaba a nadie y no podía liberarse desde la UI.
+    /// </summary>
+    internal static readonly OnnxSessionStore SessionStore = new(
+        "SemanticEmbeddings",
+        OnnxSessionFactory.CreateCpuSession);
 
-    private static InferenceSession GetOrCreateSession(string modelPath)
+    static SemanticEmbeddingEngine()
     {
-        var lazy = _sessionCache.GetOrAdd(modelPath, path => new Lazy<InferenceSession>(() =>
-        {
-            var options = new SessionOptions
-            {
-                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
-                ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
-                InterOpNumThreads = 1,
-                IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4)
-            };
-
-            return new InferenceSession(path, options);
-        }));
-
-        return lazy.Value;
+        OnnxSessionRegistry.Register(SessionStore);
     }
 
     /// <summary>
@@ -168,7 +161,7 @@ public static class SemanticEmbeddingEngine
         {
             try
             {
-                var session = GetOrCreateSession(modelPath);
+                var session = SessionStore.GetOrCreateSession(modelPath);
 
                 // Caso 1: Modelo CLIP multimodal (grafo unificado con pixel_values e input_ids)
                 if (session.InputMetadata.ContainsKey("pixel_values") && session.InputMetadata.ContainsKey("input_ids"))
@@ -187,7 +180,7 @@ public static class SemanticEmbeddingEngine
                         NamedOnnxValue.CreateFromTensor("pixel_values", zeroPixels)
                     };
 
-                    lock (_inferenceLock)
+                    lock (SessionStore.InferenceLock)
                     {
                         using var outputs = session.Run(inputs);
                         var tensor = outputs.FirstOrDefault(o => o.Name.Equals("text_embeds", StringComparison.OrdinalIgnoreCase))
@@ -204,7 +197,7 @@ public static class SemanticEmbeddingEngine
 
                     var inputs = BuildTextInputs(session, tokens);
 
-                    lock (_inferenceLock)
+                    lock (SessionStore.InferenceLock)
                     {
                         using var outputs = session.Run(inputs);
                         var tensor = outputs.FirstOrDefault(o => o.Name.Contains("embed", StringComparison.OrdinalIgnoreCase))
@@ -287,7 +280,7 @@ public static class SemanticEmbeddingEngine
         {
             try
             {
-                var session = GetOrCreateSession(modelPath);
+                var session = SessionStore.GetOrCreateSession(modelPath);
                 using var img = Image.Load<Rgb24>(imagePath);
                 img.Mutate(ctx => ctx.Resize(224, 224));
 
@@ -327,7 +320,7 @@ public static class SemanticEmbeddingEngine
                         NamedOnnxValue.CreateFromTensor("attention_mask", dummyMask)
                     };
 
-                    lock (_inferenceLock)
+                    lock (SessionStore.InferenceLock)
                     {
                         using var outputs = session.Run(inputs);
                         var outTensor = outputs.FirstOrDefault(o => o.Name.Equals("image_embeds", StringComparison.OrdinalIgnoreCase))
@@ -345,7 +338,7 @@ public static class SemanticEmbeddingEngine
                         NamedOnnxValue.CreateFromTensor(inputName, tensor)
                     };
 
-                    lock (_inferenceLock)
+                    lock (SessionStore.InferenceLock)
                     {
                         using var outputs = session.Run(inputs);
                         var outTensor = outputs.First().AsTensor<float>();
@@ -537,14 +530,5 @@ public static class SemanticEmbeddingEngine
     /// Libera la caché de sesiones de embeddings.
     /// </summary>
     public static void ClearSessionCache()
-    {
-        foreach (var lazy in _sessionCache.Values)
-        {
-            if (lazy.IsValueCreated)
-            {
-                try { lazy.Value.Dispose(); } catch { }
-            }
-        }
-        _sessionCache.Clear();
-    }
+        => SessionStore.Clear();
 }

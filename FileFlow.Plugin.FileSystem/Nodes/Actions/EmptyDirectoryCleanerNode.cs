@@ -6,32 +6,31 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("EmptyDirectoryCleanerNode_Name", "Files", "EmptyDirectoryCleanerNode_Desc", PipelineRole.Transform,
     "limpiar", "carpetas vacias", "directorios vacios", "purgar", "cleaner", "empty")]
-public sealed class EmptyDirectoryCleanerNode : IFlowNode
+public sealed class EmptyDirectoryCleanerNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Name", "Empty Directory Cleaner");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Desc", "Recursively scans a target directory after batch processing and removes all empty subdirectories.");
+    public override string Name => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Name", "Empty Directory Cleaner");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("EmptyDirectoryCleanerNode_Desc", "Recursively scans a target directory after batch processing and removes all empty subdirectories.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public EmptyDirectoryCleanerNode()
     {
-        new NodePort("TriggerIn", typeof(FileItemContext), PortDirection.Input, "TriggerIn")
-    };
+        Inputs =
+        [
+            new NodePort("TriggerIn", typeof(FileItemContext), PortDirection.Input, "TriggerIn")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["TargetDirectory"] = @"{SourceDir}",
-        ["Recursive"] = true,
-        ["IgnoreHiddenSystemFiles"] = true
-    };
+        Parameters["TargetDirectory"] = @"{SourceDir}";
+        Parameters["Recursive"] = true;
+        Parameters["IgnoreHiddenSystemFiles"] = true;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -41,9 +40,9 @@ public sealed class EmptyDirectoryCleanerNode : IFlowNode
 
         try
         {
-            string dirTemplate = Parameters.TryGetValue("TargetDirectory", out var dVal) ? ParameterHelper.GetString(dVal, @"{CurrentDir}") : @"{CurrentDir}";
-            bool recursive = Parameters.TryGetValue("Recursive", out var rVal) && ParameterHelper.GetBoolean(rVal, true);
-            bool ignoreHidden = Parameters.TryGetValue("IgnoreHiddenSystemFiles", out var hVal) && ParameterHelper.GetBoolean(hVal, true);
+            string dirTemplate = GetParameter("TargetDirectory", @"{CurrentDir}");
+            bool recursive = GetParameter("Recursive", false);
+            bool ignoreHidden = GetParameter("IgnoreHiddenSystemFiles", false);
 
             string targetDir = VariableTemplateResolver.Resolve(dirTemplate, item);
 

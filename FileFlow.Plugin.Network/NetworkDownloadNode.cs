@@ -9,63 +9,62 @@ namespace FileFlow.Plugin.Network;
 
 [NodeDefinition("NetworkDownloadNode_Name", "Network", "NetworkDownloadNode_Desc", PipelineRole.Source,
     "descargar", "download", "http", "https", "ftp", "ftps", "sftp", "ssh", "webdav", "smb", "red", "nube")]
-public sealed class NetworkDownloadNode : IFlowNode
+public sealed class NetworkDownloadNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("NetworkDownloadNode_Name", "Descargar de Red / Nube (Network Download)");
-    public string Category => "Network";
-    public string Description => LocalizationManager.Instance.GetString("NetworkDownloadNode_Desc", "Descarga archivos desde servidores remotos HTTP/HTTPS, FTP/FTPS, SFTP/SSH, WebDAV o recursos SMB de red local hacia una carpeta de destino.");
+    public override string Name => LocalizationManager.Instance.GetString("NetworkDownloadNode_Name", "Descargar de Red / Nube (Network Download)");
+    public override string Category => "Network";
+    public override string Description => LocalizationManager.Instance.GetString("NetworkDownloadNode_Desc", "Descarga archivos desde servidores remotos HTTP/HTTPS, FTP/FTPS, SFTP/SSH, WebDAV o recursos SMB de red local hacia una carpeta de destino.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
-        new NodePort(WellKnownPorts.Error, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Error)
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public NetworkDownloadNode()
     {
-        ["Protocol"] = "HTTP",
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
+
+        Outputs =
+        [
+            new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out),
+            new NodePort(WellKnownPorts.Error, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Error)
+        ];
+
+        Parameters["Protocol"] = "HTTP";
 
         // Parámetros HTTP
-        ["SourceUrl"] = "{RemoteUrl}",
-        ["TimeoutSeconds"] = 60,
+        Parameters["SourceUrl"] = "{RemoteUrl}";
+        Parameters["TimeoutSeconds"] = 60;
 
         // Parámetros Servidor (FTP / SFTP / WebDAV)
-        ["Host"] = "ftp.example.com",
-        ["Port"] = 21,
-        ["Username"] = "anonymous",
-        ["Password"] = "",
-        ["RemoteFilePath"] = "/incoming/{FileName}",
+        Parameters["Host"] = "ftp.example.com";
+        Parameters["Port"] = 21;
+        Parameters["Username"] = "anonymous";
+        Parameters["Password"] = "";
+        Parameters["RemoteFilePath"] = "/incoming/{FileName}";
 
         // Parámetros FTP
-        ["Encryption"] = "None",
-        ["PassiveMode"] = true,
+        Parameters["Encryption"] = "None";
+        Parameters["PassiveMode"] = true;
 
         // Parámetros SFTP
-        ["AuthMethod"] = "Password",
-        ["PrivateKeyPath"] = "",
-        ["PrivateKeyPassphrase"] = "",
+        Parameters["AuthMethod"] = "Password";
+        Parameters["PrivateKeyPath"] = "";
+        Parameters["PrivateKeyPassphrase"] = "";
 
         // Parámetros WebDAV
-        ["ServerUrl"] = "https://nextcloud.example.com/remote.php/dav/files/user/{FileName}",
+        Parameters["ServerUrl"] = "https://nextcloud.example.com/remote.php/dav/files/user/{FileName}";
 
         // Parámetros SMB
-        ["UncPath"] = @"\\servidor\compartido\{FileName}",
-        ["Domain"] = "",
+        Parameters["UncPath"] = @"\\servidor\compartido\{FileName}";
+        Parameters["Domain"] = "";
 
         // Comunes
-        ["DestinationFolder"] = "{GlobalOutputDir}",
-        ["FileName"] = "",
-        ["Overwrite"] = true,
-        ["DeleteAfterDownload"] = false
-    };
+        Parameters["DestinationFolder"] = "{GlobalOutputDir}";
+        Parameters["FileName"] = "";
+        Parameters["Overwrite"] = true;
+        Parameters["DeleteAfterDownload"] = false;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         // 1. Selector de Protocolo
         new("Protocol", ParameterEditorType.Dropdown, DefaultValue: "HTTP",
@@ -122,17 +121,17 @@ public sealed class NetworkDownloadNode : IFlowNode
         new("DeleteAfterDownload", ParameterEditorType.Toggle, DefaultValue: false, DisplayOrder: 20)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken = default)
     {
-        string protocol = Parameters.TryGetValue("Protocol", out var pr) ? pr?.ToString() ?? "HTTP" : "HTTP";
-        string destFolder = Parameters.TryGetValue("DestinationFolder", out var df) ? df?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
-        string fileNameOverride = Parameters.TryGetValue("FileName", out var fn) ? fn?.ToString() ?? string.Empty : string.Empty;
-        bool overwrite = !Parameters.TryGetValue("Overwrite", out var ow) || !bool.TryParse(ow?.ToString(), out bool isOw) || isOw;
-        bool deleteAfter = Parameters.TryGetValue("DeleteAfterDownload", out var del) && bool.TryParse(del?.ToString(), out bool isDel) && isDel;
+        string protocol = GetParameter("Protocol", "HTTP");
+        string destFolder = GetParameter("DestinationFolder", "{GlobalOutputDir}");
+        string fileNameOverride = GetParameter("FileName", string.Empty);
+        bool overwrite = GetParameter("Overwrite", true);
+        bool deleteAfter = GetParameter("DeleteAfterDownload", false);
 
         string resolvedDestDir = ParameterHelper.ResolveOutputPath(destFolder, item);
         if (string.IsNullOrWhiteSpace(resolvedDestDir))
@@ -148,21 +147,21 @@ public sealed class NetworkDownloadNode : IFlowNode
             FileNameOverride: fileNameOverride,
             Overwrite: overwrite,
             DeleteAfterDownload: deleteAfter,
-            SourceUrl: Parameters.TryGetValue("SourceUrl", out var su) ? su?.ToString() ?? string.Empty : string.Empty,
-            TimeoutSeconds: Parameters.TryGetValue("TimeoutSeconds", out var to) && int.TryParse(to?.ToString(), out int parsedTo) ? Math.Max(5, parsedTo) : 60,
-            Host: Parameters.TryGetValue("Host", out var h) ? h?.ToString() ?? "localhost" : "localhost",
-            Port: Parameters.TryGetValue("Port", out var p) && int.TryParse(p?.ToString(), out int parsedPort) ? parsedPort : 21,
-            Username: Parameters.TryGetValue("Username", out var u) ? u?.ToString() ?? string.Empty : string.Empty,
-            Password: Parameters.TryGetValue("Password", out var pwd) ? pwd?.ToString() ?? string.Empty : string.Empty,
-            RemoteFilePath: Parameters.TryGetValue("RemoteFilePath", out var rp) ? rp?.ToString() ?? string.Empty : string.Empty,
-            Encryption: Parameters.TryGetValue("Encryption", out var enc) ? enc?.ToString() ?? "None" : "None",
-            PassiveMode: !Parameters.TryGetValue("PassiveMode", out var pas) || !bool.TryParse(pas?.ToString(), out bool isPas) || isPas,
-            AuthMethod: Parameters.TryGetValue("AuthMethod", out var am) ? am?.ToString() ?? "Password" : "Password",
-            PrivateKeyPath: Parameters.TryGetValue("PrivateKeyPath", out var kp) ? kp?.ToString() ?? string.Empty : string.Empty,
-            PrivateKeyPassphrase: Parameters.TryGetValue("PrivateKeyPassphrase", out var pp) ? pp?.ToString() ?? string.Empty : string.Empty,
-            ServerUrl: Parameters.TryGetValue("ServerUrl", out var svu) ? svu?.ToString() ?? string.Empty : string.Empty,
-            UncPath: Parameters.TryGetValue("UncPath", out var unc) ? unc?.ToString() ?? string.Empty : string.Empty,
-            Domain: Parameters.TryGetValue("Domain", out var dom) ? dom?.ToString() ?? string.Empty : string.Empty
+            SourceUrl: GetParameter("SourceUrl", string.Empty),
+            TimeoutSeconds: Math.Max(5, GetParameter("TimeoutSeconds", 60)),
+            Host: GetParameter("Host", "localhost"),
+            Port: GetParameter("Port", 21),
+            Username: GetParameter("Username", string.Empty),
+            Password: GetParameter("Password", string.Empty),
+            RemoteFilePath: GetParameter("RemoteFilePath", string.Empty),
+            Encryption: GetParameter("Encryption", "None"),
+            PassiveMode: GetParameter("PassiveMode", true),
+            AuthMethod: GetParameter("AuthMethod", "Password"),
+            PrivateKeyPath: GetParameter("PrivateKeyPath", string.Empty),
+            PrivateKeyPassphrase: GetParameter("PrivateKeyPassphrase", string.Empty),
+            ServerUrl: GetParameter("ServerUrl", string.Empty),
+            UncPath: GetParameter("UncPath", string.Empty),
+            Domain: GetParameter("Domain", string.Empty)
         );
 
         try

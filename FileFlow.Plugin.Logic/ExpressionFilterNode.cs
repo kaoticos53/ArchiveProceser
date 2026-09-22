@@ -7,45 +7,44 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("ExpressionFilterNode_Name", "Logic", "ExpressionFilterNode_Desc", PipelineRole.Filter,
     "filtro", "condicion", "if", "regex", "comparar", "igual", "mayor", "filter", "logica")]
-public sealed class ExpressionFilterNode : IFlowNode
+public sealed class ExpressionFilterNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ExpressionFilterNode_Name", "Filtro por Condición Lógica");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("ExpressionFilterNode_Desc", "Evalúa condiciones numéricas o de texto sobre propiedades del archivo (ej. tamaño en MB, extensión, fecha, tags) y desvía el flujo por los puertos True o False.");
+    public override string Name => LocalizationManager.Instance.GetString("ExpressionFilterNode_Name", "Filtro por Condición Lógica");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("ExpressionFilterNode_Desc", "Evalúa condiciones numéricas o de texto sobre propiedades del archivo (ej. tamaño en MB, extensión, fecha, tags) y desvía el flujo por los puertos True o False.");
 
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public ExpressionFilterNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("True", typeof(FileItemContext), PortDirection.Output, "True"),
-        new NodePort("False", typeof(FileItemContext), PortDirection.Output, "False")
-    };
+        Outputs =
+        [
+            new NodePort("True", typeof(FileItemContext), PortDirection.Output, "True"),
+            new NodePort("False", typeof(FileItemContext), PortDirection.Output, "False")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Property"] = "SizeMB", // SizeMB, Extension, DaysOld, Tag
-        ["Operator"] = ">", // >, <, ==, !=, Contains
-        ["ComparisonValue"] = "10"
-    };
+        Parameters["Property"] = "SizeMB"; // SizeMB, Extension, DaysOld, Tag
+        Parameters["Operator"] = ">"; // >, <, ==, !=, Contains
+        Parameters["ComparisonValue"] = "10";
+    }
 
     private static readonly Regex NumericRegex = new(@"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.Compiled);
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string prop = Parameters.TryGetValue("Property", out var pVal) ? ParameterHelper.GetString(pVal, "SizeMB") : "SizeMB";
-        string op = Parameters.TryGetValue("Operator", out var oVal) ? ParameterHelper.GetString(oVal, ">") : ">";
-        string compVal = Parameters.TryGetValue("ComparisonValue", out var cVal)
-            ? ParameterHelper.GetString(cVal, "10")
-            : (Parameters.TryGetValue("Value", out var vVal) ? ParameterHelper.GetString(vVal, "10") : "10");
+        string prop = GetParameter("Property", "SizeMB");
+        string op = GetParameter("Operator", ">");
+
+        // "Value" es el nombre heredado del parámetro y sigue funcionando como respaldo.
+        string comparisonKey = Parameters.ContainsKey("ComparisonValue") ? "ComparisonValue" : "Value";
+        string compVal = GetParameter(comparisonKey, "10");
 
         string actualValue = VariableTemplateResolver.GetVariableValue(prop, item, null);
         bool result = EvaluateCondition(prop, op, compVal, item);

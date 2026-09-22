@@ -8,31 +8,30 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("IntermediateCleanupNode_Name", "Logic", "IntermediateCleanupNode_Desc", PipelineRole.Control,
     "cleanup", "limpiar", "temporales", "borrar", "purgar", "intermedios", "purge")]
-public sealed class IntermediateCleanupNode : IFlowNode
+public sealed class IntermediateCleanupNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("IntermediateCleanupNode_Name", "Limpieza de Archivos Intermedios");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("IntermediateCleanupNode_Desc", "Elimina del disco los archivos temporales e intermedios generados por transformadores previos, preservando siempre el archivo original y opcionalmente el archivo activo actual.");
+    public override string Name => LocalizationManager.Instance.GetString("IntermediateCleanupNode_Name", "Limpieza de Archivos Intermedios");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("IntermediateCleanupNode_Desc", "Elimina del disco los archivos temporales e intermedios generados por transformadores previos, preservando siempre el archivo original y opcionalmente el archivo activo actual.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public IntermediateCleanupNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out)
-    };
+        Outputs =
+        [
+            new NodePort(WellKnownPorts.Out, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.Out)
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["KeepOriginal"] = true,
-        ["KeepCurrent"] = true,
-        ["TargetTags"] = "" // Empty = all registered intermediate versions
-    };
+        Parameters["KeepOriginal"] = true;
+        Parameters["KeepCurrent"] = true;
+        Parameters["TargetTags"] = ""; // Empty = all registered intermediate versions
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -40,8 +39,8 @@ public sealed class IntermediateCleanupNode : IFlowNode
     {
         var storage = context.GetStorage();
 
-        bool keepCurrent = Parameters.TryGetValue("KeepCurrent", out var kc) ? ParameterHelper.GetBoolean(kc, true) : true;
-        string targetTags = Parameters.TryGetValue("TargetTags", out var tt) ? ParameterHelper.GetString(tt, "") : "";
+        bool keepCurrent = GetParameter("KeepCurrent", true);
+        string targetTags = GetParameter("TargetTags", "");
 
         var tagsToClean = string.IsNullOrWhiteSpace(targetTags)
             ? item.FileVersions.Keys.ToList()

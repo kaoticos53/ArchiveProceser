@@ -4,8 +4,9 @@ using System.Threading;
 namespace FileFlow.Plugin.AI;
 
 /// <summary>
-/// Relay débil entre los eventos estáticos de estado de sesión (<c>OnnxSessionManager.SessionStateChanged</c>,
-/// <c>AudioInferenceEngine.SessionStateChanged</c>) y el evento de instancia
+/// Relay débil entre el evento único de estado de sesión del plugin
+/// (<see cref="FileFlow.Plugin.AI.Inference.OnnxSessionRegistry.SessionStateChanged"/>, al que reexpiden los
+/// almacenes de visión, audio y embeddings) y el evento de instancia
 /// <see cref="IModelLifecycleNode.ModelStatusChanged"/> de cada nodo.
 ///
 /// <para>

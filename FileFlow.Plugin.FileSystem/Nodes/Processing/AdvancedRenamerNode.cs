@@ -11,7 +11,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("AdvancedRenamerNode_Name", "Files", "AdvancedRenamerNode_Desc", PipelineRole.Transform,
     "renombrar", "nombre", "patron", "tokens", "exif", "fecha", "rename", "pattern", "batch")]
-public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
+public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -23,30 +23,29 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
     private readonly RenameBatchContext _batchContext = new();
     private readonly ConcurrentDictionary<string, byte> _claimedTargetPaths = new(StringComparer.OrdinalIgnoreCase);
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Inteligente");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Desc", "Renombra archivos por lotes mediante transformaciones avanzadas, patrones basados en tokens, fechas y números secuenciales.");
+    public override string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Inteligente");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Desc", "Renombra archivos por lotes mediante transformaciones avanzadas, patrones basados en tokens, fechas y números secuenciales.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos de entrada")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos renombrados")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new()
+    public AdvancedRenamerNode()
     {
-        ["PipelineName"] = "Pipeline Predeterminado",
-        ["RenameMode"] = "Virtual",
-        ["CollisionStrategy"] = "AutoIncrement",
-        ["MethodSteps"] = ""
-    };
+        Inputs =
+        [
+            new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos de entrada")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        Outputs =
+        [
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos renombrados")
+        ];
+
+        Parameters["PipelineName"] = "Pipeline Predeterminado";
+        Parameters["RenameMode"] = "Virtual";
+        Parameters["CollisionStrategy"] = "AutoIncrement";
+        Parameters["MethodSteps"] = "";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("PipelineName", ParameterEditorType.Dropdown, DefaultValue: "Pipeline Predeterminado", DisplayOrder: 1, Options: GetPresetOptions()),
         new("RenameMode", ParameterEditorType.Dropdown, DefaultValue: "Virtual", DisplayOrder: 2, Options: ["Virtual", "DirectInPlace"]),
         new("CollisionStrategy", ParameterEditorType.Dropdown, DefaultValue: "AutoIncrement", DisplayOrder: 3, Options: ["AutoIncrement", "Overwrite", "Skip", "Fail"])
@@ -66,7 +65,7 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         return options;
     }
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("OpenRenamerPipeline", "🏷️ Pipeline de Métodos...", "🏷️", "Abrir el Estudio de Renombrado Avanzado (7 métodos, presets y vista previa)")
     ];
 
@@ -108,7 +107,7 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         }
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -127,9 +126,9 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
         try
         {
-            string renameMode = Parameters.TryGetValue("RenameMode", out var rmVal) ? ParameterHelper.GetString(rmVal, "Virtual") : "Virtual";
+            string renameMode = GetParameter("RenameMode", "Virtual");
             bool isVirtual = string.Equals(renameMode, "Virtual", StringComparison.OrdinalIgnoreCase);
-            string collisionStrategy = Parameters.TryGetValue("CollisionStrategy", out var cVal) ? ParameterHelper.GetString(cVal, "AutoIncrement") : "AutoIncrement";
+            string collisionStrategy = GetParameter("CollisionStrategy", "AutoIncrement");
             var steps = ResolveSteps();
 
             string currentFileName = Path.GetFileName(item.CurrentPath);
@@ -295,12 +294,14 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
 
     private IReadOnlyList<RenameMethodStep> ResolveSteps()
     {
-        if (!Parameters.TryGetValue("PipelineName", out var pnVal) || pnVal == null || string.IsNullOrWhiteSpace(pnVal.ToString()))
+        if (string.IsNullOrWhiteSpace(GetParameter("PipelineName", string.Empty)))
         {
             Parameters["PipelineName"] = "Pipeline Predeterminado";
         }
 
-        if (Parameters.TryGetValue("MethodSteps", out var stepsObj) && stepsObj != null)
+        // Los pasos son una lista o su JSON: se leen sin convertir para conservar el tipo original.
+        object? stepsObj = GetParameter<object?>("MethodSteps", null);
+        if (stepsObj is not null)
         {
             if (stepsObj is IReadOnlyList<RenameMethodStep> stepList && stepList.Count > 0)
             {
@@ -322,9 +323,9 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         }
 
         // Si no hay pasos explícitos configurados pero se especificó un PipelineName correspondiente a un preset incorporado
-        if (Parameters.TryGetValue("PipelineName", out var nameVal) && nameVal != null && !string.IsNullOrWhiteSpace(nameVal.ToString()))
+        string pName = GetParameter("PipelineName", string.Empty);
+        if (!string.IsNullOrWhiteSpace(pName))
         {
-            string pName = nameVal.ToString()!;
             if (!string.Equals(pName, "Pipeline Predeterminado", StringComparison.OrdinalIgnoreCase))
             {
                 var matchingPreset = RenamerPresetService.GetBuiltinPresets()
@@ -338,22 +339,24 @@ public sealed class AdvancedRenamerNode : IFlowNode, INodeCustomActionProvider
         }
 
         // Migrar y limpiar parámetros legados (Pattern, NameTemplate, CaseTransformation)
-        string legacyPattern = string.Empty;
-        if (Parameters.TryGetValue("Pattern", out var pVal) && pVal != null && !string.IsNullOrWhiteSpace(pVal.ToString()))
+        string legacyPattern = GetParameter("Pattern", string.Empty);
+        if (!string.IsNullOrWhiteSpace(legacyPattern))
         {
-            legacyPattern = pVal.ToString()!;
             Parameters.Remove("Pattern");
         }
-        else if (Parameters.TryGetValue("NameTemplate", out var ntVal) && ntVal != null && !string.IsNullOrWhiteSpace(ntVal.ToString()))
+        else
         {
-            legacyPattern = ntVal.ToString()!;
-            Parameters.Remove("NameTemplate");
+            legacyPattern = GetParameter("NameTemplate", string.Empty);
+            if (!string.IsNullOrWhiteSpace(legacyPattern))
+            {
+                Parameters.Remove("NameTemplate");
+            }
         }
 
-        string legacyCase = string.Empty;
-        if (Parameters.TryGetValue("CaseTransformation", out var csVal) && csVal != null)
+        string legacyCase = GetParameter("CaseTransformation", string.Empty);
+        if (Parameters.ContainsKey("CaseTransformation"))
         {
-            legacyCase = csVal.ToString()!;
+            // Se consume el parámetro legado para que la migración no se repita en cada ejecución.
             Parameters.Remove("CaseTransformation");
         }
 

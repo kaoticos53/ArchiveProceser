@@ -9,36 +9,35 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("ExcelReportGeneratorNode_Name", "Data", "ExcelReportGeneratorNode_Desc", PipelineRole.Sink,
     "excel", "informe", "reporte", "exportar", "tabla", "consolidar", "xlsx")]
-public sealed class ExcelReportGeneratorNode : IFlowNode
+public sealed class ExcelReportGeneratorNode : FlowNodeBase
 {
     private readonly ConcurrentBag<Dictionary<string, object?>> _collectedRows = [];
     private readonly Lock _lock = new();
     private string? _lastExecutionId;
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Name", "Generador de Reportes Excel (.xlsx)");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Desc", "Acumula los metadatos de los archivos procesados y genera un archivo Excel (.xlsx) estructurado al concluir el flujo.");
+    public override string Name => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Name", "Generador de Reportes Excel (.xlsx)");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("ExcelReportGeneratorNode_Desc", "Acumula los metadatos de los archivos procesados y genera un archivo Excel (.xlsx) estructurado al concluir el flujo.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Report", typeof(FileItemContext), PortDirection.Output, "Report")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public ExcelReportGeneratorNode()
     {
-        ["OutputDirectory"] = "{GlobalOutputDir}",
-        ["ReportFileName"] = "Reporte_Ejecucion_{Date}.xlsx",
-        ["ColumnsToExport"] = "FileName, FileSizeBytes, DurationMs, Status, HashSHA256"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Report", typeof(FileItemContext), PortDirection.Output, "Report")
+        ];
+
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        Parameters["ReportFileName"] = "Reporte_Ejecucion_{Date}.xlsx";
+        Parameters["ColumnsToExport"] = "FileName, FileSizeBytes, DurationMs, Status, HashSHA256";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 1),
         new("ReportFileName", ParameterEditorType.Text, DefaultValue: "Reporte_Ejecucion_{Date}.xlsx", DisplayOrder: 2),
@@ -47,14 +46,14 @@ public sealed class ExcelReportGeneratorNode : IFlowNode
 
     private string? _discoveredGlobalOutputDir;
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut && !string.IsNullOrWhiteSpace(gOut))
         {
             _discoveredGlobalOutputDir = gOut;
         }
 
-        string colsConfig = Parameters.TryGetValue("ColumnsToExport", out var cols) ? cols?.ToString() ?? string.Empty : string.Empty;
+        string colsConfig = GetParameter("ColumnsToExport", string.Empty);
         var selectedCols = string.IsNullOrWhiteSpace(colsConfig)
             ? []
             : colsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -99,7 +98,7 @@ public sealed class ExcelReportGeneratorNode : IFlowNode
         await context.EmitAsync("Out", item).ConfigureAwait(false);
     }
 
-    public async Task OnWorkflowCompletedAsync(IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task OnWorkflowCompletedAsync(IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         if (_collectedRows.IsEmpty)
         {
@@ -107,7 +106,7 @@ public sealed class ExcelReportGeneratorNode : IFlowNode
             return;
         }
 
-        string outDir = Parameters.TryGetValue("OutputDirectory", out var od) ? od?.ToString() ?? "{GlobalOutputDir}" : "{GlobalOutputDir}";
+        string outDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
         outDir = Environment.ExpandEnvironmentVariables(outDir);
 
         if (!string.IsNullOrWhiteSpace(_discoveredGlobalOutputDir))
@@ -126,7 +125,7 @@ public sealed class ExcelReportGeneratorNode : IFlowNode
             await storage.CreateDirectoryAsync(outDir, cancellationToken).ConfigureAwait(false);
         }
 
-        string reportNameTemplate = Parameters.TryGetValue("ReportFileName", out var rfn) ? rfn?.ToString() ?? "Reporte_{Date}.xlsx" : "Reporte_{Date}.xlsx";
+        string reportNameTemplate = GetParameter("ReportFileName", "Reporte_{Date}.xlsx");
         string dateStr = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string reportFileName = reportNameTemplate.Replace("{Date}", dateStr, StringComparison.OrdinalIgnoreCase)
                                                  .Replace("{DateTime}", dateStr, StringComparison.OrdinalIgnoreCase);

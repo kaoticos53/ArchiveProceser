@@ -5,31 +5,30 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("DocumentProcessorNode_Name", "Documents", "DocumentProcessorNode_Desc", PipelineRole.Analyze,
     "documento", "lineas", "conteo", "tipo", "extension", "doc", "pdf", "txt", "stats")]
-public sealed class DocumentProcessorNode : IFlowNode
+public sealed class DocumentProcessorNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("DocumentProcessorNode_Name", "Document & PDF Processor");
-    public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("DocumentProcessorNode_Desc", "Inspects documents and PDF files, counting pages and extracting key metadata.");
+    public override string Name => LocalizationManager.Instance.GetString("DocumentProcessorNode_Name", "Document & PDF Processor");
+    public override string Category => "Documents";
+    public override string Description => LocalizationManager.Instance.GetString("DocumentProcessorNode_Desc", "Inspects documents and PDF files, counting pages and extracting key metadata.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public DocumentProcessorNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Operation"] = "InspectMetadata", // InspectMetadata, ExtractTextSummary
-        ["ExtractPageCount"] = true
-    };
+        Parameters["Operation"] = "InspectMetadata"; // InspectMetadata, ExtractTextSummary
+        Parameters["ExtractPageCount"] = true;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,

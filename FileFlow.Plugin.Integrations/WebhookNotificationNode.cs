@@ -9,7 +9,7 @@ namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("WebhookNotificationNode_Name", "Integrations", "WebhookNotificationNode_Desc", PipelineRole.Control,
     "webhook", "http", "post", "notificacion", "api", "rest", "json", "slack", "discord")]
-public sealed class WebhookNotificationNode : IFlowNode
+public sealed class WebhookNotificationNode : FlowNodeBase
 {
     private static readonly HttpClient HttpClient = new(new SocketsHttpHandler
     {
@@ -17,39 +17,37 @@ public sealed class WebhookNotificationNode : IFlowNode
         EnableMultipleHttp2Connections = true
     });
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("WebhookNotificationNode_Name", "Notificador Webhook (HTTP POST)");
-    public string Category => "Integrations";
-    public string Description => LocalizationManager.Instance.GetString("WebhookNotificationNode_Desc", "Envía una petición HTTP POST con un cuerpo JSON dinámico hacia servicios externos (Discord, Slack, n8n, Zapier o servidores propios) al procesar cada archivo.");
+    public override string Name => LocalizationManager.Instance.GetString("WebhookNotificationNode_Name", "Notificador Webhook (HTTP POST)");
+    public override string Category => "Integrations";
+    public override string Description => LocalizationManager.Instance.GetString("WebhookNotificationNode_Desc", "Envía una petición HTTP POST con un cuerpo JSON dinámico hacia servicios externos (Discord, Slack, n8n, Zapier o servidores propios) al procesar cada archivo.");
 
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public WebhookNotificationNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Failed", typeof(FileItemContext), PortDirection.Output, "Failed")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Failed", typeof(FileItemContext), PortDirection.Output, "Failed")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Url"] = "https://httpbin.org/post",
-        ["PayloadTemplate"] = "{\"file\": \"{FileName}\", \"size\": \"{SizeMB} MB\", \"status\": \"processed\"}",
-        ["TimeoutSeconds"] = 15
-    };
+        Parameters["Url"] = "https://httpbin.org/post";
+        Parameters["PayloadTemplate"] = "{\"file\": \"{FileName}\", \"size\": \"{SizeMB} MB\", \"status\": \"processed\"}";
+        Parameters["TimeoutSeconds"] = 15;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string url = Parameters.TryGetValue("Url", out var uVal) ? ParameterHelper.GetString(uVal, "https://httpbin.org/post") : "https://httpbin.org/post";
-        string payloadTemplate = Parameters.TryGetValue("PayloadTemplate", out var pVal) ? ParameterHelper.GetString(pVal, "{}") : "{}";
-        int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 15) : 15;
+        string url = GetParameter("Url", "https://httpbin.org/post");
+        string payloadTemplate = GetParameter("PayloadTemplate", "{}");
+        int timeoutSec = GetParameter("TimeoutSeconds", 15);
 
         string resolvedUrl = VariableTemplateResolver.Resolve(url, item);
         string resolvedPayload = VariableTemplateResolver.Resolve(payloadTemplate, item);

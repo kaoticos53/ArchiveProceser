@@ -8,32 +8,31 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("CsvReaderNode_Name", "Data", "CsvReaderNode_Desc", PipelineRole.Source,
     "csv", "tsv", "delimitado", "leer", "tabla", "separador", "importar")]
-public sealed class CsvReaderNode : IFlowNode
+public sealed class CsvReaderNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("CsvReaderNode_Name", "Lector de Archivos CSV / TSV");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("CsvReaderNode_Desc", "Lee archivos delimitados (CSV, TSV, TXT) con autodetección de formato y emite cada fila con sus columnas en los metadatos.");
+    public override string Name => LocalizationManager.Instance.GetString("CsvReaderNode_Name", "Lector de Archivos CSV / TSV");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("CsvReaderNode_Desc", "Lee archivos delimitados (CSV, TSV, TXT) con autodetección de formato y emite cada fila con sus columnas en los metadatos.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("RowOut", typeof(FileItemContext), PortDirection.Output, "RowOut")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public CsvReaderNode()
     {
-        ["FilePath"] = "",
-        ["Delimiter"] = "Auto",
-        ["Encoding"] = "UTF-8",
-        ["HasHeader"] = true
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("RowOut", typeof(FileItemContext), PortDirection.Output, "RowOut")
+        ];
+
+        Parameters["FilePath"] = "";
+        Parameters["Delimiter"] = "Auto";
+        Parameters["Encoding"] = "UTF-8";
+        Parameters["HasHeader"] = true;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("FilePath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 1),
         new("Delimiter", ParameterEditorType.Dropdown, DefaultValue: "Auto", Options: ["Auto", "Comma (,)", "Semicolon (;)", "Tab (\\t)", "Pipe (|)"], DisplayOrder: 2),
@@ -41,12 +40,12 @@ public sealed class CsvReaderNode : IFlowNode
         new("HasHeader", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         string targetPath = !string.IsNullOrWhiteSpace(item.CurrentPath) && await storage.FileExistsAsync(item.CurrentPath, cancellationToken)
             ? item.CurrentPath
-            : (Parameters.TryGetValue("FilePath", out var fp) ? fp?.ToString() ?? string.Empty : string.Empty);
+            : GetParameter("FilePath", string.Empty);
 
         targetPath = Environment.ExpandEnvironmentVariables(targetPath);
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var outDirObj) && outDirObj is string gOut)
@@ -60,9 +59,9 @@ public sealed class CsvReaderNode : IFlowNode
             return;
         }
 
-        string delimiterConfig = Parameters.TryGetValue("Delimiter", out var dVal) ? dVal?.ToString() ?? "Auto" : "Auto";
-        string encodingConfig = Parameters.TryGetValue("Encoding", out var eVal) ? eVal?.ToString() ?? "UTF-8" : "UTF-8";
-        bool hasHeader = Parameters.TryGetValue("HasHeader", out var hVal) && ParameterHelper.GetBoolean(hVal, true);
+        string delimiterConfig = GetParameter("Delimiter", "Auto");
+        string encodingConfig = GetParameter("Encoding", "UTF-8");
+        bool hasHeader = GetParameter("HasHeader", false);
 
         Encoding enc = encodingConfig.ToUpperInvariant() switch
         {

@@ -12,7 +12,7 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveFanInNode_Name", "Archives", "ArchiveFanInNode_Desc", PipelineRole.Sink,
     "comprimir", "fanin", "aggregate", "empaquetar", "zip", "7z", "cbz", "targz", "join", "reducir", "lote")]
-public sealed class ArchiveFanInNode : IFlowNode
+public sealed class ArchiveFanInNode : FlowNodeBase
 {
     private sealed class ArchiveSessionState
     {
@@ -31,33 +31,32 @@ public sealed class ArchiveFanInNode : IFlowNode
     private readonly ConcurrentDictionary<string, ArchiveSessionState> _activeSessions = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lock = new();
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ArchiveFanInNode_Name", "Agregador y Empaquetador (Fan-In)");
-    public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("ArchiveFanInNode_Desc", "Recolecta todos los archivos procesados de una sesión de descompresión y los re-empaqueta en el archivo final en el destino.");
+    public override string Name => LocalizationManager.Instance.GetString("ArchiveFanInNode_Name", "Agregador y Empaquetador (Fan-In)");
+    public override string Category => "Archives";
+    public override string Description => LocalizationManager.Instance.GetString("ArchiveFanInNode_Desc", "Recolecta todos los archivos procesados de una sesión de descompresión y los re-empaqueta en el archivo final en el destino.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public ArchiveFanInNode()
     {
-        ["DestinationFolder"] = @"{RelativeDir}\Processed",
-        ["ArchiveName"] = "{Archive:OriginalArchiveFileName}",
-        ["ArchiveFormat"] = "Auto",
-        ["CompressionType"] = "Deflate",
-        ["CleanWorkingFolder"] = true,
-        ["TimeoutSeconds"] = 120
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
+
+        Parameters["DestinationFolder"] = @"{RelativeDir}\Processed";
+        Parameters["ArchiveName"] = "{Archive:OriginalArchiveFileName}";
+        Parameters["ArchiveFormat"] = "Auto";
+        Parameters["CompressionType"] = "Deflate";
+        Parameters["CleanWorkingFolder"] = true;
+        Parameters["TimeoutSeconds"] = 120;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("DestinationFolder", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Processed", DisplayOrder: 1, HelpText: "Carpeta de destino para el archivo comprimido final."),
         new("ArchiveName", ParameterEditorType.Text, DefaultValue: "{Archive:OriginalArchiveFileName}", DisplayOrder: 2, HelpText: "Nombre del archivo final. Admite tokens como {Archive:OriginalArchiveFileName} o {FileNameWithoutExtension}.cbz."),
@@ -67,7 +66,7 @@ public sealed class ArchiveFanInNode : IFlowNode
         new("TimeoutSeconds", ParameterEditorType.Number, DefaultValue: 120, DisplayOrder: 6, Min: 5, Max: 3600, Step: 5)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -125,7 +124,7 @@ public sealed class ArchiveFanInNode : IFlowNode
         }
     }
 
-    public async Task OnWorkflowCompletedAsync(
+    public override async Task OnWorkflowCompletedAsync(
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
@@ -151,15 +150,11 @@ public sealed class ArchiveFanInNode : IFlowNode
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var storage = context.GetStorage();
 
-        string destPattern = Parameters.TryGetValue("DestinationFolder", out var dfVal) && !string.IsNullOrWhiteSpace(dfVal?.ToString())
-            ? ParameterHelper.GetString(dfVal, @"{RelativeDir}\Processed")
-            : @"{RelativeDir}\Processed";
+        string destPattern = GetParameter("DestinationFolder", @"{RelativeDir}\Processed");
 
         string destDir = ParameterHelper.ResolveOutputPath(destPattern, session.TemplateItem);
 
-        string namePattern = Parameters.TryGetValue("ArchiveName", out var aVal) && !string.IsNullOrWhiteSpace(aVal?.ToString())
-            ? ParameterHelper.GetString(aVal, "{Archive:OriginalArchiveFileName}")
-            : "{Archive:OriginalArchiveFileName}";
+        string namePattern = GetParameter("ArchiveName", "{Archive:OriginalArchiveFileName}");
 
         string archiveName = VariableTemplateResolver.Resolve(namePattern, session.TemplateItem);
         if (string.IsNullOrWhiteSpace(archiveName))
@@ -169,9 +164,7 @@ public sealed class ArchiveFanInNode : IFlowNode
                 : "Archive.zip";
         }
 
-        string formatParam = Parameters.TryGetValue("ArchiveFormat", out var fVal)
-            ? ParameterHelper.GetString(fVal, "Auto").ToUpperInvariant()
-            : "AUTO";
+        string formatParam = GetParameter("ArchiveFormat", "Auto").ToUpperInvariant();
 
         string targetFormat = formatParam switch
         {
@@ -188,9 +181,7 @@ public sealed class ArchiveFanInNode : IFlowNode
             }
         }
 
-        string compTypeStr = Parameters.TryGetValue("CompressionType", out var cVal)
-            ? ParameterHelper.GetString(cVal, "Deflate").ToUpperInvariant()
-            : "DEFLATE";
+        string compTypeStr = GetParameter("CompressionType", "Deflate").ToUpperInvariant();
 
         try
         {

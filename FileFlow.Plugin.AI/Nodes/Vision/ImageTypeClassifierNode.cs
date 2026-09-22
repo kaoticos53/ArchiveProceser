@@ -81,9 +81,9 @@ public sealed class ImageTypeClassifierNode : AiFlowNodeBase
 
         try
         {
-            double threshold = Parameters.TryGetValue("ConfidenceThreshold", out var ct) ? ParameterHelper.GetDouble(ct, 0.50) : 0.50;
-            bool enableFace = Parameters.TryGetValue("EnableFaceDetection", out var ef) ? ParameterHelper.GetBoolean(ef, true) : true;
-            bool checkExif = Parameters.TryGetValue("CheckExifMetadata", out var ce) ? ParameterHelper.GetBoolean(ce, true) : true;
+            double threshold = GetParameter("ConfidenceThreshold", 0.50);
+            bool enableFace = GetParameter("EnableFaceDetection", true);
+            bool checkExif = GetParameter("CheckExifMetadata", true);
 
             string? faceModelPath = null;
             if (enableFace)

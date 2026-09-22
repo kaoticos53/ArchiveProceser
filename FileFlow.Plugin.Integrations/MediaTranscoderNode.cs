@@ -12,35 +12,34 @@ namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("MediaTranscoderNode_Name", "AudioVoice", "MediaTranscoderNode_Desc", PipelineRole.Transform,
     "ffmpeg", "video", "audio", "mp4", "mp3", "transcodificar", "convertir", "h264", "h265", "webm", "media")]
-public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
+public sealed class MediaTranscoderNode : FlowNodeBase, INodeCustomActionProvider
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
-    public string Category => "AudioVoice";
-    public string Description => LocalizationManager.Instance.GetString("MediaTranscoderNode_Desc", "Transcodifica archivos de audio y video a múltiples formatos mediante FFmpeg.");
+    public override string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
+    public override string Category => "AudioVoice";
+    public override string Description => LocalizationManager.Instance.GetString("MediaTranscoderNode_Desc", "Transcodifica archivos de audio y video a múltiples formatos mediante FFmpeg.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos multimedia")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos transcodificados"),
-        new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos con error de transcodificación")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new()
+    public MediaTranscoderNode()
     {
-        ["Preset"] = "MP4 - H.264 / AAC",
-        ["OutputExtension"] = ".mp4",
-        ["OutputFolder"] = "",
-        ["CustomArguments"] = "",
-        ["CustomFfmpegPath"] = "",
-        ["HardwareAcceleration"] = "Auto"
-    };
+        Inputs =
+        [
+            new("In", typeof(FileItemContext), PortDirection.Input, "In", "Flujo de archivos multimedia")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+        Outputs =
+        [
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos transcodificados"),
+            new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos con error de transcodificación")
+        ];
+
+        Parameters["Preset"] = "MP4 - H.264 / AAC";
+        Parameters["OutputExtension"] = ".mp4";
+        Parameters["OutputFolder"] = "";
+        Parameters["CustomArguments"] = "";
+        Parameters["CustomFfmpegPath"] = "";
+        Parameters["HardwareAcceleration"] = "Auto";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("Preset", ParameterEditorType.Dropdown, DefaultValue: "MP4 - H.264 / AAC", DisplayOrder: 1,
             Options: ["MP4 - H.264 / AAC", "MP4 - H.265 / HEVC", "WebM - VP9 / Opus", "MP3 - 320kbps", "FLAC - Lossless", "WAV - PCM 16-bit", "GIF Animado", "Extraer Audio"]),
         new("OutputExtension", ParameterEditorType.Text, DefaultValue: ".mp4", DisplayOrder: 2),
@@ -51,7 +50,7 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
             Options: ["Auto", "None", "cuda", "nvenc", "qsv", "vaapi", "dxva2", "d3d11va"])
     ];
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("ManageMediaPresets", "🎬 Presets...", "🎬", "Gestionar y personalizar presets de transcodificación FFmpeg")
     ];
 
@@ -93,7 +92,7 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
         }
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -103,9 +102,9 @@ public sealed class MediaTranscoderNode : IFlowNode, INodeCustomActionProvider
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         string filePath = item.CurrentPath;
-        string presetName = Parameters.TryGetValue("Preset", out var pVal) ? ParameterHelper.GetString(pVal, "Convertir 1080p H.264 (Universal MP4)") : "Convertir 1080p H.264 (Universal MP4)";
-        string destDirPattern = Parameters.TryGetValue("DestinationDirectory", out var dVal) ? ParameterHelper.GetString(dVal, "Transcoded") : "Transcoded";
-        string customArgs = Parameters.TryGetValue("CustomArguments", out var cVal) ? ParameterHelper.GetString(cVal, "") : "";
+        string presetName = GetParameter("Preset", "Convertir 1080p H.264 (Universal MP4)");
+        string destDirPattern = GetParameter("DestinationDirectory", "Transcoded");
+        string customArgs = GetParameter("CustomArguments", "");
 
         string destDir = ParameterHelper.ResolveOutputPath(destDirPattern, item);
 

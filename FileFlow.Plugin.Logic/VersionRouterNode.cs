@@ -11,35 +11,34 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("VersionRouterNode_Name", "Logic", "VersionRouterNode_Desc", PipelineRole.Filter,
     "router", "version", "enrutador", "condicion", "if", "branch", "autopurga", "desviar")]
-public sealed class VersionRouterNode : IFlowNode
+public sealed class VersionRouterNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("VersionRouterNode_Name", "Enrutador de Versiones");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("VersionRouterNode_Desc", "Evalúa una condición entre versiones o variables (ej. tamaño optimizado < tamaño original) y desvía el flujo por True o False activando el archivo deseado y autopurgando el descarte.");
+    public override string Name => LocalizationManager.Instance.GetString("VersionRouterNode_Name", "Enrutador de Versiones");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("VersionRouterNode_Desc", "Evalúa una condición entre versiones o variables (ej. tamaño optimizado < tamaño original) y desvía el flujo por True o False activando el archivo deseado y autopurgando el descarte.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public VersionRouterNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort(WellKnownPorts.True, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.True),
-        new NodePort(WellKnownPorts.False, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.False)
-    };
+        Outputs =
+        [
+            new NodePort(WellKnownPorts.True, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.True),
+            new NodePort(WellKnownPorts.False, typeof(FileItemContext), PortDirection.Output, WellKnownPorts.False)
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Property"] = "FileSize:Optimized",
-        ["Operator"] = "<",
-        ["ComparisonValue"] = "{FileSize:Original}",
-        ["TrueFile"] = "{CurrentPath}",
-        ["FalseFile"] = "{OriginalPath}",
-        ["PurgeUnselectedTemps"] = true
-    };
+        Parameters["Property"] = "FileSize:Optimized";
+        Parameters["Operator"] = "<";
+        Parameters["ComparisonValue"] = "{FileSize:Original}";
+        Parameters["TrueFile"] = "{CurrentPath}";
+        Parameters["FalseFile"] = "{OriginalPath}";
+        Parameters["PurgeUnselectedTemps"] = true;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("Property", ParameterEditorType.Text, DefaultValue: "FileSize:Optimized", DisplayOrder: 1, HelpText: "Propiedad o variable a evaluar"),
         new("Operator", ParameterEditorType.Dropdown, DefaultValue: "<", DisplayOrder: 2, Options: ["<", "<=", ">", ">=", "==", "!=", "Contains", "StartsWith", "EndsWith"], HelpText: "Operador de comparación"),
         new("ComparisonValue", ParameterEditorType.Text, DefaultValue: "{FileSize:Original}", DisplayOrder: 3, HelpText: "Valor objetivo o variable con la que comparar"),
@@ -50,18 +49,18 @@ public sealed class VersionRouterNode : IFlowNode
 
     private static readonly Regex NumericRegex = new(@"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.Compiled);
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string prop = Parameters.TryGetValue("Property", out var pVal) ? ParameterHelper.GetString(pVal, "FileSize:Optimized") : "FileSize:Optimized";
-        string op = Parameters.TryGetValue("Operator", out var oVal) ? ParameterHelper.GetString(oVal, "<") : "<";
-        string compValPattern = Parameters.TryGetValue("ComparisonValue", out var cVal) ? ParameterHelper.GetString(cVal, "{FileSize:Original}") : "{FileSize:Original}";
-        string trueFilePattern = Parameters.TryGetValue("TrueFile", out var tf) ? ParameterHelper.GetString(tf, "{CurrentPath}") : "{CurrentPath}";
-        string falseFilePattern = Parameters.TryGetValue("FalseFile", out var ff) ? ParameterHelper.GetString(ff, "{OriginalPath}") : "{OriginalPath}";
-        bool purgeUnselectedTemps = Parameters.TryGetValue("PurgeUnselectedTemps", out var pu) ? ParameterHelper.GetBoolean(pu, true) : true;
+        string prop = GetParameter("Property", "FileSize:Optimized");
+        string op = GetParameter("Operator", "<");
+        string compValPattern = GetParameter("ComparisonValue", "{FileSize:Original}");
+        string trueFilePattern = GetParameter("TrueFile", "{CurrentPath}");
+        string falseFilePattern = GetParameter("FalseFile", "{OriginalPath}");
+        bool purgeUnselectedTemps = GetParameter("PurgeUnselectedTemps", true);
 
         string actualValue = VariableTemplateResolver.GetVariableValue(prop, item, null);
         string comparisonValue = VariableTemplateResolver.Resolve(compValPattern, item);

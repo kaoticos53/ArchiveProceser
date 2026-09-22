@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.App.Services;
@@ -106,6 +107,65 @@ public class ModelLifecycleAndMemoryTests
         {
             AudioInferenceEngine.SessionStateChanged -= Handler;
         }
+    }
+
+    [Fact]
+    public void SessionStateEvent_ShouldBeSharedByEveryEngine()
+    {
+        int notificationsSeenFromVisionAlias = 0;
+        void Handler() => notificationsSeenFromVisionAlias++;
+        OnnxSessionManager.SessionStateChanged += Handler;
+
+        try
+        {
+            // Un cambio en los almacenes de audio y embeddings debe llegar a quien observa el evento del
+            // de visión: los tres reexpiden el mismo evento del registro.
+            AudioInferenceEngine.ClearSessionCache();
+            SemanticEmbeddingEngine.ClearSessionCache();
+
+            notificationsSeenFromVisionAlias.Should().BeGreaterThan(0,
+                "los tres motores publican sus cambios en el mismo evento de estado");
+        }
+        finally
+        {
+            OnnxSessionManager.SessionStateChanged -= Handler;
+        }
+    }
+
+    [Fact]
+    public void OnnxSessionRegistry_ShouldAggregateEveryEngineStore()
+    {
+        // Tocar cada motor garantiza que su almacén se registre (lo hace en su constructor estático).
+        _ = OnnxSessionManager.GetLoadedSessionCount();
+        _ = AudioInferenceEngine.GetLoadedSessionCount();
+        _ = SemanticEmbeddingEngine.SessionStore.GetLoadedSessionCount();
+
+        var names = OnnxSessionRegistry.Stores.Select(store => store.Name).ToList();
+        names.Should().Contain(["Vision", "Audio", "SemanticEmbeddings"]);
+
+        // Antes de la unificación el almacén de embeddings no entraba en el conteo de la barra de estado.
+        OnnxSessionRegistry.GetLoadedSessionCount().Should().Be(
+            OnnxSessionManager.GetLoadedSessionCount()
+            + AudioInferenceEngine.GetLoadedSessionCount()
+            + SemanticEmbeddingEngine.SessionStore.GetLoadedSessionCount(),
+            "el conteo global es la suma de los almacenes de todos los motores");
+    }
+
+    [Fact]
+    public void ZeroShotSemanticSearchNode_ShouldReportModelLifecycle()
+    {
+        // Al unificar los almacenes, el nodo de embeddings entró en la jerarquía de IA: su modelo tiene
+        // ahora estado observable y liberable como el de cualquier nodo de visión o audio.
+        AiPluginInitializer.ClearAllSessions();
+
+        var node = new ZeroShotSemanticSearchNode();
+        node.Should().BeAssignableTo<IModelLifecycleNode>();
+
+        var lifecycle = (IModelLifecycleNode)node;
+        lifecycle.ModelIdentifier.Should().NotBeNullOrWhiteSpace();
+
+        lifecycle.UnloadModel();
+        lifecycle.IsModelLoaded.Should().BeFalse();
     }
 
     [Fact]

@@ -8,43 +8,42 @@ namespace FileFlow.Plugin.Data;
 
 [NodeDefinition("ExcelReaderNode_Name", "Data", "ExcelReaderNode_Desc", PipelineRole.Source,
     "excel", "xlsx", "leer", "tabla", "hoja", "filas", "importar", "sheet")]
-public sealed class ExcelReaderNode : IFlowNode
+public sealed class ExcelReaderNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ExcelReaderNode_Name", "Lector de Hojas Excel");
-    public string Category => "Data";
-    public string Description => LocalizationManager.Instance.GetString("ExcelReaderNode_Desc", "Lee archivos Excel (.xlsx/.csv) y emite cada fila como un registro de datos con sus columnas en los metadatos.");
+    public override string Name => LocalizationManager.Instance.GetString("ExcelReaderNode_Name", "Lector de Hojas Excel");
+    public override string Category => "Data";
+    public override string Description => LocalizationManager.Instance.GetString("ExcelReaderNode_Desc", "Lee archivos Excel (.xlsx/.csv) y emite cada fila como un registro de datos con sus columnas en los metadatos.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("RowOut", typeof(FileItemContext), PortDirection.Output, "RowOut")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public ExcelReaderNode()
     {
-        ["FilePath"] = "",
-        ["SheetName"] = "",
-        ["SkipEmptyRows"] = true
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("RowOut", typeof(FileItemContext), PortDirection.Output, "RowOut")
+        ];
+
+        Parameters["FilePath"] = "";
+        Parameters["SheetName"] = "";
+        Parameters["SkipEmptyRows"] = true;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("FilePath", ParameterEditorType.FilePath, DefaultValue: "", DisplayOrder: 1),
         new("SheetName", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 2),
         new("SkipEmptyRows", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 4)
     ];
 
-    public async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
+    public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
         var storage = context.GetStorage();
         string targetPath = !string.IsNullOrWhiteSpace(item.CurrentPath) && await storage.FileExistsAsync(item.CurrentPath, cancellationToken)
             ? item.CurrentPath
-            : (Parameters.TryGetValue("FilePath", out var fp) ? fp?.ToString() ?? string.Empty : string.Empty);
+            : GetParameter("FilePath", string.Empty);
 
         targetPath = Environment.ExpandEnvironmentVariables(targetPath);
         if (item.Metadata.TryGetValue("GlobalOutputDir", out var outDirObj) && outDirObj is string gOut)
@@ -58,8 +57,8 @@ public sealed class ExcelReaderNode : IFlowNode
             return;
         }
 
-        string sheetName = Parameters.TryGetValue("SheetName", out var sn) ? sn?.ToString() ?? string.Empty : string.Empty;
-        bool skipEmpty = Parameters.TryGetValue("SkipEmptyRows", out var se) && ParameterHelper.GetBoolean(se, true);
+        string sheetName = GetParameter("SheetName", string.Empty);
+        bool skipEmpty = GetParameter("SkipEmptyRows", false);
 
         context.Log($"[ExcelReader] Abriendo hoja de cálculo: {Path.GetFileName(targetPath)}", LogLevel.Information);
 

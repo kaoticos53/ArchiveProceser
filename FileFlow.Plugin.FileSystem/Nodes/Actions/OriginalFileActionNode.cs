@@ -7,36 +7,35 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("OriginalFileActionNode_Name", "Files", "OriginalFileActionNode_Desc", PipelineRole.Sink,
     "original", "cuarentena", "papelera", "borrar", "eliminar", "quarantine", "recycle", "lifecycle", "cleanup")]
-public sealed class OriginalFileActionNode : IFlowNode
+public sealed class OriginalFileActionNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("OriginalFileActionNode_Name", "Original File Action");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("OriginalFileActionNode_Desc", "Centralized policy execution on original source files (Keep, Move to Recycle Bin, Move to Quarantine, Permanent Delete).");
+    public override string Name => LocalizationManager.Instance.GetString("OriginalFileActionNode_Name", "Original File Action");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("OriginalFileActionNode_Desc", "Centralized policy execution on original source files (Keep, Move to Recycle Bin, Move to Quarantine, Permanent Delete).");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public OriginalFileActionNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["ActionType"] = "Keep",
-        ["QuarantinePath"] = @"{RelativeDir}\Quarantine"
-    };
+        Parameters["ActionType"] = "Keep";
+        Parameters["QuarantinePath"] = @"{RelativeDir}\Quarantine";
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("ActionType", ParameterEditorType.Dropdown, DefaultValue: "Keep", DisplayOrder: 1, Options: ["Keep", "MoveToRecycleBin", "MoveToQuarantine", "PermanentDelete"]),
         new("QuarantinePath", ParameterEditorType.FolderPath, DefaultValue: @"{RelativeDir}\Quarantine", DisplayOrder: 2)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -44,8 +43,8 @@ public sealed class OriginalFileActionNode : IFlowNode
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        string actionType = Parameters.TryGetValue("ActionType", out var aVal) ? ParameterHelper.GetString(aVal, "Keep") : "Keep";
-        string quarantinePattern = Parameters.TryGetValue("QuarantinePath", out var qVal) ? ParameterHelper.GetString(qVal, @"{RelativeDir}\Quarantine") : @"{RelativeDir}\Quarantine";
+        string actionType = GetParameter("ActionType", "Keep");
+        string quarantinePattern = GetParameter("QuarantinePath", @"{RelativeDir}\Quarantine");
         string quarantinePath = ParameterHelper.ResolveOutputPath(quarantinePattern, item);
         string targetFilePath = item.OriginalPath;
         bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));

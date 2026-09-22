@@ -5,33 +5,33 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("DirectoryInspectorNode_Name", "Files", "DirectoryInspectorNode_Desc", PipelineRole.Filter,
     "carpeta", "directorio", "inspeccionar", "comprimido", "mixto", "inspector", "branch")]
-public sealed class DirectoryInspectorNode : IFlowNode
+public sealed class DirectoryInspectorNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Name", "Directory Inspector");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Desc", "Evaluates folder contents to classify archive and file composition.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
-    {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
-
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("SingleArchive", typeof(FileItemContext), PortDirection.Output, "Single Archive"),
-        new NodePort("MixedContent", typeof(FileItemContext), PortDirection.Output, "Mixed Content"),
-        new NodePort("DirectoriesOnly", typeof(FileItemContext), PortDirection.Output, "Directories Only")
-    };
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase);
-
     private static readonly HashSet<string> ArchiveExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".tgz"
     };
 
-    public async Task ExecuteAsync(
+    public override string Name => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Name", "Directory Inspector");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("DirectoryInspectorNode_Desc", "Evaluates folder contents to classify archive and file composition.");
+
+    public DirectoryInspectorNode()
+    {
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
+
+        Outputs =
+        [
+            new NodePort("SingleArchive", typeof(FileItemContext), PortDirection.Output, "Single Archive"),
+            new NodePort("MixedContent", typeof(FileItemContext), PortDirection.Output, "Mixed Content"),
+            new NodePort("DirectoriesOnly", typeof(FileItemContext), PortDirection.Output, "Directories Only")
+        ];
+    }
+
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,

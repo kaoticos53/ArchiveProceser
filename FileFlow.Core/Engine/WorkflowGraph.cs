@@ -50,6 +50,13 @@ public class WorkflowGroup
 
 public class WorkflowGraph
 {
+    /// <summary>
+    /// Versión del formato con la que está escrito el grafo. <c>null</c> significa «sin declarar» y no es
+    /// lo mismo que un grafo recién construido en memoria: declara la versión el que <b>escribe</b> el
+    /// archivo. Ver <see cref="WorkflowFormat"/>.
+    /// </summary>
+    public string? Schema { get; set; }
+
     public string Name { get; set; } = "Untitled Workflow";
     public string GlobalOutputDir { get; set; } = string.Empty;
     public string TemporaryDirectory { get; set; } = string.Empty;
@@ -67,7 +74,16 @@ public class WorkflowGraph
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
+    /// <summary>
+    /// Serializa declarando la versión que escribe. No es un adorno: un archivo sin versión se lee como
+    /// anterior al versionado y se le aplican reparaciones, así que omitir el campo haría que cada flujo
+    /// guardado llevara puestas las suposiciones de un formato que ya no es el suyo.
+    /// </summary>
+    public string ToJson()
+    {
+        Schema ??= WorkflowFormat.CurrentSchema;
+        return JsonSerializer.Serialize(this, JsonOptions);
+    }
 
     public static WorkflowGraph FromJson(string json) =>
         JsonSerializer.Deserialize<WorkflowGraph>(json, JsonOptions) ?? new WorkflowGraph();

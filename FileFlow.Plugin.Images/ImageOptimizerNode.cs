@@ -11,44 +11,43 @@ namespace FileFlow.Plugin.Images;
 
 [NodeDefinition("ImageOptimizerNode_Name", "ImageVision", "ImageOptimizerNode_Desc", PipelineRole.Transform,
     "imagen", "foto", "redimensionar", "optimizar", "comprimir", "webp", "jpeg", "png", "resize", "convert")]
-public sealed class ImageOptimizerNode : IFlowNode
+public sealed class ImageOptimizerNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ImageOptimizerNode_Name", "Image Optimizer");
-    public string Category => "ImageVision";
-    public string Description => LocalizationManager.Instance.GetString("ImageOptimizerNode_Desc", "Resizes images keeping aspect ratio and converts to modern formats.");
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
-    {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
-
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
-
     private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tga", ".tiff", ".tif", ".pbm"
     };
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Width"] = "",
-        ["Height"] = "100%",
-        ["TargetFormat"] = "WebP",
-        ["Quality"] = 80,
-        ["OnlyDownscale"] = true,
-        ["OutputDirectory"] = "",
-        ["FileNameSuffix"] = "",
-        ["KeepOriginalIfLarger"] = false,
-        ["ReplaceOriginalInPlace"] = false,
-        ["PassThroughNonImages"] = true
-    };
+    public override string Name => LocalizationManager.Instance.GetString("ImageOptimizerNode_Name", "Image Optimizer");
+    public override string Category => "ImageVision";
+    public override string Description => LocalizationManager.Instance.GetString("ImageOptimizerNode_Desc", "Resizes images keeping aspect ratio and converts to modern formats.");
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public ImageOptimizerNode()
+    {
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
+
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
+
+        Parameters["Width"] = "";
+        Parameters["Height"] = "100%";
+        Parameters["TargetFormat"] = "WebP";
+        Parameters["Quality"] = 80;
+        Parameters["OnlyDownscale"] = true;
+        Parameters["OutputDirectory"] = "";
+        Parameters["FileNameSuffix"] = "";
+        Parameters["KeepOriginalIfLarger"] = false;
+        Parameters["ReplaceOriginalInPlace"] = false;
+        Parameters["PassThroughNonImages"] = true;
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("Width", ParameterEditorType.Text, DefaultValue: "", DisplayOrder: 1, HelpText: "Pixels (e.g. 1920) or Empty for automatic proportional calculation."),
         new("Height", ParameterEditorType.Text, DefaultValue: "100%", DisplayOrder: 2, HelpText: "Pixels (e.g. 1080) or Percentage (e.g. 100%, 50%)."),
         new("TargetFormat", ParameterEditorType.Dropdown, DefaultValue: "WebP", DisplayOrder: 3, Options: ["WebP", "JPEG", "PNG", "GIF"]),
@@ -183,7 +182,7 @@ public sealed class ImageOptimizerNode : IFlowNode
         return (targetW, targetH, resizeNeeded);
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -192,37 +191,31 @@ public sealed class ImageOptimizerNode : IFlowNode
         string filePath = item.CurrentPath;
 
         // Soporte unificado de Width y Height (con migración transparente de parámetros legados)
-        object? widthSpec = "1920";
-        if (Parameters.TryGetValue("Width", out var wVal) && wVal != null)
-            widthSpec = wVal;
-        else if (Parameters.TryGetValue("MaxWidth", out var mwVal) && mwVal != null)
-            widthSpec = mwVal;
-
-        object? heightSpec = "1080";
-        if (Parameters.TryGetValue("Height", out var hVal) && hVal != null)
-            heightSpec = hVal;
-        else if (Parameters.TryGetValue("MaxHeight", out var mhVal) && mhVal != null)
-            heightSpec = mhVal;
+        // Se conserva el valor tal cual (object) porque más abajo se interpreta como especificación
+        // ("1920", "50%"): GetParameter<object?> devuelve el valor original sin convertirlo.
+        object? widthSpec = GetParameter<object?>("Width", null) ?? GetParameter<object?>("MaxWidth", null) ?? "1920";
+        object? heightSpec = GetParameter<object?>("Height", null) ?? GetParameter<object?>("MaxHeight", null) ?? "1080";
 
         // Migración retrocompatible si venía SizeMode == "Percentage"
-        if (Parameters.TryGetValue("SizeMode", out var smVal) &&
-            string.Equals(smVal?.ToString(), "Percentage", StringComparison.OrdinalIgnoreCase))
+        string sizeMode = GetParameter("SizeMode", string.Empty);
+        if (string.Equals(sizeMode, "Percentage", StringComparison.OrdinalIgnoreCase))
         {
-            if (Parameters.TryGetValue("ScalePercentage", out var spVal) && spVal != null)
+            object? scalePercentage = GetParameter<object?>("ScalePercentage", null);
+            if (scalePercentage is not null)
             {
-                widthSpec = $"{spVal}%";
-                heightSpec = Parameters.TryGetValue("ScalePercentageY", out var spyVal) && spyVal != null ? $"{spyVal}%" : $"{spVal}%";
+                widthSpec = $"{scalePercentage}%";
+                heightSpec = $"{GetParameter<object?>("ScalePercentageY", null) ?? scalePercentage}%";
             }
         }
 
-        bool onlyDownscale = !Parameters.TryGetValue("OnlyDownscale", out var odVal) || ParameterHelper.GetBoolean(odVal, true);
-        bool keepOriginalIfLarger = Parameters.TryGetValue("KeepOriginalIfLarger", out var koVal) && ParameterHelper.GetBoolean(koVal, false);
-        bool replaceOriginalInPlace = Parameters.TryGetValue("ReplaceOriginalInPlace", out var ropVal) && ParameterHelper.GetBoolean(ropVal, false);
-        bool passThroughNonImages = !Parameters.TryGetValue("PassThroughNonImages", out var ptniVal) || ParameterHelper.GetBoolean(ptniVal, true);
+        bool onlyDownscale = GetParameter("OnlyDownscale", true);
+        bool keepOriginalIfLarger = GetParameter("KeepOriginalIfLarger", false);
+        bool replaceOriginalInPlace = GetParameter("ReplaceOriginalInPlace", false);
+        bool passThroughNonImages = GetParameter("PassThroughNonImages", true);
 
-        string formatStr = Parameters.TryGetValue("TargetFormat", out var fVal) ? ParameterHelper.GetString(fVal, "WebP") : "WebP";
-        int quality = Parameters.TryGetValue("Quality", out var qVal) ? ParameterHelper.GetInt32(qVal, 80) : 80;
-        string outputPattern = Parameters.TryGetValue("OutputDirectory", out var oVal) ? ParameterHelper.GetString(oVal, string.Empty) : string.Empty;
+        string formatStr = GetParameter("TargetFormat", "WebP");
+        int quality = GetParameter("Quality", 80);
+        string outputPattern = GetParameter("OutputDirectory", string.Empty);
         string outputDir = ParameterHelper.ResolveIntermediateOutputDir(outputPattern, item, context);
         bool isDryRun = context.IsDryRun || (item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false));
         var storage = context.GetStorage();
@@ -259,7 +252,7 @@ public sealed class ImageOptimizerNode : IFlowNode
             };
 
             string filenameNoExt = Path.GetFileNameWithoutExtension(filePath);
-            string suffix = Parameters.TryGetValue("FileNameSuffix", out var sfxVal) ? ParameterHelper.GetString(sfxVal, "") : "";
+            string suffix = GetParameter("FileNameSuffix", "");
             string outputPath = Path.Combine(outputDir, $"{filenameNoExt}{suffix}{ext}");
 
             bool isSameFileTarget = !isDryRun && string.Equals(Path.GetFullPath(outputPath), Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase);

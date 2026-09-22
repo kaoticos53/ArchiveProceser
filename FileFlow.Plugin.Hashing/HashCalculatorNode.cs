@@ -7,36 +7,35 @@ namespace FileFlow.Plugin.Hashing;
 
 [NodeDefinition("HashCalculatorNode_Name", "Security", "HashCalculatorNode_Desc", PipelineRole.Analyze,
     "hash", "sha256", "md5", "sha1", "sha512", "checksum", "integridad")]
-public sealed class HashCalculatorNode : IFlowNode
+public sealed class HashCalculatorNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => "Calculador Hash";
-    public string Category => "Security";
-    public string Description => "Calcula la firma criptográfica (SHA-256, MD5, SHA-1, SHA-512) del archivo y la inyecta en los metadatos.";
+    public override string Name => "Calculador Hash";
+    public override string Category => "Security";
+    public override string Description => "Calcula la firma criptográfica (SHA-256, MD5, SHA-1, SHA-512) del archivo y la inyecta en los metadatos.";
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public HashCalculatorNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Algorithm"] = "SHA256",
-        ["StoreInMetadataKey"] = "Hash:SHA256"
-    };
+        Parameters["Algorithm"] = "SHA256";
+        Parameters["StoreInMetadataKey"] = "Hash:SHA256";
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("Algorithm", ParameterEditorType.Dropdown, DefaultValue: "SHA256", DisplayOrder: 1, Options: ["SHA256", "MD5", "SHA1", "SHA512"]),
         new("StoreInMetadataKey", ParameterEditorType.Text, DefaultValue: "Hash:SHA256", DisplayOrder: 2)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -56,8 +55,8 @@ public sealed class HashCalculatorNode : IFlowNode
 
         try
         {
-            string algo = Parameters.TryGetValue("Algorithm", out var aVal) ? ParameterHelper.GetString(aVal, "SHA256") : "SHA256";
-            string metaKey = Parameters.TryGetValue("StoreInMetadataKey", out var kVal) ? ParameterHelper.GetString(kVal, $"Hash:{algo}") : $"Hash:{algo}";
+            string algo = GetParameter("Algorithm", "SHA256");
+            string metaKey = GetParameter("StoreInMetadataKey", $"Hash:{algo}");
 
             string hashResult = await ComputeHashAsync(storage, item.CurrentPath, algo, cancellationToken).ConfigureAwait(false);
             sw.Stop();

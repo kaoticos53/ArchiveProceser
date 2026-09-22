@@ -61,7 +61,7 @@ internal static class TtsEngine
         double speechRate,
         int sampleRate)
     {
-        var session = AudioSessionCache.GetOrCreateSession(modelPath);
+        var session = AudioSessionStore.Instance.GetOrCreateSession(modelPath);
 
         // Convertir caracteres a IDs de token para Piper
         long[] tokens = text.Select(c => (long)c).ToArray();
@@ -84,7 +84,7 @@ internal static class TtsEngine
         }
 
         float[] audioFloats;
-        lock (AudioSessionCache.InferenceLock)
+        lock (AudioSessionStore.Instance.InferenceLock)
         {
             using var outputs = session.Run(inputs);
             audioFloats = outputs.First().AsTensor<float>().ToArray();

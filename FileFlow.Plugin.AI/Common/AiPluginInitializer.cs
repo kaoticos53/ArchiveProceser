@@ -34,12 +34,14 @@ public sealed class AiPluginInitializer : IPluginInitializer
                 var rm = new ResourceManager("FileFlow.Plugin.AI.Resources.Strings", typeof(AiPluginInitializer).Assembly);
                 LocalizationManager.Instance.RegisterResourceManager(rm);
 
+                // El registro unificado es la única fuente de verdad de sesiones en memoria: suma los
+                // almacenes de visión, audio y embeddings (antes el de embeddings quedaba fuera del
+                // conteo de la barra de estado) y publica un solo evento de cambio de estado.
                 FileFlow.Sdk.ModelSessionRegistry.RegisterProvider(
-                    () => Inference.OnnxSessionManager.GetLoadedSessionCount() + AudioInferenceEngine.GetLoadedSessionCount(),
+                    Inference.OnnxSessionRegistry.GetLoadedSessionCount,
                     ClearAllSessions
                 );
-                Inference.OnnxSessionManager.SessionStateChanged += FileFlow.Sdk.ModelSessionRegistry.NotifySessionStateChanged;
-                AudioInferenceEngine.SessionStateChanged += FileFlow.Sdk.ModelSessionRegistry.NotifySessionStateChanged;
+                Inference.OnnxSessionRegistry.SessionStateChanged += FileFlow.Sdk.ModelSessionRegistry.NotifySessionStateChanged;
 
                 _isRegistered = true;
             }
@@ -52,18 +54,9 @@ public sealed class AiPluginInitializer : IPluginInitializer
 
     /// <summary>
     /// Libera deterministamente todas las sesiones ONNX y tensores en memoria de los motores de IA.
-    /// Previene fugas de memoria nativa y permite recargar modelos sin reiniciar la aplicación.
+    /// Delega en el registro unificado, que recorre los almacenes de visión, audio y embeddings, de modo
+    /// que añadir un motor nuevo no obligue a tocar este método. Previene fugas de memoria nativa y
+    /// permite recargar modelos sin reiniciar la aplicación.
     /// </summary>
-    public static void ClearAllSessions()
-    {
-        OnnxInferenceEngine.ClearSessionCache();
-        AudioInferenceEngine.ClearSessionCache();
-        SemanticEmbeddingEngine.ClearSessionCache();
-        LanguageInferenceEngine.ClearSessionCache();
-        try
-        {
-            SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
-        }
-        catch { }
-    }
+    public static void ClearAllSessions() => Inference.OnnxSessionRegistry.ClearAll();
 }

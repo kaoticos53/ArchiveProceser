@@ -7,58 +7,57 @@ namespace FileFlow.Plugin.Network;
 
 [NodeDefinition("NetworkUploadNode_Name", "Network", "NetworkUploadNode_Desc", PipelineRole.Sink,
     "subir", "upload", "transferir", "http", "https", "ftp", "ftps", "sftp", "ssh", "webdav", "smb", "red", "nube")]
-public sealed class NetworkUploadNode : IFlowNode
+public sealed class NetworkUploadNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("NetworkUploadNode_Name", "Subir a Red / Nube (Network Upload)");
-    public string Category => "Network";
-    public string Description => LocalizationManager.Instance.GetString("NetworkUploadNode_Desc", "Transfiere archivos hacia servidores remotos HTTP/HTTPS (POST/PUT), FTP/FTPS, SFTP/SSH, WebDAV o recursos SMB de red local.");
+    public override string Name => LocalizationManager.Instance.GetString("NetworkUploadNode_Name", "Subir a Red / Nube (Network Upload)");
+    public override string Category => "Network";
+    public override string Description => LocalizationManager.Instance.GetString("NetworkUploadNode_Desc", "Transfiere archivos hacia servidores remotos HTTP/HTTPS (POST/PUT), FTP/FTPS, SFTP/SSH, WebDAV o recursos SMB de red local.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public NetworkUploadNode()
     {
-        ["Protocol"] = "FTP",
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
+
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
+
+        Parameters["Protocol"] = "FTP";
 
         // Parámetros HTTP / API Webhook
-        ["TargetUrl"] = "https://api.example.com/upload",
-        ["HttpMethod"] = "POST",
-        ["AuthHeader"] = "",
+        Parameters["TargetUrl"] = "https://api.example.com/upload";
+        Parameters["HttpMethod"] = "POST";
+        Parameters["AuthHeader"] = "";
 
         // Parámetros Servidor (FTP / SFTP)
-        ["Host"] = "ftp.example.com",
-        ["Port"] = 21,
-        ["Username"] = "anonymous",
-        ["Password"] = "",
-        ["RemoteDirectory"] = "/uploads/{Year}/{Month}",
+        Parameters["Host"] = "ftp.example.com";
+        Parameters["Port"] = 21;
+        Parameters["Username"] = "anonymous";
+        Parameters["Password"] = "";
+        Parameters["RemoteDirectory"] = "/uploads/{Year}/{Month}";
 
         // Parámetros FTP
-        ["Encryption"] = "None",
-        ["PassiveMode"] = true,
+        Parameters["Encryption"] = "None";
+        Parameters["PassiveMode"] = true;
 
         // Parámetros SFTP
-        ["AuthMethod"] = "Password",
-        ["PrivateKeyPath"] = "",
-        ["PrivateKeyPassphrase"] = "",
+        Parameters["AuthMethod"] = "Password";
+        Parameters["PrivateKeyPath"] = "";
+        Parameters["PrivateKeyPassphrase"] = "";
 
         // Parámetros WebDAV
-        ["ServerUrl"] = "https://nextcloud.example.com/remote.php/dav/files/user/{Year}/{Month}",
+        Parameters["ServerUrl"] = "https://nextcloud.example.com/remote.php/dav/files/user/{Year}/{Month}";
 
         // Parámetros SMB
-        ["UncPath"] = @"\\servidor\compartido\{Year}\{Month}",
-        ["Domain"] = ""
-    };
+        Parameters["UncPath"] = @"\\servidor\compartido\{Year}\{Month}";
+        Parameters["Domain"] = "";
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         // 1. Selector de Protocolo
         new("Protocol", ParameterEditorType.Dropdown, DefaultValue: "FTP",
@@ -111,7 +110,7 @@ public sealed class NetworkUploadNode : IFlowNode
             DependsOnKey: "Protocol", DependsOnValues: ["SMB"])
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -124,25 +123,25 @@ public sealed class NetworkUploadNode : IFlowNode
             return;
         }
 
-        string protocol = Parameters.TryGetValue("Protocol", out var pr) ? pr?.ToString() ?? "FTP" : "FTP";
+        string protocol = GetParameter("Protocol", "FTP");
 
         var request = new NetworkUploadRequest(
-            TargetUrl: Parameters.TryGetValue("TargetUrl", out var tu) ? tu?.ToString() ?? string.Empty : string.Empty,
-            HttpMethod: Parameters.TryGetValue("HttpMethod", out var hm) ? hm?.ToString() ?? "POST" : "POST",
-            AuthHeader: Parameters.TryGetValue("AuthHeader", out var ah) ? ah?.ToString() ?? string.Empty : string.Empty,
-            Host: Parameters.TryGetValue("Host", out var h) ? h?.ToString() ?? "localhost" : "localhost",
-            Port: Parameters.TryGetValue("Port", out var p) && int.TryParse(p?.ToString(), out int parsedPort) ? parsedPort : 21,
-            Username: Parameters.TryGetValue("Username", out var u) ? u?.ToString() ?? string.Empty : string.Empty,
-            Password: Parameters.TryGetValue("Password", out var pwd) ? pwd?.ToString() ?? string.Empty : string.Empty,
-            RemoteDirectory: Parameters.TryGetValue("RemoteDirectory", out var rd) ? rd?.ToString() ?? string.Empty : string.Empty,
-            Encryption: Parameters.TryGetValue("Encryption", out var enc) ? enc?.ToString() ?? "None" : "None",
-            PassiveMode: !Parameters.TryGetValue("PassiveMode", out var pas) || !bool.TryParse(pas?.ToString(), out bool isPas) || isPas,
-            AuthMethod: Parameters.TryGetValue("AuthMethod", out var am) ? am?.ToString() ?? "Password" : "Password",
-            PrivateKeyPath: Parameters.TryGetValue("PrivateKeyPath", out var kp) ? kp?.ToString() ?? string.Empty : string.Empty,
-            PrivateKeyPassphrase: Parameters.TryGetValue("PrivateKeyPassphrase", out var pp) ? pp?.ToString() ?? string.Empty : string.Empty,
-            ServerUrl: Parameters.TryGetValue("ServerUrl", out var su) ? su?.ToString() ?? string.Empty : string.Empty,
-            UncPath: Parameters.TryGetValue("UncPath", out var unc) ? unc?.ToString() ?? string.Empty : string.Empty,
-            Domain: Parameters.TryGetValue("Domain", out var dom) ? dom?.ToString() ?? string.Empty : string.Empty
+            TargetUrl: GetParameter("TargetUrl", string.Empty),
+            HttpMethod: GetParameter("HttpMethod", "POST"),
+            AuthHeader: GetParameter("AuthHeader", string.Empty),
+            Host: GetParameter("Host", "localhost"),
+            Port: GetParameter("Port", 21),
+            Username: GetParameter("Username", string.Empty),
+            Password: GetParameter("Password", string.Empty),
+            RemoteDirectory: GetParameter("RemoteDirectory", string.Empty),
+            Encryption: GetParameter("Encryption", "None"),
+            PassiveMode: GetParameter("PassiveMode", true),
+            AuthMethod: GetParameter("AuthMethod", "Password"),
+            PrivateKeyPath: GetParameter("PrivateKeyPath", string.Empty),
+            PrivateKeyPassphrase: GetParameter("PrivateKeyPassphrase", string.Empty),
+            ServerUrl: GetParameter("ServerUrl", string.Empty),
+            UncPath: GetParameter("UncPath", string.Empty),
+            Domain: GetParameter("Domain", string.Empty)
         );
 
         try

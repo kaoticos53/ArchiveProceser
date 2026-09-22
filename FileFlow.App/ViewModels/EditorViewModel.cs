@@ -254,6 +254,36 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Descarta los cables del nodo que hayan quedado colgando: una conexión sólo es válida mientras sus dos
+    /// extremos sigan siendo puertos que el nodo expone. Cuando un nodo reconstruye su topología (renombrar
+    /// los puertos de un subflujo, quitar un caso de un switch, cambiar los puertos de un script) los puertos
+    /// desaparecidos se llevan por delante el cable, en lugar de dejar una arista que apuntaría a un puerto
+    /// inexistente y que el motor no volvería a trazar al reabrir el flujo.
+    ///
+    /// No pasa por el historial de deshacer: el cable no lo quita el usuario sino un cambio de topología, y
+    /// los cambios de parámetro que lo provocan tampoco son reversibles desde el editor.
+    /// </summary>
+    public void RevalidateConnections(NodeViewModel node)
+    {
+        if (node == null) return;
+
+        var related = Connections
+            .Where(c => ReferenceEquals(c.Source.NodeOwner, node) || ReferenceEquals(c.Target.NodeOwner, node))
+            .ToList();
+
+        foreach (var connection in related)
+        {
+            bool stillExposed = connection.Source.NodeOwner.OutputPorts.Contains(connection.Source)
+                                && connection.Target.NodeOwner.InputPorts.Contains(connection.Target);
+
+            if (!stillExposed)
+            {
+                Connections.Remove(connection);
+            }
+        }
+    }
+
     public void CreateConnection(PortViewModel source, PortViewModel target)
     {
         if (source == null || target == null || source == target) return;
@@ -734,7 +764,13 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         return WorkflowGraphSerializer.Export(Nodes, Connections, GlobalOutputDir, name, Annotations, Groups);
     }
 
-    public void LoadFromGraphModel(WorkflowGraph graph)
+    /// <summary>
+    /// Reconstruye el grafo en el lienzo y devuelve lo que no se pudo reconstruir: un cable cuyo puerto ya no
+    /// existe se descarta, y este es el punto por el que el editor lo sabe. Contárselo al usuario no es cosa
+    /// del lienzo —los grafos que carga desde memoria (subflujos, migas de pan) los exportó esta misma sesión
+    /// y no pierden cables—, sino de quien abre un archivo.
+    /// </summary>
+    public WorkflowGraphImportResult LoadFromGraphModel(WorkflowGraph graph)
     {
         ClearGraph();
 
@@ -743,7 +779,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             GlobalOutputDir = graph.GlobalOutputDir;
         }
 
-        WorkflowGraphSerializer.Import(
+        var importResult = WorkflowGraphSerializer.Import(
             graph,
             _pluginLoader,
             this,
@@ -770,6 +806,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
         RefreshAllNodeFileVersions();
         _undoRedoService.Clear();
+
+        return importResult;
     }
 
     public void RefreshAllNodeFileVersions()

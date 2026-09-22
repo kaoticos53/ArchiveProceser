@@ -21,6 +21,10 @@ public class WorkflowStorageService : IWorkflowStorageService
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(graph);
 
+        // El escritor declara la versión que escribe: un archivo sin versión se lee como anterior al
+        // versionado y se le aplican reparaciones pensadas para archivos que ya no se producen.
+        graph.Schema ??= WorkflowFormat.CurrentSchema;
+
         var directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
         {
@@ -70,6 +74,7 @@ public class WorkflowStorageService : IWorkflowStorageService
     public string SerializeGraph(WorkflowGraph graph)
     {
         ArgumentNullException.ThrowIfNull(graph);
+        graph.Schema ??= WorkflowFormat.CurrentSchema;
         return JsonSerializer.Serialize(graph, JsonOptions);
     }
 

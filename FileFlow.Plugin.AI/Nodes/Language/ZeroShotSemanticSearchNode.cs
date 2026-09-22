@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using FileFlow.Plugin.AI.Inference;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
@@ -18,11 +19,19 @@ namespace FileFlow.Plugin.AI;
 /// </summary>
 [NodeDefinition("ZeroShotSemanticSearchNode_Name", "LanguageAI", "ZeroShotSemanticSearchNode_Desc", PipelineRole.Filter,
     "semantica", "embeddings", "clip", "bge", "similitud", "zero shot", "buscar", "clasificar")]
-public sealed class ZeroShotSemanticSearchNode : FlowNodeBase
+public sealed class ZeroShotSemanticSearchNode : AiFlowNodeBase
 {
     public override string Name => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Name", "Búsqueda y Clasificación Semántica (Zero-Shot)");
     public override string Category => "LanguageAI";
     public override string Description => LocalizationManager.Instance.GetString("ZeroShotSemanticSearchNode_Desc", "Clasifica y enruta documentos o imágenes mediante similitud semántica en lenguaje natural.");
+    public override AiTaskType TaskType => AiTaskType.SemanticEmbeddings;
+
+    /// <summary>
+    /// Los embeddings viven en su propio almacén, que ahora publica cambios al mismo evento que el de
+    /// visión: declararlo aquí es lo que permite al nodo reportar <c>IsModelLoaded</c>, precargar y
+    /// descargar el modelo de CLIP o BGE como cualquier otro nodo de IA.
+    /// </summary>
+    protected override OnnxSessionStore SessionStore => SemanticEmbeddingEngine.SessionStore;
 
     public ZeroShotSemanticSearchNode()
     {
@@ -82,12 +91,7 @@ public sealed class ZeroShotSemanticSearchNode : FlowNodeBase
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .ToList();
 
-            string? modelPath = await AiModelManager.ResolveModelPathAsync(
-                GetParameter("Model", "Auto"),
-                AiTaskType.SemanticEmbeddings,
-                context,
-                item,
-                cancellationToken).ConfigureAwait(false);
+            string? modelPath = await ResolveModelPathAsync(context, item, cancellationToken).ConfigureAwait(false);
 
             // Leer el contenido textual del archivo para generar embeddings semánticos significativos.
             // Si es una imagen o binario, usar el nombre del archivo como texto representativo.

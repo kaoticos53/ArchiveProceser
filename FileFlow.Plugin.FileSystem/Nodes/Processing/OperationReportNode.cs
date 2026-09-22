@@ -8,42 +8,41 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("OperationReportNode_Name", "Integrations", "OperationReportNode_Desc", PipelineRole.Control,
     "reporte", "informe", "html", "markdown", "auditoria", "resumen", "trazabilidad", "report")]
-public sealed class OperationReportNode : IFlowNode
+public sealed class OperationReportNode : FlowNodeBase
 {
     private readonly Lock _lock = new();
     private readonly List<ReportItemData> _accumulatedItems = [];
     private string? _lastExecutionId;
     private bool _reportEmitted;
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("OperationReportNode_Name", "Operation Report");
-    public string Category => "Integrations";
-    public string Description => LocalizationManager.Instance.GetString("OperationReportNode_Desc", "Generates an attractive visual execution and operations report for all processed files.");
+    public override string Name => LocalizationManager.Instance.GetString("OperationReportNode_Name", "Operation Report");
+    public override string Category => "Integrations";
+    public override string Description => LocalizationManager.Instance.GetString("OperationReportNode_Desc", "Generates an attractive visual execution and operations report for all processed files.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public OperationReportNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Report", typeof(FileItemContext), PortDirection.Output, "Report"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Report", typeof(FileItemContext), PortDirection.Output, "Report"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["ReportFormat"] = "HTML",
-        ["ReportScope"] = "Consolidated",
-        ["GroupBy"] = "Directory",
-        ["ReportFileName"] = "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}",
-        ["Theme"] = "ModernDark",
-        ["AutoOpenReport"] = false,
-        ["IncludeMetadata"] = true
-    };
+        Parameters["ReportFormat"] = "HTML";
+        Parameters["ReportScope"] = "Consolidated";
+        Parameters["GroupBy"] = "Directory";
+        Parameters["ReportFileName"] = "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
+        Parameters["Theme"] = "ModernDark";
+        Parameters["AutoOpenReport"] = false;
+        Parameters["IncludeMetadata"] = true;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("ReportFormat", ParameterEditorType.Dropdown, DefaultValue: "HTML", DisplayOrder: 1, Options: ["HTML", "Markdown", "Text", "JSON", "CSV"]),
         new("ReportScope", ParameterEditorType.Dropdown, DefaultValue: "Consolidated", DisplayOrder: 2, Options: ["Consolidated", "PerFile", "Both"]),
         new("GroupBy", ParameterEditorType.Dropdown, DefaultValue: "Directory", DisplayOrder: 3, Options: ["Directory", "Extension", "Status", "Flat"]),
@@ -53,7 +52,7 @@ public sealed class OperationReportNode : IFlowNode
         new("IncludeMetadata", ParameterEditorType.Toggle, DefaultValue: true, DisplayOrder: 7)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -61,13 +60,13 @@ public sealed class OperationReportNode : IFlowNode
     {
         var sw = Stopwatch.StartNew();
 
-        string format = Parameters.TryGetValue("ReportFormat", out var fVal) ? ParameterHelper.GetString(fVal, "HTML") : "HTML";
-        string scope = Parameters.TryGetValue("ReportScope", out var scVal) ? ParameterHelper.GetString(scVal, "Consolidated") : "Consolidated";
-        string groupBy = Parameters.TryGetValue("GroupBy", out var gbVal) ? ParameterHelper.GetString(gbVal, "Directory") : "Directory";
-        string theme = Parameters.TryGetValue("Theme", out var thVal) ? ParameterHelper.GetString(thVal, "ModernDark") : "ModernDark";
-        bool autoOpen = Parameters.TryGetValue("AutoOpenReport", out var aoVal) && ParameterHelper.GetBoolean(aoVal, false);
-        bool includeMeta = Parameters.TryGetValue("IncludeMetadata", out var imVal) && ParameterHelper.GetBoolean(imVal, true);
-        string nameTemplate = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
+        string format = GetParameter("ReportFormat", "HTML");
+        string scope = GetParameter("ReportScope", "Consolidated");
+        string groupBy = GetParameter("GroupBy", "Directory");
+        string theme = GetParameter("Theme", "ModernDark");
+        bool autoOpen = GetParameter("AutoOpenReport", false);
+        bool includeMeta = GetParameter("IncludeMetadata", false);
+        string nameTemplate = GetParameter("ReportFileName", "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}");
         bool isDryRun = item.Metadata.TryGetValue("DryRun", out var dryVal) && ParameterHelper.GetBoolean(dryVal, false);
 
         string executionId = item.Metadata.TryGetValue("WorkflowExecutionId", out var execId) ? execId?.ToString() ?? "Unknown" : "Unknown";
@@ -175,17 +174,17 @@ public sealed class OperationReportNode : IFlowNode
         }
     }
 
-    public async Task OnWorkflowCompletedAsync(
+    public override async Task OnWorkflowCompletedAsync(
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string format = Parameters.TryGetValue("ReportFormat", out var fVal) ? ParameterHelper.GetString(fVal, "HTML") : "HTML";
-        string scope = Parameters.TryGetValue("ReportScope", out var scVal) ? ParameterHelper.GetString(scVal, "Consolidated") : "Consolidated";
-        string groupBy = Parameters.TryGetValue("GroupBy", out var gbVal) ? ParameterHelper.GetString(gbVal, "Directory") : "Directory";
-        string theme = Parameters.TryGetValue("Theme", out var thVal) ? ParameterHelper.GetString(thVal, "ModernDark") : "ModernDark";
-        bool autoOpen = Parameters.TryGetValue("AutoOpenReport", out var aoVal) && ParameterHelper.GetBoolean(aoVal, false);
-        bool includeMeta = Parameters.TryGetValue("IncludeMetadata", out var imVal) && ParameterHelper.GetBoolean(imVal, true);
-        string nameTemplate = Parameters.TryGetValue("ReportFileName", out var fnVal) ? ParameterHelper.GetString(fnVal, "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}") : "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}";
+        string format = GetParameter("ReportFormat", "HTML");
+        string scope = GetParameter("ReportScope", "Consolidated");
+        string groupBy = GetParameter("GroupBy", "Directory");
+        string theme = GetParameter("Theme", "ModernDark");
+        bool autoOpen = GetParameter("AutoOpenReport", false);
+        bool includeMeta = GetParameter("IncludeMetadata", false);
+        string nameTemplate = GetParameter("ReportFileName", "Reporte_Ejecucion_{Date:yyyyMMdd_HHmmss}");
 
         if (scope.Equals("PerFile", StringComparison.OrdinalIgnoreCase))
         {

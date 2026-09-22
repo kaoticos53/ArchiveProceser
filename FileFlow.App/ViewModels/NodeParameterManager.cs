@@ -107,7 +107,22 @@ public sealed class NodeParameterManager
                 _nodeOwner.SyncSubflowPorts();
             }
         }
+
+        // El diccionario de parámetros no avisa a nadie, así que la topología de puertos se reevalúa aquí,
+        // donde pasan todas las escrituras del inspector. Un nodo cuyos puertos no dependan del parámetro
+        // recién cambiado no emite nada: la base descarta las reevaluaciones sin cambio.
+        RefreshPortTopology();
+
         UpdateVisibilityConditions();
+    }
+
+    /// <summary>
+    /// Pide al nodo que reevalúe sus puertos. Los que se calculan al leerlos ya están al día; los que los
+    /// materializan (el de scripts los asigna a partir de los parámetros) los rederivan aquí.
+    /// </summary>
+    private void RefreshPortTopology()
+    {
+        (_nodeInstance as IPortTopologyNode)?.RefreshPortTopology();
     }
 
     public void OnParameterKeyRenamed(string oldKey, string newKey, object? value)
@@ -123,6 +138,8 @@ public sealed class NodeParameterManager
                 _nodeInstance.Parameters[newKey] = value;
             }
         }
+
+        RefreshPortTopology();
     }
 
     public void AddVariable()
@@ -152,6 +169,8 @@ public sealed class NodeParameterManager
 
         parameter.Dispose();
         Parameters.Remove(parameter);
+
+        RefreshPortTopology();
     }
 
     public void Dispose()

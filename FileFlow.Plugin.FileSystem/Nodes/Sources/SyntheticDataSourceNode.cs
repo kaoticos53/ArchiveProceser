@@ -12,31 +12,31 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("SyntheticDataSourceNode_Name", "Files", "SyntheticDataSourceNode_Desc", PipelineRole.Source,
     "testing", "pruebas", "sintetico", "mock", "dataset", "peliculas", "series", "musica", "comics", "dummy")]
-public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvider
+public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionProvider
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Name", "Generador de Datos de Prueba");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Desc", "Emite archivos de prueba categorizados (Películas, Series, Cómics, Música o Personalizados) para pruebas y depuración de pipelines sin requerir archivos reales.");
+    public override string Name => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Name", "Generador de Datos de Prueba");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Desc", "Emite archivos de prueba categorizados (Películas, Series, Cómics, Música o Personalizados) para pruebas y depuración de pipelines sin requerir archivos reales.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = Array.Empty<NodePort>();
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos generados")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new()
+    public SyntheticDataSourceNode()
     {
-        ["Category"] = "Películas",
-        ["EmissionMode"] = "Virtual",
-        ["MaxItems"] = 0,
-        ["EmissionDelayMs"] = 0,
-        ["EmitDirectories"] = false,
-        ["CustomItems"] = ""
-    };
+        // Nodo origen: no expone puertos de entrada.
+        Inputs = [];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos generados")
+        ];
+
+        Parameters["Category"] = "Películas";
+        Parameters["EmissionMode"] = "Virtual";
+        Parameters["MaxItems"] = 0;
+        Parameters["EmissionDelayMs"] = 0;
+        Parameters["EmitDirectories"] = false;
+        Parameters["CustomItems"] = "";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("Category", ParameterEditorType.Dropdown, DefaultValue: "Películas", DisplayOrder: 1,
             Options: ["Películas", "Series de TV", "Anime", "Música", "Cómics / Manga", "Documentos y Libros", "Descargas Web", "Fotografía", "Personalizado"]),
@@ -48,7 +48,7 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
         new("CustomItems", ParameterEditorType.MultiLineText, DefaultValue: "", DisplayOrder: 6)
     ];
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions =>
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions =>
     [
         new("OpenDataSetDesigner", "📊 Diseñador de Datasets...", "📊", "Abrir el Diseñador Visual de Datasets Sintéticos para crear, editar o importar conjuntos de datos ficticios")
     ];
@@ -91,19 +91,19 @@ public sealed class SyntheticDataSourceNode : IFlowNode, INodeCustomActionProvid
         }
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string category = Parameters.TryGetValue("Category", out var catVal) && catVal != null ? catVal.ToString()! : "Películas";
-        string emissionMode = Parameters.TryGetValue("EmissionMode", out var modeVal) && modeVal != null ? modeVal.ToString()! : "Virtual";
-        int maxItems = Parameters.TryGetValue("MaxItems", out var maxVal) ? ParameterHelper.GetInt32(maxVal, 0) : 0;
-        int delayMs = Parameters.TryGetValue("EmissionDelayMs", out var delayVal) ? ParameterHelper.GetInt32(delayVal, 0) : 0;
-        bool emitDirectories = Parameters.TryGetValue("EmitDirectories", out var edVal) && ParameterHelper.GetBoolean(edVal, false);
-        string customText = Parameters.TryGetValue("CustomItems", out var custVal) && custVal != null ? custVal.ToString()! : string.Empty;
-        string outputFolder = Parameters.TryGetValue("OutputFolder", out var outFoldVal) && outFoldVal != null ? outFoldVal.ToString()! : string.Empty;
+        string category = GetParameter("Category", "Películas");
+        string emissionMode = GetParameter("EmissionMode", "Virtual");
+        int maxItems = GetParameter("MaxItems", 0);
+        int delayMs = GetParameter("EmissionDelayMs", 0);
+        bool emitDirectories = GetParameter("EmitDirectories", false);
+        string customText = GetParameter("CustomItems", string.Empty);
+        string outputFolder = GetParameter("OutputFolder", string.Empty);
 
         List<SyntheticFileDefinition> definitions = [];
 

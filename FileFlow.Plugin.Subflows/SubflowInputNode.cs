@@ -7,39 +7,42 @@ namespace FileFlow.Plugin.Subflows;
 [NodeDefinition("SubflowInputNode_Name", "Subflows", "SubflowInputNode_Desc", PipelineRole.Control,
     "subflow", "subgrafo", "input", "entrada", "boundary", "macro", "reutilizable",
     SubCategory = "Subflows")]
-public sealed class SubflowInputNode : IFlowNode, ISubflowBoundaryNode
+public sealed class SubflowInputNode : FlowNodeBase, ISubflowBoundaryNode
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SubflowInputNode_Name", "Entrada de Subflujo");
-    public string Category => "Subflows";
-    public string Description => LocalizationManager.Instance.GetString("SubflowInputNode_Desc", "Punto de entrada frontera dentro de un subflujo. Los datos inyectados en los puertos de entrada del nodo subflujo exterior se emiten a través de los puertos de salida de este nodo.");
+    public override string Name => LocalizationManager.Instance.GetString("SubflowInputNode_Name", "Entrada de Subflujo");
+    public override string Category => "Subflows";
+    public override string Description => LocalizationManager.Instance.GetString("SubflowInputNode_Desc", "Punto de entrada frontera dentro de un subflujo. Los datos inyectados en los puertos de entrada del nodo subflujo exterior se emiten a través de los puertos de salida de este nodo.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public SubflowInputNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs
-    {
-        get
-        {
-            var portNames = GetConfiguredPorts();
-            return portNames.Select(p => new NodePort(p, typeof(FileItemContext), PortDirection.Output, p)).ToList();
-        }
+        Parameters["PortNames"] = "In";
     }
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["PortNames"] = "In"
-    };
+    /// <summary>
+    /// Puertos de salida calculados a partir de los nombres configurados por el usuario, que cambian en
+    /// tiempo de diseño desde la UI.
+    /// </summary>
+    protected override IReadOnlyList<NodePort> BuildOutputPorts() =>
+        GetConfiguredPorts().Select(p => new NodePort(p, typeof(FileItemContext), PortDirection.Output, p)).ToList();
 
     public string PortNames
     {
-        get => Parameters.TryGetValue("PortNames", out var val) ? ParameterHelper.GetString(val, "In") : "In";
-        set => Parameters["PortNames"] = value;
+        get => GetParameter("PortNames", "In");
+        set
+        {
+            Parameters["PortNames"] = value;
+
+            // Los puertos de salida son estos nombres: al cambiarlos hay que anunciar la topología nueva.
+            NotifyPortsChanged();
+        }
     }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("PortNames", ParameterEditorType.Text, DefaultValue: "In", DisplayOrder: 1, HelpText: "Nombres de los puertos de entrada separados por punto y coma (ej. 'In' o 'In;Alternate') que se expondrán en el nodo contenedor exterior.")
     ];
 
@@ -52,7 +55,7 @@ public sealed class SubflowInputNode : IFlowNode, ISubflowBoundaryNode
         return list.Count > 0 ? list : ["In"];
     }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,

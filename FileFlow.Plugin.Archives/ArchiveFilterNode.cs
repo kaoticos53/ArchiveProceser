@@ -6,7 +6,7 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveFilterNode_Name", "Archives", "ArchiveFilterNode_Desc", PipelineRole.Filter,
     "inspeccionar", "filtrar", "comprimido", "contenido", "zip", "tar", "cbz", "cbr", "cb7", "filter", "archive")]
-public sealed class ArchiveFilterNode : IFlowNode
+public sealed class ArchiveFilterNode : FlowNodeBase
 {
     private static readonly Regex SecondaryVolumeRegex = new(
         @"\.(r\d{2,3}|z\d{2,3}|part(?!0*1\.)\d+\.rar)$",
@@ -16,29 +16,28 @@ public sealed class ArchiveFilterNode : IFlowNode
         @"\.(zip|rar|7z|tar|gz|tgz|bz2|xz|cbz|cbr|cb7|zipx|zst|epub|part0*1\.rar)$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("ArchiveFilterNode_Name", "Clasificador de Archivos Comprimidos");
-    public string Category => "Archives";
-    public string Description => LocalizationManager.Instance.GetString("ArchiveFilterNode_Desc", "Clasifica elementos entrantes entre archivos comprimidos principales (ZIP, RAR, 7Z, CBZ, CBR, CB7), volúmenes secundarios divididos (split-RAR) y archivos normales.");
+    public override string Name => LocalizationManager.Instance.GetString("ArchiveFilterNode_Name", "Clasificador de Archivos Comprimidos");
+    public override string Category => "Archives";
+    public override string Description => LocalizationManager.Instance.GetString("ArchiveFilterNode_Desc", "Clasifica elementos entrantes entre archivos comprimidos principales (ZIP, RAR, 7Z, CBZ, CBR, CB7), volúmenes secundarios divididos (split-RAR) y archivos normales.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public ArchiveFilterNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Archive", typeof(FileItemContext), PortDirection.Output, "Archive"),
-        new NodePort("RegularFile", typeof(FileItemContext), PortDirection.Output, "RegularFile"),
-        new NodePort("SecondaryVolume", typeof(FileItemContext), PortDirection.Output, "SecondaryVolume")
-    };
+        Outputs =
+        [
+            new NodePort("Archive", typeof(FileItemContext), PortDirection.Output, "Archive"),
+            new NodePort("RegularFile", typeof(FileItemContext), PortDirection.Output, "RegularFile"),
+            new NodePort("SecondaryVolume", typeof(FileItemContext), PortDirection.Output, "SecondaryVolume")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["FilterSecondaryVolumes"] = true
-    };
+        Parameters["FilterSecondaryVolumes"] = true;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,

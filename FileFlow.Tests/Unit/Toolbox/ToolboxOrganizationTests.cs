@@ -237,9 +237,12 @@ public class ToolboxOrganizationTests
             itemTypeNames.Should().OnlyHaveUniqueItems($"Group '{group.CategoryKey}' should not contain duplicate nodes.");
         }
 
-        // 4. DiscoveredNodesCount must equal UniqueNodeTypes count (78 nodes)
+        // 4. DiscoveredNodesCount must equal UniqueNodeTypes count (70 nodes)
+        // El número exacto sale de las fuentes de los 12 plugins, no de aquí: la equivalencia
+        // declarado == descubierto la fija NodeRuntimeCatalogGuardTests. Antes decía 78 porque
+        // contaba ocho dobles del ensamblado de pruebas que el cargador metía en el catálogo.
         loader.DiscoveredNodesCount.Should().Be(loader.UniqueNodeTypes.Count());
-        loader.DiscoveredNodesCount.Should().Be(78, "there are exactly 78 official nodes across all 12 plugins");
+        loader.DiscoveredNodesCount.Should().Be(70, "there are exactly 70 official nodes across all 12 plugins");
     }
 }
 

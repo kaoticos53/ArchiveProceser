@@ -8,33 +8,32 @@ namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("CliExecutionNode_Name", "Integrations", "CliExecutionNode_Desc", PipelineRole.Control,
     "cli", "comando", "ejecutable", "cmd", "powershell", "proceso", "terminal", "bash", "execute")]
-public sealed class CliExecutionNode : IFlowNode
+public sealed class CliExecutionNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("CliExecutionNode_Name", "Ejecutor de Comandos y Procesos CLI");
-    public string Category => "Integrations";
-    public string Description => LocalizationManager.Instance.GetString("CliExecutionNode_Desc", "Lanza ejecutables externos y scripts de sistema (FFmpeg, PowerShell, Python, Node.js) inyectando la ruta y metadatos del archivo mediante argumentos con tokens.");
+    public override string Name => LocalizationManager.Instance.GetString("CliExecutionNode_Name", "Ejecutor de Comandos y Procesos CLI");
+    public override string Category => "Integrations";
+    public override string Description => LocalizationManager.Instance.GetString("CliExecutionNode_Desc", "Lanza ejecutables externos y scripts de sistema (FFmpeg, PowerShell, Python, Node.js) inyectando la ruta y metadatos del archivo mediante argumentos con tokens.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public CliExecutionNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Success", typeof(FileItemContext), PortDirection.Output, "Success"),
-        new NodePort("Failed", typeof(FileItemContext), PortDirection.Output, "Failed")
-    };
+        Outputs =
+        [
+            new NodePort("Success", typeof(FileItemContext), PortDirection.Output, "Success"),
+            new NodePort("Failed", typeof(FileItemContext), PortDirection.Output, "Failed")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["ExecutablePath"] = "cmd.exe",
-        ["ArgumentsTemplate"] = "/c echo Processing {FileName}",
-        ["TimeoutSeconds"] = 60,
-        ["CaptureOutputToMetadata"] = true
-    };
+        Parameters["ExecutablePath"] = "cmd.exe";
+        Parameters["ArgumentsTemplate"] = "/c echo Processing {FileName}";
+        Parameters["TimeoutSeconds"] = 60;
+        Parameters["CaptureOutputToMetadata"] = true;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -42,10 +41,10 @@ public sealed class CliExecutionNode : IFlowNode
     {
         var platform = context.Platform ?? NullOsPlatformService.Instance;
         string defaultShell = platform.GetDefaultShellExecutable();
-        string rawExe = Parameters.TryGetValue("ExecutablePath", out var eVal) ? ParameterHelper.GetString(eVal, defaultShell) : defaultShell;
-        string rawArgs = Parameters.TryGetValue("ArgumentsTemplate", out var aVal) ? ParameterHelper.GetString(aVal, "") : "";
-        int timeoutSec = Parameters.TryGetValue("TimeoutSeconds", out var tVal) ? ParameterHelper.GetInt32(tVal, 60) : 60;
-        bool captureOutput = Parameters.TryGetValue("CaptureOutputToMetadata", out var cVal) && ParameterHelper.GetBoolean(cVal, true);
+        string rawExe = GetParameter("ExecutablePath", defaultShell);
+        string rawArgs = GetParameter("ArgumentsTemplate", "");
+        int timeoutSec = GetParameter("TimeoutSeconds", 60);
+        bool captureOutput = GetParameter("CaptureOutputToMetadata", false);
 
         string resolvedExe = VariableTemplateResolver.Resolve(rawExe, item);
         string resolvedArgs = VariableTemplateResolver.Resolve(rawArgs, item);

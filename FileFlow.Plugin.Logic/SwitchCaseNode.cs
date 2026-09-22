@@ -11,74 +11,75 @@ public record SwitchCaseRule(string Name, string Pattern);
 
 [NodeDefinition("SwitchCaseNode_Name", "Logic", "SwitchCaseNode_Desc", PipelineRole.Filter,
     "switch", "case", "bifurcacion", "enrutar", "multiples", "router", "branch", "logica")]
-public sealed class SwitchCaseNode : IFlowNode, ISwitchCaseNode
+public sealed class SwitchCaseNode : FlowNodeBase, ISwitchCaseNode
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SwitchCaseNode_Name", "Enrutador Condicional (Switch / Case)");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("SwitchCaseNode_Desc", "Evalúa una propiedad o extensión del archivo y lo enruta dinámicamente hacia uno de varios puertos de salida (Case 1, 2, 3 o Default) según listas de patrones configurables.");
+    public override string Name => LocalizationManager.Instance.GetString("SwitchCaseNode_Name", "Enrutador Condicional (Switch / Case)");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("SwitchCaseNode_Desc", "Evalúa una propiedad o extensión del archivo y lo enruta dinámicamente hacia uno de varios puertos de salida (Case 1, 2, 3 o Default) según listas de patrones configurables.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public SwitchCaseNode()
     {
-        new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
-    };
+        Inputs =
+        [
+            new NodePort(WellKnownPorts.In, typeof(FileItemContext), PortDirection.Input, WellKnownPorts.In)
+        ];
 
-    public IReadOnlyList<NodePort> Outputs
-    {
-        get
-        {
-            var cases = GetCases();
-            var list = new List<NodePort>();
-            foreach (var c in cases)
-            {
-                list.Add(new NodePort(c.Name, typeof(FileItemContext), PortDirection.Output, c.Name));
-            }
-            list.Add(new NodePort("Default", typeof(FileItemContext), PortDirection.Output, "Default"));
-            return list;
-        }
+        Parameters["Expression"] = "{Ext}";
+        Parameters["CasesJson"] = "[{\"Name\":\"Case 1\",\"Pattern\":\"jpg;jpeg;png;webp;gif\"}]";
     }
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// Puertos de salida calculados a partir de los casos configurados: el nodo expone un puerto por caso
+    /// más 'Default'. Se calculan en cada lectura porque los casos cambian en tiempo de diseño desde la UI.
+    /// </summary>
+    protected override IReadOnlyList<NodePort> BuildOutputPorts()
     {
-        ["Expression"] = "{Ext}",
-        ["CasesJson"] = "[{\"Name\":\"Case 1\",\"Pattern\":\"jpg;jpeg;png;webp;gif\"}]"
-    };
+        var list = new List<NodePort>();
+        foreach (var c in GetCases())
+        {
+            list.Add(new NodePort(c.Name, typeof(FileItemContext), PortDirection.Output, c.Name));
+        }
+        list.Add(new NodePort("Default", typeof(FileItemContext), PortDirection.Output, "Default"));
+        return list;
+    }
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors => [
         new("Expression", ParameterEditorType.Text, DefaultValue: "{Ext}", DisplayOrder: 1)
     ];
 
-    public IReadOnlyList<NodeActionDescriptor> CustomActions => [
+    public override IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("AddSwitchCase", "➕ Caso", "➕", "Añadir nuevo caso / puerto de salida")
     ];
 
     public List<SwitchCaseRule> GetCases()
     {
-        if (Parameters.TryGetValue("CasesJson", out var jsonVal) && jsonVal != null)
+        string jsonStr = GetParameter("CasesJson", string.Empty);
+        if (!string.IsNullOrWhiteSpace(jsonStr))
         {
-            string jsonStr = jsonVal.ToString() ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(jsonStr))
+            try
             {
-                try
+                var parsed = JsonSerializer.Deserialize<List<SwitchCaseRule>>(jsonStr);
+                if (parsed != null && parsed.Count > 0)
                 {
-                    var parsed = JsonSerializer.Deserialize<List<SwitchCaseRule>>(jsonStr);
-                    if (parsed != null && parsed.Count > 0)
-                    {
-                        return parsed;
-                    }
+                    return parsed;
                 }
-                catch { }
             }
+            catch { }
         }
 
         // Check legacy parameters if any
         var legacy = new List<SwitchCaseRule>();
-        if (Parameters.TryGetValue("Case1Pattern", out var c1) && !string.IsNullOrWhiteSpace(c1?.ToString()))
-            legacy.Add(new SwitchCaseRule("Case 1", c1.ToString()!));
-        if (Parameters.TryGetValue("Case2Pattern", out var c2) && !string.IsNullOrWhiteSpace(c2?.ToString()))
-            legacy.Add(new SwitchCaseRule("Case 2", c2.ToString()!));
-        if (Parameters.TryGetValue("Case3Pattern", out var c3) && !string.IsNullOrWhiteSpace(c3?.ToString()))
-            legacy.Add(new SwitchCaseRule("Case 3", c3.ToString()!));
+        string case1Pattern = GetParameter("Case1Pattern", string.Empty);
+        if (!string.IsNullOrWhiteSpace(case1Pattern))
+            legacy.Add(new SwitchCaseRule("Case 1", case1Pattern));
+
+        string case2Pattern = GetParameter("Case2Pattern", string.Empty);
+        if (!string.IsNullOrWhiteSpace(case2Pattern))
+            legacy.Add(new SwitchCaseRule("Case 2", case2Pattern));
+
+        string case3Pattern = GetParameter("Case3Pattern", string.Empty);
+        if (!string.IsNullOrWhiteSpace(case3Pattern))
+            legacy.Add(new SwitchCaseRule("Case 3", case3Pattern));
 
         if (legacy.Count > 0) return legacy;
 
@@ -90,6 +91,10 @@ public sealed class SwitchCaseNode : IFlowNode, ISwitchCaseNode
     {
         var list = cases.ToList();
         Parameters["CasesJson"] = JsonSerializer.Serialize(list);
+
+        // Un caso es un puerto de salida: el editor tiene que enterarse para reconstruir el lienzo. Si la
+        // lista cambió sólo en el patrón de un caso, el anuncio no sale (los nombres son los mismos).
+        NotifyPortsChanged();
     }
 
     IReadOnlyList<SwitchCaseRuleDefinition> ISwitchCaseNode.GetCases() =>
@@ -100,13 +105,13 @@ public sealed class SwitchCaseNode : IFlowNode, ISwitchCaseNode
 
     private static readonly Regex NumericRegex = new(@"[-+]?\d+(?:[\.,]\d+)?", RegexOptions.Compiled);
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string expr = Parameters.TryGetValue("Expression", out var eVal) ? ParameterHelper.GetString(eVal, "{Ext}") : "{Ext}";
+        string expr = GetParameter("Expression", "{Ext}");
         string evaluated = VariableTemplateResolver.Resolve(expr, item).Trim();
 
         var cases = GetCases();

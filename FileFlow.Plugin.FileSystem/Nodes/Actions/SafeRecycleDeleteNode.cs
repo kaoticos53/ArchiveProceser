@@ -7,37 +7,36 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("SafeRecycleDeleteNode_Name", "Files", "SafeRecycleDeleteNode_Desc", PipelineRole.Sink,
     "papelera", "borrar", "eliminar", "recycle", "delete", "trash", "recyclebin")]
-public sealed class SafeRecycleDeleteNode : IFlowNode
+public sealed class SafeRecycleDeleteNode : FlowNodeBase
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Name", "Safe Recycle Delete");
-    public string Category => "Files";
-    public string Description => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Desc", "Sends files or folders to Windows Recycle Bin using native Shell API, ensuring they are recoverable and supporting rollback.");
+    public override string Name => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Name", "Safe Recycle Delete");
+    public override string Category => "Files";
+    public override string Description => LocalizationManager.Instance.GetString("SafeRecycleDeleteNode_Desc", "Sends files or folders to Windows Recycle Bin using native Shell API, ensuring they are recoverable and supporting rollback.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public SafeRecycleDeleteNode()
     {
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("Deleted", typeof(FileItemContext), PortDirection.Output, "Deleted"),
-        new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
-    };
+        Outputs =
+        [
+            new NodePort("Deleted", typeof(FileItemContext), PortDirection.Output, "Deleted"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["DeleteOriginalPath"] = false,
-        ["ConfirmRecycle"] = true
-    };
+        Parameters["DeleteOriginalPath"] = false;
+        Parameters["ConfirmRecycle"] = true;
+    }
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        bool deleteOriginal = Parameters.TryGetValue("DeleteOriginalPath", out var dVal) && ParameterHelper.GetBoolean(dVal, false);
+        bool deleteOriginal = GetParameter("DeleteOriginalPath", false);
         string targetPath = deleteOriginal ? item.OriginalPath : item.CurrentPath;
 
         var sw = System.Diagnostics.Stopwatch.StartNew();

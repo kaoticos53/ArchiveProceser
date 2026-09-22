@@ -9,42 +9,41 @@ namespace FileFlow.Plugin.Documents;
 
 [NodeDefinition("PdfSplitNode_Name", "Documents", "PdfSplitNode_Desc", PipelineRole.Transform,
     "pdf", "separar", "dividir", "paginas", "cortar", "split", "extract")]
-public sealed class PdfSplitNode : IFlowNode
+public sealed class PdfSplitNode : FlowNodeBase
 {
     static PdfSplitNode()
     {
         FileFlowFontResolver.EnsureInitialized();
     }
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("PdfSplitNode_Name", "Dividir PDF (PDF Split)");
-    public string Category => "Documents";
-    public string Description => LocalizationManager.Instance.GetString("PdfSplitNode_Desc", "Divide un documento PDF de múltiples páginas en archivos individuales por página.");
+    public override string Name => LocalizationManager.Instance.GetString("PdfSplitNode_Name", "Dividir PDF (PDF Split)");
+    public override string Category => "Documents";
+    public override string Description => LocalizationManager.Instance.GetString("PdfSplitNode_Desc", "Divide un documento PDF de múltiples páginas en archivos individuales por página.");
 
-    public IReadOnlyList<NodePort> Inputs { get; } =
-    [
-        new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
-    ];
-
-    public IReadOnlyList<NodePort> Outputs { get; } =
-    [
-        new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
-        new NodePort("Original", typeof(FileItemContext), PortDirection.Output, "Original")
-    ];
-
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
+    public PdfSplitNode()
     {
-        ["OutputDirectory"] = "{GlobalOutputDir}",
-        ["FileNamePattern"] = "{BaseName}_page_{PageNumber:D3}.pdf"
-    };
+        Inputs =
+        [
+            new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In")
+        ];
 
-    public IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
+        Outputs =
+        [
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Original", typeof(FileItemContext), PortDirection.Output, "Original")
+        ];
+
+        Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        Parameters["FileNamePattern"] = "{BaseName}_page_{PageNumber:D3}.pdf";
+    }
+
+    public override IReadOnlyList<NodeParameterDescriptor> ParameterDescriptors =>
     [
         new("OutputDirectory", ParameterEditorType.FolderPath, DefaultValue: "{GlobalOutputDir}", DisplayOrder: 1),
         new("FileNamePattern", ParameterEditorType.Text, DefaultValue: "{BaseName}_page_{PageNumber:D3}.pdf", DisplayOrder: 2)
     ];
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
@@ -64,7 +63,7 @@ public sealed class PdfSplitNode : IFlowNode
             return;
         }
 
-        string rawOutDir = Parameters.TryGetValue("OutputDirectory", out var outDirObj) ? ParameterHelper.GetString(outDirObj, "{GlobalOutputDir}") : "{GlobalOutputDir}";
+        string rawOutDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
         string outDir = ParameterHelper.ResolveOutputPath(rawOutDir, item);
         if (!await storage.DirectoryExistsAsync(outDir, cancellationToken))
         {
@@ -72,7 +71,7 @@ public sealed class PdfSplitNode : IFlowNode
         }
 
         string baseName = Path.GetFileNameWithoutExtension(item.CurrentPath);
-        string pattern = Parameters.TryGetValue("FileNamePattern", out var patObj) ? ParameterHelper.GetString(patObj, "{BaseName}_page_{PageNumber:D3}.pdf") : "{BaseName}_page_{PageNumber:D3}.pdf";
+        string pattern = GetParameter("FileNamePattern", "{BaseName}_page_{PageNumber:D3}.pdf");
 
         await using var inStream = await storage.OpenReadAsync(item.CurrentPath, cancellationToken);
         using var inputDocument = PdfReader.Open(inStream, PdfDocumentOpenMode.Import);

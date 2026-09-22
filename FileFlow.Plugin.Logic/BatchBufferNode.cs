@@ -5,45 +5,43 @@ namespace FileFlow.Plugin.Logic;
 
 [NodeDefinition("BatchBufferNode_Name", "Logic", "BatchBufferNode_Desc", PipelineRole.Control,
     "lote", "batch", "buffer", "acumular", "paquete", "buffer", "aggregate")]
-public sealed class BatchBufferNode : IFlowNode
+public sealed class BatchBufferNode : FlowNodeBase
 {
     private readonly List<FileItemContext> _buffer = [];
     private readonly Lock _lock = new();
 
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name => LocalizationManager.Instance.GetString("BatchBufferNode_Name", "Agrupador de Lotes (Batch Buffer)");
-    public string Category => "Logic";
-    public string Description => LocalizationManager.Instance.GetString("BatchBufferNode_Desc", "Acumula archivos entrantes en memoria hasta alcanzar una cantidad de N elementos o un tamaño total en MB antes de liberarlos juntos, optimizando procesos por lotes.");
+    public override string Name => LocalizationManager.Instance.GetString("BatchBufferNode_Name", "Agrupador de Lotes (Batch Buffer)");
+    public override string Category => "Logic";
+    public override string Description => LocalizationManager.Instance.GetString("BatchBufferNode_Desc", "Acumula archivos entrantes en memoria hasta alcanzar una cantidad de N elementos o un tamaño total en MB antes de liberarlos juntos, optimizando procesos por lotes.");
 
-
-    public IReadOnlyList<NodePort> Inputs { get; } = new[]
+    public BatchBufferNode()
     {
-        new NodePort("ItemIn", typeof(FileItemContext), PortDirection.Input, "ItemIn"),
-        new NodePort("ForceFlush", typeof(FileItemContext), PortDirection.Input, "ForceFlush")
-    };
+        Inputs =
+        [
+            new NodePort("ItemIn", typeof(FileItemContext), PortDirection.Input, "ItemIn"),
+            new NodePort("ForceFlush", typeof(FileItemContext), PortDirection.Input, "ForceFlush")
+        ];
 
-    public IReadOnlyList<NodePort> Outputs { get; } = new[]
-    {
-        new NodePort("ItemOut", typeof(FileItemContext), PortDirection.Output, "ItemOut"),
-        new NodePort("BatchCompleted", typeof(FileItemContext), PortDirection.Output, "BatchCompleted")
-    };
+        Outputs =
+        [
+            new NodePort("ItemOut", typeof(FileItemContext), PortDirection.Output, "ItemOut"),
+            new NodePort("BatchCompleted", typeof(FileItemContext), PortDirection.Output, "BatchCompleted")
+        ];
 
-    public Dictionary<string, object?> Parameters { get; } = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["BatchSize"] = 10,
-        ["MaxBatchSizeBytes"] = 0L // 0 = disabled
-    };
+        Parameters["BatchSize"] = 10;
+        Parameters["MaxBatchSizeBytes"] = 0L; // 0 = disabled
+    }
 
     private string? _lastExecutionId;
 
-    public async Task ExecuteAsync(
+    public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        int batchSize = Parameters.TryGetValue("BatchSize", out var bVal) ? ParameterHelper.GetInt32(bVal, 10) : 10;
-        long maxSizeBytes = Parameters.TryGetValue("MaxBatchSizeBytes", out var mVal) ? Convert.ToInt64(mVal) : 0L;
+        int batchSize = GetParameter("BatchSize", 10);
+        long maxSizeBytes = GetParameter("MaxBatchSizeBytes", 0L);
 
         List<FileItemContext>? toEmit = null;
 
