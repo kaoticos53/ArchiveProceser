@@ -6,8 +6,8 @@
 > [`docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md`](file:///e:/Users/kaoti/Documentos/GitHub/ArchiveProceser/docs/history/2026-09-13_PROJECT_WALKTHROUGH_ARCHIVE.md).
 > Las fases 2C y 2E se ejecutaron el 2026-09-21 en la rama `feature/crossplatform-avalonia`; la 2F, el 2026-09-22.
 > Verificado tras la ejecución: build limpio (0 errores, 0 warnings) y suite completa en verde (1146 superadas, 1 skip intencional, de 1147 tests tras la 2F — la suite creció desde los 481 originales de esta auditoría).
-> **Fase 3 (siguiente)**: 📋 PLANIFICADA — los huecos que quedaron abiertos tras 2E-P8…2E-P12, ordenados por
-> riesgo y con su forma de verificarse, están en
+> **Fase 3**: ✅ COMPLETADA (fase 0 y sub-fases 3A a 3J) — los huecos que quedaron abiertos tras 2E-P8…2E-P12 están
+> ejecutados y cada uno registrado en este documento con su evidencia; el plan que los ordenaba es
 > [`docs/history/2026-09_phase3_gaps_plan.md`](2026-09_phase3_gaps_plan.md).
 >
 > **Fase 2D**: ✅ COMPLETADA — `FileFlow.Plugin.AI` quedó **100% migrado** (18/18 nodos) y la 2D-D3b llevó los **52 nodos** restantes de los demás plugins a `FlowNodeBase`. Ya **no queda ningún nodo del proyecto implementando `IFlowNode` a mano** (sólo las interfaces del SDK y dobles de test).
@@ -873,6 +873,23 @@ graph TD
 > - Verificación: `dotnet build FileFlow.slnx` sin errores ni advertencias y `dotnet test` con **1459 superadas / 0 fallos / 1 omitida** (1448 del baseline de 3E-G2 + las 11 nuevas).
 
 **Límite declarado.** Sigue en pie la letra pequeña de la 3E-G2 —el diccionario de parámetros no se mide—, y queda lo que ningún test puede atestiguar: un cambio que edite **a la vez** la fila y el archivo testigo pasa, porque los dos viven en el repositorio y ningún test puede decir por su cuenta qué escribió una versión que ya no se ejecuta. Ahora son dos ediciones deliberadas —una fila en una prueba y un archivo de flujo comprometido que el producto abre, no un texto cualquiera— en vez de una línea que se cuela. Y el testigo tampoco atestigua lo otro: que un lector siga leyendo los archivos de antes lo sostienen la interoperabilidad de 2E-P10 y la reparación de 2E-P8.
+
+---
+
+## Fase 3J — El catálogo de nodos, generado desde el código (2026-09-22, rama `feature/crossplatform-avalonia`)
+
+**Motivo.** El catálogo de nodos (`.agents/nodes_catalog.md`) era el documento que más mentía del repositorio, y nada podía notarlo: era texto escrito a mano que nadie comparaba con nada. Decía **49 nodos** sobre los 70 del producto, en siete secciones, con nodos que ya no existen (`ConditionalFilterNode`, `ImageWatermarkNode`, `RoslynScriptNode`), plugins que tampoco (`FileFlow.Plugin.Audio`, `FileFlow.Plugin.Video`) y recuentos por categoría inventados (FileSystem 15 de 13 reales, AI 10 de 18, Logic 5 de 10). Es la misma clase de defecto que el formato del archivo tenía antes de su testigo: un documento que describe el producto y que nada ata al producto.
+
+**Arreglo.** (1) El catálogo se **genera** (`NodeCatalogDocument`) desde la misma puerta que la app usa al arrancar (`PluginRegistryHelper.CreateConfiguredLoader`), con una fila por nodo: clase, categoría del atributo `[NodeDefinition]`, puertos de entrada y salida, parámetros con su control (`ParameterDescriptors`) y **enlace al fichero que declara ese nodo** —resuelto desde las fuentes, no adivinado—. (2) Todo lo que entra es **determinista**: los textos traducidos (nombre, descripción, ayuda) se quedan fuera a propósito porque dependen del idioma del proceso, y los saltos de línea se generan con `\n` para que el documento sea el mismo en Windows y en Linux. (3) Regenerar tiene su interruptor, como las líneas base visuales: `FILEFLOW_UPDATE_NODE_CATALOG=1`.
+
+**Tres comprobaciones, y cada una mira otra cosa.** (a) El documento **es** el que produce el generador; si no lo es, el fallo imprime la **primera línea que difiere, con su número**, y el comando para regenerarlo —el error que el usuario lee tiene que decirle qué hacer—. (b) Cada fila corresponde a un nodo que el cargador **descubre** y su enlace apunta a un fichero que existe y **declara ese nodo**: un enlace roto o cruzado no pasa. (c) Los recuentos de las secciones son los de sus filas y su suma es el catálogo entero: un documento que enumera una parte y la llama completo no vale.
+
+> **Evidencia**
+> - `NodeCatalogGuardTests` (3 pruebas) y `NodeCatalogDocument` (el generador). El archivo regenerado: **70 nodos** en 12 secciones, con los puertos y los controles de parámetro reales de cada nodo y el enlace a su fuente.
+> - **Verificación por mutación (cinco, y las cinco fallan como deben):** un puerto cambiado a mano en el catálogo deja en rojo la primera y nombra la línea y las dos versiones de la fila; un enlace a un fichero inexistente y otro a un fichero real que declara **otro** nodo dejan en rojo la segunda en sus dos ramas; un recuento de sección bajado de 13 a 12 deja en rojo la tercera (`dice 12 nodos y lista 13`); un **parámetro nuevo en un nodo real** deja en rojo la primera diciendo qué fila y qué parámetro faltan; y un **nodo nuevo** (temporal `ProbeCatalogNode`) deja las **tres** en rojo —el total (70 → 71), la fila que falta con su nombre y la suma de las secciones—, que es la prueba de que añadir un nodo obliga a mover el catálogo. Todo revertido y regenerado (`grep` sin residuos, 70 filas).
+> - Verificación: `dotnet build FileFlow.slnx` sin errores ni advertencias y `dotnet test` con **1473 superadas / 0 fallos / 1 omitida** (1470 del baseline de 3I + las 3 nuevas).
+
+**Límite declarado.** (1) El catálogo mide lo que el **cargador descubre** y lo que el **archivo del flujo** guarda —clase, categoría, puertos, claves y controles de parámetro—, no los textos traducidos ni los valores por defecto: una descripción que cambie según el idioma de la máquina no puede ser una referencia comprometida. (2) Los catálogos **dentro de los manuales** (`manual_de_usuario.md`, `user_manual.md`, `user_guide.md`) siguen siendo prosa: se les quitaron los recuentos de categoría —que estaban mal en ocho de once— y apuntan al catálogo generado, que es el único que se puede atar. Reescribirlos con el generador es un trabajo aparte.
 
 ---
 

@@ -1,7 +1,7 @@
 # FASE 3 — Cerrar los silencios que quedan
 
 > [!NOTE]
-> **Estado (2026-09-22): fase 0 y fases 3A a 3H ✅ HECHAS. La fase 3 queda cerrada.** Recoge los huecos que quedaron abiertos tras las fases
+> **Estado (2026-09-22): fase 0 y fases 3A a 3J ✅ HECHAS. La fase 3 queda cerrada.** Recoge los huecos que quedaron abiertos tras las fases
 > 2E-P8 a 2E-P12 y los ordena para ejecutarlos de uno en uno. **La fase 0** —poner en orden con commits lo ya
 > hecho— se ejecutó al cerrar la fase 3: el árbol acumulaba los cambios de todas las fases y ahora son diez
 > cortes, con `.build_number` fuera por no ser de este trabajo. Cada sub-fase se cierra igual que las anteriores:
@@ -319,6 +319,51 @@ el último; y una pérdida que el lienzo no puede arreglar sigue contada —y su
 **Riesgo.** Bajo: es usabilidad sobre datos que ya existían.
 
 ---
+
+## Fase 3J — El catálogo de nodos, generado desde el código ✅ HECHA
+
+> Ejecutada el 2026-09-22: el catálogo de nodos (`.agents/nodes_catalog.md`) era el documento que más mentía del
+> repositorio y nada podía notarlo —decía 49 nodos sobre 70, en siete secciones, con nodos y plugins que ya no
+> existen (`ConditionalFilterNode`, `FileFlow.Plugin.Audio`) y recuentos por categoría inventados (FileSystem 15 de
+> 13, AI 10 de 18, Logic 5 de 10)—. Ahora se **genera** desde el mismo camino que la aplicación usa al arrancar, con
+> una fila por nodo (categoría, puertos, parámetros con su control y enlace al fichero que lo declara), y
+> `NodeCatalogGuardTests` falla —nombrando la primera línea que difiere, con su número— si deja de coincidir con lo
+> que descubre el cargador. 3 pruebas y 5 mutaciones (una de ellas, añadir un nodo, deja las tres en rojo). Suite
+> **1473 superadas / 0 fallos / 1 omitida**. Detalle y evidencia en
+9. **3J** — el catálogo de nodos: no es un hueco de ejecución sino de confianza, y va al final porque ahora el
+   cargador ya descubre exactamente los nodos que la arquitectura impone y el formato ya está fijado —generarlo
+   antes habría sido fotografiar un catálogo que estaba a punto de cambiar—.
+> [`2026-08_phase1_audit_plan.md`](2026-08_phase1_audit_plan.md).
+
+**Objetivo.** Que el catálogo de nodos sea lo que el código dice y no lo que alguien recordaba al escribirlo: una fila
+por nodo **descubierto**, con sus puertos, sus parámetros y el enlace a la fuente que lo declara, y una guardia que
+impida que se quede atrás en silencio.
+
+**Por qué importa.** Es la misma clase de defecto que el formato del archivo tenía antes de su testigo: un documento
+que describe el producto y que nada ata al producto. La diferencia es que aquí el daño se ve al leer, no al ejecutar
+—quien consulta el catálogo decide con él—, y que el catálogo se consulta al crear plugins, justo cuando el
+descriptor importa.
+
+**Cambios.** (1) `NodeCatalogDocument` genera el documento entero desde `PluginRegistryHelper.CreateConfiguredLoader`
+—el mismo cargador de la app—, con los puertos y los controles de parámetro reales de cada uno y con el enlace
+resuelto desde las **fuentes** del plugin, no adivinado del ensamblado. (2) Todo lo que entra es determinista: los
+textos traducidos quedan fuera —dependen del idioma del proceso— y los saltos de línea se generan con `\n` para que
+el documento sea el mismo en Windows y en Linux. (3) Regenerar tiene su interruptor, como las líneas base visuales:
+`FILEFLOW_UPDATE_NODE_CATALOG=1`; la primera ejecución sin archivo lo escribe y **falla a propósito** para que no se
+bendiga solo.
+
+**Cómo se verifica.** El documento comprometido es **exactamente** el que produce el generador, y el fallo imprime la
+primera línea que difiere con su número y el comando para regenerarlo; cada fila nombra un nodo que el cargador
+descubre y su enlace existe y **declara ese nodo**, en los dos sentidos —un nodo descubierto sin fila también falla—; y
+los recuentos de cada sección son los de sus filas, con su suma igual al catálogo entero.
+
+**Riesgo.** Bajo: no toca producto, sólo pruebas y documentación. El catálogo es un archivo comprometido y regenerarlo
+es un cambio **visible** en el diff, que es justamente lo que se quiere.
+
+**Lo que queda fuera, declarado.** El catálogo mide lo que el cargador descubre y lo que el archivo del flujo guarda
+—clase, categoría, puertos, claves y controles de parámetro—, no los textos traducidos ni los valores por defecto;
+y los catálogos **dentro de los manuales** siguen siendo prosa: se les quitaron los recuentos de categoría —estaban
+mal en ocho de once— y apuntan al catálogo generado, que es el único que se puede atar.
 
 ## Orden, y por qué
 
