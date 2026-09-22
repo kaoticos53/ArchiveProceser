@@ -144,6 +144,11 @@ public static class WorkflowGraphSerializer
     /// —los puertos de un contenedor, por ejemplo— que ese archivo no guardaba y que se rellenan con lo que
     /// él sí conserva, antes de que la materialización los use.
     ///
+    /// Lo que se repara se queda en el <b>grafo</b> y no sólo en el lienzo, y al final el grafo se declara
+    /// reparado: así un archivo anterior deja de declararse anterior al guardarlo —converge— en vez de
+    /// repararse en cada apertura. Son las dos mitades de lo mismo: declarar el formato actual un grafo que no
+    /// lleva dentro lo que se recuperó enterraría esos cables, porque el próximo que lo abra ya no repara.
+    ///
     /// Devuelve lo que <b>no</b> se pudo reconstruir, que es poco para el flujo pero mucho para el usuario:
     /// un cable descartado en silencio convierte un flujo reabierto en uno incompleto que parece completo.
     /// </summary>
@@ -248,6 +253,13 @@ public static class WorkflowGraphSerializer
                 if (recoveredInputs.Count > 0 || recoveredOutputs.Count > 0)
                 {
                     container.RememberedPorts = (recoveredInputs, recoveredOutputs);
+
+                    // Y se queda también en el grafo, no sólo en el nodo: quien guarde el grafo que acaba de
+                    // leer —en vez del que exporte de la pantalla— escribirá con esto lo que se recuperó. Sin
+                    // esta línea, ese camino escribiría un archivo del formato actual sin los puertos dentro,
+                    // y al reabrirlo ya nadie los repararía: los cables se perderían en silencio.
+                    nodeDto.Parameters[ISubflowNode.RememberedInputPortsKey] = ISubflowNode.EncodePortNames(recoveredInputs);
+                    nodeDto.Parameters[ISubflowNode.RememberedOutputPortsKey] = ISubflowNode.EncodePortNames(recoveredOutputs);
                 }
             }
 
@@ -284,6 +296,11 @@ public static class WorkflowGraphSerializer
                 droppedConnections.Add(dropped);
             }
         }
+
+        // La reparación ya se aplicó —en los nodos y en el grafo—, así que el grafo se declara lo que es ahora:
+        // guardarlo deja de decir que es un archivo anterior. Es el único sitio que aplica el plan, y por eso es
+        // el único que puede declarar que se aplicó; un archivo posterior se queda con su versión.
+        WorkflowFormat.DeclareRepaired(graph);
 
         return new ConnectionRebuildReport(droppedConnections);
     }

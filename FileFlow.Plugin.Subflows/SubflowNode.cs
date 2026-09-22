@@ -15,9 +15,12 @@ public sealed class SubflowNode : FlowNodeBase, ISubflowNode
     /// <see cref="ParameterDescriptors"/> a propósito: no son configuración del usuario, son estado de
     /// diseño que se guarda con el nodo para poder reconstruir las conexiones de un flujo cuyo subflujo ya
     /// no está al alcance. Es el mismo patrón que usa el nodo de switch con sus casos.
+    ///
+    /// Los nombres son del <b>contrato</b>, no de este nodo: quien reconstruye un archivo anterior escribe en
+    /// las mismas claves sobre el grafo que leyó, y dos definiciones del mismo nombre acabarían divergiendo.
     /// </summary>
-    private const string RememberedInputPortsKey = "RememberedInputPorts";
-    private const string RememberedOutputPortsKey = "RememberedOutputPorts";
+    private const string RememberedInputPortsKey = ISubflowNode.RememberedInputPortsKey;
+    private const string RememberedOutputPortsKey = ISubflowNode.RememberedOutputPortsKey;
 
     private readonly List<NodePort> _inputPorts = [];
     private readonly List<NodePort> _outputPorts = [];
@@ -118,8 +121,8 @@ public sealed class SubflowNode : FlowNodeBase, ISubflowNode
         // decide si esa siembra sobrevive —una definición que resuelve la sustituye—.
         set
         {
-            Parameters[RememberedInputPortsKey] = string.Join(';', value.Inputs ?? []);
-            Parameters[RememberedOutputPortsKey] = string.Join(';', value.Outputs ?? []);
+            Parameters[RememberedInputPortsKey] = ISubflowNode.EncodePortNames(value.Inputs ?? []);
+            Parameters[RememberedOutputPortsKey] = ISubflowNode.EncodePortNames(value.Outputs ?? []);
         }
     }
 
@@ -148,8 +151,8 @@ public sealed class SubflowNode : FlowNodeBase, ISubflowNode
 
             // Las listas de arriba son la verdad de lo que expone el contenedor, así que se recuerdan aquí,
             // en el único sitio que las cambia: es lo que quedará guardado en el flujo.
-            rememberedInputs = string.Join(';', _inputPorts.Select(port => port.Name));
-            rememberedOutputs = string.Join(';', _outputPorts.Select(port => port.Name));
+            rememberedInputs = ISubflowNode.EncodePortNames(_inputPorts.Select(port => port.Name));
+            rememberedOutputs = ISubflowNode.EncodePortNames(_outputPorts.Select(port => port.Name));
         }
 
         Parameters[RememberedInputPortsKey] = rememberedInputs;

@@ -8,6 +8,23 @@ public interface ISubflowNode : IFlowNode
     public const string SubflowSinkKey = "__SubflowOutputSink__";
 
     /// <summary>
+    /// Claves con las que el contenedor recuerda los puertos que expone (ver <see cref="RememberedPorts"/>).
+    /// Están en el contrato y no dentro del nodo porque tienen <b>dos</b> escritores con motivos distintos: el
+    /// nodo, cuando materializa sus puertos, y quien reconstruye un archivo guardado por una versión que no los
+    /// guardaba, que tiene que dejar lo que recuperó en el grafo que leyó y no sólo en el lienzo.
+    /// </summary>
+    public const string RememberedInputPortsKey = "RememberedInputPorts";
+
+    /// <summary>Clave de los puertos de salida recordados. Ver <see cref="RememberedInputPortsKey"/>.</summary>
+    public const string RememberedOutputPortsKey = "RememberedOutputPorts";
+
+    /// <summary>
+    /// Cómo se guardan los nombres de puerto en esas claves: una lista delimitada por punto y coma. Es parte
+    /// del formato del archivo, así que vive con las claves y no en cada uno de los sitios que escribe en ellas.
+    /// </summary>
+    public static string EncodePortNames(IEnumerable<string> portNames) => string.Join(';', portNames);
+
+    /// <summary>
     /// Ruta al archivo de definición de subflujo (.flow o .subflow).
     /// </summary>
     string SubflowPath { get; set; }

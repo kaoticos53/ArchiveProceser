@@ -35,13 +35,63 @@ public static class WorkflowFormat
     public const int UndeclaredVersion = 1;
 
     /// <summary>
+    /// Nombre del formato anterior al versionado, el que no declaraba nada. Ningún escritor actual lo escribe:
+    /// es la versión que un lector <b>anota</b> en un grafo que viene de un archivo que no declaraba ninguna,
+    /// para que <c>Schema</c> nulo signifique una sola cosa —«no viene de ningún archivo»— y no dos.
+    /// </summary>
+    public const string UndeclaredSchema = "FileFlow.Workflow.v1";
+
+    /// <summary>
+    /// Anota de dónde viene un grafo que se acaba de leer: si el archivo no declaraba versión, se le pone la
+    /// que ese archivo es.
+    ///
+    /// <para>
+    /// Lo hace el propio modelo al deserializarse y no cada lector, porque un lector que se olvide <b>no
+    /// falla</b>: guardaría un grafo anterior declarándolo actual, y con eso la reparación que ese archivo
+    /// todavía necesita se perdería para siempre —el campo existe justo para poder no perderla—. Un archivo
+    /// posterior conserva la suya: aquí no se inventa ninguna versión, sólo se escribe la que el archivo ya
+    /// decía por omisión.
+    /// </para>
+    /// </summary>
+    public static void NoteSource(WorkflowGraph graph)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+        graph.Schema ??= UndeclaredSchema;
+    }
+
+    /// <summary>
+    /// La reparación <b>ya se aplicó</b>: el grafo es, desde aquí, lo que esta versión escribe, así que se
+    /// declara como tal y guardarlo deja de decir que es un archivo anterior. Es la otra mitad de
+    /// <see cref="DeclareCurrent"/> y la razón de que aquél no pise una versión declarada: mientras nadie llame
+    /// a éste, un archivo anterior se guarda como lo que era —y se vuelve a reparar al abrirlo—; en cuanto la
+    /// reparación se aplica, no hay nada que conservar y declarar el formato actual es lo que hace que el
+    /// archivo <b>converja</b> en vez de repararse en cada apertura.
+    ///
+    /// <para>
+    /// Quien lo llame tiene que haber dejado en el grafo lo que reparó, no sólo en la pantalla: declarar actual
+    /// un grafo sin la reparación dentro entierra lo que esa reparación recuperaba, porque el próximo que lo
+    /// abra ya no la hará. Y no baja versiones: un archivo de un formato posterior se deja como está.
+    /// </para>
+    /// </summary>
+    public static void DeclareRepaired(WorkflowGraph graph)
+    {
+        ArgumentNullException.ThrowIfNull(graph);
+
+        if (VersionOf(graph) < CurrentVersion)
+        {
+            graph.Schema = CurrentSchema;
+        }
+    }
+
+    /// <summary>
     /// Declara la versión que este escritor escribe, si el grafo no trae ya una. Es la última cosa que pasa
     /// antes de escribir y la hacen los <b>dos</b> escritores por el mismo sitio: escribir el campo es parte
     /// del formato, no un detalle de quien escribe, y una versión que se olvide en uno de los caminos convierte
     /// un archivo actual en uno al que se le aplican reparaciones pensadas para archivos que ya no se producen.
     ///
     /// No pisa una versión declarada: un grafo leído de un archivo anterior se guarda como lo que era hasta que
-    /// alguien lo repare, que es lo que hace que la reparación no se pierda por el camino.
+    /// alguien lo repare —y repararlo es <see cref="DeclareRepaired"/>, no escribir encima—, que es lo que hace
+    /// que la reparación no se pierda por el camino.
     /// </summary>
     public static void DeclareCurrent(WorkflowGraph graph)
     {

@@ -50,12 +50,14 @@ public class WorkflowGroup
     public List<string> NodeIds { get; set; } = [];
 }
 
-public class WorkflowGraph
+public class WorkflowGraph : IJsonOnDeserialized
 {
     /// <summary>
-    /// Versión del formato con la que está escrito el grafo. <c>null</c> significa «sin declarar» y no es
-    /// lo mismo que un grafo recién construido en memoria: declara la versión el que <b>escribe</b> el
-    /// archivo. Ver <see cref="WorkflowFormat"/>.
+    /// Versión del formato con la que está escrito el grafo, o con la que se leyó. <c>null</c> sólo lo tiene un
+    /// grafo construido en memoria y todavía sin escribir: uno que llega de un archivo trae siempre la versión
+    /// que ese archivo declaraba —y, si no declaraba ninguna, la del formato anterior al versionado, que anota
+    /// el propio modelo al leerlo—. Declara la versión el que <b>escribe</b> el archivo, y quien repara un
+    /// archivo anterior la sube con <see cref="WorkflowFormat.DeclareRepaired"/>. Ver <see cref="WorkflowFormat"/>.
     /// </summary>
     public string? Schema { get; set; }
 
@@ -123,4 +125,12 @@ public class WorkflowGraph
 
     public static WorkflowGraph FromJson(string json) =>
         JsonSerializer.Deserialize<WorkflowGraph>(json, SerializationOptions) ?? new WorkflowGraph();
+
+    /// <summary>
+    /// Un grafo que llega de un texto recuerda de qué versión viene antes de que nadie lo mire. Lo hace el
+    /// modelo y no cada lector porque los lectores son varios —el servicio de guardado, este mismo
+    /// <see cref="FromJson"/> y cualquier camino que se añada— y el que se olvide <b>no falla</b>: guardaría un
+    /// archivo anterior declarándolo actual, y eso entierra su reparación. Ver <see cref="WorkflowFormat.NoteSource"/>.
+    /// </summary>
+    void IJsonOnDeserialized.OnDeserialized() => WorkflowFormat.NoteSource(this);
 }
