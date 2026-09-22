@@ -34,8 +34,6 @@ public static class WorkflowFormat
     /// </summary>
     public const int UndeclaredVersion = 1;
 
-    /// <summary>Versión con la que está escrito un grafo.</summary>
-    public static int VersionOf(WorkflowGraph graph)
     /// <summary>
     /// Declara la versión que este escritor escribe, si el grafo no trae ya una. Es la última cosa que pasa
     /// antes de escribir y la hacen los <b>dos</b> escritores por el mismo sitio: escribir el campo es parte
@@ -51,6 +49,8 @@ public static class WorkflowFormat
         graph.Schema ??= CurrentSchema;
     }
 
+    /// <summary>Versión con la que está escrito un grafo.</summary>
+    public static int VersionOf(WorkflowGraph graph)
     {
         ArgumentNullException.ThrowIfNull(graph);
         return VersionOf(graph.Schema);

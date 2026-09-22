@@ -2,6 +2,7 @@ using Avalonia;
 using FileFlow.App.Models;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
+using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 using FileFlow.Sdk.TemplateEngine;
 using FluentAssertions;
@@ -280,12 +281,10 @@ public class VariableDiscoveryServiceTests
         }
         """;
 
-        var options = new System.Text.Json.JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            Converters = { new FileFlow.Sdk.Serialization.ObjectToInferredTypesConverter() }
-        };
-        var graph = System.Text.Json.JsonSerializer.Deserialize<FileFlow.Core.Engine.WorkflowGraph>(json, options)!;
+        // Por el lector del producto: el archivo de prueba está en el dialecto anterior —los nombres del
+        // modelo tal cual— y leerlo con opciones propias era tener aquí una segunda especificación de cómo se
+        // lee un flujo, que seguiría pasando aunque dejara de ser cierta para los archivos de verdad.
+        var graph = WorkflowGraph.FromJson(json);
 
         var loader = new FileFlow.Core.Plugins.PluginLoader();
         loader.RegisterNodeType<FileFlow.Plugin.FileSystem.FolderSourceNode>();
