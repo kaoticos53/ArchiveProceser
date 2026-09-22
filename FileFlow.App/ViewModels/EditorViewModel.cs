@@ -31,6 +31,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public Services.INodeClipboardService ClipboardService => _clipboardService;
     public Services.IVariableDiscoveryService VariableDiscoveryService => _variableDiscoveryService;
+    /// <summary>
+    /// El latido que detecta que un subflujo abierto cambió en disco por fuera del lienzo. Ver
+    /// <see cref="RefreshSubflowsChangedOnDisk"/>.
+    /// </summary>
+    private readonly DispatcherTimer _subflowWatchTimer;
+
     public IUndoRedoService UndoRedoService => _undoRedoService;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = [];
@@ -296,6 +302,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (outputPort.Direction != PortDirection.Output || inputPort.Direction != PortDirection.Input)
             return;
 
+
+        // Un subflujo puede editarse por fuera de este lienzo —en otra pestaña del editor, en otro
+        // programa— y el contenedor vivo se quedaba con la frontera vieja hasta que alguien le preguntara.
+        // El latido es la pregunta, y es barato porque no lee el archivo: sólo compara su huella.
+        _subflowWatchTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = SubflowWatchInterval
+        };
+        _subflowWatchTimer.Tick += OnSubflowWatchTick;
+        _subflowWatchTimer.Start();
         if (Connections.Any(c => c.Source == outputPort && c.Target == inputPort))
             return;
 
@@ -392,6 +408,169 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     /// </summary>
     private void ApplyPortCompatibilityHighlight(PortViewModel source)
     {
+    /// <summary>
+    /// Cada cuánto se le pregunta a los contenedores de subflujo si su definición cambió en disco. La
+    /// comprobación es una huella —fecha y tamaño del archivo, sin leerlo—, así que un segundo es barato; y es
+    /// corto a propósito, porque editar el subflujo en otra pestaña y volver a mirarlo es el caso normal.
+    /// </summary>
+    private static readonly TimeSpan SubflowWatchInterval = TimeSpan.FromSeconds(1);
+
+    private void OnSubflowWatchTick(object? sender, EventArgs e) => RefreshSubflowsChangedOnDisk();
+
+    /// <summary>
+    /// Refresca los contenedores de subflujo cuya definición cambió en disco, para que el lienzo deje de
+    /// mostrar una frontera que ya no existe: aparecen los puertos nuevos, se van los que ya no están con sus
+    /// cables, y <b>los que siguen existiendo conservan los suyos</b> —los puertos se emparejan por nombre y
+    /// los que sobreviven conservan su instancia, que es de quien cuelga el cable—.
+    ///
+    /// <para>
+    /// Se pregunta en vez de vigilar el sistema de archivos: la huella que el resolutor ya necesita para no
+    /// releer el archivo en cada pulsación de tecla responde «¿cambió?» sin leerlo, así que no hace falta un
+    /// vigilante del sistema operativo por contenedor —ni sus fallos de red, ni su limpieza— para saber algo
+    /// que ya se sabe preguntar. El refresco en sí pasa por <see cref="NodeViewModel.SyncSubflowPorts"/>, la
+    /// misma puerta que usa el inspector: una sola regla decide qué puertos expone un contenedor.
+    /// </para>
+    ///
+    /// <para>
+    /// Lo que se pierde no se predice: se mide por diferencia contra el estado anterior a refrescar, porque
+    /// quien descarta los cables huérfanos es la revalidación del lienzo y adivinar qué hará sería escribir
+    /// esa regla por segunda vez.
+    /// </para>
+    ///
+    /// <para>
+    /// Se cuenta y se devuelve lo que cambió <b>para quien mira</b> —la topología del contenedor—, no lo que
+    /// cambió en el disco: un origen que no se puede resolver, como un subflujo que se movió de sitio, responde
+    /// «cambió» en cada latido porque el resolutor no memoriza lo que no pudo leer. Si cada intento contara, la
+    /// consola se llenaría de un aviso por segundo sobre un contenedor que sigue exponiendo exactamente los
+    /// mismos puertos.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<NodeViewModel> RefreshSubflowsChangedOnDisk()
+    {
+        var refreshed = new List<NodeViewModel>();
+
+        foreach (var node in Nodes.ToList())
+        {
+            if (!node.HasSubflowDefinitionChanged()) continue;
+
+            var topologyBefore = PortNamesOf(node);
+            var boundBefore = Connections.ToList();
+
+            // Materializa y anuncia: el lienzo reconcilia sus puertos y revalida en el acto, así que al
+            // volver de aquí el grafo ya es el nuevo —cables conservados, huérfanos fuera—.
+            node.SyncSubflowPorts();
+
+            if (SameTopology(topologyBefore, PortNamesOf(node)))
+            {
+                // El origen cambió —o dejó de resolverse— pero el contenedor expone lo mismo que antes: no hay
+                // nada que contarle a nadie, y los cables no tienen por qué enterarse.
+                continue;
+            }
+
+            refreshed.Add(node);
+            AnnounceSubflowDefinitionChanged(node, [.. boundBefore.Where(connection => !Connections.Contains(connection))]);
+        }
+
+        return refreshed;
+    }
+
+    /// <summary>Nombres de puerto que el lienzo muestra, en su orden: lo que cambia para quien mira.</summary>
+    private static (List<string> Inputs, List<string> Outputs) PortNamesOf(NodeViewModel node) =>
+        ([.. node.InputPorts.Select(port => port.Name)], [.. node.OutputPorts.Select(port => port.Name)]);
+
+    private static bool SameTopology(
+        (List<string> Inputs, List<string> Outputs) left,
+        (List<string> Inputs, List<string> Outputs) right) =>
+        left.Inputs.SequenceEqual(right.Inputs) && left.Outputs.SequenceEqual(right.Outputs);
+
+    /// <summary>
+    /// Cuenta que la topología de un contenedor cambió porque su subflujo cambió en disco. En la consola
+    /// <b>siempre</b> —es el registro de lo que le fue pasando al flujo sin que el usuario lo tocara— y en el
+    /// lienzo <b>sólo</b> cuando el cambio se llevó por delante algún cable.
+    ///
+    /// La distinción no es cosmética: que un subflujo cambie por fuera es lo normal —se está editando en otra
+    /// pestaña, o en otro editor—, y poner un cartel en cada guardado por un cambio que no rompió nada enseña
+    /// a ignorar el cartel, que es justo lo que existe para evitar. Cuando sí rompió algo, el cable se cuenta
+    /// con la misma frase que un puerto que falta, porque es el mismo hecho y quien lo lee tiene que poder
+    /// reconectarlo.
+    /// </summary>
+    private void AnnounceSubflowDefinitionChanged(NodeViewModel node, IReadOnlyList<ConnectionViewModel> lostConnections)
+    {
+        _logViewModel?.AddLog(LogLevel.Information, _loc.GetFormattedString(
+            "LogSubflowDefinitionChanged",
+            "🔄 El subflujo '{0}' cambió en disco: el contenedor volvió a calcular sus puertos.",
+            node.Title));
+
+        if (lostConnections.Count == 0)
+        {
+            // El contenedor se puso al día solo y no rompió nada: queda el registro, y el cartel se reserva
+            // para el cambio que sí hay que leer.
+            return;
+        }
+
+        var lost = lostConnections.Select(DropDescriptionOf).ToList();
+
+        foreach (var connection in lost)
+        {
+            LogLostConnection("LogConnectionLostWithSubflowChange", "🔌 La conexión {0} se perdió: {1}", connection);
+        }
+
+        // El contenedor sí se nombra en la cabecera —es el contexto del cambio, y no deja de ser verdad al
+        // arreglar un cable—, pero los detalles se van a las filas, con su botón.
+        SetCanvasNotice(
+            _loc.GetFormattedString(
+                "CanvasNoticeSubflowDefinitionChanged",
+                "🔄 El subflujo '{0}' cambió en disco: se perdieron estas conexiones",
+                node.Title),
+            lost);
+    }
+
+    /// <summary>
+    /// Cuenta en la consola un cable perdido: <b>una línea por motivo</b>, cada una con el nodo al que hay que
+    /// ir para arreglarlo.
+    ///
+    /// Una línea por motivo y no una por cable porque un cable que falla por sus dos extremos son dos nodos
+    /// los que hay que arreglar, y una sola frase con los dos motivos no puede llevar dos nodos: la fila de la
+    /// consola abre el nodo que lleva, así que con dos motivos juntos habría que elegir a cuál se renuncia.
+    /// </summary>
+    private void LogLostConnection(string key, string fallback, DroppedConnection connection)
+    {
+        string endpoints = DroppedConnectionText.DescribeEndpoints(connection);
+
+        foreach (var impediment in connection.Impediments)
+        {
+            var target = DroppedConnectionText.NodeToPointAt(impediment);
+
+            _logViewModel?.AddNodeLog(
+                LogLevel.Warning,
+                _loc.GetFormattedString(key, fallback, endpoints, DroppedConnectionText.DescribeImpediment(_loc, impediment)),
+                target?.NodeId,
+                target?.NodeName);
+        }
+    }
+
+    /// <summary>
+    /// El cable que el refresco se llevó, con la forma que ya sabe contar <see cref="DroppedConnectionText"/>:
+    /// sus dos extremos y el puerto que desapareció como motivo.
+    ///
+    /// El extremo culpable se <b>mide</b> —preguntando si el nodo sigue exponiendo ese puerto— en lugar de
+    /// darse por sabido, y por eso el motivo que se cuenta es exactamente el que descartó el cable.
+    /// </summary>
+    private static DroppedConnection DropDescriptionOf(ConnectionViewModel connection) => new(
+        EndpointOf(connection.Source),
+        EndpointOf(connection.Target));
+
+    private static DroppedConnectionEnd EndpointOf(PortViewModel port)
+    {
+        var exposed = port.Direction == PortDirection.Output ? port.NodeOwner.OutputPorts : port.NodeOwner.InputPorts;
+
+        return new DroppedConnectionEnd(
+            port.NodeOwner.Id,
+            port.NodeOwner.Title,
+            port.Name,
+            exposed.Contains(port) ? DroppedConnectionEndProblem.None : DroppedConnectionEndProblem.MissingPort);
+    }
+
         foreach (var port in AllPorts())
         {
             port.IsDragActive = true;
@@ -1437,3 +1616,5 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 }
+        _subflowWatchTimer.Tick -= OnSubflowWatchTick;
+        _subflowWatchTimer.Stop();

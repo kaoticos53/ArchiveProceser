@@ -510,6 +510,20 @@ public partial class NodeViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// ¿La definición de mi subflujo cambió en disco desde la última vez que se materializaron mis puertos?
+    ///
+    /// La comprobación es la <b>huella</b> del origen —el archivo resuelto con su fecha y su tamaño—, no su
+    /// contenido: preguntarlo es tan barato que el lienzo puede hacerlo cada segundo para los contenedores
+    /// que tenga abiertos. Quien reciba <c>true</c> refresca con <see cref="SyncSubflowPorts"/> y el lienzo
+    /// revalida los cables solo, al anunciarse la topología nueva.
+    ///
+    /// Un nodo de puertos fijos, o un contenedor cuya definición va incrustada en el propio flujo —no hay
+    /// archivo que pueda cambiar por fuera—, responden siempre que no.
+    /// </summary>
+    public bool HasSubflowDefinitionChanged() =>
+        _nodeInstance is ISubflowNode subflowNode && SubflowPortResolver.HasSourceChanged(subflowNode);
+
+    /// <summary>
     /// Reconstruye los puertos del lienzo a partir de los que expone el nodo: elimina los que ya no existen,
     /// añade los nuevos y respeta el orden del nodo. Los puertos que siguen existiendo <b>conservan su
     /// instancia</b>, porque las conexiones y los casos de un switch apuntan a ella: recrearlos dejaría el

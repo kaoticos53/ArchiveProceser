@@ -78,6 +78,35 @@ public static class SubflowPortResolver
     }
 
     /// <summary>
+    /// ¿El origen del que salen los puertos del nodo es otro del que se descubrió la última vez?
+    ///
+    /// <para>
+    /// Es la mitad barata de <see cref="Discover"/>: compara la huella del origen contra la memorizada y no
+    /// lee ni analiza nada, que es justo lo que <see cref="Discover"/> evita pagar cuando se le repite la
+    /// misma pregunta. Existe para que quien vigile un contenedor en tiempo de diseño pueda preguntarlo a
+    /// menudo —una vez por segundo, por ejemplo— y sólo entonces materialice lo que cambió.
+    /// </para>
+    ///
+    /// <para>
+    /// Un nodo del que nunca se descubrieron puertos responde <c>false</c>: no hay nada que refrescar, y lo
+    /// que falte lo materializa quien carga el flujo. Un origen que dejó de resolver —el archivo se
+    /// movió— <b>sí</b> cuenta como cambio: el contenedor debe pasar a sus puertos recordados en vez de
+    /// seguir exponiendo los del archivo que ya no está.
+    /// </para>
+    /// </summary>
+    public static bool HasSourceChanged(ISubflowNode subflowNode)
+    {
+        ArgumentNullException.ThrowIfNull(subflowNode);
+
+        if (!Discoveries.TryGetValue(subflowNode, out var cache) || cache.Snapshot is not { } known)
+        {
+            return false;
+        }
+
+        return known.Source != SourceIdentity.Of(subflowNode);
+    }
+
+    /// <summary>
     /// Puertos frontera que expone el subflujo del nodo.
     ///
     /// Mientras el origen no cambie no se vuelve a leer ni a analizar: se responde con lo que ya se
