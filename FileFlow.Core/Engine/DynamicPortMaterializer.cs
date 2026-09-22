@@ -1,7 +1,6 @@
-using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 
-namespace FileFlow.App.Services;
+namespace FileFlow.Core.Engine;
 
 /// <summary>
 /// Materializa en una instancia de nodo recién configurada los puertos que <b>no</b> se deducen de su
@@ -16,6 +15,12 @@ namespace FileFlow.App.Services;
 ///   <item>los de un <b>subflujo contenedor</b>, que no salen de un parámetro sino de la definición del
 ///   subgrafo y se descubren con <see cref="SubflowPortResolver"/>.</item>
 /// </list>
+/// </para>
+///
+/// <para>
+/// Vive en Core y no en la interfaz porque no es una preocupación de la interfaz: la pregunta «¿qué puertos
+/// expone esta instancia recién configurada?» la hacen el cargador de un flujo, el portapapeles y el
+/// diagnóstico previo a la ejecución, y los tres tienen que responderla <b>igual</b>.
 /// </para>
 ///
 /// <para>

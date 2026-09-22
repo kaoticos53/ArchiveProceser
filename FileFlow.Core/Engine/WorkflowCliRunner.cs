@@ -192,6 +192,40 @@ public static class WorkflowCliRunner
             string json = await File.ReadAllTextAsync(options.WorkflowPath, cancellationToken);
             var graph = WorkflowGraph.FromJson(json);
 
+            // Qué va a hacer este flujo, antes de tocar el entorno. Un archivo sin nodos no es un flujo, y
+            // eso terminaba en verde con cero elementos procesados, que es la peor forma de fallar: parecía un
+            // éxito, y quien automatiza se enteraba —o no— por el resumen. La regla es la misma que usa la
+            // interfaz, así que los dos puntos de entrada no pueden discrepar sobre el mismo archivo.
+            var diagnosis = WorkflowDiagnosis.Analyze(graph, loader);
+
+            if (!options.IsSilent)
+            {
+                outWriter.WriteLine(diagnosis.Summary);
+
+                // Los avisos no bloquean: cuentan lo que conviene saber antes de arrancar, y un diagnóstico
+                // que impide ejecutar cosas legítimas es un diagnóstico que se acaba desactivando.
+                foreach (var warning in diagnosis.Warnings)
+                {
+                    outWriter.WriteLine($"⚠️ [AVISO] {warning.Message}");
+                }
+            }
+
+            if (!diagnosis.CanRun)
+            {
+                sw.Stop();
+                summary.Succeeded = false;
+                summary.DurationMs = sw.ElapsedMilliseconds;
+                summary.ErrorMessage = diagnosis.ErrorSummary;
+
+                foreach (var error in diagnosis.Errors)
+                {
+                    outWriter.WriteLine($"❌ [ERROR CLI] {error.Message}");
+                }
+
+                await WriteSummaryAsync(options, summary, cancellationToken);
+                return 1;
+            }
+
             if (!string.IsNullOrWhiteSpace(options.OverrideOutputPath))
             {
                 graph.GlobalOutputDir = options.OverrideOutputPath;
@@ -314,16 +348,7 @@ public static class WorkflowCliRunner
                 outWriter.WriteLine("==================================================================");
             }
 
-            if (!string.IsNullOrWhiteSpace(options.JsonSummaryPath))
-            {
-                string summaryDir = Path.GetDirectoryName(options.JsonSummaryPath) ?? string.Empty;
-                if (!string.IsNullOrWhiteSpace(summaryDir) && !Directory.Exists(summaryDir))
-                {
-                    Directory.CreateDirectory(summaryDir);
-                }
-                string summaryJson = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(options.JsonSummaryPath, summaryJson, cancellationToken);
-            }
+            await WriteSummaryAsync(options, summary, cancellationToken);
 
             return 0;
         }
@@ -336,17 +361,41 @@ public static class WorkflowCliRunner
 
             outWriter.WriteLine($"❌ [ERROR FATAL] Falló la ejecución del flujo:\n{ex.Message}\n{ex.StackTrace}");
 
-            if (!string.IsNullOrWhiteSpace(options.JsonSummaryPath))
+            try
             {
-                try
-                {
-                    string summaryJson = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
-                    await File.WriteAllTextAsync(options.JsonSummaryPath, summaryJson, cancellationToken);
-                }
-                catch { }
+                await WriteSummaryAsync(options, summary, cancellationToken);
+            }
+            catch
+            {
+                // No poder dejar el resumen no puede ocultar el fallo que se está contando.
             }
 
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Deja el resumen donde lo espere quien invoque el CLI, y crea su carpeta si hace falta: el resumen de un
+    /// fallo se escribe en el mismo sitio que el de un éxito, y hasta ahora el de un fallo podía no escribirse
+    /// en absoluto si la carpeta no existía.
+    /// </summary>
+    private static async Task WriteSummaryAsync(
+        WorkflowCliOptions options,
+        WorkflowExecutionSummary summary,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(options.JsonSummaryPath))
+        {
+            return;
+        }
+
+        string summaryDir = Path.GetDirectoryName(options.JsonSummaryPath) ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(summaryDir) && !Directory.Exists(summaryDir))
+        {
+            Directory.CreateDirectory(summaryDir);
+        }
+
+        string summaryJson = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(options.JsonSummaryPath, summaryJson, cancellationToken);
     }
 }
