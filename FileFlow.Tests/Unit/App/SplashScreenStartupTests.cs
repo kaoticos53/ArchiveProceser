@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
@@ -83,6 +86,35 @@ public class SplashScreenStartupTests
 
                 splash.GetLogicalDescendants().OfType<ProgressBar>().Should().ContainSingle(
                     "el progreso del arranque se comunica con la barra");
+            }
+            finally
+            {
+                VisualSnapshot.DetachTree(splash);
+                splash.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TheSplash_ShouldShowTheVersion_ExactlyOncePrefixed()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var splash = new SplashScreenWindow();
+
+            try
+            {
+                var version = splash.GetLogicalDescendants().OfType<TextBlock>()
+                    .Single(t => t.Name == "TxtVersion");
+
+                version.Text.Should().Be(
+                    FileFlow.Sdk.AppVersionInfo.DisplayVersion,
+                    "la splash muestra la versión del SDK, y 'Acerca de' usa esa misma cadena");
+
+                version.Text.Should().StartWith("v").And.NotStartWith(
+                    "vv",
+                    "el prefijo se aplicaba dos veces (DisplayVersion ya lo trae): la primera pantalla del " +
+                    "producto mostraba «vv1.0.0-…», visible en su línea base visual");
             }
             finally
             {
@@ -235,8 +267,7 @@ public class SplashScreenStartupTests
         // animaciones en vuelo no es determinista). El contrato: el temporizador NO arranca en el
         // constructor —sólo la aplicación real llama StartShimmer—, así que las capturas ven siempre el
         // primer fotograma quieto.
-        string codeBehind = StripComments(File.ReadAllText(Path.Combine(
-            TestRepositoryLocator.RepositoryRoot(), "FileFlow.App/Views/SplashScreenWindow.axaml.cs")));
+        string codeBehind = SourceText.CodeWithoutComments("FileFlow.App/Views/SplashScreenWindow.axaml.cs");
 
         codeBehind.Should().Contain("public void StartShimmer()",
             "el arranque del barrido debe ser explícito, no un efecto del constructor");
@@ -265,8 +296,7 @@ public class SplashScreenStartupTests
             "el constructor no puede arrancar el temporizador: sólo StartShimmer lo hace");
 
         // Y la aplicación real lo llama tras mostrar la ventana (lint con comentarios fuera).
-        string startup = StripComments(File.ReadAllText(
-            Path.Combine(TestRepositoryLocator.RepositoryRoot(), AppSourcePath)));
+        string startup = SourceText.CodeWithoutComments(AppSourcePath);
 
         startup.Should().Contain("splash.StartShimmer();",
             "la aplicación real debe activar el barrido al mostrar la splash");
@@ -279,12 +309,118 @@ public class SplashScreenStartupTests
     }
 
     [Fact]
+    public void TheShimmerStep_ShouldRecoverTheBrush_ThatTheThemePhaseReplaces()
+    {
+        // Regresión real (medida en la aplicación, no supuesta): la barra declara
+        // Foreground="{DynamicResource AccentPrimaryBrush}" y la etapa StartupPhase.Theme republica ese recurso
+        // mientras la splash sigue en pantalla, así que Avalonia vuelve a evaluar el recurso y escribe un
+        // pincel SÓLIDO encima del gradiente del barrido. El tick casteaba a ciegas y lanzaba
+        // InvalidCastException: exactamente una entrada por arranque en crash.log y el barrido muerto para el
+        // resto de la pantalla. Ninguna prueba lo veía porque todas mostraban la splash SIN arrancar el
+        // barrido — el temporizador sólo corre en la aplicación real.
+        string originalThemeId = ThemeManager.Instance.CurrentThemeId;
+
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var splash = new SplashScreenWindow();
+            splash.Show();
+
+            try
+            {
+                splash.StartShimmer();
+
+                var bar = splash.GetLogicalDescendants().OfType<ProgressBar>().Single();
+                bar.Foreground.Should().BeOfType<LinearGradientBrush>(
+                    "el constructor impone el gradiente que recorre la barra");
+
+                // Lo que hace la fase de tema del arranque: republicar el tema activo.
+                ThemeManager.Instance.SetThemeById("dark_fluent");
+                Dispatcher.UIThread.RunJobs();
+
+                bar.Foreground.Should().BeOfType<SolidColorBrush>(
+                    "el tema sustituye el pincel de la barra: éste es el escenario que rompía el tick. " +
+                    "Si esto deja de cumplirse, la guardia debe reescribirse sobre el escenario real, no relajarse");
+
+                Action step = splash.AdvanceShimmer;
+                step.Should().NotThrow("el tick no puede dar por hecho que la barra conserva nuestro gradiente");
+
+                bar.Foreground.Should().BeOfType<LinearGradientBrush>("el barrido se recupera y sigue animando");
+                ((LinearGradientBrush)bar.Foreground!).GradientStops.Should().HaveCount(3);
+            }
+            finally
+            {
+                ThemeManager.Instance.SetThemeById(originalThemeId);
+                Dispatcher.UIThread.RunJobs();
+                VisualSnapshot.DetachTree(splash);
+                splash.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AdvanceShimmer_ShouldAdoptTheNewThemeAccent_AndKeepTheSweepMoving()
+    {
+        string originalThemeId = ThemeManager.Instance.CurrentThemeId;
+
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            var splash = new SplashScreenWindow();
+            splash.Show();
+
+            try
+            {
+                splash.StartShimmer();
+                var bar = splash.GetLogicalDescendants().OfType<ProgressBar>().Single();
+
+                ThemeManager.Instance.SetThemeById("light_studio");
+                Dispatcher.UIThread.RunJobs();
+
+                splash.AdvanceShimmer();
+
+                Application.Current!.TryFindResource("AccentPrimaryBrush", out var accent).Should().BeTrue(
+                    "el tema publicado debe exponer el token que consume el barrido");
+                var expected = ((ISolidColorBrush)accent!).Color;
+
+                var stops = ((LinearGradientBrush)bar.Foreground!).GradientStops;
+                stops[0].Color.Should().Be(expected, "el barrido sigue el tema en caliente, no el color del arranque");
+                stops[2].Color.Should().Be(expected);
+
+                // Y avanza: un gradiente recuperado pero quieto sería la animación muerta de otro modo.
+                double first = stops[1].Offset;
+                Thread.Sleep(60);
+                splash.AdvanceShimmer();
+                double second = ((LinearGradientBrush)bar.Foreground!).GradientStops[1].Offset;
+
+                second.Should().NotBe(first, "el barrido debe recorrer la barra, no quedarse en una posición fija");
+                second.Should().BeInRange(0.0, 1.0);
+            }
+            finally
+            {
+                ThemeManager.Instance.SetThemeById(originalThemeId);
+                Dispatcher.UIThread.RunJobs();
+                VisualSnapshot.DetachTree(splash);
+                splash.Close();
+            }
+        });
+
+        // Y el tick no puede volver a asumir el tipo del pincel: el casteo directo era el fallo.
+        string codeBehind = SourceText.CodeWithoutComments("FileFlow.App/Views/SplashScreenWindow.axaml.cs");
+
+        codeBehind.Should().NotContain(
+            "(LinearGradientBrush)PbProgress.Foreground",
+            "el pincel de la barra se recupera antes de animarlo; castearlo a ciegas es la regresión");
+
+        codeBehind.Should().Contain(
+            "public void AdvanceShimmer()",
+            "el paso del barrido debe ser alcanzable desde las pruebas: es el camino que fallaba en la app");
+    }
+
+    [Fact]
     public void TheStartup_ShouldKeepTheSplashIntegrated_InItsRealSequence()
     {
         // Sin comentarios: un «new SplashScreenWindow()» comentado es exactamente el falso negativo que
         // dejó pasar el bug original (la guardia anterior veía el texto, no el código).
-        string source = StripComments(File.ReadAllText(
-            Path.Combine(TestRepositoryLocator.RepositoryRoot(), AppSourcePath)));
+        string source = SourceText.CodeWithoutComments(AppSourcePath);
 
         // Lint de integración: la splash se perdió cuando el arranque se reescribió y ninguna prueba lo vio.
         // El contrato se vigila sobre el código real, no sobre una copia simulada que podría divergir.
@@ -327,69 +463,6 @@ public class SplashScreenStartupTests
     /// pueden contener «//» legítimos, como «https://»). Sin esto, el lint de integración acepta código
     /// comentado como si estuviera vivo.
     /// </summary>
-    private static string StripComments(string source)
-    {
-        var output = new System.Text.StringBuilder(source.Length);
-        for (int i = 0; i < source.Length; i++)
-        {
-            char current = source[i];
-            char next = i + 1 < source.Length ? source[i + 1] : '\0';
-
-            if (current == '"' || current == '\'')
-            {
-                // Copiar el literal íntegro: su contenido no abre comentarios.
-                output.Append(current);
-                i++;
-                while (i < source.Length)
-                {
-                    if (source[i] == '\\' && i + 1 < source.Length)
-                    {
-                        output.Append(source[i]).Append(source[i + 1]);
-                        i += 2;
-                        continue;
-                    }
-
-                    output.Append(source[i]);
-                    if (source[i] == current)
-                    {
-                        i++;
-                        break;
-                    }
-
-                    i++;
-                }
-
-                continue;
-            }
-
-            if (current == '/' && next == '/')
-            {
-                while (i < source.Length && source[i] != '\n')
-                {
-                    i++;
-                }
-
-                continue;
-            }
-
-            if (current == '/' && next == '*')
-            {
-                i += 2;
-                while (i + 1 < source.Length && !(source[i] == '*' && source[i + 1] == '/'))
-                {
-                    i++;
-                }
-
-                i += 2;
-                continue;
-            }
-
-            output.Append(current);
-        }
-
-        return output.ToString();
-    }
-
     /// <summary>Texto actual de un control nombrado de la splash.</summary>
     private static string TextOf(Window splash, string name) =>
         splash.GetLogicalDescendants().OfType<TextBlock>().Single(t => t.Name == name).Text ?? string.Empty;

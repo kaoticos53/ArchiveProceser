@@ -48,6 +48,12 @@ public class ModalVisualRegressionTests
         (ModalSurface.SyntheticDataSetDesigner, "modal-synthetic-data-designer-dark", DarkTheme),
         (ModalSurface.MediaPresetManager, "modal-media-preset-manager-dark", DarkTheme),
         (ModalSurface.StartupError, "modal-startup-error-dark", DarkTheme),
+        // La splash es la primera pantalla del producto y era la única superficie principal sin línea base.
+        // Va en los DOS temas porque su regresión histórica fue justamente de tema claro (11 colores
+        // literales que la dejaban ilegible cuando el tema activo era claro): un solo tema no la habría visto.
+        // El primer fotograma es determinista por diseño (el barrido no arranca en pruebas).
+        (ModalSurface.Splash, "splash-dark", DarkTheme),
+        (ModalSurface.Splash, "splash-light", LightTheme),
         // Una segunda modal en claro: cubre el camino del tema alternativo sin duplicar las nueve.
         (ModalSurface.About, "modal-about-light", LightTheme)
     ];
@@ -92,6 +98,57 @@ public class ModalVisualRegressionTests
                 4,
                 $"'{surface}' debe pintar contenido real con las clases del tema, no una ventana plana");
         }
+    }
+
+    [Fact]
+    public void TheSplash_ShouldBeThemed_AndNotABlankWindow()
+    {
+        // La línea base congela la imagen, pero no dice si el tema llegó a ella: una splash con el fondo
+        // correcto y el contenido sin pintar pasaría la comparación de un tema y sería un falso verde. El
+        // diferencial entre los dos temas es la prueba de que los tokens se aplican de verdad (la regresión
+        // histórica fue de tema claro, con colores literales que no seguían al tema).
+        byte[] dark = ModalVisualFixture.Capture(ModalSurface.Splash, DarkTheme);
+        byte[] light = ModalVisualFixture.Capture(ModalSurface.Splash, LightTheme);
+
+        DistinctColors(dark).Should().BeGreaterThan(
+            4,
+            "la splash debe pintar su contenido (marca, textos, barra e insignia), no una ventana plana");
+
+        DifferenceRatio(dark, light).Should().BeGreaterThan(
+            0.05,
+            "la splash debe cambiar con el tema: si las dos capturas son casi iguales, el contenido se pinta " +
+            "con colores fijos y deja de seguir los tokens");
+    }
+
+    /// <summary>
+    /// Proporción de píxeles que difieren entre dos capturas del mismo tamaño, muestreando cada 3 píxeles
+    /// (misma heurística que <see cref="DistinctColors"/>).
+    /// </summary>
+    private static double DifferenceRatio(byte[] first, byte[] second)
+    {
+        using var a = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(first);
+        using var b = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(second);
+
+        a.Width.Should().Be(b.Width, "las dos capturas deben medir lo mismo para poder compararse");
+        a.Height.Should().Be(b.Height);
+
+        long differing = 0;
+        long total = 0;
+
+        for (int y = 0; y < a.Height; y += 3)
+        {
+            for (int x = 0; x < a.Width; x += 3)
+            {
+                total++;
+
+                if (a[x, y] != b[x, y])
+                {
+                    differing++;
+                }
+            }
+        }
+
+        return total == 0 ? 0 : (double)differing / total;
     }
 
     /// <summary>

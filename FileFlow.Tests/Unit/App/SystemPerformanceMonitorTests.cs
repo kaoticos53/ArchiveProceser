@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using FileFlow.App.Services;
 using FluentAssertions;
 using Xunit;
@@ -38,5 +40,55 @@ public class SystemPerformanceMonitorTests
     {
         using var monitor = new SystemPerformanceMonitor();
         monitor.Should().NotBeNull();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // El latido del muestreo: el camino que sólo corría en la aplicación
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Hasta ahora sólo se probaba el formateo de las métricas y que el monitor se pueda construir: el tick —con
+    /// su guarda de reentrada, su captura de excepciones y su comprobación de desecho— no se ejecutaba nunca en
+    /// el suite. Estos tres casos son sus tres salidas posibles.
+    /// </summary>
+    [Fact]
+    public async Task TheHeartbeat_ShouldPublishAPlausibleSample()
+    {
+        using var monitor = new SystemPerformanceMonitor();
+        var samples = new List<PerformanceMetrics>();
+        monitor.PerformanceUpdated += metrics => samples.Add(metrics);
+
+        await monitor.SampleNowAsync();
+
+        samples.Should().ContainSingle("un latido publica una muestra");
+        samples[0].WorkingSetBytes.Should().BeGreaterThan(0, "el proceso que la mide ocupa memoria");
+        samples[0].CpuPercentage.Should().BeInRange(0, 100, "el porcentaje se acota antes de publicarse");
+    }
+
+    [Fact]
+    public async Task TheHeartbeat_ShouldNotOverlap_WhenTwoTicksCoincide()
+    {
+        using var monitor = new SystemPerformanceMonitor();
+        int published = 0;
+        monitor.PerformanceUpdated += _ => published++;
+
+        await Task.WhenAll(monitor.SampleNowAsync(), monitor.SampleNowAsync());
+
+        published.Should().Be(1,
+            "la guarda se levanta antes del primer await: dos ticks solapados no pueden muestrear dos veces");
+    }
+
+    [Fact]
+    public async Task TheHeartbeat_ShouldStaySilent_AfterDispose()
+    {
+        var monitor = new SystemPerformanceMonitor();
+        int published = 0;
+        monitor.PerformanceUpdated += _ => published++;
+
+        monitor.Dispose();
+        await monitor.SampleNowAsync();
+
+        published.Should().Be(0,
+            "un latido que llegue con el monitor ya desechado no puede publicar métricas de un proceso liberado");
     }
 }

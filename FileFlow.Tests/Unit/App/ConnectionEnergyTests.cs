@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Services;
+using FileFlow.Tests.TestHelpers;
 using FluentAssertions;
 using Xunit;
 
@@ -65,6 +68,68 @@ public class ConnectionEnergyTests
 
         editor.ClearConnectionEnergy();
         wire.IsExecuting.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PulseConnectionEnergy_ShouldKeepTheWireLit_UntilTheClockReachesTheDuration()
+    {
+        // El vencimiento programado —no el apagado manual— es lo que hace que el cable vuelva solo a reposo.
+        // Con el reloj del sistema, comprobarlo costaría la espera entera (y una espera real no prueba nada:
+        // prueba que el tiempo pasa). Con el reloj inyectado, el paso del tiempo es el paso de la prueba.
+        var clock = new ManualTimeProvider();
+        var (editor, wire) = BuildEditorWithWire(clock);
+
+        // El reloj también lleva el latido del vigilante de subflujos del propio editor, así que lo que se mide es
+        // el incremento: el vencimiento del pulso tiene que quedar programado en el reloj inyectado, no en el del
+        // sistema.
+        int timersBeforePulse = clock.PendingTimerCount;
+
+        Task expiry = editor.PulseConnectionEnergy(wire, durationMs: 900);
+
+        wire.IsExecuting.Should().BeTrue("el pulso acaba de empezar");
+        clock.PendingTimerCount.Should().Be(timersBeforePulse + 1, "el fin del pulso quedó programado en el reloj inyectado, no en el del sistema");
+
+        clock.AdvanceBy(TimeSpan.FromMilliseconds(899));
+        wire.IsExecuting.Should().BeTrue("un pulso de 900 ms no ha vencido a los 899");
+
+        clock.AdvanceBy(TimeSpan.FromMilliseconds(1));
+        await expiry.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // El estado final se sondea porque el apagado pasa por el hilo de UI; que el reloj inyectado sea el
+        // correcto ya lo dice «PendingTimerCount» arriba, sin depender del tiempo real.
+        await AsyncTestWaiter.WaitForAsync(
+            () => !wire.IsExecuting,
+            TimeSpan.FromSeconds(5),
+            description: "el apagado del cable al vencer su pulso");
+    }
+
+    [Fact]
+    public async Task PulseConnectionEnergy_ShouldNotLetTheStaleExpiryTurnOffANewerPulse()
+    {
+        // La ráfaga de verdad: los pulsos se solapan y el vencimiento del primero llega con el segundo en
+        // marcha. Aquí se espera ese vencimiento obsoleto (en la aplicación nadie lo espera) para que la
+        // comprobación no sea una carrera: si el apagado no mirara la generación, el cable se apagaría con
+        // datos en tránsito.
+        var clock = new ManualTimeProvider();
+        var (editor, wire) = BuildEditorWithWire(clock);
+
+        Task stale = editor.PulseConnectionEnergy(wire, durationMs: 900);
+
+        clock.AdvanceBy(TimeSpan.FromMilliseconds(500));
+        Task current = editor.PulseConnectionEnergy(wire, durationMs: 900);
+
+        clock.AdvanceBy(TimeSpan.FromMilliseconds(400));
+        await stale.WaitAsync(TimeSpan.FromSeconds(5));
+
+        wire.IsExecuting.Should().BeTrue("el vencimiento del pulso viejo no puede apagar el nuevo");
+
+        clock.AdvanceBy(TimeSpan.FromMilliseconds(500));
+        await current.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await AsyncTestWaiter.WaitForAsync(
+            () => !wire.IsExecuting,
+            TimeSpan.FromSeconds(5),
+            description: "el apagado del cable al vencer el último pulso");
     }
 
     [Fact]
@@ -139,10 +204,15 @@ public class ConnectionEnergyTests
     /// <summary>
     /// Un cable no puede existir sin puertos reales: la energía se prueba sobre el grafo de verdad, no
     /// sobre objetos inventados, para que el cable y su estado de conexión sean siempre coherentes.
+    ///
+    /// El despacho va en línea (<see cref="NullUiDispatcher"/>) porque el vencimiento del pulso entrega su
+    /// apagado al hilo de la interfaz: sin eso, la prueba dependería de que exista una aplicación y de que su
+    /// bucle atienda el despacho —y el reloj manual devuelve el control al hilo que avanza, no al de la
+    /// interfaz—, que es justo la carrera que se quiere medir.
     /// </summary>
-    private static (EditorViewModel Editor, ConnectionViewModel Wire) BuildEditorWithWire()
+    private static (EditorViewModel Editor, ConnectionViewModel Wire) BuildEditorWithWire(TimeProvider? clock = null)
     {
-        var editor = new EditorViewModel(new PluginLoader());
+        var editor = new EditorViewModel(new PluginLoader(), timeProvider: clock, uiDispatcher: NullUiDispatcher.Instance);
         AddConnectedNodes(editor);
 
         return (editor, editor.Connections.Single());

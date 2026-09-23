@@ -62,9 +62,6 @@ public static class AvaloniaTestHelper
     /// </summary>
     private static Application? _preparedApplication;
 
-    /// <summary>¿Se registró ya el diccionario de recursos del host? Es idempotente y de una sola vez por proceso.</summary>
-    private static bool _hostResourcesRegistered;
-
     /// <summary>
     /// Marca de «este hilo es el hilo de UI de la sesión». Es <c>[ThreadStatic]</c> y no
     /// <c>Dispatcher.UIThread.CheckAccess()</c> a propósito: antes de que la sesión arranque, Avalonia crea
@@ -233,6 +230,10 @@ public static class AvaloniaTestHelper
             return;
         }
 
+        // El reloj de animación, antes que ninguna otra cosa: las animaciones que arranque cualquier control de
+        // la sesión tienen que colgar del reloj virtual desde el primer instante, o se quedarían con el real.
+        AnimationClock.Install();
+
         DisableStyleAnimations(application.Styles);
         RegisterHostResources();
         _preparedApplication = application;
@@ -293,7 +294,7 @@ public static class AvaloniaTestHelper
     }
 
     /// <summary>
-    /// Registra el diccionario de recursos del host (el código de arranque de la aplicación no se ejecuta en
+    /// Prepara el diccionario de recursos del host (el código de arranque de la aplicación no se ejecuta en
     /// headless) y fija el idioma, de forma que los textos de las vistas no queden vacíos ni dependan de la
     /// cultura del equipo.
     /// </summary>
@@ -301,17 +302,13 @@ public static class AvaloniaTestHelper
     {
         var localization = LocalizationManager.Instance;
 
-        // Sin borrar los diccionarios ya registrados: hacerlo era una operación global destructiva que dejaba
-        // sin traducir a cualquier prueba que hubiera registrado el suyo (los plugins registran los propios
-        // al cargarse), y el fallo aparecía en otra prueba y sólo al ejecutar el suite entero.
-        // 'RegisterResourceManager' ya ignora los duplicados, así que basta con no repetirlo.
-        if (!_hostResourcesRegistered)
-        {
-            localization.RegisterResourceManager(
-                new ResourceManager("FileFlow.App.Resources.Strings", typeof(FileFlow.App.App).Assembly));
-
-            _hostResourcesRegistered = true;
-        }
+        // El diccionario del host ya está registrado desde que se cargó el módulo (ver HostLocalization):
+        // registrarlo aquí, en la primera preparación de la sesión, era lo que hacía que una misma clave
+        // cambiara de valor a mitad del suite y que una aserción que la resolvía dos veces fallara al azar
+        // (hito 179). Sin borrar los diccionarios ya registrados: hacerlo era una operación global destructiva
+        // que dejaba sin traducir a cualquier prueba que hubiera registrado el suyo (los plugins registran los
+        // propios al cargarse), y el fallo aparecía en otra prueba y sólo al ejecutar el suite entero.
+        HostLocalization.EnsureRegistered();
 
         // Sólo se cambia de idioma si hace falta: 'SetCulture' dispara 'LanguageChanged' y con él los
         // refrescos de la interfaz, así que no se provoca sin motivo.

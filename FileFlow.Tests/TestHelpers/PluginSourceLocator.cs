@@ -24,14 +24,35 @@ internal static class PluginSourceLocator
         "FileFlow.Tests"
     ];
 
+    /// <summary>El suite no es producción: es lo que audita a la producción.</summary>
+    public const string TestsProject = "FileFlow.Tests";
+
     /// <summary>Nombres de los proyectos de plugin declarados en la solución.</summary>
-    public static IReadOnlyList<string> PluginProjectNames(string root)
+    public static IReadOnlyList<string> PluginProjectNames(string root) =>
+        SolutionProjectNames(root)
+            .Where(name => !NonPluginProjects.Contains(name, StringComparer.Ordinal))
+            .ToList();
+
+    /// <summary>
+    /// Proyectos de producción declarados en la solución: todo menos el suite.
+    ///
+    /// Es el alcance de las guardias que tienen que ver <b>todo</b> el código que se envía —el host, Core, el
+    /// Sdk y los plugins—: se toma de la solución y no de una lista escrita a mano, de modo que un proyecto
+    /// nuevo entra en el barrido al añadirlo a <c>FileFlow.slnx</c>.
+    /// </summary>
+    public static IReadOnlyList<string> ProductionProjectNames(string root) =>
+        SolutionProjectNames(root)
+            .Where(name => !string.Equals(name, TestsProject, StringComparison.Ordinal))
+            .ToList();
+
+    /// <summary>Los proyectos que declara la solución, en el orden en que aparecen.</summary>
+    private static IReadOnlyList<string> SolutionProjectNames(string root)
     {
         string solutionPath = Path.Combine(root, "FileFlow.slnx");
 
         if (!File.Exists(solutionPath))
         {
-            return Directory.EnumerateDirectories(root, "FileFlow.Plugin.*", SearchOption.TopDirectoryOnly)
+            return Directory.EnumerateDirectories(root, "FileFlow.*", SearchOption.TopDirectoryOnly)
                 .Select(Path.GetFileName)
                 .OfType<string>()
                 .ToList();
@@ -41,7 +62,6 @@ internal static class PluginSourceLocator
             .Descendants()
             .Attributes("Path")
             .Select(attribute => attribute.Value.Replace('\\', '/').Split('/')[0])
-            .Where(name => !NonPluginProjects.Contains(name, StringComparer.Ordinal))
             .Distinct(StringComparer.Ordinal)
             .ToList();
     }

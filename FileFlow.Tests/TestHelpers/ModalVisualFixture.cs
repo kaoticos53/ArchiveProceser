@@ -62,7 +62,10 @@ public enum ModalSurface
     MediaPresetManager,
 
     /// <summary>Ventana de error de arranque (la que hace visible un fallo de inicio).</summary>
-    StartupError
+    StartupError,
+
+    /// <summary>Pantalla de carga en su primer fotograma quieto (el barrido no arranca: ver <c>StartShimmer</c>).</summary>
+    Splash
 }
 
 /// <summary>
@@ -107,6 +110,7 @@ public static class ModalVisualFixture
             ModalSurface.SyntheticDataSetDesigner => BuildSyntheticDataSetDesigner(),
             ModalSurface.MediaPresetManager => BuildMediaPresetManager(),
             ModalSurface.StartupError => BuildStartupError(),
+            ModalSurface.Splash => BuildSplash(),
             _ => throw new ArgumentOutOfRangeException(nameof(surface), surface, "Superficie no soportada.")
         };
     }
@@ -129,6 +133,7 @@ public static class ModalVisualFixture
         ModalSurface.SyntheticDataSetDesigner => (1240, 820),
         ModalSurface.MediaPresetManager => (760, 520),
         ModalSurface.StartupError => (720, 430),
+        ModalSurface.Splash => (540, 350),
         _ => (600, 400)
     };
 
@@ -389,6 +394,32 @@ public static class ModalVisualFixture
     /// Ventana de error de arranque con un informe fijo. El entorno va anclado a un texto determinista y la
     /// ruta del registro es ficticia: la línea base no puede depender de la máquina que la generó.
     /// </summary>
+    /// <summary>
+    /// Pantalla de carga en el estado que congelan sus capturas: <b>el barrido no arranca</b>
+    /// (<c>StartShimmer</c> es exclusivo de la aplicación real), de modo que la imagen es el primer fotograma
+    /// quieto y no depende de lo que tarde el renderizador.
+    ///
+    /// <para>El progreso y la insignia de nodos se siembran con la misma API que usa el arranque, para que la
+    /// línea base muestre la pantalla de verdad —texto por clave localizada, barra a media carga y cuenta de
+    /// nodos— y no su estado en blanco, donde un contenido que desapareciera no se notaría.</para>
+    /// </summary>
+    private static Window BuildSplash()
+    {
+        var splash = new FileFlow.App.Views.SplashScreenWindow();
+
+        splash.UpdateStatus(
+            FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString(
+                "Splash_StatusPlugins",
+                "Descubriendo módulos y plugins..."),
+            70);
+
+        // Cuenta de nodos fija: la real la descubre el cargador de plugins en el arranque, y una captura no
+        // puede depender de qué plugins estén en el perfil de la máquina.
+        splash.SetNodeCount(24);
+
+        return splash;
+    }
+
     private static Window BuildStartupError() =>
         FileFlow.App.Views.StartupErrorWindow.Create(new FileFlow.App.Services.StartupFailureReport(
             FileFlow.App.Services.StartupPhase.Services,
