@@ -1,7 +1,8 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Threading;
+using FileFlow.Sdk.Services;
 
 namespace FileFlow.App.Services;
 
@@ -26,7 +27,13 @@ public class PerformanceMetrics
 
 public class SystemPerformanceMonitor : ISystemPerformanceMonitor
 {
-    private readonly DispatcherTimer _timer;
+    /// <summary>El periodo del latido. Público para que la prueba de cadencia mida <i>este</i> número.</summary>
+    public static readonly TimeSpan SampleInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>Nombre del latido en el registro: con él se busca, se mide su cadencia y se sabe cuál falló.</summary>
+    public const string SampleBeat = "performance-sample";
+
+    private readonly IHeartbeat _sampleBeat;
     private readonly Process _currentProcess;
     private TimeSpan _lastCpuTime;
     private DateTime _lastSampleTime;
@@ -35,21 +42,42 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
 
     public event Action<PerformanceMetrics>? PerformanceUpdated;
 
-    public SystemPerformanceMonitor()
+    /// <summary>
+    /// El latido se <b>declara</b> en el registro, que pone la fontanería: reloj inyectado (no un
+    /// <c>DispatcherTimer</c>, cuya cadencia no se puede medir sin esperarla), despacho al hilo de la interfaz y
+    /// entrega protegida. Su vencimiento entra así en el inventario de trabajo aplazado por el único sitio del
+    /// producto que programa latidos (ver <c>DeferredWorkInventoryGuardTests</c>).
+    /// </summary>
+    public SystemPerformanceMonitor(TimeProvider? timeProvider = null, IUiDispatcher? uiDispatcher = null,
+        IHeartbeatService? heartbeats = null)
     {
         _currentProcess = Process.GetCurrentProcess();
         _lastCpuTime = _currentProcess.TotalProcessorTime;
         _lastSampleTime = DateTime.UtcNow;
 
-        _timer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(1)
-        };
-        _timer.Tick += OnTimerTick;
-        _timer.Start();
+        TimeProvider clock = timeProvider ?? TimeProvider.System;
+        IUiDispatcher ui = uiDispatcher ?? AvaloniaUiDispatcher.Instance;
+
+        _sampleBeat = (heartbeats ?? new HeartbeatService(clock, ui))
+            .Declare(SampleBeat, SampleInterval, () => _ = SampleNowAsync())
+            .Start();
     }
 
-    private async void OnTimerTick(object? sender, EventArgs e)
+    /// <summary>
+    /// El <b>latido</b> del muestreo: toma una muestra del proceso y publica las métricas si hay alguien
+    /// escuchando.
+    ///
+    /// <para><b>Público y con <see cref="Task"/> para poder ejercitarlo desde las pruebas</b>, como el paso del
+    /// barrido de la splash (hito 169): el temporizador sólo corre en la aplicación, así que sin una entrada
+    /// alcanzable el camino del tick —con su guarda de reentrada, su captura de excepciones transitorias y su
+    /// comprobación de desecho— no se ejecutaba nunca en el suite. <see cref="OnTimerTick"/> sólo lo reenvía.</para>
+    ///
+    /// <para>La guarda se levanta <b>antes</b> del primer <c>await</c> a propósito: dos ticks solapados no
+    /// pueden producir dos muestras (la segunda entra cuando la primera aún no ha publicado), y una excepción
+    /// transitoria del proceso se registra y se traga en lugar de tumbar la aplicación —es un latido, no una
+    /// tarea de la que dependa nada—.</para>
+    /// </summary>
+    public async Task SampleNowAsync()
     {
         if (_isSampling || _disposed) return;
         _isSampling = true;
@@ -103,8 +131,7 @@ public class SystemPerformanceMonitor : ISystemPerformanceMonitor
     {
         if (!_disposed)
         {
-            _timer.Stop();
-            _timer.Tick -= OnTimerTick;
+            _sampleBeat.Dispose();
             _currentProcess.Dispose();
             _disposed = true;
         }
