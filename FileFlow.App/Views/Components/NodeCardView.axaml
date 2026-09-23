@@ -289,6 +289,8 @@
                                                IsVisible="{Binding !IsEditingTitle}" />
 
                                     <TextBox x:Name="TitleEditBox"
+                                             KeyDown="TitleEditBox_KeyDown"
+                                             LostFocus="TitleEditBox_LostFocus"
                                              Text="{Binding EditingTitleText, Mode=TwoWay}"
                                              Classes="bodySm strong"
                                              Background="{DynamicResource BgSurfaceBrush}"

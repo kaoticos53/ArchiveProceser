@@ -19,11 +19,15 @@ public partial class SplashScreenWindow : Window
 
     private readonly DispatcherTimer? _shimmerTimer;
     private bool _shimmerEnabled;
+    private LinearGradientBrush? _shimmerBrush;
+    private GradientStop? _shimmerHighlight;
 
     public SplashScreenWindow()
     {
         InitializeComponent();
-        TxtVersion.Text = $"v{AppVersionInfo.DisplayVersion}";
+        // DisplayVersion ya viene con su 'v' (AppVersionInfo): prefijarla otra vez pintaba «vv1.0.0-…» en la
+        // primera pantalla del producto. La versión sale tal cual la expone el SDK, como en «Acerca de».
+        TxtVersion.Text = AppVersionInfo.DisplayVersion;
 
         // Barra de acento: un barrido de gradiente recorre la barra mientras el progreso avanza. Va en
         // código y no en estilos porque la sesión headless purga las animaciones declaradas (sin animador
@@ -32,12 +36,14 @@ public partial class SplashScreenWindow : Window
         // de modo que las capturas de la splash son siempre el primer fotograma quieto.
         if (TryCreateShimmerBrush(out var shimmerBrush, out var highlightStop))
         {
+            _shimmerBrush = shimmerBrush;
+            _shimmerHighlight = highlightStop;
             PbProgress.Foreground = shimmerBrush;
             _shimmerTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(ShimmerStepMilliseconds)
             };
-            _shimmerTimer.Tick += (_, _) => AdvanceShimmer(highlightStop);
+            _shimmerTimer.Tick += (_, _) => AdvanceShimmer();
         }
     }
 
@@ -94,22 +100,68 @@ public partial class SplashScreenWindow : Window
     /// <summary>
     /// Avanza una posición el barrido de acento. El gradiente se recalcula en la misma instancia de
     /// <see cref="LinearGradientBrush"/> (con los offset de sus tres paradas), de modo que el pincel no
-    /// se recrea por paso y no hay(new) por fotograma.
+    /// se recrea por paso y no hay <c>new</c> por fotograma.
+    ///
+    /// <para>Público y sin argumentos para poder ejercitarlo desde las pruebas: el temporizador sólo corre en
+    /// la aplicación real, así que sin esto el camino del tick (el que fallaba) no se ejecuta nunca en el
+    /// suite.</para>
+    ///
+    /// <para><b>El pincel se recupera, no se asume.</b> La barra declara
+    /// <c>Foreground="{DynamicResource AccentPrimaryBrush}"</c> y la etapa de tema del arranque reemplaza ese
+    /// recurso <i>mientras la splash está en pantalla</i>: Avalonia vuelve a evaluar el recurso y escribe un
+    /// pincel sólido encima del gradiente. El casteo directo lanzaba <see cref="InvalidCastException"/> en el
+    /// primer tick —una entrada por arranque en el registro de incidentes y el barrido muerto para el resto de
+    /// la pantalla— sin que ninguna prueba lo viera, porque todas mostraban la splash sin arrancar el
+    /// barrido.</para>
     /// </summary>
-    private void AdvanceShimmer(GradientStop highlightStop)
+    public void AdvanceShimmer()
     {
         if (!_shimmerEnabled)
         {
             return;
         }
 
+        if (!EnsureShimmerBrush())
+        {
+            // Sin tokens de tema no hay barrido posible: se detiene en lugar de fallar en cada tick.
+            _shimmerTimer?.Stop();
+            return;
+        }
+
         // La cabeza del barrido da una vuelta completa (offset 0 → 1 → 0) de forma cíclica y continua.
         double head = (DateTime.UtcNow.Ticks / (double)TimeSpan.TicksPerMillisecond / 1000.0) % 1.0;
 
-        highlightStop.Offset = head;
-        var stops = ((LinearGradientBrush)PbProgress.Foreground!).GradientStops;
+        _shimmerHighlight!.Offset = head;
+        var stops = _shimmerBrush!.GradientStops;
         stops[0].Offset = Math.Max(0.0, head - ShimmerSpan);
         stops[2].Offset = Math.Min(1.0, head + ShimmerSpan);
+    }
+
+    /// <summary>
+    /// Garantiza que la barra lleva <b>nuestro</b> gradiente antes de animarlo. Si el tema lo sustituyó, se
+    /// reconstruye con los tokens vigentes (el barrido sigue el tema en caliente) y se reimpone; si los tokens
+    /// ya no existen, se conserva el pincel anterior para no matar la animación.
+    /// </summary>
+    private bool EnsureShimmerBrush()
+    {
+        if (ReferenceEquals(PbProgress.Foreground, _shimmerBrush))
+        {
+            return true;
+        }
+
+        if (TryCreateShimmerBrush(out var brush, out var highlight))
+        {
+            _shimmerBrush = brush;
+            _shimmerHighlight = highlight;
+        }
+
+        if (_shimmerBrush is null)
+        {
+            return false;
+        }
+
+        PbProgress.Foreground = _shimmerBrush;
+        return true;
     }
 
     /// <summary>

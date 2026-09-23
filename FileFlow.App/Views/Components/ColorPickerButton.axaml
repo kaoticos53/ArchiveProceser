@@ -18,7 +18,16 @@
         <!-- Color Swatch Button with Palette Flyout -->
         <Button x:Name="BtnSwatch" Grid.Column="1" Padding="2" Margin="0,0,6,0"
                 ToolTip.Tip="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[ColorPicker_Palette]}">
-            <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="{DynamicResource RadiusXs}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" Background="{DynamicResource AccentPrimaryBrush}" />
+            <!--
+                El color elegido va en el relleno interior y NO en el Background de este borde: cuando el
+                muestrario estaba enlazado a un token (AccentPrimaryBrush), la republicación del tema —cambio de
+                tema o cualquier paso por el Theme Studio— volvía a evaluar el recurso por encima del valor
+                asignado en código y el muestrario revertía al acento del tema, perdiendo el color elegido. El
+                chrome (radio y borde) sigue en tokens; el color lo posee el control (ver ColorPickerButton.axaml.cs).
+            -->
+            <Border x:Name="SwatchBorder" Width="26" Height="22" CornerRadius="{DynamicResource RadiusXs}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1">
+                <Border x:Name="SwatchFill" CornerRadius="{DynamicResource RadiusXs}" />
+            </Border>
             <Button.Flyout>
                 <Flyout Placement="Bottom">
                     <Border Background="{DynamicResource BgCardBrush}" BorderBrush="{DynamicResource BorderDarkBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="8" Margin="4">

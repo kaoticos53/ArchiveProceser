@@ -11,14 +11,11 @@ public partial class NodeCardView : UserControl
     public NodeCardView()
     {
         InitializeComponent();
-        
-        var titleBox = this.FindControl<TextBox>("TitleEditBox");
-        if (titleBox != null)
-        {
-            titleBox.KeyDown += TitleEditBox_KeyDown;
-            titleBox.LostFocus += TitleEditBox_LostFocus;
-        }
 
+        // La caja de renombrado NO se busca aquí: vive dentro del DataTemplate de la cabecera de Nodify, que
+        // tiene su propio namescope, así que FindControl devolvía null y los manejadores no se enganchaban
+        // nunca (Enter y Escape no hacían nada y el nombre solo se confirmaba al perder el foco). Se enganchan
+        // en el XAML, sobre el propio TextBox, que es donde el evento ocurre.
         PointerPressed += NodeCardView_PointerPressed;
         DoubleTapped += NodeCardView_DoubleTapped;
 
