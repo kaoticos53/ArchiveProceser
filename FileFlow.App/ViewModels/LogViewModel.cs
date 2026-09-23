@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,6 +15,7 @@ using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Serialization;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.App.ViewModels;
@@ -85,16 +88,34 @@ public partial class LogViewModel : ObservableObject, IDisposable
     public event Action? OnLogsCleared;
     public event Action? OnFilterChanged;
 
+    /// <summary>
+    /// El periodo del latido de la consola. Público para que la prueba de cadencia mida <i>este</i> número: un
+    /// periodo que sólo vive dentro del constructor no se puede afirmar sin repetir el número en la prueba.
+    /// </summary>
+    public static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(40);
+
+    /// <summary>Nombre del latido en el registro: con él se busca, se mide su cadencia y se sabe cuál falló.</summary>
+    public const string ConsoleFlushBeat = "console-flush";
+
     private readonly ConcurrentQueue<StructuredLogRecord> _pendingLogs = new();
-    private readonly DispatcherTimer _flushTimer;
+    private readonly IHeartbeat _flushBeat;
     private readonly EventHandler<CultureInfo> _languageChangedHandler;
 
     private volatile bool _isClearingLogs;
 
+    /// <summary>
+    /// <paramref name="timeProvider"/> y <paramref name="uiDispatcher"/> existen para poder medir el latido: el
+    /// periodo se comprueba con un reloj manual (sin esperar 40 ms reales por caso) y el tick, que ahora lo
+    /// entrega el reloj desde un hilo del grupo de hilos, se despacha al hilo de la interfaz. Por defecto, el
+    /// reloj del sistema y el despacho seguro del host (en línea cuando no hay aplicación).
+    /// </summary>
     public LogViewModel(
         ILogStore? logStore = null,
         ILocalizationService? localizationService = null,
-        IDialogService? dialogService = null)
+        IDialogService? dialogService = null,
+        TimeProvider? timeProvider = null,
+        IUiDispatcher? uiDispatcher = null,
+        IHeartbeatService? heartbeats = null)
     {
         _logStore = logStore ?? SqliteLogStore.Instance;
         _loc = localizationService ?? LocalizationManager.Instance;
@@ -115,12 +136,17 @@ public partial class LogViewModel : ObservableObject, IDisposable
         };
         _loc.LanguageChanged += _languageChangedHandler;
 
-        _flushTimer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = TimeSpan.FromMilliseconds(40)
-        };
-        _flushTimer.Tick += (_, _) => FlushPendingLogs();
-        _flushTimer.Start();
+        // El latido llama al <b>mismo</b> método público que las pruebas (FlushAllPendingLogs), no al privado:
+        // así lo que se ejercita desde el suite es exactamente lo que corre en la aplicación, y el latido deja
+        // de ser un camino propio sin cubrir (los tests vaciaban a mano y el diferido no corría nunca).
+        //
+        // El resto —reloj inyectable, despacho al hilo de la interfaz y entrega protegida— lo pone el registro.
+        IUiDispatcher ui = uiDispatcher ?? AvaloniaUiDispatcher.Instance;
+        TimeProvider clock = timeProvider ?? TimeProvider.System;
+
+        _flushBeat = (heartbeats ?? new HeartbeatService(clock, ui))
+            .Declare(ConsoleFlushBeat, FlushInterval, FlushAllPendingLogs)
+            .Start();
     }
 
     public void AddLog(LogLevel level, string message) => AddNodeLog(level, message, nodeId: null, nodeName: null);
@@ -151,6 +177,22 @@ public partial class LogViewModel : ObservableObject, IDisposable
         _pendingLogs.Enqueue(record);
     }
 
+    /// <summary>
+    /// Vacía la cola acumulada hacia la lista visible: es el <b>latido</b> de la consola (cada 40 ms).
+    ///
+    /// <para>Existe para que los productores de registros no toquen la interfaz: encolan y el latido decide
+    /// cuándo aparecen, agrupados en un solo lote y con los contadores sumados una sola vez. Público porque es
+    /// el paso del latido —el temporizador y la petición explícita del cierre de una ejecución llaman al mismo
+    /// sitio— y las pruebas necesitan ejercitar el camino <b>diferido</b>: hasta ahora todas vaciaban a mano y
+    /// nadie comprobaba que los registros aparezcan solos.</para>
+    /// </summary>
+    public void FlushAllPendingLogs()
+    {
+        if (_isClearingLogs) return;
+        FlushPendingLogs();
+    }
+
+    /// <summary>Cuerpo del latido: drena la cola y publica el lote en la lista visible.</summary>
     private void FlushPendingLogs()
     {
         if (_isClearingLogs || _pendingLogs.IsEmpty) return;
@@ -182,12 +224,6 @@ public partial class LogViewModel : ObservableObject, IDisposable
                 OnLogBatchAdded?.Invoke();
             }
         }
-    }
-
-    public void FlushAllPendingLogs()
-    {
-        if (_isClearingLogs) return;
-        FlushPendingLogs();
     }
 
     private LogFilterCriteria BuildCurrentFilter()
@@ -635,7 +671,7 @@ public partial class LogViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _flushTimer.Stop();
+        _flushBeat.Dispose();
         _loc.LanguageChanged -= _languageChangedHandler;
     }
 }
