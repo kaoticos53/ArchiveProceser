@@ -1,5 +1,735 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-23] - Los Campos Deshabilitados Declaran su Primer Plano: Texto y Desplegable Bajo Contraste Pintado (Hito 186)
+
+### 🎯 Objetivo
+
+Cerrar lo que el 185 dejó medido y sin decidir: el campo deshabilitado —`TextBox` y `ComboBox`— **no declaraba ningún primer plano**, así que su etiqueta se leía con el gris del tema base y quedaba en 4,00:1 (oscuro) y 3,30:1 (claro) en el texto y 3,50:1 y **2,62:1** en el desplegable. El encargo era darle el **mismo tratamiento** que a los botones en el 185 y **meter sus celdas en la guardia de contraste pintado**.
+
+### 🔬 El mecanismo: dos plantillas, dos sitios distintos (comprobado en el tema base)
+
+Leídos `Avalonia.Themes.Fluent/Controls/{TextBox,ComboBox}.xaml` (12.1.2):
+
+- **TextBox**: `^:disabled` declara `Foreground = TextControlForegroundDisabled` **en el propio control** —el `TextPresenter` lo hereda— y pinta `Border#PART_BorderElement` con `TextControlBackgroundDisabled`. Nuestra regla atenuaba con `Opacity 0.5` esa capa de fondo, que es **hermana** de la que contiene el texto: la opacidad nunca tocó la etiqueta, y la etiqueta usaba el color del tema base porque un estilo de la capa no sustituye a esa declaración.
+- **ComboBox**: el tema base declara `Foreground = ComboBoxForegroundDisabled` **directamente sobre las tres partes que apagan la etiqueta** (`ContentControl#ContentPresenter`, `TextBlock#PlaceholderTextBlock`, `PathIcon#DropDownGlyph`) más el gris de `Border#Background`.
+
+O sea: el defecto **no** era el doble desvanecido del 185 —aquí la opacidad no llegaba al texto— sino que **no había primer plano propio**, y por eso el umbral que faltaba era el de la etiqueta, no el de la cara.
+
+### 🛠️ La cura
+
+- **Cara y borde explícitos y opacos**: `BgSurfaceBrush` + `BorderDarkBrush` en `Border#PART_BorderElement` (TextBox) y en `Border#Background` (ComboBox), con la opacidad del 50 % **retirada**: la cara deja de depender de lo que haya detrás.
+- **El primer plano donde de verdad se pinta**: `TextElement.Foreground` sobre `TextPresenter#PART_TextPresenter` —`TextPresenter` **no expone** `Foreground` y el compilador de XAML lo rechaza (`AVLN3000: Foreground is not an AvaloniaProperty`), así que se declara la propiedad heredada que el presentador sí usa— y `Foreground` sobre `ContentControl#ContentPresenter` en el desplegable.
+- **El glifo y el texto de reserva también**: `PathIcon#DropDownGlyph` y `TextBlock#PlaceholderTextBlock` con el mismo token. No es cosmética: la guardia mide el **extremo claro** de la celda y, si el glifo conservara el color del tema, el píxel más claro no sería la etiqueta y la medida estaría mirando otra cosa.
+- **La cara es `BgSurface` y no `BgDark`** (la del campo habilitado), y no es indiferente: medido sobre los 8 presets, `TextMuted` sobre `BgDark` da **4,44:1** en `pastel_spring` (`#7E6379` sobre `#FFE4E9`), por debajo del AA; `TextMuted` sobre `BgSurface` ya tiene contrato en los 8 (mínimo 4,67:1 en `dracula_purple`, guardia `BuiltInThemes_TextMuted_ShouldMeetAaContrastOnSurfaces`). El campo deshabilitado estrena la única cara cuya pareja con la etiqueta **ya** estaba garantizada, en lugar de inventar un token nuevo.
+
+### ✅ Medido después
+
+| Célula del tablero | Oscuro | Claro |
+| :--- | :--- | :--- |
+| campos/texto/deshabilitado | 4,00 → **4,88:1** | 3,30 → **4,82:1** |
+| campos/desplegable/deshabilitado | 3,50 → **4,88:1** | 2,62 → **4,82:1** |
+
+Etiqueta `#7C8698` / `#656C7A` (el token de atenuado) sobre cara `#131720` / `#F1F5F9`, ya opacas.
+
+### 🛡️ Guardias: la de contraste pintado, ahora sobre dos tableros
+
+- `EveryDisabledCell_ShouldRenderItsLabelAboveAaContrast` deja de estar cableada al tablero de botones: recorre **los dos** tableros con las celdas de cada uno (9 celdas × 2 temas = **18 medidas**, antes 14) y cada incumplimiento se nombra con su tablero (`'campos/texto/deshabilitado' [light_studio]: …`), porque la mitad que faltaba sólo se ve mirando el suyo.
+- **Guardia primero, y midió el «antes»**: con el código sin tocar, las celdas nuevas fallaron solas y con los números exactos (`campos/texto/deshabilitado [dark_fluent]: 25282E…858585 (4,00:1)`, `campos/desplegable/deshabilitado [light_studio]: 999B9C…F5F8FB (2,62:1)`), así que el defecto queda registrado por quien lo va a vigilar y no por quien lo corrige.
+- **+3 sondas de token** (12 → **15** en el tablero de campos, 37 en el repositorio) y `CellProbe` gana `Cell`: una misma celda se sondea ahora en dos puntos —cara y borde— sin repetir clave. Las sondas exigen los tokens **opacos**, y eso es lo que convierte «vuelve la opacidad del 50 %» en un fallo medido en lugar de una opinión.
+- Con el código original intacto, **los dos únicos tests que fallaban eran los dos que este hito añade**: las otras 1575 pruebas del suite eran ciegas al defecto, igual que en el 185.
+
+### 🔎 Las líneas base: 3 regeneradas, y un experimento de atribución porque 16 parieron cambios
+
+Regenerar el conjunto completo dio **16 ficheros distintos**, demasiados para creerlos. La atribución se hizo con un experimento en vez de con una corazonada: **restaurar las líneas base previas y regenerar con los estilos de este hito revertidos**.
+
+- **Sin mi cambio ya se desviaban 13** (de 285 a 7 355 px): `app-shell-{dark,light}`, `app-shell-drawer-dark`, `modal-ai-model-urls-dark`, `modal-multimodal-vlm-dark`, los cuatro `modal-settings-*-dark`, `modal-workflow-settings-dark`, `panel-inspector-dark` y `splash-{dark,light}`. Estaban **obsoletas antes** de que yo tocara nada, y la tolerancia (1,5 % de píxeles) las daba por buenas en verde.
+- **La comparación directa** —lo regenerado con mi cambio contra lo regenerado sin él— aísla mi huella en **3 ficheros**: `design-states-fields-{dark,light}` (2 658 y 2 721 px, la columna «deshabilitado» del tablero de campos: cara `#25282E → #131720` y borde `#1F242B → #30363D`) y `modal-synthetic-data-designer-dark` (3 248 px en una banda de 140×26: un campo deshabilitado del diseñador que pasa de la cara del tema base a la del sistema).
+- **Las otras 10 se restauraron a su contenido previo**, porque su diferencia no la produce este cambio y absorberla aquí sería meter ruido ajeno en un diff sobre el deshabilitado. Cuatro de ellas además **cambian entre dos corridas consecutivas** sin tocar código (`splash-dark` y `splash-light` 35-37 px, `app-shell-drawer-dark` 44 px, `modal-multimodal-vlm-dark` 2 303 px): regenerarlas congelaría píxeles que dependen de la corrida.
+- **Dato incómodo, medido y no enterrado**: tres de esas obsoletas —`app-shell-dark`, `app-shell-light` y `modal-ai-model-urls-dark`— siguen **congelando el aspecto previo al hito 185** en sus controles deshabilitados (`#272B33 → #131720` en oscuro, `#DCE0E4 → #F1F5F9` en claro, el gris del tema base que el 185 sustituyó por la cara atenuada del sistema). Los hitos 183 y 185 regeneraron sólo las líneas base que sus tests comparan y estas tres quedaron fuera porque su diff cae por debajo de la tolerancia. No se corrigen aquí para no mezclar dos cosas; quedan arriba, con números.
+
+### 🧪 Mutaciones (3, las tres mordidas)
+
+- **M1 — reponer `Opacity 0.5` en el borde del desplegable** → falla la sonda de token, que nombra la mezcla: `La celda 'desplegable/deshabilitado' del tablero (466,120) debe pintar #131720 ('BgSurfaceBrush') … but found 0x1C`. (La guardia de contraste **no** muerde aquí a propósito: la cara mezclada sigue dando contraste a la etiqueta; lo que la opacidad rompe es la cara, y quien la vigila es la sonda.)
+- **M2 — fuera el primer plano del campo de texto** → el contraste pintado muerde en el tema claro: `'campos/texto/deshabilitado' [light_studio]: 7A7A7A…F1F5F9 (3,92:1)`. Que sea 3,92 y no los 3,30 originales es la atribución fina: la cara propia ya había subido la medida y lo que faltaba era exactamente la etiqueta (en oscuro no falla: `#858585` sobre la cara propia ya pasa de 4,5).
+- **M3 — fuera el primer plano del desplegable** → muerde en los dos temas: `131720…687182 (3,65:1)` en oscuro y `7F8591…F1F5F9 (3,38:1)` en claro.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1577 superadas + 1 omitida de 1578 en 1 m 20 s** con el conjunto final de líneas base (mismo recuento que antes: no se añaden tests, se amplía uno). Build **0 advertencias / 0 errores**.
+- Los dos fallos preexistentes que aparecen al revertir el cambio (sonda de campos + contraste) son la prueba de que **la suite sólo ve este defecto por las guardias nuevas**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Queda medido y sin decidir: el contraste de los campos deshabilitados** de los otros 6 presets no tiene guardia propia. La pareja elegida (`TextMuted` ↔ `BgSurface`) sí está cubierta por `BuiltInThemes_TextMuted_ShouldMeetAaContrastOnSurfaces` en los 8 presets, así que el contrato viaja con el tema; lo que no hay es una medida **pintada** fuera de los dos presets por defecto, que es lo que la colección de capturas no puede dar (el tablero se fotografiaría una vez por preset).
+- **Tres líneas base congelan el aspecto previo al 185** (`app-shell-dark`, `app-shell-light`, `modal-ai-model-urls-dark`) y **cuatro son inestables entre corridas** (`splash-{dark,light}`, `app-shell-drawer-dark`, `modal-multimodal-vlm-dark`): lo primero se arregla regenerándolas a propósito y revisando el diff; lo segundo es una pregunta abierta sobre qué pinta distinto en cada corrida y probablemente valga su propio hito.
+- El **lint estructural** del 185 (`DisabledStateAnalyzer`) sigue exento para las capas de fondo («la opacidad de un borde o de una capa de fondo no toca el texto, que es el caso legítimo de los campos»): con este hito los campos ya no usan opacidad, así que esa frase describe un caso que hoy no existe en el código y merece o una exención con un ejemplo real (el `Thumb` de la barra de desplazamiento) o un endurecimiento del analizador.
+
+## [2026-09-23] - El Doble Desvanecido del Estado Deshabilitado: Cara y Primer Plano Explícitos (Hito 185)
+
+### 🎯 Objetivo
+
+Corregir el defecto que el hito 184 midió al revisar las líneas base del producto: la etiqueta del control deshabilitado se atenuaba **dos veces** (2,13:1 en oscuro, **1,20:1** en claro) y en claro era, literalmente, invisible.
+
+### 🔬 El mecanismo, medido antes de tocar nada
+
+El tema base de Fluent declara `Foreground = ButtonForegroundDisabled` **en la misma parte** en la que nuestra capa declaraba `Opacity = 0.45` —`/template/ ContentPresenter#PART_ContentPresenter`, comprobado en `<c>Avalonia.Themes.Fluent/Controls/Button.xaml</c>`—, y dentro de esa parte vive también el texto: la opacidad nuestra **multiplicaba** la atenuación del tema base. El modelo cuadra con lo medido en los dos temas: en claro, `0,45·140 + 0,55·242 = 196` frente a los 199 pintados; en oscuro, `0,45·118 + 0,55·19 = 63,6` frente a los 60. La cara tenía el mismo problema de fondo: era el acento **al 45 % sobre lo que hubiera detrás**, así que el mismo botón no se veía igual sobre una barra que sobre una tarjeta.
+
+### 🛠️ La cura
+
+- **Cinco tokens derivados** en `ThemeResourceApplier` (`Accent*MutedBrush`): el acento mezclado con la superficie del tema al 45 %, calculado con `Blend`/`Mix` y espejado en el diccionario de arranque. Son derivados —como `OverlaySurfaceBrush` o los tintes— para que los 8 presets y cualquier tema del Studio los tengan sin declararlos, y **opacos** para que la cara deje de depender del fondo.
+- **Fuera la opacidad**: ninguna regla `:disabled` de botón o conmutador atenúa ya la parte.
+- **Primer plano explícito**: `TextMutedBrush` sobre las caras neutras (contrato de 4,5:1 sobre las superficies, con guardia propia en los 8 presets) y `TextPrimaryBrush` sobre las caras de acento, que son claras en el tema claro y oscuras en el oscuro igual que una superficie.
+- **El chip tenía una declaración que eclipsaba el estado**: `Button.chipButton /template/ …` volvía a declarar `Foreground` (TextSecondary) más abajo en el fichero y, al ser posterior sobre la misma parte, ganaba al primer plano deshabilitado: el chip se quedaba en 4,34:1. Se retiró la duplicación —el control ya declara ese color— y el chip deshabilitado pasó a 4,82:1. Verificado que la etiqueta **habilitada** no cambia: `#64748B` en claro y `#8B949E` en oscuro, idénticos.
+
+### ✅ Medido después
+
+| Célula del tablero | Oscuro | Claro |
+| :--- | :--- | :--- |
+| primary · success · danger | 9,23 · 6,88 · 8,94 | 7,97 · 9,50 · 7,98 |
+| ghost · chip · toggle chip · toggle icon | 5,16 · 4,88 · 4,88 · 5,16 | 5,04 · 4,82 · 4,82 · 5,04 |
+
+Y en el producto, en el rectángulo interior de la zona deshabilitada de la barra de control (medida con la que se descubrió el defecto): **2,13 → 4,88:1** en oscuro y **1,20 → 4,82:1** en claro, con la etiqueta pintada en `#7C8698` y `#656C7A` (los tokens de atenuado) sobre sus caras.
+
+### 🔎 Las líneas base: ocho regeneradas, seis cambiadas
+
+Se regeneraron las ocho que contienen controles deshabilitados (las cuatro del producto y las cuatro del tablero). Cambiaron **seis**: las cuatro del producto y las dos del tablero de botones. Las dos del tablero de **campos** quedaron idénticas —sus celdas deshabilitadas son de campo, cuyo borde atenuado no toca esta corrección—, que es la prueba de que lo que no se tocó no se movió.
+
+**Y el dato incómodo, dicho en vez de enterrado**: la comparación de capturas **no vio el defecto ni su arreglo**. Las caras cambiaban ≤5 canales por canal (dentro de la tolerancia de 12) y las etiquetas son texto fino (por debajo del 1,5 % de píxeles que la comparación admite), así que las seis líneas base pasaban en verde antes y después con el mismo contenido aparente. Que los ficheros cambiaran al regenerarlos es la prueba de que el cambio existe; que la suite no lo detectara es la razón de que este hito traiga tres guardias nuevas.
+
+### 🛡️ Guardias: tres, y una mordió a mi propia edición
+
+1. **Lint estructural** (`TestHelpers/DisabledStateAnalyzer` + `Unit/App/DisabledStateLintTests`, 7 pruebas): ninguna regla `:disabled` puede atenuar con `Opacity` la parte que contiene la etiqueta. Cubre todo el árbol de estilos, con o sin celda en el tablero, y sólo señala las partes con **contenido** —la opacidad de un borde o de una capa de fondo no toca el texto, que es el caso legítimo de los campos—. El analizador se auto-testea con fragmentos (detecta, acepta la cara explícita, ignora el borde, ve las reglas anidadas de un `ControlTheme` y no se cree un comentario).
+2. **Contraste pintado** (`DesignStateBaselinesTests.EveryDisabledCell_ShouldRenderItsLabelAboveAaContrast`): mide el extremo de la etiqueta y su cara dentro de cada una de las 7 celdas deshabilitadas, en los dos temas, y exige **4,5:1**. Es la mitad que un token no cubre: el token podía ser correcto y el píxel no.
+3. **Contraste de tokens** (`ThemeTokenCompletenessTests.DisabledAccentTokens_ShouldKeepTheirLabelVisible_InEveryBuiltInTheme`): en los 8 presets, el texto de superficie sobre cada cara atenuada, con umbral **3:1** —el de componentes de interfaz de WCAG, que exime al texto de un control inactivo—. El umbral no es un compromiso: la guardia destapó que en **nord_slate** (3,58:1 en advertencia) y **dracula_purple** (3,36:1) el acento del tema es claro sobre superficie oscura y su cara atenuada cae en un tono medio, donde ninguna etiqueta llega al AA. Subir el peso de la mezcla hasta lograrlo borraría el color de la variante, que es lo que el estado conserva; queda medido y acotado.
+4. **La guardia del espejo del diccionario de arranque mordió mi propia edición**: al añadir los cinco pinceles al `DarkTheme.axaml` dejé dos en la misma línea (`AccentErrorBrush` y `AccentCyanBrush`), y el test de paridad —que lee una clave por línea— dejó el segundo sin registrar: *«AccentCyanBrush: el preset genera un color sólido pero el baseline no lo declara como tal»*. Corregido con una clave por línea y con el motivo escrito al lado.
+
+### 🧪 Mutaciones (3, las tres mordidas)
+
+- **A — vuelve la opacidad sobre la parte** → fallan **dos** guardias: el lint nombra el fichero y la regla, y el contraste pintado lista las diez medidas (oscuro: primary 3,83, success 3,59, danger 3,79, ghost 1,93, chip 1,93; claro: 2,66, 2,71, 2,67, 1,84, 1,83).
+- **B — la cara deshabilitada vuelve al acento vivo** → falla la sonda del tablero (`debe pintar #373B7E … but found 0x63`) y el contraste pintado (oscuro 4,10; **claro 2,84**): sobre el acento vivo, en el tema claro, el texto de superficie no se lee — la cara atenuada y la etiqueta son la misma decisión.
+- **C — desaparece el primer plano explícito** (queda el atenuado del tema base) → el contraste pintado muerde en las celdas sin cara propia: ghost 3,48 en oscuro y **2,63** en claro.
+
+### ✅ Validación
+
+- `dotnet test` completo: **1577 superadas + 1 omitida de 1578 en 1 m 15 s** (antes 1568 + 1 de 1569; +9 pruebas: 7 del lint, el contraste pintado y el de tokens). Build **0 advertencias / 0 errores**.
+- `InputInteractionTests.ADisabledButton_ShouldLookDisabled_AndIgnoreTheClick` afirmaba el **mecanismo viejo** (`Surface(button).Opacity ≈ 0,45`) y ahora afirma el nuevo: la cara es el token atenuado, la parte **no** tiene opacidad y la etiqueta es un color declarado.
+
+### 📌 Notas para la siguiente sesión
+
+- **Los campos no entran aquí, y está medido** (**resuelto en el hito 186**): `texto/deshabilitado` queda en 4,00:1 (oscuro) y 3,30:1 (claro) y `desplegable/deshabilitado` en 3,50:1 y **2,62:1**. Eso no es el doble desvanecido —su borde se atenúa con una opacidad propia que no toca el texto— sino el atenuado único del tema base, que es otra decisión: si se quiere subir, se declara allí un primer plano explícito igual que aquí, y entonces sí hay que incluirlos en la guardia de contraste pintado.
+- El lint cubre el mecanismo; el contraste cubre las 7 celdas del tablero. Un control **nuevo** con estado deshabilitado entra en las dos por caminos distintos: la cobertura del tablero exige una celda para cada pseudo-clase declarada, y el lint no depende de que exista.
+
+## [2026-09-23] - El Producto en Claro: Barra de Control y Editor de Temas Bajo Contrato Visual (Hito 184)
+
+### 🎯 Objetivo
+
+Las superficies del producto sólo tenían línea base en **oscuro**: el deshabilitado y el hover que el hito 183 corrigió tenían contrato en el tablero de estados, pero ninguna vista real del producto los congelaba en claro — y el claro es justo donde un error de color se ve menos y por tanto se cuela más fácil.
+
+### 🛠️ Implementación
+
+- **Dos capturas nuevas del preset claro**: `panel-control-bar-light` (1340×46) y `theme-studio-light` (1200×760). Son las dos superficies donde el estado deshabilitado aparece de verdad en un estado congelado (el «deshacer»/«rehacer» de un documento recién abierto y el botón de nombre de tema, que sólo se habilita para un tema propio).
+- **El editor de temas deja de duplicar su captura**: el test oscuro y el claro comparten `AssertStudioMatches(nombre, tema)`, que además documenta por qué el almacenamiento es de un solo uso (`Guid`).
+- **Dos utilidades de imagen** en `VisualSnapshot`, al lado de `PixelAt`, con el mismo cálculo de diferencias que la comparación de líneas base: `MeanLuminance` (Rec. 601) y `DifferingPixelRatio`.
+- **Guardia de parejas de tema** (`Unit/Views/ThemeBaselinePairTests`, en la colección de capturas): cada `*-light.png` tiene que tener su gemela `*-dark.png`, la clara tiene que ser al menos **60 puntos de luminancia** más clara y tienen que diferir en al menos el **60 % de los píxeles**. Sin ella, regenerar una superficie clara con el preset oscuro —basta cambiar la constante del test, o copiar el PNG— pasa la comparación (la imagen es coherente consigo misma) y deja congelada una segunda copia del oscuro con nombre de claro, que además tapa cualquier regresión del claro porque nunca se ve un claro de verdad.
+
+### 🔎 Revisión de las dos líneas base nuevas
+
+- **A ojo, a escala 1:1 y con ampliación 4×** de la zona deshabilitada (página de revisión temporal con las capturas incrustadas): la barra clara es una fila de píldoras `#F1F5F9` con borde `#CBD5E1` sobre un fondo `#E2E8F0`, con los acentos correctos (violeta de «Modo Prueba», verde de «Ejecutar Flujo», rojo de «Depurar»), texto `#0F172A` y la marca en su sitio; el editor de temas claro es una superficie blanca sobre `#F8FAFC` con las tarjetas, la tabla, la escala de tokens y los cuatro botones de acción en sus colores.
+- **Numérico, contra su gemela oscura**: los 6 pares preexistentes más los 2 nuevos dan luminancia 207-247 en claro frente a 22-54 en oscuro y un 85-99 % de píxeles distintos — el umbral de la guardia (60 puntos / 60 %) queda lejos de la pareja más apretada.
+- **Muestreo por dentro** (canvas sobre los PNG) de las píldoras de la barra: cara habilitada `#F1F5F9` / deshabilitada `#F2F6F9`, glifo habilitado `#0F172A` / deshabilitado `#C7CACD`.
+
+### 🔬 Hallazgo registrado (medido, NO corregido)
+
+**La etiqueta del control deshabilitado se desvanece dos veces, y en claro eso la vuelve ilegible.**
+
+| Estado | Tema | Cara | Glifo | Contraste |
+| :--- | :--- | :--- | :--- | :--- |
+| Habilitado | oscuro | `#131720` | `#F0F6FC` | **7,24:1** |
+| Deshabilitado | oscuro | `#131720` | `#3C3F47` | **2,13:1** |
+| Habilitado | claro | `#F1F5F9` | `#0F172A` | **7,23:1** |
+| Deshabilitado | claro | `#F2F6F9` | `#C7CACD` | **1,20:1** |
+
+El mecanismo está medido y su modelo cuadra en los dos temas: la regla nuestra pone `Opacity 0.45` sobre la **parte entera** de la plantilla (`ContentPresenter#PART_ContentPresenter`), y el tema base ya había atenuado el **texto** por su cuenta, así que las dos atenuaciones se **multiplican**. Predicción del modelo frente a lo medido — oscuro: `0,45·240 + 0,55·19 = 118` y `0,45·118 + 0,55·19 = 63,6` frente a `#3C3F47` (60); claro: `0,45·15 + 0,55·242 = 140` y `0,45·140 + 0,55·242 = 196` frente a `#C7CACD` (199). En oscuro la etiqueta aguanta 2,13:1 porque parte de un texto claro sobre una cara oscura; en claro se queda en **1,20:1**, que es «no se ve». La cara, además, es la misma que la del control habilitado en los dos temas (es `BgSurface` sobre `BgSurface`), así que en claro lo único que distingue un control deshabilitado es un texto casi blanco y el borde `BorderDark`.
+
+Queda **registrado y congelado tal cual** (las líneas base son el aspecto actual, no el deseado): corregirlo es una decisión de diseño —quitar la atenuación redundante y declarar un primer plano deshabilitado explícito, o bajar el `Opacity` a la cara sin tocar el texto— y obliga a regenerar de nuevo las cuatro líneas base del producto.
+
+### 🧪 Mutaciones (2, las dos mordidas)
+
+- **A — la línea base clara es un duplicado de la oscura** (copiando el PNG del oscuro sobre el claro) → `Expected findings to be empty … 'panel-control-bar-light' es casi tan oscura como 'panel-control-bar-dark': luminancia 54,1 frente a 54,1 (se exige 60 puntos más) … | sólo cambia el 0,0 % de sus píxeles (se exige 60 %): parece una copia de la captura oscura.`
+- **B — desaparece la gemela oscura** (moviendo `theme-studio-dark.png`) → `falta theme-studio-dark.png.`
+
+### 🪤 La guardia del contrato de colecciones mordió a la primera versión de esta guardia
+
+La primera versión de `ThemeBaselinePairTests` **no** declaraba colección (leía sólo archivos, así que parecía no tocar nada compartido) y `TestCollectionContractGuardTests` la rechazó: *«una clase toca HeadlessUiSession sin declarar ninguna colección exclusiva (canónica para este estado: VisualSnapshots)»* — porque referencia `VisualSnapshot`. Se corrigió **añadiendo la colección** en lugar de esquivar la regla leyendo las rutas por otra vía; de paso desapareció el reintento de lectura que había escrito «por si una escritura en paralelo deja el PNG a medias», que con la colección es código muerto (dentro de una colección xUnit ejecuta secuencialmente, y sólo esa colección escribe líneas base).
+
+### ✅ Validación
+
+- `dotnet test` completo: **1568 superadas + 1 omitida de 1569 en 1 m 16 s** (antes 1564 + 1 de 1565; +4: dos capturas y las dos guardias). Build **0 advertencias / 0 errores**.
+- Página de revisión y sonda de calibración **temporales, retiradas** —la sonda midió los 6 pares preexistentes antes de fijar los umbrales, en vez de escribirlos a ojo—.
+
+### 📌 Notas para la siguiente sesión
+
+- Las superficies del producto que **siguen** sin línea base en claro son los paneles restantes (editor, caja de herramientas, inspector, consola, barra de estado, cajón) y las 15 modales oscuras; el camino ya está hecho (un test más por superficie y su preset) pero ninguna de ellas contiene hoy un control deshabilitado, que era el motivo de empezar por la barra y el editor.
+- Sin contrato de píxel siguen el color del texto del enlace en hover, el del texto de la pestaña activa y el del indicador de pestaña.
+
+## [2026-09-23] - Las Tres Desviaciones de Estado, Corregidas: Deshabilitado por Variante, Hover del Desplegable y Compuesto del Conmutador (Hito 183)
+
+### 🎯 Objetivo
+
+Corregir las tres desviaciones que el tablero de estados del hito 182 destapó y regenerar sus líneas base con la revisión del cambio, para que el contrato visual congele el aspecto <i>querido</i> y no el que había.
+
+### 🛠️ Implementación
+
+1. **Deshabilitado por variante** (`Styles/Buttons.axaml`). El estado deshabilitado conserva la identidad de la variante: la regla base vuelve a declarar su superficie (`BgSurfaceBrush` + `BorderDarkBrush`) sobre el relleno neutro del tema base, cada variante re-declara su propia cara (primary · success · danger · warning · debug con su acento, y ghost · icon · link <b>transparentes</b>) y lo mismo para los conmutadores (base · chip · icon). Motivo medido: el tema base pintaba el <b>mismo gris</b> en las cuatro variantes (`#22262B` oscuro / `#E3E5E6` claro) y a un botón <b>sin fondo le añadía una caja</b>. Ahora: primary `#333679`, success `#0E5C46`, danger `#72272B`, ghost y link `#0D1117` (sin caja), chip `#0F131B` —el token de cada variante atenuado al 45 % sobre el fondo—.
+2. **Hover del desplegable** (`Styles/Inputs.axaml`). El estado se declara sobre la parte que <b>de verdad se pinta</b> (`Border#Background` de la plantilla), no sobre las propiedades del control, que la plantilla ya no pinta: el tema base ponía ahí su propio velo translúcido y en oscuro el desplegable se <b>oscurecía</b> al pasar el puntero. La misma corrección cubre reposo, foco y deshabilitado. Medido: oscuro `#131720 → #21262D` (antes `#131720 → #050709`); el claro sigue aclarando (`#F1F5F9 → #CBD5E1`).
+3. **Compuesto del conmutador de icono** (`Styles/Buttons.axaml`): `ToggleButton.icon:checked:pointerover` enciende el acento claro, como ya hacía el chip. Antes las celdas «seleccionada» y «seleccionada+hover» daban el mismo color (`#6366F1` en oscuro).
+4. **El tablero crece** (`DesignStateBoard`): la matriz de selección gana la columna <b>deshabilitado</b> —un conmutador sin fondo también tiene que seguir sin él—, así que el tablero pasa a 740 px de ancho. Las sondas de token suben a 11 en el tablero de botones y campos con una novedad: los estados atenuados se afirman con una **mezcla calculada** (`Over` + `Alpha` → `Blend(token, fondo, 0,45)`) en lugar de un color escrito a mano, de modo que la expectativa sigue al tema si el tema cambia.
+
+### 🔎 Revisión de las líneas base regeneradas (6)
+
+Cuatro son del tablero (los estados corregidos) y **dos del producto**: `panel-control-bar-dark` y `theme-studio-dark`. No se regeneraron «a ver si pasa»: primero se atribuyó el cambio.
+
+- **Atribución por experimento**: revirtiendo <b>solo</b> las reglas de deshabilitado, los dos baselines del producto vuelven a pasar. Por tanto la totalidad de su diferencia viene de esa corrección —nada del desplegable ni del compuesto la toca— y las otras superficies capturadas (shell, cajón, caja de herramientas, modales) no cambian porque no tienen controles deshabilitados en el estado congelado.
+- **Qué cambió, medido píxel a píxel** (baseline frente a captura nueva): barra de control, `#272B33 → #131720` (2 956 px) —el velo del tema base sustituido por la superficie atenuada del diseño, que compone exactamente a `BgSurface` porque el panel de la barra ya es esa superficie—; estudio de temas, `#2A2F35 → #161B22` y `#2E323B → #1A1F29` (14 225 y 5 835 px), la misma clase de cambio sobre el panel y sobre la tarjeta. En los dos casos el delta por canal es ≤ 20 y la zona afectada son las caras deshabilitadas.
+- **Revisión de la matriz regenerada**: muestreando los PNG nuevos se lee el contrato que se acaba de congelar (primary deshabilitado `333679`, ghost `0D1117` sin caja, desplegable en hover `21262D`, conmutador de icono seleccionada+hover `4F46E5`), y en claro lo mismo con los tokens claros (primary deshabilitado `ADAAF2`, ghost `F8FAFC`).
+
+### 🧪 Mutaciones (3, todas mordidas)
+
+- **A — el deshabilitado vuelve a ser el gris del tema base** → los dos baselines del producto pasan y la sonda falla nombrando el valor viejo: `La celda 'primary/deshabilitado' del tablero (466,74) debe pintar #343779 ('AccentPrimaryBrush' al 45 % sobre 'AppBackgroundBrush'): el acento atenuado, no un gris neutro, but found 0x22`.
+- **B — el hover del desplegable vuelve a declararse en el control** (no en la parte que se pinta) → `La celda 'desplegable/hover' del tablero (240,120) debe pintar #21262D … but found 0x05` (el defecto original, exacto).
+- **C — desaparece el compuesto del conmutador de icono** → `La celda 'toggleIcon/seleccionada+hover' del tablero (466,447) debe pintar #4F46E5 … but found 0x63`.
+
+### ✅ Validación
+
+- `dotnet test` completo: **1564 superadas + 1 omitida de 1565 en 1 m 08 s**, tras regenerar las 6 líneas base (las 35 del repositorio verificadas en la misma corrida). Build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Un dato de diseño, no un fallo**: el lenguaje elegido para el deshabilitado es <b>atenuar, no recolorear</b> (la cara de la variante al 45 % sobre el fondo que tenga debajo), así que la cara pierde presencia pero no identidad. Medido en la barra de control: la cara de un botón base deshabilitado compone `#11161C` sobre el fondo de la barra (`AppBackground`), un paso más apagado que su cara activa (`#161B22`) — sigue leyéndose como una pieza distinta del panel y lo que comunica el estado es sobre todo la atenuación del icono y del texto. Es lo que la línea base congela.
+- Sigue sin contrato de píxel el color del texto del enlace en hover, el del texto de la pestaña activa y el color del indicador de pestaña (su geometría la ve la captura, su color no): la lista de «lo que la captura no ve» del hito 182 sigue vigente.
+
+## [2026-09-23] - Los Estados del Sistema de Diseño Estrenan Contrato Visual: Hover, Pulsado, Foco, Deshabilitado y Selección (Hito 182)
+
+### 🎯 Objetivo
+
+Dar <b>línea base visual</b> a los estados animados del sistema de diseño —hover, pulsado, foco, deshabilitado y selección— para que los estilos tengan contrato de <i>aspecto</i> y no sólo aserciones de token. Hasta ahora el suite afirmaba «la cara del botón lleva este recurso del tema» y un lint de texto sobre las reglas: eso dice que el valor correcto se aplica, pero no <i>cómo se ve</i>, así que un radio, un borde, una opacidad o un tamaño de letra cambiados en un estado pasaban sin que nadie lo notara.
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/DesignStateBoard.cs` — el tablero de estados**: la misma pieza repetida una vez por estado, en dos tableros (botones y selección / campos y contenedores) de <b>620 px de ancho</b>, con celdas de <b>112×46</b> y cada pieza <b>estirada a la celda</b> —así la geometría no depende de la anchura de la fuente del sistema y la línea base no cambia de máquina a máquina porque un texto mida distinto—. Cada celda se registra en `Cells` («fila/estado») para que una prueba pueda sondear el píxel que ese estado pinta.
+2. **Una foto sólo tiene un puntero y un foco**, así que los estados que dependen de la entrada (`:pointerover`, `:pressed`, `:focus`) se <b>fuerzan</b> en la colección de clases del propio control, que es exactamente la que el sistema de estilos consulta para resolverlos; `deshabilitado` se produce de verdad (`IsEnabled = false`) y `seleccionada` con su propiedad real (`IsChecked`, `SelectedIndex`, la clase `selected`).
+3. **Los estados se aplican con el árbol vivo** (`DesignStateBoard.Activate()`, pasado como paso de interacción de la captura, después del `Show()`). No es un detalle: al aplicar su plantilla el control vuelve a declarar sus pseudo-clases y **`Button` borra el `:pressed` forzado antes de que exista la plantilla** —medido: la celda «pulsado» salía en reposo (mutación B: 25 046 píxeles distintos, 8,31 %, zona x 348..459 = la columna «pulsado»)—. `Pseudo()` además <b>comprueba que la pseudo-clase quedó puesta</b>: si Avalonia dejara de guardarlas en `Classes` —la costura que este helper usa—, el `Add` se volvería un no-op silencioso y todas las celdas de estado saldrían en reposo sin que nada fallase.
+4. **`VisualSnapshot` gana el paso de interacción y una comparación sin archivo**: `Capture`/`CaptureNaturalHeight` aceptan ahora un `Action<Window>` que recibe la ventana <b>ya mostrada y con el layout hecho</b>, justo antes del asentado —es lo que permite fotografiar un estado que sólo existe al interactuar con entrada real (`InputSimulator`) y también <i>observar</i> el layout para medir dónde quedó cada celda—; y `AssertImagesMatch` compara dos capturas entre sí con la misma tolerancia de la línea base (el cálculo de diferencias es uno solo, para que dos copias no den veredictos distintos).
+5. **4 líneas base nuevas** (`design-states-buttons-{dark,light}` 620×486 y `design-states-fields-{dark,light}` 620×394; los 35 PNG de `VisualBaselines/` en total), capturadas con `CaptureNaturalHeight` para que la matriz crezca sin recortarse.
+6. **7 sondas de píxel** (dos pruebas, una por tablero) que exigen <b>el token</b> en un punto concreto de una celda: las tres variantes en reposo, los hover de botón, fantasma, chip, conmutador y fila del cajón, el chip seleccionado y el compuesto seleccionada+hover, el borde del campo en reposo/hover/foco (`AccentGlowBrush` → `AccentPrimaryBrush`), el separador en hover y la pestaña pastilla en hover/seleccionada. Su tolerancia es de **3 canales** en vez de los 12 de la comparación de imágenes, porque un relleno opaco se pinta exacto.
+7. **El lint de cobertura** (`EveryPseudoClassDeclaredInTheStyles_ShouldHaveACellInTheBoard`) lee los `Selector` de `FileFlow.App/Styles` y exige que cada pseudo-clase tenga celda o exención con razón; cada entrada de la cobertura cita un <b>testigo</b> —el trozo de código que la produce— que tiene que seguir en el fichero, así que la lista no puede ser una promesa sin mecanismo. Exenciones (4, todas comprobadas vivas): `:focus-within` (vive en una parte de plantilla, `ButtonSpinner` dentro de `NumericUpDown`, fuera del alcance de un forzado desde fuera), `:is` (combinador de selector, no un estado) y `:horizontal`/`:vertical` (orientación del layout).
+
+### 🧪 Fidelidad del forzado (3 pruebas)
+
+Una línea base de un estado forzado sólo vale si forzar pinta lo mismo que el usuario ve. `ForcedHover`, `ForcedPressed` y `ForcedFocus` capturan la <b>misma superficie dos veces</b> —una con entrada real (`Hover`, `Press`, `Focus()`) y otra forzando el estado— y exigen que las dos imágenes coincidan. La del foco además afirma que el foco real <b>ocurrió</b> (`gotFocus`), porque sin él la comparación no estaría comparando nada.
+
+### 🔎 Tres hallazgos que la matriz destapó (registrados, no corregidos)
+
+1. **Los botones deshabilitados de todas las variantes se ven grises.** Medido: `deshabilitado` da `#22262B` en oscuro y `#E3E5E6` en claro para *primary*, *success*, *danger* y también para *ghost* (un botón sin fondo que al deshabilitarse **gana un fondo**). Nuestra capa sólo declara `Opacity 0.45` sobre la cara; el relleno neutro que gana es el del tema base.
+2. **El desplegable se <i>oscurece</i> al pasar el puntero** (oscuro: `#131720` → `#050709`; claro: `#F1F5F9` → `#FCFDFD`, donde sí aclara). Causa medida con sonda: el tema base pinta su propia capa sobre `Border#Background` de la plantilla y **nuestra regla `ComboBox:pointerover { Background = BgHoverBrush }` declara una propiedad que la plantilla ya no pinta**.
+3. **El conmutador de icono no distingue «seleccionada+hover» de «seleccionada»** (las dos celdas salen con el mismo color): `ToggleButton.icon` declara `:checked` y `:pointerover` pero no el compuesto, a diferencia del chip.
+
+Los tres cambian <b>cómo se ve la aplicación</b>, así que no se han tocado: la línea base <b>congela lo que hay</b>, y corregir cualquiera de ellos hará fallar su captura y obligará a regenerarla a propósito.
+
+### 🧪 Mutaciones (seis, todas mordidas y restauradas)
+
+- **A — el forzado se vuelve un no-op** → 9 de 10 fallos en la clase, con el diagnóstico del propio contrato: `La pseudo-clase ':pointerover' no quedó aplicada en 'Button' (clases: 'primary')`.
+- **B — los estados se aplican al construir** (antes de existir la plantilla) → fallan las dos líneas base del tablero de botones: `8,31 % > 1,50 % permitido … zona afectada: x 348..459, y 51..279` (exactamente la columna «pulsado»).
+- **C — el chip deja de aplicar el hover compuesto** → `La celda 'chip/seleccionada+hover' del tablero (466,355) debe pintar 'AccentHoverBrush', but found 0x63`, más la línea base.
+- **D — la lista de cobertura olvida `:pointerover`** → `Sin cubrir: :pointerover`.
+- **E — una exención inventada** (`:hoverX`) → `':hoverX' está exento con la razón «exención inventada» pero ya no lo declara ningún estilo`.
+- **F — vuelve el defecto del analizador de código** (ver abajo) → fallan su propia prueba y la comprobación de testigos.
+
+**Una mutación que no mordió, y era información**: la C, tal cual, <b>pasaba</b> porque el registro de la matriz ya aplicaba el hover simple y la fila del chip lo repetía —dos rutas para el mismo estado—. Se dejó un solo dueño (el registro para los estados de entrada; la fila sólo para el compuesto, que el registro no alcanza) y entonces la mutación mordió. Quitar la mitad de algo duplicado no cambiaba el resultado: eso es un agujero en cualquier suite de mutaciones.
+
+### 🩹 Un defecto del analizador de los lints
+
+La comprobación de testigos no encontraba `Pseudo(control, ":pointerover")` en un código que lo tiene. La causa estaba en `TestHelpers/SourceText.cs`: `WithoutComments` consumía **un carácter de más tras cada literal**, así que se comía la coma, el paréntesis o el `;` siguiente (`"a", "b"` llegaba como `"a" "b"`). Seis lints leían un texto que no es el código y ninguno podía buscar un fragmento que terminase en una llamada. Corregido (un `i++` de menos) y **cubierto con `Unit/App/SourceTextTests`**, que no existía.
+
+### ✅ Validación
+
+- `dotnet test` completo: **1564 superadas + 1 omitida de 1565 en 1 m 09 s y 1 m 11 s** (dos corridas), con las líneas base previas intactas. Antes de este hito: 1552 + 1 de 1553 (12 pruebas nuevas: 3 de fidelidad, 2 de sondas, 1 de cobertura, 4 de líneas base y 2 del analizador).
+- Build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **La captura no ve lo fino, y por eso hay sondas**: con la tolerancia de 1,5 % repartida sobre toda la superficie, un borde de 1 px (el anillo de foco del campo) es el 0,1 % de la imagen y un indicador de pestaña el 0,04 %; pasarían sin que la línea base dijera nada. Los tres defectos de arriba quedan igualmente fuera de su alcance cuando son «un relleno translúcido en una celda» (~0,9 %), así que la sensibilidad fuerte la dan las sondas de token, no la captura.
+- **Lo que sigue sin contrato de píxel**: el color del texto en hover de enlace, el cambio de color del texto de la pestaña activa y el grosor/posición del indicador (su geometría la ve la captura, su color no). Es el siguiente candidato si se quiere cerrar la matriz entera.
+- Las tres desviaciones registradas esperan decisión de diseño: deshabilitado por variante, hover del desplegable y compuesto del conmutador de icono.
+
+## [2026-09-23] - El Tercer Sitio de Tiempo Real Sale del Inventario: Latencia Pequeña en el Origen Sintético (Hito 179)
+
+### 🎯 Objetivo
+
+Ejercitar el retardo del origen sintético (`EmissionDelayMs`) con una latencia pequeña, para que la última espera de plugin declarada «de tiempo real» en el inventario de trabajo aplazado (hito 175) pase a <b>ejercitada</b>.
+
+### 🔍 El problema
+
+El registro del inventario tenía <b>3</b> decisiones `RealTime`, y el hito 175 dejó escrito el camino barato para cada una: para el retardo del origen sintético «bastaría una prueba con `EmissionDelayMs` pequeño». Éste es el tercero de los tres; los otros dos —la espera del arranque a que la interfaz esté pintada y el fundido de cierre de la splash— necesitan una interfaz real detrás y siguen explicados como tales.
+
+### 🛠️ Implementación
+
+1. **`SyntheticDataSourceNode_EmissionLatency_ShouldPaceEveryEmission`** (en `Unit/Plugins/SyntheticDataSourceNodeTests.cs`: la clase que ya nombra `ExecuteAsync`, que es lo que el registro exige como evidencia). El nodo se ejecuta en modo `Virtual` con `MaxItems = 3` y `EmissionDelayMs = 5`, y la prueba <b>marca la hora de cada emisión</b> dentro del callback de `EmitAsync`.
+2. **La aserción es el hueco entre emisiones, no el tiempo total**, y por eso mide el retardo y no el nodo: el armado de las muestras (catálogo, VFS, escrituras del modo físico) ocurre <b>entero antes de la primera emisión</b>, así que no puede inflar ningún hueco. `Task.Delay` garantiza esperar <i>al menos</i> lo pedido, de modo que la aserción es un <b>límite inferior</b>: no puede volverse intermitente por carga de la máquina —la carga sólo alarga el hueco— y no hay margen que calibrar.
+3. **Segundo aserto**: el tiempo total no baja de `LatencyMs × muestras`, porque hay un retardo por muestra, <b>incluida la primera</b> (no una espera única antes del bucle).
+4. **El registro**: el sitio pasa de `RealTime` a `Exercised(… "ExecuteAsync", "SyntheticDataSourceNodeTests")`, con el porqué escrito al lado (por qué aquí la latencia pequeña basta y por qué no se usó el reloj inyectado del hito 174: la fábrica construye este nodo sin dependencias, así que no hay reloj que inyectar).
+
+### 🧪 Pruebas y mutaciones
+
+- `SyntheticDataSourceNodeTests` **9/9**; guardia del inventario **9/9**.
+- **A** — el aplazamiento sigue en el código pero ya no espera (`if (false && delayMs > 0)`): la prueba falla con el diagnóstico exacto de los huecos — `Expected gaps to contain only items matching (gap >= FromMilliseconds(5)), but {161.1µs, 1.1µs} do(es) not match`. Se mutó así, y no borrando el `Task.Delay`, <b>a propósito</b>: el analizador tiene que seguir viendo el sitio, porque lo que se está probando es la <i>aserción de ritmo</i> y no la presencia del código.
+- **B** — el registro cita una clase de test que no existe → «la prueba citada 'SyntheticDataSourceNodeTess' no existe en el suite».
+- **C** — el registro cita la clase correcta pero una evidencia que esa clase no nombra → «existe pero no nombra la evidencia 'EmiteConLatencia'».
+
+### ✅ Validación
+
+- `dotnet test` completo: **1548 superadas + 1 omitida de 1549 en 1 m 18 s y 1 m 14 s** (dos corridas); el test nuevo **5/5** corridas en solitario; la clase entera cuesta ~290 ms, de los que ~45 ms son la latencia real de las tres muestras. Build **0 advertencias / 0 errores**.
+- El inventario sigue con **17 sitios**: lo que cambió es la <b>decisión</b> (15 ejercitados + 2 de tiempo real, antes 14 + 3), no el inventario.
+
+### 📌 Notas para la siguiente sesión
+
+- Quedan **2** decisiones `RealTime`: la espera del arranque a que el primer fotograma esté pintado y el fundido de cierre de la splash. Las dos viven dentro de un arranque real, así que su camino no es una latencia pequeña sino el reloj virtual del hito 177 o una prueba de humo que las recorra de verdad.
+- El coste de este camino frente a la alternativa es explícito: 45 ms de tiempo real por prueba, que es exactamente lo que cuesta medir la latencia que el usuario configura.
+
+## [2026-09-23] - Las Capturas Asientan Antes de Fotografiar: Ninguna Línea Base a Medio Camino (Hito 181)
+
+### 🎯 Objetivo
+
+Que ninguna línea base visual pueda quedar tomada a medio camino de una transición: la captura tiene que asentar el reloj de animación antes del fotograma, igual que ya hacía un asentado de interacción.
+
+### 🔍 El defecto, medido con la guardia
+
+La guardia se escribió <b>primero</b>, y con el código de partida falló nombrando el valor exacto: una captura de un borde negro cuya transición a blanco arranca al montarse salía
+
+```
+Expected VisualSnapshot.PixelAt(captured, 100, 100) to be Rgba32(255, 255, 255, 255) … but found Rgba32(0, 0, 0, 255).
+```
+
+Es decir: <b>el valor de partida</b>. La causa es la consecuencia directa del hito 177 —el reloj de animación es virtual y sólo avanza cuando se le pulsa—, y el camino de captura no lo pulsaba: `CaptureCore`/`CaptureWindow` bombeaban el dispatcher (`RunJobs`) y disparaban el fotograma, así que una transición en vuelo quedaba congelada en su primer fotograma. Una línea base así congela un estado que el usuario nunca ve, y encima lo compara contra capturas futuras como si fuera el correcto.
+
+### 🛠️ Implementación
+
+1. **`AnimationClock.Settle(frames)` es ahora el único mecanismo de asentado del suite**: bombea el dispatcher, avanza el reloj de <b>render</b> y pulsa el reloj de animación un fotograma (16 ms) por vuelta, con un bombeo final. El presupuesto (`SettleFrames` = 12 ⇒ 192 ms virtuales) vive con él, que es de quien depende la cuenta.
+2. **`InputSimulator.Settle` delega en él** (conserva su nombre para los tests de entrada y lee el presupuesto del reloj), así que la entrada y la captura asientan <b>lo mismo</b>: el lint de duraciones declaradas vale para los dos caminos.
+3. **Las dos rutas de captura asientan** tras el `Show()` en lugar de bombear: `CaptureCore` (contenido y altura natural) y `CaptureWindow` (modales). Todo el suite de capturas —host, modales, splash, superficies de plugins— pasa por ahí.
+
+### 🧪 Guardias (2, en `AnimationClockTests`)
+
+- **Comportamiento**: `ACapture_ShouldPhotographTheTransitionSettled` — un borde cuya transición arranca <b>al montarse</b> (el caso real: un estado que cambia al aparecer) tiene que salir en su valor final. Es la primera vez que el suite mide <i>qué</i> fotografía una captura.
+- **Estructura**: `EveryCapturePath_ShouldSettleBeforePhotographing` — el barrido cuenta los sitios que fotografían (`CaptureRenderedFrame`) y los que asientan (`AnimationClock.Settle`) en `VisualSnapshot.cs` y exige que coincidan. Un tercer camino de captura sin asentado no rompería ninguna captura existente: sólo congelaría líneas base futuras a medio camino, que es el fallo que se descubre hitos después.
+
+### ✅ Validación
+
+- **Mutación M1** (quitar el asentado de `CaptureCore`): fallan la guardia de comportamiento (`but found Rgba32(0, 0, 0, 255)`) y la estructural («fotografía en 2 sitios y asienta en 1»).
+- **Mutación M2** (que `Settle` bombee sin pulsar el reloj): **5 fallos** — las tres del reloj (parcial a medio camino, valor final exacto, captura) y los dos estados de estilo de la entrada (texto de la pestaña seleccionada, fondo del ítem del cajón). Es la prueba de que el mecanismo es compartido de verdad y no una copia con el mismo nombre.
+- `dotnet test` completo: **1552 superadas + 1 omitida de 1553 en 1 m 13 s y 1 m 14 s** (dos corridas), con **las 29 líneas base visuales intactas**; build **0 advertencias / 0 errores**.
+- **Lo que dice la intocabilidad de las líneas base**: ninguna estaba congelada a medio camino. Las capturas actuales se construyen con sus valores finales ya puestos y no disparan transiciones al mostrarse, así que la medida protege el caso que todavía no se había dado —estados que cambian al montarse, o los que traiga el próximo estilo— en lugar de corregir uno ya ocurrido. El dato es parte del resultado: la guardia es la que demuestra que el camino estaba roto.
+
+### 📌 Notas para la siguiente sesión
+
+- **Un solo asentado para todo el suite**: entrada y captura comparten `AnimationClock.Settle` y su presupuesto, así que una transición que quepa en un asentado de interacción también cabe en una captura, y el lint de duraciones declaradas cubre las dos.
+- Las capturas que se toman <b>después de interactuar</b> ya están cubiertas por partida doble: la interacción asienta (`InputSimulator`) y la captura asienta por su cuenta, así que si algún día alguien fotografía tras un cambio de estado sin pasar por el simulador, sigue saliendo asentado.
+- El barrido de la **splash** sigue siendo un `DispatcherTimer` real (no una animación del reloj virtual) y su línea base sigue intacta: lo que asienta la captura no lo toca.
+
+## [2026-09-23] - La Carrera de la Consola: El Texto que Cambiaba de Valor a Mitad del Suite (Hito 180)
+
+### 🎯 Objetivo
+
+Cerrar la carrera que hacía que `WorkflowExecutionThroughTheAppTests.RunningAWorkflowWithWorkToDo_ShouldDoTheWorkAndReportItOnTheCanvas` pudiera fallar de forma intermitente en su aserción de la consola. El hito 177 la había dejado anotada como sospecha: «carrera preexistente entre el latido de la consola y su aserción».
+
+### 🔍 La investigación: la sospecha apuntaba al sitio equivocado
+
+1. **El latido de la consola no es el culpable, y además no entrega en el suite.** El latido entrega su tick con `Heartbeat.Post` → `AvaloniaUiDispatcher.Post`, que <b>descarta</b> el trabajo cuando `Application.Current` es nulo. Medido con una sonda: en la sesión headless `Application.Current` <b>solo es visible en su propio hilo de UI</b> (`appEnUi=True` en el hilo de la sesión, `False` en el hilo del runner y en un hilo del grupo de hilos recién creado); un despacho desde el grupo de hilos entrega `False` y `CheckAccess=True` (que es exactamente «no hay aplicación que lo reciba»), mientras que desde el hilo de UI entrega `True`. Y el latido de la consola, con reloj del sistema, no publicó nada en 500 ms; `FlushAllPendingLogs` a mano publicó los cinco registros. Es decir: <b>en el suite quien publica en la consola es el cierre de la ejecución</b>, no el latido. Una carrera con el latido era imposible aquí.
+2. **La causa real es que el texto esperado cambiaba de valor a mitad del suite.** `LocalizationManager.GetString` recorre los gestores de recursos registrados y devuelve el primero que tenga la clave; <b>si no hay ninguno, devuelve la clave</b>. El diccionario del host se registraba de forma perezosa —la primera vez que una prueba preparaba la sesión headless, es decir a mitad del suite y en paralelo con las demás—, de modo que una misma clave cambiaba de valor <b>una vez</b>. Sonda, medida: al cargar el módulo `'LogStartingExecution'`; diez segundos después `'--- Iniciando Ejecución ---'`, con `FileFlow.App.Resources.Strings` ya entre los gestores (y los gestores creciendo de 78 a 668 durante la suite, porque los plugins registran los suyos al cargarse). La aserción resuelve esa clave <b>dos veces</b> —el coordinador al encolar el mensaje dentro de la ejecución y la prueba al afirmar—, así que un registro ajeno en medio las separa: falla rara, dependiente del orden de ejecución y <b>nunca en una corrida filtrada</b>, donde nadie registra nada y la clave se resuelve a sí misma las dos veces. Encaja con lo observado en el 177: una vez en muchas corridas del suite completo, jamás en solitario (3/3 en aislamiento).
+
+### 🛠️ La cura: registrar el host antes de que exista un test
+
+1. **`TestHelpers/HostLocalization.cs`**: registra el diccionario del host con `[ModuleInitializer]`, es decir <b>al cargar el módulo</b>, antes de que xUnit descubra o corra nada. Es además lo que hace la aplicación de verdad (su arranque registra el diccionario), así que no existe un instante de la vida del proceso en el que el host no tenga sus cadenas: el valor de una clave del host es el mismo desde el primer test hasta el último y <b>la ventana de la carrera queda vacía</b>. `NewHostResourceManager()` queda expuesto sólo para que la guardia pueda reproducir el registro perezoso.
+2. **`AvaloniaTestHelper.RegisterHostResources`** delega el registro en el helper nuevo y conserva lo que sí es suyo: fijar el idioma en <b>cada</b> preparación (un test puede cambiarlo y no restaurarlo, y eso sigue cubierto).
+3. **La prueba resuelve el texto esperado una sola vez**, antes de la ejecución, con el comentario que dice que lo que cerró la ventana es el registro en el arranque y no esta lectura. Su comentario sobre «no vaciar desde el test» gana además el hecho medido: el latido entrega al hilo de la interfaz y en el suite ese despacho se descarta, así que publica el cierre.
+
+### 🧪 Guardias: 2 nuevas, y el fallo ahora es reproducible a demanda
+
+`Unit/App/HostLocalizationBootstrapTests`:
+
+1. **El diccionario está registrado antes del primer test** y la clave se resuelve a su texto, no a sí misma (si se resuelve a sí misma, su diccionario todavía no está y todavía puede cambiar de valor más adelante).
+2. **Volver a registrarlo no cambia lo que resuelve una clave**: se registra un gestor <b>nuevo</b> (el servicio deduplica por instancia, no por nombre) —el registro perezoso, tal cual— y se exige que el valor sea el mismo.
+
+### ✅ Validación
+
+- **Mutación**: dejar el registro sin `[ModuleInitializer]` (es decir, volver al registro perezoso) → <b>las dos guardias fallan en 395 ms</b>, y la segunda reproduce el giro exacto que antes aparecía una vez cada cientos de corridas: `Expected LocalizationManager.Instance[StartMessageKey] to be "LogStartingExecution" … but "--- Iniciando Ejecución ---" … differs near "---"`. El fallo intermitente pasa a ser un fallo determinista de milisegundos. Restaurado.
+- **Medición del efecto en el suite completo** (con una sonda temporal, ya retirada): antes de la cura, `al cargar el módulo: 'LogStartingExecution'` y `t=0: '--- Iniciando Ejecución ---'`; con la cura, **`al cargar el módulo: '--- Iniciando Ejecución ---'`** y el mismo valor 50 s después, mientras los gestores seguían creciendo (441→691). En una corrida filtrada, antes: `gestores=0 esClave=True`; con la cura: `gestores=1 esClave=False`.
+- `dotnet test` completo: **1551 superadas + 1 omitida de 1552** con la sonda y **1550 + 1 de 1551 en 1 m 17 s y 1 m 13 s** (dos corridas) sin ella; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Los recursos de los plugins** siguen registrándose cuando cada plugin se carga (como en producción), así que una clave de <i>plugin</i> todavía puede cambiar de valor a mitad del suite. La cura cubre la mitad del host; una prueba que necesite comparar una cadena de plugin en dos momentos tiene que registrar ese plugin antes, como hace `ModalVisualFixture` con las capturas.
+- **El latido de la consola no entrega en el suite headless** (el despacho desde un hilo del grupo de hilos se descarta sin aplicación visible en ese hilo). Eso deja la consola del suite en manos del cierre —que es el camino que interesa aquí—, pero significa que el camino <b>diferido</b> del latido sólo se ejercita con despachadores inyectados (`HeartbeatCadenceTests`, `LogConsoleViewModelTests`). Es una diferencia de fidelidad del entorno de pruebas, no un fallo del producto: en la aplicación el despacho sí encuentra aplicación.
+- **Queda latente la no-atomicidad del vaciado de la consola**: `FlushPendingLogs` saca los registros de la cola y los publica en un paso posterior, así que dos vaciados concurrentes pueden dejar a uno de ellos sin ver lo que el otro ya drenó. Hoy no puede morder —en producción el latido y el cierre corren ambos en el hilo de la interfaz, y en el suite el latido no entrega—, pero es la carrera que aparecería el día en que el despacho headless entregue de verdad. El cierre documenta y necesita ese contrato («lo que quedó encolado se pinta junto a las estadísticas finales»), así que merece su propio hito.
+
+## [2026-09-23] - Un Solo Registro de Latidos: Añadir Uno Es Declararlo (Hito 178)
+
+### 🎯 Objetivo
+
+Unificar los cuatro latidos de la aplicación en un <b>servicio con registro</b>, de modo que añadir un latido sea declararlo y no volver a copiar la fontanería.
+
+### 🔍 El problema, medido
+
+Los cuatro latidos —vigilante de subflujos (1 s), vaciado de la consola (40 ms), muestreo de rendimiento (1 s) y fotograma visual de la ejecución (33 ms)— tenían, cada uno, <b>el mismo ritual de veinte líneas</b>: un campo <code>ITimer</code>, un <code>CreateTimer</code> con el periodo por vencimiento y por intervalo, un <code>Heartbeat.Post</code> con su lambda y su desecho. Las consecuencias eran tres, y las tres se habían pagado ya:
+
+1. **Cuatro sitios donde equivocarse en lugar de uno**: el hito 176 tuvo que arreglar la misma entrega en cuatro ficheros (y la medición de su cadencia se escribió también cuatro veces).
+2. **Cuatro entradas en el inventario de trabajo aplazado** (hito 175) para lo que es un solo mecanismo: vigilar cuatro copias cuesta lo mismo que vigilar una y no dice nada más.
+3. **Los latidos de la aplicación no eran una lista**: nadie podía preguntar «qué late en este programa» — ni una prueba, ni una guardia, ni una herramienta de diagnóstico.
+
+### 🛠️ Implementación
+
+1. **`App/Services/HeartbeatService.cs`**: `IHeartbeatService.Declare(nombre, periodo, paso)` devuelve un `IHeartbeat` que se arranca (`.Start()`), se para (`Stop()`) y se desecha. El servicio posee el reloj inyectable y el despacho, y es el <b>único</b> sitio del producto que programa un latido: `CreateTimer` con mismo número por vencimiento y por periodo, y entrega por `Heartbeat.Post` con el <b>nombre</b> del latido, de modo que el aviso diga cuál falló (el nombre del método del paso no sirve cuando el paso es una lambda, y el de una lambda no dice nada).
+2. **Declarar no es arrancar**, a propósito: el fotograma visual se declara en el constructor del coordinador —así el registro enumera los cuatro desde el arranque— y cada ejecución lo arranca y lo para en su cierre. Los otros tres se declaran y arrancan en su componente, que es quien los desea.
+3. **El registro no admite dos latidos con el mismo nombre** (falla ruidosamente, con el nombre y el periodo del que ya estaba): dos nombres iguales se taparían, y el que no se viera sería el que nadie echa de menos. Valida también nombre, periodo positivo y paso.
+4. **Cada latido conserva lo suyo**: su periodo como constante pública y su paso público (patrón del hito 173), porque son lo que la prueba de cadencia mide. Lo que dejó de ser suyo es el mecanismo. En el código, cada uno pasó de una veintena de líneas a:
+
+| Latido | Antes | Ahora |
+| :--- | :--- | :--- |
+| Subflujos | `_timeProvider.CreateTimer(_ => Heartbeat.Post(_ui, RunSubflowWatchTick), …)` + campo `ITimer` | `_subflowWatchBeat = …Declare(SubflowWatchBeat, SubflowWatchInterval, RunSubflowWatchTick).Start();` |
+| Consola | `clock.CreateTimer(_ => Heartbeat.Post(ui, FlushAllPendingLogs), …)` | `_flushBeat = …Declare(ConsoleFlushBeat, FlushInterval, FlushAllPendingLogs).Start();` |
+| Rendimiento | `clock.CreateTimer(_ => Heartbeat.Post(ui, () => _ = SampleNowAsync()), …)` | `_sampleBeat = …Declare(SampleBeat, SampleInterval, () => _ = SampleNowAsync()).Start();` |
+| Visual | `_timeProvider.CreateTimer(…)` devuelto por `StartVisualHeartbeat()` | latido declarado en el constructor; `StartVisualHeartbeat() => _visualFrameBeat.Start();` |
+
+5. **Un registro para toda la aplicación**: `ServiceCollectionExtensions` registra `IHeartbeatService` como singleton, así que los cuatro componentes lo reciben por contenedor y sus latidos quedan declarados en el mismo sitio. `MainViewModel.Heartbeats` lo expone (y su constructor por defecto comparte uno entre los cuatro; el constructor con contenedor usa el registrado).
+
+### 🧪 Pruebas: 15 (antes 8) y más cerca del mecanismo
+
+- **`ApplicationHeartbeatContractTests` (6)**: los cuatro pasos siguen siendo públicos y cada componente <b>declara</b> su latido con su nombre, su periodo y su paso; y tres guardias nuevas —<b>la fontanería vive en un solo fichero</b> (un barrido de todo `FileFlow.App` que falla si un componente vuelve a programar un temporizador o a entregar su tick por su cuenta, nombrando el fichero), el registro programa con el reloj inyectado y entrega protegido, y el <b>registro de la aplicación</b> declara los cuatro latidos con sus periodos (resolviendo el contenedor de verdad).
+- **`HeartbeatCadenceTests` (8)**: la cadencia se mide <b>una vez por el mecanismo</b> (ni un tick antes del periodo, uno por periodo, y parado ninguno) y de cada componente se afirma su declaración (nombre, periodo y que late); más cuatro pruebas del registro que no existían porque el registro no existía: nombre duplicado, validaciones, parar y reanudar, y listar y encontrar.
+- **`DeferredWorkInventoryGuardTests`**: el inventario pasó de <b>20 sitios a 17</b> —los cuatro temporizadores de latido son ahora uno— y la guardia lo dijo antes que nadie: el volcado nombró el sitio nuevo (`HeartbeatService.cs::Start::Timer`) y las tres decisiones huérfanas antes de que yo tocara el registro.
+
+### ✅ Validación
+
+- **Mutaciones (cinco, todas mordidas y restauradas)**: **A1** — la consola vuelve a programar su temporizador y a entregar su tick → falla el lint de fontanería única nombrando `LogViewModel.cs` <b>dos veces</b> (temporizador y entrega), falla su lint de declaración y aparece un sitio nuevo sin decisión en el inventario; **A2** — el latido visual se arranca al declararse → fallan las dos pruebas que afirman que declarar no es arrancar; **B1** — el nombre duplicado devuelve el latido existente en silencio → falla la guardia del registro; **B2** — `Stop()` deja el temporizador vivo → fallan las cuatro medidas de cadencia («y parado no entrega ninguno más», con `but found 5`), la prueba de parar y reanudar y el lint del desecho; **B3** — el contenedor deja de enlazar el registro → falla el registro de la aplicación.
+- `dotnet test` completo: **1547 superadas + 1 omitida de 1548 en 1 m 23 s, 1 m 14 s y 1 m 20 s** (tres corridas); build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El servicio es del host** (`FileFlow.App`), que es donde viven los latidos de la interfaz. Los aplazamientos de Core y de los plugins siguen cada uno con su reloj y su decisión en el inventario (el servicio no es un planificador de tareas: es el mecanismo de un latido de UI). Si un plugin llegara a necesitar un latido propio, el contrato tendría que subir al SDK antes de copiarlo.
+- `HeartbeatService.Shared` existe sólo como respaldo del constructor con contenedor cuando nadie inyecta servicio; el camino real de producción inyecta el singleton registrado.
+
+## [2026-09-23] - Las Animaciones de la Interfaz Bajo el Reloj del Suite: Asentar Sin Esperar (Hito 177)
+
+### 🎯 Objetivo
+
+Poner las animaciones de la interfaz bajo un reloj inyectable para que afirmar el valor de una propiedad animada deje de costar tiempo real. Era la última deuda del linaje 172→176: medido en el 172, el reloj de animación de la sesión headless avanza con el tiempo <b>transcurrido de verdad</b> entre ticks del reloj de render (una `BrushTransition` de 120 ms: al 30 % con 12 fotogramas, al 100 % con ~42 en solitario, al 80 % con 64 bajo carga), así que el asentado bombeaba 180 ms reales por interacción —y una espera real no prueba la animación, prueba que el tiempo pasa—.
+
+### 🔍 La costura, medida antes de tocar nada
+
+Una sonda contestó las tres preguntas, porque el resto del diseño dependía de ellas:
+
+1. **¿De dónde sale el reloj?** `Avalonia.Animation.Clock.GlobalClock` no guarda un reloj propio: lo resuelve del **`AvaloniaLocator`** en cada construcción de un reloj de animación (`GetRequiredService<IGlobalClock>()`). En headless responde `Avalonia.Media.MediaContext+MediaContextClock`.
+2. **¿Se puede sustituir?** Sí, pero `IGlobalClock` (y `Clock`, e `IClock`) están marcados `[PrivateApi]`: **no existen en los ensamblados de referencia**, así que no se puede compilar contra ellos. La inyección va por reflexión: se implementa la interfaz interna con un `DispatchProxy` y se registra con la API pública `Bind<T>().ToConstant()`. (`PlayState` sí es público y se usa tal cual: la mitad de la reflexión sobraba.)
+3. **¿Manda de verdad?** Con el reloj falso enlazado, **60 ticks del reloj de render no movieron la transición ni un píxel** y las pulsaciones virtuales sí la avanzaron. Es decir: el tiempo real no decide nada y el asentado pasa a ser exacto.
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/AnimationClock.cs`**: el reloj virtual (`Advance(n)` / `AdvanceBy(delta)`) con su `Install()` **idempotente y verificado**. La verificación no es adorno: si Avalonia deja de resolver el reloj por el locator, el enlace se ignoraría **en silencio** y el suite volvería a medir tiempo real con fallos intermitentes tres hitos después; ahora `Install()` lanza con el diagnóstico y `IsInEffect` (que vuelve a preguntar por el reloj global, no se fía de haber enlazado) es la guardia.
+2. **`AvaloniaTestHelper.PrepareApplication`** instala el reloj antes que nada, de modo que cualquier animación que arranque un control de la sesión cuelga del virtual desde el primer instante.
+3. **`InputSimulator.Settle`** deja de esperar: bombea el dispatcher, avanza el reloj de render y **pulsa el reloj de animación** un fotograma virtual (16 ms) por vuelta. `SettleUntil` cambia su plazo de reloj del sistema a **presupuesto virtual**: antes podía rendirse por lentitud de la máquina, con el diagnóstico equivocado. Desaparece `SettleMilliseconds`.
+4. **La semántica del primer pulso** queda escrita: el reloj de cada animación consume su primer pulso como base, así que 12 fotogramas (192 ms) cubren la transición más larga del sistema de diseño (120 ms) con margen; el lint lo ata a las duraciones realmente declaradas.
+
+### 🧪 Pruebas (6 nuevas + 2 apaños retirados)
+
+- **`Unit/Views/AnimationClockTests.cs`**: el reloj de la sesión es el nuestro (y no `MediaContextClock`); **200 ticks de render no mueven una transición sin pulsación** (el testigo conductual: es lo que falla si el enlace se cae); un asentado la deja **exacta** en su valor final; un avance parcial la deja **a medio camino** (interpola, no salta); avanzar 960 ms de interfaz **no cuesta** 960 ms reales; y un lint sobre el XAML de disco —host <b>y</b> plugins— que falla si una transición declarada no cabe en un asentado, con barrido no vacío y anclaje a los ficheros conocidos.
+- **Los dos `Transitions = null` de `InputInteractionTests` desaparecen**: el ítem del cajón y el texto de la pestaña se afirman ahora en su valor **animado** (`SettleUntil(() => BackgroundOf(item) == Token("BgHoverBrush"))`), que era el propósito del hito. Ese apaño era la prueba de que la animación no se estaba probando.
+
+### ✅ Validación
+
+- **Mutaciones en dos rondas, las cinco mordidas**: **A** — el enlace al locator se cae *y su verificación también* (el fallo silencioso que hay que cazar) → **4 fallos** (`IsInEffect` falso, los ticks moviendo la transición, y sin valor final); **B** — el asentado deja de pulsar → los mismos más la pestaña del editor; **C** — presupuesto de asentado a 4 fotogramas → falla el lint y el valor final; **D** — una transición del producto a 400 ms → el lint la nombra (`FileFlow.App/Styles/Buttons.axaml: 400 ms`); **E** — `AdvanceBy` con `Thread.Sleep` real → `Expected watch.Elapsed to be less than 200ms … but found 967ms`.
+- **Lección de la ronda B**: `HoveringAToolboxItem_ShouldHighlightIt` **pasó** con el reloj roto, porque `SettleUntil` sondea y el reloj real acaba llegando. El sondeo es una red que puede tapar un reloj caído; quien muerde es su hermano (la pestaña) y la aserción con diagnóstico. Queda anotado para no confundir «pasa» con «mide».
+- **Lección de la restauración**: un script que reescribía el XAML le añadió un BOM; el fichero se restauró desde `HEAD` (`git diff` vacío) en vez de dejarlo con un cambio que nadie pidió.
+- `dotnet test` completo: **1540 superadas + 1 omitida de 1541 en 1 m 26 s, 1 m 10 s y 1 m 10 s** (tres corridas), con las **29 líneas base visuales intactas** —las capturas no cambian porque el reloj tampoco—; `AnimationClockTests` 6/6 en 1,2 s; `InputInteractionTests` 15/15 en **17,8 s** (antes 26 s: los 180 ms reales de cada asentado se han ido). Build 0 advertencias / 0 errores.
+
+### 📌 Notas para la siguiente sesión
+
+- En una corrida con **binarios mutados** (la mutación E dormía 192 ms por asentado) falló de forma intermitente `WorkflowExecutionThroughTheAppTests.RunningAWorkflowWithWorkToDo_ShouldDoTheWorkAndReportItOnTheCanvas`, sobre la línea de la consola (`LogStartingExecution`). No se reprodujo ni en solitario (3/3) ni en las tres corridas completas posteriores con el binario bueno, y esa prueba no toca ni el asentado ni el reloj de animación: queda como **sospecha de carrera preexistente** entre el latido de la consola y la aserción del test, que merece su propio hito (endurecerlo con el paso público del latido, patrón 173).
+- Lo que queda dependiendo del tiempo real son las esperas de diseño (backoff, sondeo del watcher, latencia simulada, nodo de retardo) y el `DispatcherTimer` del barrido de la splash. Con el reloj virtual ya instalado, el siguiente candidato natural es ese barrido y las dos esperas de la interfaz que aún se asientan a mano.
+
+## [2026-09-23] - Los Cuatro Latidos Sobre el Reloj Inyectable: Cadencia Medida (Hito 176)
+
+### 🎯 Objetivo
+
+Pasar los cuatro <b>latidos</b> de la aplicación de <c>DispatcherTimer</c> al <c>TimeProvider</c> inyectable y <b>medir su cadencia</b>, que era la única propiedad del contrato que no se podía afirmar: con el reloj del sistema, probar «un latido por periodo» exige esperar el periodo de verdad —y una espera real no prueba la cadencia, prueba que el tiempo pasa—. Era la deuda anotada en el hito 173.
+
+| Latido | Periodo | Antes | Ahora |
+| :--- | :--- | :--- | :--- |
+| Subflujos | 1 s | `DispatcherTimer(Background)` + manejador que reenviaba | `_timeProvider.CreateTimer(…)` entregando `RunSubflowWatchTick` |
+| Consola | 40 ms | `DispatcherTimer(Background)` | `clock.CreateTimer(…)` entregando `FlushAllPendingLogs` |
+| Rendimiento | 1 s | `DispatcherTimer` + `async void OnTimerTick` | `clock.CreateTimer(…)` entregando `SampleNowAsync` |
+| Visual | 33 ms | `DispatcherTimer(Normal)` local de `RunAsync` | `StartVisualHeartbeat()`, paso con nombre propio que `RunAsync` usa y desecha |
+
+### 🛠️ Implementación
+
+1. **`Heartbeat.Post(ui, step)`** (`App/Services/Heartbeat.cs`): la entrega del latido, protegida. No es una precaución teórica: al quitar el `try/catch` que tenía el despacho antiguo, el suite se cayó de verdad —host de pruebas muerto por un `NullReferenceException` dentro de `Avalonia.Threading.Dispatcher.RequestProcessing`, con `Task.Delay`/timer callback en el hilo del grupo de hilos, donde no hay bucle que recoja la excepción—. Un latido no es una tarea de la que dependa nada: si su entrega falla, se deja constancia y la aplicación sigue viva.
+2. **`IUiDispatcher` inyectable en los cuatro** (el coordinador ya lo tenía): el reloj entrega el tick en un hilo del grupo de hilos y el trabajo se lleva al hilo de la interfaz. En pruebas se inyectan dobles en línea (semántica de `NullUiDispatcher`), así que la medida es determinista y no depende de que exista una aplicación.
+3. **Los periodos pasan a ser públicos** (`SubflowWatchInterval`, `FlushInterval`, `SampleInterval`, `VisualFlushInterval`): la prueba de cadencia avanza el reloj contra el número declarado, no contra una copia.
+4. **`AvaloniaUiDispatcher` descarta lo que no tiene interfaz que lo reciba** (y `CheckAccess` responde `true` sin aplicación): con el latido entregando desde un hilo del grupo de hilos, un despacho contra una aplicación no arrancada <b>inicializaba el despachador de Avalonia —y su bucle de render— en ese hilo</b>, y la siguiente sesión headless moría al montar su compositor con «The calling thread cannot access this object because a different thread owns it» (11 capturas del shell en rojo). Tocar la interfaz desde el hilo equivocado es peor que no hacerlo.
+
+### 🧪 Pruebas (4 nuevas + lint reescrito)
+
+- **`HeartbeatCadenceTests`** (4): para cada latido — nada un tick antes del periodo, exactamente una entrega al cumplirlo, una por cada periodo siguiente, y ninguna después de desecharlo. El instrumento es `RecordingUiDispatcher` (TestHelpers), que ejecuta en línea y registra qué se despacha: cada vencimiento entrega un despacho, así que contarlos por el nombre del método es contar los latidos —contar el <i>efecto</i> no serviría para todos, porque el vigilante de subflujos sin nada que refrescar no deja rastro por diseño—.
+- **El cuarto se mide sin poner una ejecución en marcha**: por eso su programación es un paso con nombre propio (`StartVisualHeartbeat`), que `RunAsync` usa —el lint lo comprueba— y la prueba de cadencia ejerce directamente.
+- **`ApplicationHeartbeatContractTests` reescrito** a la forma del hito 176: paso público, programación sobre el reloj inyectable (y no un `DispatcherTimer`), el paso nombrado en la entrega, `Heartbeat.Post` presente y temporizador desechado. La comprobación del periodo mira <b>dentro</b> de la llamada de programación (`TimerProgramming`), no sólo que el archivo mencione la constante.
+
+### ✅ Validación
+
+- **Mutaciones (tres rondas, mordidas y restauradas)**: **A** — la programación usa 80 ms en vez de `FlushInterval` → **2 fallos** (la cadencia: «cumplido el periodo, el latido entrega su trabajo exactamente una vez, but found 0»; y el lint: «tiene que usar 'FlushInterval' como vencimiento y como periodo, no un número suelto»); **B** — la consola vuelve a `DispatcherTimer` → **2 fallos** (`PendingTimerCount to be 1, but found 0` y el lint: «tiene que colgar del reloj inyectable»); **C** — el latido de subflujos entrega sin `Heartbeat.Post` → **1 fallo** (el lint de la entrega protegida), y la prueba de cadencia <i>sigue pasando</i>, que es la atribución correcta: la protección es fontanería, no efecto.
+- **Tres regresiones medidas por el camino, todas arregladas**: el host de pruebas muriendo por la excepción no capturada; el compositor de la sesión headless envenenado por el despachador creado en un hilo del grupo de hilos; y el conteo de temporizadores del pulso de energía del hito 174 —que ahora comparte reloj con el vigilante del propio lienzo— convertido en <b>incremento</b> en lugar de número exacto.
+- `dotnet test` completo: **1534 superadas + 1 omitida de 1535 en 1 m 38 s y en 1 m 48 s** (dos corridas seguidas); build **0 advertencias / 0 errores**; y **arranque real** de la aplicación: viva 12 s con <b>0 bytes</b> de crecimiento en `crash.log`.
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que queda de «tiempo real»** son las esperas que por diseño lo quieren (backoff de reintentos, sondeo del vigilante de carpetas, latencia simulada del origen sintético, nodo de retardo) y dos sitios del inventario declarados así. Con `TimeProvider` ya en el repositorio y la cadencia medida, el siguiente paso natural es el <b>reloj en las animaciones de la interfaz</b> (el reloj de render headless avanza con el tiempo transcurrido, no con los fotogramas: lo medimos en el hito 172).
+- El inventario del hito 175 cambió de clave con este hito (`RunAsync::Timer` → `StartVisualHeartbeat::Timer`) y la guardía lo dijo antes que nadie; queda como ejemplo de por qué existe.
+
+## [2026-09-23] - La Guardia del Inventario: Ningún Temporizador ni Espera Sin Decisión (Hito 175)
+
+### 🎯 Objetivo
+
+Convertir en guardia la revisión que hasta ahora se hacía a mano hito tras hito. La capa que sólo corre con la aplicación en marcha o cuando pasa el tiempo es la que peor envejece, y cada vez se descubrió tarde: el barrido de la splash estuvo muerto varios hitos (169), los cuatro latidos no se ejercitaban en ninguna prueba (173) y los dos relojes con duración semántica no tenían vencimiento probado (174). Ahora el inventario de trabajo aplazado se recalcula del código en cada ejecución y <b>cada sitio tiene que estar ejercitado por una prueba nombrada o explicado con un motivo</b>: un temporizador nuevo sin decisión rompe el suite.
+
+### 🔎 Alcance: una decisión explícita, no un olvido
+
+| | Qué | Por qué |
+| :--- | :--- | :--- |
+| **Dentro** | `DispatcherTimer`, `PeriodicTimer`, `Timer`, `TimeProvider.CreateTimer` y `Task.Delay` | es el trabajo que se aplaza <i>en el tiempo</i>: o late, o vence, o espera |
+| **Fuera** | `Dispatcher.UIThread.Post`/`InvokeAsync` | es marshalado de hilo, no tiempo: en headless el despachador existe y ese trabajo <b>sí</b> corre en las pruebas. Meterlo llenaría el inventario de entradas sin riesgo y le quitaría filo a la guardia |
+| **Fuera** | `CancellationTokenSource.CancelAfter` | es una fecha límite de cancelación: al vencer no se ejecuta nada, se despierta un token |
+
+**Inventario real: 20 sitios** — 9 en la aplicación, 5 en Core, 6 en plugins. 17 <b>ejercitados</b> por una prueba nombrada y 3 declarados de tiempo real (la espera del arranque a que la interfaz esté pintada, el fundido de cierre de la splash y la latencia simulada del origen sintético, que las pruebas generan con `EmissionDelayMs = 0`).
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/DeferredWorkInventoryAnalyzer.cs`** (Roslyn): identifica cada sitio con una clave estable —`fichero::miembro::tipo`, con ordinal `#n` sólo cuando un mismo miembro aplaza más de una vez—, resuelve el miembro por el ancestro más cercano (un `Task.Delay` dentro de una función local pertenece a la función local, no al método que la contiene) y marca los retardos que cuelgan de un reloj inyectado (`Task.Delay(duración, timeProvider)`), que es la señal de que su vencimiento es probable. Añade `HasPublicMember`, la mitad estática del patrón del hito 173.
+2. **`PluginSourceLocator.ProductionProjectNames`**: el alcance del barrido sale de `FileFlow.slnx` menos el suite, así que el host, Core, el Sdk y los plugins entran solos y un proyecto nuevo queda cubierto al añadirlo a la solución. `PluginProjectNames` se reescribe encima de la misma lectura (mismo comportamiento).
+3. **`Unit/App/DeferredWorkInventoryGuardTests.cs`**: el <b>registro</b> de las 20 decisiones (una línea por sitio, con la evidencia citada o el motivo) y tres comprobaciones sobre el árbol real más seis auto-tests del analizador.
+
+### 🧪 Pruebas (9)
+
+- **Inventario**: un sitio sin decisión falla <i>volcando la lista completa</i> de lo que falta; una decisión sin sitio falla como huérfana (el sitio se movió, se renombró o desapareció).
+- **Evidencia verificable**: un `Exercised` exige que el paso sea un miembro <b>público</b> del fichero del sitio y que la clase de test citada lo nombre (o nombre el tipo, cuando la prueba maneja el nodo dentro de un flujo y no su método). Sin esto, el registro sería una lista de buenas intenciones.
+- **Alcance**: el barrido no puede ser vacío, tiene que ver App, Core y plugins, y tiene que encontrar cinco sitios conocidos —los cuatro latidos y los dos relojes del hito 174—, que es lo que delata un barrido que dejó de mirar donde debe.
+- **Auto-tests del analizador (6)**: temporizador y espera con miembro y línea exactos; reloj inyectado y `CreateTimer`; `CancelAfter`, despacho al hilo de UI y texto entre comillas quedan fuera; lo comentado no cuenta (lección del hito 165); una espera dentro de una función local se reporta por la función local; los ordinales aparecen sólo cuando el miembro aplaza más de una vez.
+
+### ✅ Validación (mutaciones en cuatro rondas, todas mordidas y restauradas)
+
+- **A — funcionalidad nueva**: un segundo `Task.Delay` en un miembro ya inventariado → falla nombrando el sitio nuevo <b>y</b> el cambio de clave del anterior (`Delay#1`/`Delay#2`).
+- **B — un sitio que desaparece** (quitar el `Task.Delay(16)` del fundido de cierre) → falla por decisión huérfana.
+- **C — la evidencia miente**: renombrar la clase de prueba citada (`ConnectionEnergyTests` → `…Suite`) → «la prueba citada no existe en el suite».
+- **D — el refactor que esconde una espera**: mover el aplazamiento del aviso de copiado a un ayudante privado → falla por clave nueva sin decisión, y el volcado marca `[reloj inyectado]`, que es justo la pista que necesita quien vaya a decidir.
+- **Lección anotada**: la primera versión del auto-test fue <b>rechazada por la guardia del contrato de colecciones</b>, porque su snippet contenía `Dispatcher.UIThread` literal y esa guardia mira el texto: no distingue una llamada de una cadena de ejemplo. El snippet usa ahora un alias (<c>using UiDispatcher = …</c>) y lo explica.
+- `dotnet test` completo: **1530 superadas + 1 omitida de 1531 en 1 m 36 s y en 1 m 28 s** (dos corridas seguidas); clase nueva **9/9 en 2 s**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Convivencia con `ApplicationHeartbeatContractTests`** (hito 173), deliberada: aquel lint verifica el <b>cableado</b> (que el temporizador llame a ese paso y que esté arrancado); éste verifica que el <b>inventario</b> no crezca en silencio. Un latido nuevo debería aparecer en los dos.
+- Los tres sitios de tiempo real son los candidatos naturales a pasar a `Exercised` cuando alguien toque esas rutas: el arranque (espera al primer fotograma), el fundido de la splash y el retardo del origen sintético (bastaría una prueba con `EmissionDelayMs` pequeño).
+
+## [2026-09-23] - Los Relojes con Semántica Bajo Prueba: Pulso de Energía y Aviso de Copiado (Hito 174)
+
+### 🎯 Objetivo
+
+Inyectar una fuente de tiempo (<c>TimeProvider</c>) en los dos relojes cuya <b>duración es semántica</b> —cuánto se queda encendido el pulso de energía de un cable y cuánto dura el aviso de «copiado»— para probar su <b>vencimiento</b> sin esperas reales. Hasta este hito se probaba el efecto (y la generación, pasada a mano) pero no el vencimiento programado, que es lo que apaga las cosas solo: con el reloj del sistema comprobarlo cuesta la espera entera por caso, y una espera real no prueba nada —prueba que el tiempo pasa—.
+
+| Reloj | Dónde | Duración | Antes | Ahora |
+| :--- | :--- | :--- | :--- | :--- |
+| **Vencimiento del pulso de energía** | `EditorViewModel` | 900 ms | `Task.Delay` del reloj del sistema; sólo se ejercitaba `CompleteConnectionPulse` con la generación inventada | `Task.Delay(…, _timeProvider)` y `PulseConnectionEnergy` **devuelve la tarea de su vencimiento** |
+| **Aviso de «copiado»** | `NodeParameterViewModel` | 1500 ms (`CopyFeedbackDuration`) | `Task.Delay(1500)` a secas, y el aviso de un primer clic apagaba el de un segundo (defecto latente, nadie lo había probado) | reloj inyectado **y generación**: un clic nuevo reabre la ventana del aviso |
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/ManualTimeProvider.cs`**: reloj manual — «el tiempo avanza cuando la prueba lo dice»— con `GetUtcNow`, `GetTimestamp`, `CreateTimer` (un disparo y periódico, con `Change`/`Dispose`) y `AdvanceBy`, que dispara los temporizadores vencidos **fuera del candado** y en orden de vencimiento, para que un callback pueda volver a programar sin bloquearse. Añade `PendingTimerCount`, el número de temporizadores vivos.
+2. **`EditorViewModel`**: parámetro opcional `TimeProvider? timeProvider = null` (por defecto `TimeProvider.System`, así el cableado de la aplicación no cambia) y `PulseConnectionEnergy` pasa a devolver el `Task` de su vencimiento. Nadie en la aplicación lo necesita —el cable se apaga solo—, pero el test sí: esperar esa tarea es lo que convierte «el vencimiento obsoleto no apagó el pulso nuevo» en una comprobación en lugar de una carrera.
+3. **`NodeParameterViewModel`**: mismo parámetro opcional en los dos constructores (el de descriptor lo reenvía), la duración pasa a constante pública `CopyFeedbackDuration` y el aviso se rige por una **generación**: un clic nuevo la incrementa y sólo el vencimiento que sigue siendo el vigente apaga `IsCopied`. Si el portapapeles falla, no se anuncia la copia (antes el aviso se encendía y el `Task.Delay` quedaba fuera del `try`: un reloj que falla dejaba el aviso encendido para siempre).
+4. **Doctrina de fallo seguro** (la misma en los dos relojes): si el reloj no puede programar, el pulso no puede quedarse encendido —el runtime del cable lo apagará al terminar la ejecución— y el aviso se apaga en el acto; en ambos casos la excepción se registra y no se propaga.
+
+### 🧪 Pruebas (5 nuevas)
+
+- **Pulso (2)**: el cable sigue encendido a los 899 ms y se apaga al llegar a 900 (con el reloj manual), y —la ráfaga de verdad— el vencimiento del primer pulso llega **con el segundo en marcha** y no lo apaga; el del último sí cierra el cable.
+- **Aviso de copiado (3)**: dura exactamente `CopyFeedbackDuration`, un segundo clic **reabre** su ventana (el vencimiento del primero no lo apaga) y sin valor no hay copia ni confirmación.
+- **Dos lecciones medidas en la primera versión, escritas en las pruebas**: (a) un test que sólo observa el estado final **pasa despacio con el reloj equivocado** (el de la duración esperó 1,5 s reales y aprobó), de modo que no medía la inyección sino la paciencia — ahora cada test comprueba además que el vencimiento quedó programado **en el reloj inyectado** (`PendingTimerCount`) y espera la tarea con un plazo **menor** que la duración del aviso; (b) comprobar que el vencimiento obsoleto no apaga nada exige **esperar ese vencimiento**, y eso sólo es posible porque el método devuelve su tarea.
+
+### ✅ Validación (mutaciones en tres rondas, todas mordidas y restauradas)
+
+- **Ronda A — guardia de generación fuera** (`CompleteConnectionPulse` apaga siempre) → **2 fallos**: el test estático que ya existía y el nuevo con el reloj manual.
+- **Ronda B — los dos relojes vuelven al sistema** → **4 fallos**, uno por cada prueba de reloj, con el diagnóstico exacto: `Expected clock.PendingTimerCount to be 1 because el vencimiento quedó programado en el reloj inyectado, no en el del sistema, but found 0`.
+- **Ronda C — generación del aviso fuera** → **1 fallo**: el segundo clic deja de reabrir su ventana.
+- `dotnet test` completo: **1521 superadas + 1 omitida de 1522 en 1 m 39 s y en 1 m 43 s** (dos corridas seguidas); clase nueva **21/21 en 744 ms**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que sigue sin cubrirse**: la **cadencia** de los cuatro latidos del hito 173 (que disparen cada 33/40 ms). El `TimeProvider` ya está en el repositorio y sirve para exactamente eso: el siguiente paso natural es que esos temporizadores dejen de ser `DispatcherTimer` y pasen a colgar del reloj inyectable.
+- Las esperas que quedan con `Task.Delay` en producción son las que **por diseño quieren tiempo real**: reintentos con backoff (`ExecutionRetryHelper`, cliente VLM), sondeo del `FolderWatcherService`, throttling del nodo de retardo y las de arranque/renderizado. Ahí el reloj inyectado no aporta: lo que hay que probar no es la duración sino la política (reintentos, cancelación), que se prueba sin esperar.
+
+## [2026-09-23] - Los Cuatro Latidos Bajo Prueba: Caminos que Sólo Corrían en la Aplicación (Hito 173)
+
+### 🎯 Objetivo
+
+Poner bajo prueba los cuatro <b>latidos</b> de la aplicación —los temporizadores cuyo camino no se ejecutaba en ninguna prueba porque el suite no bombea el bucle de mensajes— con el patrón ya validado en el hito 169 (el barrido de la splash): <b>el mismo método que llama el temporizador es público y sin argumentos</b>, de modo que lo que ejercita una prueba es exactamente lo que corre en el producto.
+
+| Latido | Dónde | Cadencia | Antes | Ahora |
+| :--- | :--- | :--- | :--- | :--- |
+| **Subflujos** | `EditorViewModel` | 1 s | tick privado; el suite probaba el refresco pero no que el lienzo se entere solo | `RunSubflowWatchTick()` público; el manejador sólo reenvía (se conserva la desuscripción determinista de `Dispose`) |
+| **Consola** | `LogViewModel` | 40 ms | todos los tests vaciaban a mano: el camino diferido no corría nunca | el temporizador llama al método público `FlushAllPendingLogs()`; `FlushPendingLogs` queda como cuerpo privado |
+| **Rendimiento** | `SystemPerformanceMonitor` | 1 s | sólo se probaba el formateo y que se pueda construir | `SampleNowAsync()` público y con `Task`; el tick reenvía con `await` |
+| **Visual** | `WorkflowExecutionCoordinator` | 33 ms | era una lambda con los diccionarios capturados dentro de `RunAsync` | colas a campos (vaciadas al arrancar cada ejecución), encolado por tres métodos públicos y `FlushVisualFrame()` como fotograma |
+
+### 🛠️ Implementación
+
+1. **Subflujos**: `public void RunSubflowWatchTick() => RefreshSubflowsChangedOnDisk();` y `OnSubflowWatchTick` reducido a un reenvío. El reenvío existe para conservar el `Tick -= OnSubflowWatchTick` del `Dispose`: con una lambda no se puede desuscribir.
+2. **Consola**: el latido llamaba a un privado que hacía lo mismo que el público, así que el paso se **unificó** en el público (menos superficie que añadir un alias). El cuerpo sigue en `FlushPendingLogs`, privado.
+3. **Rendimiento**: la guarda `_isSampling` se levanta <b>antes</b> del primer `await` a propósito —dos ticks solapados no pueden producir dos muestras— y la comprobación de desecho se mantiene en los dos puntos (entrada y antes de publicar). El `async void` del tick pasa a `async void → await SampleNowAsync()`, con el `try/catch` dentro del paso: una excepción transitoria del proceso se registra y se traga en lugar de tumbar la aplicación.
+4. **Visual**: las tres colas (`_pendingEdgeUpdates`, `_pendingStatusUpdates`, `_pendingNodeProgressUpdates`) pasan de locales de `RunAsync` a campos, porque un paso con nombre se puede ejercitar y una lambda con todo capturado dentro de una ejecución no. Los manejadores del motor encolan por `QueueNodeStatus`/`QueueNodeProgress`/`QueueEdgeDispatch` —los mismos métodos que usa la prueba—, el temporizador llama a `FlushVisualFrame()` y el `finally` **reutiliza ese mismo paso** en vez de la veintena de líneas duplicadas que tenía para el volcado final.
+5. **`TestHelpers/SourceText.cs`**: el limpiador de comentarios de los lints se extrae de `SplashScreenStartupTests` (`WithoutComments` + `CodeWithoutComments`) para que haya una sola implementación. Sin él, un lint se conforma con encontrar la línea **comentada** — la lección del hito 165.
+
+### 🧪 Pruebas (15 nuevas)
+
+- **Subflujos (2)**: el latido refresca el contenedor que cambió en disco (se llama al latido, no al refresco) y sus dos casos aburridos —nada cambió: no toca el grafo; el lienzo ya se desechó: no revienta—.
+- **Consola (3)**: el latido es lo que pone los registros en pantalla (el productor sólo encola), una ráfaga de 500 líneas llega entera **en un solo lote** y el latido **cuenta** lo que llega aunque el buscador no pinte la fila.
+- **Rendimiento (3)**: publica una muestra plausible (memoria > 0, CPU acotada), no se solapa cuando coinciden dos ticks (un solo evento) y calla después de `Dispose`.
+- **Visual (3)**: pinta lo que el motor publicó antes de que la ejecución termine (estado, progreso y pulso del cable), ignora las actualizaciones de nodos que ya no están y corre sin ejecución en marcha (el primer latido y el último caen fuera de la ejecución).
+- **`ApplicationHeartbeatContractTests` (4)**: lint que ata los cuatro —paso alcanzable, temporizador llamando a **ese** paso y `.Start()` presente— sobre el código real sin comentarios.
+
+### ✅ Validación (mutaciones en dos rondas)
+
+- **Ronda A — comportamiento (4 mutaciones simultáneas, una por latido)**: latido de subflujos vacío, consola sin pintar, guarda de reentrada del muestreo fuera y fotograma visual sin volcar → **11 fallos**, con dueño claro para cada latido. Atribución cruzada esperada y anotada: el mutante de la consola también tumba tres pruebas que **leen la consola** sin ser de este hito (el efecto es compartido). El lint **no** falla en esta ronda, y es correcto: vigila la fontanería, no el efecto.
+- **Ronda B — cableado (2 mutaciones)**: temporizador de subflujos sin `.Start()` (latido muerto en silencio) y temporizador de consola llamando otra vez al privado → **fallan 2 de 4 lints**, nombrando cada caso.
+- `dotnet test` completo: **1516 superadas + 1 omitida de 1517 en 1 m 44 s**; build **0 advertencias / 0 errores**. Los cuatro se detienen al desecharse (revisado: `Stop()` en `Dispose` de los tres view models/servicios y en el `finally` de la ejecución).
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que sigue sin cubrirse**: la <b>cadencia</b> real (que el temporizador dispare cada 33/40 ms) no se mide — el lint fija la suscripción y los intervalos viven en constantes del código—. Medirla exigiría un reloj inyectable (`TimeProvider`), que el repositorio aún no usa en ninguna parte.
+- El patrón «paso público y sin argumentos + lint de alcanzabilidad» ya está aplicado a cinco pasos (barrido de la splash y los cuatro latidos). Si aparece un sexto temporizador, la lista de este hito y el lint de `ApplicationHeartbeatContractTests` son el sitio donde añadirlo.
+
+## [2026-09-23] - La Capa de Interacción Bajo Prueba: Estados, Atajos, Arrastre y Buscador con Entrada Real (Hito 172)
+
+### 🎯 Objetivo
+
+Cubrir la mitad «viva» del rediseño: los **estados de estilo** (hover, pressed, focus, disabled), los **atajos de teclado**, el **arrastre de un nodo del cajón al lienzo** y el **foco del buscador rápido**. Hasta este hito el suite no simulaba ni un clic, ni una tecla, ni un arrastre: las 29 capturas visuales congelan estados quietos y los lints comprueban el texto de las reglas, así que un selector mal escrito, un atajo que no llega o un foco que no aterriza solo se veían usando la aplicación.
+
+### 🔎 El punto ciego, medido antes de escribir nada
+
+Búsqueda en el suite: **cero** `MouseDown`/`MouseMove`/`KeyPress`/`DragDrop` en todo el proyecto. La versión de `Avalonia.Headless` que ya usábamos (12.1.2) **sí** expone la simulación de entrada, en la misma clase que el `CaptureRenderedFrame` de las capturas: no hacía falta herramienta nueva.
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/InputSimulator.cs`**: entrada real sobre la sesión headless — `Hover`, `Press`, `Release`, `Click`, `ClickAt`, `MovePointer`, `Key` (con modificadores), `Type` y `DropText` (el mismo `DataTransfer` con texto que envía el cajón). Dos piezas de tiempo: `Settle`, que bombea el dispatcher y avanza el reloj de render **y** espera tiempo real (el reloj de animación headless avanza con el tiempo transcurrido, no con los fotogramas), y `SettleUntil`, que sondea hasta que la condición se cumple, según el mismo criterio que `AsyncTestWaiter`.
+2. **`Unit/Views/InputInteractionTests.cs`** (15 pruebas, colección `VisualSnapshots`):
+   - **Estados**: hover y pressed de `Button.primary` contra sus tokens (`AccentHoverBrush`, `AccentPrimaryBrush` + opacidad 0.82), disabled (opacidad 0.45 **y** clic sin efecto), anillo de foco del `TextBox` (`AccentPrimaryBrush`, y vuelta al borde neutro al irse el foco), pestaña (carril `BgSurfaceBrush` al pasar el puntero; al hacer clic viaja el indicador `PART_SelectedPipe` y el texto sube a `TextPrimaryBrush`) y el ítem del cajón (`Border.nodeMenuItem` → `BgHoverBrush`).
+   - **Atajos**: `Delete` borra el nodo seleccionado —seleccionado con un **clic real** en su título— y `Ctrl+Z`/`Ctrl+Y` lo deshacen y rehacen; `F2` abre el renombrado en sitio y `Enter` confirma / `Escape` descarta.
+   - **Arrastre**: soltar un ítem del cajón crea el nodo **donde se suelta** (dos posiciones distintas, con la cuenta de zoom y desplazamiento del viewport replicada en la prueba) y soltar un texto que no es un tipo de nodo no crea nada ni toca los que ya estaban.
+   - **Buscador**: `Espacio` lo abre **donde está el puntero** con la caja enfocada, `Shift+A` también, teclear filtra, `↓` navega, `Enter` crea el tipo seleccionado y `Escape` cierra sin crear nada.
+3. **Defecto real encontrado y arreglado — el renombrado en sitio no confirmaba nunca**: los tres manejadores de la caja de título (`Enter` para confirmar, `Escape` para descartar, `LostFocus`) se enganchaban en el **constructor** de `NodeCardView` con `this.FindControl<TextBox>("TitleEditBox")`, y la caja vive dentro del `DataTemplate` de la cabecera de Nodify, que tiene **namescope propio**: `FindControl` devolvía `null`, los manejadores nunca se enganchaban y el nombre no se confirmaba ni con `Enter`, ni con `Escape`, ni al hacer clic fuera — el renombrado abría la caja y se quedaba ahí. Se enganchan ya en el **XAML**, sobre el propio `TextBox` (donde ocurre el evento), y se retira el bloque muerto. La sonda lo fijó antes de tocar: `card.FindControl('TitleEditBox') = null`, y tras `Enter` con «Sondeo» escrito, `IsEditingTitle=True` y `Title` intacto.
+4. **Aislamiento**: el fixture siembra un grafo de ejemplo (3 nodos), así que las pruebas de arrastre miden **deltas**, no totales absolutos; y el tema se **fija** antes de mostrar cada ventana, porque los estados se afirman contra tokens del tema activo y el tema es estado de proceso compartido con las capturas.
+
+### 🧪 Validación (tres rondas de mutación, todas mordidas y restauradas)
+
+- **Ronda A** (token del hover + foco del buscador): `Button.primary:pointerover` apuntando al acento base y `SpotlightSearchBox?.Focus()` retirado → **3 fallos** exactos (el token del hover y las dos pruebas del foco).
+- **Ronda B** (pareja del renombrado + posición del soltado): reponer el defecto original (sin manejadores en el XAML) y soltar siempre en `(0,0)` → **4 fallos** (las dos del renombrado y la de posición), lo que demuestra que la guardia ve el bug que arreglamos.
+- **Ronda C** (reglas de estado de las dos superficies nuevas): `Border.nodeMenuItem:pointerover` a `BgHeaderBrush` y `TabItem:selected` a `TextSecondaryBrush` → **2 fallos** exactos, uno por prueba.
+- `dotnet test` completo: **1501 superadas + 1 omitida de 1502 en 1 m 36 s** y **en 1 m 56 s** (dos corridas seguidas, las capturas intactas); build **0 advertencias / 0 errores**.
+
+### ⚠️ Fragilidad de la infraestructura, medida en el camino (costó más que las pruebas)
+
+Los estados se afirmaban contra el **valor final** de una propiedad animada y eso produjo un fallo intermitente que **solo** aparecía en la suite completa. Datos: una `BrushTransition` de 100 ms quedaba al **30 %** con las 12 primeras mediciones, llegaba al token exacto con ~42 fotogramas en una corrida en solitario y se quedaba al **80 %** con 64 bajo la carga de la suite; el sondeo de 3 s tampoco convergía, y el mensaje dejó el síntoma a la vista: `Expected BackgroundOf(item) to be #ff21262d [tema=dark_fluent variante=Dark tokenVentana=#ff21262d], but found #17f5f5f5` — el ítem al 9 % de una transición hacia un token **claro** mientras el tema activo era oscuro. Conclusión aplicada: donde el sistema de diseño anima la propiedad, la prueba mide el **estado aplicado sin la transición** (`Transitions = null`, medido entonces con exactitud) y deja la animación para las capturas y los hitos 169/171; el resto de aserciones son tokens exactos de propiedades que no se animan (cara del botón, anillo del campo, carril e indicador de la pestaña).
+
+### 📌 Notas para la siguiente sesión
+
+- **`PART_SelectedPipe` pinta el azul de Fluent**: el indicador de pestaña activa se ve `#ff0078d7`, no `AccentPrimaryBrush`, porque el valor viene fijado en la **plantilla** de `TabItem` y un `Setter` de estilo no puede ganarle. Es una regla del sistema de diseño que nunca se aplica. Cerrarlo exige un `ControlTheme` propio de `TabItem` (no un estilo) y revisar las líneas base visuales que muestren pestañas.
+- **`F2` no lleva el foco a la caja de renombrado**: la abre, pero el usuario todavía tiene que hacer clic en ella para escribir. Sonda: `caja: visible=True focused=False` inmediatamente después de `F2`.
+- **Residual del fallo intermitente**: no llegué a fijar la intercalación exacta que deja a un elemento animando contra un token de un tema que ya no está (ocurre solo bajo la suite completa). El trabajo se hizo inmune a ello, pero si reaparece en otra superficie, el diagnóstico ya está en el mensaje de la prueba del cajón.
+
+## [2026-09-23] - El Tema No Es del Código: Guardia del Patrón que Tumbó la Splash (Hito 171)
+
+### 🎯 Objetivo
+
+Convertir el hallazgo del hito 169 en una regla: que el código no pueda volver a **escribir en una propiedad que el tema posee y dar por hecho su valor**. Una propiedad enlazada con `{DynamicResource}` no es del código que la escribe — al republicarse el tema (`ThemeManager.ApplyResourceDictionary` reemplaza los recursos) Avalonia vuelve a evaluar el recurso y escribe por encima.
+
+### 🔎 Búsqueda (medida, no supuesta)
+
+Barrido del repositorio con dos preguntas: ¿quién castea un pincel de control? **Nadie** (el de la splash, arreglado en el 169, era el único). ¿Quién escribe en una propiedad de pincel? **Dos sitios**, y uno era el mismo defecto vivo: `ColorPickerButton` asignaba el color elegido a `SwatchBorder.Background`, que su XAML enlazaba a `AccentPrimaryBrush`. Cada aplicación de tema —arranque o cualquier paso por el Theme Studio— **revertía el muestrario al acento del tema en silencio**: el segundo damnificado del mismo patrón, invisible hasta ahora.
+
+### 🛠️ Implementación
+
+1. **Analizador** (`ThemeTokenOverwriteAnalyzer`, Roslyn + XDocument, como el de arquitectura de nodos): dos reglas. `Pincel-casteado-a-ciegas` —castear un tipo de pincel sobre una propiedad de control (`Foreground`, `Background`, `BorderBrush`, `Fill`, `Stroke`, `BoxShadow`, `CaretBrush`)— y `Escritura-sobre-propiedad-del-tema` —asignación en el code-behind a una propiedad que el XAML de esa misma vista enlaza con `{DynamicResource}`, sin ninguna lectura que compruebe el valor (`is`/`as`/`ReferenceEquals`)—. Análisis sintáctico: la línea es la real y no hay falsos positivos por comentarios o cadenas.
+2. **Guardia** (`ThemeTokenOverwriteGuardTests`, 8 pruebas): dos barridos sobre el árbol real —host y **todos** los plugins, con el alcance sacado de `FileFlow.slnx`—, una prueba de alcance que delata un barrido vacío (contiene vistas conocidas del host y de plugins; sin ella, no encontrar nada pasaría siempre) y auto-tests del analizador con snippets: marca el casteo original de la splash con fichero y línea, marca la escritura sobre una propiedad del tema, y **calla** ante el casteo de un valor de recurso (legítimo: `TryResolveThemeBrush`), ante la escritura comprobada con `ReferenceEquals` (lo que hace ahora el barrido de la splash) y ante una propiedad que el tema no posee.
+3. **Arreglo del muestrario**: el chrome (radio y borde) sigue en tokens y el color pasa a un relleno interior que **no** está enlazado al tema, de modo que el color es del control y el tema no puede revertirlo. Además, el muestrario refleja ahora el valor real del control en lugar del acento del tema.
+4. **Prueba de comportamiento** (`ColorPickerSwatchTests`): el color elegido sobrevive a republicar el tema. La regla estática detecta el patrón; esta prueba mide el efecto sobre el control real, buscando el color **por lo que se ve** (el borde más interno que pinta un color sólido) y no por su nombre, para que siga midiendo aunque el árbol se reorganice.
+
+### 🧪 Validación
+
+- **Tres mutaciones, todas mordidas y restauradas**: (1) reponer código+XAML del muestrario → falla el barrido citando `ColorPickerButton.axaml.cs(89): [Escritura-sobre-propiedad-del-tema] SwatchBorder.Background` **y** falla la prueba de comportamiento con la evidencia del daño (`expected #ff10b981, found #ff4f46e5`, el acento del tema claro); (2) reintroducir el casteo ciego en la splash → falla el barrido citando `SplashScreenWindow.axaml.cs(135): [Pincel-casteado-a-ciegas] Foreground`. Lección anotada: la primera mutación del muestrario **no** falló porque al arreglar yo también había quitado el enlace del XAML — la regla mide la pareja XAML+código, y hubo que reponer la pareja entera.
+- `dotnet test` completo: **1486 superadas + 1 omitida de 1487 en 1 m 46 s**; build **0 advertencias / 0 errores**. Ninguna línea base visual cambió: la captura del Theme Studio no distingue el color del muestrario en el estado congelado.
+
+### 📌 Notas para la siguiente sesión
+
+- **Límite declarado del analizador**: cubre los enlaces de **atributo** en el XAML de la vista. Un `<Setter Property="Background" Value="{DynamicResource …}">` con `Selector` que apunte a un elemento nombrado, o una propiedad que el diccionario del tema enlace desde fuera, quedan fuera. Es el siguiente paso natural si se quiere cerrar del todo.
+- El analizador está aislado y reutilizable: cualquier vista nueva (host o plugin) queda bajo las dos reglas en cuanto existe su pareja `.axaml`/`.axaml.cs`.
+
+## [2026-09-23] - La Splash Estrena Línea Base Visual (Hito 170)
+
+### 🎯 Objetivo
+
+La splash era la **única superficie principal del producto sin línea base visual**: los hitos 167 y 168 la señalaron dos veces como pendiente, y el rediseño de todas las demás (shell, paneles, modales) se había congelado píxel a píxel. El primer fotograma es determinista por diseño —el barrido no arranca en pruebas— y el hito 169 lo dejó además sin la excepción que lo mataba: era el momento de capturarla.
+
+### 🛠️ Implementación
+
+1. **Superficie nueva en el fixture de ventanas** (`ModalVisualFixture`): `ModalSurface.Splash` (540×350, el tamaño que declara la ventana) con fábrica `BuildSplash()`, que siembra el estado que se congela con **la misma API del arranque** —`UpdateStatus(70)` y `SetNodeCount(24)`— en lugar del estado en blanco: una splash vacía pasaría la comparación aunque su contenido hubiera desaparecido. El barrido **no** arranca (`StartShimmer` sigue siendo exclusivo de la aplicación real), así que la captura es el primer fotograma quieto. `CaptureWindow` normaliza el `Background="Transparent"` de la ventana al fondo del tema, como ya hacía con el resto.
+2. **Dos líneas base, no una**: `splash-dark` y `splash-light`. La regresión histórica de la splash fue **de tema claro** (11 colores literales que la dejaban ilegible cuando el tema activo era claro); congelar sólo el tema oscuro no la habría visto.
+3. **Sonda propia** (`TheSplash_ShouldBeThemed_AndNotABlankWindow`): la línea base congela la imagen pero no dice si el tema llegó a ella, de modo que una splash con el fondo correcto y el contenido sin pintar pasaría como falso verde. La sonda exige contenido real (>4 colores distintos con la heurística del suite) y que las capturas de los dos temas **difieran** en más de un 5 % de píxeles (helper `DifferenceRatio` nuevo).
+4. **Defecto corregido que la captura destapó**: la splash pintaba **«vv1.0.0-…»** — `TxtVersion` recibía `$"v{AppVersionInfo.DisplayVersion}"` cuando `DisplayVersion` **ya** trae su prefijo (es la misma cadena que usa «Acerca de»). Ahora muestra `AppVersionInfo.DisplayVersion` tal cual, con guardia `TheSplash_ShouldShowTheVersion_ExactlyOncePrefixed` (el texto del control es la versión del SDK y no empieza por «vv»).
+
+### 🧪 Validación
+
+- **Revisión de las imágenes, no sólo de las métricas**: las dos capturas se incrustaron en un HTML y se inspeccionaron a 1,5×. Se ve la marca con su icono, el título, la versión, «Inicializando Motor de Flujo DAG…», la insignia «24 nodos DAG» sobre el acento, el estado «Descubriendo módulos y plugins…» con el 70 % y la barra a media carga, y el pie. Es el defecto del prefijo duplicado lo que apareció al mirarlas (las métricas no lo habrían dicho).
+- **Robustez de la línea base**: contiene el número de build (`+build.4743`), y `Directory.Build.props` lo incrementa en **cada** compilación. La corrida completa posterior —con el número ya cambiado— pasó igual: el cambio cae en el 0,015 % de la tolerancia (1,5 %), como en «Acerca de». Comprobado, no supuesto.
+- **Higiene**: regenerar las líneas base reescribió también seis ajenas (diferencias por debajo de la tolerancia), que se restauraron con `git checkout` para no cambiar capturas que no eran de esta tarea.
+- `dotnet test` completo: **1477 superadas + 1 omitida de 1478 en 1 m 20 s** (las 15 capturas modales intactas salvo las dos nuevas); build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- La splash ya no es una superficie a ciegas: un cambio de espaciado, un color fuera de token o un panel recortado fallan ahora en la comparación, no en producción.
+- Lo que la captura **no** cubre: el **movimiento** del barrido (congela el primer fotograma quieto a propósito). De eso se ocupa `AdvanceShimmer_ShouldAdoptTheNewThemeAccent_AndKeepTheSweepMoving` (hito 169), que sí ejecuta el tick.
+
+## [2026-09-23] - El Barrido de la Splash Moría en su Primer Tick (Hito 169)
+
+### 🎯 Diagnóstico
+
+**Síntoma (medido, no supuesto)**: **cada** arranque de la aplicación escribía exactamente **711 bytes** en `crash.log` unos 2 segundos después de lanzarse —dos lanzamientos consecutivos, mismo delta— con `System.InvalidCastException: Unable to cast object of type 'Avalonia.Media.SolidColorBrush' to type 'Avalonia.Media.LinearGradientBrush'` en `SplashScreenWindow.AdvanceShimmer`. El proceso sobrevivía y no decía nada por consola: el fallo sólo era visible en el registro de incidentes, y la animación del barrido quedaba **muerta** para el resto de la pantalla (el tick que lanza deja de reprogramarse).
+
+**Causa raíz (medida con sonda, no deducida)**: la barra declara `Foreground="{DynamicResource AccentPrimaryBrush}"` y el constructor del splash impone encima el gradiente del barrido con `PbProgress.Foreground = shimmerBrush` + crea el temporizador de 40 ms. Pero la etapa `StartupPhase.Theme` del arranque republica el tema **con la splash ya en pantalla**: `ThemeManager.ApplyResourceDictionary` reemplaza las entradas de `Application.Resources` y Avalonia **vuelve a evaluar el `DynamicResource`**, escribiendo un pincel sólido sobre el gradiente. La sonda lo fijó en secuencia: tras `Show()` y `StartShimmer()` el pincel era `LinearGradientBrush` (3 paradas `#6366F1|#818CF8|#6366F1`); tras `SetThemeById("dark_fluent")` —lo que hace la fase de tema— pasaba a `SolidColorBrush #ff6366f1`, y a `#ff4f46e5` al aplicar `light_studio`. El siguiente tick hacía `((LinearGradientBrush)PbProgress.Foreground!)` → `InvalidCastException`.
+
+**Por qué ninguna prueba lo vio**: todas las guardias del splash lo **muestran sin llamar a `StartShimmer()`** —a propósito, para que las capturas headless sean el primer fotograma quieto—, así que el camino del tick **sólo se ejecutaba en la aplicación real**. Es la misma clase de punto ciego de los hitos 165/166: se verifica el camino que la aplicación no usa.
+
+### 🛠️ Implementación
+
+1. **El pincel se recupera, no se asume** (`SplashScreenWindow.axaml.cs`): nuevo `EnsureShimmerBrush()` que, antes de animar, comprueba si la barra lleva *nuestro* gradiente (`ReferenceEquals`); si el tema lo sustituyó, lo **reconstruye con los tokens vigentes** y lo reimpone. Si los tokens ya no existen, conserva el pincel anterior y detiene el temporizador en lugar de fallar en cada tick. Sin `new` por fotograma: el coste por tick es una comparación de referencias.
+2. **`AdvanceShimmer()` pasa a ser público y sin argumentos**: el tick ya no captura la parada del constructor (que quedaba obsoleta al reconstruir el pincel) ni castea la propiedad del control; anima el gradiente que él mismo garantiza. Ser alcanzable desde las pruebas es lo que cierra el punto ciego.
+3. **El barrido sigue el tema en caliente**: al republicarse el tema, el gradiente se reconstruye con el acento nuevo, de modo que un tema claro deja un barrido claro en lugar de conservar los colores del arranque.
+
+### 🧪 Validación
+
+- **Guardias nuevas (+2, `SplashScreenStartupTests`)**: (1) el escenario real —arrancar el barrido, republicar el tema (afirmando explícitamente que **el tema sustituye el pincel por uno sólido**, para que si deja de ser el escenario real la guardia se reescriba y no se relaje)— y el tick del barrido sobrevive y recupera un gradiente de 3 paradas; (2) el gradiente adopta el acento del tema **nuevo** y **avanza** (dos pasos separados 60 ms dan offsets distintos, y dentro de 0..1), más lint con comentarios fuera: el code-behind no puede volver a contener `(LinearGradientBrush)PbProgress.Foreground` y `AdvanceShimmer()` debe seguir siendo alcanzable.
+- **Mutación (dos rondas)**: reponer sólo el casteo ciego → falla la guardia (lint); reponer el código original entero (casteo + sin recuperación) → **fallan 2 de 11** (`TheShimmerStep_ShouldRecoverTheBrush_ThatTheThemePhaseReplaces` con `InvalidCastException` y la de adopción del tema). Restaurado el arreglo, verde.
+- **Medición en la aplicación real**: arranque con el arreglo, 18 s vivo, **consola vacía** y **delta 0 bytes** en `crash.log` —frente a los 711 B por arranque medidos antes.
+- `dotnet test` completo: **1475 superadas + 1 omitida de 1476 en 1 m 18 s**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **La splash sigue sin línea base visual** (el primer fotograma es determinista por diseño y ahora el barrido ni la ensucia ni la tumba): es la candidata ideal para su primera captura concreta.
+- **Patrón general a vigilar**: cualquier propiedad enlazada con `{DynamicResource}` que el código sobrescriba **puede ser recuperada por la publicación del tema**, porque la re-evaluación del recurso pisa el valor local. Si en otro sitio se asigna a mano un `Foreground`/`Background` enlazado a un token y luego se castea o se depende de ese valor, tiene el mismo reloj: conviene buscar casteos sobre propiedades de control enlazadas al tema.
+
 ## [2026-09-22] - El Archivo de Flujo: Versión, Reparación y Convergencia (Fases 2E-P8 → 3I)
 
 ### 🎯 Objetivo
