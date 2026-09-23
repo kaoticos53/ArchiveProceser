@@ -30,6 +30,16 @@
     <SolidColorBrush x:Key="AccentCyanBrush" Color="#06B6D4" />
     <SolidColorBrush x:Key="AccentPurpleBrush" Color="#A855F7" />
 
+    <!-- Caras atenuadas de los acentos (estado deshabilitado de las variantes de acento): el acento mezclado
+         con la superficie del tema al 45 %. Las deriva ThemeResourceApplier; aquí van los valores del preset
+         por defecto, que un test compara byte a byte con lo que genera. Una clave por línea: el test de paridad
+         lee una sola clave por línea y dos pinceles juntos dejarían el segundo sin registrar. -->
+    <SolidColorBrush x:Key="AccentPrimaryMutedBrush" Color="#373B7E" />
+    <SolidColorBrush x:Key="AccentSuccessMutedBrush" Color="#12604C" />
+    <SolidColorBrush x:Key="AccentWarningMutedBrush" Color="#795417" />
+    <SolidColorBrush x:Key="AccentErrorMutedBrush" Color="#762B30" />
+    <SolidColorBrush x:Key="AccentPurpleMutedBrush" Color="#563381" />
+
     <!-- Textos -->
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F0F6FC" />
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8B949E" />
