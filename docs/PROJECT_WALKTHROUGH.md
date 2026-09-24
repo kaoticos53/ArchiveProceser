@@ -1,5 +1,528 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-23] - El Catálogo, Extendido a las Guardias de Cobertura, y la Lista de Huecos Publicada (Hito 197)
+
+### 🎯 Objetivo
+
+Llevar el catálogo de mutaciones (5 declaradas en el 196) a las **guardias de cobertura** —censo de puertos, tokens de tema, contrato de colecciones— y **publicar qué subsistemas del producto no tienen ninguna mutación declarada**, que es la mitad que un catálogo nunca cuenta de sí mismo.
+
+### 🛠️ Cuatro mutaciones nuevas (9 en el catálogo)
+
+| Mutación | Defecto declarado | Testigo | Control |
+| :--- | :--- | :--- | :--- |
+| `censo-de-puertos-ignora-un-puerto-nuevo` | El limpiador declara un puerto `Skipped` que ninguna prueba cubre | El censo: rojo (1 de 17) | El camino feliz del nodo sigue verde |
+| `censo-de-puertos-sin-su-asiento` | El censo (declaración escrita a mano) pierde el asiento `FolderSourceNode.Out` | El censo: rojo | El contrato del almacén físico sigue verde |
+| `token-de-tema-que-desaparece` | `AppBackgroundBrush` desaparece de los presets integrados | La guardia de tokens: rojo | El lint de estados deshabilitados sigue verde |
+| `contrato-de-colecciones-sin-su-regla` | La regla del `ModelSessionRegistry` se queda sin patrones y deja de vigilar | El contrato de colecciones: rojo | La regla de preferencias reales sigue verde |
+
+Las dos primeras cubren las dos mitades que un censo necesita: que **detecte un puerto nuevo sin cobertura** (el defecto que existe para cazar) y que **no pueda perder un asiento en silencio** (el censo es una declaración escrita a mano y su único valor es que esté completa). Las otras dos atacan la misma clase de agujero en las otras guardias: una regla que se queda sin patrones sigue pasando sobre el árbol real —donde nadie incumple— y una guardia escrita y verde que ya no vigila nada.
+
+### 🐞 Un defecto del propio andamiaje, medida su causa
+
+Dos mutaciones se dictaminaron **`NO-COMPILA`** y no era verdad: la compilación fallaba con **MSB3021/MSB3027** porque un **`FileFlow.App` en ejecución bloqueaba los DLL del directorio de salida** (los mismos que `test.ps1` cierra al arrancar). Diagnóstico equivocado y caro —«la mutación no vale» sobre un defecto que sí vale y que no se llegó a medir—. Cura doble: el andamiaje **cierra las instancias en ejecución** antes de compilar (como `test.ps1`) y **distingue las dos causas** de un fallo de compilación (`error CS` = el mutante no compila; bloqueo de ficheros = el entorno, que se reporta como rechazo con la pista, nunca como mutación inválida).
+
+### 📄 [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md): la publicación
+
+Generado por la guardia [`MutationDeclarationCoverageTests`](file:///FileFlow.Tests/Unit/App/MutationDeclarationCoverageTests.cs) (regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`) y **atado** por ella: el documento no puede discrepar de lo declarado ni del árbol. Contesta con cifras de hoy: **9 mutaciones declaradas**, **4 de 15 subsistemas del producto con alguna**, **4 de 32 guardias del repositorio con alguna que la muerda**, la tabla de lo que declara cada mutación y —lo que se venía a publicar— **11 proyectos sin ninguna** (`Plugin.AI`, `Archives`, `Data`, `Documents`, `Hashing`, `Images`, `Integrations`, `Logic`, `Network`, `Scripting`, `Subflows`) y **28 guardias sin nadie que las muerda**.
+
+Tres reglas de clasificación, escritas para poder leer la lista sin engaños: un subsistema es un **proyecto del producto** y lo cubre la mutación del **fichero que muta**; una mutación sobre la **declaración** de una guardia (el censo, el analizador) cuenta como **infraestructura de pruebas** —es honesta y útil, y no cubre ningún subsistema del producto—; y una **guardia del repositorio** es la prueba que audita el árbol (usa `SourceTree`, `TestRepositoryLocator` o `TestSuiteIndex`), de modo que la lista de guardias es del árbol y no del recuerdo de nadie. `\mutate.ps1 -Coverage` imprime el documento y avisa si se ha quedado atrás respecto a las definiciones.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1671 superadas + 1 omitida de 1672 en 1 m 19 s** (antes 1668 + 1; **+3 pruebas**), build **0 errores**.
+- **Las nueve mutaciones muerden**, cada una con testigo rojo y control verde: siete en `-All` y las dos que el bloqueo de ficheros impidió medir, re-ejecutadas aparte con el diagnóstico ya corregido (1 de 17 rojo en el censo, por ejemplo).
+
+### 📌 Notas para la siguiente sesión
+
+- **La lista de huecos es la lista de trabajo**: once proyectos del producto sin ninguna mutación —el plugin de IA es el mayor— y veintiocho guardias sin nadie que las muerda. Añadir una cuesta una entrada de JSON y comprobar que muerde.
+- Lo que sigue sin medirse con mutaciones: comportamientos **emergentes** (varias piezas que solo fallan juntas) y todo lo que vive en la interfaz (animaciones, latidos, gestos), donde el andamiaje solo puede mutar el código que los gobierna.
+
+---
+
+## [2026-09-23] - El Andamiaje de Mutaciones, Versionado: Recompila Siempre tras Restaurar y No Deja el Árbol con el Mutante (Hito 196)
+
+### 🎯 Objetivo
+
+Convertir en **script versionado** lo que hasta ahora eran guiones de usar y tirar (bash y Python en el directorio temporal, uno por tanda y perdidos al cerrar la sesión) y cerrar el fallo que costó **dos diagnósticos falsos**: el script de la tanda anterior restauraba las fuentes **y no recompilaba**, así que una corrida posterior con `--no-build` medía **el mutante**. Dos pruebas «rotas» del hito 195 eran exactamente eso —el mutante M2 aún en `bin/`— y el primer diagnóstico fue «intermitente».
+
+### 🛠️ Qué hay ahora
+
+- **[`mutate.ps1`](file:///mutate.ps1)** (raíz, junto a `test.ps1` y `clean.ps1`): `-List`, `-Name <id>` (varios separados por comas), `-All`, `-Directory <ruta>` y `-Help`. Una sola implementación —también para la parte que no puede fallar: duplicar la restauración en un `.sh` es duplicar el sitio donde se pierde el árbol—; en Linux o macOS se invoca con `pwsh`. Los textos que imprime son **ASCII a propósito**: Windows PowerShell 5.1 lee los `.ps1` sin BOM como ANSI, así que el texto con acentos vive en las definiciones (`mutations/*.json`), que se leen declarando UTF-8.
+- **[`mutations/*.json`](file:///mutations/README.md)**: cinco mutaciones declaradas, una por comportamiento que importa, con su **tesis** (lo que el suite tiene que saber defender), el **testigo** que tiene que ponerse rojo y el **control** que tiene que seguir verde:
+
+  | Mutación | Tesis | Testigo | Control |
+  | :--- | :--- | :--- | :--- |
+  | `limpiador-vuelve-a-mirar-el-disco` (195) | El limpiador limpia en una ejecución virtual porque su recorrido pasa por el almacén | Extremo a extremo virtual: rojo (1) | El caso de disco sigue verde |
+  | `limpiador-borra-por-su-cuenta` (192) | El limpiador borra por el contrato y lee el resultado | Las dos averías inyectadas: rojo (2 de 2) | El camino feliz sigue verde |
+  | `borrado-virtual-solo-ve-archivos` (195) | El almacén virtual sabe borrar una carpeta vacía | El contrato virtual: rojo (1) | El contrato físico sigue verde |
+  | `indice-de-pruebas-ciego-al-cr` (193) | El índice lee los ficheros CRLF, que son la mayoría | La guardia contra la ceguera: rojo (2 de 6) | El despojador de comentarios sigue verde |
+  | `validador-sin-materializar-puertos` (191) | El validador materializa los puertos calculados | Los tres casos de puertos dinámicos: rojo (1 de 3) | La validación estática sigue verde |
+
+- **Las tres obligaciones del ejecutor**, con su mecanismo y no con una promesa: **restaurar siempre** (la restauración vive en un `finally`: da igual si el mutante no compila, si los tests revientan o si la mutación resulta obsoleta); **recompilar siempre tras restaurar** (fuentes restauradas con binarios mutados es precisamente el estado que causó el diagnóstico falso); y **negarse a dejar el mutante** (antes de tocar nada se escribe un **diario en disco**, `.mutation-journal/` con una copia y el hash de cada fichero; al terminar se restaura por bytes, se recompila y se **verifica por hash**, y si algo no cuadra sale con código 2 citando los ficheros). Nada de esto se fía de la memoria del proceso: un **diario sin cerrar** —proceso matado— se recupera al arrancar la corrida siguiente.
+- **La comprobación final cierra el círculo**: por cada mutación, el testigo se vuelve a ejecutar **sin recompilar** y tiene que estar en verde. Solo puede pasar si la recompilación tras restaurar ocurrió de verdad, así que cuando el andamiaje termina, las fuentes **y** los binarios son los originales.
+- **Aplicación atómica**: todas las sustituciones se validan y se aplican **en memoria** antes de escribir un solo byte, y cada fragmento tiene que aparecer **exactamente las veces que se declara** (`count`). Una mutación obsoleta se rechaza con el fichero y el fragmento citados **sin dejar media mutación aplicada**.
+
+### 🐞 El agujero que destapó la guardia (y que el andamiaje no veía)
+
+Un filtro que **no casa con ninguna prueba** no falla: `dotnet test` sale con **0** y sin resumen. Leído por código de salida, un testigo renombrado se cuenta como «superviviente» —falla, pero con el diagnóstico equivocado— y un **control** renombrado como «control verde», que es un veredicto **preciso sobre una medición vacía**. Cura doble: el ejecutor exige un `Total:` mayor que cero para dar una medición por buena (el testigo o el control que no case con nada pasa a `IMPRECISA`), y la guardia del suite comprueba que cada filtro declarado casa con un caso o una clase real.
+
+### 🛡️ La guardia de las declaraciones (9 casos)
+
+- **[`MutationDeclarationAudit`](file:///FileFlow.Tests/TestHelpers/MutationDeclarationAudit.cs)**: contesta tres preguntas sobre cada mutación declarada —¿el fragmento sigue existiendo las veces que se declara?, ¿el testigo casa con una prueba del suite?, ¿el id coincide con el nombre de su fichero?— comparando con los **terminadores normalizados** (las declaraciones usan `\n` y el producto está en CRLF) y contra el índice de pruebas existente ([`TestSuiteIndex`](file:///FileFlow.Tests/TestHelpers/TestSuiteIndex.cs)), más las **clases** de prueba: el `~` del filtro es coincidencia **parcial**, así que un testigo citado por el principio de un método de teoría es legítimo.
+- **[`MutationDeclarationGuardTests`](file:///FileFlow.Tests/Unit/App/MutationDeclarationGuardTests.cs)**: la auditoría sobre el repositorio real (una mutación declarada que ya no encaja **miente** sobre lo que el suite vigila) más siete casos sintéticos que demuestran que muerde (fragmento desaparecido, fragmento repetido, testigo inexistente, declaración sin testigo, id que no es el de su fichero, terminadores CRLF y la coincidencia parcial legítima).
+- **Mordió dos veces de verdad**: al estrenarse rechazó un testigo legítimo —exigía nombre exacto— y el caso que lo destapó quedó como prueba de la regla; y renombrando a mano el testigo de `indice-de-pruebas-ciego-al-cr` falla nombrando el filtro y explicando la consecuencia.
+
+### ✅ Evidencia (medida, no deducida)
+
+- **`-All`**: **5 de 5 MUERDE**, 0 supervivientes, código de salida 0, **~26 s por mutación** (dos compilaciones y tres corridas de test cada una). Cada veredicto con su cuenta: 1, 2 de 6, 2 de 2, 1 y 1 de 3 pruebas rojas, y el control verde en las cinco.
+- **Sonda inocua** (un comentario añadido, sin efecto): `SOBREVIVE`, código 1 con la nota «el testigo siguió en verde».
+- **Sonda obsoleta** (primera sustitución válida y segunda imposible): `RECHAZO`, código 2, y el hash del fichero **idéntico antes y después** —ni siquiera se aplicó la válida—.
+- **Diario sin cerrar** (fichero cambiado a mano y `session.json` con el hash prístino, simulando un proceso matado): detectado al arrancar, restaurado desde el diario, recompilado, verificado y diario borrado.
+
+### 📌 Notas para la siguiente sesión
+
+- **La regla de oro, escrita en el propio script**: recompilar después de restaurar. Cualquier andamiaje futuro que toque fuentes y mida binarios tiene el mismo agujero, y este es el precedente.
+- **Lo que el andamiaje no mide**: mutaciones de comportamiento emergente (varias piezas que solo fallan juntas). Una mutación es una sustitución declarada; para lo demás sigue haciendo falta una prueba de integración.
+- **Las declaraciones crecen con el producto**: cada comportamiento que importe y no tenga mutación es trabajo pendiente, y el coste de añadirla es una entrada de JSON y comprobar que muerde.
+
+---
+
+## [2026-09-23] - La Enumeración de Carpetas, en el Contrato del Almacenamiento: el Limpiador ya Limpia en una Ejecución Virtual (Hito 195)
+
+### 🎯 Objetivo
+
+Cerrar el hueco que el **hito 192** dejó escrito y sin decidir: *«el recorrido del limpiador sigue siendo físico (el contrato del almacenamiento no enumera directorios) — en una ejecución virtual solo el borrado pasaría por el contrato; si el VFS tiene que soportarlo, la pieza que falta es la enumeración»*. Ya está soportado: **la enumeración es parte del contrato del almacenamiento**, así que el limpiador de carpetas vacías funciona de verdad dentro de una ejecución virtual, con **prueba de extremo a extremo** que lo afirma sobre el almacén y no sobre una descripción.
+
+### 🐞 El defecto que se estaba tapando
+
+El nodo respondía **«no hay nada que limpiar»** sobre un árbol que existía en su propio almacén. La causa es la mezcla de dos mundos: el **borrado** ya pasaba por el contrato (`context.GetStorage().DeleteAsync(...)`, la cura del 192), pero el **recorrido** miraba el disco del anfitrión (`Directory.Enumerate*`, `Directory.Exists`). En una ejecución virtual las carpetas viven en el almacén en memoria y en el disco del anfitrión no existen, así que la carpeta objetivo «no existía», el nodo salía por `Out` sin borrar nada y **el flujo terminaba en verde**: el peor desenlace posible —un nodo que miente sin que nada lo delate—. Ninguna prueba lo veía porque las que había ejecutan el nodo **contra el disco**.
+
+### 🛠️ Qué se cambió
+
+- **[`IStorageService`](file:///FileFlow.Sdk/Storage/IStorageService.cs)** gana las dos preguntas que faltaban, **con implementación por defecto sobre el disco** para que añadirlas no rompa a ninguna implementación existente: `EnumerateDirectoriesAsync` (subcarpetas inmediatas, sin recursión, en **orden determinista**, carpeta inexistente → lista vacía en vez de excepción) y `EnumerateFileSystemEntriesAsync` (todo el contenido inmediato, archivos y carpetas). La segunda existe para que «¿está vacía esta carpeta?» lo conteste **el almacén** y no el nodo: quien decide qué es contenido es el almacén.
+- **[`IVirtualFileSystemStore`](file:///FileFlow.Sdk/VirtualFileSystem/IVirtualFileSystemStore.cs)** gana `GetChildDirectories`, `GetChildFiles` (solo contenido **activo**: un archivo borrado o reciclado ya no es contenido, y por eso su carpeta puede quedar vacía sin que nadie la borre) y `DeleteDirectory`. **No se resolvió contando prefijos en el llamante**: el almacén guarda carpetas que pueden ser hermanas con prefijo común (`a` y `ab`), y comparar prefijos convertiría a una en hija de la otra; con `GetAllDirectories` cada nodo habría tenido que conocer cómo se normalizan las rutas del VFS. `DeleteDirectory` devuelve `false` si la carpeta no existe o si le quedan **archivos activos** dentro: en el almacén borrar una carpeta no implica borrar su contenido —los archivos tienen su propio ciclo de vida—, así que decirlo con un `false` es mejor que vaciarla en silencio.
+- **[`VirtualStorageService`](file:///FileFlow.Sdk/Storage/VirtualStorageService.cs)** (46 líneas nuevas): la enumeración sale del almacén virtual, y `DeleteAsync` **distingue archivo de carpeta** —hasta ahora solo miraba si la ruta era un archivo, así que borrar una carpeta virtual respondía «no encontrado» sobre una carpeta que existe— y responde con el **motivo** cuando no puede (`Virtual directory could not be removed (not empty?)`) en vez de un «no encontrado» genérico.
+- **[`NullStorageService`](file:///FileFlow.Sdk/Storage/NullStorageService.cs)** devuelve vacío (no hay almacén que enumerar) y **[`FailingStorageService`](file:///FileFlow.Tests/TestHelpers/FailingStorageService.cs)** delega la enumeración en el almacén físico, para que el doble del hito 192 siga cumpliendo el contrato entero: **solo falla el borrado**, que es su razón de existir.
+- **[`EmptyDirectoryCleanerNode`](file:///FileFlow.Plugin.FileSystem/Nodes/Actions/EmptyDirectoryCleanerNode.cs)** (54 líneas): las **tres** preguntas del nodo —¿existe la carpeta?, ¿qué cuelga de ella?, ¿está vacía?— y el borrado pasan por el **mismo** almacén del contexto, resuelto **una vez** (`context.GetStorage()`): resolverlo en cada nivel del árbol construiría un servicio nuevo por carpeta en una ejecución virtual. Las rutas se manejan con **`CrossPlatformPath`** y no con `Path`: el almacén guarda rutas de Windows y de Unix —las del sistema en que se creó la ejecución virtual— y el separador del anfitrión parte un nombre de archivo por la mitad.
+
+### ✅ Pruebas
+
+- **[`StorageServiceTests`](file:///FileFlow.Tests/Unit/Core/StorageServiceTests.cs) (+2)**: la enumeración **física** (solo contenido inmediato —la carpeta anidada pertenece a otra carpeta—, orden determinista *como parte del contrato*, carpeta inexistente → vacío) y la **virtual**, que es la que hace posible el recorrido dentro de una ejecución virtual: los hijos salen del almacén, el **trampa de prefijos** queda fijada (`a` y `ab` son hermanas), una carpeta con archivos activos **no** se puede borrar y **sí** en cuanto se borra su archivo —la secuencia que ejecuta el limpiador—.
+- **[`VirtualEmptyFolderCleanupIntegrationTests`](file:///FileFlow.Tests/Integration/VirtualEmptyFolderCleanupIntegrationTests.cs) (1, motor real)**: un origen **sintético** deja un árbol de carpetas con archivos dentro, un nodo los mueve a su destino y el limpiador retira del **almacén virtual** las carpetas que quedaron vacías. Afirma el **estado del almacén** (los archivos están en el destino; las cuatro carpetas vaciadas ya no están; **`C:\Muestras` sigue ahí**, porque limpiar no es arrasar), que los tres nodos llegaron a `Completed`, que la ejecución se activó en modo **virtual** sola (es la condición del caso: sin ella lo que se prueba es el disco) y que el **diario de ejecución** anota los cuatro borrados permanentes, de dentro hacia fuera.
+- **Mutaciones (2, las dos mordidas)**: **M1** el recorrido del nodo vuelve a `Directory.Enumerate*`/`Directory.Exists` → falla el caso de extremo a extremo (es exactamente el defecto que se venía a curar); **M2** el borrado virtual vuelve a ver solo archivos → fallan el caso de extremo a extremo **y** el del contrato virtual. Árbol restaurado y comprobado con `diff`.
+
+### ⚠️ Una trampa del andamiaje de mutaciones, medida (y una incidencia sin atribuir)
+
+Una corrida completa falló **dos** pruebas de este hito y a la siguiente pasaron: los **binarios eran del mutante**. El script de mutación restaura las fuentes al terminar (`cp` desde la copia) pero **no recompila**, así que una corrida posterior con `--no-build` mide el mutante y no el árbol restaurado —los dos fallos coincidían exactamente con M2—. Reconstruido, los 25 casos afectados pasan **3 de 3** y la suite completa queda en verde: **regla para el próximo script, recompilar después de restaurar**. Queda dicho y sin atribuir que **una** corrida intermedia (esta vez con árbol limpio) falló **una** prueba que las siguientes pasaron; no se pudo nombrar por no haberse capturado el log del fallo, y la corrida definitiva con log completo salió limpia.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1659 superadas + 1 omitida de 1660 en 1 m 20 s** (antes 1656 + 1 de 1657; **+3 pruebas**), build **0/0**.
+- Los 25 casos de almacenamiento y limpiador virtual: **3 corridas verdes consecutivas** tras reconstruir.
+
+### 📌 Notas para la siguiente sesión
+
+- El limpiador ya no tiene ninguna mitad fuera del contrato: **enumerar, preguntar y borrar miran el mismo sitio**. Si aparece otro nodo que recorra un árbol (`Directory.Enumerate*` aparece todavía en algún nodo del producto), la pregunta ya está en el contrato y no hay que inventarla.
+- Lo que el contrato **no** ofrece, y conviene saber: enumeración **recursiva** (el nodo la construye subiendo por niveles, que es además el orden que necesita para borrar de dentro hacia fuera) y enumeración de **metadatos** (tamaño, fecha) como lista —`GetChildFiles` los trae, pero solo el almacén virtual; el contrato expone rutas—. **`PhysicalStorageService` no borra carpetas que tengan contenido**, igual que el virtual: el contrato borra una cosa concreta, no un árbol.
+
+---
+
+## [2026-09-23] - Las Notas de Versión del Tramo de Ejecución, para quien usa el Producto (Hito 194)
+
+### 🎯 Objetivo
+
+Que el tramo 188–190 —el que arregló el flujo que se cortaba en silencio— tenga su lectura para quien **usa** la aplicación: **qué flujos que antes se cortaban ahora llegan al final** y **qué errores dejan de ser invisibles**, separado de lo que sostiene que eso no se rompa. Es el mismo encargo del hito 187 (que dejó escritas las notas del tramo 169–186) aplicado al tramo siguiente: las notas son **de tramo, no de hito**, y se amplían al cerrar el bloque visible siguiente.
+
+### 🛠️ Qué hay en [`docs/notas_de_version.md`](file:///docs/notas_de_version.md)
+
+- **La cabecera cubre ya dos tramos** —el del rediseño visual (4743 → 5018, apartados 1 a 3) y **el de la ejecución de flujos** (apartado 4)—, con el rango de compilación de la entrega (5129) y el anuncio de que el tramo que sigue (191–193: cómo se resuelven los puertos de un flujo al abrirlo, y la infraestructura de pruebas que vigila todo lo anterior) tendrá su apartado al cerrarse.
+- **Lo que ves**: el flujo reportado que terminaba **en verde después del segundo nodo** y ahora **recorre los cuatro** (el nodo que desempaquetaba dibujaba su salida con el nombre `Out` y emitía por otro: el motor no encontraba el cable y daba cada archivo por terminado); la tabla de los **tres nodos** con salidas que existían sin ser visibles —el error del desempaquetador, el del insertador en base de datos (un fallo de escritura se perdía sin rastro) y el error y las omisiones del renombrador (los archivos fallidos y omitidos desaparecían)—, hoy **puertos visibles y conectables**; el **aviso de consola** cuando un nodo emite por un puerto que no declara, con el nodo y el nombre exacto, **una vez por nodo, puerto y ejecución**; el **renombrado por lotes** que ya no cae en la plantilla por omisión del nodo; y el detalle práctico de los **puntos de interrupción** (en **Depurar** el flujo se detiene en ellos esperando «Continuar»: es lo esperado, no un corte).
+- **Lo que no se ve**: las 24 pruebas que ejecutan el **motor real** y por qué *el puerto por el que llega el archivo es, en sí mismo, la afirmación*; la guardia del código que juzga **69 clases** y aplaza **3**; el inventario de ramas (**23 nodos, 24 pares, 25 entradas**: 23 ejecutadas y 2 declaradas imposibles de forzar con una entrada, con el motivo escrito); la prueba de extremo a extremo del flujo del parte; y las cifras del tramo (**1580 → 1598 → 1626** superadas, frente a las 1577 del tramo anterior).
+- **Lo que sigue viéndose así**: una rama sin conectar termina el recorrido del archivo ahí —es lo que es un desvío, y ahora se ve y se puede llevar a un informe, un registro o una cuarentena—; el aviso de puerto no declarado es una línea, **no un fallo** (la ejecución sigue en verde, porque el motor no puede saber si un puerto ausente del grafo es un nodo que legítimamente terminó ahí); y la auditoría por código es **heurística** (nombres literales), así que una emisión calculada en ejecución sólo la ve el aviso del motor.
+
+### ✍️ Lo que se corrigió al escribirlo
+
+- La primera redacción decía que el tramo siguiente «no cambia ninguno de los comportamientos que describen estos apartados». Se sustituyó por un **anuncio sin medias tintas** —«cómo se resuelven los puertos de un flujo al abrirlo, y la infraestructura de pruebas que vigila todo lo anterior»—: una nota de versión que promete que no hay más cambios **oculta** el arreglo del hito 191 (un flujo con la frontera de un subflujo renombrada dejaba de abrirse) en lugar de contarlo cuando llegue su turno.
+- **Las cifras y los síntomas se copiaron de este registro, no de la memoria**: los nodos que llegaban a `Completed` eran **dos** en el parte y son **cuatro** tras la cura, el archivo reempaquetado lleva dentro la página optimizada (`pagina01.webp`), la guardia estática juzga 69 clases y aplaza 3, y el inventario del 190 cuenta 23/24/25. La cifra de partida (1577) es la que el hito 187 dejó publicada.
+
+### ✅ Validación
+
+- **Sin cambios de código**: `dotnet test` completo → **1656 superadas + 1 omitida de 1657 en 1 m 11 s**, sobre el mismo árbol de código que el hito 193 (este hito sólo escribe documentación).
+- **Se comprobó que ninguna prueba lee las notas de versión** (`grep` sobre el suite): el documento no puede mover el resultado de la suite, y es la suite la que certifica las cifras que el documento cita.
+
+### 📌 Notas para la siguiente sesión
+
+- El fichero tiene ya **dos tramos con la misma estructura** («lo que ves» / «lo que no se ve» / «lo que sigue viéndose así»): el próximo apartado se añade igual, en la misma versión mientras no cambie, y **las cifras salen de este registro**.
+- Lo que las notas **no** llevan, a propósito: rutas de fichero, nombres de clase y detalle de implementación. Eso vive aquí y en `architecture.md`.
+
+---
+
+## [2026-09-23] - El Censo de Puertos, Legible: el Índice de Pruebas era Ciego en 158 Ficheros (Hito 193)
+
+### 🎯 Objetivo
+
+Generalizar el **inventario de ramas** a **todos los puertos** del producto —los del **camino feliz** incluidos—, de forma que un nodo cuyo puerto principal no ejecute ninguna prueba se detecte igual que una rama sin cubrir. La mitad que nadie miraba hasta el 190 eran las ramas (`Error`, `Skipped`, `Failed`), que se esconden de la vista; la otra mitad es el camino feliz, donde el hueco se ve menos todavía: un nodo que se arrastra al lienzo, se cablea y se ejecuta sin que nada haya recorrido nunca su salida.
+
+### 📋 El censo: 154 asientos, tres grados, todos comprobables
+
+- [`NodePortInventory`](file:///FileFlow.Tests/TestHelpers/NodePortInventory.cs): **154 asientos sobre 69 nodos** —**41 de rama** y **113 del camino feliz**—, cada uno con el nombre de la prueba que lo cubre y el grado en que lo cubre: **138 `ByNamedTest`** (un caso que habla del nodo y **cita el puerto** como literal: la forma que tiene una prueba de decir por dónde sale el ítem), **11 `ByExecutingTest`** (casos que ejecutan el nodo pero ninguno nombra el puerto) y **5 `WithoutExecution`** (nadie ejecuta el nodo: se declara **con el motivo**, y el motivo tiene que explicar qué haría falta).
+- [`PortWitnessIndex`](file:///FileFlow.Tests/TestHelpers/PortWitnessIndex.cs) contesta las tres preguntas sobre el **texto** del suite —quién lo ejecuta, quién nombra este puerto, qué casos hablan del nodo—, y [`NodePortCoverageGuardTests`](file:///FileFlow.Tests/Unit/App/NodePortCoverageGuardTests.cs) convierte en fallo cualquier desacuerdo: un puerto que el árbol declara y el censo ignora, un asiento que apunta a un puerto que ya no existe, un testigo que no existe, no habla del nodo o **no nombra el puerto que dice cubrir**, y un grado que el suite ya desmintió.
+- **Un nodo nuevo con el puerto principal sin prueba rompe el suite dos veces**: primero por el puerto no declarado, y después por el presupuesto de huecos (la lista de nodos sin nadie que los ejecute está anclada a mano, con sus puertos contados). El mensaje distingue las dos mitades: la rama sin cubrir se lee como el agujero que dejó pasar el Fan-Out del 188, y el puerto del camino feliz, como un nodo que nadie ha puesto a trabajar.
+- **Cifras del censo, leídas del árbol real**: la auditoría completa tarda **242 ms** y pasa sin una sola infracción.
+
+### 🐞 Defecto 1 — el analizador tardaba 103 s en un solo fichero de 19 KB
+
+La primera redacción de la búsqueda de declaraciones era una expresión regular —`(?:\s*\[[^\]\r\n]*\]\s*)+public\s+…`—: los `\s*` a los dos lados de una repetición hacen que un tramo de espacios se pueda repartir de infinitas maneras entre las repeticiones, y el motor prueba todas antes de fallar. Sobre [`ParameterValueConverterTests.cs`](file:///FileFlow.Tests/Unit/Sdk/ParameterValueConverterTests.cs) tardaba **103 395 ms**, así que el censo entero se iba a **1 m 46 s** y la guardia dejó de poder ejecutarse. Cura: un escáner **lineal** escrito a mano (`Declarations`, `AttributesBefore`, `MatchingBracketBackwards`), con `Blocks` de ~**103,5 s a 55 ms** (1 880 veces más rápido) y sin cambiar lo que ve.
+
+### 🐞 Defecto 2 — 158 de los 227 ficheros se quedaban sin leer, y nada avisó
+
+Al comparar el escáner nuevo con la expresión vieja aparecieron ficheros donde el nuevo no veía **ningún** caso. La causa no era el escáner sino el ayudante compartido: [`SourceText.WithoutComments`](file:///FileFlow.Tests/TestHelpers/SourceText.cs) se llevaba el **terminador de línea** de toda línea que acabase en comentario (y todos los saltos internos de un comentario de bloque), de modo que la línea comentada se **fundía con la de abajo** —`    [InlineData("Out", 1)]   // nota\r\n    public void A()` llegaba como una sola línea— y un analizador que atribuye un atributo a su método leyendo **la línea anterior** se quedaba ciego. En los ficheros míos (LF y sin comentarios al final) funcionaba; en los **158 en CRLF con comentarios al final** no. Dos mitades del mismo fallo silencioso: el ayudante se comía el salto, y el retroceso del escáner no reconocía el `\r` que cierra la línea anterior del atributo. Cura: el terminador se conserva, los saltos de dentro de un bloque cuentan como líneas, el `\r` entra en el retroceso —y de paso se dejó de comerse el carácter siguiente al `*/`, el error que ya costó una guardia en el hito 165—.
+
+### ✅ Cómo se comprobó que el escáner nuevo ve lo mismo: paridad sobre los 227 ficheros
+
+No bastaba con que el censo pasara: un analizador que ve **menos** deja a las guardias pasando en verde sin haber mirado nada. Se compararon las declaraciones de las dos implementaciones, fichero por fichero: **0 regresiones** y **3 declaraciones que solo ve el escáner nuevo**, las tres **teorías reales** cuyo `[InlineData]` lleva corchetes dentro (`new[] { … }`, `new string[0]`, `[]`) y que la expresión regular no podía atravesar —[`Analyzer_ShouldRequireVisualSnapshots_ForEveryWayOfTouchingTheSession`](file:///FileFlow.Tests/Unit/App/TestCollectionContractGuardTests.cs), [`ParseExtensionFilter_ShouldParseCorrectly`](file:///FileFlow.Tests/Unit/Plugins/FolderSourceNodeTests.cs) y [`Analyzer_ShouldFlagADynamicPortNodeThatNeverAnnouncesItsTopology`](file:///FileFlow.Tests/Unit/Plugins/NodeArchitectureGuardTests.cs)—. El índice pasa de 1 375 a **1 381** métodos de prueba leídos de los 227 ficheros del suite.
+
+### 🧪 El índice, con guardia propia
+
+[`TestSuiteIndexTests`](file:///FileFlow.Tests/Unit/App/TestSuiteIndexTests.cs) (6 casos), porque sus dos fallos posibles son silenciosos y **ya han ocurrido los dos**:
+
+| Caso | Qué fija |
+| :--- | :--- |
+| un caso se lee con sus atributos y su cuerpo | un método público sin atributo de prueba no es un caso |
+| un atributo con corchetes dentro sigue siendo un atributo | la clase de atributo que la expresión vieja no atravesaba |
+| una línea en blanco entre el atributo y el método no rompe el caso | en C# una línea vacía no separa un atributo de su declaración |
+| el caso lleva la tabla de datos que **cita**, y no la del vecino | es lo que permite que un caso con parámetros cite el nodo y el puerto que afirma cubrir |
+| ningún fichero que declare un caso vuelve vacío | **la guardia contra la ceguera**: habría cazado al instante los dos fallos de arriba, en vez de descubrirlos mirando otra cosa |
+| leer el suite entero cuesta milisegundos | techo de 15 s con el margen de doscientas veces lo medido (**77 ms**): el fallo caro no fue ver mal, fue tardar |
+
+### 🔪 Mutaciones (3, las tres mordidas)
+
+1. **Fuera el `\r` del retroceso** → falla la guardia contra la ceguera: los ficheros en CRLF vuelven a venir vacíos.
+2. **El ramo viejo del comentario, restaurado palabra por palabra** → falla la prueba nueva del despojador (la línea del atributo se funde con la del método).
+3. **Fuera el asiento del puerto del camino feliz de `FolderSourceNode.Out` del censo** → falla el censo nombrando el puerto: un puerto principal sin prueba se detecta igual que una rama.
+
+Árbol restaurado y verificado con `diff` contra las copias.
+
+### ✅ Validación
+
+- `dotnet build`: **0 errores, 0 advertencias**.
+- `dotnet test` completo: **1656 superadas + 1 omitida de 1657 en 1 m 15 s**, con el censo de puertos ejecutándose en **242 ms** y el índice del suite en **77 ms**. La cifra es la del árbol final: la sonda temporal con la que se contó el censo (`PortCensusProbeTests`) se retiró al cerrar —un instrumento de medida no es una prueba y no tiene que quedarse—, y es la única diferencia frente a las 1657 superadas de la corrida intermedia.
+
+### 📌 Notas para la siguiente sesión
+
+- Los **huecos declarados** del censo son hoy dos nodos: `ForkJoinBarrierNode` (3 puertos) y `LocalOcrNode` (2). De los otros 67 nodos, cada puerto tiene al menos un caso que **lo ejecuta**: en **138** de los 154 asientos hay además uno que **cita el puerto** por su nombre, y los **11** restantes se declaran como lo que son —el nodo se ejecuta, ninguna prueba dice por dónde sale el ítem— en lugar de darse por cubiertos.
+- El índice lee **fuentes**, no reflexión: es la misma clase de análisis que el resto de las guardias —texto sobre el árbol— y no necesita cargar el ensamblado de pruebas desde sí mismo.
+- Lo que el texto **no** puede probar sigue dicho en `PortWitnessIndex`: que la llamada sea a *ese* nodo y que el puerto citado sea el que se recorre. Prueba que el caso habla del nodo y del puerto, que es bastante más que un nombre de método suelto.
+
+---
+
+## [2026-09-23] - Las Dos Ramas que Solo Fallan con el Entorno: el Fallo, Inyectado (Hito 192)
+
+### 🎯 Objetivo
+
+Cerrar los **dos únicos huecos que quedaban en el inventario de ramas** —`EmptyDirectoryCleanerNode.Error` y `OperationReportNode.Error`—, que el 190 declaró «no forzables por ninguna entrada de la configuración» y el 191 dejó como los únicos dos sin prueba. La salida estaba escrita en el propio inventario: no se puede **provocar** el fallo con una entrada, hay que **inyectarlo**.
+
+### 🔧 Un almacenamiento que falla y un contexto con la costura
+
+- **[`FailingStorageService`](file:///FileFlow.Tests/TestHelpers/FailingStorageService.cs) (nuevo)**: el mismo contrato que el almacenamiento real con el **borrado averiado**, en dos modos que corresponden a dos verdades distintas: **`ReportsFailure`** (devuelve un resultado fallido, que es lo que hace el almacenamiento físico real: `PhysicalStorageService` captura la excepción y responde `StorageOperationResult.Failure`) y **`Throws`** (la avería que el contrato no cubre y el nodo tiene que tolerar igual). Averigua **solo el borrado** a propósito: averiguar todo probaría menos —no se sabría qué operación el nodo no supo tolerar— y registra las rutas cuyo borrado se pidió, que es lo que permite afirmar que el nodo **pidió** el borrado al contrato en vez de hacerlo por su cuenta.
+- **[`ProbeFlowContext`](file:///FileFlow.Tests/TestHelpers/ProbeFlowContext.cs) (nuevo)**: contexto de prueba con **el almacenamiento inyectable** y registro de puertos, bitácora, diario y acciones planificadas, más el disparador de cancelación (`CancelledPort`). No sustituye al andamiaje del motor del 190 —que existe para otra pregunta: *si el motor entrega el ítem* cuando el nodo emite por esa rama—: aquí el nodo se ejecuta solo y lo que se afirma es *por qué puerto sale cuando su almacenamiento no responde*. El nombre del puerto lo ata al árbol la guardia estática.
+
+### 🐞 Los dos defectos que aparecieron al darles contrato
+
+1. **El limpiador borraba por su cuenta.** Era el único nodo que borra sin pasar por el contrato del almacenamiento: usaba `Directory.Delete` directamente, cuando sus hermanos (`SafeRecycleDeleteNode`, `IntermediateCleanupNode`) leen el resultado de `DeleteAsync`. La consecuencia no es cosmética: el fallo del borrado llegaba como excepción y no como resultado —el contrato del almacenamiento **devuelve** el fallo—, así que no se podía atribuir ni inyectar, y en una ejecución virtual el borrado habría sido físico. Cura: `context.GetStorage().DeleteAsync(rootDir, permanent: true, ct)` y, si el resultado no es exitoso, `throw new IOException(result.ErrorMessage…)` para que la rama de error existente lo recoja —el mismo patrón, palabra por palabra, que su hermano—. El resto del comportamiento es el mismo: `NullStorageService` y `PhysicalStorageService` hacen el `Directory.Delete(path, true)` de antes, y el modo simulación sigue registrando **su** acción planificada (con el nombre del nodo, no del servicio).
+2. **El informe convertía una cancelación en un ítem de error.** Su `catch` era `catch (Exception ex)` a secas, sin el filtro `when (ex is not OperationCanceledException)` que usan el resto de los nodos y el propio motor: una ejecución cancelada por el usuario producía un ítem saliendo por el puerto `Error` de un informe que no falló. Cura: el filtro, con la razón escrita al lado; la cancelación se propaga y el motor la trata como cancelación.
+
+### 🔧 El disparador del informe: el volcado, no el disco
+
+El informe **no toca el almacenamiento**: se genera en memoria y viaja dentro del ítem (`VirtualContent`), y quien lo escribe en disco es el nodo de destino. Lo único que puede fallar mientras el nodo trabaja es **su propio volcado**, así que el fallo inyectado es un **registro que no se puede serializar** —una referencia circular en los metadatos del ítem— con formato JSON: medido, el volcado revienta con `A possible object cycle was detected… Path: $.Items.Metadata`. Es la misma clase de fallo que el resto del motor ya supone imposible de descartar (el contexto serializa los metadatos con `try/catch` al escribir la bitácora), solo que aquí decide por qué puerto sale el ítem.
+
+### 🧪 Las pruebas ([`InjectedFailureBranchTests`](file:///FileFlow.Tests/Unit/Plugins/InjectedFailureBranchTests.cs), 5 casos)
+
+| Caso | Qué fija |
+| :--- | :--- |
+| limpiador, borrado que **responde fallo** | sale por `Error`; la carpeta **sigue ahí**; el diario **no** apunta un borrado que no ocurrió; la ruta averiada es la que el nodo pidió borrar |
+| limpiador, borrado que **revienta** | lo mismo: la avería no prevista en el contrato camina por la misma rama |
+| limpiador, **control negativo** (almacenamiento sano) | borra y sale por `Out`: es lo que convierte lo anterior en una prueba sobre el fallo y no sobre el nodo |
+| informe, **volcado imposible** | sale por `Error`, con el fallo en el registro del ítem y en la bitácora |
+| informe, **emisión cancelada** | la cancelación **se propaga** y no sale ningún ítem: la rama es para un informe que falló, no para una ejecución detenida |
+
+### 🛡️ La guardia: el inventario ya no tiene huecos
+
+Las dos entradas del inventario pasan de `NotForcibleByInput` a **`ByExecution`**, citando el método de prueba que las ejecuta (y [`TestSuiteIndex`](file:///FileFlow.Tests/TestHelpers/TestSuiteIndex.cs) comprueba que existe). La guardia tenía una aserción que exigía **al menos un hueco declarado** («declarar un hueco en vez de taparlo es parte del trato»): con los dos cerrados ya no hay ninguno, así que esa línea se sustituye por un anclaje a las **dos ramas que acaban de cerrarse**, para que no vuelvan a declararse no forzables por costumbre. El estado «sin prueba, con motivo» sigue existiendo como válvula y el auditor lo prueba con su caso sintético, así que la política no se pierde por no tener clientes hoy.
+
+### ✅ Mutaciones (2, las dos mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | el limpiador vuelve a `Directory.Delete` por su cuenta | los **dos** casos de la avería fallan, y el **control negativo** sigue verde: el mutante rompe exactamente lo que las dos pruebas nuevas añaden |
+| M2 | fuera el filtro de `OperationCanceledException` del informe | falla el caso de la cancelación |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1642 superadas + 1 omitida de 1643 en 1 m 14 s** (antes 1637 + 1; **+5 pruebas**), build **0/0**. Árbol restaurado y comprobado (`diff` contra las copias) tras cada mutación.
+
+### 📌 Notas para la siguiente sesión
+
+- **El inventario no tiene ya ninguna entrada `NotForcibleByInput`.** Si una rama futura se declara como hueco, la guardia ya no exige que exista uno; el auditor sigue exigiendo que su motivo explique *por qué* ninguna entrada la alcanza.
+- **El recorrido del limpiador sigue siendo físico** (`Directory.Enumerate*`): el contrato del almacenamiento no enumera directorios, así que en una ejecución virtual este nodo recorre el disco y solo el borrado pasaría por el contrato. Si algún día el sistema de archivos virtual tiene que soportarlo, la pieza que falta es la enumeración, no el borrado.
+- **El informe no persiste nada por el almacenamiento** (lo hace el nodo de destino). Si el informe debiera escribirse desde el propio nodo, esa decisión de producto le daría además un fallo con forma de almacenamiento; hoy su avería inyectada es el volcado.
+
+---
+
+## [2026-09-23] - Los Puertos Calculados, Juzgados en Ejecución: el Validador no los Materializaba (Hito 191)
+
+### 🎯 Objetivo
+
+Meter en el inventario de ramas a los tres nodos que la auditoría de puertos **aplaza** —`SwitchCaseNode`, `SubflowInputNode` y `SubflowNode`— resolviendo sus puertos declarados **en ejecución** en vez de leyéndolos del texto, y declarar lo que se encuentre con prueba o con motivo. Un aplazamiento sin prueba es un punto ciego con buena reputación: el 190 dejó dichos los 23 pares nodo·puerto que sí se juzgan, y estos tres quedaban fuera por la puerta de atrás.
+
+### 🔧 La resolución en ejecución ([`DynamicPortResolver`](file:///FileFlow.Tests/TestHelpers/DynamicPortResolver.cs), nuevo)
+
+Instancia el nodo, le vuelca una configuración representativa y le pide su topología con el **mismo materializador** que usan el cargador de un flujo, el portapapeles y el diagnóstico previo ([`DynamicPortMaterializer`](file:///FileFlow.Core/Engine/DynamicPortMaterializer.cs)). Lo que devuelve es lo que el motor va a ver, no una aproximación. Cada nodo tiene su **forma** declarada, con el motivo del aplazamiento y **las pruebas que lo ejecutan**:
+
+| Nodo | Puertos que declara al materializarlo | Pruebas que lo ejecutan |
+| :--- | :--- | :--- |
+| `SwitchCaseNode` | `Case 1`, `Case 2`, `Default` (de su `CasesJson`) | ruta por el caso que coincide y por `Default` cuando ninguno coincide |
+| `SubflowInputNode` | `Entrada`, `Alterna` (de su `PortNames`) | emite por el primero cuando el ítem entró por `In`, que ya no es un puerto suyo |
+| `SubflowNode` | `In`, `Done` (de la frontera de su subgrafo incrustado) | frontera renombrada: el interior sale por `Done` y el contenedor lo entrega por ahí |
+
+**Lo que se encuentra es que ninguno de los tres declara una rama** (`Error`, `Skipped`, `Failed`): sus puertos calculados son de enrutado (casos, `Default`) y de frontera. Eso deja de ser una suposición: la guardia resuelve sus puertos y **falla si alguno declara una rama que el inventario no declare**, con prueba sintética que lo demuestra.
+
+### 🐞 El defecto que apareció al ejecutarlos: el validador no veía los puertos calculados
+
+`GraphValidator` instanciaba los nodos, les volcaba los parámetros… y **nunca materializaba su topología**. Para un nodo cuyos puertos se calculan al leerse (el switch, los nodos frontera) da igual, porque no hay nada que materializar. Para el **contenedor de subflujo** no: sus puertos viven en una lista interna que sólo llena `SubflowPortResolver.Materialize`, así que el validador comparaba las aristas contra los genéricos `In`/`Out` y **rechazaba el flujo**: `Source node 'X' (nodo) does not have output port 'Done'` — sobre un cable que el usuario dibujó con el lienzo, porque el cargador del flujo **sí** materializa. El flujo no arrancaba y el mensaje señalaba al usuario.
+
+La cura es una línea en el validador, y la razón está escrita al lado: es la **cuarta** vez que alguien hace la misma pregunta —«¿qué puertos expone esta instancia recién configurada?»— y las cuatro tienen que contestarla igual (cargador de flujo, portapapeles, diagnóstico previo y validador). Medido antes y después: sin la línea, **2 pruebas fallan** (la de validación del contenedor y la de ejecución de extremo a extremo); con ella, el ítem recorre contenedor → subgrafo → frontera renombrada → espía.
+
+### 🧪 Las pruebas ([`ComputedPortContractIntegrationTests`](file:///FileFlow.Tests/Integration/ComputedPortContractIntegrationTests.cs), 4; [`GraphValidatorDynamicPortTests`](file:///FileFlow.Tests/Unit/Core/GraphValidatorDynamicPortTests.cs), 3)
+
+Las cuatro de ejecución usan el andamiaje del 190 con el motor real; cada una afirma **doble**: el puerto por el que llega el ítem está entre los que el nodo declara (resueltos en ejecución) **y** la arista sólo existe desde ese nombre. Las tres de validación fijan el defecto por separado, sin motor: switch, frontera configurada y contenedor.
+
+### 🛡️ Guardias y andamiaje
+
+- **El aplazamiento ya no puede ser una referencia muerta**: las formas citan pruebas y dos guardias distintas comprueban que existen (en el analizador de puertos y en el de cobertura).
+- **El índice de métodos de prueba tuvo que volverse preciso**: la primera redacción casaba cualquier `public void …`, así que el índice incluía `Dispose` y `ExecuteAsync` de los dobles y citar uno de esos nombres habría pasado por evidencia. Ahora exige atributos de prueba (`Fact`, `Theory`, `InlineData`, `MemberData`) delante del método.
+- **[`SourceTree`](file:///FileFlow.Tests/TestHelpers/SourceTree.cs) y [`TestSuiteIndex`](file:///FileFlow.Tests/TestHelpers/TestSuiteIndex.cs)** son el barrido y el índice compartidos; el andamiaje gana la colección **[`BranchPortHarness`](file:///FileFlow.Tests/Integration/BranchPortHarnessCollection.cs)**.
+- **El servicio de subflujos se inyecta por ítem** en el andamiaje en lugar de depender del estático global `ISubflowExecutionService.Instance`, que **cualquier otra ejecución del proceso reescribe al arrancar** (`WorkflowExecutor`, líneas 164 y 203-206). Comprobado con un servicio nulo: si la inyección no se usara, la prueba del contenedor no recibiría nada.
+
+### 🐞 El defecto que apareció en mi propio andamiaje, y cómo se vio
+
+La primera corrida de la tanda nueva **falló exactamente una prueba del 190** (`ARenamerWhoseFailStrategyFindsTheNameOccupied…`, la del `Fail`), y en aislamiento pasaba 3 de 3. La causa es la de siempre en este suite: el espía del andamiaje guarda lo recibido en un registro **estático**, y al añadir una segunda clase que lo comparte las dos corrieron en paralelo —una limpiaba la cola de la otra y cada una veía ítems de la vecina—. La cura es la colección `BranchPortHarness`, que **no es exclusiva** (estas pruebas no tocan estado global de proceso y pueden correr al lado del resto): sólo serializa a quien comparte el espía. 3 corridas consecutivas verdes después.
+
+### ✅ Mutaciones (4, las cuatro mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | el validador vuelve a mirar los puertos de fábrica | `GraphValidatorDynamicPortTests` (contenedor) **y** la prueba de ejecución del contenedor |
+| M2 | el switch declara un puerto `Error` | `TheNodesWithComputedPorts_ShouldNotHideABranchBehindARuntimePort`, nombrando `SwitchCaseNode.Error` |
+| M3 | se renombra una prueba citada por una forma | las dos guardias de evidencia (`EveryDeferredNode_ShouldNameTestsThatExist` y `EveryComputedPortShape_ShouldResolveItsPortsAndNameRealTests`) |
+| M4 | (sonda) el andamiaje inyecta un servicio de subflujos nulo | la prueba del contenedor deja de recibir el ítem: la inyección es la que se usa |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1637 superadas + 1 omitida de 1638 en 1 m 09 s** (antes 1626 + 1; **+11 pruebas**), build **0/0**. Tres corridas verdes consecutivas de la tanda nueva (57 pruebas) antes de la completa.
+- **Incidencia medida y no reproducida**: `SyntheticDataSourceNodeTests.SyntheticDataSourceNode_EmissionLatency_ShouldPaceEveryEmission` falló **una vez** en una corrida completa y pasó en las dos siguientes. Mide huecos reales entre emisiones con `Task.Delay(5)` y `Stopwatch` de alta resolución, así que su margen es la granularidad del temporizador del sistema bajo contención; no la toca ningún cambio de este hito.
+
+### 📌 Notas para la siguiente sesión
+
+- **El estático `ISubflowExecutionService.Instance` lo escribe cada ejecución** al arrancar, así que dos ejecuciones del motor en paralelo con **nodos contenedor** pueden cruzar sus cargadores (el andamiaje ya no depende de él; el producto sí). La cura natural es que el servicio sea del arranque y no del proceso —ya lo es para el subgrafo interior, que viaja en los metadatos del ítem— y merece su propia decisión.
+- La prueba de latencia del origen sintético pide, como las otras dos esperas del inventario del hito 175, o un reloj inyectable en el nodo o un margen explícito que reconozca la granularidad del temporizador.
+
+---
+
+## [2026-09-23] - Todas las Ramas del Producto, Contadas: el Inventario de Salidas de Error y de Omitido (Hito 190)
+
+### 🎯 Objetivo
+
+Cerrar las ramas que seguían sin contrato de ejecución tras el hito 189: el **desbordamiento de la estrategia `Fail`** del renombrador y los puertos `Error`/`Skipped`/`Failed` **del resto de los plugins**. Lo que había era una guardia estática que vigila los **nombres** de puerto (que se declare el que se emite) y seis ramas ejecutadas; el resto de la tabla —más de veinte ramas repartidas por nueve proyectos de plugin— no la recorría nadie, que es el sitio exacto donde el hito 188 encontró tres nodos cortando el flujo en silencio.
+
+### 📋 El inventario, para no volver a perder la lista ([`BranchPortInventory`](file:///FileFlow.Tests/TestHelpers/BranchPortInventory.cs))
+
+**23 nodos, 24 pares nodo·puerto** (el Fan-Out tiene dos casos distintos para su única rama `Error`), de los que **23 quedan ejecutados** por una prueba y **2 se declaran no forzables por ninguna entrada**, con su motivo escrito. La evidencia de cada rama cubierta es **el nombre de un método de prueba**, no una descripción: es lo que permite comprobar que sigue existiendo.
+
+### 🔎 El inventario mordió antes de estar terminado
+
+Al contrastarlo con el árbol, la guardia señaló **tres ramas que el `grep` inicial no había visto**: `DeduplicationFilterNode`, `MediaTranscoderNode` y `NetworkDownloadNode`. Las tres emiten por `WellKnownPorts.Error`, no por el literal `"Error"`, así que buscarlas por texto deja de encontrarlas: es justo el caso que el analizador de puertos **sí** resuelve (en el repositorio el nombre de la constante es el nombre del puerto). Sin la guardia, tres ramas del producto habrían quedado fuera de la lista para siempre.
+
+### 🧪 Las ramas, ejecutadas con el motor ([`BranchPortContractIntegrationTests`](file:///FileFlow.Tests/Integration/BranchPortContractIntegrationTests.cs), 24 pruebas)
+
+| Rama(s) | Cómo se dispara |
+| :--- | :--- |
+| Renamer · `Error` (**estrategia `Fail`**) | el destino ya está ocupado y la estrategia convierte la colisión en excepción: los **dos** archivos del lote salen por `Error` conservando su nombre, el diagnóstico (`Target file already exists`) viaja en el ítem y el archivo que ocupaba el nombre **no se toca** |
+| **12 nodos** · `Error` | la **entrada no existe en el disco**: `ArchiveCompressor`, `SmartUnpack`, `DestinationSink`, `FileRelocator`, `OriginalFileAction`, `SafeRecycleDelete`, `DocumentProcessor`, `HashCalculator`, `DeduplicationFilter`, `MediaTranscoder`, `ImageOptimizer` y `NetworkUpload`, cada uno con el nombre de su puerto feliz (`Out`, `Done`, `Deleted`…) en una sola teoría |
+| `NetworkUpload` + `NetworkDownload` · `Error` | un **protocolo sin estrategia**: la fábrica de transportes lanza antes de abrir ninguna conexión, así que la rama se prueba **sin red y sin servidor ajeno** |
+| `ArchiveFanIn` · `Error` | la carpeta de destino **cuelga de un fichero**, así que crear el directorio no puede funcionar: es el único fallo del empaquetado que se provoca sin depender del sistema de archivos anfitrión ni de sus permisos |
+| `CliExecution` · `Failed` | un **ejecutable que no existe en ningún sistema**: lanzarlo lanza y el nodo lo convierte en `Failed` (no se usa un comando que devuelva código de error, que dependería del intérprete del anfitrión) |
+| `Webhook` · `Failed` | una **URL sin esquema http(s)**: se descarta antes de abrir ninguna conexión |
+| Visión · `Error` (`ImageTypeClassifier`, `MultimodalVisionLlm`) | la imagen no existe, y esa comprobación ocurre **antes** de tocar ningún modelo: en [`AiVisionBranchPortIntegrationTests`](file:///FileFlow.Tests/Integration/AiVisionBranchPortIntegrationTests.cs), en la colección exclusiva `OnnxInference` porque el motor consulta la aceleración del nodo al terminarlo y eso lee los registros de sesiones del clúster |
+
+El andamiaje (origen de prueba, espía de dos entradas y ejecutor) vive ahora en [`BranchPortHarness`](file:///FileFlow.Tests/TestHelpers/BranchPortHarness.cs), compartido por las dos clases: dos copias del diagnóstico es dos sitios donde arreglarlo.
+
+### 🛡️ La guardia que impide que la lista caduque ([`BranchPortCoverageGuardTests`](file:///FileFlow.Tests/Unit/App/BranchPortCoverageGuardTests.cs), 8 pruebas)
+
+[`BranchPortInventory.Audit`](file:///FileFlow.Tests/TestHelpers/BranchPortInventory.cs) contesta cuatro preguntas y devuelve una infracción por cada desacuerdo: una rama que el árbol **emite** y el inventario **no declara**; una entrada cuyo puerto el árbol **ya no emite**; una evidencia que **nombra una prueba que no existe**; y un motivo que **no explica nada** (una frase, no una etiqueta). Más dos comprobaciones sobre el propio inventario: sin entradas repetidas y sin puertos que no sean de rama.
+
+La lógica se auto-testea con entradas sintéticas —seis pruebas— para que probar que la guardia muerde no exija dejar un nodo sin prueba en el árbol. Y [`SourceTree`](file:///FileFlow.Tests/TestHelpers/SourceTree.cs) centraliza el barrido de fuentes: sus predicados se evalúan sobre la **ruta absoluta**, porque filtrar `/FileFlow.Plugin.` sobre una ruta relativa al repositorio no encuentra nada y deja el barrido vacío —la primera redacción de esta guardia pasó en verde por no haber mirado, y el mensaje de la guardia lo cuenta—.
+
+### ✅ Mutaciones (3, las tres mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | se retira del inventario la rama `Error` del descargador | `NetworkDownloadNode emite por 'Error' y el inventario no lo declara…` |
+| M2 | se renombra una prueba citada por una entrada | `CliExecutionNode.Failed cita la prueba '…', que no existe en el suite` |
+| M3 | el transcodificador desvía su rama de entrada ausente a `Out` | el caso del nodo en la teoría, nombrando el puerto: esperaba `Branch` y llegó a `In` |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1626 superadas + 1 omitida de 1627 en 1 m 15 s** (antes 1598 + 1; **+28 pruebas**), build **0/0**.
+- Las mutaciones se probaron con el árbol restaurado después de cada una (y el `git status` comprobado: solo quedan los ficheros de este tramo).
+
+### 📌 Notas para la siguiente sesión
+
+- Las dos ramas declaradas **no forzables** son `EmptyDirectoryCleanerNode.Error` (solo una excepción de E/S al borrar: la carpeta que no existe sale por `Out`) y `OperationReportNode.Error` (solo si revienta la renderización del informe al completar el flujo; ni la plantilla con llaves sin cerrar ni el formato ni el tema lanzan). Cubrirlas exigiría inyectar el fallo, no provocarlo con una entrada.
+- Una rama nueva del producto **rompe el suite** hasta que se declare: es el trato, y es lo que hace que la lista no caduque.
+- Los puertos de categoría y de fin de flujo quedan fuera del inventario por diseño; si un nodo estrena un nombre nuevo de rama, se añade a `BranchPortInventory.BranchPortNames` y la guardia obliga a declararlo.
+
+---
+
+## [2026-09-23] - Las Ramas de Error y de Omitido, Bajo Contrato: Ejecutadas y Vigiladas (Hito 189)
+
+### 🎯 Objetivo
+
+Dar contrato a las salidas que no son el camino feliz de los tres nodos que emitían por puertos no declarados (hito 188): un error de descompresión, un nombre de tabla inseguro, un renombrado omitido o un origen que no existe. Esa era justo la mitad que faltaba por dos motivos: el aviso nuevo del motor cuenta el defecto **cuando la rama se ejecuta** —y el suite no recorría ninguna—, y las pruebas que había llamaban al nodo con un contexto simulado que **acepta el nombre de puerto que se le pida**, así que no podían verlo.
+
+### 🧪 Las ramas, ejecutadas de verdad ([`BranchPortContractIntegrationTests`](file:///FileFlow.Tests/Integration/BranchPortContractIntegrationTests.cs), 6 pruebas)
+
+Cada caso corre el motor con el cableado real: un **origen de prueba** que emite rutas concretas → el nodo del caso → un **espía** que declara dos entradas, `In` y `Branch`. Tender el camino feliz por una y la rama por la otra hace que **el nombre del puerto por el que llega el ítem sea, en sí mismo, la afirmación**.
+
+| Rama | Qué se ejecuta | Qué se afirma |
+| :--- | :--- | :--- |
+| Fan-Out · `Error` | un `.cbz` corrupto (no es un comprimido) | sale **una vez** por `Error`, con el ítem original y con el **diagnóstico de volúmenes** que deja esa rama (`RelatedVolumeFiles`, `IsMultipartArchive=false`) |
+| Fan-Out · `Error` | un `.cbz` sin ficheros dentro | sale por `Error` y **sin** ese diagnóstico: es otra rama de la misma salida, y la prueba distingue una de otra por su carga |
+| SqliteSink · `Error` | nombre de tabla inseguro (`AuditTrail; DROP TABLE Users; --`, `123_StartsWithDigit`) | el ítem sale por `Error` y **no queda base de datos en el disco**: el nombre se valida antes de abrir nada |
+| Renamer · `Skipped` | dos archivos cuyo destino ya existe, estrategia `Skip` | los **dos** salen por `Skipped`, conservando su nombre, y nada sale por el camino feliz |
+| Renamer · `Error` | un origen que no existe | sale por `Error` conservando su ruta original |
+
+### 🐞 El defecto que destapó la prueba del lote
+
+Al ejecutar el caso `Skipped` con **dos** archivos, uno se omitía y el otro se renombraba con `FF_BranchPort_…_20260923_dos.txt`: la **plantilla por omisión** del nodo, un nombre que nadie había configurado.
+
+Medido y localizado: `ResolveSteps` migra los parámetros legados (**lee `Pattern`, lo retira** y deja los pasos en `MethodSteps`), y el motor entrega los ítems de un lote **en paralelo sobre el mismo objeto**. El segundo ítem podía leer el `Pattern` ya retirado y los `MethodSteps` todavía sin escribir, y caía en la plantilla por omisión —en silencio—. La cura es resolver los pasos **una vez por instancia**, bajo cerrojo (`_resolvedSteps`), que además evita repetir la migración en cada ítem.
+
+### 🛡️ La guardia estática: la rama mal escrita se ve sin ejecutarla ([`NodeEmissionPortGuardTests`](file:///FileFlow.Tests/Unit/App/NodeEmissionPortGuardTests.cs), 12 pruebas)
+
+[`NodeEmissionPortAnalyzer`](file:///FileFlow.Tests/TestHelpers/NodeEmissionPortAnalyzer.cs) compara, clase por clase, los puertos **declarados** con los nombres **emitidos** —literales y constantes de `WellKnownPorts`, que se resuelven— y la guardia barre los 13 proyectos de plugins.
+
+- **La pertenencia se decide por la cadena de bases, no por la base directa**, y eso importa: los nodos de IA heredan de `AiFlowNodeBase`, que hereda de `FlowNodeBase`. La primera redacción miraba sólo la base directa y **pasaba en verde con toda esa familia invisible**; ahora la cobertura se afirma contra los propios nodos (todo fichero con `[NodeDefinition` tiene que estar juzgado o aplazado), no contra un número.
+- **Lo que no se puede juzgar se declara**: los tres nodos de puertos calculados (`SwitchCaseNode`, `SubflowInputNode`, `SubflowNode`) están en la guardia **uno por uno y con su motivo**; un cuarto la hace fallar. Y una clase que emite, parece un nodo y tiene una base que no se resuelve en el árbol se reporta como **punto ciego** —la comprobación que no se hizo, dicha en voz alta—.
+- **Los ayudantes que emiten no son nodos**: las estrategias de transporte (`INetworkTransportStrategy`) y los motores de script reciben un contexto y emiten en su nombre, sin declarar puertos. Señalarlos como punto ciego convertiría la guardia en ruido, y hay una prueba de fragmento que fija esa frontera.
+- **El analizador se auto-testea con fragmentos**: detecta el caso real (`Out` declarado, `ItemOut` emitido), acepta el segundo puerto cuando se declara, resuelve `WellKnownPorts.Out` en los dos lados, ve un puerto heredado de una base del mismo árbol, aplaza a quien calcula sus puertos y **no se cree un comentario** que explique el defecto.
+
+### ✅ Mutaciones (4, las cuatro mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | el Fan-Out vuelve a emitir por `ItemOut` | guardia estática: `ArchiveFanOutNode … emite por 'ItemOut', que no declara. Declara: Error, Out.` |
+| M2 | el renombrador deja de declarar `Skipped` y `Error` | guardia estática (nombra los dos) **y** las dos pruebas de rama del renombrador, que dejan de recibir nada |
+| M3 | se revierte la resolución única de pasos | el caso `Skipped` falla **3 de 3** corridas (el segundo archivo vuelve a la plantilla por omisión) |
+| M4 | (hito 188) fuera el aviso del motor | las pruebas del aviso |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1598 superadas + 1 omitida de 1599 en 1 m 15 s** (antes 1580 + 1; **+18 pruebas**), build **0/0**.
+- La guardia estática juzga **69 clases de nodo** y aplaza **3**, con el barrido cubriendo todos los ficheros que declaran un nodo.
+
+### 📌 Notas para la siguiente sesión
+
+- Las pruebas de rama viven **todas en una clase** porque el espía guarda lo recibido en un registro estático y las pruebas de una misma clase no corren en paralelo; separarlas en dos clases las haría pisarse.
+- Queda sin rama de prueba el **desbordamiento de la estrategia `Fail`** del renombrador (lanza `IOException` y sale por `Error`) y los caminos de error de los nodos que pasan por `Skipped`/`Error` de otros plugins. → **Cerrado en el hito 190**, que además lo convierte en inventario vigilado.
+- El analizador lee **nombres literales**; una emisión compuesta en tiempo de ejecución (un nombre de puerto venido de un parámetro) sólo la ve el aviso del motor.
+
+---
+
+## [2026-09-23] - El Flujo de Recompresión Llega al Final: el Nodo Fan-Out Emitía por un Puerto que no Declara (Hito 188)
+
+### 🎯 Objetivo
+
+Un flujo real del usuario —carpeta origen → **desempaquetar (Fan-Out)** → optimizador de imágenes → empaquetar (Fan-In)— **se cortaba después del segundo nodo**: en la consola sólo aparecían los logs del origen y del desempaquetador, los dos nodos siguientes no se ejecutaban **nunca** y la ejecución terminaba **en verde**, sin error y sin una sola línea que explicara nada. El encargo era investigarlo, con la sospecha de que los últimos cambios hubieran roto la ejecución de flujos.
+
+### 🔬 El mecanismo: un nombre de puerto que no existe (medido, no supuesto)
+
+- [`ArchiveFanOutNode`](file:///FileFlow.Plugin.Archives/ArchiveFanOutNode.cs) **declaraba** su salida como `Out` —es lo que dice el catálogo y lo que la interfaz dibuja— y **emitía** cada elemento extraído por `ItemOut`.
+- El motor busca el cable por nombre exacto: [`WorkflowItemDispatcher.DispatchEmitAsync`](file:///FileFlow.Core/Engine/WorkflowItemDispatcher.cs) indexa las aristas como `{nodo}:{puerto}` y, si no encuentra ninguna para ese nombre, **da el ítem por terminado** (`IncrementCompletedFiles`) como si fuera una hoja legítima del grafo. Un puerto mal escrito es indistinguible de «este nodo no tiene nada más que hacer»: ni error, ni aviso, ni nodo descendente.
+- La interfaz **no puede** dibujar el cable que faltaba: los cables salen de los puertos declarados, así que el flujo guardado referencia `Out` y la ejecución emite `ItemOut`. El defecto estaba en el nodo, y el grafo del usuario es correcto.
+
+### 🧪 Reproducido antes de tocar nada
+
+Con el grafo del usuario (misma topología, mismo cableado `Out→In`) y un `.cbz` de una página: los nodos que llegaron a ejecutarse fueron **`{origen, desempaquetar} = Completed`** y los logs terminan en «Desempaquetados 1 elementos … **Emitiendo a downstream**…», la frase que prometía lo que ya no ocurría. Es el síntoma exacto del parte, reproducido en el suite y no inferido leyendo código.
+
+### 🕰️ No lo rompieron los últimos cambios (`git log -S`)
+
+El nombre `ItemOut` viaja con el nodo desde el **commit que estrenó los plugins de archivos** (`4433a7f`), y el puerto declarado ya era `Out` en `419746c`: la discrepancia **nunca se corrigió** y la rama nunca funcionó. Lo que sí es de esta sesión es haberla *visto*: el hito 186 dejó la suite en verde y este flujo no tiene ninguna prueba que lo ejecute de verdad.
+
+### 📋 Auditoría: el mismo defecto en otros dos nodos
+
+Barridas las **44 clases de nodo** con emisiones (puertos declarados frente a nombres emitidos), el patrón apareció **tres veces**, siempre en una rama que el suite no recorre:
+
+| Nodo | Emitía sin declarar | Consecuencia |
+| :--- | :--- | :--- |
+| `ArchiveFanOutNode` | `Error` (y el `ItemOut` del camino feliz) | el flujo entero se cortaba en silencio |
+| `SqliteDatabaseSinkNode` | `Error` | un fallo de escritura en la base se perdía sin dejar rastro |
+| `AdvancedRenamerNode` | `Error`, `Skipped` | los archivos omitidos y los fallidos desaparecían |
+
+### 🛠️ La cura
+
+- **`ArchiveFanOutNode`**: emite por **`Out`** (su puerto declarado) y **declara `Error`**, el segundo puerto que ya usaban los nodos de su familia (`SmartUnpackNode`, `ArchiveFanInNode`).
+- **`SqliteDatabaseSinkNode`** declara `Error` y **`AdvancedRenamerNode`** declara `Skipped` y `Error`: los tres nombres que ya estaban emitiéndose pasan a ser puertos visibles y conectables.
+- **Catálogo regenerado** (`FILEFLOW_UPDATE_NODE_CATALOG=1`): tres líneas, exactamente los tres nodos tocados.
+
+### 🛡️ Lo que el motor ya no calla
+
+[`WorkflowItemDispatcher.WarnIfEmitPortIsNotDeclared`](file:///FileFlow.Core/Engine/WorkflowItemDispatcher.cs): cuando un nodo emite por un puerto que **no declara**, el motor deja un aviso en la consola con el nodo y el nombre exacto, **una vez por nodo y puerto y ejecución** (`ResetDiagnostics()` en cada arranque), en lugar de una vez por archivo. Sólo se juzga a los nodos que declaran algún puerto, y los puertos dinámicos (un `Switch`, un subflujo) se consultan ya materializados en la instancia, que es la que conoce sus nombres reales. Texto co-ubicado en `FileFlow.App/Resources/Strings{,.es}.resx` (`Log_UndeclaredOutputPort`).
+
+Es la mitad que evita el próximo caso: la auditoría estática sólo ve los nombres literales, mientras que el aviso del motor ve cualquier emisión, venga de un nodo del catálogo o de un plugin de terceros.
+
+### 🛡️ Por qué el suite no lo vio, y la prueba que lo vigila desde hoy
+
+- Las pruebas que ya existían de Fan-Out/Fan-In llaman al nodo con un **contexto simulado que acepta el nombre de puerto que se le pida** —[`ArchiveFanOutNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ArchiveFanOutNodeTests.cs) incluso afirmaba `Times.Never` sobre `ItemOut`, el nombre equivocado—, así que el defecto era **invisible por construcción**.
+- **Nueva prueba de integración** ([`ArchiveFanOutPipelineIntegrationTests`](file:///FileFlow.Tests/Integration/ArchiveFanOutPipelineIntegrationTests.cs)): ejecuta el flujo del usuario de extremo a extremo con el motor real —**los cuatro nodos llegan a `Completed`**, el `.cbz` reaparece en destino con el nombre original y **dentro está la página ya optimizada** (`pagina01.webp`)—. Los dos ficheros de pruebas unitarias del Fan-Out pasan a usar el puerto real.
+- **Nuevas pruebas del aviso** ([`UndeclaredOutputPortDiagnosticTests`](file:///FileFlow.Tests/Unit/Core/UndeclaredOutputPortDiagnosticTests.cs)): tres archivos por el mismo puerto mal escrito producen **un** aviso (y el ítem no llega al contador pese a existir el cable), y el control negativo —nodo que emite por el puerto que declara— no avisa y sí llega.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1580 superadas + 1 omitida de 1581 en 1 m 19 s** (antes 1577 + 1; **+3 pruebas**), build **0/0**.
+- **Mutaciones (3, las tres mordidas)**: (A) fuera el diagnóstico del motor → `UndeclaredOutputPortDiagnosticTests` falla («the collection is empty») y el control negativo sigue verde; (B) el Fan-Out vuelve a emitir por `ItemOut` → la prueba de integración falla **con el síntoma del parte** (`completedNodes` = `{origen, desempaquetar}`); (C) se retira el puerto `Error` de la declaración → `NodeCatalogGuardTests` detecta la deriva del catálogo.
+
+### 📌 Notas para la siguiente sesión
+
+- **Flujo del usuario**: `flujo recompresion comics.json` trae dos **puntos de interrupción** activos (optimizador y empaquetador). En **Depurar** el flujo se detendrá ahora en el optimizador esperando «Continuar» —es el comportamiento esperado, no un corte—; con **Ejecutar** llega al final. Conviene limpiarlos antes de volver a probar.
+- Las ramas de `Error` de los tres nodos y la de `Skipped` del renombrador **no tenían prueba de ejecución** cuando se cerró este hito; quedaron cubiertas en el **hito 189**, que además destapó una carrera en la migración de parámetros del renombrador.
+- La auditoría de nombres de puerto es **heurística** (nombres literales en el código); el aviso del motor es la cobertura real para el resto.
+
+---
+
+## [2026-09-23] - Las Notas de Versión del Tramo, para quien usa el Producto (Hito 187)
+
+### 🎯 Objetivo
+
+Que el tramo 169–186 —dieciocho hitos medidos en este registro— tenga una lectura para quien **usa** la aplicación y no para quien la construye: qué cambia al usarla, separado de lo que sostiene que eso no se rompa.
+
+### 🛠️ Qué hay
+
+- **`docs/notas_de_version.md`**: *lo que ves* (arranque, controles deshabilitados con su contraste antes y después, estados corregidos, lienzo y editor, y los avisos), *lo que no se ve* (servicio de latidos, reloj inyectable, capa de interacción bajo prueba, capturas de referencia, guardias y determinismo del suite), *lo que sigue viéndose así* (cuatro puntos conocidos con su causa declarada) y cómo verificarlo.
+- **Las cifras salen de este registro, no de la memoria**: 4743 → 5018, 1475 → 1577 pruebas, 29 → 37 capturas, y las tablas de contraste tal y como las mide la guardia.
+- **Cada pendiente se publica con su causa**: el indicador de pestaña necesita plantilla propia (`ControlTheme`, no un estilo), `F2` no lleva el foco a la caja, el tema claro no tiene referencia en el resto de paneles, y los dos presets de acento claro quedan en el mínimo de un control inactivo (3,36 y 3,58:1) porque subirlo borraría el color de la variante.
+- **Registrado en el mapa de ficheros auxiliares** (`AGENTS.md`) con cuándo consultarlo y actualizarlo, para que no dependa de que alguien lo recuerde.
+
+### ✅ Validación
+
+- Sin cambios de código: `dotnet test` completo → **1577 superadas + 1 omitida de 1578**, con las líneas base intactas (es el dato del tramo que las notas citan).
+- Los nombres de tarea (`test.ps1`, `run.ps1`, `run.sh`, `clean.sh`) y el número de capturas se comprobaron contra el repositorio en lugar de escribirlos de memoria; la primera redacción de la sección final prometía una tarea de pruebas para Linux que **no existe** y se corrigió.
+
+### 📌 Notas para la siguiente sesión
+
+- Las notas son **de tramo**, no de cada hito: al cerrar el bloque visible siguiente, su apartado se añade aquí (o se abren notas nuevas si el tramo cambia de versión).
+- Lo que **no** llevan, a propósito: rutas de fichero, nombres de clase y detalle de implementación. Eso vive en este walkthrough y en `architecture.md`.
+
 ## [2026-09-23] - Los Campos Deshabilitados Declaran su Primer Plano: Texto y Desplegable Bajo Contraste Pintado (Hito 186)
 
 ### 🎯 Objetivo
