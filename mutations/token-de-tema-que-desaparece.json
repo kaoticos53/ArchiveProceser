@@ -1,0 +1,25 @@
+{
+  "id": "token-de-tema-que-desaparece",
+  "hito": 169,
+  "claim": "Todo token que el XAML consume con DynamicResource existe en los ocho presets integrados y en el tema de arranque.",
+  "why": "Un token que desaparece no rompe la compilacion: la interfaz se queda sin ese color y el fallo es visual y silencioso (una superficie transparente, un texto que no se ve), en un tema que quizas nadie mira. La guardia de tokens es lo unico que convierte eso en un fallo.",
+  "edits": [
+    {
+      "file": "FileFlow.App/Services/ThemeResourceApplier.cs",
+      "replacements": [
+        {
+          "old": "        AddSolidBrush(\"AppBackgroundBrush\", theme.AppBackground, \"#0D1117\");\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ThemeTokenCompletenessTests",
+    "why": "Compara los tokens que el XAML referencia contra el diccionario que genera cada preset integrado."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~DisabledStateLintTests",
+    "why": "El lint de estados deshabilitados mira el XAML, no los tokens generados: sigue en verde, asi que el mutante es preciso."
+  }
+}

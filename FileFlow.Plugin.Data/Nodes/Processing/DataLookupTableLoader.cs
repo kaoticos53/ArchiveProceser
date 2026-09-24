@@ -13,8 +13,25 @@ namespace FileFlow.Plugin.Data;
 /// </summary>
 public static class DataLookupTableLoader
 {
-    private record CacheEntry(DateTime LastModifiedUtc, Dictionary<string, Dictionary<string, string>> LookupIndex);
+    /// <summary>
+    /// Tope de tablas en memoria. La caché vive en un estático, así que <b>sobrevive a cada ejecución</b>: sin tope,
+    /// un proceso que cruce muchas tablas distintas se las queda todas hasta cerrarse. Se suelta la que lleva más
+    /// tiempo sin usarse, con el mismo criterio que la caché de scripts compilados del plugin de Scripting.
+    /// </summary>
+    private const int MaxCachedTables = 16;
+
+    /// <summary>
+    /// Índice de una tabla, con la <b>identidad de fichero</b> desde la que se cargó: fecha de escritura y tamaño.
+    /// El tamaño cierra el caso que la fecha sola deja abierto —una tabla reescrita que conserva su fecha (una
+    /// copia con marcas de tiempo, una edición en el mismo tick del sistema de ficheros)—, y sin él la caché
+    /// contestaría con las filas de antes de escribirse.
+    /// </summary>
+    private sealed record CacheEntry(DateTime LastModifiedUtc, long Length, long LastUsedTicks, Dictionary<string, Dictionary<string, string>> LookupIndex);
+
     private static readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Tablas en memoria, para poder medir que la caché no crece sin gobierno.</summary>
+    public static int CachedTableCount => _cache.Count;
 
     public static async Task<Dictionary<string, Dictionary<string, string>>> LoadLookupTableAsync(
         string filePath,
@@ -30,10 +47,17 @@ public static class DataLookupTableLoader
         }
 
         var lastModified = await storage.GetLastWriteTimeAsync(filePath, cancellationToken).ConfigureAwait(false);
-        string cacheKey = $"{filePath}::{keyColumn}";
+        long length = await storage.GetFileSizeAsync(filePath, cancellationToken).ConfigureAwait(false);
 
-        if (_cache.TryGetValue(cacheKey, out var entry) && entry.LastModifiedUtc == lastModified.UtcDateTime)
+        // El almacén forma parte de la clave: el mismo camino puede ser un fichero del disco o uno del almacén
+        // virtual de una ejecución simulada, con contenidos distintos.
+        string cacheKey = $"{storage.GetType().Name}::{filePath}::{keyColumn}";
+
+        if (_cache.TryGetValue(cacheKey, out var entry) &&
+            entry.LastModifiedUtc == lastModified.UtcDateTime &&
+            entry.Length == length)
         {
+            _cache[cacheKey] = entry with { LastUsedTicks = Environment.TickCount64 };
             return entry.LookupIndex;
         }
 
@@ -136,8 +160,21 @@ public static class DataLookupTableLoader
             }
         }
 
-        _cache[cacheKey] = new CacheEntry(lastModified.UtcDateTime, index);
+        _cache[cacheKey] = new CacheEntry(lastModified.UtcDateTime, length, Environment.TickCount64, index);
+        EvictLeastRecentlyUsed();
         return index;
+    }
+
+    /// <summary>Suelta la tabla que lleva más tiempo sin usarse cuando la caché pasa de su tope.</summary>
+    private static void EvictLeastRecentlyUsed()
+    {
+        if (_cache.Count <= MaxCachedTables) return;
+
+        var oldest = _cache.OrderBy(kv => kv.Value.LastUsedTicks).FirstOrDefault();
+        if (oldest.Key != null)
+        {
+            _cache.TryRemove(oldest.Key, out _);
+        }
     }
 
     public static void ClearCache()

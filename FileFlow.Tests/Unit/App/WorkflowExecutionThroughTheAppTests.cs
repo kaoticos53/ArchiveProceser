@@ -51,6 +51,13 @@ public class WorkflowExecutionThroughTheAppTests
         {
             var (editor, coordinator, log) = BuildRun(source, destination, output, temp);
 
+            // El texto del mensaje de arranque se resuelve <b>una sola vez</b>, antes de la ejecución: el
+            // coordinador lo resuelve por dentro al encolarlo, así que resolverlo aquí al afirmar era comparar
+            // dos momentos de un global y la aserción podía fallar al azar si un registro de recursos ajeno
+            // caía en medio (hito 179). Lo que cerró esa ventana es que el diccionario del host esté registrado
+            // desde el arranque del suite (HostLocalization), no esta lectura; la lectura lo deja dicho.
+            string startMessage = LocalizationManager.Instance["LogStartingExecution"];
+
             var result = await coordinator.RunAsync(Options(), _ => { }, CancellationToken.None);
 
             result.Succeeded.Should().BeTrue($"el flujo tiene que ejecutarse: {result.ErrorMessage}");
@@ -65,8 +72,11 @@ public class WorkflowExecutionThroughTheAppTests
                 string.Join(", ", editor.Nodes.Select(node => $"{node.Title}={node.ExecutionStatus}")));
 
             // Sin vaciar nada desde aquí: la consola se lee tal como la dejó el cierre de la ejecución, que es
-            // lo que esta prueba verifica. Vaciarla desde el test mediría al test, no al producto.
-            log.Logs.Should().Contain(record => record.Message == LocalizationManager.Instance["LogStartingExecution"],
+            // lo que esta prueba verifica. Vaciarla desde el test mediría al test, no al producto. (El latido de
+            // la consola entrega el tick al hilo de la interfaz y en el suite headless el despacho desde otro
+            // hilo se descarta —medido en el hito 179—, así que quien publica aquí es el cierre, que es
+            // justamente el camino que interesa.)
+            log.Logs.Should().Contain(record => record.Message == startMessage,
                 "el registro de la ejecución tiene que salir por la consola sin que nadie lo empuje a mano");
             log.Logs.Should().NotContain(record => record.Level == LogLevel.Error,
                 "un flujo que hizo su trabajo no deja errores en la consola");
@@ -246,6 +256,117 @@ public class WorkflowExecutionThroughTheAppTests
     /// instancias reales de los nodos y quien une las aristas. Añadir los nodos al lienzo a mano probaría
     /// otra cosa —y un nodo de prueba sería descubrible por el propio producto—.
     /// </summary>
+    // ─────────────────────────────────────────────────────────────────────────────
+    // El latido visual: el lienzo se mueve <i>durante</i> la ejecución, no sólo al terminar
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// El cierre de la ejecución ya estaba cubierto (los estados finales llegan al lienzo), pero el fotograma
+    /// periódico —el de los 33 ms que hace que la tarjeta cambie <i>mientras</i> el flujo corre— era una lambda
+    /// capturada dentro de la ejecución: su camino no se ejecutaba nunca en el suite. Aquí se llama al mismo
+    /// paso que el temporizador, sin motor de por medio.
+    /// </summary>
+    [Fact]
+    public void TheVisualHeartbeat_ShouldPaintWhatTheEnginePublished_BeforeTheRunEnds()
+    {
+        string source = NewDirectory();
+        string destination = NewDirectory();
+        string output = NewDirectory();
+        string temp = NewDirectory();
+
+        try
+        {
+            var (editor, coordinator, _) = BuildRun(source, destination, output, temp);
+            var origin = editor.Nodes.Single(node => node.Id == "origen");
+            var cable = editor.Connections.Single();
+
+            // Es lo que publica el motor: estado, progreso y el pulso de un cable al despachar ítems.
+            coordinator.QueueNodeStatus("origen", NodeExecutionStatus.Running);
+            coordinator.QueueNodeProgress("origen", 50, "mitad");
+            coordinator.QueueEdgeDispatch(cable.Source.NodeOwner.Id, cable.Source.Name, 3);
+
+            coordinator.FlushVisualFrame();
+
+            origin.ExecutionStatus.Should().Be(NodeExecutionStatus.Running,
+                "el estado encolado tiene que estar en el lienzo antes de que el flujo termine");
+            origin.ProgressPercentage.Should().Be(50, "y su progreso, para que la tarjeta muestre por dónde va");
+            origin.ProgressMessage.Should().Be("mitad");
+            cable.ItemCount.Should().Be(3, "el pulso del cable cuenta los ítems que pasaron por ese puerto");
+        }
+        finally
+        {
+            Delete(source, destination, output, temp);
+        }
+    }
+
+    /// <summary>
+    /// Un nodo puede desaparecer del lienzo con la ejecución en marcha (el usuario lo borra, o se cierra el
+    /// flujo). El fotograma resuelve por identificador y tiene que ignorarlo, no reventar en cada tick.
+    /// </summary>
+    [Fact]
+    public void TheVisualHeartbeat_ShouldIgnore_UpdatesForNodesThatAreGone()
+    {
+        string source = NewDirectory();
+        string destination = NewDirectory();
+        string output = NewDirectory();
+        string temp = NewDirectory();
+
+        try
+        {
+            var (editor, coordinator, log) = BuildRun(source, destination, output, temp);
+            var origin = editor.Nodes.Single(node => node.Id == "origen");
+
+            coordinator.QueueNodeStatus("nodo-borrado", NodeExecutionStatus.Running);
+            coordinator.QueueNodeProgress("nodo-borrado", 80, "fantasma");
+            coordinator.QueueNodeStatus("origen", NodeExecutionStatus.Running);
+
+            FluentActions.Invoking(coordinator.FlushVisualFrame).Should().NotThrow(
+                "un nodo que ya no está se ignora; el latido no puede caer por eso");
+
+            origin.ExecutionStatus.Should().Be(NodeExecutionStatus.Running,
+                "y lo que sí está en el lienzo se pinta igual");
+            log.StatusMessage.Should().NotBe("fantasma", "lo de un nodo que no existe no llega a ninguna parte");
+        }
+        finally
+        {
+            Delete(source, destination, output, temp);
+        }
+    }
+
+    /// <summary>
+    /// El temporizador vive durante toda la ejecución, así que late también antes de empezar y después de
+    /// terminar: sin motor en marcha, el fotograma no tiene telemetría que empujar pero sí lo encolado.
+    /// </summary>
+    [Fact]
+    public void TheVisualHeartbeat_ShouldRun_WithoutAnExecutionInFlight()
+    {
+        string source = NewDirectory();
+        string destination = NewDirectory();
+        string output = NewDirectory();
+        string temp = NewDirectory();
+
+        try
+        {
+            var (editor, coordinator, log) = BuildRun(source, destination, output, temp);
+            coordinator.ActiveExecutor.Should().BeNull("esta prueba no arranca ninguna ejecución");
+            string statusBefore = log.StatusMessage;
+
+            coordinator.QueueNodeStatus("origen", NodeExecutionStatus.Idle);
+            FluentActions.Invoking(coordinator.FlushVisualFrame).Should().NotThrow(
+                "el primer latido puede caer con el motor aún sin crear");
+            FluentActions.Invoking(coordinator.FlushVisualFrame).Should().NotThrow(
+                "y el último, con el motor ya soltado");
+
+            log.StatusMessage.Should().Be(statusBefore,
+                "sin ejecución no hay telemetría que publicar: la barra no puede cambiar sola");
+            editor.Nodes.Single(node => node.Id == "origen").ExecutionStatus.Should().Be(NodeExecutionStatus.Idle);
+        }
+        finally
+        {
+            Delete(source, destination, output, temp);
+        }
+    }
+
     private static (EditorViewModel Editor, WorkflowExecutionCoordinator Coordinator, LogViewModel Log) BuildRun(
         string source,
         string destination,

@@ -1,0 +1,25 @@
+{
+  "id": "cache-de-embeddings-sin-entorno",
+  "hito": 203,
+  "claim": "La cache de embeddings de CLIP solo reutiliza un vector del entorno que lo produjo: si el modelo aparece o desaparece en disco, el vector se vuelve a calcular.",
+  "why": "El vector de un prompt sale del modelo CLIP si esta descargado y de una proyeccion determinista si no lo esta, y los dos caminos dan resultados distintos. La entrada guardada 'sin modelo' seguia contestando despues de que el usuario descargara el modelo de 65 MB: el flujo se ejecutaba con los vectores sinteticos hasta reiniciar la aplicacion, con el modelo ya en disco.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.AI/Inference/ClipEmbeddingDatabase.cs",
+      "replacements": [
+        {
+          "old": "        if (_embeddingCache.TryGetValue(key, out var cached) && cached.Vector.Length == featDim)\n        {\n            if (cached.FromModel == (clipPath != null))\n            {\n                Interlocked.Increment(ref _hits);\n                return cached.Vector;\n            }\n\n            // El entorno cambió bajo la entrada: se guardó sin modelo y ahora lo hay (o al revés), así que el\n            // vector no describe ya lo que hay en disco y no puede contestar por él.\n            Interlocked.Increment(ref _environmentInvalidations);\n        }\n",
+          "new": "        if (_embeddingCache.TryGetValue(key, out var cached) && cached.Vector.Length == featDim)\n        {\n            Interlocked.Increment(ref _hits);\n            return cached.Vector;\n        }\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~AVectorFromAWorldWithoutModel_ShouldNotAnswerOnceTheModelArrives",
+    "why": "Pide el mismo prompt antes y despues de que aparezca el fichero del modelo, y exige que la cache se de cuenta del cambio de mundo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheSamePrompt_ShouldOnlyBeComputedOnce",
+    "why": "Sin cambios de mundo la cache sigue contestando: el mutante rompe la invalidacion, no el cacheo."
+  }
+}

@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.VirtualFileSystem;
@@ -33,6 +36,32 @@ public class VirtualStorageService : IStorageService
             _vfs.AddOrUpdateDirectory(path);
         }
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Subcarpetas inmediatas <b>del almacén virtual</b>, no del disco: es la mitad que hacía que un recorrido de
+    /// árbol no pudiera funcionar dentro de una ejecución virtual.
+    /// </summary>
+    public ValueTask<IReadOnlyList<string>> EnumerateDirectoriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            string.IsNullOrWhiteSpace(path) ? [] : _vfs.GetChildDirectories(path));
+
+    /// <summary>
+    /// Contenido inmediato <b>del almacén virtual</b>: carpetas y archivos con contenido activo. Un archivo
+    /// borrado o reciclado dentro del almacén no es contenido, y por eso una carpeta puede quedar vacía sin que
+    /// nadie la borre —que es exactamente lo que el limpiador de carpetas vacías viene a limpiar—.
+    /// </summary>
+    public ValueTask<IReadOnlyList<string>> EnumerateFileSystemEntriesAsync(string path, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return ValueTask.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        List<string> entries = [.. _vfs.GetChildDirectories(path)];
+        entries.AddRange(_vfs.GetChildFiles(path).Select(entry => entry.VirtualPath));
+
+        return ValueTask.FromResult<IReadOnlyList<string>>([.. entries.Order(StringComparer.OrdinalIgnoreCase)]);
     }
 
     public ValueTask<Stream> OpenReadAsync(string path, CancellationToken ct = default)
@@ -179,15 +208,26 @@ public class VirtualStorageService : IStorageService
         bool permanent = false,
         CancellationToken ct = default)
     {
-        if (!_vfs.FileExists(path))
+        if (_vfs.FileExists(path))
         {
-            return ValueTask.FromResult(StorageOperationResult.Failure(path, path, $"Virtual file not found: {path}"));
+            bool deleted = _vfs.DeleteFile(path, "StorageService", "VirtualStorage", isRecycled: !permanent);
+            return ValueTask.FromResult(deleted
+                ? StorageOperationResult.Success(path, path)
+                : StorageOperationResult.Failure(path, path, "Failed to delete or recycle virtual file"));
         }
 
-        bool success = _vfs.DeleteFile(path, "StorageService", "VirtualStorage", isRecycled: !permanent);
-        return ValueTask.FromResult(success
-            ? StorageOperationResult.Success(path, path)
-            : StorageOperationResult.Failure(path, path, "Failed to delete or recycle virtual file"));
+        // Una carpeta también es algo que se borra por el contrato, y hasta ahora no se podía: el almacén sólo
+        // miraba si la ruta era un archivo, así que borrar una carpeta virtual —lo único que hace el limpiador de
+        // carpetas vacías— respondía «no encontrado» sobre una carpeta que existe. El almacén sabe las dos cosas
+        // que hacen falta: si la carpeta existe y si le quedan archivos activos dentro.
+        if (_vfs.DirectoryExists(path))
+        {
+            return ValueTask.FromResult(_vfs.DeleteDirectory(path)
+                ? StorageOperationResult.Success(path, path)
+                : StorageOperationResult.Failure(path, path, $"Virtual directory could not be removed (not empty?): {path}"));
+        }
+
+        return ValueTask.FromResult(StorageOperationResult.Failure(path, path, $"Virtual file not found: {path}"));
     }
 
     public ValueTask<string> ResolveCollisionAsync(

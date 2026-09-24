@@ -86,7 +86,9 @@ public partial class ColorPickerButton : UserControl
             TxtHex.Text = hex;
             if (Color.TryParse(hex, out var color))
             {
-                SwatchBorder.Background = new SolidColorBrush(color);
+                // El color va al relleno interior, no al borde: el Background del borde sigue enlazado al
+                // tema en su chrome y un cambio de tema revertiría el muestrario (ver ColorPickerButton.axaml).
+                SwatchFill.Background = new SolidColorBrush(color);
             }
         }
         catch
@@ -112,7 +114,7 @@ public partial class ColorPickerButton : UserControl
         if (Color.TryParse(text, out var color))
         {
             _isInternalChange = true;
-            SwatchBorder.Background = new SolidColorBrush(color);
+            SwatchFill.Background = new SolidColorBrush(color);
             SelectedColorHex = text;
             _isInternalChange = false;
         }

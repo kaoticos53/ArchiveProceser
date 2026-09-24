@@ -115,6 +115,7 @@
   <data name="Log_Renamer_VirtualTransformed" xml:space="preserve"><value>[Renombrador] Nombre transformado (Modo Virtual): '{0}' -&gt; '{1}'</value></data>
   <data name="Log_Renamer_PhysicalRenamed" xml:space="preserve"><value>[Renombrador] Renombrado físico con éxito (In-Place): '{0}' -&gt; '{1}'</value></data>
   <data name="Log_Renamer_Error" xml:space="preserve"><value>[Renombrador] Error en renombramiento: {0}</value></data>
+  <data name="Log_Renamer_StepsUnreadable" xml:space="preserve"><value>[Renombrador] No se pudieron leer los pasos del pipeline configurados: {0}. Se aplica la plantilla por omisión.</value></data>
   <data name="Log_Sink_NoFileFound" xml:space="preserve"><value>[Destino Final] Archivo de entrada no encontrado: '{0}'</value></data>
   <data name="Log_Sink_SkipCollision" xml:space="preserve"><value>[Destino Final] Omitido por colisión existente (Estrategia: Skip): '{0}'</value></data>
   <data name="Log_Sink_IncrementalRename" xml:space="preserve"><value>[Destino Final] Renombrado incremental para evitar colisión: '{0}'</value></data>

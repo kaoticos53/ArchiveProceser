@@ -115,6 +115,7 @@
   <data name="Log_Renamer_VirtualTransformed" xml:space="preserve"><value>[Renamer] Name transformed (Virtual Mode): '{0}' -&gt; '{1}'</value></data>
   <data name="Log_Renamer_PhysicalRenamed" xml:space="preserve"><value>[Renamer] Physical rename successful (In-Place): '{0}' -&gt; '{1}'</value></data>
   <data name="Log_Renamer_Error" xml:space="preserve"><value>[Renamer] Rename error: {0}</value></data>
+  <data name="Log_Renamer_StepsUnreadable" xml:space="preserve"><value>[Renamer] Could not read the configured pipeline steps: {0}. Falling back to the default template.</value></data>
   <data name="Log_Sink_NoFileFound" xml:space="preserve"><value>[Destination Sink] Input file not found: '{0}'</value></data>
   <data name="Log_Sink_SkipCollision" xml:space="preserve"><value>[Destination Sink] Skipped due to existing collision (Strategy: Skip): '{0}'</value></data>
   <data name="Log_Sink_IncrementalRename" xml:space="preserve"><value>[Destination Sink] Incremental rename to avoid collision: '{0}'</value></data>

@@ -1,0 +1,29 @@
+{
+  "id": "indice-de-hashes-heredado",
+  "hito": 203,
+  "claim": "El indice de hashes de DeduplicationFilterNode es de cada ejecucion: el que acumulo una ejecucion no puede clasificar los ficheros de la siguiente.",
+  "why": "El nodo se apoya en el mismo indice para decidir que fichero es repetido. Si el indice vive en un estatico y nadie lo vacia, la segunda ejecucion del mismo proceso da por repetidos los ficheros que vio la primera: el flujo termina en verde y manda a la rama de duplicados archivos que no lo son (medido: la segunda ejecucion clasifica 1 unico y 2 repetidos en vez de 2 y 1).",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Hashing/DeduplicationFilterNode.cs",
+      "replacements": [
+        {
+          "old": "    private readonly ConcurrentDictionary<string, string> _seenHashes = new(StringComparer.OrdinalIgnoreCase);\n    private string? _lastExecutionId;\n",
+          "new": "    private static readonly ConcurrentDictionary<string, string> _seenHashes = new(StringComparer.OrdinalIgnoreCase);\n"
+        },
+        {
+          "old": "        if (item.Metadata.TryGetValue(\"WorkflowExecutionId\", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)\n        {\n            _lastExecutionId = execId;\n            _seenHashes.Clear();\n        }\n\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheHashIndexOfOneRun_ShouldNotClassifyTheFilesOfTheNext",
+    "why": "Ejecuta el mismo flujo dos veces con ficheros reales: la segunda tiene que volver a ver dos unicos y un repetido, y con el indice heredado ve uno y dos."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheBatchBuffer_ShouldNotKeepPendingItemsForTheNextRun",
+    "why": "Otro estado por ejecucion del mismo tipo de prueba: el mutante rompe el indice de hashes, no el resto del barrido de estado de los nodos."
+  }
+}

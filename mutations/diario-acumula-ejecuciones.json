@@ -1,0 +1,25 @@
+{
+  "id": "diario-acumula-ejecuciones",
+  "hito": 201,
+  "claim": "El diario de operaciones contiene solo las operaciones de la ejecucion en curso: deshacer la ultima no deshace la anterior.",
+  "why": "La interfaz ofrece revertir la ultima ejecucion leyendo este diario (ControlBarViewModel cuenta las entradas y llama a RollbackAsync). Si el diario acumula, un solo clic deshace tambien las operaciones de ejecuciones anteriores, que es justo lo contrario de lo que promete el mensaje.",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/WorkflowExecutor.cs",
+      "replacements": [
+        {
+          "old": "        // diario de operaciones (que es lo que revierte el botón Deshacer). Ver EngineStateAcrossExecutionsTests.\n        IsVirtualFileSystemEnabled = false;\n        PlannedActions.Clear();\n        JournalService.Clear();",
+          "new": "        // diario de operaciones (que es lo que revierte el botón Deshacer). Ver EngineStateAcrossExecutionsTests.\n        IsVirtualFileSystemEnabled = false;\n        PlannedActions.Clear();"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~Journal_ShouldOnlyContainTheOperationsOfTheCurrentRun",
+    "why": "Dos ejecuciones que mueven un archivo cada una: el diario despues de la segunda tiene que tener una entrada, no dos."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ExecutionJournal_Rollback_RestoresMovedFile",
+    "why": "El diario sigue revirtiendo lo que se le registra: el mutante rompe cuando se limpia, no lo que hace."
+  }
+}

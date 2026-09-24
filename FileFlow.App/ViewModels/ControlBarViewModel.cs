@@ -306,7 +306,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         IDialogService? dialogService = null,
         IProcessLauncherService? processLauncher = null,
         CustomThemeService? customThemeService = null,
-        IUiDispatcher? uiDispatcher = null)
+        IUiDispatcher? uiDispatcher = null,
+        IHeartbeatService? heartbeats = null)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
@@ -328,7 +329,8 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
             nodeInspectorViewModel,
             _loc,
             uiDispatcher,
-            _userPreferencesService
+            _userPreferencesService,
+            heartbeats: heartbeats
         );
 
         _editorViewModel.PropertyChanged += (s, e) =>

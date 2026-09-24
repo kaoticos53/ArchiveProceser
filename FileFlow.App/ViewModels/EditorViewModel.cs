@@ -12,6 +12,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 using Material.Icons;
 
 namespace FileFlow.App.ViewModels;
@@ -29,13 +30,20 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly IDialogService _dialogService;
     private readonly IUndoRedoService _undoRedoService;
     private readonly LogViewModel? _logViewModel;
+
+    /// <summary>Reloj del que cuelgan las duraciones con semántica (hoy, el fin del pulso de energía).</summary>
+    private readonly TimeProvider _timeProvider;
     private readonly Action _preferencesChangedHandler;
 
     /// <summary>
     /// El latido que detecta que un subflujo abierto cambió en disco por fuera del lienzo. Ver
-    /// <see cref="RefreshSubflowsChangedOnDisk"/>.
+    /// <see cref="RefreshSubflowsChangedOnDisk"/>. Lo declara el registro
+    /// (<see cref="FileFlow.App.Services.HeartbeatService"/>), que pone el reloj, el despacho y la entrega.
     /// </summary>
-    private readonly DispatcherTimer _subflowWatchTimer;
+    private readonly FileFlow.App.Services.IHeartbeat _subflowWatchBeat;
+
+    /// <summary>Despacha al hilo de la interfaz; en línea cuando no hay aplicación (pruebas, apagado).</summary>
+    private readonly IUiDispatcher _ui;
 
     public Services.INodeClipboardService ClipboardService => _clipboardService;
     public Services.IVariableDiscoveryService VariableDiscoveryService => _variableDiscoveryService;
@@ -245,9 +253,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ILocalizationService? localizationService = null,
         IDialogService? dialogService = null,
         IUndoRedoService? undoRedoService = null,
-        LogViewModel? logViewModel = null)
+        LogViewModel? logViewModel = null,
+        TimeProvider? timeProvider = null,
+        IUiDispatcher? uiDispatcher = null,
+        FileFlow.App.Services.IHeartbeatService? heartbeats = null)
     {
         _pluginLoader = pluginLoader;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _ui = uiDispatcher ?? AvaloniaUiDispatcher.Instance;
         _variableDiscoveryService = variableDiscoveryService ?? new Services.VariableDiscoveryService();
         _clipboardService = clipboardService ?? new Services.NodeClipboardService(_pluginLoader);
         _userPreferencesService = userPreferencesService ?? UserPreferencesService.Instance;
@@ -306,12 +319,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         // Un subflujo puede editarse por fuera de este lienzo —en otra pestaña del editor, en otro
         // programa— y el contenedor vivo se quedaba con la frontera vieja hasta que alguien le preguntara.
         // El latido es la pregunta, y es barato porque no lee el archivo: sólo compara su huella.
-        _subflowWatchTimer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = SubflowWatchInterval
-        };
-        _subflowWatchTimer.Tick += OnSubflowWatchTick;
-        _subflowWatchTimer.Start();
+        // Y eso es todo: el latido se declara y se arranca. El reloj inyectable, el despacho al hilo de la
+        // interfaz y la entrega protegida los pone el registro, que es el único sitio del producto donde vive la
+        // fontanería de un latido (antes: cuatro copias del mismo ritual).
+        _subflowWatchBeat = (heartbeats ?? new FileFlow.App.Services.HeartbeatService(_timeProvider, _ui))
+            .Declare(SubflowWatchBeat, SubflowWatchInterval, RunSubflowWatchTick)
+            .Start();
     }
 
     public bool CanUndo => _undoRedoService.CanUndo;
@@ -412,10 +425,25 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     /// Cada cuánto se le pregunta a los contenedores de subflujo si su definición cambió en disco. La
     /// comprobación es una huella —fecha y tamaño del archivo, sin leerlo—, así que un segundo es barato; y es
     /// corto a propósito, porque editar el subflujo en otra pestaña y volver a mirarlo es el caso normal.
+    ///
+    /// Público para que la prueba de cadencia avance el reloj contra <b>este</b> periodo y no contra una copia.
     /// </summary>
-    private static readonly TimeSpan SubflowWatchInterval = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan SubflowWatchInterval = TimeSpan.FromSeconds(1);
 
-    private void OnSubflowWatchTick(object? sender, EventArgs e) => RefreshSubflowsChangedOnDisk();
+    /// <summary>Nombre del latido en el registro: con él se busca, se mide su cadencia y se sabe cuál falló.</summary>
+    public const string SubflowWatchBeat = "subflow-watch";
+
+    /// <summary>
+    /// El <b>latido</b> del vigilante de subflujos: pregunta a los contenedores vivos si su definición cambió
+    /// en disco.
+    ///
+    /// <para><b>Público y sin argumentos para poder ejercitarlo desde las pruebas</b>, como el paso del barrido
+    /// de la splash (hito 169): el temporizador sólo corre en la aplicación, así que sin una entrada alcanzable
+    /// el camino del tick no se ejecuta nunca en el suite y una regresión ahí sólo se ve usando el producto.
+    /// Es el <b>mismo</b> método que el reloj entrega —va nombrado en la propia programación del latido, ver el
+    /// constructor—, no una copia que pueda divergir.</para>
+    /// </summary>
+    public void RunSubflowWatchTick() => RefreshSubflowsChangedOnDisk();
 
     /// <summary>
     /// Refresca los contenedores de subflujo cuya definición cambió en disco, para que el lienzo deje de
@@ -1393,22 +1421,49 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     /// Energiza un cable durante unos instantes (flujo de energía animado mientras los datos viajan) y lo
     /// devuelve a reposo. Reutiliza un único temporizador por cable para que ráfagas consecutivas no dejen
     /// animaciones colgadas.
+    ///
+    /// <para>Devuelve el vencimiento del pulso. Nadie en la aplicación necesita esperarlo —el cable se apaga
+    /// solo—, pero quien sí lo necesita es el test: esperar esa tarea es lo único que convierte «el vencimiento
+    /// obsoleto no apagó el pulso nuevo» en una comprobación en lugar de una carrera contra el reloj.</para>
     /// </summary>
-    public void PulseConnectionEnergy(ConnectionViewModel connection, int durationMs = 900)
+    public Task PulseConnectionEnergy(ConnectionViewModel connection, int durationMs = 900)
     {
         if (durationMs <= 0)
         {
             connection.IsExecuting = false;
-            return;
+            return Task.CompletedTask;
         }
 
         connection.LastDispatchedCount++;
         connection.IsExecuting = true;
 
         int generation = connection.LastDispatchedCount;
-        _ = Task.Delay(durationMs).ContinueWith(
-            _ => RunOnUiThread(() => CompleteConnectionPulse(connection, generation)),
-            TaskScheduler.Default);
+        return ExpireConnectionPulseAsync(connection, generation, durationMs);
+    }
+
+    /// <summary>
+    /// Apaga el pulso cuando su tiempo se acaba.
+    ///
+    /// <para>La espera usa el reloj <b>inyectado</b> y no <c>Task.Delay</c> a secas porque la duración es
+    /// semántica —«el cable se apaga cuando los datos han dejado de pasar»— y con el reloj del sistema probarla
+    /// cuesta la espera entera por caso, así que no se probaba: el vencimiento programado era lo único del pulso
+    /// sin red. Con una fuente de tiempo manual, avanzar el reloj <i>es</i> el paso que se mide.</para>
+    /// </summary>
+    private async Task ExpireConnectionPulseAsync(ConnectionViewModel connection, int generation, int durationMs)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(durationMs), _timeProvider).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            // Un reloj que no puede programar no puede dejar el cable encendido para siempre: se deja el pulso
+            // como está (lo apagará ClearConnectionEnergy al terminar la ejecución) en lugar de propagar.
+            System.Diagnostics.Debug.WriteLine($"[EditorViewModel] No se pudo programar el fin del pulso: {ex.Message}");
+            return;
+        }
+
+        _ui.Post(() => CompleteConnectionPulse(connection, generation));
     }
 
     /// <summary>
@@ -1430,25 +1485,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         foreach (var connection in Connections)
         {
             connection.IsExecuting = false;
-        }
-    }
-
-    private static void RunOnUiThread(Action action)
-    {
-        try
-        {
-            if (Application.Current is null)
-            {
-                action();
-                return;
-            }
-
-            Dispatcher.UIThread.Post(action);
-        }
-        catch
-        {
-            // Sin ciclo de vida de UI (pruebas, apagado): el cambio de estado no es crítico.
-            action();
         }
     }
 
@@ -1927,8 +1963,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _subflowWatchTimer.Tick -= OnSubflowWatchTick;
-        _subflowWatchTimer.Stop();
+        _subflowWatchBeat.Dispose();
         _userPreferencesService.PreferencesChanged -= _preferencesChangedHandler;
         GC.SuppressFinalize(this);
     }

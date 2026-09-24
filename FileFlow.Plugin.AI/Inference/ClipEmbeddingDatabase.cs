@@ -13,7 +13,42 @@ namespace FileFlow.Plugin.AI.Inference;
 /// </summary>
 public static class ClipEmbeddingDatabase
 {
-    private static readonly ConcurrentDictionary<string, float[]> _embeddingCache = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Identificador con el que el catálogo de modelos conoce a CLIP ViT-B/32.</summary>
+    private const string ClipModelId = "clip-vit-b32";
+
+    /// <summary>
+    /// Vector guardado <b>junto con el entorno que lo produjo</b>: si se calculó con el modelo CLIP en disco o
+    /// con la proyección semántica determinista. Los dos caminos dan vectores distintos para el mismo prompt, así
+    /// que una entrada sólo vale mientras siga describiendo el mundo del que salió: si el usuario descarga el
+    /// modelo a mitad de sesión, el vector de la proyección no puede seguir contestando por él (ver
+    /// <c>PluginStateAcrossExecutionsTests</c>).
+    /// </summary>
+    private readonly record struct CachedEmbedding(float[] Vector, bool FromModel);
+
+    private static readonly ConcurrentDictionary<string, CachedEmbedding> _embeddingCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private static int _hits;
+    private static int _environmentInvalidations;
+
+    /// <summary>Prompts en memoria. Se mide: es lo que permite afirmar que la caché no crece sin gobierno.</summary>
+    public static int CachedEmbeddingCount => _embeddingCache.Count;
+
+    /// <summary>Consultas resueltas desde la caché desde el último <see cref="ClearEmbeddingCache"/>.</summary>
+    public static int CacheHits => Volatile.Read(ref _hits);
+
+    /// <summary>
+    /// Entradas descartadas por no describir ya este entorno —el modelo apareció o desapareció—. Cada una es un
+    /// vector que se vuelve a calcular, y es la prueba de que la caché mira el mundo antes de contestar.
+    /// </summary>
+    public static int EnvironmentInvalidations => Volatile.Read(ref _environmentInvalidations);
+
+    /// <summary>Olvida la caché y las medidas: una medición empieza de cero.</summary>
+    public static void ClearEmbeddingCache()
+    {
+        _embeddingCache.Clear();
+        Interlocked.Exchange(ref _hits, 0);
+        Interlocked.Exchange(ref _environmentInvalidations, 0);
+    }
 
     /// <summary>
     /// Semillas ortogonales y bases de proyección para el espacio semántico de 512 dimensiones de CLIP.
@@ -47,21 +82,30 @@ public static class ClipEmbeddingDatabase
         string key = text.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(key)) key = "object";
 
-        if (_embeddingCache.TryGetValue(key, out var cached) && cached.Length == featDim)
+        // 1. Si existe un modelo CLIP local en el catálogo, intentar inferencia ONNX real
+        string? clipPath = ResolveClipModelPath();
+
+        if (_embeddingCache.TryGetValue(key, out var cached) && cached.Vector.Length == featDim)
         {
-            return cached;
+            if (cached.FromModel == (clipPath != null))
+            {
+                Interlocked.Increment(ref _hits);
+                return cached.Vector;
+            }
+
+            // El entorno cambió bajo la entrada: se guardó sin modelo y ahora lo hay (o al revés), así que el
+            // vector no describe ya lo que hay en disco y no puede contestar por él.
+            Interlocked.Increment(ref _environmentInvalidations);
         }
 
-        // 1. Si existe un modelo CLIP local en el catálogo, intentar inferencia ONNX real
-        string? clipPath = AiModelManager.GetModelPath("clip-vit-b32");
-        if (!string.IsNullOrEmpty(clipPath) && File.Exists(clipPath))
+        if (clipPath != null)
         {
             try
             {
                 var clipResult = SemanticEmbeddingEngine.ClassifyZeroShot(clipPath, key, [key]);
                 if (clipResult.Embedding.Length == featDim)
                 {
-                    _embeddingCache[key] = clipResult.Embedding;
+                    _embeddingCache[key] = new CachedEmbedding(clipResult.Embedding, FromModel: true);
                     return clipResult.Embedding;
                 }
             }
@@ -70,8 +114,26 @@ public static class ClipEmbeddingDatabase
 
         // 2. Generación semántica determinista proyectada sobre el espacio CLIP ViT-B/32
         float[] embedding = GenerateProjectedClipVector(key, featDim);
-        _embeddingCache[key] = embedding;
+
+        // Con el modelo en disco se marca como del entorno «con modelo»: el vector cayó a la proyección porque la
+        // carga falló, y reintentarla en cada prompt del mismo lote sólo repetiría el mismo fallo.
+        _embeddingCache[key] = new CachedEmbedding(embedding, FromModel: clipPath != null);
         return embedding;
+    }
+
+    /// <summary>
+    /// Ruta del modelo CLIP en disco, o <c>null</c> si no está descargado.
+    ///
+    /// <para>El catálogo identifica el modelo por su <b>id</b> (<c>clip-vit-b32</c>) y lo guarda en disco con su
+    /// <b>nombre de fichero</b> (<c>clip-vit-base-patch32.onnx</c>): resolverlo con el id daba una ruta que no
+    /// existe nunca, así que la rama del modelo real estaba muerta y el peso descargado no se usaba jamás.</para>
+    /// </summary>
+    private static string? ResolveClipModelPath()
+    {
+        if (!AiModelManager.Catalog.TryGetValue(ClipModelId, out var modelInfo)) return null;
+
+        string path = AiModelManager.GetModelPath(modelInfo.FileName);
+        return File.Exists(path) ? path : null;
     }
 
     /// <summary>

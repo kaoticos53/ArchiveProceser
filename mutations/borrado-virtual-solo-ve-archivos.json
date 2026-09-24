@@ -1,0 +1,25 @@
+{
+  "id": "borrado-virtual-solo-ve-archivos",
+  "hito": 195,
+  "claim": "El almacenamiento virtual sabe borrar una carpeta vacía por el contrato, no sólo un archivo.",
+  "why": "Sin la rama de carpeta, borrar una carpeta virtual responde «no encontrado» sobre una carpeta que existe: en una ejecución virtual el limpiador no puede limpiar nada, y el flujo termina en verde.",
+  "edits": [
+    {
+      "file": "FileFlow.Sdk/Storage/VirtualStorageService.cs",
+      "replacements": [
+        {
+          "old": "if (_vfs.DirectoryExists(path))\n        {\n            return ValueTask.FromResult(_vfs.DeleteDirectory(path)\n                ? StorageOperationResult.Success(path, path)\n                : StorageOperationResult.Failure(path, path, $\"Virtual directory could not be removed (not empty?): {path}\"));\n        }\n\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~VirtualStorageService_EnumerationAndDirectoryDeletion_ShouldOperateInTheStore",
+    "why": "El caso que borra la carpeta en cuanto se queda vacía —la secuencia que ejecuta el limpiador— deja de poder hacerlo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~PhysicalStorageService_Enumeration_ShouldListImmediateContentOnly",
+    "why": "El contrato del almacén físico no depende de la rama que se quita: sigue en verde, así que el mutante es preciso."
+  }
+}

@@ -71,7 +71,24 @@ public class VisualRegressionTests
     }
 
     [Fact]
-    public void ThemeStudio_ShouldMatchItsBaseline()
+    public void ThemeStudio_ShouldMatchItsBaseline() => AssertStudioMatches("theme-studio-dark", DarkTheme);
+
+    /// <summary>
+    /// El editor de temas en el preset claro. Se captura por el mismo motivo que el oscuro: es la pantalla que
+    /// el propio usuario usa para cambiar el tema, así que un token mal puesto aquí contamina todo lo demás — y
+    /// en claro tiene caras que en oscuro no se ven, empezando por el botón que sólo se habilita para un tema
+    /// propio (deshabilitado, por tanto, en el estado que se congela).
+    /// </summary>
+    [Fact]
+    public void ThemeStudio_ShouldMatchItsBaseline_InTheLightPreset() => AssertStudioMatches("theme-studio-light", LightTheme);
+
+    /// <summary>
+    /// Captura el editor de temas en el preset indicado y lo compara con su línea base.
+    ///
+    /// El almacenamiento es de un solo uso (<see cref="Guid"/>): el editor escribe temas ahí y dos capturas no
+    /// pueden compartir el archivo sin que la segunda herede lo que dejó la primera.
+    /// </summary>
+    private static void AssertStudioMatches(string baselineName, string themeId)
     {
         string storage = Path.Combine(Path.GetTempPath(), $"visual_studio_{Guid.NewGuid():N}.json");
 
@@ -81,9 +98,9 @@ public class VisualRegressionTests
                 () => BuildStudioEditor(storage),
                 1200,
                 760,
-                DarkTheme);
+                themeId);
 
-            VisualSnapshot.AssertMatchesBaseline("theme-studio-dark", capture);
+            VisualSnapshot.AssertMatchesBaseline(baselineName, capture);
         }
         finally
         {

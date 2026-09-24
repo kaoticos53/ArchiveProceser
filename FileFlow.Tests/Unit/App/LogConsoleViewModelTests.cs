@@ -7,6 +7,7 @@ using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Telemetry;
+using FileFlow.Tests.TestHelpers;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -154,5 +155,67 @@ public class LogConsoleViewModelTests
         inspectorVm.SelectedSnapshot!.ItemSnapshot.FileName.Should().Be("vacation.jpg");
         inspectorVm.MetadataDiffs.Should().Contain(d => d.Key == "AI:Category" && d.NewValue == "Landscapes");
         inspectorVm.MetadataDiffs.Should().Contain(d => d.Key == "AI:FaceCount" && d.NewValue == "3");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // El latido: lo que hace que los registros aparezcan solos
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Todo el resto del suite vacía la consola a mano, así que el camino <b>diferido</b> —el que hace que los
+    /// registros aparezcan por sí solos mientras la aplicación corre— no se ejercitaba en ninguna prueba. Es el
+    /// latido de 40 ms: los productores encolan y él decide cuándo se pinta.
+    /// </summary>
+    [Fact]
+    public void TheHeartbeat_ShouldBeWhatPutsLogsOnScreen_NotTheProducer()
+    {
+        using var logVm = new LogViewModel(new InMemoryLogStore());
+
+        logVm.AddLog(LogLevel.Information, "uno");
+        logVm.AddLog(LogLevel.Warning, "dos");
+
+        logVm.Logs.Should().BeEmpty("el productor encola; quien pinta es el latido");
+
+        logVm.FlushAllPendingLogs();
+
+        logVm.Logs.Should().HaveCount(2, "el latido vuelca la cola en la lista visible");
+        logVm.TotalLogsCount.Should().Be(2);
+        logVm.InfoCount.Should().Be(1);
+        logVm.WarningCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void TheHeartbeat_ShouldMoveABurstInOneBatch()
+    {
+        using var logVm = new LogViewModel(new InMemoryLogStore());
+        int batches = 0;
+        logVm.OnLogBatchAdded += () => batches++;
+
+        for (int i = 0; i < 500; i++)
+        {
+            logVm.AddNodeLog(LogLevel.Debug, $"línea {i}", "nodo", "Nodo");
+        }
+
+        logVm.FlushAllPendingLogs();
+
+        logVm.Logs.Should().HaveCount(500, "una ráfaga no puede perder líneas por el camino");
+        logVm.DebugCount.Should().Be(500, "el latido cuenta la ráfaga una sola vez, no línea a línea");
+        logVm.TotalLogsCount.Should().Be(500);
+        batches.Should().Be(1, "un lote es una notificación, no una por registro");
+    }
+
+    [Fact]
+    public void TheHeartbeat_ShouldCountWhatArrives_EvenWhenTheViewIsFiltered()
+    {
+        using var logVm = new LogViewModel(new InMemoryLogStore());
+        logVm.SearchFilter = "algo-que-no-coincide";
+
+        logVm.AddLog(LogLevel.Error, "fallo");
+
+        logVm.FlushAllPendingLogs();
+
+        logVm.Logs.Should().BeEmpty("con el buscador con texto, la fila no se pinta");
+        logVm.ErrorCount.Should().Be(1, "pero el latido cuenta lo que llegó: los contadores no son del filtro");
+        logVm.TotalLogsCount.Should().Be(1);
     }
 }

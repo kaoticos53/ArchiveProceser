@@ -84,7 +84,7 @@ public class ArchiveFanOutFanInPipelineTests
 
             var fanOutItems = new List<FileItemContext>();
             var mockFanOutContext = new Mock<IFlowExecutionContext>();
-            mockFanOutContext.Setup(c => c.EmitAsync("ItemOut", It.IsAny<FileItemContext>()))
+            mockFanOutContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
                              .Callback<string, FileItemContext>((port, item) => fanOutItems.Add(item))
                              .Returns(Task.CompletedTask);
 
@@ -233,7 +233,7 @@ public class ArchiveFanOutFanInPipelineTests
 
             var fanOutItems = new List<FileItemContext>();
             var mockFanOutContext = new Mock<IFlowExecutionContext>();
-            mockFanOutContext.Setup(c => c.EmitAsync("ItemOut", It.IsAny<FileItemContext>()))
+            mockFanOutContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
                              .Callback<string, FileItemContext>((port, item) => fanOutItems.Add(item))
                              .Returns(Task.CompletedTask);
 
@@ -372,7 +372,7 @@ public class ArchiveFanOutFanInPipelineTests
 
             var fanOutItems = new List<FileItemContext>();
             var mockFanOutContext = new Mock<IFlowExecutionContext>();
-            mockFanOutContext.Setup(c => c.EmitAsync("ItemOut", It.IsAny<FileItemContext>()))
+            mockFanOutContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
                              .Callback<string, FileItemContext>((port, item) => fanOutItems.Add(item))
                              .Returns(Task.CompletedTask);
 
@@ -481,7 +481,7 @@ public class ArchiveFanOutFanInPipelineTests
             var fanOutEmitted = new List<FileItemContext>();
             var mockFanOutContext = new Mock<IFlowExecutionContext>();
             mockFanOutContext.Setup(c => c.RegisterTemporaryDirectory(It.IsAny<string>()));
-            mockFanOutContext.Setup(c => c.EmitAsync("ItemOut", It.IsAny<FileItemContext>()))
+            mockFanOutContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
                 .Callback<string, FileItemContext>((p, itm) => fanOutEmitted.Add(itm))
                 .Returns(Task.CompletedTask);
 

@@ -91,7 +91,12 @@ public sealed class FileRelocatorNode : FlowNodeBase
             bool createDirs = GetParameter("CreateDirectories", false);
             bool cleanupSource = GetParameter("CleanupSource", false);
 
-            string targetDir = VariableTemplateResolver.Resolve(destDirTemplate, item);
+            // La plantilla se resuelve por el mismo camino que el resto de destinos del producto
+            // (`ParameterHelper.ResolveOutputPath`), que es quien ancla una ruta relativa bajo el directorio de
+            // origen o la salida global. Resolviéndola suelta, `{RelativeDir}\{Year}\{Month}` quedaba como una
+            // ruta relativa y quien la usaba la anclaba en el **directorio de trabajo del proceso**: el ejemplo 26
+            // del catálogo escribía en la carpeta del programa, fuera del área de trabajo (hito 204).
+            string targetDir = ParameterHelper.ResolveOutputPath(destDirTemplate, item);
             string fileName = CrossPlatformPath.GetFileName(sourcePath);
             string targetPath = CrossPlatformPath.Combine(targetDir, fileName);
 

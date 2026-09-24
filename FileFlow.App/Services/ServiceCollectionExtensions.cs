@@ -42,6 +42,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IUserPreferencesService>(_ => UserPreferencesService.Instance);
         services.AddSingleton<IDialogService, AvaloniaDialogService>();
         services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
+
+        // El registro de latidos de la aplicación: uno solo, de modo que los cuatro latidos —vigilante de
+        // subflujos, consola, rendimiento y fotograma visual— queden declarados en el mismo sitio y una guardia
+        // pueda leerlos. Antes cada componente programaba el suyo y no había forma de enumerarlos.
+        services.AddSingleton<IHeartbeatService>(sp => new HeartbeatService(uiDispatcher: sp.GetRequiredService<IUiDispatcher>()));
         services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
         services.AddSingleton<IProcessLauncherService, ProcessLauncherService>();
         services.AddSingleton<FileFlow.App.Services.UndoRedo.IUndoRedoService, FileFlow.App.Services.UndoRedo.UndoRedoService>();

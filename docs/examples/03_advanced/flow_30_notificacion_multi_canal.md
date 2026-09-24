@@ -10,11 +10,11 @@ Notificar a la vez en consola de monitoreo local y vía HTTP Webhook a la infrae
 ```mermaid
 graph TD
   A[FolderSourceNode] -->|Out| B[ForkJoinBarrierNode]
-  B -->|Branch1| C[WebhookNotificationNode]
-  B -->|Branch2| D[LogOutputNode]
-  C -->|In| B
-  D -->|In| B
-  B -->|Joined| E[DestinationSinkNode]
+  B -->|Fork1| C[WebhookNotificationNode]
+  B -->|Fork2| D[LogOutputNode]
+  C -->|Out| B
+  D -->|Out| B
+  B -->|AllCompleted| E[DestinationSinkNode]
 ```
 
 ## 🧩 Nodos Utilizados y Configuración

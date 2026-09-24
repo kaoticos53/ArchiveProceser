@@ -1,0 +1,25 @@
+{
+  "id": "compresor-contra-su-propia-entrada",
+  "hito": 205,
+  "claim": "Un compresor cuyo destino cae sobre su propia entrada se para: el archivo del usuario no se trunca para escribir en el mismo sitio.",
+  "why": "Con los valores por omision del nodo -carpeta de destino vacia, es decir la del archivo, y nombre '{FileNameWithoutExtension}.zip'- comprimir 'paquete.zip' apunta a 'paquete.zip'. El destino se abre (y se trunca) antes de leer la entrada, asi que el original del usuario quedaba vaciado sobre si mismo y en su lugar un comprimido sin entradas: en el ejemplo 21, un 'paquete.zip' de 148 bytes salia del flujo convertido en 22 bytes, sin que nada en el resultado lo delatara (medido al ejecutar el ejemplo de punta a punta, hito 205).",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Archives/ArchiveCompressorNode.cs",
+      "replacements": [
+        {
+          "old": "            if (string.Equals(Path.GetFullPath(inputPath), Path.GetFullPath(targetArchivePath), StringComparison.OrdinalIgnoreCase))\n            {\n                throw new InvalidOperationException(\n                    $\"Archive destination '{targetArchivePath}' is the input file itself: compressing a file into itself would truncate it. Set a different 'DestinationFolder' or 'ArchiveName'.\");\n            }\n\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ACompressorWhoseDestinationIsItsOwnInput_ShouldRefuseInsteadOfTruncatingTheInput|FullyQualifiedName~ExampleFlowsEndToEndTests",
+    "why": "Dos escalas del mismo defecto: el testigo del nodo comprime 'paquete.zip' con los valores de fabrica y mira los bytes del archivo; el banco de los 40 ejemplos lo mira en grande -el flujo 21 entero, con su compresor de fabrica y el 'paquete.zip' sembrado-, que es donde el archivo se quedaba en 22 bytes sin que nada lo delatara hasta que el banco empezo a vigilar la entrada (hito 206)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ACompressorAskedForACombinationItsWriterAccepts_ShouldDeliverTheArchive",
+    "why": "Un destino distinto del archivo de entrada sigue comprimiendo: el mutante deja de protegerse a si mismo, no de comprimir."
+  }
+}

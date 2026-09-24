@@ -26,7 +26,7 @@ graph LR
   - `TargetValue`: `104857600`
 ### `ArchiveCompressorNode` (ID: `node-zip`)
 - **Parámetros**: 
-  - *(Parámetros por defecto)*
+  - `DestinationFolder`: `{GlobalOutputDir}` *(el comprimido se escribe en la carpeta de salida del flujo; es también lo que el nodo hace por omisión, y para pedirle que lo escriba junto al archivo se declara `{CurrentDir}`)*
 ### `DestinationSinkNode` (ID: `node-snk`)
 - **Parámetros**: 
   - *(Parámetros por defecto)*

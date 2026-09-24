@@ -13,15 +13,23 @@ namespace FileFlow.Plugin.FileSystem;
     "renombrar", "nombre", "patron", "tokens", "exif", "fecha", "rename", "pattern", "batch")]
 public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvider
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = false
-    };
-
     private readonly IRenameTransformEngine _transformEngine = new RenameTransformEngine();
     private readonly RenameBatchContext _batchContext = new();
     private readonly ConcurrentDictionary<string, byte> _claimedTargetPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _stepsLock = new();
+
+    /// <summary>
+    /// Los pasos del pipeline, resueltos <b>una sola vez</b> por instancia.
+    ///
+    /// <para>La resolución migra parámetros legados —lee <c>Pattern</c>, lo retira y deja los pasos en
+    /// <c>MethodSteps</c>—, y esa migración no es atómica: el motor entrega los ítems de un lote en paralelo y
+    /// el nodo es el mismo objeto para todos. Con dos ítems a la vez, el segundo podía leer el <c>Pattern</c> ya
+    /// retirado y los <c>MethodSteps</c> todavía sin escribir, y caía en la plantilla por omisión
+    /// (<c>{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}</c>) — renombrando a un nombre que nadie
+    /// configuró, en silencio—. Lo destapó la prueba del puerto <c>Skipped</c>, que con dos archivos veía uno
+    /// omitido y el otro renombrado con la plantilla por omisión.</para>
+    /// </summary>
+    private IReadOnlyList<RenameMethodStep>? _resolvedSteps;
 
     public override string Name => LocalizationManager.Instance.GetString("AdvancedRenamerNode_Name", "Renombrador Inteligente");
     public override string Category => "Files";
@@ -36,7 +44,9 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
 
         Outputs =
         [
-            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos renombrados")
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Archivos renombrados"),
+            new("Skipped", typeof(FileItemContext), PortDirection.Output, "Skipped", "Archivos que ya existían en el destino y se omitieron"),
+            new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos que no se pudieron renombrar")
         ];
 
         Parameters["PipelineName"] = "Pipeline Predeterminado";
@@ -129,7 +139,7 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
             string renameMode = GetParameter("RenameMode", "Virtual");
             bool isVirtual = string.Equals(renameMode, "Virtual", StringComparison.OrdinalIgnoreCase);
             string collisionStrategy = GetParameter("CollisionStrategy", "AutoIncrement");
-            var steps = ResolveSteps();
+            var steps = ResolveSteps(context, item);
 
             string currentFileName = Path.GetFileName(item.CurrentPath);
             string currentDir = Path.GetDirectoryName(item.CurrentPath) ?? string.Empty;
@@ -292,7 +302,21 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
         }
     }
 
-    private IReadOnlyList<RenameMethodStep> ResolveSteps()
+    private IReadOnlyList<RenameMethodStep> ResolveSteps(IFlowExecutionContext context, FileItemContext item)
+    {
+        if (_resolvedSteps is { Count: > 0 } alreadyResolved)
+        {
+            return alreadyResolved;
+        }
+
+        lock (_stepsLock)
+        {
+            _resolvedSteps ??= MigrateAndResolveSteps(context, item);
+            return _resolvedSteps;
+        }
+    }
+
+    private IReadOnlyList<RenameMethodStep> MigrateAndResolveSteps(IFlowExecutionContext context, FileItemContext item)
     {
         if (string.IsNullOrWhiteSpace(GetParameter("PipelineName", string.Empty)))
         {
@@ -311,14 +335,28 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
             {
                 try
                 {
-                    var parsed = JsonSerializer.Deserialize<List<RenameMethodStep>>(jsonStr, JsonOptions);
-                    if (parsed != null && parsed.Count > 0)
+                    // La lectura es la del SDK —la misma que usa el editor de renombrado—, así que acepta lo que
+                    // el producto escribe y lo que escribe quien retoca un flujo a mano (los pasos con los nombres
+                    // de las enumeraciones).
+                    var parsed = RenamerPresetService.DeserializeSteps(jsonStr);
+                    if (parsed.Count > 0)
                     {
                         Parameters["MethodSteps"] = parsed;
                         return parsed;
                     }
                 }
-                catch { }
+                catch (JsonException ex)
+                {
+                    // No se calla: seguir con la plantilla por omisión sería renombrar a un nombre que nadie
+                    // configuró sin decirlo, que es el defecto que ya destapó la prueba del puerto Skipped.
+                    context.Log(
+                        LocalizationManager.Instance.GetFormattedString(
+                            "Log_Renamer_StepsUnreadable",
+                            "[Renombrador] No se pudieron leer los pasos del pipeline configurados: {0}. Se aplica la plantilla por omisión.",
+                            ex.Message),
+                        LogLevel.Warning,
+                        item);
+                }
             }
         }
 

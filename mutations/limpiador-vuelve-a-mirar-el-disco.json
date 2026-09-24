@@ -1,0 +1,33 @@
+{
+  "id": "limpiador-vuelve-a-mirar-el-disco",
+  "hito": 195,
+  "claim": "El limpiador de carpetas vacías limpia en una ejecución virtual porque su recorrido pasa por el almacén del contexto.",
+  "why": "Con Directory.* el nodo lee el disco del anfitrión, donde las carpetas de una ejecución virtual no existen: responde «no hay nada que limpiar», sale por Out y el flujo termina en verde.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.FileSystem/Nodes/Actions/EmptyDirectoryCleanerNode.cs",
+      "replacements": [
+        {
+          "old": "!await storage.DirectoryExistsAsync(targetDir, cancellationToken).ConfigureAwait(false)",
+          "new": "!Directory.Exists(targetDir)"
+        },
+        {
+          "old": "foreach (string subDir in await storage.EnumerateDirectoriesAsync(rootDir, cancellationToken).ConfigureAwait(false))",
+          "new": "foreach (string subDir in Directory.EnumerateDirectories(rootDir))"
+        },
+        {
+          "old": "IEnumerable<string> entries = await storage.EnumerateFileSystemEntriesAsync(rootDir, cancellationToken).ConfigureAwait(false);",
+          "new": "IEnumerable<string> entries = Directory.EnumerateFileSystemEntries(rootDir);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~VirtualEmptyFolderCleanupIntegrationTests",
+    "why": "La ejecución virtual de extremo a extremo: con el recorrido en el disco, las carpetas del almacén virtual no se retiran."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EmptyDirectoryCleaner_RegistersDeletedPermanentlyJournalEntry",
+    "why": "El caso que limpia un árbol de verdad en el disco sigue en verde: el mutante rompe la ejecución virtual, no el nodo entero."
+  }
+}

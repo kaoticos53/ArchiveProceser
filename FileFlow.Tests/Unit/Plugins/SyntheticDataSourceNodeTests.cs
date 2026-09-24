@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using FluentAssertions;
 using FileFlow.Plugin.FileSystem;
@@ -226,6 +227,54 @@ public class SyntheticDataSourceNodeTests : IDisposable
             File.Exists(item.CurrentPath).Should().BeTrue();
             item.CurrentPath.Should().StartWith(_tempDirectory);
         }
+    }
+
+    [Fact]
+    public async Task SyntheticDataSourceNode_EmissionLatency_ShouldPaceEveryEmission()
+    {
+        // La latencia del origen sintético (EmissionDelayMs) simula un origen lento. Es la tercera espera que
+        // sale del «tiempo real» del inventario de trabajo aplazado (hito 175) por la vía barata: el nodo no
+        // tiene reloj inyectable —su fábrica lo construye sin dependencias—, pero una latencia de milisegundos
+        // sí se la puede permitir una prueba.
+        const int LatencyMs = 5;
+
+        // Arrange
+        var node = new SyntheticDataSourceNode();
+        node.Parameters["Category"] = "Películas";
+        node.Parameters["EmissionMode"] = "Virtual";
+        node.Parameters["MaxItems"] = 3;
+        node.Parameters["EmissionDelayMs"] = LatencyMs;
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        var emittedAt = new List<long>();
+
+        mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((_, _) => emittedAt.Add(Stopwatch.GetTimestamp()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var total = Stopwatch.StartNew();
+        await node.ExecuteAsync("In", new FileItemContext("dummy"), mockContext.Object, CancellationToken.None);
+        total.Stop();
+
+        // Assert
+        emittedAt.Should().HaveCount(3, "la latencia retrasa cada muestra, no descarta ninguna");
+
+        // Task.Delay garantiza esperar al menos lo pedido, así que cada hueco entre dos emisiones contiene el
+        // retardo declarado. El hueco —y no el tiempo total— es lo que lo prueba: el armado de las muestras
+        // ocurre entero antes de la primera emisión, así que no puede inflarlo. Si el aplazamiento desapareciera,
+        // los huecos caerían a microsegundos y esta aserción falla nombrando la latencia que el nodo dice respetar.
+        var gaps = emittedAt
+            .Zip(emittedAt.Skip(1), (before, after) => Stopwatch.GetElapsedTime(before, after))
+            .ToList();
+
+        gaps.Should().OnlyContain(
+            gap => gap >= TimeSpan.FromMilliseconds(LatencyMs),
+            $"cada emisión espera los {LatencyMs} ms de EmissionDelayMs antes de salir");
+
+        total.Elapsed.Should().BeGreaterThanOrEqualTo(
+            TimeSpan.FromMilliseconds(LatencyMs * emittedAt.Count),
+            "hay un retardo por muestra, incluida la primera");
     }
 
     [Fact]

@@ -56,3 +56,6 @@ appimagetool*
 TestResults/
 coverage-report/
 .dotnet_tmp/
+
+## Mutation harness journal (copias y hashes de los ficheros mutados; se borra al cerrar cada corrida)
+.mutation-journal/

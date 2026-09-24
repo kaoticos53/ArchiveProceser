@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using FileFlow.App.Models;
 using FileFlow.App.Services;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
 
 namespace FileFlow.App.ViewModels;
@@ -176,7 +177,9 @@ public partial class TextEditorDialogViewModel : ObservableObject
         {
             _allVariables.AddRange(
             [
-                new("GlobalOutputDir", "{GlobalOutputDir}", "Carpeta de salida global", "Sistema", "C:\\Output"),
+                // La muestra es la carpeta real de los ajustes, no una ruta con forma de Windows: el catálogo de
+                // variables resuelve el valor de verdad, y esto es sólo el respaldo para cuando no hay catálogo.
+                new("GlobalOutputDir", "{GlobalOutputDir}", "Carpeta de salida global", "Sistema", AppPaths.DefaultGlobalOutputDir),
                 new("FileName", "{FileName}", "Nombre del archivo", "Sistema", "documento.pdf"),
                 new("FileNameWithoutExtension", "{FileNameWithoutExtension}", "Nombre sin extensión", "Sistema", "documento"),
                 new("Extension", "{Extension}", "Extensión del archivo", "Sistema", ".pdf"),
@@ -185,7 +188,7 @@ public partial class TextEditorDialogViewModel : ObservableObject
                 new("Month", "{Month}", "Mes actual (MM)", "Fechas", DateTime.Now.ToString("MM")),
                 new("Day", "{Day}", "Día actual (dd)", "Fechas", DateTime.Now.ToString("dd")),
                 new("Guid", "{Guid}", "Identificador GUID único", "Sistema", Guid.NewGuid().ToString("N")),
-                new("TempDir", "{TempDir}", "Directorio temporal de trabajo", "Sistema", "C:\\Temp\\Flow_a1b2c3d4"),
+                new("TempDir", "{TempDir}", "Directorio temporal de trabajo", "Sistema", AppPaths.DefaultTempDirectory),
                 new("RandomId", "{RandomId}", "Identificador aleatorio seguro", "Sistema", "x8f2q1"),
                 new("Random", "{Random:4}", "Dígitos aleatorios", "Funciones", "4829")
             ]);

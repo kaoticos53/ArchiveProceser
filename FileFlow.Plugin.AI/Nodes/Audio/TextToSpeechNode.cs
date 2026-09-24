@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.AI;
 
@@ -163,18 +164,7 @@ public sealed class TextToSpeechNode : AudioAiFlowNodeBase
         return generated;
     }
 
-    private static string ResolveTargetDirectory(string outputDirRaw, FileItemContext item)
-    {
-        if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-        {
-            if (item.Metadata.TryGetValue("GlobalOutputDir", out var globalOut) && !string.IsNullOrWhiteSpace(globalOut?.ToString()))
-            {
-                return globalOut.ToString()!;
-            }
-
-            return Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
-        }
-
-        return ParameterHelper.ResolveOutputPath(outputDirRaw, item);
-    }
+    /// <summary>La carpeta la decide la regla compartida del plugin: ver <see cref="NodeOutputDirectory"/>.</summary>
+    internal static string ResolveTargetDirectory(string outputDirRaw, FileItemContext item) =>
+        NodeOutputDirectory.For(outputDirRaw, item);
 }

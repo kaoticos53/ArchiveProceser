@@ -18,6 +18,20 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     private readonly EventHandler<CultureInfo> _languageChangedHandler;
     private readonly ILocalizationService _loc;
     private readonly IDialogService _dialogService;
+
+    /// <summary>Reloj del que cuelga la duración del aviso de «copiado» (ver <see cref="CopyFeedbackDuration"/>).</summary>
+    private readonly TimeProvider _timeProvider;
+
+    /// <summary>Generación del aviso de copiado en curso: un clic nuevo abre una y descarta el vencimiento anterior.</summary>
+    private int _copyFeedbackGeneration;
+
+    /// <summary>
+    /// Cuánto se queda encendido el aviso de «copiado». Es una duración con <b>semántica</b> —lo justo para
+    /// confirmar el gesto sin que el aviso se quede pegado—, así que los tests la usan en lugar de repetir el
+    /// número: cambiar la duración no debe dejar una aserción mintiendo en nombre de otro valor.
+    /// </summary>
+    public static readonly TimeSpan CopyFeedbackDuration = TimeSpan.FromMilliseconds(1500);
+
     private FileItemContext? _activeEvaluationContext;
     private string? _sourceRootPath;
 
@@ -29,6 +43,18 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     private string _key = string.Empty;
 
     public string DisplayName => _loc.GetString($"Param_{Key}", GetDefaultDisplayName(Key));
+
+    /// <summary>
+    /// Aclaración del parámetro: lo que no cabe en su nombre —qué significa dejarlo vacío, qué formato espera—.
+    /// Se resuelve del recurso <c>Param_{clave}_Help</c>, la convención con la que los plugins escriben la ayuda
+    /// (Archives, FileSystem, Network y AI). Sin recurso cae en la clave, que es lo que la ficha del parámetro
+    /// mostraba antes de esto: la ficha gana la aclaración donde la hay y no pierde nada donde no.
+    ///
+    /// <para>Deliberadamente <b>no</b> se pinta <c>NodeParameterDescriptor.HelpText</c>: son casi un centenar de
+    /// textos literales sin localizar, así que mostrarlos pondría castellano en la interfaz inglesa. La ayuda
+    /// visible vive en los recursos, en los dos idiomas (hito 208).</para>
+    /// </summary>
+    public string Help => _loc.GetString($"Param_{Key}_Help", Key);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBooleanAndNoOptions))]
@@ -542,33 +568,69 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Copia el valor evaluado al portapapeles y enciende el aviso de confirmación durante
+    /// <see cref="CopyFeedbackDuration"/>.
+    ///
+    /// <para>Dos cosas importan aquí y las dos tienen red: si el portapapeles falla no se anuncia una copia que
+    /// no ocurrió, y el <b>vencimiento</b> del aviso —que es lo que apaga el icono de confirmación— se mide con el
+    /// reloj inyectado, no con una espera real: con el reloj del sistema probarlo costaría la espera entera por
+    /// caso, así que no se probaba.</para>
+    /// </summary>
     [RelayCommand]
     public async Task CopyEvaluatedValueAsync()
     {
         if (string.IsNullOrEmpty(EvaluatedValue)) return;
+
         try
         {
             LogViewModel.SafeSetClipboardText(EvaluatedValue);
-            IsCopied = true;
-            await Task.Delay(1500);
-            IsCopied = false;
         }
         catch
         {
-            // Ignorar excepciones de concurrencia del portapapeles
+            // Excepciones de concurrencia del portapapeles: sin copia no hay nada que confirmar.
+            return;
+        }
+
+        // Un clic nuevo reabre la ventana del aviso; la generación descarta el vencimiento del clic anterior,
+        // que si no apagaría el aviso del segundo a mitad de camino.
+        int generation = ++_copyFeedbackGeneration;
+        IsCopied = true;
+
+        try
+        {
+            await Task.Delay(CopyFeedbackDuration, _timeProvider).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            // Un reloj que no puede programar no puede dejar el aviso encendido para siempre.
+            System.Diagnostics.Debug.WriteLine($"[NodeParameterViewModel] No se pudo programar el fin del aviso de copiado: {ex.Message}");
+
+            if (generation == _copyFeedbackGeneration)
+            {
+                IsCopied = false;
+            }
+
+            return;
+        }
+
+        if (generation == _copyFeedbackGeneration)
+        {
+            IsCopied = false;
         }
     }
 
-    public NodeParameterViewModel(NodeParameterDescriptor descriptor, object? value, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null)
-        : this(descriptor.Key, value, descriptor.Options, nodeOwner, localizationService, dialogService)
+    public NodeParameterViewModel(NodeParameterDescriptor descriptor, object? value, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null, TimeProvider? timeProvider = null)
+        : this(descriptor.Key, value, descriptor.Options, nodeOwner, localizationService, dialogService, timeProvider)
     {
         Descriptor = descriptor;
     }
 
-    public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null)
+    public NodeParameterViewModel(string key, object? value, IEnumerable<string>? options = null, NodeViewModel? nodeOwner = null, ILocalizationService? localizationService = null, IDialogService? dialogService = null, TimeProvider? timeProvider = null)
     {
         _loc = localizationService ?? LocalizationManager.Instance;
         _dialogService = dialogService ?? AvaloniaDialogService.Instance;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _key = key;
         _value = value;
         NodeOwner = nodeOwner;
@@ -618,6 +680,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         _languageChangedHandler = (_, _) =>
         {
             OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(Help));
         };
         _loc.LanguageChanged += _languageChangedHandler;
     }

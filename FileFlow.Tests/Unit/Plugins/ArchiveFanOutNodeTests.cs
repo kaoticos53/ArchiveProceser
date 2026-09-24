@@ -46,7 +46,7 @@ public class ArchiveFanOutNodeTests
             var emittedItems = new List<FileItemContext>();
 
             var mockContext = new Mock<IFlowExecutionContext>();
-            mockContext.Setup(c => c.EmitAsync("ItemOut", It.IsAny<FileItemContext>()))
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
                        .Callback<string, FileItemContext>((port, emItem) => emittedItems.Add(emItem))
                        .Returns(Task.CompletedTask);
 
@@ -103,6 +103,6 @@ public class ArchiveFanOutNodeTests
 
         // Assert
         mockContext.Verify(c => c.EmitAsync("Error", item), Times.Once);
-        mockContext.Verify(c => c.EmitAsync("ItemOut", It.IsAny<FileItemContext>()), Times.Never);
+        mockContext.Verify(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()), Times.Never);
     }
 }

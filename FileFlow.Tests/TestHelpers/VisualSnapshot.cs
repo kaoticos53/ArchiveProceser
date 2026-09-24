@@ -71,9 +71,18 @@ public static class VisualSnapshot
     ///
     /// La fábrica se invoca ya en el hilo de UI de la sesión, así que puede crear controles, leer tokens del
     /// tema y tocar view models sin preocuparse por el hilo.
+    ///
+    /// <param name="interaction">
+    /// Paso opcional que recibe la ventana <b>ya mostrada y con el layout hecho</b>, justo antes del asentado
+    /// y de la captura. Es lo que permite fotografiar un estado que sólo existe al interactuar —el hover de un
+    /// botón, el pulso de un clic, el foco de un campo— con entrada <b>real</b>
+    /// (<see cref="InputSimulator"/>), que es como se produce de verdad; y sirve también para <i>observar</i> el
+    /// layout ya asentado (medir posiciones) antes de disparar el fotograma.
+    /// </param>
     /// </summary>
-    public static byte[] Capture(Func<Control> contentFactory, int width, int height, string themeId)
-        => CaptureCore(contentFactory, width, height, themeId);
+    public static byte[] Capture(Func<Control> contentFactory, int width, int height, string themeId,
+        Action<Window>? interaction = null)
+        => CaptureCore(contentFactory, width, height, themeId, interaction);
 
     /// <summary>
     /// Igual que <see cref="Capture(Func{Control}, int, int, string)"/> pero para una <see cref="Window"/>
@@ -134,7 +143,9 @@ public static class VisualSnapshot
 
                 window.Show();
 
-                Dispatcher.UIThread.RunJobs();
+                // Mismo asentado que en CaptureCore: la ventana modal también puede tener transiciones en vuelo
+                // (su tema, sus estados de carga) y la captura no puede fotografiar un intermedio.
+                AnimationClock.Settle();
 
                 var frame = window.CaptureRenderedFrame()
                     ?? throw new InvalidOperationException(
@@ -183,8 +194,9 @@ public static class VisualSnapshot
     /// contenido. Es lo que necesitan las barras: su altura depende del tema (tipografía, espaciado,
     /// decoraciones), así que fijarla a mano recortaría la captura justo cuando el diseño creciera.
     /// </summary>
-    public static byte[] CaptureNaturalHeight(Func<Control> contentFactory, int width, string themeId)
-        => CaptureCore(contentFactory, width, null, themeId);
+    public static byte[] CaptureNaturalHeight(Func<Control> contentFactory, int width, string themeId,
+        Action<Window>? interaction = null)
+        => CaptureCore(contentFactory, width, null, themeId, interaction);
 
     /// <summary>
     /// Lee un token del tema activo. Falla con un mensaje explícito si no está publicado o si se pregunta
@@ -275,6 +287,125 @@ public static class VisualSnapshot
     }
 
     /// <summary>
+    /// Luminancia media (0-255, Rec. 601) de la imagen. Independiente de las fuentes y de la plataforma, que es
+    /// lo que la hace útil para afirmar algo tan grueso como «esta línea base es un tema claro y no un duplicado
+    /// del oscuro» sin atarla a ningún color concreto.
+    /// </summary>
+    public static double MeanLuminance(byte[] png)
+    {
+        using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(png);
+
+        double sum = 0;
+
+        image.ProcessPixelRows(rows =>
+        {
+            for (int y = 0; y < rows.Height; y++)
+            {
+                var row = rows.GetRowSpan(y);
+
+                for (int x = 0; x < row.Length; x++)
+                {
+                    sum += (0.299 * row[x].R) + (0.587 * row[x].G) + (0.114 * row[x].B);
+                }
+            }
+        });
+
+        return sum / ((double)image.Width * image.Height);
+    }
+
+    /// <summary>
+    /// Rango de luminancia relativa (WCAG) dentro de un rectángulo de la captura, con los píxeles que lo
+    /// alcanzan. La diferencia entre el máximo y el mínimo es la que se usa para medir el contraste de una
+    /// etiqueta sobre su cara: es la medida que destapó que el texto deshabilitado estaba en 1,20:1 sobre el
+    /// tema claro —el token era correcto y el píxel no— y la que ninguna aserción sobre propiedades podía ver.
+    ///
+    /// <para>La luminancia es la <b>relativa</b> de WCAG y no la media de <see cref="MeanLuminance"/>: un
+    /// contraste se calcula con ésta, y mezclarlas daría una razón que no significa nada.</para>
+    /// </summary>
+    public readonly record struct LuminanceRange(double Min, double Max, Rgba32 MinPixel, Rgba32 MaxPixel)
+    {
+        /// <summary>Razón de contraste WCAG entre los dos extremos del rectángulo.</summary>
+        public double Contrast => (Max + 0.05) / (Min + 0.05);
+
+        public string Describe() => $"{MinPixel.R:X2}{MinPixel.G:X2}{MinPixel.B:X2}…{MaxPixel.R:X2}{MaxPixel.G:X2}{MaxPixel.B:X2} ({Contrast:F2}:1)";
+    }
+
+    /// <summary>
+    /// Luminancia mínima y máxima dentro de un rectángulo de la captura. Se lanza si el rectángulo se sale de
+    /// la imagen: un rectángulo mal medido daría un contraste inventado.
+    /// </summary>
+    public static LuminanceRange ExtremeLuminance(byte[] png, int x, int y, int width, int height)
+    {
+        using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(png);
+
+        if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > image.Width || y + height > image.Height)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(x),
+                $"El rectángulo ({x},{y}) {width}x{height} se sale de la imagen {image.Width}x{image.Height}.");
+        }
+
+        double min = double.MaxValue, max = double.MinValue;
+        Rgba32 minPixel = default, maxPixel = default;
+
+        for (int row = y; row < y + height; row++)
+        {
+            for (int column = x; column < x + width; column++)
+            {
+                var pixel = image[column, row];
+                double luminance = RelativeLuminance(pixel);
+
+                if (luminance < min)
+                {
+                    min = luminance;
+                    minPixel = pixel;
+                }
+
+                if (luminance > max)
+                {
+                    max = luminance;
+                    maxPixel = pixel;
+                }
+            }
+        }
+
+        return new LuminanceRange(min, max, minPixel, maxPixel);
+    }
+
+    /// <summary>Luminancia relativa WCAG (0-1) de un píxel.</summary>
+    public static double RelativeLuminance(Rgba32 pixel)
+    {
+        static double Channel(byte value)
+        {
+            double c = value / 255.0;
+            return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+        }
+
+        return (0.2126 * Channel(pixel.R)) + (0.7152 * Channel(pixel.G)) + (0.0722 * Channel(pixel.B));
+    }
+
+    /// <summary>
+    /// Proporción de píxeles que difieren por encima de la tolerancia por canal del suite, con <b>el mismo</b>
+    /// cálculo que la comparación de líneas base (para que una guardia no dé un veredicto distinto que la
+    /// aserción que vigila). Dos imágenes de distinto tamaño son, por definición, distintas.
+    /// </summary>
+    public static double DifferingPixelRatio(byte[] expectedPng, byte[] actualPng)
+    {
+        ArgumentNullException.ThrowIfNull(expectedPng);
+        ArgumentNullException.ThrowIfNull(actualPng);
+
+        using var expected = SixLabors.ImageSharp.Image.Load<Rgba32>(expectedPng);
+        using var actual = SixLabors.ImageSharp.Image.Load<Rgba32>(actualPng);
+
+        if (expected.Width != actual.Width || expected.Height != actual.Height)
+        {
+            return 1.0;
+        }
+
+        return Compare(expected, actual).Ratio;
+    }
+
+    /// <summary>
     /// Compara la captura con su línea base. Escribe la imagen y falla si no existe (para que se revise) o si
     /// difiere por encima de la tolerancia.
     /// </summary>
@@ -309,6 +440,80 @@ public static class VisualSnapshot
                 $"{actual.Width}x{actual.Height} de la captura actual. Artefactos en '{ArtifactDirectory}'.");
         }
 
+        ImageDifference difference = Compare(expected, actual);
+        double maxRatio = allowedRatio ?? AllowedDifferingPixelRatio;
+
+        if (difference.Ratio <= maxRatio)
+        {
+            return;
+        }
+
+        byte[] diff = BuildDiffImage(expected, actual);
+
+        WriteArtifacts(name, actualPng, File.ReadAllBytes(baselinePath), diff);
+
+        throw new InvalidOperationException(
+            $"La captura '{name}' difiere de su línea base: {difference.Describe(maxRatio)}. " +
+            $"Compara 'actual.png' con '{baselinePath}' en '{ArtifactDirectory}'. Si el cambio es intencionado, " +
+            "regenera con FILEFLOW_UPDATE_VISUALS=1.");
+    }
+
+    /// <summary>
+    /// Exige que dos capturas sean <b>la misma imagen</b>, con la misma tolerancia con la que se compara una
+    /// línea base: los antialias y las fuentes pueden variar entre máquinas y versiones de Skia, pero un cambio
+    /// de color o de forma sigue detectándose.
+    ///
+    /// <para>Existe para las pruebas que no comparan contra un archivo congelado sino <b>dos formas de llegar al
+    /// mismo estado</b> —por ejemplo, el estado forzado a mano y el producido por entrada real—. Congelar esa
+    /// comparación en una línea base la ataría a una máquina; compararla consigo misma la ata al contrato, que es
+    /// lo que se quiere afirmar: que las dos rutas producen el mismo píxel.</para>
+    /// </summary>
+    public static void AssertImagesMatch(byte[] expectedPng, byte[] actualPng, string because)
+    {
+        ArgumentNullException.ThrowIfNull(expectedPng);
+        ArgumentNullException.ThrowIfNull(actualPng);
+
+        using var expected = SixLabors.ImageSharp.Image.Load<Rgba32>(expectedPng);
+        using var actual = SixLabors.ImageSharp.Image.Load<Rgba32>(actualPng);
+
+        if (expected.Width != actual.Width || expected.Height != actual.Height)
+        {
+            throw new InvalidOperationException(
+                $"Las dos capturas que debían coincidir no tienen el mismo tamaño: " +
+                $"{expected.Width}x{expected.Height} frente a {actual.Width}x{actual.Height}. {because}");
+        }
+
+        ImageDifference difference = Compare(expected, actual);
+
+        if (difference.Ratio <= AllowedDifferingPixelRatio)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Las dos capturas que debían coincidir difieren: {difference.Describe(AllowedDifferingPixelRatio)}. " +
+            because);
+    }
+
+    /// <summary>
+    /// Diferencias entre dos imágenes ya cargadas. El cálculo está aquí y no duplicado en cada aserción porque
+    /// la tolerancia por canal y el porcentaje permitido son el mismo contrato de comparación: dos copias que se
+    /// desincronicen darían veredictos distintos para la misma pareja de imágenes.
+    /// </summary>
+    private readonly record struct ImageDifference(
+        long Differing, long Total, int MaxDelta, int MinX, int MinY, int MaxX, int MaxY)
+    {
+        public double Ratio => Total == 0 ? 0 : (double)Differing / Total;
+
+        /// <summary>Descripción del hallazgo contra el porcentaje permitido que se esté aplicando.</summary>
+        public string Describe(double allowedRatio) =>
+            $"{Differing} de {Total} píxeles distintos ({Ratio:P2} > {allowedRatio:P2} permitido), " +
+            $"delta máximo por canal {MaxDelta}, zona afectada: x {MinX}..{MaxX}, y {MinY}..{MaxY}";
+    }
+
+    /// <summary>Compara dos imágenes cargadas píxel a píxel con la tolerancia por canal del suite.</summary>
+    private static ImageDifference Compare(Image<Rgba32> expected, Image<Rgba32> actual)
+    {
         long differing = 0;
         int maxDelta = 0;
         int minX = int.MaxValue, minY = int.MaxValue, maxX = -1, maxY = -1;
@@ -342,32 +547,22 @@ public static class VisualSnapshot
             }
         });
 
-        long total = (long)expected.Width * expected.Height;
-        double ratio = (double)differing / total;
-        double maxRatio = allowedRatio ?? AllowedDifferingPixelRatio;
-
-        if (ratio <= maxRatio)
-        {
-            return;
-        }
-
-        byte[] diff = BuildDiffImage(expected, actual);
-
-        WriteArtifacts(name, actualPng, File.ReadAllBytes(baselinePath), diff);
-
-        throw new InvalidOperationException(
-            $"La captura '{name}' difiere de su línea base: {differing} de {total} píxeles distintos " +
-            $"({ratio:P2} > {maxRatio:P2} permitido), delta máximo por canal {maxDelta}. " +
-            $"Zona afectada: x {minX}..{maxX}, y {minY}..{maxY} (ventana {expected.Width}x{expected.Height}). " +
-            $"Compara 'actual.png' con '{baselinePath}' en '{ArtifactDirectory}'. Si el cambio es intencionado, " +
-            "regenera con FILEFLOW_UPDATE_VISUALS=1.");
+        return new ImageDifference(
+            differing,
+            (long)expected.Width * expected.Height,
+            maxDelta,
+            differing == 0 ? 0 : minX,
+            differing == 0 ? 0 : minY,
+            maxX,
+            maxY);
     }
 
     /// <summary>
     /// Cuerpo de la captura. Se marca privado y con la exigencia de hilo explícita: es el único punto que
     /// asume que ya estamos en el hilo de UI, y así el contrato queda también para quien lea el código.
     /// </summary>
-    private static byte[] CaptureCore(Func<Control> contentFactory, int width, int? height, string themeId)
+    private static byte[] CaptureCore(Func<Control> contentFactory, int width, int? height, string themeId,
+        Action<Window>? interaction)
     {
         ArgumentNullException.ThrowIfNull(contentFactory);
 
@@ -412,9 +607,19 @@ public static class VisualSnapshot
                 window.SetRenderScaling(1.0);
                 window.Show();
 
+                // La interacción va <b>después</b> del show y <b>antes</b> del asentado: la entrada real necesita la
+                // ventana activa y el layout hecho (para acertar el punto), y el asentado posterior deja lo que la
+                // interacción haya disparado en su valor final. Una captura con `interaction` fotografía, por tanto,
+                // el mismo estado que vería el usuario al interactuar, no un intermedio de su transición.
+                interaction?.Invoke(window);
+
                 // Primera pasada: el árbol se construye y los estilos se aplican, que es lo que hace que
-                // 'DesiredSize' sea el del tema y no el del control desnudo.
-                Dispatcher.UIThread.RunJobs();
+                // 'DesiredSize' sea el del tema y no el del control desnudo. Es un <b>asentado</b> y no un simple
+                // bombeo porque además deja las transiciones en su valor final: una transición en vuelo —un
+                // estado que cambia al montarse, o el cambio de tema de la propia captura— se tomaba en su valor
+                // de partida (medido en el hito 181: de negro a blanco se capturaba negro), y esa línea base
+                // congelaba un estado que el usuario nunca ve para compararlo después como si fuera correcto.
+                AnimationClock.Settle();
 
                 int capturedHeight;
 

@@ -244,6 +244,78 @@ public class ThemeTokenCompletenessTests
             "Incumplimientos: " + string.Join(" | ", failings));
     }
 
+    /// <summary>
+    /// Contraste mínimo de una etiqueta de control <b>deshabilitado</b> sobre una cara de acento atenuada.
+    ///
+    /// <para>Es el 3:1 de los componentes de interfaz de WCAG y no el 4,5:1 del texto: WCAG exime del AA al texto
+    /// de un componente inactivo, y la razón para no pedir más está medida — en 2 de los 8 presets el acento del
+    /// tema es claro sobre una superficie oscura, así que su cara atenuada cae en un tono medio donde ninguna
+    /// etiqueta llega a 4,5:1 (nord_slate queda en 3,58:1 en la cara de advertencia, dracula_purple en 3,36:1).
+    /// Subir el peso de la mezcla hasta lograr el AA borraría el color de la variante, que es justamente lo que el
+    /// estado deshabilitado conserva. Lo que no se admite es un texto que no se ve: el defecto que esta guardia
+    /// impide medía 1,20:1.</para>
+    ///
+    /// <para>La etiqueta sobre las caras <b>neutras</b> es otro contrato y tiene su propia guardia
+    /// (<see cref="BuiltInThemes_TextMuted_ShouldMeetAaContrastOnSurfaces"/>): texto atenuado T del tema sobre sus
+    /// superficies, a 4,5:1 en los 8 presets.</para>
+    /// </summary>
+    private const double DisabledAccentLabelContrast = 3.0;
+
+    /// <summary>
+    /// El estado deshabilitado tiene que poder leerse en <b>todos</b> los presets, no sólo en el par por defecto.
+    ///
+    /// <para>Comprueba el par que declara la capa de estilos para una variante de acento deshabilitada: la cara
+    /// atenuada del acento y la etiqueta de superficie que se dibuja encima. Es la guardia del <b>contrato</b> a
+    /// nivel de token: el estado medía 2,13:1 en oscuro y 1,20:1 en claro cuando la cara y la etiqueta se atenuaban
+    /// dos veces (nuestra opacidad sobre una parte cuyo primer plano el tema base ya había atenuado), y con este
+    /// test cualquier preset —presente o futuro— queda por encima del umbral sin que nadie lo mida a ojo.</para>
+    /// </summary>
+    [Fact]
+    public void DisabledAccentTokens_ShouldKeepTheirLabelVisible_InEveryBuiltInTheme()
+    {
+        string[] mutedFaces =
+        [
+            "AccentPrimaryMutedBrush", "AccentSuccessMutedBrush", "AccentWarningMutedBrush",
+            "AccentErrorMutedBrush", "AccentPurpleMutedBrush"
+        ];
+
+        var failings = new List<string>();
+
+        foreach (var theme in BuiltInThemesCatalog.GetThemes())
+        {
+            var generated = ThemeResourceApplier.BuildResourceDictionary(theme);
+
+            if (generated["TextPrimaryBrush"] is not SolidColorBrush label)
+            {
+                failings.Add($"[{theme.Id}] 'TextPrimaryBrush' no existe o no es un color sólido");
+                continue;
+            }
+
+            double labelLuminance = RelativeLuminance(label.Color);
+
+            foreach (string face in mutedFaces)
+            {
+                if (generated[face] is not SolidColorBrush faceBrush)
+                {
+                    failings.Add($"[{theme.Id}] el token '{face}' no existe o no es un color sólido");
+                    continue;
+                }
+
+                double ratio = ContrastRatio(labelLuminance, RelativeLuminance(faceBrush.Color));
+
+                if (ratio < DisabledAccentLabelContrast)
+                {
+                    failings.Add($"[{theme.Id}] TextPrimaryBrush sobre {face} = {ratio:F2}:1");
+                }
+            }
+        }
+
+        failings.Should().BeEmpty(
+            $"la cara y el primer plano del estado deshabilitado son tokens del tema, así que su contraste se " +
+            $"puede exigir en los 8 presets (mínimo {DisabledAccentLabelContrast}:1). Incumplimientos: " +
+            string.Join(" | ", failings));
+    }
+
     #region Utilidades de parseo y contraste
 
     private static HashSet<string> ParseBaselineKeys()

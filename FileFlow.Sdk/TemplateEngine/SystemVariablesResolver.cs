@@ -227,27 +227,10 @@ public static class SystemVariablesResolver
             case "defaultoutputpath":
             case "outputdir":
             case "defaultdir":
-                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && godVal != null && !string.IsNullOrWhiteSpace(godVal.ToString()))
-                {
-                    return godVal.ToString()!;
-                }
-                if (item.Metadata.TryGetValue("DefaultGlobalOutputDir", out var dgodVal) && dgodVal != null && !string.IsNullOrWhiteSpace(dgodVal.ToString()))
-                {
-                    return dgodVal.ToString()!;
-                }
-                if (item.Metadata.TryGetValue("DefaultOutputDir", out var dodVal) && dodVal != null && !string.IsNullOrWhiteSpace(dodVal.ToString()))
-                {
-                    return dodVal.ToString()!;
-                }
-                if (item.Metadata.TryGetValue("GlobalOutputPath", out var gopVal) && gopVal != null && !string.IsNullOrWhiteSpace(gopVal.ToString()))
-                {
-                    return gopVal.ToString()!;
-                }
-                if (item.Metadata.TryGetValue("DefaultOutputPath", out var dopVal) && dopVal != null && !string.IsNullOrWhiteSpace(dopVal.ToString()))
-                {
-                    return dopVal.ToString()!;
-                }
-                return AppPaths.DefaultGlobalOutputDir;
+                // La carpeta del flujo, terminada: expandida y anclada por la regla única del SDK. Devuelve el texto
+                // de la plantilla declarada cuando nadie la expandía —y con eso, la planteaba dentro del anclaje de
+                // las rutas— y una carpeta de verdad en cualquier parámetro, no sólo en los que son rutas (hito 210).
+                return ParameterHelper.FlowOutputFolder(item, sourceRootPath) ?? AppPaths.DefaultGlobalOutputDir;
 
             case "tempdir":
             case "temporarydir":

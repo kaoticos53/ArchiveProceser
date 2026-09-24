@@ -1,0 +1,25 @@
+{
+  "id": "archivo-vacio-dejado-atras",
+  "hito": 204,
+  "claim": "Una compresion que el escritor rechaza no deja un archivo de cero bytes con la extension del archivo prometido.",
+  "why": "El nodo abre (y trunca) el destino antes de construir el escritor, asi que una combinacion que el escritor rechaza -el contenedor 7Z solo admite LZMA, y la compresion por defecto del nodo es Deflate- dejaba en el disco un archivo vacio llamado '.7z': ni es un 7Z, ni es el original, y ninguna fase posterior puede distinguirlo de un archivo bien hecho. Lo destapo el ejemplo 38 del catalogo al ejecutarse de punta a punta por primera vez (hito 204), que ademas declaraba 7Z sin decir la compresion.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Archives/ArchiveCompressorNode.cs",
+      "replacements": [
+        {
+          "old": "            await RemoveEmptyArchiveAsync(targetArchivePath, context, cancellationToken).ConfigureAwait(false);\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ACompressorAskedForAContainerItsWriterRejects_ShouldLeaveNoFileBehind",
+    "why": "Pide el 7Z con la compresion de fabrica y mira el directorio de destino: con el defecto dentro queda el archivo vacio."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ACompressorAskedForACombinationItsWriterAccepts_ShouldDeliverTheArchive",
+    "why": "La misma disposicion con LZMA entrega el archivo: el mutante deja basura al fallar, no impide comprimir."
+  }
+}

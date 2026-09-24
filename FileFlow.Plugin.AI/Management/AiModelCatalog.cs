@@ -50,6 +50,14 @@ public static class AiModelCatalog
     }
 
     /// <summary>
+    /// Directorio donde el proceso busca los modelos descargados. En producción es el del perfil del usuario;
+    /// las pruebas lo fijan para reproducir el ciclo «descarga el modelo a mitad de sesión» sin escribir en los
+    /// datos reales. Es <c>internal</c> a propósito: sólo el ensamblado de pruebas lo toca, y deja el
+    /// comportamiento de producción intacto.
+    /// </summary>
+    internal static string? ModelsDirectoryOverride { get; set; }
+
+    /// <summary>
     /// Directorio local donde se almacenan los archivos de modelo descargados, con resistencia a fallos
     /// mediante rutas de respaldo en AppData o Temp.
     /// </summary>
@@ -57,6 +65,17 @@ public static class AiModelCatalog
     {
         get
         {
+            if (!string.IsNullOrWhiteSpace(ModelsDirectoryOverride))
+            {
+                string overridden = ModelsDirectoryOverride;
+                try
+                {
+                    if (!Directory.Exists(overridden)) Directory.CreateDirectory(overridden);
+                }
+                catch { }
+                return overridden;
+            }
+
             string dir = FileFlow.Sdk.Storage.AppPaths.ModelsDirectory;
             try
             {

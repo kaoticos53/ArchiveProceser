@@ -91,8 +91,83 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
     </Style>
 
+    <!-- ============================= Deshabilitado =============================
+         El estado deshabilitado <b>conserva la identidad de la variante</b>: tiene cara propia en lugar de
+         adoptar el relleno neutro del tema base, que borraba el color de todas las variantes por igual y que
+         en un botón sin fondo —ghost, icon, link— lo <i>añadía</i>, convirtiendo un botón transparente en una
+         caja gris. Medido con el tablero de estados del suite: las cuatro variantes daban el mismo gris
+         (#22262B en oscuro, #E3E5E6 en claro).
+
+         Y declara <b>el primer plano</b>, que es la mitad que faltaba. El tema base atenúa la etiqueta por su
+         cuenta en esta misma parte (Foreground = ButtonForegroundDisabled), así que la opacidad que había aquí
+         antes atenuaba dos veces lo mismo: medido con el tablero y con las capturas del producto, el texto
+         deshabilitado quedaba en 2,13:1 sobre el tema oscuro y en <b>1,20:1</b> sobre el claro — es decir,
+         invisible, porque en claro el gris del tema base caía más cerca del color correcto y nadie lo había
+         medido hasta que hubo línea base del producto en los dos temas.
+
+         Ahora hay un solo nivel de atenuación y es explícito: la cara de cada variante y un primer plano
+         pensado para ella. TextMuted es el token de texto atenuado del sistema (contrato de 4,5:1 sobre las
+         superficies, con guardia propia) y sobre las caras de acento va TextPrimary, porque esas caras son
+         claras en el tema claro y oscuras en el oscuro, igual que una superficie. -->
     <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Opacity" Value="0.45" />
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryMutedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryMutedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.success:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentSuccessMutedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentSuccessMutedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.danger:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentErrorMutedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentErrorMutedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.warning:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentWarningMutedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentWarningMutedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.debug:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentPurpleMutedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPurpleMutedBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+
+    <Style Selector="Button.ghost:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Button.icon:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Button.link:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!-- El chip declara su primer plano por su cuenta (TextSecondary, más arriba en prioridad que la regla
+         base por ser posterior), así que aquí hay que volver a declararlo: sin esta línea el chip deshabilitado
+         se quedaba con TextSecondary —un token que no tiene contrato de contraste sobre superficies— en lugar
+         del de atenuado. Medido: 4,34:1 en claro frente a 4,82:1 con TextMuted. -->
+    <Style Selector="Button.chipButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
 
     <!-- ============================= Variantes ============================= -->
@@ -228,10 +303,13 @@
         <Setter Property="FontWeight" Value="Medium" />
     </Style>
 
+    <!-- La cara y el primer plano del chip ya los declara la variante sobre el control (arriba): repetirlos
+         aquí no cambiaba nada del aspecto —es el mismo token— pero sí tapaba la declaración del estado
+         deshabilitado, porque un setter posterior sobre la misma parte gana al anterior. Sin esta duplicación,
+         el chip deshabilitado usa el primer plano que le corresponde. -->
     <Style Selector="Button.chipButton /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
 
     <Style Selector="Button.chipButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
@@ -302,12 +380,38 @@
         <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
 
+    <!-- Mismo contrato que los botones (ver el bloque «Deshabilitado»): cara propia y primer plano explícito,
+         sin opacidad sobre la parte, que además de la cara atenuaría la etiqueta que el tema base ya atenúa. -->
+    <Style Selector="ToggleButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+
+    <Style Selector="ToggleButton.chip:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+    </Style>
+
+    <Style Selector="ToggleButton.icon:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
     <Style Selector="ToggleButton.icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
     </Style>
 
     <Style Selector="ToggleButton.icon:checked /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
+    </Style>
+
+    <!-- Compuesto: pasar el puntero por un conmutador de icono ya activado tiene que encenderlo, como en el chip.
+         Sin esta regla, las celdas «seleccionada» y «seleccionada+hover» del tablero de estados salían con el
+         mismo color y el estado compuesto no existía. -->
+    <Style Selector="ToggleButton.icon:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}" />
     </Style>
 

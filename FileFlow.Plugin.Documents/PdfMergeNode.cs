@@ -47,6 +47,17 @@ public sealed class PdfMergeNode : FlowNodeBase
     private readonly Lock _lock = new();
     private string? _lastExecutionId;
 
+    /// <summary>
+    /// Dónde se escribe el PDF consolidado, resuelto <b>con un elemento de verdad</b> mientras el flujo corre.
+    ///
+    /// <para>El PDF se escribe al terminar la ejecución, y ahí ya no hay elemento: el nodo resolvía las plantillas
+    /// contra un elemento vacío, así que la carpeta de salida del flujo no se veía —caía en la de los ajustes— y
+    /// cualquier variable del nombre (`{FileName}`) se quedaba sin valor. Se resuelve una vez, con el primer PDF que
+    /// entra, y se guarda para el cierre.</para>
+    /// </summary>
+    private string? _resolvedOutputDirectory;
+    private string? _resolvedOutputFileName;
+
     public override async Task ExecuteAsync(
         string inputPortName,
         FileItemContext item,
@@ -70,8 +81,14 @@ public sealed class PdfMergeNode : FlowNodeBase
                 {
                     _lastExecutionId = executionId;
                     _collectedPdfPaths.Clear();
+                    _resolvedOutputDirectory = null;
+                    _resolvedOutputFileName = null;
                 }
                 _collectedPdfPaths.Add(item.CurrentPath);
+                _resolvedOutputDirectory = ParameterHelper.ResolveOutputPath(
+                    GetParameter("OutputDirectory", "{GlobalOutputDir}"), item);
+                _resolvedOutputFileName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(
+                    GetParameter("OutputFileName", "Merged_Document.pdf"), item);
             }
         }
 
@@ -90,12 +107,18 @@ public sealed class PdfMergeNode : FlowNodeBase
             _collectedPdfPaths.Clear();
         }
 
-        string outDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
-        string outFileName = GetParameter("OutputFileName", "Merged_Document.pdf");
+        // Con lo que se resolvió al recoger los PDFs (elemento de verdad); si el cierre llega sin nada recogido
+        // —una llamada directa al cierre, sin ejecución— se resuelve como antes, contra un elemento vacío.
+        string? resolvedDir = _resolvedOutputDirectory;
+        string? resolvedName = _resolvedOutputFileName;
+        if (string.IsNullOrWhiteSpace(resolvedDir) || string.IsNullOrWhiteSpace(resolvedName))
+        {
+            var dummyItem = new FileItemContext(string.Empty);
+            resolvedDir = ParameterHelper.ResolveOutputPath(GetParameter("OutputDirectory", "{GlobalOutputDir}"), dummyItem);
+            resolvedName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(
+                GetParameter("OutputFileName", "Merged_Document.pdf"), dummyItem);
+        }
 
-        var dummyItem = new FileItemContext(string.Empty);
-        string resolvedDir = ParameterHelper.ResolveOutputPath(outDir, dummyItem);
-        string resolvedName = FileFlow.Sdk.TemplateEngine.VariableTemplateResolver.Resolve(outFileName, dummyItem);
         string destinationPath = Path.Combine(resolvedDir, resolvedName);
         var storage = context.GetStorage();
 

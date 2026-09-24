@@ -10,11 +10,11 @@ Acelerar operaciones pesadas ejecutando la compresión de imagen y el cálculo d
 ```mermaid
 graph TD
   A[FolderSourceNode] -->|Out| B[ForkJoinBarrierNode]
-  B -->|Branch1| C[HashCalculatorNode]
-  B -->|Branch2| D[ImageOptimizerNode]
-  C -->|In| B
-  D -->|In| B
-  B -->|Joined| E[DestinationSinkNode]
+  B -->|Fork1| C[HashCalculatorNode]
+  B -->|Fork2| D[ImageOptimizerNode]
+  C -->|Out| B
+  D -->|Out| B
+  B -->|AllCompleted| E[DestinationSinkNode]
 ```
 
 ## 🧩 Nodos Utilizados y Configuración
@@ -23,7 +23,7 @@ graph TD
   - *(Parámetros por defecto)*
 ### `ForkJoinBarrierNode` (ID: `node-fork`)
 - **Parámetros**: 
-  - `WaitForAll`: `True`
+  - *(Parámetros por defecto)*
 ### `HashCalculatorNode` (ID: `node-hash`)
 - **Parámetros**: 
   - *(Parámetros por defecto)*

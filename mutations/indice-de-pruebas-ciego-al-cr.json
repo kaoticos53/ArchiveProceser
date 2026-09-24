@@ -1,0 +1,25 @@
+{
+  "id": "indice-de-pruebas-ciego-al-cr",
+  "hito": 193,
+  "claim": "El índice de pruebas lee las declaraciones de los ficheros con terminadores CRLF, que son la mayoría del suite.",
+  "why": "El retroceso que busca los atributos de una prueba trata el '\\r' que cierra la línea anterior como parte del atributo. Sin él, el índice devuelve cero casos en los ficheros con comentario al final de línea o en CRLF, y una guardia ciega aprueba todo.",
+  "edits": [
+    {
+      "file": "FileFlow.Tests/TestHelpers/TestSuiteIndex.cs",
+      "replacements": [
+        {
+          "old": "private static bool IsHorizontalSpace(char c) => c is ' ' or '\\t' or '\\r';",
+          "new": "private static bool IsHorizontalSpace(char c) => c is ' ' or '\\t';"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TestSuiteIndexTests",
+    "why": "La guardia contra la ceguera del índice: ningún fichero que declare un caso puede volver vacío, y con CRLF mudo volverían vacíos casi todos."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~SourceTextTests",
+    "why": "El despojador de comentarios es otra cosa: no depende del retroceso que se ciega, así que tiene que seguir en verde."
+  }
+}

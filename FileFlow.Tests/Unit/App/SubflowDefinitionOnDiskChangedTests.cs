@@ -332,6 +332,78 @@ public class SubflowDefinitionOnDiskChangedTests
         return (editor, log, containerVm, source, sink);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // El latido: el camino por el que el refresco ocurre solo
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// El refresco de arriba sólo sirve si <b>alguien lo llama</b>, y quien lo llama es el latido de un segundo.
+    /// Mientras el tick era privado y el temporizador sólo corre en la aplicación, el suite podía probar el
+    /// refresco pero no que un contenedor abierto se entere solo de un cambio en disco: era el camino que
+    /// quedaba sin red.
+    /// </summary>
+    [Fact]
+    public void TheHeartbeat_ShouldRefreshTheContainer_ThatChangedOnDisk()
+    {
+        string path = SubflowFixtures.TempFile();
+
+        try
+        {
+            SubflowFixtures.WriteFile(path, SubflowFixtures.DefinitionJson("In", "Out"), DateTime.UtcNow);
+            var (editor, _, container, _, _) = CanvasWithAContainerOnDisk(path);
+
+            container.InputPorts.Select(port => port.Name).Should().Equal("In");
+
+            // El subflujo gana una entrada y una salida sin que nadie toque este lienzo.
+            SubflowFixtures.WriteFile(path, SubflowFixtures.DefinitionJson("In;Alternate", "Out;Errores"), DateTime.UtcNow.AddMinutes(1));
+
+            // Se llama al <b>latido</b>, no al refresco: es el paso que el temporizador ejecuta cada segundo.
+            editor.RunSubflowWatchTick();
+
+            container.InputPorts.Select(port => port.Name).Should().Equal(
+                ["In", "Alternate"],
+                "el latido tiene que ser la llamada que hace que un contenedor abierto vea la frontera nueva");
+            container.OutputPorts.Select(port => port.Name).Should().Equal("Out", "Errores");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// El latido corre cada segundo durante toda la sesión, así que sus dos casos aburridos son la mayoría de
+    /// sus ejecuciones: nada cambió (no puede tocar el grafo) y el lienzo ya se desechó (no puede reventar).
+    /// </summary>
+    [Fact]
+    public void TheHeartbeat_ShouldLeftTheGraphAlone_WhenNothingChanged_AndSurviveBeingDisposed()
+    {
+        string path = SubflowFixtures.TempFile();
+
+        try
+        {
+            SubflowFixtures.WriteFile(path, SubflowFixtures.DefinitionJson("In", "Out"), DateTime.UtcNow);
+            var (editor, _, container, _, _) = CanvasWithAContainerOnDisk(path);
+            int cables = editor.Connections.Count;
+
+            editor.RunSubflowWatchTick();
+            editor.RunSubflowWatchTick();
+
+            container.InputPorts.Select(port => port.Name).Should().Equal("In");
+            editor.Connections.Should().HaveCount(cables, "un latido sin cambios no puede tocar los cables");
+
+            // El temporizador se detiene al disponer, pero un tick que llegue tarde no debe encontrar nada roto.
+            editor.Dispose();
+
+            FluentActions.Invoking(editor.RunSubflowWatchTick).Should().NotThrow(
+                "el último latido de una sesión puede caer con el lienzo ya desechado");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static PluginLoader CreateLoader()
     {
         var loader = new PluginLoader();

@@ -1,0 +1,25 @@
+{
+  "id": "identidad-perdida-al-optimizar",
+  "hito": 204,
+  "claim": "El archivo que produce el optimizador conserva la identidad del item que entro: cambia su ruta, no el elemento.",
+  "why": "El nodo construia un contexto nuevo para el archivo optimizado, y con el se iba el Id. Lo que va detras y se apoya en esa identidad deja de reconocer el item: la barrera de sincronizacion empareja cada rama con el item que bifurco, y con otro Id no encuentra su asiento, asi que el item nunca se libera y el archivo desaparece del flujo sin error y sin aviso. Medido con el ejemplo 22 del catalogo: de seis entradas llegaban cinco, y la que faltaba era la unica imagen real del lote (las demas pasan por la rama de no-imagenes, que reutiliza el item).",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Images/ImageOptimizerNode.cs",
+      "replacements": [
+        {
+          "old": "                    Id = item.Id,\n                    OriginalPath = item.OriginalPath,\n",
+          "new": "                    OriginalPath = item.OriginalPath,\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ExecuteAsync_WithARealImage_ShouldKeepTheIdentityOfTheItemThatEntered",
+    "why": "Optimiza una imagen de verdad y compara el Id del item que sale con el del que entro."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ExecuteAsync_WhenInputIsWebP_ShouldDecodeAndOptimizeSuccessfully",
+    "why": "Otro caso que optimiza una imagen real por el mismo camino: el mutante se lleva la identidad, no la optimizacion."
+  }
+}

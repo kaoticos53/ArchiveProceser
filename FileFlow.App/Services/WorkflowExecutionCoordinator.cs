@@ -48,11 +48,54 @@ public sealed class WorkflowExecutionCoordinator
     private readonly IUiDispatcher _ui;
     private readonly IUserPreferencesService _prefs;
 
+    /// <summary>Reloj del latido visual: inyectable para poder medir su cadencia sin esperar fotogramas reales.</summary>
+    private readonly TimeProvider _timeProvider;
+
+    /// <summary>
+    /// El latido visual, ya <b>declarado</b> en el registro y aún sin arrancar: es el único de los cuatro que no
+    /// late siempre, sino sólo mientras hay una ejecución en marcha. Se declara en el constructor para que el
+    /// registro de la aplicación pueda enumerar los cuatro latidos desde el arranque, y cada ejecución lo arranca
+    /// y lo para.
+    /// </summary>
+    private readonly IHeartbeat _visualFrameBeat;
+
+    /// <summary>
+    /// El periodo del <b>latido visual</b> que pinta lo que el motor publica durante la ejecución. Público para
+    /// que la prueba de cadencia avance el reloj contra <i>este</i> número, no contra una copia.
+    /// </summary>
+    public static readonly TimeSpan VisualFlushInterval = TimeSpan.FromMilliseconds(33);
+
+    /// <summary>Nombre del latido en el registro: con él se busca, se mide su cadencia y se sabe cuál falló.</summary>
+    public const string VisualFrameBeat = "visual-frame";
+
     private WorkflowExecutor? _activeExecutor;
     private WorkflowDebugSession? _activeDebugSession;
 
+    /// <summary>
+    /// Lo que el motor publica y el lienzo todavía no ha pintado. Vive en el coordinador —y no en variables
+    /// locales de <see cref="RunAsync"/>— porque el <b>latido visual</b> que lo vacía es un paso con nombre
+    /// propio, y un paso con nombre se puede ejercitar desde las pruebas: mientras el fotograma periódico era
+    /// una lambda con todo capturado dentro de una ejecución en marcha, su camino no corría nunca en el suite.
+    /// Se vacían al arrancar cada ejecución: un fotograma no puede pintar lo que quedó de la anterior.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, (string src, string port, int count)> _pendingEdgeUpdates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, NodeExecutionStatus> _pendingStatusUpdates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, (double pct, string message)> _pendingNodeProgressUpdates = new(StringComparer.OrdinalIgnoreCase);
+
     public WorkflowExecutor? ActiveExecutor => _activeExecutor;
     public WorkflowDebugSession? ActiveDebugSession => _activeDebugSession;
+
+    /// <summary>
+    /// Programa el <b>latido visual</b> de una ejecución —el fotograma periódico (~30 FPS) que pinta lo que el
+    /// motor publica— y devuelve su temporizador para que quien lo programó lo deseche al terminar.
+    ///
+    /// <para>Es un paso con nombre propio, y público como los otros tres latidos, porque su <b>cadencia</b> era lo
+    /// único que no se podía afirmar: se declara en el registro con el reloj inyectable, así que un periodo es un
+    /// latido y medirlo no exige poner una ejecución en marcha. El latido entrega el mismo paso público que las
+    /// pruebas (<see cref="FlushVisualFrame"/>) y el tick —que el reloj entrega en un hilo del grupo de hilos— se
+    /// despacha al hilo de la interfaz con el despacho que ya usaba el cierre.</para>
+    /// </summary>
+    public IHeartbeat StartVisualHeartbeat() => _visualFrameBeat.Start();
     public FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? LastVirtualFileSystem { get; private set; }
 
     /// <summary>
@@ -78,7 +121,9 @@ public sealed class WorkflowExecutionCoordinator
         NodeInspectorViewModel nodeInspectorViewModel,
         ILocalizationService? localizationService = null,
         IUiDispatcher? uiDispatcher = null,
-        IUserPreferencesService? userPreferencesService = null)
+        IUserPreferencesService? userPreferencesService = null,
+        TimeProvider? timeProvider = null,
+        IHeartbeatService? heartbeats = null)
     {
         _editorViewModel = editorViewModel;
         _pluginLoader = pluginLoader;
@@ -87,6 +132,11 @@ public sealed class WorkflowExecutionCoordinator
         _loc = localizationService ?? LocalizationManager.Instance;
         _ui = uiDispatcher ?? AvaloniaUiDispatcher.Instance;
         _prefs = userPreferencesService ?? UserPreferencesService.Instance;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+
+        // Declarado (no arrancado): el primer fotograma lo pide la primera ejecución.
+        _visualFrameBeat = (heartbeats ?? new HeartbeatService(_timeProvider, _ui))
+            .Declare(VisualFrameBeat, VisualFlushInterval, FlushVisualFrame);
     }
 
     public async Task<WorkflowExecutionResult> RunAsync(
@@ -182,39 +232,11 @@ public sealed class WorkflowExecutionCoordinator
             _activeExecutor.DebugSession = _activeDebugSession;
         }
 
-        var pendingEdgeUpdates = new ConcurrentDictionary<string, (string src, string port, int count)>(StringComparer.OrdinalIgnoreCase);
-        var pendingStatusUpdates = new ConcurrentDictionary<string, NodeExecutionStatus>(StringComparer.OrdinalIgnoreCase);
-        var pendingNodeProgressUpdates = new ConcurrentDictionary<string, (double pct, string message)>(StringComparer.OrdinalIgnoreCase);
+        _pendingEdgeUpdates.Clear();
+        _pendingStatusUpdates.Clear();
+        _pendingNodeProgressUpdates.Clear();
 
-        var visualFlushTimer = new DispatcherTimer(DispatcherPriority.Normal)
-        {
-            Interval = TimeSpan.FromMilliseconds(33) // 30 FPS
-        };
-
-        visualFlushTimer.Tick += (_, _) =>
-        {
-            if (_activeExecutor != null)
-            {
-                var snapshot = _activeExecutor.GetTelemetrySnapshot();
-                _logViewModel.ProgressPercentage = snapshot.Percentage;
-                _logViewModel.StatusMessage = snapshot.StatusMessage;
-
-                var nodeStats = _activeExecutor.GetNodeTelemetryStats();
-                if (nodeStats.Count > 0)
-                {
-                    foreach (var node in _editorViewModel.Nodes)
-                    {
-                        if (nodeStats.TryGetValue(node.Id, out var stats))
-                        {
-                            node.UpdateTelemetryStats(stats);
-                        }
-                    }
-                }
-            }
-
-            FlushPendingUiUpdates(pendingEdgeUpdates, pendingStatusUpdates, pendingNodeProgressUpdates);
-        };
-        visualFlushTimer.Start();
+        IHeartbeat visualFlushTimer = StartVisualHeartbeat();
 
         _activeExecutor.NodeStatusChanged += (nodeId, status) =>
         {
@@ -222,12 +244,12 @@ public sealed class WorkflowExecutionCoordinator
             {
                 return;
             }
-            pendingStatusUpdates[nodeId] = status;
+            QueueNodeStatus(nodeId, status);
         };
 
         _activeExecutor.NodeProgressChanged += (nodeId, pct, message) =>
         {
-            pendingNodeProgressUpdates[nodeId] = (pct, message);
+            QueueNodeProgress(nodeId, pct, message);
         };
 
         _activeExecutor.StructuredLogEmitted += (rec) =>
@@ -237,7 +259,7 @@ public sealed class WorkflowExecutionCoordinator
 
         _activeExecutor.EdgeItemDispatched += (src, port, count) =>
         {
-            pendingEdgeUpdates[$"{src}:{port}"] = (src, port, count);
+            QueueEdgeDispatch(src, port, count);
         };
 
         string startMsg = options.IsWatchMode
@@ -299,28 +321,12 @@ public sealed class WorkflowExecutionCoordinator
             }
         finally
         {
-            visualFlushTimer.Stop();
+            visualFlushTimer.Dispose();
 
-            if (_activeExecutor != null)
-            {
-                var finalSnapshot = _activeExecutor.GetTelemetrySnapshot();
-                _logViewModel.ProgressPercentage = finalSnapshot.Percentage;
-                _logViewModel.StatusMessage = finalSnapshot.StatusMessage;
-
-                var finalNodeStats = _activeExecutor.GetNodeTelemetryStats();
-                if (finalNodeStats.Count > 0)
-                {
-                    foreach (var node in _editorViewModel.Nodes)
-                    {
-                        if (finalNodeStats.TryGetValue(node.Id, out var stats))
-                        {
-                            node.UpdateTelemetryStats(stats);
-                        }
-                    }
-                }
-            }
-
-            FlushPendingUiUpdates(pendingEdgeUpdates, pendingStatusUpdates, pendingNodeProgressUpdates);
+            // El cierre usa el mismo paso que el latido: lo que quedó encolado se pinta junto a las
+            // estadísticas finales, sin una segunda copia de la regla que pudiera divergir del fotograma
+            // periódico (era la misma veintena de líneas escrita dos veces).
+            FlushVisualFrame();
             _logViewModel.FlushAllPendingLogs();
 
             if (_prefs.Preferences.AutoUnloadAiModelsOnCompletion)
@@ -368,31 +374,79 @@ public sealed class WorkflowExecutionCoordinator
         }
     }
 
-    private void FlushPendingUiUpdates(
-        ConcurrentDictionary<string, (string src, string port, int count)> pendingEdgeUpdates,
-        ConcurrentDictionary<string, NodeExecutionStatus> pendingStatusUpdates,
-        ConcurrentDictionary<string, (double pct, string message)> pendingNodeProgressUpdates)
+    /// <summary>
+    /// Encola el estado que publica el motor para el nodo indicado. Son las mismas llamadas que hacen los
+    /// manejadores de los eventos de ejecución, expuestas para que el latido se pueda ejercitar sin motor.
+    /// </summary>
+    public void QueueNodeStatus(string nodeId, NodeExecutionStatus status) => _pendingStatusUpdates[nodeId] = status;
+
+    /// <summary>Encola el progreso de un nodo, tal y como lo publica el motor.</summary>
+    public void QueueNodeProgress(string nodeId, double percentage, string message) =>
+        _pendingNodeProgressUpdates[nodeId] = (percentage, message);
+
+    /// <summary>Encola el pulso de un cable (ítems despachados por un puerto de salida).</summary>
+    public void QueueEdgeDispatch(string sourceNodeId, string portName, int count) =>
+        _pendingEdgeUpdates[$"{sourceNodeId}:{portName}"] = (sourceNodeId, portName, count);
+
+    /// <summary>
+    /// El <b>latido visual</b> de la ejecución: pinta en el lienzo lo que el motor publicó y vacía lo encolado.
+    ///
+    /// <para><b>Público y sin argumentos para poder ejercitarlo desde las pruebas</b>, como el paso del barrido
+    /// de la splash (hito 169). Antes era una lambda con los diccionarios capturados dentro de
+    /// <see cref="RunAsync"/>, de modo que el fotograma periódico —el que hace que el lienzo se mueva
+    /// <i>durante</i> la ejecución y no sólo al terminar— no se ejecutaba nunca en el suite.</para>
+    ///
+    /// <para>Vacía lo encolado con <c>TryRemove</c> para que sea un fotograma y no un bucle: si algo llega
+    /// mientras se pinta, lo pinta el siguiente. Funciona también sin ejecución en marcha (el temporizador
+    /// puede latir antes de arrancar o después de terminar) y con nodos ya borrados del lienzo, que se
+    /// ignoran en lugar de reventar.</para>
+    /// </summary>
+    public void FlushVisualFrame()
     {
-        foreach (var key in pendingEdgeUpdates.Keys)
+        if (_activeExecutor != null)
         {
-            if (pendingEdgeUpdates.TryRemove(key, out var edgeInfo))
+            var snapshot = _activeExecutor.GetTelemetrySnapshot();
+            _logViewModel.ProgressPercentage = snapshot.Percentage;
+            _logViewModel.StatusMessage = snapshot.StatusMessage;
+
+            var nodeStats = _activeExecutor.GetNodeTelemetryStats();
+            if (nodeStats.Count > 0)
+            {
+                foreach (var node in _editorViewModel.Nodes)
+                {
+                    if (nodeStats.TryGetValue(node.Id, out var stats))
+                    {
+                        node.UpdateTelemetryStats(stats);
+                    }
+                }
+            }
+        }
+
+        FlushPendingUiUpdates();
+    }
+
+    private void FlushPendingUiUpdates()
+    {
+        foreach (var key in _pendingEdgeUpdates.Keys)
+        {
+            if (_pendingEdgeUpdates.TryRemove(key, out var edgeInfo))
             {
                 _editorViewModel.UpdateEdgeDispatched(edgeInfo.src, edgeInfo.port, edgeInfo.count);
             }
         }
 
-        foreach (var nodeId in pendingStatusUpdates.Keys)
+        foreach (var nodeId in _pendingStatusUpdates.Keys)
         {
-            if (pendingStatusUpdates.TryRemove(nodeId, out var status))
+            if (_pendingStatusUpdates.TryRemove(nodeId, out var status))
             {
                 var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
                 node?.SetExecutionStatus(status);
             }
         }
 
-        foreach (var nodeId in pendingNodeProgressUpdates.Keys)
+        foreach (var nodeId in _pendingNodeProgressUpdates.Keys)
         {
-            if (pendingNodeProgressUpdates.TryRemove(nodeId, out var progressInfo))
+            if (_pendingNodeProgressUpdates.TryRemove(nodeId, out var progressInfo))
             {
                 var node = _editorViewModel.Nodes.FirstOrDefault(n => n.Id.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
                 node?.UpdateProgress(progressInfo.pct, progressInfo.message);

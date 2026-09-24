@@ -1,0 +1,33 @@
+{
+  "id": "bufer-de-lotes-heredado",
+  "hito": 203,
+  "claim": "El bufer de BatchBufferNode es de cada ejecucion: los items que quedaron esperando dentro del nodo no se suman a los de la siguiente.",
+  "why": "El nodo acumula items hasta llenar el lote, asi que una ejecucion que no llega a cerrarlo -o que se corta antes del gancho de fin de flujo- deja un pendiente dentro. Si el bufer sobrevive fuera del nodo, en un estatico, la ejecucion siguiente arranca con items ajenos: con lotes de tres, los tres items de la segunda mas los dos heredados cierran un lote de tres que no le corresponde, y lo que sale por itemOut son los dos de la anterior y solo el primero de esta (medido).",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Logic/BatchBufferNode.cs",
+      "replacements": [
+        {
+          "old": "    private readonly List<FileItemContext> _buffer = [];",
+          "new": "    private static readonly List<FileItemContext> _buffer = [];"
+        },
+        {
+          "old": "    private string? _lastExecutionId;\n\n",
+          "new": ""
+        },
+        {
+          "old": "            if (item.Metadata.TryGetValue(\"WorkflowExecutionId\", out var execIdObj) && execIdObj?.ToString() is string execId && _lastExecutionId != execId)\n            {\n                _lastExecutionId = execId;\n                _buffer.Clear();\n            }\n\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ExecuteAsync_WhenTheSameInstanceSeesAnotherExecution_ShouldNotMixThePendingItemsOfThePreviousOne",
+    "why": "Reutiliza la instancia y cambia el WorkflowExecutionId, que es la unica forma de que el reinicio por identidad de ejecucion sea observable: el motor materializa nodos nuevos en cada corrida. Antes del hito 205 el testigo era el caso de dos ejecuciones completas, y dejo de distinguirlo cuando el pendiente paso a entregarse al terminar el flujo (con el bufer vacio al acabar, un estatico ya no puede heredar nada); el que lo distingue ahora es la ejecucion que no llega a ese cierre."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheSamePrompt_ShouldOnlyBeComputedOnce",
+    "why": "No toca el nodo de lotes: el mutante rompe el bufer, no el proceso entero."
+  }
+}

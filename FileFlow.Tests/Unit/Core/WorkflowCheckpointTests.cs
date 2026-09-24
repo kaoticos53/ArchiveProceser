@@ -11,6 +11,8 @@ namespace FileFlow.Tests.Unit.Core;
 
 public class WorkflowCheckpointTests : IDisposable
 {
+    private const string WorkflowName = "Checkpoint Batching Test";
+
     private readonly string _testBaseDir;
     private readonly string _tempFilesDir;
 
@@ -127,16 +129,22 @@ public class WorkflowCheckpointTests : IDisposable
         {
             IsDryRun = false,
             EnableCheckpointing = true,
-            Checkpoint = existingCp
+            Checkpoint = existingCp,
+            // Un gestor en directorio temporal: el de por omisión escribe en el perfil real del usuario.
+            CheckpointManager = new WorkflowCheckpointManager(_testBaseDir)
         };
 
         // Act
         await executor.ExecuteAsync(graph, loader, CancellationToken.None);
 
-        // Assert: El checkpoint final debe contener ambos archivos completados
-        executor.Checkpoint.Should().NotBeNull();
-        executor.Checkpoint!.CompletedFileKeys.Should().Contain(file1);
-        executor.Checkpoint.CompletedFileKeys.Should().Contain(file2);
+        // Assert: el archivo ya completado en la ejecución anterior se salta y el nuevo se procesa. Y al
+        // terminar bien no queda nada en memoria: el punto de control se limpió con la ejecución.
+        var nodeStats = executor.GetNodeTelemetryStats();
+        nodeStats.Should().ContainKey("th-1");
+        nodeStats["th-1"].ProcessedCount.Should().Be(1,
+            "sólo el archivo nuevo tenía que llegar al nodo: el otro ya estaba completado en la ejecución anterior");
+        executor.Checkpoint.Should().BeNull(
+            "una ejecución que terminó bien no deja punto de control: no hay nada que reanudar");
     }
 
     [Fact]
@@ -180,7 +188,8 @@ public class WorkflowCheckpointTests : IDisposable
         var executor = new WorkflowExecutor
         {
             IsDryRun = false,
-            EnableCheckpointing = true
+            EnableCheckpointing = true,
+            CheckpointManager = new WorkflowCheckpointManager(_testBaseDir)
         };
 
         var logMessages = new List<string>();
@@ -191,6 +200,164 @@ public class WorkflowCheckpointTests : IDisposable
 
         // Assert: Durante la ejecución limpia, NINGUNA rama debe emitir "Omitiendo archivo completado previamente"
         logMessages.Should().NotContain(msg => msg.Contains("Omitiendo archivo completado previamente"));
+    }
+
+    [Fact]
+    public void CheckpointHandler_PersistsInBatches_NotOncePerCompletedFile()
+    {
+        // El defecto: cada archivo completado persistía el conjunto entero de claves. Con 1.000 archivos eran
+        // 1.000 escrituras de un conjunto que crecía hasta 1.000 claves (y una serialización por ítem).
+        var manager = new WorkflowCheckpointManager(_testBaseDir);
+        var handler = new WorkflowCheckpointHandler { Manager = manager, FilesPerCheckpointWrite = 100 };
+        handler.InitializeCheckpoint(WorkflowName, "exec-1", isDryRun: false, (_, _) => { });
+
+        for (int i = 0; i < 1_000; i++)
+        {
+            handler.RecordCompletedFile($@"C:\Data\f{i:D4}.png", i + 1);
+        }
+
+        manager.SaveCount.Should().Be(10, "con lotes de 100 archivos, 1.000 archivos son 10 volcados del conjunto");
+
+        // El estado en disco es un conjunto completo: el lote no deja huecos, sólo escribe menos veces.
+        manager.HasPendingCheckpoint(WorkflowName, out var saved).Should().BeTrue();
+        saved!.CompletedFileKeys.Should().HaveCount(1_000);
+        saved.ProcessedItemsCount.Should().Be(1_000);
+    }
+
+    [Fact]
+    public void CheckpointHandler_WithOnePerWrite_PersistsOncePerCompletedFile()
+    {
+        // El «antes» conservado a propósito: es el comportamiento que el lote sustituye y contra el que se mide.
+        const int fileCount = 200;
+        var manager = new WorkflowCheckpointManager(_testBaseDir);
+        var handler = new WorkflowCheckpointHandler { Manager = manager, FilesPerCheckpointWrite = 1 };
+        handler.InitializeCheckpoint(WorkflowName, "exec-1", isDryRun: false, (_, _) => { });
+
+        for (int i = 0; i < fileCount; i++)
+        {
+            handler.RecordCompletedFile($@"C:\Data\one{i:D4}.png", i + 1);
+        }
+
+        manager.SaveCount.Should().Be(fileCount, "con lote de 1, cada archivo reescribe el conjunto entero");
+    }
+
+    [Fact]
+    public void CheckpointHandler_FlushPendingSaves_PersistsWhatIsLeft()
+    {
+        var manager = new WorkflowCheckpointManager(_testBaseDir);
+        var handler = new WorkflowCheckpointHandler { Manager = manager, FilesPerCheckpointWrite = 100 };
+        handler.InitializeCheckpoint(WorkflowName, "exec-1", isDryRun: false, (_, _) => { });
+
+        for (int i = 0; i < 250; i++)
+        {
+            handler.RecordCompletedFile($@"C:\Data\left{i:D4}.png", i + 1);
+        }
+
+        manager.SaveCount.Should().Be(2, "dos lotes completos (100 y 200)");
+
+        // Lo que el motor hace al cerrar una ejecución interrumpida: sacar lo que quedaba pendiente.
+        handler.FlushPendingSaves();
+
+        manager.SaveCount.Should().Be(3);
+        manager.HasPendingCheckpoint(WorkflowName, out var saved).Should().BeTrue();
+        saved!.CompletedFileKeys.Should().HaveCount(250);
+    }
+
+    [Fact]
+    public void CheckpointHandler_ClearCheckpoint_ForgetsWhatWasPending()
+    {
+        // Sin esto, el volcado de cierre resucitaría el fichero que el final de la ejecución acaba de borrar.
+        var manager = new WorkflowCheckpointManager(_testBaseDir);
+        var handler = new WorkflowCheckpointHandler { Manager = manager, FilesPerCheckpointWrite = 100 };
+        handler.InitializeCheckpoint(WorkflowName, "exec-1", isDryRun: false, (_, _) => { });
+
+        for (int i = 0; i < 40; i++)
+        {
+            handler.RecordCompletedFile($@"C:\Data\clean{i:D4}.png", i + 1);
+        }
+
+        handler.ClearCheckpoint(WorkflowName, isDryRun: false);
+        handler.FlushPendingSaves();
+
+        manager.SaveCount.Should().Be(0, "el cierre no tiene que volver a escribir lo que se acaba de borrar");
+        manager.HasPendingCheckpoint(WorkflowName, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CheckpointHandler_ClearCheckpoint_ForgetsTheInMemoryState()
+    {
+        var manager = new WorkflowCheckpointManager(_testBaseDir);
+        var handler = new WorkflowCheckpointHandler { Manager = manager };
+        handler.InitializeCheckpoint(WorkflowName, "exec-1", isDryRun: false, (_, _) => { });
+        handler.RecordCompletedFile(@"C:\Data\state.png", 1);
+
+        handler.Checkpoint.Should().NotBeNull();
+
+        handler.ClearCheckpoint(WorkflowName, isDryRun: false);
+
+        handler.Checkpoint.Should().BeNull(
+            "el estado de una ejecución terminada es estado muerto: dejarlo es lo que hacía que la siguiente «se creyera todo hecho»");
+        manager.HasPendingCheckpoint(WorkflowName, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task WorkflowExecutor_ReusedForASecondRun_ShouldProcessEveryFileAgain()
+    {
+        // El defecto reportado: limpiar el punto de control borraba el fichero pero no el objeto en memoria, así
+        // que la segunda ejecución del mismo motor daba cada archivo por completado, no entregaba nada y
+        // terminaba en verde en milisegundos.
+        string sourceDir = Path.Combine(_tempFilesDir, "entrada");
+        string destination = Path.Combine(_tempFilesDir, "salida");
+        Directory.CreateDirectory(sourceDir);
+        Directory.CreateDirectory(destination);
+        for (int i = 0; i < 3; i++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(sourceDir, $"repetido{i}.txt"), "contenido");
+        }
+
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+
+        var graph = new WorkflowGraph { Name = "Reused Executor Test" };
+        graph.Nodes.Add(new WorkflowNode
+        {
+            Id = "src-1",
+            NodeTypeName = typeof(FolderSourceNode).FullName!,
+            Parameters = new Dictionary<string, object?> { ["SourcePath"] = sourceDir }
+        });
+        graph.Nodes.Add(new WorkflowNode
+        {
+            Id = "sink-1",
+            NodeTypeName = "DestinationSinkNode",
+            Parameters = new Dictionary<string, object?> { ["DestinationRoot"] = destination }
+        });
+        graph.Edges.Add(new WorkflowEdge
+        {
+            SourceNodeId = "src-1",
+            SourcePortName = "Out",
+            TargetNodeId = "sink-1",
+            TargetPortName = "In"
+        });
+
+        var executor = new WorkflowExecutor
+        {
+            EnableCheckpointing = true,
+            CheckpointManager = new WorkflowCheckpointManager(_testBaseDir)
+        };
+
+        // Primera ejecución: los tres archivos se procesan y el punto de control se limpia al terminar.
+        await executor.ExecuteAsync(graph, loader, CancellationToken.None);
+        Directory.EnumerateFiles(destination).Should().HaveCount(3, "la primera ejecución tiene que entregar los tres archivos");
+
+        foreach (string stale in Directory.EnumerateFiles(destination)) File.Delete(stale);
+
+        // Segunda ejecución con EL MISMO motor: es lo que hace la interfaz al volver a pulsar Ejecutar.
+        await executor.ExecuteAsync(graph, loader, CancellationToken.None);
+
+        Directory.EnumerateFiles(destination).Should().HaveCount(3,
+            "una ejecución nueva vuelve a hacer el trabajo: nada de la anterior está hecho todavía");
+        executor.GetNodeTelemetryStats()["sink-1"].ProcessedCount.Should().Be(3,
+            "los tres archivos tienen que volver a pasar por el nodo en la segunda ejecución");
     }
 
     public void Dispose()

@@ -50,9 +50,12 @@ public sealed class DataFormatConverterNode : FlowNodeBase
         string outDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
         outDir = Environment.ExpandEnvironmentVariables(outDir);
 
-        if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
+        // El patrón lo resuelve la regla única del SDK: expande la carpeta del flujo <b>y todos sus alias</b> y
+        // ancla toda ruta relativa, de modo que aquí no queda el texto de una plantilla declarada ni el token
+        // escrito dentro de la ruta (hitos 209 y 210).
+        if (!string.IsNullOrWhiteSpace(outDir))
         {
-            outDir = outDir.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
+            outDir = ParameterHelper.ResolveOutputPath(outDir, item);
         }
 
         if (string.IsNullOrWhiteSpace(outDir))

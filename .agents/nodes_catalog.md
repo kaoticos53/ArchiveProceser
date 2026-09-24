@@ -45,7 +45,7 @@ FILEFLOW_UPDATE_NODE_CATALOG=1 dotnet test --filter NodeCatalogGuardTests
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **ArchiveCompressorNode** | Archives | `In` | `Out`, `Error` | `DestinationFolder` (FolderPath), `ArchiveName` (Text), `ArchiveFormat` (Dropdown), `CompressionType` (Dropdown) | [`ArchiveCompressorNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveCompressorNode.cs) |
 | **ArchiveFanInNode** | Archives | `In` | `Out`, `Error` | `DestinationFolder` (FolderPath), `ArchiveName` (Text), `ArchiveFormat` (Dropdown), `CompressionType` (Dropdown), `CleanWorkingFolder` (Toggle), `TimeoutSeconds` (Number) | [`ArchiveFanInNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanInNode.cs) |
-| **ArchiveFanOutNode** | Archives | `In` | `Out` | `OutputDirectory` (FolderPath), `ArchiveFormat` (Dropdown), `PreserveDirectoryStructure` (Toggle), `FilterPattern` (Text), `PasswordList` (Text), `PasswordFile` (FilePath) | [`ArchiveFanOutNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanOutNode.cs) |
+| **ArchiveFanOutNode** | Archives | `In` | `Out`, `Error` | `OutputDirectory` (FolderPath), `ArchiveFormat` (Dropdown), `PreserveDirectoryStructure` (Toggle), `FilterPattern` (Text), `PasswordList` (Text), `PasswordFile` (FilePath) | [`ArchiveFanOutNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFanOutNode.cs) |
 | **ArchiveFilterNode** | Archives | `In` | `Archive`, `RegularFile`, `SecondaryVolume` | — | [`ArchiveFilterNode.cs`](file:///FileFlow.Plugin.Archives/ArchiveFilterNode.cs) |
 | **SmartUnpackNode** | Archives | `In` | `Out`, `Error` | `OutputDirectory` (FolderPath), `ArchiveFormat` (Dropdown), `PreserveDirectoryStructure` (Toggle), `FilterPattern` (Text), `PasswordList` (Text), `CleanRedundantFolder` (Toggle), `DeleteArchiveAfterExtraction` (Toggle), `PasswordFile` (FilePath) | [`SmartUnpackNode.cs`](file:///FileFlow.Plugin.Archives/SmartUnpackNode.cs) |
 
@@ -61,7 +61,7 @@ FILEFLOW_UPDATE_NODE_CATALOG=1 dotnet test --filter NodeCatalogGuardTests
 | **DataLookupNode** | Data | `In` | `Matched`, `Unmatched` | `DataSourcePath` (FilePath), `LookupKeyColumn` (Text), `MatchExpression` (Text), `PrefixColumns` (Text) | [`DataLookupNode.cs`](file:///FileFlow.Plugin.Data/Nodes/Processing/DataLookupNode.cs) |
 | **ExcelReaderNode** | Data | `In` | `RowOut` | `FilePath` (FilePath), `SheetName` (Text), `SkipEmptyRows` (Toggle) | [`ExcelReaderNode.cs`](file:///FileFlow.Plugin.Data/Nodes/Readers/ExcelReaderNode.cs) |
 | **ExcelReportGeneratorNode** | Data | `In` | `Out`, `Report` | `OutputDirectory` (FolderPath), `ReportFileName` (Text), `ColumnsToExport` (Text) | [`ExcelReportGeneratorNode.cs`](file:///FileFlow.Plugin.Data/Nodes/Exporters/ExcelReportGeneratorNode.cs) |
-| **SqliteDatabaseSinkNode** | Data | `In` | `Out` | `DatabasePath` (FilePath), `TableName` (Text), `AutoCreateTable` (Toggle), `StoreMetadataAsJson` (Toggle) | [`SqliteDatabaseSinkNode.cs`](file:///FileFlow.Plugin.Data/Nodes/Exporters/SqliteDatabaseSinkNode.cs) |
+| **SqliteDatabaseSinkNode** | Data | `In` | `Out`, `Error` | `DatabasePath` (FilePath), `TableName` (Text), `AutoCreateTable` (Toggle), `StoreMetadataAsJson` (Toggle) | [`SqliteDatabaseSinkNode.cs`](file:///FileFlow.Plugin.Data/Nodes/Exporters/SqliteDatabaseSinkNode.cs) |
 
 ---
 
@@ -80,7 +80,7 @@ FILEFLOW_UPDATE_NODE_CATALOG=1 dotnet test --filter NodeCatalogGuardTests
 
 | Nodo | Categoría | Entradas | Salidas | Parámetros | Código fuente |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **AdvancedRenamerNode** | Files | `In` | `Out` | `PipelineName` (Dropdown), `RenameMode` (Dropdown), `CollisionStrategy` (Dropdown) | [`AdvancedRenamerNode.cs`](file:///FileFlow.Plugin.FileSystem/Nodes/Processing/AdvancedRenamerNode.cs) |
+| **AdvancedRenamerNode** | Files | `In` | `Out`, `Skipped`, `Error` | `PipelineName` (Dropdown), `RenameMode` (Dropdown), `CollisionStrategy` (Dropdown) | [`AdvancedRenamerNode.cs`](file:///FileFlow.Plugin.FileSystem/Nodes/Processing/AdvancedRenamerNode.cs) |
 | **DestinationSinkNode** | Files | `In` | `Done`, `Error` | `DestinationRoot` (FolderPath), `ConflictStrategy` (Dropdown) | [`DestinationSinkNode.cs`](file:///FileFlow.Plugin.FileSystem/Nodes/Actions/DestinationSinkNode.cs) |
 | **DirectoryInspectorNode** | Files | `In` | `SingleArchive`, `MixedContent`, `DirectoriesOnly` | — | [`DirectoryInspectorNode.cs`](file:///FileFlow.Plugin.FileSystem/Nodes/Processing/DirectoryInspectorNode.cs) |
 | **DocumentProcessorNode** | Documents | `In` | `Out`, `Error` | — | [`DocumentProcessorNode.cs`](file:///FileFlow.Plugin.FileSystem/Nodes/Processing/DocumentProcessorNode.cs) |

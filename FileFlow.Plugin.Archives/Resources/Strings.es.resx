@@ -48,6 +48,8 @@
   <data name="Param_ExtractionEngine_Help" xml:space="preserve"><value>Selecciona el motor de extracción: Auto (degradación inteligente multi-nivel), SevenZip (7z.exe), DotNetZip (.NET 9 nativo) o SharpCompress (administrado).</value></data>
   <data name="Param_CustomSevenZipPath" xml:space="preserve"><value>Ejecutable 7z Personalizado</value></data>
   <data name="Param_CustomSevenZipPath_Help" xml:space="preserve"><value>Ruta opcional al ejecutable 7z.exe / 7za.exe personalizado o portátil.</value></data>
+  <data name="Param_DestinationFolder" xml:space="preserve"><value>Carpeta de Destino</value></data>
+  <data name="Param_DestinationFolder_Help" xml:space="preserve"><value>Carpeta donde se escribe el comprimido (el nombre lo pone «Nombre del Archivo»). Por omisión es la carpeta de salida del flujo: la que el flujo declara como suya y, si no declara ninguna, la salida por defecto de los ajustes. Para escribirlo junto al archivo que comprime, escriba «{CurrentDir}». Admiten variables, por ejemplo «{GlobalOutputDir}/Archivado».</value></data>
 
   <!-- Password Manager Window -->
   <data name="PasswordManager_WindowTitle" xml:space="preserve"><value>Gestor de Contraseñas - SmartUnpack</value></data>

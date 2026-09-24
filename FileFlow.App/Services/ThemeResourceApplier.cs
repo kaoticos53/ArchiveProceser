@@ -51,6 +51,8 @@ public static class ThemeResourceApplier
         AddSolidBrush("AccentCyanBrush", theme.AccentCyan, "#06B6D4");
         AddSolidBrush("AccentPurpleBrush", theme.AccentPurple, "#A855F7");
 
+        AddMutedAccents(dict, theme);
+
         AddSolidBrush("TextPrimaryBrush", theme.TextPrimary, "#F0F6FC");
         AddSolidBrush("TextSecondaryBrush", theme.TextSecondary, "#8B949E");
         AddSolidBrush("TextMutedBrush", theme.TextMuted, "#7C8698");
@@ -111,6 +113,80 @@ public static class ThemeResourceApplier
 
         return dict;
     }
+
+    /// <summary>
+    /// Peso con el que un acento se mezcla con la superficie del tema para dar su cara atenuada. Es el mismo
+    /// 45 % que el estado deshabilitado usaba como opacidad de la parte entera, pero aplicado <b>al color</b>.
+    /// </summary>
+    private const double MutedAccentWeight = 0.45;
+
+    /// <summary>
+    /// Caras atenuadas de los acentos: el acento mezclado con la superficie del tema, que es lo que usan las
+    /// variantes de acento cuando están deshabilitadas.
+    ///
+    /// <para><b>Por qué son tokens y no una opacidad</b>: la opacidad se aplicaba a la parte entera de la
+    /// plantilla, y ahí dentro vive también la etiqueta, que el tema base ya había atenuado por su cuenta
+    /// (<c>ButtonForegroundDisabled</c> en esa misma parte): las dos atenuaciones se multiplicaban y el texto
+    /// deshabilitado quedaba en 2,13:1 sobre el tema oscuro y en 1,20:1 sobre el claro, donde el gris del tema
+    /// base caía más cerca del correcto y por eso nadie lo había medido. Un color derivado deja la cara en un
+    /// valor propio —y por tanto igual sobre cualquier superficie, en lugar de depender de lo que haya
+    /// detrás— y permite que la etiqueta se declare aparte, con un único nivel de atenuación.</para>
+    ///
+    /// <para>Se derivan del acento y de la superficie del tema, como <c>OverlaySurfaceBrush</c> o los tintes,
+    /// para que los 8 presets integrados y cualquier tema creado en el Studio las tengan sin declararlas.</para>
+    /// </summary>
+    private static void AddMutedAccents(ResourceDictionary dict, ThemeDefinition theme)
+    {
+        (string Key, string Accent)[] accents =
+        [
+            ("AccentPrimaryMutedBrush", theme.AccentPrimary),
+            ("AccentSuccessMutedBrush", theme.AccentSuccess),
+            ("AccentWarningMutedBrush", theme.AccentWarning),
+            ("AccentErrorMutedBrush", theme.AccentError),
+            ("AccentPurpleMutedBrush", theme.AccentPurple)
+        ];
+
+        Color surface;
+
+        try
+        {
+            surface = Color.Parse(string.IsNullOrWhiteSpace(theme.BgSurface) ? "#131720" : theme.BgSurface);
+        }
+        catch
+        {
+            surface = Color.Parse("#131720");
+        }
+
+        foreach (var (key, accentHex) in accents)
+        {
+            Color accent;
+
+            try
+            {
+                accent = Color.Parse(string.IsNullOrWhiteSpace(accentHex) ? "#6366F1" : accentHex);
+            }
+            catch
+            {
+                // Un acento ilegible no puede dejar la variante sin cara: se cae al acento por defecto.
+                accent = Color.Parse("#6366F1");
+            }
+
+            dict[key] = new SolidColorBrush(Blend(accent, surface, MutedAccentWeight));
+        }
+    }
+
+    /// <summary>
+    /// Mezcla dos colores en sRGB, canal a canal, redondeando al más cercano. El redondeo vive aquí y sólo
+    /// aquí porque el diccionario de arranque (<c>Themes/DarkTheme.axaml</c>) es un espejo exacto de este
+    /// resultado y hay un test que compara los dos byte a byte.
+    /// </summary>
+    private static Color Blend(Color accent, Color surface, double weight) => Color.FromRgb(
+        Mix(surface.R, accent.R, weight),
+        Mix(surface.G, accent.G, weight),
+        Mix(surface.B, accent.B, weight));
+
+    private static byte Mix(byte from, byte to, double weight) =>
+        (byte)Math.Clamp(Math.Round(from + ((to - from) * weight), MidpointRounding.AwayFromZero), 0, 255);
 
     /// <summary>
     /// Publica las escalas derivadas del tema: radios (a partir de <see cref="ThemeDefinition.CornerRadius"/>),

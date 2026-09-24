@@ -1,0 +1,25 @@
+{
+  "id": "datos-solo-el-token-canonico",
+  "hito": 210,
+  "claim": "Los alias de la carpeta de salida del flujo —'{DefaultOutputDir}', '{OutputDir}', '{GlobalOutputPath}', '{DefaultOutputPath}'— valen la misma carpeta que '{GlobalOutputDir}' en cualquier parámetro, también en los nodos de datos: el patrón entero lo resuelve la regla única del SDK en vez de sustituir un token a mano.",
+  "why": "Estos nodos leían la carpeta del flujo de la metadata y sustituían a mano el token canónico dentro del parámetro: cualquier alias se quedaba escrito en la ruta —una carpeta llamada '{DefaultOutputDir}'— y, sin metadata, el token canónico también. El arreglo no fue añadir más sustituciones sino entregar el patrón entero a ParameterHelper.ResolveOutputPath, que expande todos los nombres y ancla lo relativo (hitos 209 y 210). Este mutante devuelve la sustitución de un solo token: el canónico sigue funcionando y los alias vuelven a quedarse crudos.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Data/Nodes/Exporters/CsvExportNode.cs",
+      "replacements": [
+        {
+          "old": "        if (!string.IsNullOrWhiteSpace(destPath))\n        {\n            destPath = ParameterHelper.ResolveOutputPath(destPath, item);\n        }\n",
+          "new": "        destPath = destPath.Replace(\n            \"{GlobalOutputDir}\",\n            ParameterHelper.FlowOutputFolder(item) ?? AppPaths.DefaultGlobalOutputDir,\n            StringComparison.OrdinalIgnoreCase);\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~CsvExportNode_WithAnAliasOfTheFlowFolder_ShouldWriteWhereTheCanonicalTokenWrites",
+    "why": "Los cuatro alias, uno por uno: con el mutante ninguno se expande, el archivo no aparece en la carpeta del flujo y el directorio que deja el nombre del alias tampoco (la aserción lo comprueba justo para no confundir 'no lo escribió' con 'lo escribió en otro sitio'). Es la costura del nodo de datos, que es donde vivía la sustitución a mano."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~CsvExportNode_WithTheFlowFolderToken_ShouldWriteInsideTheFolderTheFlowDeclares",
+    "why": "El token canónico sigue escribiendo donde el flujo declara: lo que rompe la mutación es perder los alias, no la resolución de la carpeta del flujo."
+  }
+}

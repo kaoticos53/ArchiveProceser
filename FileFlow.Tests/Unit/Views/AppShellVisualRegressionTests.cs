@@ -154,6 +154,26 @@ public class AppShellVisualRegressionTests : IClassFixture<SharedAppVisualFixtur
     }
 
     /// <summary>
+    /// La barra de control en el preset claro. No es una repetición del oscuro: es la única superficie del
+    /// producto donde el tema base y el nuestro se peleaban el aspecto de un estado (el deshabilitado del
+    /// «deshacer» y el «rehacer», que están apagados en un documento recién abierto), y el claro es
+    /// precisamente donde el gris neutro del tema base quedaba más cerca del correcto — es decir, donde un
+    /// error de color se ve menos y por tanto se cuela más fácil.
+    /// </summary>
+    [Fact]
+    public void TheControlBar_ShouldMatchItsBaseline_InTheLightPreset()
+    {
+        byte[] capture = CaptureWithFixture(
+            _shared,
+            surface => surface.Build(AppSurface.ControlBar),
+            AppVisualFixture.BarWidth,
+            null,
+            LightTheme);
+
+        VisualSnapshot.AssertMatchesBaseline("panel-control-bar-light", capture);
+    }
+
+    /// <summary>
     /// El cajón desplegado, que es el índice de herramientas de la aplicación: por él se abren el inspector, las
     /// métricas, el explorador virtual, el diseñador de datasets, los ajustes y la ayuda. Era la única superficie
     /// principal sin captura, de modo que una entrada nueva podía nacer invisible, recortada o sin estilo.

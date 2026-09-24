@@ -29,7 +29,8 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
 
         Outputs =
         [
-            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos individuales extraídos (Fan-Out)")
+            new("Out", typeof(FileItemContext), PortDirection.Output, "Out", "Flujo de archivos individuales extraídos (Fan-Out)"),
+            new("Error", typeof(FileItemContext), PortDirection.Output, "Error", "Archivos comprimidos que no se pudieron extraer")
         ];
 
         Parameters["OutputDirectory"] = "";
@@ -212,7 +213,7 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
                 childItem.Metadata["Archive:WorkingFolder"] = sessionWorkingDir;
                 childItem.Metadata["Archive:CleanWorkingFolder"] = true;
 
-                await context.EmitAsync("ItemOut", childItem);
+                await context.EmitAsync("Out", childItem);
             }
 
             return;
@@ -349,7 +350,7 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
 
                     childItem.AddLog($"ArchiveFanOutNode extracted from {archivePath} (Session {sessionId}) using {extractionResult.EngineUsed}");
 
-                    await context.EmitAsync("ItemOut", childItem);
+                    await context.EmitAsync("Out", childItem);
                 }
             }
         }

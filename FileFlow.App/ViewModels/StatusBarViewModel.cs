@@ -326,7 +326,11 @@ public partial class StatusBarViewModel : ObservableObject
     {
         try
         {
-            string folder = string.IsNullOrWhiteSpace(GlobalOutputDir) ? @"C:\FileFlowOutput" : GlobalOutputDir;
+            // La carpeta de salida por defecto de verdad —la de los ajustes, que es la que el motor usa cuando el
+            // flujo no declara ninguna—, no una ruta de Windows escrita a mano que en otros sistemas no existe.
+            string folder = string.IsNullOrWhiteSpace(GlobalOutputDir)
+                ? FileFlow.Sdk.Storage.AppPaths.DefaultGlobalOutputDir
+                : GlobalOutputDir;
             if (!_processLauncher.OpenFolder(folder))
             {
                 string errorMsg = string.Format(_loc.GetString("Msg_GlobalOutputFolderError", "No se pudo abrir la carpeta de salida global: {0}"), folder);

@@ -249,7 +249,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 ### 🗜️ Categoría 2: Archives
 
 1. **`SmartUnpackNode`**: Descompresión universal (ZIP, RAR, 7Z, TAR, GZ) con aplanado de carpetas redundantes y protección anti *Zip Slip*.
-2. **`ArchiveCompressorNode`**: Empaqueta y comprime archivos individuales o lotes en formatos ZIP, 7Z, TAR o GZ con nivel de compresión configurable.
+2. **`ArchiveCompressorNode`**: Empaqueta y comprime archivos individuales o lotes en formatos ZIP, 7Z, TAR o GZ con nivel de compresión configurable. **Dónde escribe**: en la carpeta de salida del flujo —la que el flujo declara como suya y, si no declara ninguna, la salida por defecto de los ajustes— y la `Carpeta de Destino` sirve para decir otra cosa: una subcarpeta propia, una ruta completa o `{CurrentDir}` para dejarlo junto al archivo que comprime. El registro de la ejecución dice dónde acabó.
 3. **`ArchiveFilterNode`**: Detecta y procesa exclusivamente la primera parte de archivos divididos multivolumen (`.part1.rar`, `.z01`).
 
 ---
@@ -308,7 +308,7 @@ El motor de plantillas `VariableTemplateResolver` permite parametrizar rutas, no
 
 1. **`SwitchCaseNode`**: Enrutador condicional multidireccional basado en reglas de coincidencia de extensiones o metadatos.
 2. **`ExpressionFilterNode`**: Filtro booleano con operadores lógicos (`Equal`, `Contains`, `GreaterThan`, `RegexMatch`).
-3. **`BatchBufferNode`**: Acumula elementos en memoria hasta alcanzar un tamaño de lote o límite de tiempo.
+3. **`BatchBufferNode`**: Acumula elementos en memoria hasta alcanzar el lote configurado (cantidad de elementos o tamaño total) y los suelta juntos; el lote que no llegue a llenarse se entrega igual al terminar la ejecución.
 4. **`ThrottleDelayNode`**: Controla la tasa de emisión introduciendo pausas para evitar la saturación de I/O o APIs remotas.
 5. **`ForkJoinBarrierNode`**: Sincroniza ramas paralelas de procesamiento esperando a que todas culminen antes de continuar.
 6. **`VariableInjectorNode`**: Inyecta y calcula variables personalizadas en el flujo.

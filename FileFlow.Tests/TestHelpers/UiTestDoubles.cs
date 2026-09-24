@@ -168,6 +168,98 @@ public sealed class InMemoryExternalToolsService : IExternalToolsService
 }
 
 /// <summary>
+/// Despachador de pruebas que ejecuta en línea —misma semántica que <see cref="NullUiDispatcher"/>, que es lo que
+/// el producto hace cuando ya está sobre el hilo de la interfaz— y <b>registra lo que despacha</b>.
+///
+/// <para>Es el instrumento con el que se mide la <b>cadencia</b> de un latido (hito 176): cada vencimiento del
+/// reloj entrega exactamente un despacho, así que contar los despachos es contar los latidos —y contarlos por el
+/// nombre del método permite aislar un latido de los demás despachos que ocurran en la misma prueba—. Medir la
+/// cadencia de otra forma exigiría esperar el periodo de verdad, que es precisamente lo que el reloj inyectable
+/// evita.</para>
+/// </summary>
+public sealed class RecordingUiDispatcher : IUiDispatcher
+{
+    private readonly Lock _gate = new();
+    private readonly List<string> _posts = [];
+    private readonly List<string> _invokes = [];
+
+    /// <summary>Nombres de los métodos despachados con <c>Post</c>, en orden.</summary>
+    public IReadOnlyList<string> Posts
+    {
+        get
+        {
+            lock (_gate) { return [.. _posts]; }
+        }
+    }
+
+    public int PostCount
+    {
+        get
+        {
+            lock (_gate) { return _posts.Count; }
+        }
+    }
+
+    public int InvokeCount
+    {
+        get
+        {
+            lock (_gate) { return _invokes.Count; }
+        }
+    }
+
+    /// <summary>Cuántos despachos fueron a ese método: el número de veces que el latido lo entregó.</summary>
+    public int CountPostsOf(string methodName)
+    {
+        lock (_gate)
+        {
+            return _posts.Count(name => string.Equals(name, methodName, StringComparison.Ordinal));
+        }
+    }
+
+    public void Post(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        lock (_gate)
+        {
+            _posts.Add(action.Method.Name);
+        }
+
+        // Fuera del candado: la acción puede volver a despachar (reentrada legítima) y no hay razón para
+        // serializar el trabajo del test.
+        action();
+    }
+
+    public Task InvokeAsync(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        lock (_gate)
+        {
+            _invokes.Add(action.Method.Name);
+        }
+
+        action();
+        return Task.CompletedTask;
+    }
+
+    public Task<T> InvokeAsync<T>(Func<T> function)
+    {
+        ArgumentNullException.ThrowIfNull(function);
+
+        lock (_gate)
+        {
+            _invokes.Add(function.Method.Name);
+        }
+
+        return Task.FromResult(function());
+    }
+
+    public bool CheckAccess() => true;
+}
+
+/// <summary>
 /// Almacenamiento de flujos en memoria. La barra de control expone comandos de guardar y cargar, así que
 /// pasarle el servicio real haría que un despiste de un test escribiera en la carpeta de flujos del usuario.
 /// </summary>

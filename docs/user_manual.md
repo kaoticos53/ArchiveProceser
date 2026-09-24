@@ -248,7 +248,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 ### 🗜️ Category 2: Archives
 
 1. **`SmartUnpackNode`**: Universal archive extraction (ZIP, RAR, 7Z, TAR, GZ) with redundant folder flattening and Zip Slip protection.
-2. **`ArchiveCompressorNode`**: Compresses single or batch files into ZIP, 7Z, TAR, or GZ archives with configurable compression algorithms.
+2. **`ArchiveCompressorNode`**: Compresses single or batch files into ZIP, 7Z, TAR, or GZ archives with configurable compression algorithms. **Where it writes**: to the output folder of the flow —the one the flow declares as its own, and the default output folder from the settings when the flow declares none— and the `Destination Folder` parameter is for saying something else: a subfolder of your own, a full path, or `{CurrentDir}` to leave the archive next to the file it compresses. The run log says where it ended up.
 3. **`ArchiveFilterNode`**: Detects and isolates split multi-volume archives (`.part1.rar`, `.z01`).
 
 ---
@@ -307,7 +307,7 @@ The `VariableTemplateResolver` engine allows powerful token substitution in file
 
 1. **`SwitchCaseNode`**: Multi-way conditional branch router matching extensions, file sizes, or metadata.
 2. **`ExpressionFilterNode`**: Boolean predicate filter with logical operators (`Equal`, `Contains`, `GreaterThan`, `RegexMatch`).
-3. **`BatchBufferNode`**: Gathers items until a batch size threshold or timeout is reached before emitting.
+3. **`BatchBufferNode`**: Gathers items until the configured batch size or total size is reached, then releases them together; a batch that never fills is still delivered when the execution ends.
 4. **`ThrottleDelayNode`**: Rate limits emission rate to prevent overwhelming downstream disk or network endpoints.
 5. **`ForkJoinBarrierNode`**: Synchronizes concurrent branches, waiting for all sibling items to arrive before releasing.
 6. **`VariableInjectorNode`**: Injects static and dynamic variables into item context.

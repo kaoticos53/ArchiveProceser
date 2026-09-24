@@ -1,0 +1,25 @@
+{
+  "id": "retroalimentacion-de-barrera-contada-como-ciclo",
+  "hito": 204,
+  "claim": "La arista que devuelve una rama a la barrera que la bifurco no es una restriccion de precedencia: un grafo de fork/join se puede ejecutar.",
+  "why": "El nodo barrera bifurca por Fork1/Fork2 y las ramas vuelven a su propia entrada (Branch1_Done/Branch2_Done). Contando esa vuelta como precedencia, el orden topologico ve un ciclo (barrera -> rama -> barrera) y el motor rechaza el grafo entero con 'Graph contains a cycle (DAG violation)': el nodo era inejecutable y los ejemplos 22 y 30 del catalogo no llegaban a correr nunca. Lo destapo ejecutar los ejemplos de punta a punta (hito 204).",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/GraphValidator.cs",
+      "replacements": [
+        {
+          "old": "        List<WorkflowEdge> precedenceEdges = [.. graph.Edges.Where(edge => !IsFeedbackSignal(edge, nodeInstances))];\n",
+          "new": "        List<WorkflowEdge> precedenceEdges = [.. graph.Edges];\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~Validate_ShouldAcceptABranchReturningToABarrierNode",
+    "why": "Es el grafo de un fork/join con las dos ramas de vuelta: con el defecto dentro, el validador lo declara invalido por ciclo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Validate_ShouldFail_WhenGraphContainsCycle",
+    "why": "Un ciclo que no pasa por ningun puerto de retroalimentacion tiene que seguir rechazandose: la exencion es por puerto, no por grafo."
+  }
+}

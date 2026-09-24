@@ -1016,6 +1016,7 @@
   <data name="Log_WorkflowCompletedProgress" xml:space="preserve"><value>Flujo de trabajo completado en {0:F2}s</value></data>
   <data name="Log_CheckpointSkippingFile" xml:space="preserve"><value>[Checkpoint] Omitiendo archivo completado previamente: {0}</value></data>
   <data name="Log_ProcessingItemsProgress" xml:space="preserve"><value>⚡ Procesando: {0:N0}/{1:N0} elementos ({2:F0}%)</value></data>
+  <data name="Log_UndeclaredOutputPort" xml:space="preserve"><value>[Motor] El nodo '{0}' emitió un elemento por el puerto '{1}', que no declara: el elemento no llegó a ningún nodo descendente. Declara el puerto en el nodo (o emite por el puerto que sí declara) para que la rama se vea y se pueda conectar.</value></data>
   <data name="Log_ExecutionErrorsOccurred" xml:space="preserve"><value>Ejecución completada con errores: {0}</value></data>
 
   <!-- Variable Picker & Catalog -->

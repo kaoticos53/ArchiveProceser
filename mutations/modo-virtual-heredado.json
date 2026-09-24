@@ -1,0 +1,25 @@
+{
+  "id": "modo-virtual-heredado",
+  "hito": 201,
+  "claim": "El modo virtual lo decide cada ejecucion: activado por un grafo con origenes sinteticos, no se hereda a la siguiente.",
+  "why": "El modo lo activa sola la ejecucion cuando el grafo trae un origen sintetico, y quedaba activado para siempre: la siguiente ejecucion escribia en el almacen virtual en vez de en el disco y terminaba en verde con el disco vacio (medido: el archivo real no aparecia).",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/WorkflowExecutor.cs",
+      "replacements": [
+        {
+          "old": "        IsVirtualFileSystemEnabled = false;\n        PlannedActions.Clear();\n        JournalService.Clear();\n\n        _telemetryTracker.Reset();\n        _itemDispatcher.ResetForNewExecution();\n        lock (_lock)\n        {\n            _concurrencyThrottle?.Dispose();",
+          "new": "        PlannedActions.Clear();\n        JournalService.Clear();\n\n        _telemetryTracker.Reset();\n        _itemDispatcher.ResetForNewExecution();\n        lock (_lock)\n        {\n            _concurrencyThrottle?.Dispose();"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ASyntheticRun_ShouldNotLeaveTheNextOneInVirtualMode",
+    "why": "Es el sintoma exacto: tras una ejecucion sintetica, el flujo con archivos reales tiene que escribirlos en el disco y el modo virtual tiene que estar apagado."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~VirtualEmptyFolderCleanupIntegrationTests",
+    "why": "Una sola ejecucion con origen sintetico sigue activando el modo virtual sola: el mutante rompe el no-heredar, no la activacion."
+  }
+}

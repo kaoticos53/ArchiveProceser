@@ -165,7 +165,10 @@ public sealed class OperationReportNode : FlowNodeBase
             // Forward original item to Out
             await context.EmitAsync("Out", item);
         }
-        catch (Exception ex)
+        // La cancelación no es un informe que falló: se propaga —el motor la trata como cancelación, no como
+        // nodo averiado— en vez de convertirse en un ítem que sale por 'Error' de una ejecución que el usuario
+        // acaba de detener.
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             context.Log(LocalizationManager.Instance.GetFormattedString("Log_Report_Error", "[Operation Report] Error generating report: {0}", ex.Message), LogLevel.Error, item, durationMs: sw.Elapsed.TotalMilliseconds);

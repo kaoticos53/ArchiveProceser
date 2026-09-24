@@ -1,0 +1,25 @@
+{
+  "id": "punto-de-control-vuelve-a-escribir-por-archivo",
+  "hito": 199,
+  "claim": "El punto de control persiste por lotes: el número de volcados no crece con el número de archivos completados.",
+  "why": "Escribir el conjunto entero de claves bajo el candado en cada archivo completado cuesta O(N^2) en bytes y es un punto de serializacion por item, justo en el camino que reparte el trabajo entre hilos. Medido con 2.000 archivos (CheckpointWriteCostTests): 2.000 volcados y 3.855 ms de pared frente a 7 volcados y 581 ms.",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/WorkflowCheckpointHandler.cs",
+      "replacements": [
+        {
+          "old": "            if (++_filesSinceLastSave >= Math.Max(1, FilesPerCheckpointWrite))",
+          "new": "            if (true)"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~CheckpointHandler_PersistsInBatches_NotOncePerCompletedFile",
+    "why": "Es el caso que exige que 1.000 archivos con lotes de 100 sean 10 volcados: con la escritura por archivo cuenta 1.000 y se pone rojo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~CheckpointManager_SaveRetrieveAndClear_OperatesCorrectly",
+    "why": "El contrato de persistencia del gestor no depende de cuando el handler decide volcar: guarda y recupera igual."
+  }
+}

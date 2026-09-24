@@ -1,0 +1,25 @@
+{
+  "id": "struct-de-shell-desalineado",
+  "hito": 204,
+  "claim": "El struct que se le pasa a SHFileOperation se declara con la alineacion natural del sistema, como lo declara shellapi.h.",
+  "why": "Con Pack = 1 los campos se apilan sin relleno: pFrom queda en el desplazamiento 12 en vez del 16, y la llamada nativa lee ahi un puntero formado por media direccion y la primera mitad del campo siguiente. No es una excepcion administrada: la violacion de acceso (0xC0000005) se lleva el proceso por delante, sin nada que atrapar. Se destapo ejecutando el ejemplo 10 del catalogo -el unico que manda originales a la papelera real-, que mato al proceso del suite en lugar de fallar (hito 204).",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Platform/WindowsPlatformService.cs",
+      "replacements": [
+        {
+          "old": "    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]\n    private struct SHFILEOPSTRUCT\n",
+          "new": "    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]\n    private struct SHFILEOPSTRUCT\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~WindowsShellFileOperationLayoutTests",
+    "why": "Compara los desplazamientos reales del struct con los que dicta shellapi.h y exige que los punteros caigan alineados a palabra."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ForkJoinBarrierNodeTests",
+    "why": "No toca el struct ni la papelera: el mutante desalinea una estructura nativa, no rompe el motor."
+  }
+}

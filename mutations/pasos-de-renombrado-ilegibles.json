@@ -1,0 +1,25 @@
+{
+  "id": "pasos-de-renombrado-ilegibles",
+  "hito": 205,
+  "claim": "Los pasos de renombrado guardados en el flujo se leen tal y como los escribe el catalogo de ejemplos: con los nombres de las enumeraciones, no solo con sus numeros.",
+  "why": "El catalogo de ejemplos -y cualquiera que retoque un flujo fuera de la aplicacion- guarda los pasos con los nombres ('methodType':'NewName'), mientras que el editor de la aplicacion los guarda con numeros. La lectura del nodo no aceptaba los nombres, asi que fallaba entera, el nodo caia en la plantilla por omision ({ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}) y renombraba a un nombre que nadie habia configurado, sin decirlo: el ejemplo 34 declaraba su plantilla corporativa {Year}_DOC_{Guid} y los archivos salian con otro nombre (destapado al ejecutarlo de punta a punta, hito 205).",
+  "edits": [
+    {
+      "file": "FileFlow.Sdk/Renaming/RenamerPresetService.cs",
+      "replacements": [
+        {
+          "old": "        Converters = { new JsonStringEnumConverter() }\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~AdvancedRenamer_WhenTheStepsArriveWithEnumNames_ShouldApplyThemInsteadOfTheDefaultTemplate",
+    "why": "Configura los pasos con los nombres de las enumeraciones y mira el nombre resultante: con el defecto dentro sale la plantilla por omision en vez de la configurada."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~AdvancedRenamer_MethodStepsPipeline_ShouldExecuteCorrectly",
+    "why": "El mismo nodo con los pasos que escribe la aplicacion (numeros): siguen leyendose, asi que el mutante rompe un dialecto, no la lectura entera."
+  }
+}

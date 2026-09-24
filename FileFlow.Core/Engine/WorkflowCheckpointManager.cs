@@ -26,6 +26,14 @@ public class WorkflowCheckpointManager
 
     private readonly string _checkpointDirectory;
     private readonly Lock _lock = new();
+    private long _saveCount;
+
+    /// <summary>
+    /// Cuántas veces se ha persistido un punto de control en este gestor. Es la medida del coste del punto de
+    /// control: con el defecto de escribir por archivo, un flujo de N archivos daba N; midiendo contra eso se
+    /// lee el arreglo (ver <c>CheckpointWriteCostTests</c>).
+    /// </summary>
+    public long SaveCount => Interlocked.Read(ref _saveCount);
 
     public WorkflowCheckpointManager(string? baseDir = null)
     {
@@ -50,6 +58,8 @@ public class WorkflowCheckpointManager
         if (string.IsNullOrWhiteSpace(safeName)) safeName = "unnamed_workflow";
         return Path.Combine(_checkpointDirectory, $"{safeName}.checkpoint.json");
     }
+
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
     public bool HasPendingCheckpoint(string workflowName, out WorkflowCheckpointData? checkpoint)
     {
@@ -83,8 +93,11 @@ public class WorkflowCheckpointManager
         {
             try
             {
-                string json = JsonSerializer.Serialize(checkpoint, new JsonSerializerOptions { WriteIndented = true });
+                // Sin sangría: este fichero lo lee el motor, no una persona, y la sangría casi triplica los
+                // bytes que se escriben en cada volcado (y con miles de claves se nota).
+                string json = JsonSerializer.Serialize(checkpoint, JsonOptions);
                 File.WriteAllText(path, json);
+                Interlocked.Increment(ref _saveCount);
             }
             catch { }
         }

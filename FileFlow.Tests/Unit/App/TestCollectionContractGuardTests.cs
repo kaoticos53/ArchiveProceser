@@ -121,6 +121,26 @@ public class TestCollectionContractGuardTests
     }
 
     [Fact]
+    public void Analyzer_ShouldRequireTheExampleFlowBank_WhenClassMovesTheProcessWorkingDirectory()
+    {
+        // Apuntar el directorio de trabajo a otro sitio desde una colección paralela cambia dónde caen las rutas
+        // relativas de las demás, y la sala limpia del banco de ejemplos deja de ser sólo suya.
+        string source = Snippet("[Collection(\"ThemeTokens\")]", "Directory.SetCurrentDirectory(Path.GetTempPath());");
+
+        var violations = AnalyzeSnippet(source);
+
+        violations.Should().ContainSingle().Which.State.Should().Be(ExclusiveTestState.ProcessWorkingDirectory);
+    }
+
+    [Fact]
+    public void Analyzer_ShouldAcceptMovingTheWorkingDirectoryFromTheExampleFlowBank()
+    {
+        string source = Snippet("[Collection(ExampleFlowBankCollection.Name)]", "Directory.SetCurrentDirectory(room);");
+
+        AnalyzeSnippet(source).Should().BeEmpty();
+    }
+
+    [Fact]
     public void Analyzer_ShouldRequireVisualSnapshots_WhenClassUsesTheHeadlessSession()
     {
         string source = Snippet(null, "AvaloniaTestHelper.EnsureInitialized();");

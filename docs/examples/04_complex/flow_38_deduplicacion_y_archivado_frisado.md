@@ -28,7 +28,15 @@ graph TD
   - *(Parámetros por defecto)*
 ### `ArchiveCompressorNode` (ID: `node-7z`)
 - **Parámetros**: 
+  - `DestinationFolder`: `{GlobalOutputDir}/Frio`
   - `ArchiveFormat`: `7Z`
+  - `CompressionType`: `LZMA`
+  - `ArchiveName`: `{FileNameWithoutExtension}.7z`
+
+> El contenedor **7Z** sólo admite compresión `LZMA`/`LZMA2`: la compresión por defecto del nodo es `Deflate`,
+> que el escritor de 7Z rechaza. Con la combinación por defecto el nodo registraba el error y dejaba un archivo
+> de **cero bytes** con la extensión del archivo prometido; con `CompressionType` explícito el ejemplo entrega de
+> verdad el `.7z` que anuncia.
 ### `OriginalFileActionNode` (ID: `node-quar`)
 - **Parámetros**: 
   - `ActionType`: `MoveToQuarantine`
@@ -40,7 +48,7 @@ graph TD
 1. `FolderSourceNode` lee la biblioteca.
 2. `HashCalculatorNode` calcula el hash SHA-512 de máxima seguridad.
 3. `DeduplicationFilterNode` separa elementos únicos de duplicados.
-4. Los únicos se comprimen con `ArchiveCompressorNode` (formato 7Z) y se guardan.
+4. Los únicos se comprimen con `ArchiveCompressorNode` (formato 7Z, compresión `LZMA`) y se guardan como `.7z` en `{GlobalOutputDir}/Frio`, la carpeta del archivo congelado.
 5. Los duplicados se mueven a cuarentena.
 
 ## 📋 Requisitos Previos y Datos de Prueba

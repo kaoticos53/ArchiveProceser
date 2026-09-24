@@ -1,5 +1,1944 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-24] - La Carpeta de Salida del Flujo Vale una Carpeta en Cualquier Parámetro (Hito 210)
+
+### 🎯 El encargo
+
+«Encuentra y arregla todos los sitios que resuelven la carpeta de salida del flujo (variable `GlobalOutputDir` y sus alias) fuera de `ParameterHelper.ResolveOutputPath`, de modo que valga una carpeta terminada en cualquier parámetro y no el texto declarado.» Es el pendiente que el hito 209 dejó escrito al cerrar: la cura de entonces vivía en `ResolveOutputPath`, así que **quien leyera la carpeta fuera de ahí seguía viendo la plantilla declarada**.
+
+### 🔎 El censo: cinco formas de leer la carpeta, y ninguna con la regla dentro
+
+Antes de tocar nada, el inventario (grep sobre todo el producto, no sobre lo que uno recuerda):
+
+| Dónde | Cómo lo leía | Qué pasaba |
+| :--- | :--- | :--- |
+| `SystemVariablesResolver` (la variable `{GlobalOutputDir}` y sus ocho alias) | la metadata, tal cual | **cualquier** parámetro —un mensaje de registro, un asunto de notificación, una expresión— recibía el texto declarado; y en las rutas, la plantilla dentro de la ruta |
+| `ParameterHelper.ResolveOutputPath` | expandida y anclada **sólo ahí** | el patrón del nodo salía bien y todo lo demás no (hito 209) |
+| 4 nodos de IA: síntesis de voz, detección de voz, anonimizador y transcripción (subtítulos) | la metadata, tal cual, **la misma regla copiada cuatro veces** | una salida declarada con plantilla acababa dentro de la ruta, y sin carpeta declarada el archivo caía en `Directory.GetCurrentDirectory()`: **dentro de la aplicación** |
+| 7 nodos de datos: CSV, Excel, SQLite, conversor, lookup y los dos lectores | `Replace("{GlobalOutputDir}", <valor crudo>)` | con la plantilla declarada, una carpeta llamada `{RelativeDir}` colgada del directorio de trabajo; y **sin metadata el token se quedaba escrito en la ruta** |
+| `ExcelReportGeneratorNode` y `PdfMergeNode` | guardaban el valor crudo (o resolvían contra un **elemento vacío**) porque escriben al terminar la ejecución | la carpeta del flujo no se veía —caía en la de los ajustes—, y en el PDF unido cualquier variable del nombre se quedaba sin valor |
+
+Y un detalle de interfaz: la barra de estado abría `C:\FileFlowOutput` —una ruta de Windows escrita a mano— cuando el editor no tenía carpeta.
+
+### 🧐 La regla, una sola vez y con su contrato
+
+Todo eso pasa a leerse en un solo sitio: **`ParameterHelper.FlowOutputFolder`**, que devuelve la carpeta declarada **expandida y anclada** (o `null` si el flujo no declara ninguna) y que ahora usan la variable del motor de plantillas, el anclaje de las rutas, la regla compartida de los nodos de IA y los escritores de datos. Tiene tres piezas que merecen decirse:
+
+- **El censo de alias vive dentro**: `GlobalOutputDir`, `DefaultGlobalOutputDir`, `DefaultOutputDir`, `GlobalOutputPath` y `DefaultOutputPath` —los que el resolutor aceptaba— se leen en un solo sitio, así que la variable y el anclaje contestan lo mismo. Antes el anclaje sólo miraba la clave vigente: un flujo que usara el alias histórico se anclaba en otro sitio que el que decía la variable.
+- **Guardia de reentrada**: un flujo puede declarar su salida en términos de sí misma (`{GlobalOutputDir}/sub`). Sin guardia, expandir el valor vuelve a pedir la carpeta del flujo y no termina; con ella, la referencia circular acaba en el último escalón (la salida por defecto).
+- **El API se encoge**: la costura que el hito 209 había añadido al resolutor (`globalOutputDirOverride`, un parámetro opcional que atravesaba `VariableTemplateResolver.Resolve` y `SystemVariablesResolver.GetVariableValue`) **se retira**. Con la variable resuelta en su sitio, ya no hay nada que inyectar: la regla está donde se lee, no en quien la llama.
+
+El fallback del proceso (`Directory.GetCurrentDirectory()`) desaparece de los cuatro nodos de IA, que pasan a una regla compartida y escrita (`FileFlow.Plugin.AI/Common/NodeOutputDirectory.cs`): lo declarado, si no la carpeta del flujo, si no la del propio archivo, y sólo en último extremo el temporal del producto.
+
+### 🐛 Lo que el arnés de mutaciones encontró mientras se declaraba cubierto
+
+Al declarar la mutación de la regla nueva (que le quita la expansión a `FlowOutputFolder`) y medirla, **sobrevivió**: la prueba del último escalón seguía verde porque en mi propia regla había un defecto. `Path.GetDirectoryName("voz.wav")` devuelve **cadena vacía, no nulo**, así que la cadena `?? Path.GetDirectoryName(...) ?? AppPaths.DefaultTempDirectory` se detenía en la cadena vacía y **el último escalón no se disparaba nunca**: el nodo habría escrito en la ruta vacía. La mutación no mentía; el defecto era del arreglo. Corregida la regla (comparar por `IsNullOrWhiteSpace`, con el porqué escrito al lado), la mutación muerde. Es el arnés haciendo su trabajo, y por eso la declaración de la mutación cuenta también esa medición.
+
+### 🔗 Los siete nodos de datos pasan por la regla (y con ellos los alias)
+
+El censo de arriba dejó anotado que los siete nodos de datos —CSV de entrada y de salida, Excel de entrada y de salida, SQLite, conversor y lookup— **sustituían el token canónico a mano**: `Replace("{GlobalOutputDir}", <la carpeta terminada>)`. Eso ya no era el defecto del hito 204, pero seguía siendo una regla copiada siete veces y, sobre todo, **no cubría los alias**: un flujo que escribiera `{DefaultOutputDir}/export.csv` —nombre que el resolutor acepta y que el anclaje del SDK honra— dejaba el alias escrito dentro de la ruta, porque la sustitución sólo conocía un nombre. Lo mismo en `{OutputDir}`, `{GlobalOutputPath}` y `{DefaultOutputPath}`.
+
+La sustitución se retira. Los siete entregan **el patrón entero** a `ParameterHelper.ResolveOutputPath`, que expande todos los nombres, ancla lo relativo y no deja el token en el camino, y cada uno conserva su propio respaldo para el caso de no haber patrón ninguno: el CSV y el reporte de Excel al temporal del producto, el conversor a la carpeta del archivo y los lectores avisando de que no hay archivo que leer. Dos detalles del barrido merecen quedar escritos:
+
+- **El reporte de Excel** se escribe al terminar el flujo y por eso guardaba la carpeta mientras corría; ahora guarda **la carpeta ya resuelta**, no el valor crudo: su `OutputDirectory` puede ser `{GlobalOutputDir}/reportes`, y el anclaje depende del elemento, así que resolverlo al vuelo cuando el flujo termina habría sido resolverlo sin elemento.
+- **`using FileFlow.Sdk.Storage` era carga, no ruido**: al retirar la sustitución quedó sin uso aparente y lo quité de los siete ficheros; el compilador lo devolvió con once errores, porque `GetStorage` es un método de extensión de ese espacio de nombres. Restaurado en los siete, sin más consecuencia que la lección: la limpieza se comprueba compilando.
+
+Del mismo censo quedaba un sitio de interfaz: el editor de plantillas mostraba `C:\Output` como muestra de `{GlobalOutputDir}` cuando el catálogo de variables no había respondido —una ruta de Windows escrita a mano, en un producto multiplataforma—; ahora muestra la carpeta real de los ajustes.
+
+### 🧬 Las mutaciones
+
+- [`salida-global-sin-expandir`](file:///mutations/salida-global-sin-expandir.json) **cambia de destino**: antes quitaba la expansión en `ParameterHelper` —donde la cura era local— y ahora se la quita a la **regla única**, que es la que usan los cinco lectores. Su testigo deja de ser dos pruebas de una ruta y pasa a ser **las cinco lecturas**, una por una: la variable en un parámetro que no es una ruta, el anclaje del SDK, el compresor con su destino por omisión, los nodos de IA por su costura y los dos escritores de datos —el CSV por su token **y por un alias suyo**—. **MUERDE** en **29,6 s**, testigo rojo **10 de 10**, control verde **3 de 3**.
+- [`carpeta-de-nodo-de-ia-donde-corre`](file:///mutations/carpeta-de-nodo-de-ia-donde-corre.json) es **nueva**: devuelve el último escalón de los nodos de IA al directorio de trabajo del proceso. **MUERDE** en **33,6 s**, testigo rojo **1 de 2** (la prueba del último escalón; su hermana —el elemento que trae carpeta— sigue verde, y por eso es control), control verde.
+- [`datos-solo-el-token-canonico`](file:///mutations/datos-solo-el-token-canonico.json) es **nueva**: devuelve la sustitución de un solo token al nodo de CSV, es decir, el defecto que este tramo retira. **MUERDE** en **28,8 s**, testigo rojo **4 de 4** (los cuatro alias, cada uno con su nombre) y control verde: el token canónico sigue escribiendo donde el flujo declara, así que lo que la mutación rompe es exactamente lo que el arreglo añade —los alias— y no la resolución de la carpeta. Con el mutante puesto quedan en el directorio de los binarios **cuatro carpetas** llamadas `{DefaultOutputDir}`, `{OutputDir}`, `{GlobalOutputPath}` y `{DefaultOutputPath}`: es la firma del defecto del hito 204, medida otra vez y recogida al terminar.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1737 superadas + 1 omitida de 1738** (+12: dos del SDK —la variable en cualquier parámetro y la salida que se nombra a sí misma—, cuatro de la regla de los nodos de IA —plantilla anclada, carpeta del archivo, último escalón y carpeta declarada en redondo/relativa—, dos de los escritores de datos —el CSV por el token canónico y el reporte de Excel, que la resuelve al vuelo— y **cuatro de los alias de la carpeta del flujo en un nodo de datos** (`{DefaultOutputDir}`, `{OutputDir}`, `{GlobalOutputPath}`, `{DefaultOutputPath}`), que es el hueco que este tramo cierra), **0 errores**, dos pasadas verdes (2 m 34 s y 2 m 40 s).
+- Cada nodo arreglado tiene su prueba **por su propia costura** (el método que el nodo llama de verdad), no por una copia paralela en el suite: la síntesis de voz y la detección de voz exponen su resolución como `internal` y el plugin ya tenía `InternalsVisibleTo` para el suite.
+- Las tres mutaciones, **MUERDEN**, con el árbol restaurado por bytes y recompilado.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **33 mutaciones**, **10 de 15 subsistemas** y **6 de 33 guardias** con mutación que las muerda.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado **8** suma lo que este hito cambia para quien usa la aplicación y sus cifras pasan a **1719 → 1733**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El hueco de los nodos de datos queda cerrado**: ya no sustituyen el token a mano, así que los alias valen y un camino **relativo** escrito en sus parámetros (`DestinationPath = "export.csv"`) se ancla por la misma regla que todo lo demás en vez de resolverse contra el directorio de trabajo del proceso. Queda por decidir, sí, **qué ancla manda en un lector**: hoy un `FilePath` relativo cae bajo la salida del flujo, y en un lector lo natural sería el origen del barrido.
+- **Censo pendiente**: cada plugin resuelve su carpeta de salida a su manera (Documents con `ResolveOutputPath` y el PDF unido con el elemento capturado, Data por la regla única, IA con su regla compartida, Archives con la suya). Ahora mismo la regla única es del SDK; unificar los caminos de lectura de los cuatro es el siguiente paso lógico, y el censo de este hito es el mapa.
+- **Migración pendiente**: los **98** `HelpText` literales de los plugins siguen sin pintarse; mudarlos a `Param_{clave}_Help` es mecánico y un lint que los prohíba lo cerraría del todo.
+- Sigue abierto, y es del producto: los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión del destino cuando la entrada no es media.
+
+---
+
+## [2026-09-24] - El Compresor Escribe en la Salida del Flujo: el Valor por Omisión y la Migración de lo Ya Guardado (Hito 209)
+
+### 🎯 El encargo
+
+«Decide si el compresor debe escribir por omisión en la carpeta de salida del flujo en vez de junto al archivo, con el plan de migración para los flujos ya guardados que no declaran carpeta. **Por defecto debería usar el directorio de salida por defecto definido en los ajustes.**» Es el pendiente que el hito 208 dejó escrito en su apartado de notas, y la decisión viene tomada: el valor por omisión cambia y hay que decir qué le pasa a lo ya guardado.
+
+### ✅ La decisión, y por qué es esa
+
+El valor de fábrica de `DestinationFolder` pasa a ser **`{GlobalOutputDir}`**, que es exactamente lo que el encargo pide y ya estaba definido en el producto: la carpeta que el flujo declara como su salida y, **cuando no declara ninguna, la salida por defecto de los ajustes**. No hay plumbing nuevo: el lanzador ya entrega esa carpeta al motor (`WorkflowExecutionCoordinator`: la que declara el grafo o, si no declara, la de las preferencias) y el resolutor ya sabía resolver la variable.
+
+«Junto al archivo que comprime» **deja de ser lo que pasa cuando no se declara nada** y pasa a ser algo que se declara: `{CurrentDir}`. Es una variable que ya existía (la carpeta del archivo que llega al nodo, que es literalmente lo que el respaldo calculaba por su cuenta), así que la salida vieja se conserva sin código nuevo —se lee en la ficha del parámetro— y sin que nadie tenga que adivinar de dónde salía.
+
+El valor de fábrica se declara en **un solo sitio** (`ArchiveCompressorNode.DefaultDestinationFolder`, público) y lo usan la instancia y el descriptor: la ficha muestra lo que el motor ejecuta, y una prueba lo fija (`TheFactoryDefaultOfTheCompressor_ShouldBeTheOutputFolderOfTheFlow`).
+
+### 🚚 La migración: no se reescribe ningún archivo
+
+Un flujo guardado por la aplicación **siempre trae la clave**: el escritor escribe los parámetros del nodo tal y como están en la instancia, y el valor de fábrica de antes era vacío, así que «un flujo que no declara carpeta» es, literalmente, `"DestinationFolder": ""`. Eso significa que cambiar el valor de fábrica del nodo **no toca** a ningún flujo ya guardado: el archivo guardado pisa la instancia al abrirse. La migración, por tanto, tenía que ser otra cosa que el valor por omisión, y es **una regla nueva que alcanza también a lo guardado**:
+
+| Lo que declara el flujo | Dónde escribe el comprimido |
+| :--- | :--- |
+| Una carpeta (`{GlobalOutputDir}/Archivado`, `{CurrentDir}`, una ruta completa) | Donde dice, sin cambios (hito 208) |
+| El nombre heredado `DestinationDirectory` | Donde decía su valor **heredado**, sin cambios |
+| Una carpeta vacía (`""`, como quedaron todos los guardados) | La **salida del flujo**, y el log lo dice con la carpeta exacta |
+| Nada declarado en absoluto | La **salida del flujo**, y el log lo dice |
+
+Tres decisiones sostienen ese cuadro, y las tres están escritas en el código:
+
+- **No se reescribe ningún flujo.** La alternativa era una migración que rellenase la clave vacía al cargar (y que el archivo convergiera al guardarse), y se descarta por dos razones medidas: reescribe el archivo del usuario sin que lo haya pedido, y **no puede prometer lo que promete un cambio de comportamiento** —para conservar el sitio viejo habría que escribir `{CurrentDir}`, que no es equivalente a lo que hacía el respaldo cuando un nodo anterior había cambiado la ruta del elemento: el respaldo usaba la carpeta del archivo *en ese momento*, y `{OriginalDir}` habría apuntado a la de origen—. La regla aplicada en el nodo alcanza a todos los flujos (también a los que nunca se vuelvan a guardar) y no toca ninguno.
+- **El nombre heredado manda sobre el valor de fábrica.** `DestinationDirectory` no aparece en la ficha del nodo, así que un valor ahí sólo puede venir de un flujo guardado con el nombre viejo: uno que **sí** declaró dónde escribe. Con el valor de fábrica puesto en la instancia, la comprobación «¿está vacío?» lo habría tapado y habría movido en silencio la salida de esos flujos. Ahora la comprobación es «¿está vacío **o** trae el valor de fábrica?», y una prueba fija las dos mitades (el heredado gana; el moderno declarado de verdad también).
+- **Nadie podía haber elegido el sitio viejo a propósito.** La aclaración «*si se deja vacía, junto al archivo*» se escribió en el hito 208 y **no se ha publicado**: el único documento que la decía es la ayuda del parámetro de este mismo tramo. Un usuario no puede haber vaciado el campo *porque se lo dijimos*, porque nunca se lo dijimos. Es lo que hace defendible mover el destino de todo flujo que no lo declara, y por eso se anuncia en el log al ejecutar y en las notas de versión.
+
+La prueba que ata la migración entera es de **motor**, no de nodo (`AFlowSavedWithoutADestination_ShouldWriteInTheOutputFolderTheLauncherHands`): un flujo con `"DestinationFolder": ""` y sin salida propia, cargado con el escritor del producto y ejecutado con el motor de verdad, deja el comprimido en la salida que el lanzador le da y **no** junto al archivo.
+
+### 🕳️ Antes de tocar el valor hubo que arreglar la salida del flujo
+
+Hacer que el destino por omisión sea `{GlobalOutputDir}` sólo es una buena idea si `{GlobalOutputDir}` vale una **carpeta**. Y no valía.
+
+El catálogo de ejemplos entero declara su salida como `"globalOutputDir": "{RelativeDir}"` —es su forma de decir «la estructura del origen»—, así que el valor que llegaba en la metadata era **una plantilla**, y `{GlobalOutputDir}` la devolvía tal cual: ninguna fase la expandía después. El anclaje de `ParameterHelper.ResolveOutputPath` la usaba como carpeta base **y** como patrón, así que la combinaba **consigo misma** (`{RelativeDir}\{RelativeDir}`) y `CrossPlatformPath.Combine`, al no tener un destino absoluto, absolutizaba esa ruta relativa contra el **directorio de trabajo del proceso**. Medido con una prueba de sondeo antes de tocar nada:
+
+```
+ResolveOutputPath('{GlobalOutputDir}') = '…\FileFlow.Tests\bin\Debug\net10.0\{RelativeDir}\{RelativeDir}'
+```
+
+Es la **forma exacta del defecto del hito 204** —quince ejemplos escribieron su salida entre los binarios— y estaba a punto de convertirse en el destino **por omisión** de todo compresor. Peor: los ejemplos 08, 12 y 21 ya declaraban `{GlobalOutputDir}` desde el 208, así que el defecto estaba vivo en el árbol de trabajo. El síntoma se dejó ver al ejecutar la mutación de este mismo hito: quedaba una carpeta `{RelativeDir}\{RelativeDir}` dentro de `FileFlow.Tests/bin/Debug/net10.0`.
+
+La cura está en el sitio donde vive la regla, y en este orden:
+
+1. **El anclaje del origen se decide antes de expandir el patrón** (`SourceAnchor`, extraído del propio método).
+2. **La salida declarada se expande una vez** (`ResolveGlobalOutputDir`): si es una plantilla, se resuelve; si sale absoluta se normaliza; si sale relativa (la plantilla relativa al origen, o una carpeta escrita a mano) **se ancla bajo el origen** —`{RelativeDir}` de un archivo en la raíz del barrido es vacío, y eso significa el origen mismo, no «sin carpeta»— y, sin origen, bajo **la salida por defecto de los ajustes**. Nunca bajo el directorio de trabajo del proceso.
+3. **El valor ya anclado se le pasa al resolutor** como valor de `{GlobalOutputDir}` (`globalOutputDirOverride`, opcional en `VariableTemplateResolver.Resolve` y en `SystemVariablesResolver.GetVariableValue`), para que el patrón del nodo expanda a un camino terminado y no vuelva a componerse consigo mismo.
+
+Después de la cura, lo mismo que antes daba `bin/Debug/net10.0/{RelativeDir}/{RelativeDir}` da `D:\Fuente\sub` (la carpeta del archivo dentro del origen) y `{GlobalOutputDir}/Archivado` da `D:\Fuente\sub\Archivado`. Y queda un último escalón escrito en el nodo por si un patrón se queda relativo pese a todo: no se escribe donde corre el proceso, se ancla en la salida por defecto de los ajustes y **se dice**.
+
+La cura está en el SDK, así que alcanza a **todos** los nodos que resuelven un destino, no sólo al compresor: un patrón relativo deja de poder acabar colgado del directorio de trabajo del proceso. En la práctica se nota en los flujos que declaran su salida con una plantilla relativa (`{RelativeDir}`) —el catálogo entero— y en la carpeta de origen por omisión de esos mismos ejemplos (`{RelativeDir}\Input`), que pasa de resolverse contra el directorio donde corre la aplicación a anclarse en la salida que el lanzador entrega al motor (lo que el banco viene midiendo con su `root/Input`). Ninguna ruta absoluta declarada cambia: eso sigue resolviéndose igual que siempre, y una prueba lo fija como control.
+
+### 📖 La ayuda y el catálogo dicen lo nuevo
+
+`Param_DestinationFolder_Help` (castellano e inglés) ya no describe el respaldo: dice que **por omisión es la carpeta de salida del flujo** —la del flujo, o la de los ajustes— y que para dejarlo junto al archivo se escribe `{CurrentDir}`. La prueba lee los dos idiomas del propio ensamblado del plugin. La guardia del catálogo (`EveryCompressorInTheCatalog_ShouldSayWhereTheArchiveGoes`) sigue exigiendo que todo compresor de un ejemplo declare su destino, con el motivo actualizado: sin declararlo, el comprimido acabaría en la salida por omisión, que el ejemplo no dice. Los `.md` de 08, 12, 21 y 34 y los tres manuales de usuario cuentan el destino nuevo.
+
+### 🧬 Las mutaciones
+
+- [`compresor-que-escribe-donde-corre`](file:///mutations/compresor-que-escribe-donde-corre.json) **se reescribe** a la regla nueva: el mutante devuelve el valor de fábrica del nodo al **directorio de trabajo del proceso** (antes le quitaba el respaldo «junto al archivo», que ya no existe). Sigue siendo el mismo defecto del hito 204, y sigue mordiendo: **MUERDE** en **38,7 s**, testigo rojo **2 de 2** (el nodo sin carpeta declarada y el flujo guardado sin carpeta, con el motor), control verde **2 de 2** (un compresor con destino declarado, y el valor de fábrica del parámetro, que el mutante no toca).
+- [`salida-global-sin-expandir`](file:///mutations/salida-global-sin-expandir.json) es **nueva** y declara el defecto que este hito encontró: la salida global que se queda sin expandir y sin anclar. Quita la expansión de `ParameterHelper`. **MUERDE** en **31 s**, testigo rojo **2 de 2** (el SDK y el compresor, los dos por el sitio que nombra), control verde **2 de 2**.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1725 superadas + 1 omitida de 1726** (+6: tres pruebas del compresor —la salida declarada como plantilla, el nombre heredado frente al valor de fábrica y el valor de fábrica que la ficha promete—, la que mide la migración **con el motor** y dos del SDK —la expansión y su caída a los ajustes—; la prueba del destino por omisión se **reescribe** —antes medía el respaldo— y no se suma), **0 errores**, **2 m 50 s**.
+- El banco de los 40 ejemplos, verde y con la sala limpia vacía (los archivos de ejemplo siguen entregándose donde prometen).
+- Las dos mutaciones, **MUERDEN**, con el árbol restaurado por bytes y recompilado. El arnés llegó a marcar **RECHAZO** en la mutación nueva por un detalle del testigo —comparaba el disco **antes y después**, y el propio mutante dejaba `{RelativeDir}\{RelativeDir}` entre los binarios, así que el árbol restaurado seguía viendo el resto—: se corrigió el testigo para que afirme por **su valor** (el camino emitido), que no depende de lo que quedara de la última vez que algo falló.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **31 mutaciones**, **10 de 15 subsistemas** y **6 de 33 guardias** con mutación que las muerda.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: apartado **8** nuevo (compilación 5305 → 5341), con la decisión, la migración, el defecto medido y las cifras **1719 → 1725**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El pendiente del 208 queda cerrado**: el valor por omisión es la salida del flujo y la migración está decidida, escrita y probada con el motor (no se reescribe ningún flujo; el heredado manda sobre el valor de fábrica; `{CurrentDir}` conserva el sitio viejo).
+- **Defecto encontrado y arreglado por el camino**: la salida global declarada como plantilla no se expandía, y acababa absolutizada contra el directorio de trabajo del proceso. Estaba vivo en el árbol (los ejemplos 08, 12 y 21 lo declaran desde el 208) y ahora tiene prueba y mutación propias. **Queda por mirar si hay más sitios que resuelvan la salida global fuera de `ResolveOutputPath`** (una variable usada en un parámetro que no sea una ruta, por ejemplo): allí la variable seguirá devolviendo la plantilla declarada.
+- **Migración pendiente**: los **98** `HelpText` literales de los plugins siguen sin pintarse; mudarlos a `Param_{clave}_Help` es mecánico y un lint que los prohíba lo cerraría del todo.
+- Sigue abierto, y es del producto: los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión del destino cuando la entrada no es media.
+
+---
+
+## [2026-09-24] - El Compresor Dice Dónde Escribe: la Regla, la Ayuda y el Catálogo (Hito 208)
+
+### 🎯 El encargo
+
+«Cierra el hueco del compresor: cuando el flujo no declara carpeta de destino, debe quedar claro y comprobado dónde escribe el comprimido, y los ejemplos que no la declaran han de decir su destino.»
+
+### 🕳️ El hueco: un respaldo correcto que nadie había dicho en voz alta
+
+`ArchiveCompressorNode` resuelve su destino con una regla de tres escalones: la carpeta declarada —anclada por `ParameterHelper.ResolveOutputPath`, así que una ruta relativa cae dentro de la salida del flujo y **nunca** donde corra el proceso—, el **respaldo** de comprimir junto al archivo que comprime, y el heredado `DestinationDirectory`. **El respaldo no era el defecto** —es lo que hace un compresor de línea de órdenes y deja el resultado donde el usuario mira—; el defecto era el **silencio**: el nodo no lo decía en el log, la ficha del parámetro no lo aclaraba, y de los **cinco** ejemplos que usan el compresor **ninguno** lo declaraba de verdad (08, 12, 21 y 38 no tenían el parámetro; el 34 tampoco). El hueco lo dejaron escrito los hitos 204 y 205, y el 207 lo volvió a encontrar desde el otro lado: sus flujos medidos escribían en el respaldo.
+
+### 🧐 La regla, en un solo sitio y contada
+
+La resolución se extrae a un método con su contrato escrito (`DeclaredDestinationFolder`), y cuando el respaldo entra en juego el nodo **lo dice**: `[Compresor] Sin carpeta de destino declarada: el comprimido se escribe junto al archivo que comprime, en '<carpeta>'`. El aviso sale **después** de comprobar que la entrada existe (no se anuncia un destino para un archivo que no está) y sólo cuando se va a escribir.
+
+### 👁️ La ayuda que existía y nadie pintaba
+
+La convención de los plugins para aclarar un parámetro es el recurso `Param_{clave}_Help` (Archives lo usaba en cuatro claves, y también FileSystem, Network y AI). **Ninguna interfaz la leía**: la fila del parámetro mostraba en su *tooltip* **la clave cruda** —dato de desarrollador— y el campo `NodeParameterDescriptor.HelpText` (98 declaraciones literales en los plugins) no lo pintaba nadie. Ahora la ficha del parámetro resuelve `Param_{clave}_Help` y lo enseña; sin recurso cae en la clave, que es lo que mostraba antes. `HelpText` se deja **deliberadamente sin pintar** y queda escrito el porqué: son textos literales sin localizar, y mostrarlos pondría castellano en la interfaz inglesa; la ayuda visible vive en los recursos, en los dos idiomas.
+
+El compresor estrena así `Param_DestinationFolder` («Carpeta de Destino») y `Param_DestinationFolder_Help` —«*Carpeta donde se escribe el comprimido… Si se deja vacía, el comprimido se escribe junto al archivo que comprime…*»— **en castellano e inglés**, y la prueba los lee del propio ensamblado del plugin, así que una traducción a medias falla.
+
+### 📚 El catálogo dice dónde, y una guardia lo exige
+
+| Ejemplo | `DestinationFolder` declarada |
+| :--- | :--- |
+| 08 (empaquetado ZIP, básico) | `{GlobalOutputDir}` |
+| 12 (filtro por tamaño) | `{GlobalOutputDir}` |
+| 21 (lotes) | `{GlobalOutputDir}` |
+| 34 (ingesta documental) | `{GlobalOutputDir}/Archivado` |
+| 38 (deduplicación y frío, 7Z) | `{GlobalOutputDir}/Frio` |
+
+Sus `.md` lo cuentan (parámetro y paso a paso) y los tres manuales de usuario estrenan la frase que faltaba en su ficha del compresor. La exigencia estructural es una guardia nueva del catálogo, `EveryCompressorInTheCatalog_ShouldSayWhereTheArchiveGoes`: recorre los ejemplos que se entregan y falla con el fichero y el nodo cuyo compresor no declara `DestinationFolder` (o el heredado). El respaldo sigue siendo el del nodo para los flujos del usuario que no declaren carpeta; **el catálogo, que enseña, lo declara**.
+
+### 🧬 Las mutaciones, y una medición que cambió de dueño
+
+- [`catalogo-sin-carpeta-de-destino`](file:///mutations/catalogo-sin-carpeta-de-destino.json) borra el `DestinationFolder` del ejemplo 08 (el más básico): la guardia nueva se pone roja nombrando ese fichero, y el formato del ejemplo sigue siendo el que produce el escritor (control verde). **MUERDE** en **27,6 s**.
+- [`compresor-que-escribe-donde-corre`](file:///mutations/compresor-que-escribe-donde-corre.json) gana un testigo: además de la prueba del compresor que se niega a comprimir sobre su entrada, ahora muerde la prueba del **respaldo** (hito 208), que es su reverso exacto. **MUERDE** en **30,6 s**, testigo rojo **2 de 2** y control verde.
+- **Medido, y cambia lo que cubre quién**: con el catálogo declarando sus destinos, el banco de los 40 ejemplos **ya no pasa por el respaldo** —sus compresores tienen carpeta— así que los **34 avisos** que ese mismo mutante publicaba en la sala limpia del banco (hito 207) son la medición de entonces y no lo que hoy cubre: bajo el mutante el banco queda **verde** y quien muerde son las dos pruebas del nodo. Queda escrito en la declaración de la mutación, que es donde se lee.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1719 superadas + 1 omitida de 1720** (+4: el respaldo del destino, la ayuda en los dos idiomas, la guardia del catálogo y la resolución de la ayuda en la ficha del parámetro), **0 errores**, **2 m 39 s**.
+- Los cinco ejemplos editados siguen pasando las guardias de papel (formato del escritor, apertura en el editor) y sus asientos del banco: el `.zip`/`.7z` que prometen llega igual, ahora desde la carpeta declarada.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **30 mutaciones**, **10 de 15 subsistemas** y **6 de 33 guardias** con mutación que las muerda.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado 7 cambia lo que decía de este hueco —ya no «sigue viéndose así»— y sus cifras pasan a **1706 → 1719** con **30 defectos declarados**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El hueco del compresor queda cerrado**: la regla está en un solo sitio del nodo, el log la anuncia cuando se usa, la ficha del parámetro la explica en los dos idiomas y el catálogo no la calla.
+- **Pendiente de decidir, no defecto**: si el valor por omisión del nodo debería ser `{GlobalOutputDir}` en vez del respaldo. No se toca porque mueve el destino de **todos** los flujos guardados que no declaren carpeta, y el respaldo ya no es silencioso.
+- **Migración pendiente**: los **98** `HelpText` literales de los plugins siguen sin pintarse. Mudarlos a `Param_{clave}_Help` es trabajo mecánico y su recompensa es la aclaración en la ficha, en los dos idiomas; un lint que prohíba `HelpText` en los descriptores lo cerraría del todo.
+- Sigue abierto, y es del producto: los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión del destino cuando la entrada no es media.
+
+---
+
+## [2026-09-24] - El Banco de Ejemplos Deja de Mirar los Binarios: Cada Flujo Corre en una Sala Limpia (Hito 207)
+
+### 🎯 El encargo (heredado del hito 206, escrito como hueco)
+
+«Una pasada completa dejó el banco en rojo y **su mensaje no se capturó**; el sospechoso principal es que `SnapshotProcessDirectory` compara el directorio de trabajo del proceso entero, así que un vecino escribiendo junto a los binarios se le atribuye al flujo medido. Hay que decidir entre **colección exclusiva** o **acotar la comprobación**.»
+
+### 🔬 Lo primero, medir (y la teoría del vecino no aguantó)
+
+Antes de tocar nada: pasada completa del suite **sin** el banco (`--filter "FullyQualifiedName!~ExampleFlowsEndToEndTests"`) con una foto del directorio de los binarios antes y después —`FileFlow.Tests/bin/Debug/net10.0`, el directorio de trabajo del proceso de pruebas—. Resultado: **399 archivos antes, 399 después, cero nuevos**. Ninguna prueba del suite escribe ahí, así que «un vecino de otra colección» no era el escritor. Lo que sí puede escribir ahí es algo que no es una prueba: **una compilación en marcha en el mismo árbol** (este checkout se comparte, y el propio arnés de mutaciones compila en ese directorio), o el propio flujo medido. La consecuencia para la decisión es directa: **la exclusividad sola no arregla nada** —aisla de vecinos *del proceso*, no de un compilador ajeno— y **acotar por contenido** habría perdido justo el caso que importa (un archivo *transformado* que cae fuera no se parece a nada de dentro).
+
+### 🧪 La decisión: una sala limpia, y el banco en su colección exclusiva
+
+El banco apunta el **directorio de trabajo del proceso** a una carpeta temporal suya —vacía y sólo suya— mientras corre los cuarenta flujos, y **exige que quede vacía**: un archivo ahí es la firma de un flujo que resolvió su destino contra «la carpeta donde corre». Con eso:
+
+- **La atribución es exacta**, porque nadie más escribe en esa carpeta; antes la ventana de cada flujo se medía sobre un directorio compartido con el suite entero y con cualquier proceso ajeno al suite.
+- **La exigencia no se afloja; se refuerza.** El directorio de trabajo del proceso se restaura en un `finally` (es del proceso, no de la prueba) y, al no haber ruido, la comprobación puede quedarse con lo que de verdad quiere decir: *ningún flujo deja nada donde corre*.
+- **Se retira la aserción de los binarios** (`SnapshotProcessDirectory().Should().BeEquivalentTo(...)`), que además de ser la parte ruidosa volcaba el árbol entero —miles de rutas— en el mensaje de un fallo: es exactamente el motivo por el que, en el hito 206, un rojo quedó sin mensaje legible.
+- Cambiar el directorio de trabajo es **estado global del proceso**, así que la clase pasa a una **colección exclusiva** (`ExampleFlowBankCollection`): si una colección vecina corriera a la vez y resolviera una ruta relativa, caería dentro de la sala y el archivo se le atribuiría al ejemplo que estuviera corriendo. Coste medido: **ninguno** (abajo, en la validación).
+
+### 🧬 La exigencia, atada a un defecto que la muerde
+
+Una guardia nueva —o reforzada— sin mutación que la muerda es una guardia que nadie ha demostrado que muerda. [`compresor-que-escribe-donde-corre`](file:///mutations/compresor-que-escribe-donde-corre.json) le quita al compresor su respaldo («sin carpeta de destino, junto al archivo que comprime») y lo deja caer en el directorio del proceso, que es la forma exacta del defecto del hito 204.
+
+**Medido, aplicando el mutante a mano**: el banco publica **34 avisos** de «escribió en la carpeta donde corre» con los nombres reales de lo que se escribió —`anidado.zip`, `nota.zip`, `<guid>.zip`— en los flujos **08, 21 y 34** (los del compresor con destino vacío), y sin la sala limpia ese aviso **no existiría**: el archivo habría caído entre los binarios y nadie sabría de quién era. En el arnés: **MUERDE** en **181,5 s** —testigo rojo (**2 de 5**: la prueba del nodo y el banco), control verde—.
+
+### 🧾 Contrato de colecciones, al día
+
+Estado nuevo en el analizador (`ProcessWorkingDirectory`, patrón `Directory.SetCurrentDirectory`), colección exclusiva nueva, dos auto-tests en la guardia del contrato (la clase paralela que mueve el directorio de trabajo infringe; la del banco no) y la entrada correspondiente en el mapa de [`TestAssemblyParallelism.cs`](file:///FileFlow.Tests/TestAssemblyParallelism.cs).
+
+### ✅ Validación
+
+- `dotnet test` completo → **1715 superadas + 1 omitida de 1716** (+2: los auto-tests del estado nuevo), **0 errores**, **2 m 43 s**. Las tres pasadas del tramo anterior midieron **2 m 42 s – 2 m 54 s** con **1713 + 1 de 1714**: la exclusividad del banco **no cuesta tiempo medible**, porque su ventana se solapaba con trabajo que ya se solapaba entre sí.
+- `ExampleFlowsEndToEndTests` (4 pruebas) verde con la sala limpia, y la sala **vacía** al terminar los cuarenta flujos: ningún ejemplo escribió donde corre (lo que se midió, no lo que se supone).
+- La mutación del hito, **MUERDE** (181,5 s), con el árbol restaurado por bytes y recompilado.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **29 mutaciones**, **10 de 15 subsistemas** y **5 de 33 guardias** con mutación que las muerda (las cifras ya estaban sin regenerar de tramos anteriores).
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado 7 suma lo que no se ve del banco y sus cifras (**1706 → 1715**), y los defectos declarados pasan a **29**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El hueco del hito 206 queda cerrado**: su rojo sin mensaje tenía dos mitades —una comprobación que miraba un directorio compartido y un mensaje que volcaba el árbol entero— y las dos están fuera. Si vuelve a aparecer un rojo en el banco, ahora se lee: los problemas van en el mensaje de la aserción, con el flujo que los causó y el archivo concreto.
+- **Queda abierto —y es del producto, no del banco—** que el compresor escriba junto a sus entradas cuando el flujo no declara carpeta de destino: ya no puede destruirlas, pero el valor por omisión sigue sin tocarse porque cambiarlo mueve el destino de todos los flujos que no lo declaran.
+- Los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión de destino cuando la entrada no es media: sigue pidiendo decidir qué debe hacer un transcodificador con una entrada que no puede decodificar.
+
+---
+
+## [2026-09-24] - El Banco de Ejemplos Mira la Entrada: Ningún Flujo la Toca Sin Declararlo (Hito 206)
+
+### 🎯 El encargo
+
+«Haz que el banco de ejemplos compruebe que ningún flujo modifica los archivos de entrada salvo cuando su asiento lo declare, con el caso del compresor que vaciaba el paquete como testigo.»
+
+### 🕳️ El agujero que lo motivaba
+
+El banco miraba **lo entregado**: enumeraba el área de trabajo, **excluía los archivos de entrada** de la cuenta y juzgaba lo demás. Quien tocara la entrada no lo delataba nadie, y el hito 205 lo pagó: el ejemplo 21 devolvía el `paquete.zip` sembrado con **22 bytes** donde tenía 148 —el compresor abría su propio archivo de entrada para escribir el destino encima— y el banco lo daba por bueno. Se destapó **depurando el flujo a mano**, no por una prueba.
+
+### 🧪 La exigencia nueva, y su omisión
+
+`Seat` estrena `InputPolicy`, con el caso corriente por omisión: **`Untouched`** —cada archivo sembrado en `Input/` sigue en su ruta, con los mismos bytes—. Antes de ejecutar se toma la **huella SHA-256** de cada entrada y después se compara; además se calcula qué huellas siguen presentes en algún lugar del área. Las otras dos políticas existen para los flujos que *de verdad* se llevan la entrada:
+
+- **`MovedButKept`**: puede salir de su ruta —renombrar en el sitio, cuarentena, organización por fecha— pero **no puede perder lo que traía**: sus bytes tienen que seguir en el área de trabajo. Es una afirmación más fuerte que «el flujo terminó bien»: un movimiento que pierde un archivo no la pasa.
+- **`MayBeDestroyed`**: la promesa del flujo es destruir la entrada (la papelera de reciclaje).
+
+Y una guardia nueva (`EverySeatThatLetsTheFlowTouchTheInput_ShouldSayWhy`) exige que todo asiento con política distinta de `Untouched` escriba **por qué** (`InputWhy`), y que ninguno que exija la entrada intacta lleve la excusa puesta: la excusa de más es una promesa que ya no se cumple —el día que el ejemplo deje de destruir la entrada, su asiento seguirá diciendo que puede—.
+
+### 📋 Los seis flujos que tocan la entrada (medido, no supuesto)
+
+La primera pasada con la guardia señaló **exactamente seis** ejemplos de los cuarenta:
+
+| Ejemplo | Qué le hace a la entrada | Política |
+| :--- | :--- | :--- |
+| 10 (papelera segura) | los seis archivos se van a la papelera del sistema | `MayBeDestroyed` |
+| 13 (deduplicación por hash) | el duplicado se mueve a cuarentena (de los dos idénticos queda uno) | `MovedButKept` |
+| 17 (cuarentena de originales) | los seis originales se mueven a cuarentena | `MovedButKept` |
+| 26 (organización cronológica) | los seis se mueven a carpetas por fecha | `MovedButKept` |
+| 34 (ingesta documental) | los seis se renombran en disco (`DirectInPlace`) | `MovedButKept` |
+| 38 (deduplicación y archivado) | el original descartado sale de su ruta | `MovedButKept` |
+
+Los otros **treinta y cuatro** no la tocan —sale de la ejecución, no de lo que uno supondría: el 05 renombra **virtual** (el nombre cambia en los metadatos) y el 33, que depura con la papelera, no borra lo sembrado— y por eso se les exige `Untouched`.
+
+### 🧬 La guardia, atada a un defecto que muerde
+
+Una guardia nueva sin una mutación que la muerda es una guardia que nadie ha demostrado que muerda —es justo lo que publica `mutations/COVERAGE.md`—. [`compresor-contra-su-propia-entrada`](file:///mutations/compresor-contra-su-propia-entrada.json) declara ahora **dos escalas del mismo defecto**: el testigo del nodo (los bytes del archivo que entra) y **el banco de los 40 ejemplos**, donde el flujo 21 entero devuelve el `paquete.zip` truncado. Medido: testigo rojo (**2 de 5**) y control verde. La consecuencia cae en el documento de cobertura: **5 de 33 guardias** del repositorio con mutación que las muerda (de 4), porque este banco entra en el conteo al auditar el árbol con `TestRepositoryLocator`.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1713 superadas + 1 omitida de 1714** (+1: la guardia nueva), build **0 errores**, tres pasadas seguidas en verde.
+- `ExampleFlowsEndToEndTests` (4 pruebas) verde: la tabla de asientos, la guardia de las excusas, la exigencia de que el motor acepte cada grafo y la ejecución de los 40 con sus promesas juzgadas.
+- La mutación, **182 s** —corre el banco dos veces, como testigo y en la comprobación final—, árbol restaurado por bytes y recompilado.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado 7 del tramo se amplía con la entrada vigilada (lo que ves) y la cabecera pasa a **5305**.
+- **Una pasada completa dejó el banco en rojo, y queda escrito sin disfrazar**: fue una de las cinco pasadas de este tramo, junto al fallo de entorno ya declarado de [`EngineFirstRunTests`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs). Duración de esa pasada del banco: **1 m 14 s**, la suya de siempre, así que **no** fue el tiempo de espera por flujo (30 s) y sí una comprobación de promesa. **Su mensaje no se capturó** —un hueco en este registro, escrito como hueco— y las tres pasadas siguientes quedaron verdes. El sospechoso principal queda anotado abajo, para la sesión siguiente.
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo más frágil del banco era su mirada al directorio de trabajo del proceso** (resuelto en el **hito 207**: el banco corre los flujos en una sala limpia propia y en colección exclusiva, y ya no mira los binarios).
+- Una pasada futura que falle **imprimirá el motivo entero** (el banco publica sus problemas en el informe de la prueba), así que el hueco de arriba no se repetirá.
+- La política `MovedButKept` es la costura para cualquier flujo que mueva o renombre en el sitio: su afirmación —«lo que la entrada traía sigue en el área»— es más fuerte que «terminó bien» y no cuesta nada declararla.
+
+---
+
+## [2026-09-24] - El Lote que No se Llenaba: Entrega al Terminar la Ejecución, y los Tres Defectos que Aparecieron Detrás (Hito 205)
+
+### 🎯 El encargo
+
+«Haz que los flujos que agrupan en lotes entreguen también el lote incompleto al terminar la ejecución, y verifica los ejemplos 21 y 34 de punta a punta.» El pendiente lo dejó escrito el hito 204 en el asiento de ambos ejemplos: agrupan en lotes de 10 y de 50, la entrada sembrada trae seis archivos, así que **no se cierra ningún lote durante la ejecución** y el flujo termina en verde sin entregar nada.
+
+### 📉 La línea base, medida antes de tocar nada
+
+`ExampleFlowsEndToEndTests` sobre el árbol tal y como estaba: `flow_21 -> OK (entregados 0)` y `flow_34 -> OK (entregados 0)`. Los dos flujos **aceptados** por el validador, ejecutados sin excepción, con **cero** archivos entregados. Ese es el defecto que el banco no podía ver con un asiento `Declared`.
+
+### 🐞 Los cuatro defectos (uno buscado, tres detrás de él)
+
+1. **El lote que no llega a llenarse muere con la ejecución.** `BatchBufferNode` sólo soltaba al alcanzar el umbral: no sobrescribía `OnWorkflowCompletedAsync`, y el motor ya llamaba a ese gancho (`WorkflowExecutor` lo invoca tras drenar los nodos de arranque, con un drenado posterior para las emisiones de esta fase). Cura: el nodo entrega lo pendiente —los elementos por `ItemOut` con su `BatchIndex`/`BatchSize` y el marcador por `BatchCompleted` con `BatchIncomplete = true`— por **el mismo camino** que un lote completo (`EmitBatchAsync`), precedente exacto de `ArchiveFanInNode` con sus sesiones a medias. La segunda pasada del banco seguía diciendo `entregados 0`, y ahí empezaba lo interesante.
+2. **Los dos flujos alimentaban el compresor con el marcador del lote, no con el lote.** La arista salía de `BatchCompleted`, que emite un ítem **sintético sin ruta** (`new FileItemContext(string.Empty)`): `ArchiveCompressorNode` sólo puede comprimir la ruta del ítem que recibe, así que registraba «Ruta de entrada no encontrada» y emitía por `Error`, sin nada aguas abajo. Los elementos del lote salían por `ItemOut`... **puerto que los dos ejemplos dejaban sin conectar**. Cura: la arista del ejemplo sale de `ItemOut` (`flow_21` e2, `flow_34` e5) y el `.md` de cada uno cuenta lo que el grafo hace —el búfer suelta la tanda y el compresor empaqueta cada elemento—, además de corregir tres nombres de papel que no existen: el parámetro `FlushTimeoutMs`, el puerto `BatchFlushed` del diagrama y el parámetro `NameTemplate` del renombrador.
+3. **El renombrador del ejemplo 34 no leía la plantilla que el ejemplo declaraba.** Los pasos viajan como JSON dentro de `MethodSteps`; el catálogo los escribe con los **nombres** de las enumeraciones (`"methodType":"NewName"`) y la aplicación con **números**. La lectura del nodo no aceptaba los nombres, así que fallaba entera, el `catch` la silenciaba y el nodo aplicaba la plantilla por omisión `{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}`: los archivos salían como `Input_20260924_nota` en vez de `2026_DOC_<guid>`. Cura doble: el conversor de enumeraciones por nombre en las opciones del SDK (`RenamerPresetService`, la lectura que ya usaba el editor) y el nodo leyendo por ahí, con **aviso en el log** cuando los pasos no se pueden leer, en vez del silencio. Y el ejemplo declara `RenameMode: DirectInPlace`: el modo por omisión es `Virtual` (el nombre cambia sólo en los metadatos) y el compresor de aguas abajo trabaja sobre rutas que tienen que existir.
+4. **El compresor destruía su propia entrada.** Con los valores de fábrica —carpeta de destino vacía (la del archivo) y nombre `{FileNameWithoutExtension}.zip`— comprimir `paquete.zip` apunta a `paquete.zip`. El destino se abre (y se trunca) **antes** de leer la entrada, así que el original del usuario quedaba vaciado sobre sí mismo: medido en el ejemplo 21, un `paquete.zip` de **148 bytes** salía del flujo convertido en un comprimido de **22 bytes**. El banco no lo ve —los archivos de entrada están excluidos de lo entregado— y lo destapó el volcado de los nodos al depurar el flujo. Cura: el nodo **se para** antes de tocar el disco cuando el destino es el propio archivo de entrada (un archivo no cabe dentro de sí mismo), con el motivo en el log. La prueba de la guardia compara los **bytes** de la entrada, no su tamaño.
+
+### 🧪 Pruebas nuevas (+6 → 1712 superadas)
+
+- [`BatchBufferNodeRuleTests`](file:///FileFlow.Tests/Unit/Plugins/BatchBufferNodeRuleTests.cs) (+3): el lote que no se llena **sale entero** al cerrar la ejecución (elementos, marcador, `BatchSize` y `BatchIncomplete`) y el búfer queda vacío —lo entregado no vuelve a salir ni viaja a la ejecución siguiente—; **sin pendientes no sale nada** (un lote vacío con su marcador sería una entrega que nadie pidió); y una **instancia reutilizada con otro `WorkflowExecutionId` no mezcla** el pendiente de la anterior (el reinicio por identidad de ejecución sólo es observable así: el motor materializa nodos nuevos en cada corrida).
+- [`PluginStateAcrossExecutionsTests`](file:///FileFlow.Tests/Unit/Core/PluginStateAcrossExecutionsTests.cs) (el caso del búfer, reescrito): los dos conteos pasan de **4** a **5** por ejecución. El «cuatro» era el defecto —el pendiente perdido— y el seis que se temía era el heredado; ahora el caso fija las dos mitades a la vez.
+- [`AdvancedRenamerExhaustiveTests`](file:///FileFlow.Tests/Unit/Plugins/AdvancedRenamerExhaustiveTests.cs) (+2): los pasos con los nombres de las enumeraciones se aplican —el nombre resultante es el configurado, no el de la plantilla por omisión— y unos pasos ilegibles **se dicen en el log** en vez de renombrar en silencio.
+- [`ArchiveCompressorNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ArchiveCompressorNodeTests.cs) (+1): un compresor cuyo destino es su propia entrada emite por `Error` y la entrada queda **byte a byte** como estaba.
+- Asientos del banco: el 21 y el 34 pasan de `Declared` a **juzgados** (`DeliversAKind .zip`). Con lotes de 10 y de 50 y seis archivos de entrada, lo que llegue al destino **sólo puede** venir del cierre de la ejecución: el asiento es, de paso, el testigo de punta a punta del gancho nuevo.
+
+### 🧬 Mutaciones (3 nuevas + 1 reescrita; catálogo: 28 declaradas, todas muerden)
+
+| Mutación | Defecto declarado | Testigo | Tiempo |
+| :--- | :--- | :--- | :--- |
+| [`lote-incompleto-perdido-al-terminar`](file:///mutations/lote-incompleto-perdido-al-terminar.json) | Descartar el lote pendiente al cerrar la ejecución | `OnWorkflowCompleted_WhenTheBatchDidNotFill_...` | 29,6 s |
+| [`pasos-de-renombrado-ilegibles`](file:///mutations/pasos-de-renombrado-ilegibles.json) | No aceptar los nombres de enumeración en los pasos | `AdvancedRenamer_WhenTheStepsArriveWithEnumNames_...` | 30,2 s |
+| [`compresor-contra-su-propia-entrada`](file:///mutations/compresor-contra-su-propia-entrada.json) | Comprimir sobre el propio archivo de entrada | `ACompressorWhoseDestinationIsItsOwnInput_...` | 29,4 s |
+| [`bufer-de-lotes-heredado`](file:///mutations/bufer-de-lotes-heredado.json) (testigo reescrito) | El búfer fuera del nodo, sin reinicio por ejecución | `ExecuteAsync_WhenTheSameInstanceSeesAnotherExecution_...` | 27,5 s |
+
+La cuarta merece una nota: desde este hito, el pendiente **se entrega** al terminar el flujo, así que el búfer queda vacío al acabar cada ejecución y el caso de dos ejecuciones completas ya no distingue un búfer heredado. El testigo que sí lo distingue es la instancia reutilizada con otra identidad de ejecución —que es justo lo que la defensa reinicia—, y el caso de dos ejecuciones completas se queda como regresión del conteo (cinco y cinco: ni cuatro por el pendiente perdido, ni seis por el heredado).
+
+### 📊 Cobertura publicada
+
+`mutations/COVERAGE.md` regenerado: **28 mutaciones** declaradas, **10 de 15 subsistemas** del producto con alguna y **4 de 33 guardias** del repositorio con mutación que las muerda —**5 de 33 desde el hito 206**, cuando el testigo del compresor pasó a incluir el banco de ejemplos—. Los subsistemas sin ninguna siguen siendo Documents, Integrations, Network, Scripting y Subflows.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1712 superadas + 1 omitida de 1713** (+6), build **0 errores**, 2 m 52 s.
+- Los dos ejemplos, medidos de punta a punta antes y después: `entregados 0` → `flow_21` **10** archivos (cinco `.zip` y las copias que el sumidero deja en su destino; la sexta entrada es un `.zip` y el compresor la rechaza antes de destruirla, ver el defecto 4) y `flow_34` **18** (seis archivos renombrados en el sitio con el nombre corporativo `2026_DOC_<guid>`, sus seis `.zip` y las seis copias del sumidero). El banco de los 40 sigue verde entero.
+- **Un fallo de entorno, declarado y medido**: de las cuatro pasadas completas de este hito, dos quedaron en verde entera y dos dejaron en rojo un único test, [`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs) —la primera ejecución alcanzó menos nodos simultáneos que las siguientes y la comparación relativa de la prueba no se cumple—. **No es del cambio**: ninguna de las piezas que toca este hito participa en ese grafo (origen con CPU pura, nodo de trabajo y sumidero), y en solitario el test da verde. Es la sensibilidad conocida de una medida de reparto de hilos a la carga de la máquina, con el mismo síntoma que el hito 204 dejó escrito, y aquí queda con su distribución en vez de pasarse por alto.
+- Las cuatro mutaciones, dos a dos con `mutate.ps1 -Name`: testigo rojo y control verde en las cuatro, árbol restaurado por bytes y recompilado antes de salir.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)** estrena el apartado **7** —«El tramo de los lotes que no entregaban (compilación 5277 → 5301)»— y la cabecera pasa a **5301**.
+- **Los tres manuales de usuario** ([`manual_de_usuario.md`](file:///docs/manual_de_usuario.md), [`user_manual.md`](file:///docs/user_manual.md) y [`user_guide.md`](file:///docs/user_guide.md)) describían el nodo con un **límite de tiempo** que no existe —no hay parámetro de tiempo en el nodo— y no decían qué pasa con el lote que no se llena: los tres quedan al día con lo que el nodo hace.
+
+### 📌 Notas para la siguiente sesión
+
+- **El defecto del hito 204 sobre los lotes queda cerrado** (21 y 34 entregan, con asiento juzgado). Sigue abierto el otro que dejó escrito: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) entregan, con entradas que no son media, **copias con la extensión del destino** en vez de fallar.
+- **Lo que el catálogo prometía de más sobre los lotes**: el 21 se titulaba «para Compresión Masiva» y el 34 «los agrupa en lotes comprimidos ZIP de 50 archivos», pero el producto **no tiene ningún nodo que empaquete varios elementos en un archivo**: `ArchiveCompressorNode` comprime la ruta del ítem que recibe y `ArchiveFanInNode` empaqueta una **sesión** de descompresión (necesita `Archive:SessionId`, que sólo produce el fan-out). Con esas piezas, el grafo sólo puede comprimir **elemento a elemento** y el lote sirve para soltarlos en tandas. Los tres textos ya dicen eso. Un «un ZIP por lote» de verdad pide decidir de quién es el contrato: o el marcador `BatchCompleted` lleva los elementos del lote, o el búfer materializa la tanda en una carpeta. Queda como candidato, no como defecto abierto.
+- **La costura de la identidad** sigue como estaba (hito 204): ~20 sitios construyen `new FileItemContext(...)` a partir de un ítem que entró, demostrado rompe-hilos sólo en el optimizador.
+- **El banco de ejemplos** sigue siendo el sitio natural: 12 asientos declarados podrían pasar a juzgados si la prueba puede sembrar lo que les falta. El webhook local sigue siendo el candidato más rentable (16, 27 y 30).
+- **`ArchiveCompressorNode` con los valores de fábrica escribe los comprimidos en la carpeta de sus entradas** (resuelto en el **hito 208** en lo que toca a que quede claro y comprobado: el nodo lo dice en el log, la ficha del parámetro lo explica en los dos idiomas, el catálogo declara su destino en los cinco ejemplos y una guardia lo exige). El valor por omisión sigue sin tocarse, a propósito: cambiarlo mueve el destino de todos los flujos guardados que no declaren carpeta.
+
+---
+
+## [2026-09-24] - Los 40 Ejemplos, Ejecutados de Punta a Punta: Cinco Defectos que Solo se Veían Corriendo (Hito 204)
+
+### 🎯 El encargo
+
+«Recorre los flujos que el producto documenta como ejemplos y comprueba de punta a punta que cada uno entrega los archivos que promete, no solo que termina en verde.» Los 40 flujos de [`docs/examples/`](file:///docs/examples/README.md) ya tenían guardia de **papel** ([`WorkflowExamplesValidationTests`](file:///FileFlow.Tests/Unit/Core/WorkflowExamplesValidationTests.cs): son del formato del producto, sus puertos existen, se abren enteros en el editor, el roundtrip es idéntico). Ninguna ejecutaba nada.
+
+### 🧪 El banco: 40 asientos, y tres exigencias que no dependen del asiento
+
+[`ExampleFlowsEndToEndTests`](file:///FileFlow.Tests/Unit/Core/ExampleFlowsEndToEndTests.cs) siembra un área de trabajo (`Input/` con `nota.txt`, **`nota-copia.txt` idénticos** —para la deduplicación—, `datos.csv` de 3 líneas, una `imagen.png` de verdad, un `paquete.zip` con `dentro.txt`, `sub/anidado.txt` y una carpeta vacía), ejecuta cada flujo con `GlobalOutputDir` dentro del área y mide **qué quedó**. La tabla de asientos es el contrato: una fila por archivo del catálogo (40) con la promesa que se le puede exigir de verdad —**26 juzgadas** (entregar cada entrada, entregar un tipo concreto, descomprimir el comprimido, poner el duplicado en cuarentena, vaciar la entrada, limpiar carpetas vacías, no escribir en disco) y **14 declaradas** con su motivo por escrito—. Tres exigencias valen para **cualquier** asiento, incluidas las declaradas: el motor tiene que **aceptar** el grafo (se pregunta a `GraphValidator` antes de correr, así «el motor rechaza este ejemplo» es un hecho propio y ningún asiento puede taparlo), la ejecución no puede reventar, y no se puede **escribir fuera del área de trabajo** ni dejar un archivo de **cero bytes**.
+
+### 🐞 Los cinco defectos reales (y un ejemplo que filtraba por un dato inexistente)
+
+1. **`SHFILEOPSTRUCT` con `Pack = 1` → el proceso moría con `0xC0000005`.** Lo destapó `flow_10_papelera_reciclaje_segura`, que fue el primer flujo que llamó de verdad a la papelera del sistema: `pFrom` quedaba en el desplazamiento 12 en vez del 16 y `SHFileOperation` leía ahí un puntero inventado. **No es una excepción administrada**: la violación de acceso se lleva el proceso por delante (ni consola, ni log, ni `catch`). Cura en [`WindowsPlatformService`](file:///FileFlow.Core/Platform/WindowsPlatformService.cs): alineación natural, con el porqué escrito; guardia propia en [`WindowsShellFileOperationLayoutTests`](file:///FileFlow.Tests/Unit/Core/WindowsShellFileOperationLayoutTests.cs) (compara los desplazamientos reales del struct contra un testigo con la forma de `shellapi.h`).
+2. **`FileRelocatorNode` resolvía el destino relativo contra el directorio de trabajo del proceso.** `VariableTemplateResolver.Resolve(destDirTemplate, item)` sin anclar el patrón: `{RelativeDir}\{Year}\{Month}` caía en `bin/Debug/net10.0/sub/2026/09/`. Quince ejemplos (26 a 40 en la primera pasada) escribieron fuera de su área. Cura: `ParameterHelper.ResolveOutputPath`.
+3. **El grafo de un fork/join era inejecutable: la vuelta de las ramas contaba como ciclo.** `flow_22` y `flow_30` declaraban `rama Out → barrera Branch1_Done/Branch2_Done`, y el orden topológico (Kahn **por nodo**) veía el ciclo: «Graph contains a cycle (DAG violation)», grafo rechazado entero. Es decir: **`ForkJoinBarrierNode` no se podía usar en ningún flujo** —existía, el editor lo dibujaba y el catálogo lo anunciaba—. Cura: [`NodePort.IsFeedbackSignal`](file:///FileFlow.Sdk/NodePort.cs) (un puerto que recibe el aviso de que una rama que el propio nodo bifurcó terminó, no un elemento «de delante»), los dos puertos de vuelta marcados y el validador excluyendo esas aristas del orden de precedencia. Con eso `flow_22` entrega sus **seis** archivos.
+4. **`ImageOptimizerNode` cambiaba la identidad del ítem.** El archivo optimizado se construía con `new FileItemContext(...)`, que estrena `Id`; la barrera empareja cada rama con el ítem que bifurcó, así que **no reconocía su vuelta y ese archivo nunca se liberaba**: `flow_22` entregaba **cinco de seis**, y el que faltaba era la única imagen real del lote (los demás pasan por la rama de no-imágenes, que reutiliza el ítem y conserva el `Id`). Cura: `Id = item.Id` (la ruta cambia, el elemento no), con el caso escrito en [`ImageOptimizerNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs).
+5. **`ArchiveCompressorNode` dejaba un archivo de cero bytes con la extensión del archivo prometido.** Abre (y trunca) el destino **antes** de construir el escritor, así que una combinación que el escritor rechaza dejaba un `nota.zip` vacío. Y el escritor de 7Z sólo admite `LZMA`/`LZMA2` mientras la compresión por defecto del nodo es `Deflate`: el **ejemplo 38** pedía 7Z con la compresión de fábrica, así que registraba el error y dejaba los archivos vacíos. Doble cura: el nodo **retira** el archivo cuando se quedó a cero bytes (`RemoveEmptyArchiveAsync`), y el ejemplo declara `CompressionType: LZMA` + `ArchiveName: {FileNameWithoutExtension}.7z`, con lo que **entrega el `.7z` que anuncia**. Su `.md` documenta la trampa.
+
+Y una **documentación que prometía lo que el producto no tiene**: `flow_15` filtraba por `WordCount` y su `.md` citaba un parámetro `ExtractWordCount`. **Ningún nodo del producto cuenta palabras**: `DocumentProcessorNode` publica `DocumentType`, `EstimatedPageCount` y `DocumentLineCount`. La condición no se cumplía nunca —el ejemplo terminaba en verde **sin archivar un solo documento**—. Cura: el ejemplo filtra por `DocumentLineCount >= 2` y entrega el CSV de tres líneas; el `.md`, el título del catálogo y su fila del README dicen lo que el flujo hace de verdad.
+
+### 🧪 Pruebas nuevas (+14 → 1706 superadas)
+
+- [`ExampleFlowsEndToEndTests`](file:///FileFlow.Tests/Unit/Core/ExampleFlowsEndToEndTests.cs) (3): el banco de los 40 asientos, la guardia **bidireccional** catálogo↔asientos (un ejemplo sin asiento rompe la suite; un asiento huérfano también) y la exigencia de que un asiento declare lo que espera o el motivo por el que no se juzga.
+- [`ForkJoinBarrierNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ForkJoinBarrierNodeTests.cs) (2): el fork/join **determinista y sin red** —dos ramas reales de vuelta y el ítem liberado **una vez por entrada** (medido contando emisiones de `AllCompleted`, porque dos liberaciones del mismo ítem se ven igual que una en el disco); y con **una sola** rama de vuelta el ítem **no sale**, que es el precio real de la barrera.
+- [`GraphValidatorTests`](file:///FileFlow.Tests/Unit/Core/GraphValidatorTests.cs) (+4): la vuelta de rama a la barrera **no** es ciclo; un ciclo que no entra por un puerto de retroalimentación **sí** se rechaza (la exención es por puerto, no por grafo); y los dos avisos nuevos —una vuelta que no viene de una rama del nodo, y un nodo al que **sólo** le entran avisos (nadie lo arranca, así que nunca bifurca)—.
+- [`ArchiveCompressorNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ArchiveCompressorNodeTests.cs) (2): la combinación que el escritor rechaza no deja rastro en el disco (y el log lo dice), y con `LZMA` entrega el archivo —el control que distingue «no deja basura» de «no comprime nunca»—.
+- [`ImageOptimizerNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs) (+1): el optimizado conserva el `Id` del ítem que entró.
+- [`WindowsShellFileOperationLayoutTests`](file:///FileFlow.Tests/Unit/Core/WindowsShellFileOperationLayoutTests.cs) (2, la guardia del defecto 1).
+
+### 📊 El censo de puertos: los huecos bajan de 5 a 2
+
+La barrera de sincronización era el único nodo, además del `LocalOcrNode`, cuyos puertos no ejecutaba ninguna prueba: era **inejecutable**, y el censo lo decía con esa excusa. Con el grafo arreglado, sus tres puertos salen del presupuesto con testigo que los **nombra y los ejecuta** (`NodePortInventory`, `NodePortCoverageGuardTests` y su cifra de huecos actualizados a mano, que es el trato de esa guardia).
+
+### 🧬 Mutaciones nuevas (5, todas MUERDE; catálogo: 25 declaradas, todas muerden)
+
+| Mutación | Defecto declarado | Testigo | Tiempo |
+| :--- | :--- | :--- | :--- |
+| [`struct-de-shell-desalineado`](file:///mutations/struct-de-shell-desalineado.json) | `Pack = 1` en el struct de la papelera | `WindowsShellFileOperationLayoutTests` | 28,0 s |
+| [`retroalimentacion-de-barrera-contada-como-ciclo`](file:///mutations/retroalimentacion-de-barrera-contada-como-ciclo.json) | Contar la vuelta de rama como precedencia | `Validate_ShouldAcceptABranchReturningToABarrierNode` | 26,9 s |
+| [`retroalimentacion-sin-avisos`](file:///mutations/retroalimentacion-sin-avisos.json) | Silenciar los avisos del fork/join mal cableado | `Validate_ShouldWarnWhenANodeIsOnlyFedByFeedbackPorts` | 26,1 s |
+| [`identidad-perdida-al-optimizar`](file:///mutations/identidad-perdida-al-optimizar.json) | El archivo optimizado pierde el `Id` del ítem | `ExecuteAsync_WithARealImage_ShouldKeepTheIdentityOfTheItemThatEntered` | 28,1 s |
+| [`archivo-vacio-dejado-atras`](file:///mutations/archivo-vacio-dejado-atras.json) | Dejar el archivo de cero bytes al fallar la compresión | `ACompressorAskedForAContainerItsWriterRejects_ShouldLeaveNoFileBehind` | 27,2 s |
+
+`mutations/COVERAGE.md` regenerado: **10 de 15 subsistemas** con alguna mutación (de 8) —entran **FileFlow.Plugin.Archives** y **FileFlow.Plugin.Images**— y **4 de 33 guardias** del repositorio con mutación que las muerda. Sin subsistema con mutación quedan cinco: Documents, Integrations, Network, Scripting y Subflows.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1706 superadas + 1 omitida de 1707** (+14), build **0 errores**, 2 m 20 s. Compendio: los 40 ejemplos se ejecutan en ~80 s.
+- Las cinco mutaciones nuevas, una a una con `mutate.ps1 -Name`: testigo rojo y control verde en las cinco, árbol restaurado por bytes y recompilado antes de salir.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)** estrena el apartado **6** —«El tramo de los ejemplos que no entregaban lo que prometían (compilación 5248 → 5277)»—, la cabecera pasa a **5277** y «Cómo verificarlo» se renumera a 7.
+- **Un fallo de entorno, declarado**: la primera pasada completa de este hito dejó en rojo [`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs) (25 nodos simultáneos donde las siguientes usaron 28 y se toleran 27). **No es del cambio** —no se toca el camino de ejecución—: el mismo test, solo (colección exclusiva) da 27/27/26, y la pasada completa siguiente quedó en verde. Es la sensibilidad conocida de una medida de reparto de hilos a la carga de la máquina, y queda escrito aquí en vez de pasarse por alto.
+
+### 📌 Notas para la siguiente sesión
+
+- **Cinco ejemplos salen del grupo de los que no entregaban nada**: el 10 (papelera, ya se juzga: vacía la entrada), el 15 (filtra por líneas y entrega), el 22 (fork/join completo), el 38 (7Z real) y el 30 (aceptado por el motor; su entrega depende del webhook).
+- **Dos defectos siguen abiertos y escritos en su asiento**, sin arreglar: los flujos que agrupan en lotes (21 y 34, lotes de 10 y 50) **no entregan nada** con menos archivos que el lote —el búfer pendiente muere con la ejecución, y la misma familia aparece en `BatchBufferNode`— *(cerrado en el hito 205: el nodo entrega el lote pendiente al terminar y los dos ejemplos pasaron a asiento juzgado)*, y los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) entregan, con entradas que no son media, **copias con la extensión del destino** en vez de fallar. Los segundos piden decidir qué debe hacer un transcodificador con una entrada que no puede decodificar.
+- **La costura de la identidad**: ~20 sitios del árbol construyen `new FileItemContext(...)` a partir de un ítem que entró. En el optimizador está demostrado que rompe el fork/join; en los demás (PdfSplitNode, PdfMetadataNode, SmartUnpackNode, ExcelReportGeneratorNode, los lectores de datos…) **no se ha demostrado nada**, y en varios es legítimo (un hijo nuevo de un comprimido, una fila, una página). Un barrido que distinga «elemento derivado del mismo archivo» de «elemento nuevo» tiene su mutación esperando.
+- **El banco de ejemplos es el sitio natural para seguir**: 14 asientos declarados podrían pasar a juzgados si la prueba puede sembrar lo que les falta (una imagen/vídeo de verdad, un servidor local que haga de webhook en lugar de un servicio de internet, un ejecutable de prueba en vez del CLI del autor). El webhook es el candidato más rentable: desbloquea los flujos 16, 27 y 30 y quita de en medio la dependencia de red.
+
+---
+
+## [2026-09-24] - Auditoría del Estado que Sobrevive en los Nodos: el Índice de Hashes y la Caché de Modelos (Hito 203)
+
+### 🎯 El encargo
+
+«Audita los nodos y plugins en busca de cachés propias que sobrevivan a una ejecución (índices de hashes, modelos cargados, listas de ya procesados) y añade la prueba que ejecute dos veces.» Es el hito 201 llevado una capa más abajo: allí se barrió el estado del **motor**; aquí, el que vive **dentro de los nodos y plugins**.
+
+### 📋 El dato que ordena el barrido
+
+Antes de buscar fugas hay que saber **qué estado puede sobrevivir**. Comprobado en el código, no supuesto: el motor **reconstruye cada nodo en cada ejecución** —`WorkflowExecutor.ExecuteAsync` hace `_nodeInstances.Clear()` y `GraphValidator.Validate` materializa los nodos con `PluginLoader.CreateNodeInstance` → `Activator.CreateInstance`—. Por tanto el estado de **instancia** de un nodo (índices, búferes, listas de ya procesados) **nace vacío cada vez**: `DeduplicationFilterNode._seenHashes`, `BatchBufferNode._buffer`, `ForkJoinBarrierNode._activeBarriers`, `ArchiveFanInNode._activeSessions`, `ExcelReportGeneratorNode._collectedRows`, `PdfMergeNode._collectedPdfPaths`, `AdvancedRenamerNode._claimedTargetPaths` y `OperationReportNode._accumulatedItems` no se heredan.
+
+Los que además se reinician al ver un `WorkflowExecutionId` distinto (`DeduplicationFilterNode`, `BatchBufferNode`, `ForkJoinBarrierNode`, `ExcelReportGeneratorNode`, `PdfMergeNode`) lo hacen como **segunda línea de defensa**: hoy no se nota —el nodo es nuevo— y sólo se notaría si un anfitrión reutilizara instancias. Eso se comprobó con el andamiaje de mutaciones: **una mutación sobre ese guard no puede morder** con el motor reconstruyendo nodos (el índice tendría que mudarse además a un estático), y así queda declarado más abajo.
+
+### 🔍 El inventario de lo que sí sobrevive (estáticos del plugin, vivos todo el proceso)
+
+| Caché | Qué decide | Veredicto |
+| :--- | :--- | :--- |
+| `ClipEmbeddingDatabase._embeddingCache` | El vector de cada descripción (detección de vocabulario abierto) | **Corregida** (abajo) |
+| `DataLookupTableLoader._cache` | El índice de la tabla que se cruza | **Corregida** (abajo) |
+| `OnnxSessionStore` (×3, vía `OnnxSessionRegistry` y `AudioSessionStore.Instance`) | Modelos cargados | Deliberada: clave por ruta y puerta de salida (`ClearAllSessions`/`UnloadSession`) |
+| `RoslynCSharpEngine.Instance._cachedRunners` | Scripts compilados | Deliberada: clave por **hash del código**, tope de 256 y desalojo del menos usado |
+| `MultimodalVlmClientEngine.s_endpointThrottles` / `s_unsupportedResponseFormatCache` / `s_unsupportedJsonSchemaCache` / `s_unreachableEndpoints` | Capacidades y cortocircuito por endpoint | Deliberada: clave por endpoint, enfriamiento de 15 s y `ResetUnreachableEndpoints` |
+| `AiModelCatalog.Catalog`, `HardwareCapabilityDetector._specs`, `VlmConfigurationStorageService.Instance`, `SyntheticDataSetStorageService.Instance` (devuelve copias), `RegexLibraryService`/`ScriptLibraryService`/`MediaPresetManagerService` (bibliotecas del usuario), `SevenZipCliRunner.s_cachedSevenZipPath`, `FileFlowFontResolver._initialized`, `AiPluginInitializer._isRegistered`, `WeakModelStatusRelay._liveSubscriptions`, `SyntheticDataSetStorageService._dataSets` | Configuración, rutas, bibliotecas persistidas, banderas y contadores | Sin cambios: **no es memoria de archivos de una ejecución** |
+
+También se revisó y no hace falta tocar: `AiModelDownloader.LastError` (informativo), `RenamerSampleDataProvider._inMemoryCustomSamples` (biblioteca del usuario) y `RoslynCSharpEngine.DefaultScriptOptions` / `TensorPreprocessors.CocoLabels` / los `Adapters[]` de las factorías (datos constantes, no estado).
+
+### 🐞 Las cuatro fugas corregidas
+
+1. **La caché de embeddings guardaba el vector sin decir de qué mundo salió.** El vector de una descripción se calcula con CLIP si el modelo está en disco y con una proyección determinista si no, y los dos caminos dan vectores distintos. La entrada creada «sin modelo» seguía contestando después de que el usuario descargara el modelo de 65 MB: **el flujo se ejecutaba con los vectores sintéticos hasta reiniciar la aplicación**, con el modelo ya en disco. Cura: la entrada guarda de qué entorno salió (`FromModel`) y sólo se reutiliza si coincide con el de ahora, más tres medidas (`CachedEmbeddingCount`, `CacheHits`, `EnvironmentInvalidations`) para poder afirmarlo.
+2. **El de al lado, muerto desde siempre: el modelo se buscaba por su id.** `GetClipTextEmbedding` resolvía el fichero con `GetModelPath("clip-vit-b32")` —el **id** del catálogo— mientras el descargador escribe `clip-vit-base-patch32.onnx`, así que `File.Exists(<dir>/clip-vit-b32)` **no es cierto nunca**: la rama del modelo real estaba muerta y **los 65 MB descargados no se usaban jamás**. Cura: resolver por `info.FileName` del catálogo.
+3. **El índice de la tabla de datos se validaba sólo por fecha.** La caché sobrevive a propósito (una tabla grande no se reparsea por volver a ejecutar), pero una tabla reescrita que **conserva la marca de tiempo** (una copia con timestamps conservados, una edición en el mismo tick del sistema de ficheros) se servía de la caché: el cruce devolvía las filas de antes de escribirse. Cura: la identidad del fichero es **fecha y tamaño**, y el **almacén** entra en la clave (el mismo camino puede ser un fichero del disco o uno del almacén virtual de una ejecución simulada).
+4. **La caché de tablas no tenía tope.** Vive en un estático, así que cada tabla que cruzaba un flujo se quedaba en memoria hasta cerrar el proceso. Cura: tope de **16** con desalojo de la que lleva más tiempo sin usarse, el mismo criterio que la caché de scripts compilados.
+
+### 🧪 Pruebas nuevas (+8), todas ejecutando dos veces
+
+- **[`PluginStateAcrossExecutionsTests`](file:///FileFlow.Tests/Unit/Core/PluginStateAcrossExecutionsTests.cs)** (5): es el gemelo de `EngineStateAcrossExecutionsTests` para los nodos, con **dos ejecuciones en el mismo proceso** y destinos distintos por ejecución para poder leer el resultado entero —el índice de hashes (2 únicos + 1 repetido **las dos veces**), el búfer de lotes (4 copias de 5 ficheros: el impar se queda dentro, y la segunda ejecución no hereda el pendiente), la tabla de datos (se reescribe entre ejecuciones y manda la nueva) y el contrato de la caché de tablas en pequeño (misma fecha y otro tamaño → relee; 24 tablas → la primera sale de la caché).
+- **[`ClipEmbeddingCacheTests`](file:///FileFlow.Tests/Unit/AI/ClipEmbeddingCacheTests.cs)** (3, en la colección exclusiva `OnnxInference`): el mismo prompt antes y después de que aparezca el fichero del modelo; el control de que sin cambios de mundo la caché sigue contestando (y que no invalida de más); y la resolución por nombre de fichero (un fichero con el id **no** es el modelo). El directorio de modelos se fija con la costura `AiModelCatalog.ModelsDirectoryOverride` (`internal`, sólo visible al ensamblado de pruebas) para reproducir el ciclo «descarga el modelo a mitad de sesión» sin tocar los datos del usuario.
+- Las **cuatro** pruebas de la caché de CLIP y de la tabla de datos se comprobaron **rojas con el defecto dentro** (una mutación por comportamiento), que es lo que demuestra que cubren la cura y no la acompañan.
+
+### 🧬 Mutaciones nuevas (6, todas MUERDE; catálogo: 20 declaradas, todas muerden)
+
+| Mutación | Defecto declarado | Testigo | Tiempo |
+| :--- | :--- | :--- | :--- |
+| [`indice-de-hashes-heredado`](file:///mutations/indice-de-hashes-heredado.json) | El índice de hashes en un estático y sin reset | `TheHashIndexOfOneRun_ShouldNotClassifyTheFilesOfTheNext` | 33,2 s |
+| [`bufer-de-lotes-heredado`](file:///mutations/bufer-de-lotes-heredado.json) | El búfer de lotes en un estático y sin reset | `TheBatchBuffer_ShouldNotKeepPendingItemsForTheNextRun` | 31,2 s |
+| [`cache-de-embeddings-sin-entorno`](file:///mutations/cache-de-embeddings-sin-entorno.json) | Reutilizar el vector sin mirar el entorno | `AVectorFromAWorldWithoutModel_ShouldNotAnswerOnceTheModelArrives` | 27,9 s |
+| [`modelo-clip-buscado-por-su-id`](file:///mutations/modelo-clip-buscado-por-su-id.json) | Resolver el modelo por el id del catálogo | `AFileNamedWithTheModelId_ShouldNotCountAsTheDownloadedModel` | 27,3 s |
+| [`tabla-en-cache-sin-mirar-el-tamano`](file:///mutations/tabla-en-cache-sin-mirar-el-tamano.json) | Validar la tabla sólo por fecha | `TheTableCache_ShouldNotAnswerWithRowsOfAFileThatChangedUnderTheSameTimestamp` | 30,0 s |
+| [`tabla-en-cache-sin-tope`](file:///mutations/tabla-en-cache-sin-tope.json) | Caché de tablas sin tope | `TheTableCache_ShouldNotGrowWithoutBoundAcrossRuns` | 28,1 s |
+
+Con estas, `mutations/COVERAGE.md` pasa de **5 a 8 subsistemas cubiertos de 15**: entran **FileFlow.Plugin.AI**, **FileFlow.Plugin.Data**, **FileFlow.Plugin.Hashing** y **FileFlow.Plugin.Logic** (la lista de trabajo baja a 7: Archives, Documents, Images, Integrations, Network, Scripting, Subflows). El andamiaje **rechazó** una declaración al principio (el fragmento citaba un comentario sin sus tildes) sin tocar el árbol, y lo avisó con la nota de mutación obsoleta.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1692 superadas + 1 omitida de 1693**, build **0 errores** (compilación **5248**).
+- Las seis mutaciones nuevas, una a una con `mutate.ps1 -Name`: testigo rojo y control verde en las seis, y el árbol restaurado por bytes y recompilado antes de salir.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)** actualizado: cabecera a compilación **5248**, el apartado 5 (que ahora va de 5129 a 5248) estrena el párrafo del modelo de texto que por fin se usa y sus cifras de pruebas (1626 → 1671 → **1692**) y de defectos declarados (**13 → 20**).
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que queda abierto de este barrido**: el inventario de estáticos vivos está escrito **en este registro, a mano**. No hay guardia que falle cuando un plugin estrene una caché estática nueva, y es exactamente lo que el hito 201 hizo con el motor (allí el reset sí es ejecutable y está cubierto). Un barrido por fuentes al estilo de [`NodeEmissionPortGuardTests`](file:///FileFlow.Tests/Unit/App/NodeEmissionPortGuardTests.cs) —analizador en `TestHelpers` con su auto-prueba y su tabla declarada— lo cerraría, y necesitaría su mutación.
+- **El guard por `WorkflowExecutionId` de los nodos es hoy defensa en profundidad, no corrección**: mientras el motor reconstruya los nodos no se nota, y por eso no hay mutación que lo muerda. Si algún día un anfitrión materializa los nodos una sola vez, esas cinco clases pasan a depender de él.
+- **El coste aceptado de la caché de tablas**: una reescritura que no cambie **ni la fecha ni el tamaño** sigue siendo invisible para sus metadatos (es el límite de cualquier caché por identidad de fichero; MSBuild y make tienen el mismo). Está escrito en el código para no prometer de más.
+- **Pendiente de medir**: cuánto cuesta de verdad no tener el modelo CLIP (`GenerateProjectedClipVector` por prompt, cacheado por proceso) frente a tenerlo — útil para saber qué gana quien descargue los 65 MB.
+
+---
+
+## [2026-09-24] - Las Notas de Versión del Tramo de los Flujos que se Creían Hechos (Hito 202)
+
+### 🎯 El encargo
+
+«Escribe las notas de versión del tramo para quien usa el producto, contando qué flujos terminaban en verde sin hacer nada y ahora se ejecutan de verdad.» Mismo trato que el hito 194 con el tramo 188–190: las notas son **de tramo, no de hito**, y las cifras se copian del registro técnico, no de la memoria.
+
+### 📄 Apartado nuevo en [`docs/notas_de_version.md`](file:///docs/notas_de_version.md)
+
+El documento pasa de **dos** tramos a **tres** (cabecera actualizada a compilación **5232**, 24-09-2026), y el apartado **5** —«El tramo de los flujos que se creían hechos (compilación 5129 → 5232)»— cuenta, en las dos mitades de siempre:
+
+- **Lo que ves**: el segundo «Ejecutar» que vuelve a hacer el trabajo (200); un flujo con archivos reales que ya no escribe en un almacén invisible (201, modo virtual heredado); el motor que arranca solo después de pausar y detener (201); «deshacer la última ejecución» que deshace sólo la última (201); el plan de una simulación que no arrastra el de la anterior (201); y las carpetas vacías que se limpian de verdad en una ejecución simulada (195).
+- **Lo que no se ve**: el punto de control por lotes con su medida (**2 000 archivos: 2 000 escrituras y 3 855 ms → 7 escrituras y 581 ms, ×6,6**); las **seis** pruebas que ejecutan el mismo motor dos veces (las cinco del barrido se pusieron rojas al escribirlas); los **13 defectos deliberados** que la suite tiene que cazar; los puertos calculados en ejecución y los fallos de entorno inyectados (191–192); y el censo de **154 salidas** de 69 nodos (193).
+- **Lo que sigue viéndose así**: el coste del optimizador de imágenes (**~450 ms de CPU por imagen** de 1600×1200 a WebP Q80; **~12,5 ms** redimensionando a 800 px), que es trabajo del codificador y no reparto de hilos; el reproceso de **hasta 256 archivos** tras una caída seca; y el punto de control todavía cuadrático dividido por 256, con su marca de tiempo sin actualizar.
+
+El apartado «Cómo verificarlo» pasa a ser el **6**. El encabezado del antiguo apartado 4 (5129) se conserva como frontera del tramo anterior.
+
+### ✅ Validación
+
+- **Ninguna prueba lee este documento** (comprobado por búsqueda en el suite, igual que en el hito 194), así que las notas no pueden mover el resultado: `dotnet test` completo → **1684 superadas + 1 omitida de 1685**, build **0 errores**.
+- Todas las cifras del apartado salen del walkthrough de los hitos 195 y 199–201, y las dos afirmaciones de comportamiento que se hacen sobre el borde (el volcado del lote al cancelar y el reproceso máximo de 256 archivos) están medidas o cubiertas por prueba de los hitos 199–200.
+
+### 📌 Notas para la siguiente sesión
+
+- Las notas tienen **tres tramos** con la misma estructura; el próximo apartado se añade igual mientras la versión no cambie, y **las cifras salen del walkthrough**. Sin rutas, nombres de clase ni detalle de implementación, a propósito.
+- Sigue pendiente lo de siempre en este documento: es la mitad que **cuenta** lo que se arregló, no la que lo sostiene. Lo que sostiene (pruebas, guardias, defectos declarados) se lee en el walkthrough.
+
+---
+
+## [2026-09-24] - Auditoría del Estado que Sobrevive a su Ejecución: Cinco Fugas en el Motor Reutilizado (Hito 201)
+
+### 🎯 El encargo
+
+«Busca en todo el motor objetos con memoria de lo hecho que sobrevivan a una ejecución (cachés de completados, índices acumulados) y añade la prueba que ejecute dos veces con el mismo objeto.» Es la lección del hito 200 convertida en barrido: el estado que sobrevive a su ejecución **miente**.
+
+### 📋 El barrido
+
+Se revisó el estado que vive en `WorkflowExecutor`, `WorkflowItemDispatcher`, la telemetría, el diario, el punto de control y los estáticos del motor, y se separó lo que **se decide otra vez** en cada ejecución (correcto) de lo que **se heredaba** (fuga). Cinco fugas, todas reales y todas medidas:
+
+| Estado que se heredaba | Qué hacía la segunda ejecución | Medido |
+| :--- | :--- | :--- |
+| `IsVirtualFileSystemEnabled` | Seguía en modo virtual: escribía en el almacén y **el disco quedaba vacío**, en verde | el archivo real no aparecía |
+| `_isPaused` + su semáforo | Se quedaba esperando a que alguien la reanudara | **no arrancó en 10 s**, sin un nodo activo |
+| `PlannedActions` | El plan de la simulación anterior se sumaba al nuevo | 2 acciones donde había 1 |
+| `JournalService.Entries` | **Deshacer** la última ejecución revertía también la anterior | 2 entradas donde había 1 |
+| Contadores de aristas (despacho) | El contador que pinta la interfaz continuaba donde acabó la anterior | 6 donde debía haber 3 |
+
+También se corrigió, en el mismo reset, el **tope de concurrencia por nodo**: cada nodo tenía un semáforo con su `MaxConcurrency` del primer flujo que lo usó, así que cambiarlo en el editor no surtía efecto hasta reiniciar la aplicación.
+
+### 🔍 Lo que se revisó y **no** era una fuga (escrito para no volver a buscarlo)
+
+`VirtualFileSystem` (se vacía en cada ejecución), la telemetría y el rastreador de tareas (ya se reseteaban), el punto de control (arreglado en el 199-200), `GlobalOutputDir`/`TemporaryDirectory` (**pegajosos a propósito**: sólo se rellenan si están vacíos), `DebugSession` (es la configuración de depuración del usuario, no memoria de la ejecución) y `ISubflowExecutionService.Instance` / `SqliteLogStore.Instance` (estáticos por diseño; su problema, si lo hubiera, sería de concurrencia entre motores, no de estado rancio).
+
+### 🛠️ La cura: un reset que dice lo que decide
+
+En el arranque de cada ejecución (normal y vigilante) el motor ahora **decide otra vez** sus modos y sus cuentas: modo virtual apagado, plan y diario vacíos, y estado de pausa limpio —este último bajo el mismo candado que el semáforo de concurrencia, con el permiso de pausa devuelto si quedó consumido—. En el despacho, `ResetDiagnostics` pasa a llamarse **`ResetForNewExecution`** (olvida avisos, contadores de aristas y topes por nodo) porque el nombre viejo ya no describía lo que hace.
+
+### ✅ Pruebas: cinco casos, cada uno con **el mismo motor dos veces**
+
+[`EngineStateAcrossExecutionsTests`](file:///FileFlow.Tests/Unit/Core/EngineStateAcrossExecutionsTests.cs) —los cinco **se pusieron rojos al escribirlos**, cada uno con su síntoma medido, y verdes con la cura—:
+
+1. `ASyntheticRun_ShouldNotLeaveTheNextOneInVirtualMode` — ejecución sintética y después archivos reales: el archivo tiene que estar **en el disco**.
+2. `ARunThatEndedWhilePaused_ShouldNotLeaveTheNextOneWaiting` — pausar, detener y volver a ejecutar: la segunda arranca sola (con desbloqueo explícito antes de juzgar, para no dejar nunca una tarea colgada en el proceso).
+3. `PlannedActions_ShouldNotAccumulateFromPreviousDryRuns`.
+4. `Journal_ShouldOnlyContainTheOperationsOfTheCurrentRun`.
+5. `EdgeItemCounts_ShouldStartFromZeroInEveryRun`.
+
+**Tres mutaciones declaradas y mordidas** (`mutations/COVERAGE.md` regenerado): [`modo-virtual-heredado`](file:///mutations/modo-virtual-heredado.json) (30,6 s, control: la activación en una sola ejecución sigue verde), [`ejecucion-pausada-heredada`](file:///mutations/ejecucion-pausada-heredada.json) (39,7 s) y [`diario-acumula-ejecuciones`](file:///mutations/diario-acumula-ejecuciones.json) (29,5 s). La tercera se declaró mal a la primera (el fragmento citaba una línea de comentario sin su `//`) y el andamiaje la **rechazó citando fichero y fragmento, sin tocar nada**: el rechazo funcionando es parte de la medición.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1684 superadas + 1 omitida de 1685** (antes 1679 + 1; **+5**), build **0 errores**.
+- Catálogo de mutaciones: **13 declaradas**, todas `MUERDE` (10 anteriores + 3 de este hito).
+
+### 📌 Notas para la siguiente sesión
+
+- El patrón queda escrito: **cada vez que un objeto del motor gane memoria de lo hecho, la pregunta es «¿de esta ejecución o de la anterior?» y la prueba es ejecutarlo dos veces con el mismo objeto**. Los cinco casos de este hito son la plantilla.
+- Lo que el barrido **no** cubre: el estado que sobrevive en **los nodos** (un plugin que cachee por su cuenta, p. ej. un índice de hashes o un modelo cargado) y el estado compartido entre **dos motores a la vez** (los estáticos: ahí el riesgo es de concurrencia, no de rancio).
+- Y sigue apuntado desde el 199: el punto de control escribe O(N²/256) en total y su `Timestamp` no se actualiza al volcar.
+
+---
+
+## [2026-09-24] - El Punto de Control no Sobrevive a su Ejecución: el Segundo «Ejecutar» Vuelve a Hacer el Trabajo (Hito 200)
+
+### 🎯 El encargo
+
+«Corrige que reutilizar un `WorkflowExecutor` se crea todo hecho tras limpiar el checkpoint en disco, y añade la prueba que lo demuestra.» Era el tercero de los tres defectos del informe del 198 —el último que quedaba— y el síntoma que más se veía: **un flujo que termina en milisegundos sin entregar nada y en verde**.
+
+### 🐞 El defecto: el estado que sobrevive a su ejecución
+
+`WorkflowCheckpointHandler.ClearCheckpoint` borraba el **fichero** del punto de control y dejaba vivo el **objeto en memoria**. Como `InitializeCheckpoint` sólo construye uno nuevo si no hay ninguno, la **segunda ejecución del mismo motor** —el botón Ejecutar pulsado otra vez, sin cerrar la aplicación— se encontraba con las claves de la ejecución anterior: cada archivo entrante se daba por ya completado (`Log_CheckpointSkippingFile`), **ninguno llegaba a los nodos** y el flujo terminaba correctamente en cuestión de milisegundos.
+
+Nada lo veía porque el estado no se quedaba en disco —el fichero sí se borraba— y todas las pruebas del punto de control usaban **un ejecutor nuevo por ejecución**, que es justo lo que el defecto necesita para no aparecer.
+
+### 🛠️ La cura
+
+**Limpiar son dos mitades**: `ClearCheckpoint` ahora deja `Checkpoint = null` además de borrar el fichero. Una ejecución que **no** termina bien no pasa por ahí, así que su estado en memoria sobrevive y la siguiente ejecución **reanuda** donde se quedó: eso es lo que el punto de control existe para hacer, y sigue funcionando (hay prueba con un punto de control preexistente que salta el archivo ya completado).
+
+Una prueba que existía desde antes (`WorkflowExecutor_WithExistingCheckpoint_SkipsCompletedItems`) afirmaba el estado en memoria **después** de una ejecución terminada —es decir, afirmaba precisamente lo que era el defecto—; ahora afirma lo que importa: **qué llegó al nodo** (`GetNodeTelemetryStats()["th-1"].ProcessedCount == 1`: sólo el archivo nuevo pasó, el otro se saltó).
+
+### ✅ Pruebas
+
+- **[`WorkflowExecutor_ReusedForASecondRun_ShouldProcessEveryFileAgain`](file:///FileFlow.Tests/Unit/Core/WorkflowCheckpointTests.cs)**: tres archivos, un motor, dos ejecuciones con punto de control activo y gestor en directorio temporal. La segunda tiene que **volver a entregar los tres archivos** y el nodo sumidero tiene que **volver a procesar tres ítems**. Es el síntoma reportado, de punta a punta.
+- **`CheckpointHandler_ClearCheckpoint_ForgetsTheInMemoryState`**: el contrato en pequeño —limpiar deja `Checkpoint` en nulo y el fichero borrado—, para que el defecto no pueda volver a colarse sólo por la puerta del motor.
+- **Mutación declarada y mordida**: [`punto-de-control-sobrevive-a-la-ejecucion`](file:///mutations/punto-de-control-sobrevive-a-la-ejecucion.json) (quitar `Checkpoint = null;`) → testigo **rojo** (1 de 1, el de punta a punta), control **verde** (el lote no depende de limpiar), `MUERDE` en 30,3 s, árbol restaurado por bytes y recompilado. `mutations/COVERAGE.md` regenerado.
+- `dotnet test` completo → **1679 superadas + 1 omitida de 1680** (antes 1677 + 1; **+2**), build **0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Los tres defectos del informe del 198 quedan cerrados.** Lo que sigue apuntado en el punto de control, sin tocar: el total por lotes sigue siendo O(N²/256) (~390 volcados con 100.000 archivos, ~8 MB cada uno) y el `Timestamp` no se actualiza al volcar.
+- La lección que deja este defecto, escrita aquí porque es reutilizable: **el estado que sobrevive a su ejecución miente**. Cualquier objeto con memoria de lo hecho (cachés de completados, índices acumulados, «ya procesados») necesita una pregunta explícita —¿de esta ejecución o de la anterior?— y una prueba que ejecute dos veces con el **mismo** objeto. Reutilizar el motor es el caso normal en la interfaz, no el raro.
+
+---
+
+## [2026-09-24] - El Punto de Control, por Lotes: Miles de Archivos Ya no se Reescriben Uno a Uno (Hito 199)
+
+### 🎯 El encargo
+
+«Arregla el punto de control para que no serialice el conjunto completo de claves una vez por ítem completado, y mide el antes y el después con un flujo de miles de ficheros.» Era el primero de los tres defectos que quedaron escritos en el hito 198.
+
+### 🐞 El defecto
+
+`WorkflowCheckpointHandler.RecordCompletedFile` llamaba a `WorkflowCheckpointManager.SaveCheckpoint` en **cada archivo completado**: serializaba el **conjunto entero** de claves —con `WriteIndented`— y lo escribía a disco, todo **bajo el candado del punto de control**. Con N archivos son N escrituras de un conjunto que crece hasta N claves: **O(N²) en bytes** y un **punto de serialización por ítem** justo en el camino que reparte el trabajo entre hilos. El fichero además se abre, se trunca y se cierra N veces.
+
+### 🛠️ La cura
+
+- **El ítem completado sólo anota su clave.** El conjunto se persiste cuando se han acumulado `FilesPerCheckpointWrite` claves nuevas (**256 por omisión**), y la escritura se hace **fuera del candado** sobre una **copia** tomada dentro de él: mientras un hilo serializa, los demás ítems siguen anotando. `1` conserva el comportamiento anterior, que es lo que permite medirlo contra el arreglo.
+- **Volcado de cierre**: `FlushPendingSaves()` lo llama el motor en el `finally` de la ejecución (también en modo vigilante), así una ejecución **cancelada o fallida** deja en disco lo completado hasta el último archivo. En una ejecución que termina bien no hace nada, porque `ClearCheckpoint` **olvida lo pendiente** — sin eso, el volcado de cierre resucitaría el fichero que el final acaba de borrar (y hay prueba de ello).
+- **Escritura sincrónica a propósito**, no en segundo plano: una escritura en vuelo puede llegar después del borrado final y dejar el fichero vivo.
+- **Sin sangría** (`WriteIndented = false`): el punto de control lo lee el motor, no una persona, y la sangría casi triplicaba los bytes de cada volcado.
+- **Dos costuras nuevas en el ejecutor** (`CheckpointManager`, `CheckpointFilesPerWrite`): permiten medir en un directorio temporal — y de paso las pruebas de este tramo **ya no escriben en los puntos de control reales del usuario** en `%LOCALAPPDATA%` (el tercer defecto del informe del 198, cerrado para estas pruebas).
+
+### 📊 El antes y el después, con 2.000 archivos reales
+
+[`CheckpointWriteCostTests`](file:///FileFlow.Tests/Performance/CheckpointWriteCostTests.cs) corre **el mismo flujo real** (origen de carpeta → sumidero, punto de control activo, directorio temporal) sobre los mismos 2.000 archivos, en el mismo proceso, cambiando sólo el tamaño del lote:
+
+| | Volcados | Pared |
+| :--- | ---: | ---: |
+| **Antes** (una escritura por archivo) | 2 000 | **3 855 ms** |
+| **Después** (por lotes de 256) | 7 | **581 ms** |
+
+**x6,6 menos tiempo de pared y x286 menos escrituras**, con el mismo trabajo entregado (2.000 archivos en ambas). El coste del punto de control pasa de ~3,3 s a ~0,1 s: lo que queda en la balanza es el flujo.
+
+### ✅ Pruebas
+
+- **Contrato del lote** (+4 casos en [`WorkflowCheckpointTests`](file:///FileFlow.Tests/Unit/Core/WorkflowCheckpointTests.cs)): 1.000 archivos con lotes de 100 son **10 volcados** (y el estado en disco es el conjunto completo, sin huecos); con lote de 1 son **200 de 200** (el «antes», conservado a propósito); `FlushPendingSaves` saca lo que quedaba (250 archivos → 3 volcados); y `ClearCheckpoint` olvida lo pendiente (el cierre no resucita el fichero borrado).
+- **Las dos pruebas de ejecución del ejecutor** ahora usan un gestor en directorio temporal: ya no dejan checkpoints en el perfil real.
+- **Mutación declarada y mordida**: [`punto-de-control-vuelve-a-escribir-por-archivo`](file:///mutations/punto-de-control-vuelve-a-escribir-por-archivo.json) (`if (true)` en la condición del lote) → testigo **rojo** (1 de 1), control **verde**, `MUERDE` en 58,6 s, árbol restaurado por bytes y recompilado por el andamiaje. `mutations/COVERAGE.md` regenerado.
+- `dotnet test` completo → **1677 superadas + 1 omitida de 1678** (antes 1672 + 1; **+5**), build **0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- Queda **uno** de los tres defectos del informe del 198: reutilizar un `WorkflowExecutor` **se cree todo hecho** tras limpiar el checkpoint en disco (limpiar borra el fichero pero no el objeto en memoria), así que la segunda ejecución con el mismo ejecutor omite todos los archivos. Aquí se cerró sólo un síntoma vecino: `ClearCheckpoint` olvida lo **pendiente** de persistir.
+- Lo que el lote **no** hace: escribir menos de O(N²/256) — con lotes de 256 el total sigue siendo cuadrático, sólo que dividido por 256 (con 100.000 archivos, ~390 volcados de un conjunto que llega a ~8 MB: asumible, medible si algún día estorba).
+- El `Timestamp` del punto de control sigue siendo el del inicio de la ejecución: el volcado no lo actualiza. Si alguna vez importa «cuándo se escribió», hay que decidirlo antes de tocarlo.
+
+---
+
+## [2026-09-24] - La Primera Ejecución de la Sesión, Medida por Tramos: el Motor ya Usa los 27 Hilos que se le Dan (Hito 198)
+
+### 🎯 El encargo
+
+«El motor no debe desperdiciar hilos en la primera ejecución de la sesión, midiendo el antes y el después con una prueba.» Venía del informe previo: tras arreglar los puertos de los nodos, los flujos tardaban más y «no se usaban todos los hilos del procesador».
+
+### 📊 El «antes», con las dos hipótesis que se probaron y no se sostienen
+
+Se instrumentó el arranque por tramos (marcas de reloj dentro de `ExecuteAsync`, el origen y el despacho, más el cronómetro del nodo sonda) y se corrieron **20 procesos nuevos** con 96 ítems de 50 ms de CPU pura, paralelismo pedido 28 (i7-14700KF, 28 hilos lógicos, mínimo de hilos de trabajo del grupo = 28).
+
+| Tramo de la primera ejecución (1163 ms de pared) | Medido |
+| :--- | :--- |
+| Validar, instanciar nodos, inicializar el punto de control | **12 ms** |
+| Hasta arrancar los nodos origen (primer registro del flujo) | **378 ms** |
+| Dentro del nodo origen, hasta el primer ítem despachado | **550 ms** |
+| El trabajo de los 96 ítems | **216 ms** (estado estable: 211-224 ms) |
+
+- **Hipótesis 1 (el suelo del grupo de hilos)**: falsa. El mínimo de hilos de trabajo **ya es `Environment.ProcessorCount`** (medido: 28), así que el grupo no esperaba hilos —los crea cuando hay trabajo—. Un `ThreadPoolWarmth` (subir el mínimo a 35 y crear los hilos de antemano) daba unas corridas en 264 ms y otras en 965-1066: no reproducible. Retirado.
+- **Hipótesis 2 (compilar el camino de antemano)**: falsa. Preparar **255 métodos** con `RuntimeHelpers.PrepareMethod` cuesta **5 ms** y, en un proceso recién compilado, dejaba la primera ejecución **igual de lenta** (973 ms, con los mismos dos tramos); en un proceso ya usado, **sin preparar nada**, sale igual de rápida (269 ms). Un `ExecutionPathWarmUp` llegó a existir y tampoco movía el número. Retirado. (La inicialización del almacén de registros se descartó igual: mide 14 ms y adelantarla no cambiaba la corrida de 976 ms.)
+
+### 🔬 Lo que sí es (y por qué no se puede «verificar» contra un umbral)
+
+La variable es **el primer proceso que corre justo después de una compilación**: en ese proceso el motor pasa **775-1 472 ms** antes de que el primer ítem llegue a la rejilla consumiendo sólo **~267 ms de CPU** —no está calculando, está esperando a que el sistema le entregue las bibliotecas recién escritas—, y el mismo binario, en un proceso siguiente, llega al primer ítem en **46-66 ms**. Como no es una propiedad del motor sino de la máquina que acaba de compilar, la prueba **no compara tiempos contra un umbral**.
+
+### ✅ Lo que se afirma, y la prueba que lo afirma
+
+[`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs): la **concurrencia máxima** observada fue de **25-27 nodos simultáneos de 28 pedidos en las 20 ejecuciones medidas** —primera y siguientes, con el grupo frío o caliente—, y lo que se juzga es que la primera **no use menos hilos que las que vienen detrás** (mismo equipo, misma carga: comparable) más un techo sobre el **tramo de trabajo** (no sobre el arranque, que es lo único que la máquina decide). El nodo sonda ([`CpuBoundProbeNode`](file:///FileFlow.Tests/TestHelpers/CpuBoundProbeNode.cs), CPU pura) y la colección exclusiva [`EngineFirstRunCollection`](file:///FileFlow.Tests/Performance/EngineFirstRunCollection.cs) se quedan: la medida es una resta contra el estado estable y una colección vecina la ensucia (1 904 ms con vecino donde sola sale en 269 ms).
+
+### ✅ Validación
+
+- `dotnet test` completo → **1672 superadas + 1 omitida de 1673 en 1 m 14 s** (antes 1671 + 1; **+1**), build **0 errores**.
+- La prueba nueva se corrió **4 veces en procesos nuevos** (una de ellas la primera tras compilar: 1 696 ms de pared con 1 472 ms antes del primer ítem, y aun así **verde**) y en la corrida completa del suite.
+- Los ficheros de los dos intentos retirados (`ThreadPoolWarmth`, `ExecutionPathWarmUp` y sus pruebas) y las sondas temporales se borraron; `WorkflowExecutor` y `WorkflowItemDispatcher` quedan **idénticos a HEAD** (comprobado con `git diff`).
+
+### 📌 Notas para la siguiente sesión
+
+- **El número de pared de la primera ejecución no es una propiedad del motor** en un banco que compila y luego mide: si vuelve a aparecer la pregunta, el dato que la contesta es la **concurrencia** (25-27 de 28) y los tramos por fase, no el total.
+- Los tres defectos reales detectados antes de este tramo **siguen sin arreglar** y son los que sí cuestan tiempo con miles de ficheros: el punto de control que serializa el conjunto completo **una vez por ítem** (`RecordCompletedFile` → `SaveCheckpoint` con `WriteIndented` bajo `_checkpointLock`), reutilizar un `WorkflowExecutor` que **se cree todo hecho** (limpiar el checkpoint borra el fichero pero no el objeto en memoria) y las pruebas que escriben en los checkpoints reales del usuario en `%LOCALAPPDATA%`. El coste real del optimizador de imágenes (~450 ms por imagen 1600×1200 a WebP Q80, ~12,5 ms redimensionando a 800 px) es trabajo, no reparto.
+
+---
+
+## [2026-09-23] - El Catálogo, Extendido a las Guardias de Cobertura, y la Lista de Huecos Publicada (Hito 197)
+
+### 🎯 Objetivo
+
+Llevar el catálogo de mutaciones (5 declaradas en el 196) a las **guardias de cobertura** —censo de puertos, tokens de tema, contrato de colecciones— y **publicar qué subsistemas del producto no tienen ninguna mutación declarada**, que es la mitad que un catálogo nunca cuenta de sí mismo.
+
+### 🛠️ Cuatro mutaciones nuevas (9 en el catálogo)
+
+| Mutación | Defecto declarado | Testigo | Control |
+| :--- | :--- | :--- | :--- |
+| `censo-de-puertos-ignora-un-puerto-nuevo` | El limpiador declara un puerto `Skipped` que ninguna prueba cubre | El censo: rojo (1 de 17) | El camino feliz del nodo sigue verde |
+| `censo-de-puertos-sin-su-asiento` | El censo (declaración escrita a mano) pierde el asiento `FolderSourceNode.Out` | El censo: rojo | El contrato del almacén físico sigue verde |
+| `token-de-tema-que-desaparece` | `AppBackgroundBrush` desaparece de los presets integrados | La guardia de tokens: rojo | El lint de estados deshabilitados sigue verde |
+| `contrato-de-colecciones-sin-su-regla` | La regla del `ModelSessionRegistry` se queda sin patrones y deja de vigilar | El contrato de colecciones: rojo | La regla de preferencias reales sigue verde |
+
+Las dos primeras cubren las dos mitades que un censo necesita: que **detecte un puerto nuevo sin cobertura** (el defecto que existe para cazar) y que **no pueda perder un asiento en silencio** (el censo es una declaración escrita a mano y su único valor es que esté completa). Las otras dos atacan la misma clase de agujero en las otras guardias: una regla que se queda sin patrones sigue pasando sobre el árbol real —donde nadie incumple— y una guardia escrita y verde que ya no vigila nada.
+
+### 🐞 Un defecto del propio andamiaje, medida su causa
+
+Dos mutaciones se dictaminaron **`NO-COMPILA`** y no era verdad: la compilación fallaba con **MSB3021/MSB3027** porque un **`FileFlow.App` en ejecución bloqueaba los DLL del directorio de salida** (los mismos que `test.ps1` cierra al arrancar). Diagnóstico equivocado y caro —«la mutación no vale» sobre un defecto que sí vale y que no se llegó a medir—. Cura doble: el andamiaje **cierra las instancias en ejecución** antes de compilar (como `test.ps1`) y **distingue las dos causas** de un fallo de compilación (`error CS` = el mutante no compila; bloqueo de ficheros = el entorno, que se reporta como rechazo con la pista, nunca como mutación inválida).
+
+### 📄 [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md): la publicación
+
+Generado por la guardia [`MutationDeclarationCoverageTests`](file:///FileFlow.Tests/Unit/App/MutationDeclarationCoverageTests.cs) (regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`) y **atado** por ella: el documento no puede discrepar de lo declarado ni del árbol. Contesta con cifras de hoy: **9 mutaciones declaradas**, **4 de 15 subsistemas del producto con alguna**, **4 de 32 guardias del repositorio con alguna que la muerda**, la tabla de lo que declara cada mutación y —lo que se venía a publicar— **11 proyectos sin ninguna** (`Plugin.AI`, `Archives`, `Data`, `Documents`, `Hashing`, `Images`, `Integrations`, `Logic`, `Network`, `Scripting`, `Subflows`) y **28 guardias sin nadie que las muerda**.
+
+Tres reglas de clasificación, escritas para poder leer la lista sin engaños: un subsistema es un **proyecto del producto** y lo cubre la mutación del **fichero que muta**; una mutación sobre la **declaración** de una guardia (el censo, el analizador) cuenta como **infraestructura de pruebas** —es honesta y útil, y no cubre ningún subsistema del producto—; y una **guardia del repositorio** es la prueba que audita el árbol (usa `SourceTree`, `TestRepositoryLocator` o `TestSuiteIndex`), de modo que la lista de guardias es del árbol y no del recuerdo de nadie. `\mutate.ps1 -Coverage` imprime el documento y avisa si se ha quedado atrás respecto a las definiciones.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1671 superadas + 1 omitida de 1672 en 1 m 19 s** (antes 1668 + 1; **+3 pruebas**), build **0 errores**.
+- **Las nueve mutaciones muerden**, cada una con testigo rojo y control verde: siete en `-All` y las dos que el bloqueo de ficheros impidió medir, re-ejecutadas aparte con el diagnóstico ya corregido (1 de 17 rojo en el censo, por ejemplo).
+
+### 📌 Notas para la siguiente sesión
+
+- **La lista de huecos es la lista de trabajo**: once proyectos del producto sin ninguna mutación —el plugin de IA es el mayor— y veintiocho guardias sin nadie que las muerda. Añadir una cuesta una entrada de JSON y comprobar que muerde.
+- Lo que sigue sin medirse con mutaciones: comportamientos **emergentes** (varias piezas que solo fallan juntas) y todo lo que vive en la interfaz (animaciones, latidos, gestos), donde el andamiaje solo puede mutar el código que los gobierna.
+
+---
+
+## [2026-09-23] - El Andamiaje de Mutaciones, Versionado: Recompila Siempre tras Restaurar y No Deja el Árbol con el Mutante (Hito 196)
+
+### 🎯 Objetivo
+
+Convertir en **script versionado** lo que hasta ahora eran guiones de usar y tirar (bash y Python en el directorio temporal, uno por tanda y perdidos al cerrar la sesión) y cerrar el fallo que costó **dos diagnósticos falsos**: el script de la tanda anterior restauraba las fuentes **y no recompilaba**, así que una corrida posterior con `--no-build` medía **el mutante**. Dos pruebas «rotas» del hito 195 eran exactamente eso —el mutante M2 aún en `bin/`— y el primer diagnóstico fue «intermitente».
+
+### 🛠️ Qué hay ahora
+
+- **[`mutate.ps1`](file:///mutate.ps1)** (raíz, junto a `test.ps1` y `clean.ps1`): `-List`, `-Name <id>` (varios separados por comas), `-All`, `-Directory <ruta>` y `-Help`. Una sola implementación —también para la parte que no puede fallar: duplicar la restauración en un `.sh` es duplicar el sitio donde se pierde el árbol—; en Linux o macOS se invoca con `pwsh`. Los textos que imprime son **ASCII a propósito**: Windows PowerShell 5.1 lee los `.ps1` sin BOM como ANSI, así que el texto con acentos vive en las definiciones (`mutations/*.json`), que se leen declarando UTF-8.
+- **[`mutations/*.json`](file:///mutations/README.md)**: cinco mutaciones declaradas, una por comportamiento que importa, con su **tesis** (lo que el suite tiene que saber defender), el **testigo** que tiene que ponerse rojo y el **control** que tiene que seguir verde:
+
+  | Mutación | Tesis | Testigo | Control |
+  | :--- | :--- | :--- | :--- |
+  | `limpiador-vuelve-a-mirar-el-disco` (195) | El limpiador limpia en una ejecución virtual porque su recorrido pasa por el almacén | Extremo a extremo virtual: rojo (1) | El caso de disco sigue verde |
+  | `limpiador-borra-por-su-cuenta` (192) | El limpiador borra por el contrato y lee el resultado | Las dos averías inyectadas: rojo (2 de 2) | El camino feliz sigue verde |
+  | `borrado-virtual-solo-ve-archivos` (195) | El almacén virtual sabe borrar una carpeta vacía | El contrato virtual: rojo (1) | El contrato físico sigue verde |
+  | `indice-de-pruebas-ciego-al-cr` (193) | El índice lee los ficheros CRLF, que son la mayoría | La guardia contra la ceguera: rojo (2 de 6) | El despojador de comentarios sigue verde |
+  | `validador-sin-materializar-puertos` (191) | El validador materializa los puertos calculados | Los tres casos de puertos dinámicos: rojo (1 de 3) | La validación estática sigue verde |
+
+- **Las tres obligaciones del ejecutor**, con su mecanismo y no con una promesa: **restaurar siempre** (la restauración vive en un `finally`: da igual si el mutante no compila, si los tests revientan o si la mutación resulta obsoleta); **recompilar siempre tras restaurar** (fuentes restauradas con binarios mutados es precisamente el estado que causó el diagnóstico falso); y **negarse a dejar el mutante** (antes de tocar nada se escribe un **diario en disco**, `.mutation-journal/` con una copia y el hash de cada fichero; al terminar se restaura por bytes, se recompila y se **verifica por hash**, y si algo no cuadra sale con código 2 citando los ficheros). Nada de esto se fía de la memoria del proceso: un **diario sin cerrar** —proceso matado— se recupera al arrancar la corrida siguiente.
+- **La comprobación final cierra el círculo**: por cada mutación, el testigo se vuelve a ejecutar **sin recompilar** y tiene que estar en verde. Solo puede pasar si la recompilación tras restaurar ocurrió de verdad, así que cuando el andamiaje termina, las fuentes **y** los binarios son los originales.
+- **Aplicación atómica**: todas las sustituciones se validan y se aplican **en memoria** antes de escribir un solo byte, y cada fragmento tiene que aparecer **exactamente las veces que se declara** (`count`). Una mutación obsoleta se rechaza con el fichero y el fragmento citados **sin dejar media mutación aplicada**.
+
+### 🐞 El agujero que destapó la guardia (y que el andamiaje no veía)
+
+Un filtro que **no casa con ninguna prueba** no falla: `dotnet test` sale con **0** y sin resumen. Leído por código de salida, un testigo renombrado se cuenta como «superviviente» —falla, pero con el diagnóstico equivocado— y un **control** renombrado como «control verde», que es un veredicto **preciso sobre una medición vacía**. Cura doble: el ejecutor exige un `Total:` mayor que cero para dar una medición por buena (el testigo o el control que no case con nada pasa a `IMPRECISA`), y la guardia del suite comprueba que cada filtro declarado casa con un caso o una clase real.
+
+### 🛡️ La guardia de las declaraciones (9 casos)
+
+- **[`MutationDeclarationAudit`](file:///FileFlow.Tests/TestHelpers/MutationDeclarationAudit.cs)**: contesta tres preguntas sobre cada mutación declarada —¿el fragmento sigue existiendo las veces que se declara?, ¿el testigo casa con una prueba del suite?, ¿el id coincide con el nombre de su fichero?— comparando con los **terminadores normalizados** (las declaraciones usan `\n` y el producto está en CRLF) y contra el índice de pruebas existente ([`TestSuiteIndex`](file:///FileFlow.Tests/TestHelpers/TestSuiteIndex.cs)), más las **clases** de prueba: el `~` del filtro es coincidencia **parcial**, así que un testigo citado por el principio de un método de teoría es legítimo.
+- **[`MutationDeclarationGuardTests`](file:///FileFlow.Tests/Unit/App/MutationDeclarationGuardTests.cs)**: la auditoría sobre el repositorio real (una mutación declarada que ya no encaja **miente** sobre lo que el suite vigila) más siete casos sintéticos que demuestran que muerde (fragmento desaparecido, fragmento repetido, testigo inexistente, declaración sin testigo, id que no es el de su fichero, terminadores CRLF y la coincidencia parcial legítima).
+- **Mordió dos veces de verdad**: al estrenarse rechazó un testigo legítimo —exigía nombre exacto— y el caso que lo destapó quedó como prueba de la regla; y renombrando a mano el testigo de `indice-de-pruebas-ciego-al-cr` falla nombrando el filtro y explicando la consecuencia.
+
+### ✅ Evidencia (medida, no deducida)
+
+- **`-All`**: **5 de 5 MUERDE**, 0 supervivientes, código de salida 0, **~26 s por mutación** (dos compilaciones y tres corridas de test cada una). Cada veredicto con su cuenta: 1, 2 de 6, 2 de 2, 1 y 1 de 3 pruebas rojas, y el control verde en las cinco.
+- **Sonda inocua** (un comentario añadido, sin efecto): `SOBREVIVE`, código 1 con la nota «el testigo siguió en verde».
+- **Sonda obsoleta** (primera sustitución válida y segunda imposible): `RECHAZO`, código 2, y el hash del fichero **idéntico antes y después** —ni siquiera se aplicó la válida—.
+- **Diario sin cerrar** (fichero cambiado a mano y `session.json` con el hash prístino, simulando un proceso matado): detectado al arrancar, restaurado desde el diario, recompilado, verificado y diario borrado.
+
+### 📌 Notas para la siguiente sesión
+
+- **La regla de oro, escrita en el propio script**: recompilar después de restaurar. Cualquier andamiaje futuro que toque fuentes y mida binarios tiene el mismo agujero, y este es el precedente.
+- **Lo que el andamiaje no mide**: mutaciones de comportamiento emergente (varias piezas que solo fallan juntas). Una mutación es una sustitución declarada; para lo demás sigue haciendo falta una prueba de integración.
+- **Las declaraciones crecen con el producto**: cada comportamiento que importe y no tenga mutación es trabajo pendiente, y el coste de añadirla es una entrada de JSON y comprobar que muerde.
+
+---
+
+## [2026-09-23] - La Enumeración de Carpetas, en el Contrato del Almacenamiento: el Limpiador ya Limpia en una Ejecución Virtual (Hito 195)
+
+### 🎯 Objetivo
+
+Cerrar el hueco que el **hito 192** dejó escrito y sin decidir: *«el recorrido del limpiador sigue siendo físico (el contrato del almacenamiento no enumera directorios) — en una ejecución virtual solo el borrado pasaría por el contrato; si el VFS tiene que soportarlo, la pieza que falta es la enumeración»*. Ya está soportado: **la enumeración es parte del contrato del almacenamiento**, así que el limpiador de carpetas vacías funciona de verdad dentro de una ejecución virtual, con **prueba de extremo a extremo** que lo afirma sobre el almacén y no sobre una descripción.
+
+### 🐞 El defecto que se estaba tapando
+
+El nodo respondía **«no hay nada que limpiar»** sobre un árbol que existía en su propio almacén. La causa es la mezcla de dos mundos: el **borrado** ya pasaba por el contrato (`context.GetStorage().DeleteAsync(...)`, la cura del 192), pero el **recorrido** miraba el disco del anfitrión (`Directory.Enumerate*`, `Directory.Exists`). En una ejecución virtual las carpetas viven en el almacén en memoria y en el disco del anfitrión no existen, así que la carpeta objetivo «no existía», el nodo salía por `Out` sin borrar nada y **el flujo terminaba en verde**: el peor desenlace posible —un nodo que miente sin que nada lo delate—. Ninguna prueba lo veía porque las que había ejecutan el nodo **contra el disco**.
+
+### 🛠️ Qué se cambió
+
+- **[`IStorageService`](file:///FileFlow.Sdk/Storage/IStorageService.cs)** gana las dos preguntas que faltaban, **con implementación por defecto sobre el disco** para que añadirlas no rompa a ninguna implementación existente: `EnumerateDirectoriesAsync` (subcarpetas inmediatas, sin recursión, en **orden determinista**, carpeta inexistente → lista vacía en vez de excepción) y `EnumerateFileSystemEntriesAsync` (todo el contenido inmediato, archivos y carpetas). La segunda existe para que «¿está vacía esta carpeta?» lo conteste **el almacén** y no el nodo: quien decide qué es contenido es el almacén.
+- **[`IVirtualFileSystemStore`](file:///FileFlow.Sdk/VirtualFileSystem/IVirtualFileSystemStore.cs)** gana `GetChildDirectories`, `GetChildFiles` (solo contenido **activo**: un archivo borrado o reciclado ya no es contenido, y por eso su carpeta puede quedar vacía sin que nadie la borre) y `DeleteDirectory`. **No se resolvió contando prefijos en el llamante**: el almacén guarda carpetas que pueden ser hermanas con prefijo común (`a` y `ab`), y comparar prefijos convertiría a una en hija de la otra; con `GetAllDirectories` cada nodo habría tenido que conocer cómo se normalizan las rutas del VFS. `DeleteDirectory` devuelve `false` si la carpeta no existe o si le quedan **archivos activos** dentro: en el almacén borrar una carpeta no implica borrar su contenido —los archivos tienen su propio ciclo de vida—, así que decirlo con un `false` es mejor que vaciarla en silencio.
+- **[`VirtualStorageService`](file:///FileFlow.Sdk/Storage/VirtualStorageService.cs)** (46 líneas nuevas): la enumeración sale del almacén virtual, y `DeleteAsync` **distingue archivo de carpeta** —hasta ahora solo miraba si la ruta era un archivo, así que borrar una carpeta virtual respondía «no encontrado» sobre una carpeta que existe— y responde con el **motivo** cuando no puede (`Virtual directory could not be removed (not empty?)`) en vez de un «no encontrado» genérico.
+- **[`NullStorageService`](file:///FileFlow.Sdk/Storage/NullStorageService.cs)** devuelve vacío (no hay almacén que enumerar) y **[`FailingStorageService`](file:///FileFlow.Tests/TestHelpers/FailingStorageService.cs)** delega la enumeración en el almacén físico, para que el doble del hito 192 siga cumpliendo el contrato entero: **solo falla el borrado**, que es su razón de existir.
+- **[`EmptyDirectoryCleanerNode`](file:///FileFlow.Plugin.FileSystem/Nodes/Actions/EmptyDirectoryCleanerNode.cs)** (54 líneas): las **tres** preguntas del nodo —¿existe la carpeta?, ¿qué cuelga de ella?, ¿está vacía?— y el borrado pasan por el **mismo** almacén del contexto, resuelto **una vez** (`context.GetStorage()`): resolverlo en cada nivel del árbol construiría un servicio nuevo por carpeta en una ejecución virtual. Las rutas se manejan con **`CrossPlatformPath`** y no con `Path`: el almacén guarda rutas de Windows y de Unix —las del sistema en que se creó la ejecución virtual— y el separador del anfitrión parte un nombre de archivo por la mitad.
+
+### ✅ Pruebas
+
+- **[`StorageServiceTests`](file:///FileFlow.Tests/Unit/Core/StorageServiceTests.cs) (+2)**: la enumeración **física** (solo contenido inmediato —la carpeta anidada pertenece a otra carpeta—, orden determinista *como parte del contrato*, carpeta inexistente → vacío) y la **virtual**, que es la que hace posible el recorrido dentro de una ejecución virtual: los hijos salen del almacén, el **trampa de prefijos** queda fijada (`a` y `ab` son hermanas), una carpeta con archivos activos **no** se puede borrar y **sí** en cuanto se borra su archivo —la secuencia que ejecuta el limpiador—.
+- **[`VirtualEmptyFolderCleanupIntegrationTests`](file:///FileFlow.Tests/Integration/VirtualEmptyFolderCleanupIntegrationTests.cs) (1, motor real)**: un origen **sintético** deja un árbol de carpetas con archivos dentro, un nodo los mueve a su destino y el limpiador retira del **almacén virtual** las carpetas que quedaron vacías. Afirma el **estado del almacén** (los archivos están en el destino; las cuatro carpetas vaciadas ya no están; **`C:\Muestras` sigue ahí**, porque limpiar no es arrasar), que los tres nodos llegaron a `Completed`, que la ejecución se activó en modo **virtual** sola (es la condición del caso: sin ella lo que se prueba es el disco) y que el **diario de ejecución** anota los cuatro borrados permanentes, de dentro hacia fuera.
+- **Mutaciones (2, las dos mordidas)**: **M1** el recorrido del nodo vuelve a `Directory.Enumerate*`/`Directory.Exists` → falla el caso de extremo a extremo (es exactamente el defecto que se venía a curar); **M2** el borrado virtual vuelve a ver solo archivos → fallan el caso de extremo a extremo **y** el del contrato virtual. Árbol restaurado y comprobado con `diff`.
+
+### ⚠️ Una trampa del andamiaje de mutaciones, medida (y una incidencia sin atribuir)
+
+Una corrida completa falló **dos** pruebas de este hito y a la siguiente pasaron: los **binarios eran del mutante**. El script de mutación restaura las fuentes al terminar (`cp` desde la copia) pero **no recompila**, así que una corrida posterior con `--no-build` mide el mutante y no el árbol restaurado —los dos fallos coincidían exactamente con M2—. Reconstruido, los 25 casos afectados pasan **3 de 3** y la suite completa queda en verde: **regla para el próximo script, recompilar después de restaurar**. Queda dicho y sin atribuir que **una** corrida intermedia (esta vez con árbol limpio) falló **una** prueba que las siguientes pasaron; no se pudo nombrar por no haberse capturado el log del fallo, y la corrida definitiva con log completo salió limpia.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1659 superadas + 1 omitida de 1660 en 1 m 20 s** (antes 1656 + 1 de 1657; **+3 pruebas**), build **0/0**.
+- Los 25 casos de almacenamiento y limpiador virtual: **3 corridas verdes consecutivas** tras reconstruir.
+
+### 📌 Notas para la siguiente sesión
+
+- El limpiador ya no tiene ninguna mitad fuera del contrato: **enumerar, preguntar y borrar miran el mismo sitio**. Si aparece otro nodo que recorra un árbol (`Directory.Enumerate*` aparece todavía en algún nodo del producto), la pregunta ya está en el contrato y no hay que inventarla.
+- Lo que el contrato **no** ofrece, y conviene saber: enumeración **recursiva** (el nodo la construye subiendo por niveles, que es además el orden que necesita para borrar de dentro hacia fuera) y enumeración de **metadatos** (tamaño, fecha) como lista —`GetChildFiles` los trae, pero solo el almacén virtual; el contrato expone rutas—. **`PhysicalStorageService` no borra carpetas que tengan contenido**, igual que el virtual: el contrato borra una cosa concreta, no un árbol.
+
+---
+
+## [2026-09-23] - Las Notas de Versión del Tramo de Ejecución, para quien usa el Producto (Hito 194)
+
+### 🎯 Objetivo
+
+Que el tramo 188–190 —el que arregló el flujo que se cortaba en silencio— tenga su lectura para quien **usa** la aplicación: **qué flujos que antes se cortaban ahora llegan al final** y **qué errores dejan de ser invisibles**, separado de lo que sostiene que eso no se rompa. Es el mismo encargo del hito 187 (que dejó escritas las notas del tramo 169–186) aplicado al tramo siguiente: las notas son **de tramo, no de hito**, y se amplían al cerrar el bloque visible siguiente.
+
+### 🛠️ Qué hay en [`docs/notas_de_version.md`](file:///docs/notas_de_version.md)
+
+- **La cabecera cubre ya dos tramos** —el del rediseño visual (4743 → 5018, apartados 1 a 3) y **el de la ejecución de flujos** (apartado 4)—, con el rango de compilación de la entrega (5129) y el anuncio de que el tramo que sigue (191–193: cómo se resuelven los puertos de un flujo al abrirlo, y la infraestructura de pruebas que vigila todo lo anterior) tendrá su apartado al cerrarse.
+- **Lo que ves**: el flujo reportado que terminaba **en verde después del segundo nodo** y ahora **recorre los cuatro** (el nodo que desempaquetaba dibujaba su salida con el nombre `Out` y emitía por otro: el motor no encontraba el cable y daba cada archivo por terminado); la tabla de los **tres nodos** con salidas que existían sin ser visibles —el error del desempaquetador, el del insertador en base de datos (un fallo de escritura se perdía sin rastro) y el error y las omisiones del renombrador (los archivos fallidos y omitidos desaparecían)—, hoy **puertos visibles y conectables**; el **aviso de consola** cuando un nodo emite por un puerto que no declara, con el nodo y el nombre exacto, **una vez por nodo, puerto y ejecución**; el **renombrado por lotes** que ya no cae en la plantilla por omisión del nodo; y el detalle práctico de los **puntos de interrupción** (en **Depurar** el flujo se detiene en ellos esperando «Continuar»: es lo esperado, no un corte).
+- **Lo que no se ve**: las 24 pruebas que ejecutan el **motor real** y por qué *el puerto por el que llega el archivo es, en sí mismo, la afirmación*; la guardia del código que juzga **69 clases** y aplaza **3**; el inventario de ramas (**23 nodos, 24 pares, 25 entradas**: 23 ejecutadas y 2 declaradas imposibles de forzar con una entrada, con el motivo escrito); la prueba de extremo a extremo del flujo del parte; y las cifras del tramo (**1580 → 1598 → 1626** superadas, frente a las 1577 del tramo anterior).
+- **Lo que sigue viéndose así**: una rama sin conectar termina el recorrido del archivo ahí —es lo que es un desvío, y ahora se ve y se puede llevar a un informe, un registro o una cuarentena—; el aviso de puerto no declarado es una línea, **no un fallo** (la ejecución sigue en verde, porque el motor no puede saber si un puerto ausente del grafo es un nodo que legítimamente terminó ahí); y la auditoría por código es **heurística** (nombres literales), así que una emisión calculada en ejecución sólo la ve el aviso del motor.
+
+### ✍️ Lo que se corrigió al escribirlo
+
+- La primera redacción decía que el tramo siguiente «no cambia ninguno de los comportamientos que describen estos apartados». Se sustituyó por un **anuncio sin medias tintas** —«cómo se resuelven los puertos de un flujo al abrirlo, y la infraestructura de pruebas que vigila todo lo anterior»—: una nota de versión que promete que no hay más cambios **oculta** el arreglo del hito 191 (un flujo con la frontera de un subflujo renombrada dejaba de abrirse) en lugar de contarlo cuando llegue su turno.
+- **Las cifras y los síntomas se copiaron de este registro, no de la memoria**: los nodos que llegaban a `Completed` eran **dos** en el parte y son **cuatro** tras la cura, el archivo reempaquetado lleva dentro la página optimizada (`pagina01.webp`), la guardia estática juzga 69 clases y aplaza 3, y el inventario del 190 cuenta 23/24/25. La cifra de partida (1577) es la que el hito 187 dejó publicada.
+
+### ✅ Validación
+
+- **Sin cambios de código**: `dotnet test` completo → **1656 superadas + 1 omitida de 1657 en 1 m 11 s**, sobre el mismo árbol de código que el hito 193 (este hito sólo escribe documentación).
+- **Se comprobó que ninguna prueba lee las notas de versión** (`grep` sobre el suite): el documento no puede mover el resultado de la suite, y es la suite la que certifica las cifras que el documento cita.
+
+### 📌 Notas para la siguiente sesión
+
+- El fichero tiene ya **dos tramos con la misma estructura** («lo que ves» / «lo que no se ve» / «lo que sigue viéndose así»): el próximo apartado se añade igual, en la misma versión mientras no cambie, y **las cifras salen de este registro**.
+- Lo que las notas **no** llevan, a propósito: rutas de fichero, nombres de clase y detalle de implementación. Eso vive aquí y en `architecture.md`.
+
+---
+
+## [2026-09-23] - El Censo de Puertos, Legible: el Índice de Pruebas era Ciego en 158 Ficheros (Hito 193)
+
+### 🎯 Objetivo
+
+Generalizar el **inventario de ramas** a **todos los puertos** del producto —los del **camino feliz** incluidos—, de forma que un nodo cuyo puerto principal no ejecute ninguna prueba se detecte igual que una rama sin cubrir. La mitad que nadie miraba hasta el 190 eran las ramas (`Error`, `Skipped`, `Failed`), que se esconden de la vista; la otra mitad es el camino feliz, donde el hueco se ve menos todavía: un nodo que se arrastra al lienzo, se cablea y se ejecuta sin que nada haya recorrido nunca su salida.
+
+### 📋 El censo: 154 asientos, tres grados, todos comprobables
+
+- [`NodePortInventory`](file:///FileFlow.Tests/TestHelpers/NodePortInventory.cs): **154 asientos sobre 69 nodos** —**41 de rama** y **113 del camino feliz**—, cada uno con el nombre de la prueba que lo cubre y el grado en que lo cubre: **138 `ByNamedTest`** (un caso que habla del nodo y **cita el puerto** como literal: la forma que tiene una prueba de decir por dónde sale el ítem), **11 `ByExecutingTest`** (casos que ejecutan el nodo pero ninguno nombra el puerto) y **5 `WithoutExecution`** (nadie ejecuta el nodo: se declara **con el motivo**, y el motivo tiene que explicar qué haría falta).
+- [`PortWitnessIndex`](file:///FileFlow.Tests/TestHelpers/PortWitnessIndex.cs) contesta las tres preguntas sobre el **texto** del suite —quién lo ejecuta, quién nombra este puerto, qué casos hablan del nodo—, y [`NodePortCoverageGuardTests`](file:///FileFlow.Tests/Unit/App/NodePortCoverageGuardTests.cs) convierte en fallo cualquier desacuerdo: un puerto que el árbol declara y el censo ignora, un asiento que apunta a un puerto que ya no existe, un testigo que no existe, no habla del nodo o **no nombra el puerto que dice cubrir**, y un grado que el suite ya desmintió.
+- **Un nodo nuevo con el puerto principal sin prueba rompe el suite dos veces**: primero por el puerto no declarado, y después por el presupuesto de huecos (la lista de nodos sin nadie que los ejecute está anclada a mano, con sus puertos contados). El mensaje distingue las dos mitades: la rama sin cubrir se lee como el agujero que dejó pasar el Fan-Out del 188, y el puerto del camino feliz, como un nodo que nadie ha puesto a trabajar.
+- **Cifras del censo, leídas del árbol real**: la auditoría completa tarda **242 ms** y pasa sin una sola infracción.
+
+### 🐞 Defecto 1 — el analizador tardaba 103 s en un solo fichero de 19 KB
+
+La primera redacción de la búsqueda de declaraciones era una expresión regular —`(?:\s*\[[^\]\r\n]*\]\s*)+public\s+…`—: los `\s*` a los dos lados de una repetición hacen que un tramo de espacios se pueda repartir de infinitas maneras entre las repeticiones, y el motor prueba todas antes de fallar. Sobre [`ParameterValueConverterTests.cs`](file:///FileFlow.Tests/Unit/Sdk/ParameterValueConverterTests.cs) tardaba **103 395 ms**, así que el censo entero se iba a **1 m 46 s** y la guardia dejó de poder ejecutarse. Cura: un escáner **lineal** escrito a mano (`Declarations`, `AttributesBefore`, `MatchingBracketBackwards`), con `Blocks` de ~**103,5 s a 55 ms** (1 880 veces más rápido) y sin cambiar lo que ve.
+
+### 🐞 Defecto 2 — 158 de los 227 ficheros se quedaban sin leer, y nada avisó
+
+Al comparar el escáner nuevo con la expresión vieja aparecieron ficheros donde el nuevo no veía **ningún** caso. La causa no era el escáner sino el ayudante compartido: [`SourceText.WithoutComments`](file:///FileFlow.Tests/TestHelpers/SourceText.cs) se llevaba el **terminador de línea** de toda línea que acabase en comentario (y todos los saltos internos de un comentario de bloque), de modo que la línea comentada se **fundía con la de abajo** —`    [InlineData("Out", 1)]   // nota\r\n    public void A()` llegaba como una sola línea— y un analizador que atribuye un atributo a su método leyendo **la línea anterior** se quedaba ciego. En los ficheros míos (LF y sin comentarios al final) funcionaba; en los **158 en CRLF con comentarios al final** no. Dos mitades del mismo fallo silencioso: el ayudante se comía el salto, y el retroceso del escáner no reconocía el `\r` que cierra la línea anterior del atributo. Cura: el terminador se conserva, los saltos de dentro de un bloque cuentan como líneas, el `\r` entra en el retroceso —y de paso se dejó de comerse el carácter siguiente al `*/`, el error que ya costó una guardia en el hito 165—.
+
+### ✅ Cómo se comprobó que el escáner nuevo ve lo mismo: paridad sobre los 227 ficheros
+
+No bastaba con que el censo pasara: un analizador que ve **menos** deja a las guardias pasando en verde sin haber mirado nada. Se compararon las declaraciones de las dos implementaciones, fichero por fichero: **0 regresiones** y **3 declaraciones que solo ve el escáner nuevo**, las tres **teorías reales** cuyo `[InlineData]` lleva corchetes dentro (`new[] { … }`, `new string[0]`, `[]`) y que la expresión regular no podía atravesar —[`Analyzer_ShouldRequireVisualSnapshots_ForEveryWayOfTouchingTheSession`](file:///FileFlow.Tests/Unit/App/TestCollectionContractGuardTests.cs), [`ParseExtensionFilter_ShouldParseCorrectly`](file:///FileFlow.Tests/Unit/Plugins/FolderSourceNodeTests.cs) y [`Analyzer_ShouldFlagADynamicPortNodeThatNeverAnnouncesItsTopology`](file:///FileFlow.Tests/Unit/Plugins/NodeArchitectureGuardTests.cs)—. El índice pasa de 1 375 a **1 381** métodos de prueba leídos de los 227 ficheros del suite.
+
+### 🧪 El índice, con guardia propia
+
+[`TestSuiteIndexTests`](file:///FileFlow.Tests/Unit/App/TestSuiteIndexTests.cs) (6 casos), porque sus dos fallos posibles son silenciosos y **ya han ocurrido los dos**:
+
+| Caso | Qué fija |
+| :--- | :--- |
+| un caso se lee con sus atributos y su cuerpo | un método público sin atributo de prueba no es un caso |
+| un atributo con corchetes dentro sigue siendo un atributo | la clase de atributo que la expresión vieja no atravesaba |
+| una línea en blanco entre el atributo y el método no rompe el caso | en C# una línea vacía no separa un atributo de su declaración |
+| el caso lleva la tabla de datos que **cita**, y no la del vecino | es lo que permite que un caso con parámetros cite el nodo y el puerto que afirma cubrir |
+| ningún fichero que declare un caso vuelve vacío | **la guardia contra la ceguera**: habría cazado al instante los dos fallos de arriba, en vez de descubrirlos mirando otra cosa |
+| leer el suite entero cuesta milisegundos | techo de 15 s con el margen de doscientas veces lo medido (**77 ms**): el fallo caro no fue ver mal, fue tardar |
+
+### 🔪 Mutaciones (3, las tres mordidas)
+
+1. **Fuera el `\r` del retroceso** → falla la guardia contra la ceguera: los ficheros en CRLF vuelven a venir vacíos.
+2. **El ramo viejo del comentario, restaurado palabra por palabra** → falla la prueba nueva del despojador (la línea del atributo se funde con la del método).
+3. **Fuera el asiento del puerto del camino feliz de `FolderSourceNode.Out` del censo** → falla el censo nombrando el puerto: un puerto principal sin prueba se detecta igual que una rama.
+
+Árbol restaurado y verificado con `diff` contra las copias.
+
+### ✅ Validación
+
+- `dotnet build`: **0 errores, 0 advertencias**.
+- `dotnet test` completo: **1656 superadas + 1 omitida de 1657 en 1 m 15 s**, con el censo de puertos ejecutándose en **242 ms** y el índice del suite en **77 ms**. La cifra es la del árbol final: la sonda temporal con la que se contó el censo (`PortCensusProbeTests`) se retiró al cerrar —un instrumento de medida no es una prueba y no tiene que quedarse—, y es la única diferencia frente a las 1657 superadas de la corrida intermedia.
+
+### 📌 Notas para la siguiente sesión
+
+- Los **huecos declarados** del censo son hoy dos nodos: `ForkJoinBarrierNode` (3 puertos) y `LocalOcrNode` (2). De los otros 67 nodos, cada puerto tiene al menos un caso que **lo ejecuta**: en **138** de los 154 asientos hay además uno que **cita el puerto** por su nombre, y los **11** restantes se declaran como lo que son —el nodo se ejecuta, ninguna prueba dice por dónde sale el ítem— en lugar de darse por cubiertos.
+- El índice lee **fuentes**, no reflexión: es la misma clase de análisis que el resto de las guardias —texto sobre el árbol— y no necesita cargar el ensamblado de pruebas desde sí mismo.
+- Lo que el texto **no** puede probar sigue dicho en `PortWitnessIndex`: que la llamada sea a *ese* nodo y que el puerto citado sea el que se recorre. Prueba que el caso habla del nodo y del puerto, que es bastante más que un nombre de método suelto.
+
+---
+
+## [2026-09-23] - Las Dos Ramas que Solo Fallan con el Entorno: el Fallo, Inyectado (Hito 192)
+
+### 🎯 Objetivo
+
+Cerrar los **dos únicos huecos que quedaban en el inventario de ramas** —`EmptyDirectoryCleanerNode.Error` y `OperationReportNode.Error`—, que el 190 declaró «no forzables por ninguna entrada de la configuración» y el 191 dejó como los únicos dos sin prueba. La salida estaba escrita en el propio inventario: no se puede **provocar** el fallo con una entrada, hay que **inyectarlo**.
+
+### 🔧 Un almacenamiento que falla y un contexto con la costura
+
+- **[`FailingStorageService`](file:///FileFlow.Tests/TestHelpers/FailingStorageService.cs) (nuevo)**: el mismo contrato que el almacenamiento real con el **borrado averiado**, en dos modos que corresponden a dos verdades distintas: **`ReportsFailure`** (devuelve un resultado fallido, que es lo que hace el almacenamiento físico real: `PhysicalStorageService` captura la excepción y responde `StorageOperationResult.Failure`) y **`Throws`** (la avería que el contrato no cubre y el nodo tiene que tolerar igual). Averigua **solo el borrado** a propósito: averiguar todo probaría menos —no se sabría qué operación el nodo no supo tolerar— y registra las rutas cuyo borrado se pidió, que es lo que permite afirmar que el nodo **pidió** el borrado al contrato en vez de hacerlo por su cuenta.
+- **[`ProbeFlowContext`](file:///FileFlow.Tests/TestHelpers/ProbeFlowContext.cs) (nuevo)**: contexto de prueba con **el almacenamiento inyectable** y registro de puertos, bitácora, diario y acciones planificadas, más el disparador de cancelación (`CancelledPort`). No sustituye al andamiaje del motor del 190 —que existe para otra pregunta: *si el motor entrega el ítem* cuando el nodo emite por esa rama—: aquí el nodo se ejecuta solo y lo que se afirma es *por qué puerto sale cuando su almacenamiento no responde*. El nombre del puerto lo ata al árbol la guardia estática.
+
+### 🐞 Los dos defectos que aparecieron al darles contrato
+
+1. **El limpiador borraba por su cuenta.** Era el único nodo que borra sin pasar por el contrato del almacenamiento: usaba `Directory.Delete` directamente, cuando sus hermanos (`SafeRecycleDeleteNode`, `IntermediateCleanupNode`) leen el resultado de `DeleteAsync`. La consecuencia no es cosmética: el fallo del borrado llegaba como excepción y no como resultado —el contrato del almacenamiento **devuelve** el fallo—, así que no se podía atribuir ni inyectar, y en una ejecución virtual el borrado habría sido físico. Cura: `context.GetStorage().DeleteAsync(rootDir, permanent: true, ct)` y, si el resultado no es exitoso, `throw new IOException(result.ErrorMessage…)` para que la rama de error existente lo recoja —el mismo patrón, palabra por palabra, que su hermano—. El resto del comportamiento es el mismo: `NullStorageService` y `PhysicalStorageService` hacen el `Directory.Delete(path, true)` de antes, y el modo simulación sigue registrando **su** acción planificada (con el nombre del nodo, no del servicio).
+2. **El informe convertía una cancelación en un ítem de error.** Su `catch` era `catch (Exception ex)` a secas, sin el filtro `when (ex is not OperationCanceledException)` que usan el resto de los nodos y el propio motor: una ejecución cancelada por el usuario producía un ítem saliendo por el puerto `Error` de un informe que no falló. Cura: el filtro, con la razón escrita al lado; la cancelación se propaga y el motor la trata como cancelación.
+
+### 🔧 El disparador del informe: el volcado, no el disco
+
+El informe **no toca el almacenamiento**: se genera en memoria y viaja dentro del ítem (`VirtualContent`), y quien lo escribe en disco es el nodo de destino. Lo único que puede fallar mientras el nodo trabaja es **su propio volcado**, así que el fallo inyectado es un **registro que no se puede serializar** —una referencia circular en los metadatos del ítem— con formato JSON: medido, el volcado revienta con `A possible object cycle was detected… Path: $.Items.Metadata`. Es la misma clase de fallo que el resto del motor ya supone imposible de descartar (el contexto serializa los metadatos con `try/catch` al escribir la bitácora), solo que aquí decide por qué puerto sale el ítem.
+
+### 🧪 Las pruebas ([`InjectedFailureBranchTests`](file:///FileFlow.Tests/Unit/Plugins/InjectedFailureBranchTests.cs), 5 casos)
+
+| Caso | Qué fija |
+| :--- | :--- |
+| limpiador, borrado que **responde fallo** | sale por `Error`; la carpeta **sigue ahí**; el diario **no** apunta un borrado que no ocurrió; la ruta averiada es la que el nodo pidió borrar |
+| limpiador, borrado que **revienta** | lo mismo: la avería no prevista en el contrato camina por la misma rama |
+| limpiador, **control negativo** (almacenamiento sano) | borra y sale por `Out`: es lo que convierte lo anterior en una prueba sobre el fallo y no sobre el nodo |
+| informe, **volcado imposible** | sale por `Error`, con el fallo en el registro del ítem y en la bitácora |
+| informe, **emisión cancelada** | la cancelación **se propaga** y no sale ningún ítem: la rama es para un informe que falló, no para una ejecución detenida |
+
+### 🛡️ La guardia: el inventario ya no tiene huecos
+
+Las dos entradas del inventario pasan de `NotForcibleByInput` a **`ByExecution`**, citando el método de prueba que las ejecuta (y [`TestSuiteIndex`](file:///FileFlow.Tests/TestHelpers/TestSuiteIndex.cs) comprueba que existe). La guardia tenía una aserción que exigía **al menos un hueco declarado** («declarar un hueco en vez de taparlo es parte del trato»): con los dos cerrados ya no hay ninguno, así que esa línea se sustituye por un anclaje a las **dos ramas que acaban de cerrarse**, para que no vuelvan a declararse no forzables por costumbre. El estado «sin prueba, con motivo» sigue existiendo como válvula y el auditor lo prueba con su caso sintético, así que la política no se pierde por no tener clientes hoy.
+
+### ✅ Mutaciones (2, las dos mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | el limpiador vuelve a `Directory.Delete` por su cuenta | los **dos** casos de la avería fallan, y el **control negativo** sigue verde: el mutante rompe exactamente lo que las dos pruebas nuevas añaden |
+| M2 | fuera el filtro de `OperationCanceledException` del informe | falla el caso de la cancelación |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1642 superadas + 1 omitida de 1643 en 1 m 14 s** (antes 1637 + 1; **+5 pruebas**), build **0/0**. Árbol restaurado y comprobado (`diff` contra las copias) tras cada mutación.
+
+### 📌 Notas para la siguiente sesión
+
+- **El inventario no tiene ya ninguna entrada `NotForcibleByInput`.** Si una rama futura se declara como hueco, la guardia ya no exige que exista uno; el auditor sigue exigiendo que su motivo explique *por qué* ninguna entrada la alcanza.
+- **El recorrido del limpiador sigue siendo físico** (`Directory.Enumerate*`): el contrato del almacenamiento no enumera directorios, así que en una ejecución virtual este nodo recorre el disco y solo el borrado pasaría por el contrato. Si algún día el sistema de archivos virtual tiene que soportarlo, la pieza que falta es la enumeración, no el borrado.
+- **El informe no persiste nada por el almacenamiento** (lo hace el nodo de destino). Si el informe debiera escribirse desde el propio nodo, esa decisión de producto le daría además un fallo con forma de almacenamiento; hoy su avería inyectada es el volcado.
+
+---
+
+## [2026-09-23] - Los Puertos Calculados, Juzgados en Ejecución: el Validador no los Materializaba (Hito 191)
+
+### 🎯 Objetivo
+
+Meter en el inventario de ramas a los tres nodos que la auditoría de puertos **aplaza** —`SwitchCaseNode`, `SubflowInputNode` y `SubflowNode`— resolviendo sus puertos declarados **en ejecución** en vez de leyéndolos del texto, y declarar lo que se encuentre con prueba o con motivo. Un aplazamiento sin prueba es un punto ciego con buena reputación: el 190 dejó dichos los 23 pares nodo·puerto que sí se juzgan, y estos tres quedaban fuera por la puerta de atrás.
+
+### 🔧 La resolución en ejecución ([`DynamicPortResolver`](file:///FileFlow.Tests/TestHelpers/DynamicPortResolver.cs), nuevo)
+
+Instancia el nodo, le vuelca una configuración representativa y le pide su topología con el **mismo materializador** que usan el cargador de un flujo, el portapapeles y el diagnóstico previo ([`DynamicPortMaterializer`](file:///FileFlow.Core/Engine/DynamicPortMaterializer.cs)). Lo que devuelve es lo que el motor va a ver, no una aproximación. Cada nodo tiene su **forma** declarada, con el motivo del aplazamiento y **las pruebas que lo ejecutan**:
+
+| Nodo | Puertos que declara al materializarlo | Pruebas que lo ejecutan |
+| :--- | :--- | :--- |
+| `SwitchCaseNode` | `Case 1`, `Case 2`, `Default` (de su `CasesJson`) | ruta por el caso que coincide y por `Default` cuando ninguno coincide |
+| `SubflowInputNode` | `Entrada`, `Alterna` (de su `PortNames`) | emite por el primero cuando el ítem entró por `In`, que ya no es un puerto suyo |
+| `SubflowNode` | `In`, `Done` (de la frontera de su subgrafo incrustado) | frontera renombrada: el interior sale por `Done` y el contenedor lo entrega por ahí |
+
+**Lo que se encuentra es que ninguno de los tres declara una rama** (`Error`, `Skipped`, `Failed`): sus puertos calculados son de enrutado (casos, `Default`) y de frontera. Eso deja de ser una suposición: la guardia resuelve sus puertos y **falla si alguno declara una rama que el inventario no declare**, con prueba sintética que lo demuestra.
+
+### 🐞 El defecto que apareció al ejecutarlos: el validador no veía los puertos calculados
+
+`GraphValidator` instanciaba los nodos, les volcaba los parámetros… y **nunca materializaba su topología**. Para un nodo cuyos puertos se calculan al leerse (el switch, los nodos frontera) da igual, porque no hay nada que materializar. Para el **contenedor de subflujo** no: sus puertos viven en una lista interna que sólo llena `SubflowPortResolver.Materialize`, así que el validador comparaba las aristas contra los genéricos `In`/`Out` y **rechazaba el flujo**: `Source node 'X' (nodo) does not have output port 'Done'` — sobre un cable que el usuario dibujó con el lienzo, porque el cargador del flujo **sí** materializa. El flujo no arrancaba y el mensaje señalaba al usuario.
+
+La cura es una línea en el validador, y la razón está escrita al lado: es la **cuarta** vez que alguien hace la misma pregunta —«¿qué puertos expone esta instancia recién configurada?»— y las cuatro tienen que contestarla igual (cargador de flujo, portapapeles, diagnóstico previo y validador). Medido antes y después: sin la línea, **2 pruebas fallan** (la de validación del contenedor y la de ejecución de extremo a extremo); con ella, el ítem recorre contenedor → subgrafo → frontera renombrada → espía.
+
+### 🧪 Las pruebas ([`ComputedPortContractIntegrationTests`](file:///FileFlow.Tests/Integration/ComputedPortContractIntegrationTests.cs), 4; [`GraphValidatorDynamicPortTests`](file:///FileFlow.Tests/Unit/Core/GraphValidatorDynamicPortTests.cs), 3)
+
+Las cuatro de ejecución usan el andamiaje del 190 con el motor real; cada una afirma **doble**: el puerto por el que llega el ítem está entre los que el nodo declara (resueltos en ejecución) **y** la arista sólo existe desde ese nombre. Las tres de validación fijan el defecto por separado, sin motor: switch, frontera configurada y contenedor.
+
+### 🛡️ Guardias y andamiaje
+
+- **El aplazamiento ya no puede ser una referencia muerta**: las formas citan pruebas y dos guardias distintas comprueban que existen (en el analizador de puertos y en el de cobertura).
+- **El índice de métodos de prueba tuvo que volverse preciso**: la primera redacción casaba cualquier `public void …`, así que el índice incluía `Dispose` y `ExecuteAsync` de los dobles y citar uno de esos nombres habría pasado por evidencia. Ahora exige atributos de prueba (`Fact`, `Theory`, `InlineData`, `MemberData`) delante del método.
+- **[`SourceTree`](file:///FileFlow.Tests/TestHelpers/SourceTree.cs) y [`TestSuiteIndex`](file:///FileFlow.Tests/TestHelpers/TestSuiteIndex.cs)** son el barrido y el índice compartidos; el andamiaje gana la colección **[`BranchPortHarness`](file:///FileFlow.Tests/Integration/BranchPortHarnessCollection.cs)**.
+- **El servicio de subflujos se inyecta por ítem** en el andamiaje en lugar de depender del estático global `ISubflowExecutionService.Instance`, que **cualquier otra ejecución del proceso reescribe al arrancar** (`WorkflowExecutor`, líneas 164 y 203-206). Comprobado con un servicio nulo: si la inyección no se usara, la prueba del contenedor no recibiría nada.
+
+### 🐞 El defecto que apareció en mi propio andamiaje, y cómo se vio
+
+La primera corrida de la tanda nueva **falló exactamente una prueba del 190** (`ARenamerWhoseFailStrategyFindsTheNameOccupied…`, la del `Fail`), y en aislamiento pasaba 3 de 3. La causa es la de siempre en este suite: el espía del andamiaje guarda lo recibido en un registro **estático**, y al añadir una segunda clase que lo comparte las dos corrieron en paralelo —una limpiaba la cola de la otra y cada una veía ítems de la vecina—. La cura es la colección `BranchPortHarness`, que **no es exclusiva** (estas pruebas no tocan estado global de proceso y pueden correr al lado del resto): sólo serializa a quien comparte el espía. 3 corridas consecutivas verdes después.
+
+### ✅ Mutaciones (4, las cuatro mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | el validador vuelve a mirar los puertos de fábrica | `GraphValidatorDynamicPortTests` (contenedor) **y** la prueba de ejecución del contenedor |
+| M2 | el switch declara un puerto `Error` | `TheNodesWithComputedPorts_ShouldNotHideABranchBehindARuntimePort`, nombrando `SwitchCaseNode.Error` |
+| M3 | se renombra una prueba citada por una forma | las dos guardias de evidencia (`EveryDeferredNode_ShouldNameTestsThatExist` y `EveryComputedPortShape_ShouldResolveItsPortsAndNameRealTests`) |
+| M4 | (sonda) el andamiaje inyecta un servicio de subflujos nulo | la prueba del contenedor deja de recibir el ítem: la inyección es la que se usa |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1637 superadas + 1 omitida de 1638 en 1 m 09 s** (antes 1626 + 1; **+11 pruebas**), build **0/0**. Tres corridas verdes consecutivas de la tanda nueva (57 pruebas) antes de la completa.
+- **Incidencia medida y no reproducida**: `SyntheticDataSourceNodeTests.SyntheticDataSourceNode_EmissionLatency_ShouldPaceEveryEmission` falló **una vez** en una corrida completa y pasó en las dos siguientes. Mide huecos reales entre emisiones con `Task.Delay(5)` y `Stopwatch` de alta resolución, así que su margen es la granularidad del temporizador del sistema bajo contención; no la toca ningún cambio de este hito.
+
+### 📌 Notas para la siguiente sesión
+
+- **El estático `ISubflowExecutionService.Instance` lo escribe cada ejecución** al arrancar, así que dos ejecuciones del motor en paralelo con **nodos contenedor** pueden cruzar sus cargadores (el andamiaje ya no depende de él; el producto sí). La cura natural es que el servicio sea del arranque y no del proceso —ya lo es para el subgrafo interior, que viaja en los metadatos del ítem— y merece su propia decisión.
+- La prueba de latencia del origen sintético pide, como las otras dos esperas del inventario del hito 175, o un reloj inyectable en el nodo o un margen explícito que reconozca la granularidad del temporizador.
+
+---
+
+## [2026-09-23] - Todas las Ramas del Producto, Contadas: el Inventario de Salidas de Error y de Omitido (Hito 190)
+
+### 🎯 Objetivo
+
+Cerrar las ramas que seguían sin contrato de ejecución tras el hito 189: el **desbordamiento de la estrategia `Fail`** del renombrador y los puertos `Error`/`Skipped`/`Failed` **del resto de los plugins**. Lo que había era una guardia estática que vigila los **nombres** de puerto (que se declare el que se emite) y seis ramas ejecutadas; el resto de la tabla —más de veinte ramas repartidas por nueve proyectos de plugin— no la recorría nadie, que es el sitio exacto donde el hito 188 encontró tres nodos cortando el flujo en silencio.
+
+### 📋 El inventario, para no volver a perder la lista ([`BranchPortInventory`](file:///FileFlow.Tests/TestHelpers/BranchPortInventory.cs))
+
+**23 nodos, 24 pares nodo·puerto** (el Fan-Out tiene dos casos distintos para su única rama `Error`), de los que **23 quedan ejecutados** por una prueba y **2 se declaran no forzables por ninguna entrada**, con su motivo escrito. La evidencia de cada rama cubierta es **el nombre de un método de prueba**, no una descripción: es lo que permite comprobar que sigue existiendo.
+
+### 🔎 El inventario mordió antes de estar terminado
+
+Al contrastarlo con el árbol, la guardia señaló **tres ramas que el `grep` inicial no había visto**: `DeduplicationFilterNode`, `MediaTranscoderNode` y `NetworkDownloadNode`. Las tres emiten por `WellKnownPorts.Error`, no por el literal `"Error"`, así que buscarlas por texto deja de encontrarlas: es justo el caso que el analizador de puertos **sí** resuelve (en el repositorio el nombre de la constante es el nombre del puerto). Sin la guardia, tres ramas del producto habrían quedado fuera de la lista para siempre.
+
+### 🧪 Las ramas, ejecutadas con el motor ([`BranchPortContractIntegrationTests`](file:///FileFlow.Tests/Integration/BranchPortContractIntegrationTests.cs), 24 pruebas)
+
+| Rama(s) | Cómo se dispara |
+| :--- | :--- |
+| Renamer · `Error` (**estrategia `Fail`**) | el destino ya está ocupado y la estrategia convierte la colisión en excepción: los **dos** archivos del lote salen por `Error` conservando su nombre, el diagnóstico (`Target file already exists`) viaja en el ítem y el archivo que ocupaba el nombre **no se toca** |
+| **12 nodos** · `Error` | la **entrada no existe en el disco**: `ArchiveCompressor`, `SmartUnpack`, `DestinationSink`, `FileRelocator`, `OriginalFileAction`, `SafeRecycleDelete`, `DocumentProcessor`, `HashCalculator`, `DeduplicationFilter`, `MediaTranscoder`, `ImageOptimizer` y `NetworkUpload`, cada uno con el nombre de su puerto feliz (`Out`, `Done`, `Deleted`…) en una sola teoría |
+| `NetworkUpload` + `NetworkDownload` · `Error` | un **protocolo sin estrategia**: la fábrica de transportes lanza antes de abrir ninguna conexión, así que la rama se prueba **sin red y sin servidor ajeno** |
+| `ArchiveFanIn` · `Error` | la carpeta de destino **cuelga de un fichero**, así que crear el directorio no puede funcionar: es el único fallo del empaquetado que se provoca sin depender del sistema de archivos anfitrión ni de sus permisos |
+| `CliExecution` · `Failed` | un **ejecutable que no existe en ningún sistema**: lanzarlo lanza y el nodo lo convierte en `Failed` (no se usa un comando que devuelva código de error, que dependería del intérprete del anfitrión) |
+| `Webhook` · `Failed` | una **URL sin esquema http(s)**: se descarta antes de abrir ninguna conexión |
+| Visión · `Error` (`ImageTypeClassifier`, `MultimodalVisionLlm`) | la imagen no existe, y esa comprobación ocurre **antes** de tocar ningún modelo: en [`AiVisionBranchPortIntegrationTests`](file:///FileFlow.Tests/Integration/AiVisionBranchPortIntegrationTests.cs), en la colección exclusiva `OnnxInference` porque el motor consulta la aceleración del nodo al terminarlo y eso lee los registros de sesiones del clúster |
+
+El andamiaje (origen de prueba, espía de dos entradas y ejecutor) vive ahora en [`BranchPortHarness`](file:///FileFlow.Tests/TestHelpers/BranchPortHarness.cs), compartido por las dos clases: dos copias del diagnóstico es dos sitios donde arreglarlo.
+
+### 🛡️ La guardia que impide que la lista caduque ([`BranchPortCoverageGuardTests`](file:///FileFlow.Tests/Unit/App/BranchPortCoverageGuardTests.cs), 8 pruebas)
+
+[`BranchPortInventory.Audit`](file:///FileFlow.Tests/TestHelpers/BranchPortInventory.cs) contesta cuatro preguntas y devuelve una infracción por cada desacuerdo: una rama que el árbol **emite** y el inventario **no declara**; una entrada cuyo puerto el árbol **ya no emite**; una evidencia que **nombra una prueba que no existe**; y un motivo que **no explica nada** (una frase, no una etiqueta). Más dos comprobaciones sobre el propio inventario: sin entradas repetidas y sin puertos que no sean de rama.
+
+La lógica se auto-testea con entradas sintéticas —seis pruebas— para que probar que la guardia muerde no exija dejar un nodo sin prueba en el árbol. Y [`SourceTree`](file:///FileFlow.Tests/TestHelpers/SourceTree.cs) centraliza el barrido de fuentes: sus predicados se evalúan sobre la **ruta absoluta**, porque filtrar `/FileFlow.Plugin.` sobre una ruta relativa al repositorio no encuentra nada y deja el barrido vacío —la primera redacción de esta guardia pasó en verde por no haber mirado, y el mensaje de la guardia lo cuenta—.
+
+### ✅ Mutaciones (3, las tres mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | se retira del inventario la rama `Error` del descargador | `NetworkDownloadNode emite por 'Error' y el inventario no lo declara…` |
+| M2 | se renombra una prueba citada por una entrada | `CliExecutionNode.Failed cita la prueba '…', que no existe en el suite` |
+| M3 | el transcodificador desvía su rama de entrada ausente a `Out` | el caso del nodo en la teoría, nombrando el puerto: esperaba `Branch` y llegó a `In` |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1626 superadas + 1 omitida de 1627 en 1 m 15 s** (antes 1598 + 1; **+28 pruebas**), build **0/0**.
+- Las mutaciones se probaron con el árbol restaurado después de cada una (y el `git status` comprobado: solo quedan los ficheros de este tramo).
+
+### 📌 Notas para la siguiente sesión
+
+- Las dos ramas declaradas **no forzables** son `EmptyDirectoryCleanerNode.Error` (solo una excepción de E/S al borrar: la carpeta que no existe sale por `Out`) y `OperationReportNode.Error` (solo si revienta la renderización del informe al completar el flujo; ni la plantilla con llaves sin cerrar ni el formato ni el tema lanzan). Cubrirlas exigiría inyectar el fallo, no provocarlo con una entrada.
+- Una rama nueva del producto **rompe el suite** hasta que se declare: es el trato, y es lo que hace que la lista no caduque.
+- Los puertos de categoría y de fin de flujo quedan fuera del inventario por diseño; si un nodo estrena un nombre nuevo de rama, se añade a `BranchPortInventory.BranchPortNames` y la guardia obliga a declararlo.
+
+---
+
+## [2026-09-23] - Las Ramas de Error y de Omitido, Bajo Contrato: Ejecutadas y Vigiladas (Hito 189)
+
+### 🎯 Objetivo
+
+Dar contrato a las salidas que no son el camino feliz de los tres nodos que emitían por puertos no declarados (hito 188): un error de descompresión, un nombre de tabla inseguro, un renombrado omitido o un origen que no existe. Esa era justo la mitad que faltaba por dos motivos: el aviso nuevo del motor cuenta el defecto **cuando la rama se ejecuta** —y el suite no recorría ninguna—, y las pruebas que había llamaban al nodo con un contexto simulado que **acepta el nombre de puerto que se le pida**, así que no podían verlo.
+
+### 🧪 Las ramas, ejecutadas de verdad ([`BranchPortContractIntegrationTests`](file:///FileFlow.Tests/Integration/BranchPortContractIntegrationTests.cs), 6 pruebas)
+
+Cada caso corre el motor con el cableado real: un **origen de prueba** que emite rutas concretas → el nodo del caso → un **espía** que declara dos entradas, `In` y `Branch`. Tender el camino feliz por una y la rama por la otra hace que **el nombre del puerto por el que llega el ítem sea, en sí mismo, la afirmación**.
+
+| Rama | Qué se ejecuta | Qué se afirma |
+| :--- | :--- | :--- |
+| Fan-Out · `Error` | un `.cbz` corrupto (no es un comprimido) | sale **una vez** por `Error`, con el ítem original y con el **diagnóstico de volúmenes** que deja esa rama (`RelatedVolumeFiles`, `IsMultipartArchive=false`) |
+| Fan-Out · `Error` | un `.cbz` sin ficheros dentro | sale por `Error` y **sin** ese diagnóstico: es otra rama de la misma salida, y la prueba distingue una de otra por su carga |
+| SqliteSink · `Error` | nombre de tabla inseguro (`AuditTrail; DROP TABLE Users; --`, `123_StartsWithDigit`) | el ítem sale por `Error` y **no queda base de datos en el disco**: el nombre se valida antes de abrir nada |
+| Renamer · `Skipped` | dos archivos cuyo destino ya existe, estrategia `Skip` | los **dos** salen por `Skipped`, conservando su nombre, y nada sale por el camino feliz |
+| Renamer · `Error` | un origen que no existe | sale por `Error` conservando su ruta original |
+
+### 🐞 El defecto que destapó la prueba del lote
+
+Al ejecutar el caso `Skipped` con **dos** archivos, uno se omitía y el otro se renombraba con `FF_BranchPort_…_20260923_dos.txt`: la **plantilla por omisión** del nodo, un nombre que nadie había configurado.
+
+Medido y localizado: `ResolveSteps` migra los parámetros legados (**lee `Pattern`, lo retira** y deja los pasos en `MethodSteps`), y el motor entrega los ítems de un lote **en paralelo sobre el mismo objeto**. El segundo ítem podía leer el `Pattern` ya retirado y los `MethodSteps` todavía sin escribir, y caía en la plantilla por omisión —en silencio—. La cura es resolver los pasos **una vez por instancia**, bajo cerrojo (`_resolvedSteps`), que además evita repetir la migración en cada ítem.
+
+### 🛡️ La guardia estática: la rama mal escrita se ve sin ejecutarla ([`NodeEmissionPortGuardTests`](file:///FileFlow.Tests/Unit/App/NodeEmissionPortGuardTests.cs), 12 pruebas)
+
+[`NodeEmissionPortAnalyzer`](file:///FileFlow.Tests/TestHelpers/NodeEmissionPortAnalyzer.cs) compara, clase por clase, los puertos **declarados** con los nombres **emitidos** —literales y constantes de `WellKnownPorts`, que se resuelven— y la guardia barre los 13 proyectos de plugins.
+
+- **La pertenencia se decide por la cadena de bases, no por la base directa**, y eso importa: los nodos de IA heredan de `AiFlowNodeBase`, que hereda de `FlowNodeBase`. La primera redacción miraba sólo la base directa y **pasaba en verde con toda esa familia invisible**; ahora la cobertura se afirma contra los propios nodos (todo fichero con `[NodeDefinition` tiene que estar juzgado o aplazado), no contra un número.
+- **Lo que no se puede juzgar se declara**: los tres nodos de puertos calculados (`SwitchCaseNode`, `SubflowInputNode`, `SubflowNode`) están en la guardia **uno por uno y con su motivo**; un cuarto la hace fallar. Y una clase que emite, parece un nodo y tiene una base que no se resuelve en el árbol se reporta como **punto ciego** —la comprobación que no se hizo, dicha en voz alta—.
+- **Los ayudantes que emiten no son nodos**: las estrategias de transporte (`INetworkTransportStrategy`) y los motores de script reciben un contexto y emiten en su nombre, sin declarar puertos. Señalarlos como punto ciego convertiría la guardia en ruido, y hay una prueba de fragmento que fija esa frontera.
+- **El analizador se auto-testea con fragmentos**: detecta el caso real (`Out` declarado, `ItemOut` emitido), acepta el segundo puerto cuando se declara, resuelve `WellKnownPorts.Out` en los dos lados, ve un puerto heredado de una base del mismo árbol, aplaza a quien calcula sus puertos y **no se cree un comentario** que explique el defecto.
+
+### ✅ Mutaciones (4, las cuatro mordidas)
+
+| # | Mutación | Quién muerde |
+| :--- | :--- | :--- |
+| M1 | el Fan-Out vuelve a emitir por `ItemOut` | guardia estática: `ArchiveFanOutNode … emite por 'ItemOut', que no declara. Declara: Error, Out.` |
+| M2 | el renombrador deja de declarar `Skipped` y `Error` | guardia estática (nombra los dos) **y** las dos pruebas de rama del renombrador, que dejan de recibir nada |
+| M3 | se revierte la resolución única de pasos | el caso `Skipped` falla **3 de 3** corridas (el segundo archivo vuelve a la plantilla por omisión) |
+| M4 | (hito 188) fuera el aviso del motor | las pruebas del aviso |
+
+### ✅ Validación
+
+- `dotnet test` completo → **1598 superadas + 1 omitida de 1599 en 1 m 15 s** (antes 1580 + 1; **+18 pruebas**), build **0/0**.
+- La guardia estática juzga **69 clases de nodo** y aplaza **3**, con el barrido cubriendo todos los ficheros que declaran un nodo.
+
+### 📌 Notas para la siguiente sesión
+
+- Las pruebas de rama viven **todas en una clase** porque el espía guarda lo recibido en un registro estático y las pruebas de una misma clase no corren en paralelo; separarlas en dos clases las haría pisarse.
+- Queda sin rama de prueba el **desbordamiento de la estrategia `Fail`** del renombrador (lanza `IOException` y sale por `Error`) y los caminos de error de los nodos que pasan por `Skipped`/`Error` de otros plugins. → **Cerrado en el hito 190**, que además lo convierte en inventario vigilado.
+- El analizador lee **nombres literales**; una emisión compuesta en tiempo de ejecución (un nombre de puerto venido de un parámetro) sólo la ve el aviso del motor.
+
+---
+
+## [2026-09-23] - El Flujo de Recompresión Llega al Final: el Nodo Fan-Out Emitía por un Puerto que no Declara (Hito 188)
+
+### 🎯 Objetivo
+
+Un flujo real del usuario —carpeta origen → **desempaquetar (Fan-Out)** → optimizador de imágenes → empaquetar (Fan-In)— **se cortaba después del segundo nodo**: en la consola sólo aparecían los logs del origen y del desempaquetador, los dos nodos siguientes no se ejecutaban **nunca** y la ejecución terminaba **en verde**, sin error y sin una sola línea que explicara nada. El encargo era investigarlo, con la sospecha de que los últimos cambios hubieran roto la ejecución de flujos.
+
+### 🔬 El mecanismo: un nombre de puerto que no existe (medido, no supuesto)
+
+- [`ArchiveFanOutNode`](file:///FileFlow.Plugin.Archives/ArchiveFanOutNode.cs) **declaraba** su salida como `Out` —es lo que dice el catálogo y lo que la interfaz dibuja— y **emitía** cada elemento extraído por `ItemOut`.
+- El motor busca el cable por nombre exacto: [`WorkflowItemDispatcher.DispatchEmitAsync`](file:///FileFlow.Core/Engine/WorkflowItemDispatcher.cs) indexa las aristas como `{nodo}:{puerto}` y, si no encuentra ninguna para ese nombre, **da el ítem por terminado** (`IncrementCompletedFiles`) como si fuera una hoja legítima del grafo. Un puerto mal escrito es indistinguible de «este nodo no tiene nada más que hacer»: ni error, ni aviso, ni nodo descendente.
+- La interfaz **no puede** dibujar el cable que faltaba: los cables salen de los puertos declarados, así que el flujo guardado referencia `Out` y la ejecución emite `ItemOut`. El defecto estaba en el nodo, y el grafo del usuario es correcto.
+
+### 🧪 Reproducido antes de tocar nada
+
+Con el grafo del usuario (misma topología, mismo cableado `Out→In`) y un `.cbz` de una página: los nodos que llegaron a ejecutarse fueron **`{origen, desempaquetar} = Completed`** y los logs terminan en «Desempaquetados 1 elementos … **Emitiendo a downstream**…», la frase que prometía lo que ya no ocurría. Es el síntoma exacto del parte, reproducido en el suite y no inferido leyendo código.
+
+### 🕰️ No lo rompieron los últimos cambios (`git log -S`)
+
+El nombre `ItemOut` viaja con el nodo desde el **commit que estrenó los plugins de archivos** (`4433a7f`), y el puerto declarado ya era `Out` en `419746c`: la discrepancia **nunca se corrigió** y la rama nunca funcionó. Lo que sí es de esta sesión es haberla *visto*: el hito 186 dejó la suite en verde y este flujo no tiene ninguna prueba que lo ejecute de verdad.
+
+### 📋 Auditoría: el mismo defecto en otros dos nodos
+
+Barridas las **44 clases de nodo** con emisiones (puertos declarados frente a nombres emitidos), el patrón apareció **tres veces**, siempre en una rama que el suite no recorre:
+
+| Nodo | Emitía sin declarar | Consecuencia |
+| :--- | :--- | :--- |
+| `ArchiveFanOutNode` | `Error` (y el `ItemOut` del camino feliz) | el flujo entero se cortaba en silencio |
+| `SqliteDatabaseSinkNode` | `Error` | un fallo de escritura en la base se perdía sin dejar rastro |
+| `AdvancedRenamerNode` | `Error`, `Skipped` | los archivos omitidos y los fallidos desaparecían |
+
+### 🛠️ La cura
+
+- **`ArchiveFanOutNode`**: emite por **`Out`** (su puerto declarado) y **declara `Error`**, el segundo puerto que ya usaban los nodos de su familia (`SmartUnpackNode`, `ArchiveFanInNode`).
+- **`SqliteDatabaseSinkNode`** declara `Error` y **`AdvancedRenamerNode`** declara `Skipped` y `Error`: los tres nombres que ya estaban emitiéndose pasan a ser puertos visibles y conectables.
+- **Catálogo regenerado** (`FILEFLOW_UPDATE_NODE_CATALOG=1`): tres líneas, exactamente los tres nodos tocados.
+
+### 🛡️ Lo que el motor ya no calla
+
+[`WorkflowItemDispatcher.WarnIfEmitPortIsNotDeclared`](file:///FileFlow.Core/Engine/WorkflowItemDispatcher.cs): cuando un nodo emite por un puerto que **no declara**, el motor deja un aviso en la consola con el nodo y el nombre exacto, **una vez por nodo y puerto y ejecución** (`ResetDiagnostics()` en cada arranque), en lugar de una vez por archivo. Sólo se juzga a los nodos que declaran algún puerto, y los puertos dinámicos (un `Switch`, un subflujo) se consultan ya materializados en la instancia, que es la que conoce sus nombres reales. Texto co-ubicado en `FileFlow.App/Resources/Strings{,.es}.resx` (`Log_UndeclaredOutputPort`).
+
+Es la mitad que evita el próximo caso: la auditoría estática sólo ve los nombres literales, mientras que el aviso del motor ve cualquier emisión, venga de un nodo del catálogo o de un plugin de terceros.
+
+### 🛡️ Por qué el suite no lo vio, y la prueba que lo vigila desde hoy
+
+- Las pruebas que ya existían de Fan-Out/Fan-In llaman al nodo con un **contexto simulado que acepta el nombre de puerto que se le pida** —[`ArchiveFanOutNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ArchiveFanOutNodeTests.cs) incluso afirmaba `Times.Never` sobre `ItemOut`, el nombre equivocado—, así que el defecto era **invisible por construcción**.
+- **Nueva prueba de integración** ([`ArchiveFanOutPipelineIntegrationTests`](file:///FileFlow.Tests/Integration/ArchiveFanOutPipelineIntegrationTests.cs)): ejecuta el flujo del usuario de extremo a extremo con el motor real —**los cuatro nodos llegan a `Completed`**, el `.cbz` reaparece en destino con el nombre original y **dentro está la página ya optimizada** (`pagina01.webp`)—. Los dos ficheros de pruebas unitarias del Fan-Out pasan a usar el puerto real.
+- **Nuevas pruebas del aviso** ([`UndeclaredOutputPortDiagnosticTests`](file:///FileFlow.Tests/Unit/Core/UndeclaredOutputPortDiagnosticTests.cs)): tres archivos por el mismo puerto mal escrito producen **un** aviso (y el ítem no llega al contador pese a existir el cable), y el control negativo —nodo que emite por el puerto que declara— no avisa y sí llega.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1580 superadas + 1 omitida de 1581 en 1 m 19 s** (antes 1577 + 1; **+3 pruebas**), build **0/0**.
+- **Mutaciones (3, las tres mordidas)**: (A) fuera el diagnóstico del motor → `UndeclaredOutputPortDiagnosticTests` falla («the collection is empty») y el control negativo sigue verde; (B) el Fan-Out vuelve a emitir por `ItemOut` → la prueba de integración falla **con el síntoma del parte** (`completedNodes` = `{origen, desempaquetar}`); (C) se retira el puerto `Error` de la declaración → `NodeCatalogGuardTests` detecta la deriva del catálogo.
+
+### 📌 Notas para la siguiente sesión
+
+- **Flujo del usuario**: `flujo recompresion comics.json` trae dos **puntos de interrupción** activos (optimizador y empaquetador). En **Depurar** el flujo se detendrá ahora en el optimizador esperando «Continuar» —es el comportamiento esperado, no un corte—; con **Ejecutar** llega al final. Conviene limpiarlos antes de volver a probar.
+- Las ramas de `Error` de los tres nodos y la de `Skipped` del renombrador **no tenían prueba de ejecución** cuando se cerró este hito; quedaron cubiertas en el **hito 189**, que además destapó una carrera en la migración de parámetros del renombrador.
+- La auditoría de nombres de puerto es **heurística** (nombres literales en el código); el aviso del motor es la cobertura real para el resto.
+
+---
+
+## [2026-09-23] - Las Notas de Versión del Tramo, para quien usa el Producto (Hito 187)
+
+### 🎯 Objetivo
+
+Que el tramo 169–186 —dieciocho hitos medidos en este registro— tenga una lectura para quien **usa** la aplicación y no para quien la construye: qué cambia al usarla, separado de lo que sostiene que eso no se rompa.
+
+### 🛠️ Qué hay
+
+- **`docs/notas_de_version.md`**: *lo que ves* (arranque, controles deshabilitados con su contraste antes y después, estados corregidos, lienzo y editor, y los avisos), *lo que no se ve* (servicio de latidos, reloj inyectable, capa de interacción bajo prueba, capturas de referencia, guardias y determinismo del suite), *lo que sigue viéndose así* (cuatro puntos conocidos con su causa declarada) y cómo verificarlo.
+- **Las cifras salen de este registro, no de la memoria**: 4743 → 5018, 1475 → 1577 pruebas, 29 → 37 capturas, y las tablas de contraste tal y como las mide la guardia.
+- **Cada pendiente se publica con su causa**: el indicador de pestaña necesita plantilla propia (`ControlTheme`, no un estilo), `F2` no lleva el foco a la caja, el tema claro no tiene referencia en el resto de paneles, y los dos presets de acento claro quedan en el mínimo de un control inactivo (3,36 y 3,58:1) porque subirlo borraría el color de la variante.
+- **Registrado en el mapa de ficheros auxiliares** (`AGENTS.md`) con cuándo consultarlo y actualizarlo, para que no dependa de que alguien lo recuerde.
+
+### ✅ Validación
+
+- Sin cambios de código: `dotnet test` completo → **1577 superadas + 1 omitida de 1578**, con las líneas base intactas (es el dato del tramo que las notas citan).
+- Los nombres de tarea (`test.ps1`, `run.ps1`, `run.sh`, `clean.sh`) y el número de capturas se comprobaron contra el repositorio en lugar de escribirlos de memoria; la primera redacción de la sección final prometía una tarea de pruebas para Linux que **no existe** y se corrigió.
+
+### 📌 Notas para la siguiente sesión
+
+- Las notas son **de tramo**, no de cada hito: al cerrar el bloque visible siguiente, su apartado se añade aquí (o se abren notas nuevas si el tramo cambia de versión).
+- Lo que **no** llevan, a propósito: rutas de fichero, nombres de clase y detalle de implementación. Eso vive en este walkthrough y en `architecture.md`.
+
+## [2026-09-23] - Los Campos Deshabilitados Declaran su Primer Plano: Texto y Desplegable Bajo Contraste Pintado (Hito 186)
+
+### 🎯 Objetivo
+
+Cerrar lo que el 185 dejó medido y sin decidir: el campo deshabilitado —`TextBox` y `ComboBox`— **no declaraba ningún primer plano**, así que su etiqueta se leía con el gris del tema base y quedaba en 4,00:1 (oscuro) y 3,30:1 (claro) en el texto y 3,50:1 y **2,62:1** en el desplegable. El encargo era darle el **mismo tratamiento** que a los botones en el 185 y **meter sus celdas en la guardia de contraste pintado**.
+
+### 🔬 El mecanismo: dos plantillas, dos sitios distintos (comprobado en el tema base)
+
+Leídos `Avalonia.Themes.Fluent/Controls/{TextBox,ComboBox}.xaml` (12.1.2):
+
+- **TextBox**: `^:disabled` declara `Foreground = TextControlForegroundDisabled` **en el propio control** —el `TextPresenter` lo hereda— y pinta `Border#PART_BorderElement` con `TextControlBackgroundDisabled`. Nuestra regla atenuaba con `Opacity 0.5` esa capa de fondo, que es **hermana** de la que contiene el texto: la opacidad nunca tocó la etiqueta, y la etiqueta usaba el color del tema base porque un estilo de la capa no sustituye a esa declaración.
+- **ComboBox**: el tema base declara `Foreground = ComboBoxForegroundDisabled` **directamente sobre las tres partes que apagan la etiqueta** (`ContentControl#ContentPresenter`, `TextBlock#PlaceholderTextBlock`, `PathIcon#DropDownGlyph`) más el gris de `Border#Background`.
+
+O sea: el defecto **no** era el doble desvanecido del 185 —aquí la opacidad no llegaba al texto— sino que **no había primer plano propio**, y por eso el umbral que faltaba era el de la etiqueta, no el de la cara.
+
+### 🛠️ La cura
+
+- **Cara y borde explícitos y opacos**: `BgSurfaceBrush` + `BorderDarkBrush` en `Border#PART_BorderElement` (TextBox) y en `Border#Background` (ComboBox), con la opacidad del 50 % **retirada**: la cara deja de depender de lo que haya detrás.
+- **El primer plano donde de verdad se pinta**: `TextElement.Foreground` sobre `TextPresenter#PART_TextPresenter` —`TextPresenter` **no expone** `Foreground` y el compilador de XAML lo rechaza (`AVLN3000: Foreground is not an AvaloniaProperty`), así que se declara la propiedad heredada que el presentador sí usa— y `Foreground` sobre `ContentControl#ContentPresenter` en el desplegable.
+- **El glifo y el texto de reserva también**: `PathIcon#DropDownGlyph` y `TextBlock#PlaceholderTextBlock` con el mismo token. No es cosmética: la guardia mide el **extremo claro** de la celda y, si el glifo conservara el color del tema, el píxel más claro no sería la etiqueta y la medida estaría mirando otra cosa.
+- **La cara es `BgSurface` y no `BgDark`** (la del campo habilitado), y no es indiferente: medido sobre los 8 presets, `TextMuted` sobre `BgDark` da **4,44:1** en `pastel_spring` (`#7E6379` sobre `#FFE4E9`), por debajo del AA; `TextMuted` sobre `BgSurface` ya tiene contrato en los 8 (mínimo 4,67:1 en `dracula_purple`, guardia `BuiltInThemes_TextMuted_ShouldMeetAaContrastOnSurfaces`). El campo deshabilitado estrena la única cara cuya pareja con la etiqueta **ya** estaba garantizada, en lugar de inventar un token nuevo.
+
+### ✅ Medido después
+
+| Célula del tablero | Oscuro | Claro |
+| :--- | :--- | :--- |
+| campos/texto/deshabilitado | 4,00 → **4,88:1** | 3,30 → **4,82:1** |
+| campos/desplegable/deshabilitado | 3,50 → **4,88:1** | 2,62 → **4,82:1** |
+
+Etiqueta `#7C8698` / `#656C7A` (el token de atenuado) sobre cara `#131720` / `#F1F5F9`, ya opacas.
+
+### 🛡️ Guardias: la de contraste pintado, ahora sobre dos tableros
+
+- `EveryDisabledCell_ShouldRenderItsLabelAboveAaContrast` deja de estar cableada al tablero de botones: recorre **los dos** tableros con las celdas de cada uno (9 celdas × 2 temas = **18 medidas**, antes 14) y cada incumplimiento se nombra con su tablero (`'campos/texto/deshabilitado' [light_studio]: …`), porque la mitad que faltaba sólo se ve mirando el suyo.
+- **Guardia primero, y midió el «antes»**: con el código sin tocar, las celdas nuevas fallaron solas y con los números exactos (`campos/texto/deshabilitado [dark_fluent]: 25282E…858585 (4,00:1)`, `campos/desplegable/deshabilitado [light_studio]: 999B9C…F5F8FB (2,62:1)`), así que el defecto queda registrado por quien lo va a vigilar y no por quien lo corrige.
+- **+3 sondas de token** (12 → **15** en el tablero de campos, 37 en el repositorio) y `CellProbe` gana `Cell`: una misma celda se sondea ahora en dos puntos —cara y borde— sin repetir clave. Las sondas exigen los tokens **opacos**, y eso es lo que convierte «vuelve la opacidad del 50 %» en un fallo medido en lugar de una opinión.
+- Con el código original intacto, **los dos únicos tests que fallaban eran los dos que este hito añade**: las otras 1575 pruebas del suite eran ciegas al defecto, igual que en el 185.
+
+### 🔎 Las líneas base: 3 regeneradas, y un experimento de atribución porque 16 parieron cambios
+
+Regenerar el conjunto completo dio **16 ficheros distintos**, demasiados para creerlos. La atribución se hizo con un experimento en vez de con una corazonada: **restaurar las líneas base previas y regenerar con los estilos de este hito revertidos**.
+
+- **Sin mi cambio ya se desviaban 13** (de 285 a 7 355 px): `app-shell-{dark,light}`, `app-shell-drawer-dark`, `modal-ai-model-urls-dark`, `modal-multimodal-vlm-dark`, los cuatro `modal-settings-*-dark`, `modal-workflow-settings-dark`, `panel-inspector-dark` y `splash-{dark,light}`. Estaban **obsoletas antes** de que yo tocara nada, y la tolerancia (1,5 % de píxeles) las daba por buenas en verde.
+- **La comparación directa** —lo regenerado con mi cambio contra lo regenerado sin él— aísla mi huella en **3 ficheros**: `design-states-fields-{dark,light}` (2 658 y 2 721 px, la columna «deshabilitado» del tablero de campos: cara `#25282E → #131720` y borde `#1F242B → #30363D`) y `modal-synthetic-data-designer-dark` (3 248 px en una banda de 140×26: un campo deshabilitado del diseñador que pasa de la cara del tema base a la del sistema).
+- **Las otras 10 se restauraron a su contenido previo**, porque su diferencia no la produce este cambio y absorberla aquí sería meter ruido ajeno en un diff sobre el deshabilitado. Cuatro de ellas además **cambian entre dos corridas consecutivas** sin tocar código (`splash-dark` y `splash-light` 35-37 px, `app-shell-drawer-dark` 44 px, `modal-multimodal-vlm-dark` 2 303 px): regenerarlas congelaría píxeles que dependen de la corrida.
+- **Dato incómodo, medido y no enterrado**: tres de esas obsoletas —`app-shell-dark`, `app-shell-light` y `modal-ai-model-urls-dark`— siguen **congelando el aspecto previo al hito 185** en sus controles deshabilitados (`#272B33 → #131720` en oscuro, `#DCE0E4 → #F1F5F9` en claro, el gris del tema base que el 185 sustituyó por la cara atenuada del sistema). Los hitos 183 y 185 regeneraron sólo las líneas base que sus tests comparan y estas tres quedaron fuera porque su diff cae por debajo de la tolerancia. No se corrigen aquí para no mezclar dos cosas; quedan arriba, con números.
+
+### 🧪 Mutaciones (3, las tres mordidas)
+
+- **M1 — reponer `Opacity 0.5` en el borde del desplegable** → falla la sonda de token, que nombra la mezcla: `La celda 'desplegable/deshabilitado' del tablero (466,120) debe pintar #131720 ('BgSurfaceBrush') … but found 0x1C`. (La guardia de contraste **no** muerde aquí a propósito: la cara mezclada sigue dando contraste a la etiqueta; lo que la opacidad rompe es la cara, y quien la vigila es la sonda.)
+- **M2 — fuera el primer plano del campo de texto** → el contraste pintado muerde en el tema claro: `'campos/texto/deshabilitado' [light_studio]: 7A7A7A…F1F5F9 (3,92:1)`. Que sea 3,92 y no los 3,30 originales es la atribución fina: la cara propia ya había subido la medida y lo que faltaba era exactamente la etiqueta (en oscuro no falla: `#858585` sobre la cara propia ya pasa de 4,5).
+- **M3 — fuera el primer plano del desplegable** → muerde en los dos temas: `131720…687182 (3,65:1)` en oscuro y `7F8591…F1F5F9 (3,38:1)` en claro.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1577 superadas + 1 omitida de 1578 en 1 m 20 s** con el conjunto final de líneas base (mismo recuento que antes: no se añaden tests, se amplía uno). Build **0 advertencias / 0 errores**.
+- Los dos fallos preexistentes que aparecen al revertir el cambio (sonda de campos + contraste) son la prueba de que **la suite sólo ve este defecto por las guardias nuevas**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Queda medido y sin decidir: el contraste de los campos deshabilitados** de los otros 6 presets no tiene guardia propia. La pareja elegida (`TextMuted` ↔ `BgSurface`) sí está cubierta por `BuiltInThemes_TextMuted_ShouldMeetAaContrastOnSurfaces` en los 8 presets, así que el contrato viaja con el tema; lo que no hay es una medida **pintada** fuera de los dos presets por defecto, que es lo que la colección de capturas no puede dar (el tablero se fotografiaría una vez por preset).
+- **Tres líneas base congelan el aspecto previo al 185** (`app-shell-dark`, `app-shell-light`, `modal-ai-model-urls-dark`) y **cuatro son inestables entre corridas** (`splash-{dark,light}`, `app-shell-drawer-dark`, `modal-multimodal-vlm-dark`): lo primero se arregla regenerándolas a propósito y revisando el diff; lo segundo es una pregunta abierta sobre qué pinta distinto en cada corrida y probablemente valga su propio hito.
+- El **lint estructural** del 185 (`DisabledStateAnalyzer`) sigue exento para las capas de fondo («la opacidad de un borde o de una capa de fondo no toca el texto, que es el caso legítimo de los campos»): con este hito los campos ya no usan opacidad, así que esa frase describe un caso que hoy no existe en el código y merece o una exención con un ejemplo real (el `Thumb` de la barra de desplazamiento) o un endurecimiento del analizador.
+
+## [2026-09-23] - El Doble Desvanecido del Estado Deshabilitado: Cara y Primer Plano Explícitos (Hito 185)
+
+### 🎯 Objetivo
+
+Corregir el defecto que el hito 184 midió al revisar las líneas base del producto: la etiqueta del control deshabilitado se atenuaba **dos veces** (2,13:1 en oscuro, **1,20:1** en claro) y en claro era, literalmente, invisible.
+
+### 🔬 El mecanismo, medido antes de tocar nada
+
+El tema base de Fluent declara `Foreground = ButtonForegroundDisabled` **en la misma parte** en la que nuestra capa declaraba `Opacity = 0.45` —`/template/ ContentPresenter#PART_ContentPresenter`, comprobado en `<c>Avalonia.Themes.Fluent/Controls/Button.xaml</c>`—, y dentro de esa parte vive también el texto: la opacidad nuestra **multiplicaba** la atenuación del tema base. El modelo cuadra con lo medido en los dos temas: en claro, `0,45·140 + 0,55·242 = 196` frente a los 199 pintados; en oscuro, `0,45·118 + 0,55·19 = 63,6` frente a los 60. La cara tenía el mismo problema de fondo: era el acento **al 45 % sobre lo que hubiera detrás**, así que el mismo botón no se veía igual sobre una barra que sobre una tarjeta.
+
+### 🛠️ La cura
+
+- **Cinco tokens derivados** en `ThemeResourceApplier` (`Accent*MutedBrush`): el acento mezclado con la superficie del tema al 45 %, calculado con `Blend`/`Mix` y espejado en el diccionario de arranque. Son derivados —como `OverlaySurfaceBrush` o los tintes— para que los 8 presets y cualquier tema del Studio los tengan sin declararlos, y **opacos** para que la cara deje de depender del fondo.
+- **Fuera la opacidad**: ninguna regla `:disabled` de botón o conmutador atenúa ya la parte.
+- **Primer plano explícito**: `TextMutedBrush` sobre las caras neutras (contrato de 4,5:1 sobre las superficies, con guardia propia en los 8 presets) y `TextPrimaryBrush` sobre las caras de acento, que son claras en el tema claro y oscuras en el oscuro igual que una superficie.
+- **El chip tenía una declaración que eclipsaba el estado**: `Button.chipButton /template/ …` volvía a declarar `Foreground` (TextSecondary) más abajo en el fichero y, al ser posterior sobre la misma parte, ganaba al primer plano deshabilitado: el chip se quedaba en 4,34:1. Se retiró la duplicación —el control ya declara ese color— y el chip deshabilitado pasó a 4,82:1. Verificado que la etiqueta **habilitada** no cambia: `#64748B` en claro y `#8B949E` en oscuro, idénticos.
+
+### ✅ Medido después
+
+| Célula del tablero | Oscuro | Claro |
+| :--- | :--- | :--- |
+| primary · success · danger | 9,23 · 6,88 · 8,94 | 7,97 · 9,50 · 7,98 |
+| ghost · chip · toggle chip · toggle icon | 5,16 · 4,88 · 4,88 · 5,16 | 5,04 · 4,82 · 4,82 · 5,04 |
+
+Y en el producto, en el rectángulo interior de la zona deshabilitada de la barra de control (medida con la que se descubrió el defecto): **2,13 → 4,88:1** en oscuro y **1,20 → 4,82:1** en claro, con la etiqueta pintada en `#7C8698` y `#656C7A` (los tokens de atenuado) sobre sus caras.
+
+### 🔎 Las líneas base: ocho regeneradas, seis cambiadas
+
+Se regeneraron las ocho que contienen controles deshabilitados (las cuatro del producto y las cuatro del tablero). Cambiaron **seis**: las cuatro del producto y las dos del tablero de botones. Las dos del tablero de **campos** quedaron idénticas —sus celdas deshabilitadas son de campo, cuyo borde atenuado no toca esta corrección—, que es la prueba de que lo que no se tocó no se movió.
+
+**Y el dato incómodo, dicho en vez de enterrado**: la comparación de capturas **no vio el defecto ni su arreglo**. Las caras cambiaban ≤5 canales por canal (dentro de la tolerancia de 12) y las etiquetas son texto fino (por debajo del 1,5 % de píxeles que la comparación admite), así que las seis líneas base pasaban en verde antes y después con el mismo contenido aparente. Que los ficheros cambiaran al regenerarlos es la prueba de que el cambio existe; que la suite no lo detectara es la razón de que este hito traiga tres guardias nuevas.
+
+### 🛡️ Guardias: tres, y una mordió a mi propia edición
+
+1. **Lint estructural** (`TestHelpers/DisabledStateAnalyzer` + `Unit/App/DisabledStateLintTests`, 7 pruebas): ninguna regla `:disabled` puede atenuar con `Opacity` la parte que contiene la etiqueta. Cubre todo el árbol de estilos, con o sin celda en el tablero, y sólo señala las partes con **contenido** —la opacidad de un borde o de una capa de fondo no toca el texto, que es el caso legítimo de los campos—. El analizador se auto-testea con fragmentos (detecta, acepta la cara explícita, ignora el borde, ve las reglas anidadas de un `ControlTheme` y no se cree un comentario).
+2. **Contraste pintado** (`DesignStateBaselinesTests.EveryDisabledCell_ShouldRenderItsLabelAboveAaContrast`): mide el extremo de la etiqueta y su cara dentro de cada una de las 7 celdas deshabilitadas, en los dos temas, y exige **4,5:1**. Es la mitad que un token no cubre: el token podía ser correcto y el píxel no.
+3. **Contraste de tokens** (`ThemeTokenCompletenessTests.DisabledAccentTokens_ShouldKeepTheirLabelVisible_InEveryBuiltInTheme`): en los 8 presets, el texto de superficie sobre cada cara atenuada, con umbral **3:1** —el de componentes de interfaz de WCAG, que exime al texto de un control inactivo—. El umbral no es un compromiso: la guardia destapó que en **nord_slate** (3,58:1 en advertencia) y **dracula_purple** (3,36:1) el acento del tema es claro sobre superficie oscura y su cara atenuada cae en un tono medio, donde ninguna etiqueta llega al AA. Subir el peso de la mezcla hasta lograrlo borraría el color de la variante, que es lo que el estado conserva; queda medido y acotado.
+4. **La guardia del espejo del diccionario de arranque mordió mi propia edición**: al añadir los cinco pinceles al `DarkTheme.axaml` dejé dos en la misma línea (`AccentErrorBrush` y `AccentCyanBrush`), y el test de paridad —que lee una clave por línea— dejó el segundo sin registrar: *«AccentCyanBrush: el preset genera un color sólido pero el baseline no lo declara como tal»*. Corregido con una clave por línea y con el motivo escrito al lado.
+
+### 🧪 Mutaciones (3, las tres mordidas)
+
+- **A — vuelve la opacidad sobre la parte** → fallan **dos** guardias: el lint nombra el fichero y la regla, y el contraste pintado lista las diez medidas (oscuro: primary 3,83, success 3,59, danger 3,79, ghost 1,93, chip 1,93; claro: 2,66, 2,71, 2,67, 1,84, 1,83).
+- **B — la cara deshabilitada vuelve al acento vivo** → falla la sonda del tablero (`debe pintar #373B7E … but found 0x63`) y el contraste pintado (oscuro 4,10; **claro 2,84**): sobre el acento vivo, en el tema claro, el texto de superficie no se lee — la cara atenuada y la etiqueta son la misma decisión.
+- **C — desaparece el primer plano explícito** (queda el atenuado del tema base) → el contraste pintado muerde en las celdas sin cara propia: ghost 3,48 en oscuro y **2,63** en claro.
+
+### ✅ Validación
+
+- `dotnet test` completo: **1577 superadas + 1 omitida de 1578 en 1 m 15 s** (antes 1568 + 1 de 1569; +9 pruebas: 7 del lint, el contraste pintado y el de tokens). Build **0 advertencias / 0 errores**.
+- `InputInteractionTests.ADisabledButton_ShouldLookDisabled_AndIgnoreTheClick` afirmaba el **mecanismo viejo** (`Surface(button).Opacity ≈ 0,45`) y ahora afirma el nuevo: la cara es el token atenuado, la parte **no** tiene opacidad y la etiqueta es un color declarado.
+
+### 📌 Notas para la siguiente sesión
+
+- **Los campos no entran aquí, y está medido** (**resuelto en el hito 186**): `texto/deshabilitado` queda en 4,00:1 (oscuro) y 3,30:1 (claro) y `desplegable/deshabilitado` en 3,50:1 y **2,62:1**. Eso no es el doble desvanecido —su borde se atenúa con una opacidad propia que no toca el texto— sino el atenuado único del tema base, que es otra decisión: si se quiere subir, se declara allí un primer plano explícito igual que aquí, y entonces sí hay que incluirlos en la guardia de contraste pintado.
+- El lint cubre el mecanismo; el contraste cubre las 7 celdas del tablero. Un control **nuevo** con estado deshabilitado entra en las dos por caminos distintos: la cobertura del tablero exige una celda para cada pseudo-clase declarada, y el lint no depende de que exista.
+
+## [2026-09-23] - El Producto en Claro: Barra de Control y Editor de Temas Bajo Contrato Visual (Hito 184)
+
+### 🎯 Objetivo
+
+Las superficies del producto sólo tenían línea base en **oscuro**: el deshabilitado y el hover que el hito 183 corrigió tenían contrato en el tablero de estados, pero ninguna vista real del producto los congelaba en claro — y el claro es justo donde un error de color se ve menos y por tanto se cuela más fácil.
+
+### 🛠️ Implementación
+
+- **Dos capturas nuevas del preset claro**: `panel-control-bar-light` (1340×46) y `theme-studio-light` (1200×760). Son las dos superficies donde el estado deshabilitado aparece de verdad en un estado congelado (el «deshacer»/«rehacer» de un documento recién abierto y el botón de nombre de tema, que sólo se habilita para un tema propio).
+- **El editor de temas deja de duplicar su captura**: el test oscuro y el claro comparten `AssertStudioMatches(nombre, tema)`, que además documenta por qué el almacenamiento es de un solo uso (`Guid`).
+- **Dos utilidades de imagen** en `VisualSnapshot`, al lado de `PixelAt`, con el mismo cálculo de diferencias que la comparación de líneas base: `MeanLuminance` (Rec. 601) y `DifferingPixelRatio`.
+- **Guardia de parejas de tema** (`Unit/Views/ThemeBaselinePairTests`, en la colección de capturas): cada `*-light.png` tiene que tener su gemela `*-dark.png`, la clara tiene que ser al menos **60 puntos de luminancia** más clara y tienen que diferir en al menos el **60 % de los píxeles**. Sin ella, regenerar una superficie clara con el preset oscuro —basta cambiar la constante del test, o copiar el PNG— pasa la comparación (la imagen es coherente consigo misma) y deja congelada una segunda copia del oscuro con nombre de claro, que además tapa cualquier regresión del claro porque nunca se ve un claro de verdad.
+
+### 🔎 Revisión de las dos líneas base nuevas
+
+- **A ojo, a escala 1:1 y con ampliación 4×** de la zona deshabilitada (página de revisión temporal con las capturas incrustadas): la barra clara es una fila de píldoras `#F1F5F9` con borde `#CBD5E1` sobre un fondo `#E2E8F0`, con los acentos correctos (violeta de «Modo Prueba», verde de «Ejecutar Flujo», rojo de «Depurar»), texto `#0F172A` y la marca en su sitio; el editor de temas claro es una superficie blanca sobre `#F8FAFC` con las tarjetas, la tabla, la escala de tokens y los cuatro botones de acción en sus colores.
+- **Numérico, contra su gemela oscura**: los 6 pares preexistentes más los 2 nuevos dan luminancia 207-247 en claro frente a 22-54 en oscuro y un 85-99 % de píxeles distintos — el umbral de la guardia (60 puntos / 60 %) queda lejos de la pareja más apretada.
+- **Muestreo por dentro** (canvas sobre los PNG) de las píldoras de la barra: cara habilitada `#F1F5F9` / deshabilitada `#F2F6F9`, glifo habilitado `#0F172A` / deshabilitado `#C7CACD`.
+
+### 🔬 Hallazgo registrado (medido, NO corregido)
+
+**La etiqueta del control deshabilitado se desvanece dos veces, y en claro eso la vuelve ilegible.**
+
+| Estado | Tema | Cara | Glifo | Contraste |
+| :--- | :--- | :--- | :--- | :--- |
+| Habilitado | oscuro | `#131720` | `#F0F6FC` | **7,24:1** |
+| Deshabilitado | oscuro | `#131720` | `#3C3F47` | **2,13:1** |
+| Habilitado | claro | `#F1F5F9` | `#0F172A` | **7,23:1** |
+| Deshabilitado | claro | `#F2F6F9` | `#C7CACD` | **1,20:1** |
+
+El mecanismo está medido y su modelo cuadra en los dos temas: la regla nuestra pone `Opacity 0.45` sobre la **parte entera** de la plantilla (`ContentPresenter#PART_ContentPresenter`), y el tema base ya había atenuado el **texto** por su cuenta, así que las dos atenuaciones se **multiplican**. Predicción del modelo frente a lo medido — oscuro: `0,45·240 + 0,55·19 = 118` y `0,45·118 + 0,55·19 = 63,6` frente a `#3C3F47` (60); claro: `0,45·15 + 0,55·242 = 140` y `0,45·140 + 0,55·242 = 196` frente a `#C7CACD` (199). En oscuro la etiqueta aguanta 2,13:1 porque parte de un texto claro sobre una cara oscura; en claro se queda en **1,20:1**, que es «no se ve». La cara, además, es la misma que la del control habilitado en los dos temas (es `BgSurface` sobre `BgSurface`), así que en claro lo único que distingue un control deshabilitado es un texto casi blanco y el borde `BorderDark`.
+
+Queda **registrado y congelado tal cual** (las líneas base son el aspecto actual, no el deseado): corregirlo es una decisión de diseño —quitar la atenuación redundante y declarar un primer plano deshabilitado explícito, o bajar el `Opacity` a la cara sin tocar el texto— y obliga a regenerar de nuevo las cuatro líneas base del producto.
+
+### 🧪 Mutaciones (2, las dos mordidas)
+
+- **A — la línea base clara es un duplicado de la oscura** (copiando el PNG del oscuro sobre el claro) → `Expected findings to be empty … 'panel-control-bar-light' es casi tan oscura como 'panel-control-bar-dark': luminancia 54,1 frente a 54,1 (se exige 60 puntos más) … | sólo cambia el 0,0 % de sus píxeles (se exige 60 %): parece una copia de la captura oscura.`
+- **B — desaparece la gemela oscura** (moviendo `theme-studio-dark.png`) → `falta theme-studio-dark.png.`
+
+### 🪤 La guardia del contrato de colecciones mordió a la primera versión de esta guardia
+
+La primera versión de `ThemeBaselinePairTests` **no** declaraba colección (leía sólo archivos, así que parecía no tocar nada compartido) y `TestCollectionContractGuardTests` la rechazó: *«una clase toca HeadlessUiSession sin declarar ninguna colección exclusiva (canónica para este estado: VisualSnapshots)»* — porque referencia `VisualSnapshot`. Se corrigió **añadiendo la colección** en lugar de esquivar la regla leyendo las rutas por otra vía; de paso desapareció el reintento de lectura que había escrito «por si una escritura en paralelo deja el PNG a medias», que con la colección es código muerto (dentro de una colección xUnit ejecuta secuencialmente, y sólo esa colección escribe líneas base).
+
+### ✅ Validación
+
+- `dotnet test` completo: **1568 superadas + 1 omitida de 1569 en 1 m 16 s** (antes 1564 + 1 de 1565; +4: dos capturas y las dos guardias). Build **0 advertencias / 0 errores**.
+- Página de revisión y sonda de calibración **temporales, retiradas** —la sonda midió los 6 pares preexistentes antes de fijar los umbrales, en vez de escribirlos a ojo—.
+
+### 📌 Notas para la siguiente sesión
+
+- Las superficies del producto que **siguen** sin línea base en claro son los paneles restantes (editor, caja de herramientas, inspector, consola, barra de estado, cajón) y las 15 modales oscuras; el camino ya está hecho (un test más por superficie y su preset) pero ninguna de ellas contiene hoy un control deshabilitado, que era el motivo de empezar por la barra y el editor.
+- Sin contrato de píxel siguen el color del texto del enlace en hover, el del texto de la pestaña activa y el del indicador de pestaña.
+
+## [2026-09-23] - Las Tres Desviaciones de Estado, Corregidas: Deshabilitado por Variante, Hover del Desplegable y Compuesto del Conmutador (Hito 183)
+
+### 🎯 Objetivo
+
+Corregir las tres desviaciones que el tablero de estados del hito 182 destapó y regenerar sus líneas base con la revisión del cambio, para que el contrato visual congele el aspecto <i>querido</i> y no el que había.
+
+### 🛠️ Implementación
+
+1. **Deshabilitado por variante** (`Styles/Buttons.axaml`). El estado deshabilitado conserva la identidad de la variante: la regla base vuelve a declarar su superficie (`BgSurfaceBrush` + `BorderDarkBrush`) sobre el relleno neutro del tema base, cada variante re-declara su propia cara (primary · success · danger · warning · debug con su acento, y ghost · icon · link <b>transparentes</b>) y lo mismo para los conmutadores (base · chip · icon). Motivo medido: el tema base pintaba el <b>mismo gris</b> en las cuatro variantes (`#22262B` oscuro / `#E3E5E6` claro) y a un botón <b>sin fondo le añadía una caja</b>. Ahora: primary `#333679`, success `#0E5C46`, danger `#72272B`, ghost y link `#0D1117` (sin caja), chip `#0F131B` —el token de cada variante atenuado al 45 % sobre el fondo—.
+2. **Hover del desplegable** (`Styles/Inputs.axaml`). El estado se declara sobre la parte que <b>de verdad se pinta</b> (`Border#Background` de la plantilla), no sobre las propiedades del control, que la plantilla ya no pinta: el tema base ponía ahí su propio velo translúcido y en oscuro el desplegable se <b>oscurecía</b> al pasar el puntero. La misma corrección cubre reposo, foco y deshabilitado. Medido: oscuro `#131720 → #21262D` (antes `#131720 → #050709`); el claro sigue aclarando (`#F1F5F9 → #CBD5E1`).
+3. **Compuesto del conmutador de icono** (`Styles/Buttons.axaml`): `ToggleButton.icon:checked:pointerover` enciende el acento claro, como ya hacía el chip. Antes las celdas «seleccionada» y «seleccionada+hover» daban el mismo color (`#6366F1` en oscuro).
+4. **El tablero crece** (`DesignStateBoard`): la matriz de selección gana la columna <b>deshabilitado</b> —un conmutador sin fondo también tiene que seguir sin él—, así que el tablero pasa a 740 px de ancho. Las sondas de token suben a 11 en el tablero de botones y campos con una novedad: los estados atenuados se afirman con una **mezcla calculada** (`Over` + `Alpha` → `Blend(token, fondo, 0,45)`) en lugar de un color escrito a mano, de modo que la expectativa sigue al tema si el tema cambia.
+
+### 🔎 Revisión de las líneas base regeneradas (6)
+
+Cuatro son del tablero (los estados corregidos) y **dos del producto**: `panel-control-bar-dark` y `theme-studio-dark`. No se regeneraron «a ver si pasa»: primero se atribuyó el cambio.
+
+- **Atribución por experimento**: revirtiendo <b>solo</b> las reglas de deshabilitado, los dos baselines del producto vuelven a pasar. Por tanto la totalidad de su diferencia viene de esa corrección —nada del desplegable ni del compuesto la toca— y las otras superficies capturadas (shell, cajón, caja de herramientas, modales) no cambian porque no tienen controles deshabilitados en el estado congelado.
+- **Qué cambió, medido píxel a píxel** (baseline frente a captura nueva): barra de control, `#272B33 → #131720` (2 956 px) —el velo del tema base sustituido por la superficie atenuada del diseño, que compone exactamente a `BgSurface` porque el panel de la barra ya es esa superficie—; estudio de temas, `#2A2F35 → #161B22` y `#2E323B → #1A1F29` (14 225 y 5 835 px), la misma clase de cambio sobre el panel y sobre la tarjeta. En los dos casos el delta por canal es ≤ 20 y la zona afectada son las caras deshabilitadas.
+- **Revisión de la matriz regenerada**: muestreando los PNG nuevos se lee el contrato que se acaba de congelar (primary deshabilitado `333679`, ghost `0D1117` sin caja, desplegable en hover `21262D`, conmutador de icono seleccionada+hover `4F46E5`), y en claro lo mismo con los tokens claros (primary deshabilitado `ADAAF2`, ghost `F8FAFC`).
+
+### 🧪 Mutaciones (3, todas mordidas)
+
+- **A — el deshabilitado vuelve a ser el gris del tema base** → los dos baselines del producto pasan y la sonda falla nombrando el valor viejo: `La celda 'primary/deshabilitado' del tablero (466,74) debe pintar #343779 ('AccentPrimaryBrush' al 45 % sobre 'AppBackgroundBrush'): el acento atenuado, no un gris neutro, but found 0x22`.
+- **B — el hover del desplegable vuelve a declararse en el control** (no en la parte que se pinta) → `La celda 'desplegable/hover' del tablero (240,120) debe pintar #21262D … but found 0x05` (el defecto original, exacto).
+- **C — desaparece el compuesto del conmutador de icono** → `La celda 'toggleIcon/seleccionada+hover' del tablero (466,447) debe pintar #4F46E5 … but found 0x63`.
+
+### ✅ Validación
+
+- `dotnet test` completo: **1564 superadas + 1 omitida de 1565 en 1 m 08 s**, tras regenerar las 6 líneas base (las 35 del repositorio verificadas en la misma corrida). Build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Un dato de diseño, no un fallo**: el lenguaje elegido para el deshabilitado es <b>atenuar, no recolorear</b> (la cara de la variante al 45 % sobre el fondo que tenga debajo), así que la cara pierde presencia pero no identidad. Medido en la barra de control: la cara de un botón base deshabilitado compone `#11161C` sobre el fondo de la barra (`AppBackground`), un paso más apagado que su cara activa (`#161B22`) — sigue leyéndose como una pieza distinta del panel y lo que comunica el estado es sobre todo la atenuación del icono y del texto. Es lo que la línea base congela.
+- Sigue sin contrato de píxel el color del texto del enlace en hover, el del texto de la pestaña activa y el color del indicador de pestaña (su geometría la ve la captura, su color no): la lista de «lo que la captura no ve» del hito 182 sigue vigente.
+
+## [2026-09-23] - Los Estados del Sistema de Diseño Estrenan Contrato Visual: Hover, Pulsado, Foco, Deshabilitado y Selección (Hito 182)
+
+### 🎯 Objetivo
+
+Dar <b>línea base visual</b> a los estados animados del sistema de diseño —hover, pulsado, foco, deshabilitado y selección— para que los estilos tengan contrato de <i>aspecto</i> y no sólo aserciones de token. Hasta ahora el suite afirmaba «la cara del botón lleva este recurso del tema» y un lint de texto sobre las reglas: eso dice que el valor correcto se aplica, pero no <i>cómo se ve</i>, así que un radio, un borde, una opacidad o un tamaño de letra cambiados en un estado pasaban sin que nadie lo notara.
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/DesignStateBoard.cs` — el tablero de estados**: la misma pieza repetida una vez por estado, en dos tableros (botones y selección / campos y contenedores) de <b>620 px de ancho</b>, con celdas de <b>112×46</b> y cada pieza <b>estirada a la celda</b> —así la geometría no depende de la anchura de la fuente del sistema y la línea base no cambia de máquina a máquina porque un texto mida distinto—. Cada celda se registra en `Cells` («fila/estado») para que una prueba pueda sondear el píxel que ese estado pinta.
+2. **Una foto sólo tiene un puntero y un foco**, así que los estados que dependen de la entrada (`:pointerover`, `:pressed`, `:focus`) se <b>fuerzan</b> en la colección de clases del propio control, que es exactamente la que el sistema de estilos consulta para resolverlos; `deshabilitado` se produce de verdad (`IsEnabled = false`) y `seleccionada` con su propiedad real (`IsChecked`, `SelectedIndex`, la clase `selected`).
+3. **Los estados se aplican con el árbol vivo** (`DesignStateBoard.Activate()`, pasado como paso de interacción de la captura, después del `Show()`). No es un detalle: al aplicar su plantilla el control vuelve a declarar sus pseudo-clases y **`Button` borra el `:pressed` forzado antes de que exista la plantilla** —medido: la celda «pulsado» salía en reposo (mutación B: 25 046 píxeles distintos, 8,31 %, zona x 348..459 = la columna «pulsado»)—. `Pseudo()` además <b>comprueba que la pseudo-clase quedó puesta</b>: si Avalonia dejara de guardarlas en `Classes` —la costura que este helper usa—, el `Add` se volvería un no-op silencioso y todas las celdas de estado saldrían en reposo sin que nada fallase.
+4. **`VisualSnapshot` gana el paso de interacción y una comparación sin archivo**: `Capture`/`CaptureNaturalHeight` aceptan ahora un `Action<Window>` que recibe la ventana <b>ya mostrada y con el layout hecho</b>, justo antes del asentado —es lo que permite fotografiar un estado que sólo existe al interactuar con entrada real (`InputSimulator`) y también <i>observar</i> el layout para medir dónde quedó cada celda—; y `AssertImagesMatch` compara dos capturas entre sí con la misma tolerancia de la línea base (el cálculo de diferencias es uno solo, para que dos copias no den veredictos distintos).
+5. **4 líneas base nuevas** (`design-states-buttons-{dark,light}` 620×486 y `design-states-fields-{dark,light}` 620×394; los 35 PNG de `VisualBaselines/` en total), capturadas con `CaptureNaturalHeight` para que la matriz crezca sin recortarse.
+6. **7 sondas de píxel** (dos pruebas, una por tablero) que exigen <b>el token</b> en un punto concreto de una celda: las tres variantes en reposo, los hover de botón, fantasma, chip, conmutador y fila del cajón, el chip seleccionado y el compuesto seleccionada+hover, el borde del campo en reposo/hover/foco (`AccentGlowBrush` → `AccentPrimaryBrush`), el separador en hover y la pestaña pastilla en hover/seleccionada. Su tolerancia es de **3 canales** en vez de los 12 de la comparación de imágenes, porque un relleno opaco se pinta exacto.
+7. **El lint de cobertura** (`EveryPseudoClassDeclaredInTheStyles_ShouldHaveACellInTheBoard`) lee los `Selector` de `FileFlow.App/Styles` y exige que cada pseudo-clase tenga celda o exención con razón; cada entrada de la cobertura cita un <b>testigo</b> —el trozo de código que la produce— que tiene que seguir en el fichero, así que la lista no puede ser una promesa sin mecanismo. Exenciones (4, todas comprobadas vivas): `:focus-within` (vive en una parte de plantilla, `ButtonSpinner` dentro de `NumericUpDown`, fuera del alcance de un forzado desde fuera), `:is` (combinador de selector, no un estado) y `:horizontal`/`:vertical` (orientación del layout).
+
+### 🧪 Fidelidad del forzado (3 pruebas)
+
+Una línea base de un estado forzado sólo vale si forzar pinta lo mismo que el usuario ve. `ForcedHover`, `ForcedPressed` y `ForcedFocus` capturan la <b>misma superficie dos veces</b> —una con entrada real (`Hover`, `Press`, `Focus()`) y otra forzando el estado— y exigen que las dos imágenes coincidan. La del foco además afirma que el foco real <b>ocurrió</b> (`gotFocus`), porque sin él la comparación no estaría comparando nada.
+
+### 🔎 Tres hallazgos que la matriz destapó (registrados, no corregidos)
+
+1. **Los botones deshabilitados de todas las variantes se ven grises.** Medido: `deshabilitado` da `#22262B` en oscuro y `#E3E5E6` en claro para *primary*, *success*, *danger* y también para *ghost* (un botón sin fondo que al deshabilitarse **gana un fondo**). Nuestra capa sólo declara `Opacity 0.45` sobre la cara; el relleno neutro que gana es el del tema base.
+2. **El desplegable se <i>oscurece</i> al pasar el puntero** (oscuro: `#131720` → `#050709`; claro: `#F1F5F9` → `#FCFDFD`, donde sí aclara). Causa medida con sonda: el tema base pinta su propia capa sobre `Border#Background` de la plantilla y **nuestra regla `ComboBox:pointerover { Background = BgHoverBrush }` declara una propiedad que la plantilla ya no pinta**.
+3. **El conmutador de icono no distingue «seleccionada+hover» de «seleccionada»** (las dos celdas salen con el mismo color): `ToggleButton.icon` declara `:checked` y `:pointerover` pero no el compuesto, a diferencia del chip.
+
+Los tres cambian <b>cómo se ve la aplicación</b>, así que no se han tocado: la línea base <b>congela lo que hay</b>, y corregir cualquiera de ellos hará fallar su captura y obligará a regenerarla a propósito.
+
+### 🧪 Mutaciones (seis, todas mordidas y restauradas)
+
+- **A — el forzado se vuelve un no-op** → 9 de 10 fallos en la clase, con el diagnóstico del propio contrato: `La pseudo-clase ':pointerover' no quedó aplicada en 'Button' (clases: 'primary')`.
+- **B — los estados se aplican al construir** (antes de existir la plantilla) → fallan las dos líneas base del tablero de botones: `8,31 % > 1,50 % permitido … zona afectada: x 348..459, y 51..279` (exactamente la columna «pulsado»).
+- **C — el chip deja de aplicar el hover compuesto** → `La celda 'chip/seleccionada+hover' del tablero (466,355) debe pintar 'AccentHoverBrush', but found 0x63`, más la línea base.
+- **D — la lista de cobertura olvida `:pointerover`** → `Sin cubrir: :pointerover`.
+- **E — una exención inventada** (`:hoverX`) → `':hoverX' está exento con la razón «exención inventada» pero ya no lo declara ningún estilo`.
+- **F — vuelve el defecto del analizador de código** (ver abajo) → fallan su propia prueba y la comprobación de testigos.
+
+**Una mutación que no mordió, y era información**: la C, tal cual, <b>pasaba</b> porque el registro de la matriz ya aplicaba el hover simple y la fila del chip lo repetía —dos rutas para el mismo estado—. Se dejó un solo dueño (el registro para los estados de entrada; la fila sólo para el compuesto, que el registro no alcanza) y entonces la mutación mordió. Quitar la mitad de algo duplicado no cambiaba el resultado: eso es un agujero en cualquier suite de mutaciones.
+
+### 🩹 Un defecto del analizador de los lints
+
+La comprobación de testigos no encontraba `Pseudo(control, ":pointerover")` en un código que lo tiene. La causa estaba en `TestHelpers/SourceText.cs`: `WithoutComments` consumía **un carácter de más tras cada literal**, así que se comía la coma, el paréntesis o el `;` siguiente (`"a", "b"` llegaba como `"a" "b"`). Seis lints leían un texto que no es el código y ninguno podía buscar un fragmento que terminase en una llamada. Corregido (un `i++` de menos) y **cubierto con `Unit/App/SourceTextTests`**, que no existía.
+
+### ✅ Validación
+
+- `dotnet test` completo: **1564 superadas + 1 omitida de 1565 en 1 m 09 s y 1 m 11 s** (dos corridas), con las líneas base previas intactas. Antes de este hito: 1552 + 1 de 1553 (12 pruebas nuevas: 3 de fidelidad, 2 de sondas, 1 de cobertura, 4 de líneas base y 2 del analizador).
+- Build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **La captura no ve lo fino, y por eso hay sondas**: con la tolerancia de 1,5 % repartida sobre toda la superficie, un borde de 1 px (el anillo de foco del campo) es el 0,1 % de la imagen y un indicador de pestaña el 0,04 %; pasarían sin que la línea base dijera nada. Los tres defectos de arriba quedan igualmente fuera de su alcance cuando son «un relleno translúcido en una celda» (~0,9 %), así que la sensibilidad fuerte la dan las sondas de token, no la captura.
+- **Lo que sigue sin contrato de píxel**: el color del texto en hover de enlace, el cambio de color del texto de la pestaña activa y el grosor/posición del indicador (su geometría la ve la captura, su color no). Es el siguiente candidato si se quiere cerrar la matriz entera.
+- Las tres desviaciones registradas esperan decisión de diseño: deshabilitado por variante, hover del desplegable y compuesto del conmutador de icono.
+
+## [2026-09-23] - El Tercer Sitio de Tiempo Real Sale del Inventario: Latencia Pequeña en el Origen Sintético (Hito 179)
+
+### 🎯 Objetivo
+
+Ejercitar el retardo del origen sintético (`EmissionDelayMs`) con una latencia pequeña, para que la última espera de plugin declarada «de tiempo real» en el inventario de trabajo aplazado (hito 175) pase a <b>ejercitada</b>.
+
+### 🔍 El problema
+
+El registro del inventario tenía <b>3</b> decisiones `RealTime`, y el hito 175 dejó escrito el camino barato para cada una: para el retardo del origen sintético «bastaría una prueba con `EmissionDelayMs` pequeño». Éste es el tercero de los tres; los otros dos —la espera del arranque a que la interfaz esté pintada y el fundido de cierre de la splash— necesitan una interfaz real detrás y siguen explicados como tales.
+
+### 🛠️ Implementación
+
+1. **`SyntheticDataSourceNode_EmissionLatency_ShouldPaceEveryEmission`** (en `Unit/Plugins/SyntheticDataSourceNodeTests.cs`: la clase que ya nombra `ExecuteAsync`, que es lo que el registro exige como evidencia). El nodo se ejecuta en modo `Virtual` con `MaxItems = 3` y `EmissionDelayMs = 5`, y la prueba <b>marca la hora de cada emisión</b> dentro del callback de `EmitAsync`.
+2. **La aserción es el hueco entre emisiones, no el tiempo total**, y por eso mide el retardo y no el nodo: el armado de las muestras (catálogo, VFS, escrituras del modo físico) ocurre <b>entero antes de la primera emisión</b>, así que no puede inflar ningún hueco. `Task.Delay` garantiza esperar <i>al menos</i> lo pedido, de modo que la aserción es un <b>límite inferior</b>: no puede volverse intermitente por carga de la máquina —la carga sólo alarga el hueco— y no hay margen que calibrar.
+3. **Segundo aserto**: el tiempo total no baja de `LatencyMs × muestras`, porque hay un retardo por muestra, <b>incluida la primera</b> (no una espera única antes del bucle).
+4. **El registro**: el sitio pasa de `RealTime` a `Exercised(… "ExecuteAsync", "SyntheticDataSourceNodeTests")`, con el porqué escrito al lado (por qué aquí la latencia pequeña basta y por qué no se usó el reloj inyectado del hito 174: la fábrica construye este nodo sin dependencias, así que no hay reloj que inyectar).
+
+### 🧪 Pruebas y mutaciones
+
+- `SyntheticDataSourceNodeTests` **9/9**; guardia del inventario **9/9**.
+- **A** — el aplazamiento sigue en el código pero ya no espera (`if (false && delayMs > 0)`): la prueba falla con el diagnóstico exacto de los huecos — `Expected gaps to contain only items matching (gap >= FromMilliseconds(5)), but {161.1µs, 1.1µs} do(es) not match`. Se mutó así, y no borrando el `Task.Delay`, <b>a propósito</b>: el analizador tiene que seguir viendo el sitio, porque lo que se está probando es la <i>aserción de ritmo</i> y no la presencia del código.
+- **B** — el registro cita una clase de test que no existe → «la prueba citada 'SyntheticDataSourceNodeTess' no existe en el suite».
+- **C** — el registro cita la clase correcta pero una evidencia que esa clase no nombra → «existe pero no nombra la evidencia 'EmiteConLatencia'».
+
+### ✅ Validación
+
+- `dotnet test` completo: **1548 superadas + 1 omitida de 1549 en 1 m 18 s y 1 m 14 s** (dos corridas); el test nuevo **5/5** corridas en solitario; la clase entera cuesta ~290 ms, de los que ~45 ms son la latencia real de las tres muestras. Build **0 advertencias / 0 errores**.
+- El inventario sigue con **17 sitios**: lo que cambió es la <b>decisión</b> (15 ejercitados + 2 de tiempo real, antes 14 + 3), no el inventario.
+
+### 📌 Notas para la siguiente sesión
+
+- Quedan **2** decisiones `RealTime`: la espera del arranque a que el primer fotograma esté pintado y el fundido de cierre de la splash. Las dos viven dentro de un arranque real, así que su camino no es una latencia pequeña sino el reloj virtual del hito 177 o una prueba de humo que las recorra de verdad.
+- El coste de este camino frente a la alternativa es explícito: 45 ms de tiempo real por prueba, que es exactamente lo que cuesta medir la latencia que el usuario configura.
+
+## [2026-09-23] - Las Capturas Asientan Antes de Fotografiar: Ninguna Línea Base a Medio Camino (Hito 181)
+
+### 🎯 Objetivo
+
+Que ninguna línea base visual pueda quedar tomada a medio camino de una transición: la captura tiene que asentar el reloj de animación antes del fotograma, igual que ya hacía un asentado de interacción.
+
+### 🔍 El defecto, medido con la guardia
+
+La guardia se escribió <b>primero</b>, y con el código de partida falló nombrando el valor exacto: una captura de un borde negro cuya transición a blanco arranca al montarse salía
+
+```
+Expected VisualSnapshot.PixelAt(captured, 100, 100) to be Rgba32(255, 255, 255, 255) … but found Rgba32(0, 0, 0, 255).
+```
+
+Es decir: <b>el valor de partida</b>. La causa es la consecuencia directa del hito 177 —el reloj de animación es virtual y sólo avanza cuando se le pulsa—, y el camino de captura no lo pulsaba: `CaptureCore`/`CaptureWindow` bombeaban el dispatcher (`RunJobs`) y disparaban el fotograma, así que una transición en vuelo quedaba congelada en su primer fotograma. Una línea base así congela un estado que el usuario nunca ve, y encima lo compara contra capturas futuras como si fuera el correcto.
+
+### 🛠️ Implementación
+
+1. **`AnimationClock.Settle(frames)` es ahora el único mecanismo de asentado del suite**: bombea el dispatcher, avanza el reloj de <b>render</b> y pulsa el reloj de animación un fotograma (16 ms) por vuelta, con un bombeo final. El presupuesto (`SettleFrames` = 12 ⇒ 192 ms virtuales) vive con él, que es de quien depende la cuenta.
+2. **`InputSimulator.Settle` delega en él** (conserva su nombre para los tests de entrada y lee el presupuesto del reloj), así que la entrada y la captura asientan <b>lo mismo</b>: el lint de duraciones declaradas vale para los dos caminos.
+3. **Las dos rutas de captura asientan** tras el `Show()` en lugar de bombear: `CaptureCore` (contenido y altura natural) y `CaptureWindow` (modales). Todo el suite de capturas —host, modales, splash, superficies de plugins— pasa por ahí.
+
+### 🧪 Guardias (2, en `AnimationClockTests`)
+
+- **Comportamiento**: `ACapture_ShouldPhotographTheTransitionSettled` — un borde cuya transición arranca <b>al montarse</b> (el caso real: un estado que cambia al aparecer) tiene que salir en su valor final. Es la primera vez que el suite mide <i>qué</i> fotografía una captura.
+- **Estructura**: `EveryCapturePath_ShouldSettleBeforePhotographing` — el barrido cuenta los sitios que fotografían (`CaptureRenderedFrame`) y los que asientan (`AnimationClock.Settle`) en `VisualSnapshot.cs` y exige que coincidan. Un tercer camino de captura sin asentado no rompería ninguna captura existente: sólo congelaría líneas base futuras a medio camino, que es el fallo que se descubre hitos después.
+
+### ✅ Validación
+
+- **Mutación M1** (quitar el asentado de `CaptureCore`): fallan la guardia de comportamiento (`but found Rgba32(0, 0, 0, 255)`) y la estructural («fotografía en 2 sitios y asienta en 1»).
+- **Mutación M2** (que `Settle` bombee sin pulsar el reloj): **5 fallos** — las tres del reloj (parcial a medio camino, valor final exacto, captura) y los dos estados de estilo de la entrada (texto de la pestaña seleccionada, fondo del ítem del cajón). Es la prueba de que el mecanismo es compartido de verdad y no una copia con el mismo nombre.
+- `dotnet test` completo: **1552 superadas + 1 omitida de 1553 en 1 m 13 s y 1 m 14 s** (dos corridas), con **las 29 líneas base visuales intactas**; build **0 advertencias / 0 errores**.
+- **Lo que dice la intocabilidad de las líneas base**: ninguna estaba congelada a medio camino. Las capturas actuales se construyen con sus valores finales ya puestos y no disparan transiciones al mostrarse, así que la medida protege el caso que todavía no se había dado —estados que cambian al montarse, o los que traiga el próximo estilo— en lugar de corregir uno ya ocurrido. El dato es parte del resultado: la guardia es la que demuestra que el camino estaba roto.
+
+### 📌 Notas para la siguiente sesión
+
+- **Un solo asentado para todo el suite**: entrada y captura comparten `AnimationClock.Settle` y su presupuesto, así que una transición que quepa en un asentado de interacción también cabe en una captura, y el lint de duraciones declaradas cubre las dos.
+- Las capturas que se toman <b>después de interactuar</b> ya están cubiertas por partida doble: la interacción asienta (`InputSimulator`) y la captura asienta por su cuenta, así que si algún día alguien fotografía tras un cambio de estado sin pasar por el simulador, sigue saliendo asentado.
+- El barrido de la **splash** sigue siendo un `DispatcherTimer` real (no una animación del reloj virtual) y su línea base sigue intacta: lo que asienta la captura no lo toca.
+
+## [2026-09-23] - La Carrera de la Consola: El Texto que Cambiaba de Valor a Mitad del Suite (Hito 180)
+
+### 🎯 Objetivo
+
+Cerrar la carrera que hacía que `WorkflowExecutionThroughTheAppTests.RunningAWorkflowWithWorkToDo_ShouldDoTheWorkAndReportItOnTheCanvas` pudiera fallar de forma intermitente en su aserción de la consola. El hito 177 la había dejado anotada como sospecha: «carrera preexistente entre el latido de la consola y su aserción».
+
+### 🔍 La investigación: la sospecha apuntaba al sitio equivocado
+
+1. **El latido de la consola no es el culpable, y además no entrega en el suite.** El latido entrega su tick con `Heartbeat.Post` → `AvaloniaUiDispatcher.Post`, que <b>descarta</b> el trabajo cuando `Application.Current` es nulo. Medido con una sonda: en la sesión headless `Application.Current` <b>solo es visible en su propio hilo de UI</b> (`appEnUi=True` en el hilo de la sesión, `False` en el hilo del runner y en un hilo del grupo de hilos recién creado); un despacho desde el grupo de hilos entrega `False` y `CheckAccess=True` (que es exactamente «no hay aplicación que lo reciba»), mientras que desde el hilo de UI entrega `True`. Y el latido de la consola, con reloj del sistema, no publicó nada en 500 ms; `FlushAllPendingLogs` a mano publicó los cinco registros. Es decir: <b>en el suite quien publica en la consola es el cierre de la ejecución</b>, no el latido. Una carrera con el latido era imposible aquí.
+2. **La causa real es que el texto esperado cambiaba de valor a mitad del suite.** `LocalizationManager.GetString` recorre los gestores de recursos registrados y devuelve el primero que tenga la clave; <b>si no hay ninguno, devuelve la clave</b>. El diccionario del host se registraba de forma perezosa —la primera vez que una prueba preparaba la sesión headless, es decir a mitad del suite y en paralelo con las demás—, de modo que una misma clave cambiaba de valor <b>una vez</b>. Sonda, medida: al cargar el módulo `'LogStartingExecution'`; diez segundos después `'--- Iniciando Ejecución ---'`, con `FileFlow.App.Resources.Strings` ya entre los gestores (y los gestores creciendo de 78 a 668 durante la suite, porque los plugins registran los suyos al cargarse). La aserción resuelve esa clave <b>dos veces</b> —el coordinador al encolar el mensaje dentro de la ejecución y la prueba al afirmar—, así que un registro ajeno en medio las separa: falla rara, dependiente del orden de ejecución y <b>nunca en una corrida filtrada</b>, donde nadie registra nada y la clave se resuelve a sí misma las dos veces. Encaja con lo observado en el 177: una vez en muchas corridas del suite completo, jamás en solitario (3/3 en aislamiento).
+
+### 🛠️ La cura: registrar el host antes de que exista un test
+
+1. **`TestHelpers/HostLocalization.cs`**: registra el diccionario del host con `[ModuleInitializer]`, es decir <b>al cargar el módulo</b>, antes de que xUnit descubra o corra nada. Es además lo que hace la aplicación de verdad (su arranque registra el diccionario), así que no existe un instante de la vida del proceso en el que el host no tenga sus cadenas: el valor de una clave del host es el mismo desde el primer test hasta el último y <b>la ventana de la carrera queda vacía</b>. `NewHostResourceManager()` queda expuesto sólo para que la guardia pueda reproducir el registro perezoso.
+2. **`AvaloniaTestHelper.RegisterHostResources`** delega el registro en el helper nuevo y conserva lo que sí es suyo: fijar el idioma en <b>cada</b> preparación (un test puede cambiarlo y no restaurarlo, y eso sigue cubierto).
+3. **La prueba resuelve el texto esperado una sola vez**, antes de la ejecución, con el comentario que dice que lo que cerró la ventana es el registro en el arranque y no esta lectura. Su comentario sobre «no vaciar desde el test» gana además el hecho medido: el latido entrega al hilo de la interfaz y en el suite ese despacho se descarta, así que publica el cierre.
+
+### 🧪 Guardias: 2 nuevas, y el fallo ahora es reproducible a demanda
+
+`Unit/App/HostLocalizationBootstrapTests`:
+
+1. **El diccionario está registrado antes del primer test** y la clave se resuelve a su texto, no a sí misma (si se resuelve a sí misma, su diccionario todavía no está y todavía puede cambiar de valor más adelante).
+2. **Volver a registrarlo no cambia lo que resuelve una clave**: se registra un gestor <b>nuevo</b> (el servicio deduplica por instancia, no por nombre) —el registro perezoso, tal cual— y se exige que el valor sea el mismo.
+
+### ✅ Validación
+
+- **Mutación**: dejar el registro sin `[ModuleInitializer]` (es decir, volver al registro perezoso) → <b>las dos guardias fallan en 395 ms</b>, y la segunda reproduce el giro exacto que antes aparecía una vez cada cientos de corridas: `Expected LocalizationManager.Instance[StartMessageKey] to be "LogStartingExecution" … but "--- Iniciando Ejecución ---" … differs near "---"`. El fallo intermitente pasa a ser un fallo determinista de milisegundos. Restaurado.
+- **Medición del efecto en el suite completo** (con una sonda temporal, ya retirada): antes de la cura, `al cargar el módulo: 'LogStartingExecution'` y `t=0: '--- Iniciando Ejecución ---'`; con la cura, **`al cargar el módulo: '--- Iniciando Ejecución ---'`** y el mismo valor 50 s después, mientras los gestores seguían creciendo (441→691). En una corrida filtrada, antes: `gestores=0 esClave=True`; con la cura: `gestores=1 esClave=False`.
+- `dotnet test` completo: **1551 superadas + 1 omitida de 1552** con la sonda y **1550 + 1 de 1551 en 1 m 17 s y 1 m 13 s** (dos corridas) sin ella; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Los recursos de los plugins** siguen registrándose cuando cada plugin se carga (como en producción), así que una clave de <i>plugin</i> todavía puede cambiar de valor a mitad del suite. La cura cubre la mitad del host; una prueba que necesite comparar una cadena de plugin en dos momentos tiene que registrar ese plugin antes, como hace `ModalVisualFixture` con las capturas.
+- **El latido de la consola no entrega en el suite headless** (el despacho desde un hilo del grupo de hilos se descarta sin aplicación visible en ese hilo). Eso deja la consola del suite en manos del cierre —que es el camino que interesa aquí—, pero significa que el camino <b>diferido</b> del latido sólo se ejercita con despachadores inyectados (`HeartbeatCadenceTests`, `LogConsoleViewModelTests`). Es una diferencia de fidelidad del entorno de pruebas, no un fallo del producto: en la aplicación el despacho sí encuentra aplicación.
+- **Queda latente la no-atomicidad del vaciado de la consola**: `FlushPendingLogs` saca los registros de la cola y los publica en un paso posterior, así que dos vaciados concurrentes pueden dejar a uno de ellos sin ver lo que el otro ya drenó. Hoy no puede morder —en producción el latido y el cierre corren ambos en el hilo de la interfaz, y en el suite el latido no entrega—, pero es la carrera que aparecería el día en que el despacho headless entregue de verdad. El cierre documenta y necesita ese contrato («lo que quedó encolado se pinta junto a las estadísticas finales»), así que merece su propio hito.
+
+## [2026-09-23] - Un Solo Registro de Latidos: Añadir Uno Es Declararlo (Hito 178)
+
+### 🎯 Objetivo
+
+Unificar los cuatro latidos de la aplicación en un <b>servicio con registro</b>, de modo que añadir un latido sea declararlo y no volver a copiar la fontanería.
+
+### 🔍 El problema, medido
+
+Los cuatro latidos —vigilante de subflujos (1 s), vaciado de la consola (40 ms), muestreo de rendimiento (1 s) y fotograma visual de la ejecución (33 ms)— tenían, cada uno, <b>el mismo ritual de veinte líneas</b>: un campo <code>ITimer</code>, un <code>CreateTimer</code> con el periodo por vencimiento y por intervalo, un <code>Heartbeat.Post</code> con su lambda y su desecho. Las consecuencias eran tres, y las tres se habían pagado ya:
+
+1. **Cuatro sitios donde equivocarse en lugar de uno**: el hito 176 tuvo que arreglar la misma entrega en cuatro ficheros (y la medición de su cadencia se escribió también cuatro veces).
+2. **Cuatro entradas en el inventario de trabajo aplazado** (hito 175) para lo que es un solo mecanismo: vigilar cuatro copias cuesta lo mismo que vigilar una y no dice nada más.
+3. **Los latidos de la aplicación no eran una lista**: nadie podía preguntar «qué late en este programa» — ni una prueba, ni una guardia, ni una herramienta de diagnóstico.
+
+### 🛠️ Implementación
+
+1. **`App/Services/HeartbeatService.cs`**: `IHeartbeatService.Declare(nombre, periodo, paso)` devuelve un `IHeartbeat` que se arranca (`.Start()`), se para (`Stop()`) y se desecha. El servicio posee el reloj inyectable y el despacho, y es el <b>único</b> sitio del producto que programa un latido: `CreateTimer` con mismo número por vencimiento y por periodo, y entrega por `Heartbeat.Post` con el <b>nombre</b> del latido, de modo que el aviso diga cuál falló (el nombre del método del paso no sirve cuando el paso es una lambda, y el de una lambda no dice nada).
+2. **Declarar no es arrancar**, a propósito: el fotograma visual se declara en el constructor del coordinador —así el registro enumera los cuatro desde el arranque— y cada ejecución lo arranca y lo para en su cierre. Los otros tres se declaran y arrancan en su componente, que es quien los desea.
+3. **El registro no admite dos latidos con el mismo nombre** (falla ruidosamente, con el nombre y el periodo del que ya estaba): dos nombres iguales se taparían, y el que no se viera sería el que nadie echa de menos. Valida también nombre, periodo positivo y paso.
+4. **Cada latido conserva lo suyo**: su periodo como constante pública y su paso público (patrón del hito 173), porque son lo que la prueba de cadencia mide. Lo que dejó de ser suyo es el mecanismo. En el código, cada uno pasó de una veintena de líneas a:
+
+| Latido | Antes | Ahora |
+| :--- | :--- | :--- |
+| Subflujos | `_timeProvider.CreateTimer(_ => Heartbeat.Post(_ui, RunSubflowWatchTick), …)` + campo `ITimer` | `_subflowWatchBeat = …Declare(SubflowWatchBeat, SubflowWatchInterval, RunSubflowWatchTick).Start();` |
+| Consola | `clock.CreateTimer(_ => Heartbeat.Post(ui, FlushAllPendingLogs), …)` | `_flushBeat = …Declare(ConsoleFlushBeat, FlushInterval, FlushAllPendingLogs).Start();` |
+| Rendimiento | `clock.CreateTimer(_ => Heartbeat.Post(ui, () => _ = SampleNowAsync()), …)` | `_sampleBeat = …Declare(SampleBeat, SampleInterval, () => _ = SampleNowAsync()).Start();` |
+| Visual | `_timeProvider.CreateTimer(…)` devuelto por `StartVisualHeartbeat()` | latido declarado en el constructor; `StartVisualHeartbeat() => _visualFrameBeat.Start();` |
+
+5. **Un registro para toda la aplicación**: `ServiceCollectionExtensions` registra `IHeartbeatService` como singleton, así que los cuatro componentes lo reciben por contenedor y sus latidos quedan declarados en el mismo sitio. `MainViewModel.Heartbeats` lo expone (y su constructor por defecto comparte uno entre los cuatro; el constructor con contenedor usa el registrado).
+
+### 🧪 Pruebas: 15 (antes 8) y más cerca del mecanismo
+
+- **`ApplicationHeartbeatContractTests` (6)**: los cuatro pasos siguen siendo públicos y cada componente <b>declara</b> su latido con su nombre, su periodo y su paso; y tres guardias nuevas —<b>la fontanería vive en un solo fichero</b> (un barrido de todo `FileFlow.App` que falla si un componente vuelve a programar un temporizador o a entregar su tick por su cuenta, nombrando el fichero), el registro programa con el reloj inyectado y entrega protegido, y el <b>registro de la aplicación</b> declara los cuatro latidos con sus periodos (resolviendo el contenedor de verdad).
+- **`HeartbeatCadenceTests` (8)**: la cadencia se mide <b>una vez por el mecanismo</b> (ni un tick antes del periodo, uno por periodo, y parado ninguno) y de cada componente se afirma su declaración (nombre, periodo y que late); más cuatro pruebas del registro que no existían porque el registro no existía: nombre duplicado, validaciones, parar y reanudar, y listar y encontrar.
+- **`DeferredWorkInventoryGuardTests`**: el inventario pasó de <b>20 sitios a 17</b> —los cuatro temporizadores de latido son ahora uno— y la guardia lo dijo antes que nadie: el volcado nombró el sitio nuevo (`HeartbeatService.cs::Start::Timer`) y las tres decisiones huérfanas antes de que yo tocara el registro.
+
+### ✅ Validación
+
+- **Mutaciones (cinco, todas mordidas y restauradas)**: **A1** — la consola vuelve a programar su temporizador y a entregar su tick → falla el lint de fontanería única nombrando `LogViewModel.cs` <b>dos veces</b> (temporizador y entrega), falla su lint de declaración y aparece un sitio nuevo sin decisión en el inventario; **A2** — el latido visual se arranca al declararse → fallan las dos pruebas que afirman que declarar no es arrancar; **B1** — el nombre duplicado devuelve el latido existente en silencio → falla la guardia del registro; **B2** — `Stop()` deja el temporizador vivo → fallan las cuatro medidas de cadencia («y parado no entrega ninguno más», con `but found 5`), la prueba de parar y reanudar y el lint del desecho; **B3** — el contenedor deja de enlazar el registro → falla el registro de la aplicación.
+- `dotnet test` completo: **1547 superadas + 1 omitida de 1548 en 1 m 23 s, 1 m 14 s y 1 m 20 s** (tres corridas); build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El servicio es del host** (`FileFlow.App`), que es donde viven los latidos de la interfaz. Los aplazamientos de Core y de los plugins siguen cada uno con su reloj y su decisión en el inventario (el servicio no es un planificador de tareas: es el mecanismo de un latido de UI). Si un plugin llegara a necesitar un latido propio, el contrato tendría que subir al SDK antes de copiarlo.
+- `HeartbeatService.Shared` existe sólo como respaldo del constructor con contenedor cuando nadie inyecta servicio; el camino real de producción inyecta el singleton registrado.
+
+## [2026-09-23] - Las Animaciones de la Interfaz Bajo el Reloj del Suite: Asentar Sin Esperar (Hito 177)
+
+### 🎯 Objetivo
+
+Poner las animaciones de la interfaz bajo un reloj inyectable para que afirmar el valor de una propiedad animada deje de costar tiempo real. Era la última deuda del linaje 172→176: medido en el 172, el reloj de animación de la sesión headless avanza con el tiempo <b>transcurrido de verdad</b> entre ticks del reloj de render (una `BrushTransition` de 120 ms: al 30 % con 12 fotogramas, al 100 % con ~42 en solitario, al 80 % con 64 bajo carga), así que el asentado bombeaba 180 ms reales por interacción —y una espera real no prueba la animación, prueba que el tiempo pasa—.
+
+### 🔍 La costura, medida antes de tocar nada
+
+Una sonda contestó las tres preguntas, porque el resto del diseño dependía de ellas:
+
+1. **¿De dónde sale el reloj?** `Avalonia.Animation.Clock.GlobalClock` no guarda un reloj propio: lo resuelve del **`AvaloniaLocator`** en cada construcción de un reloj de animación (`GetRequiredService<IGlobalClock>()`). En headless responde `Avalonia.Media.MediaContext+MediaContextClock`.
+2. **¿Se puede sustituir?** Sí, pero `IGlobalClock` (y `Clock`, e `IClock`) están marcados `[PrivateApi]`: **no existen en los ensamblados de referencia**, así que no se puede compilar contra ellos. La inyección va por reflexión: se implementa la interfaz interna con un `DispatchProxy` y se registra con la API pública `Bind<T>().ToConstant()`. (`PlayState` sí es público y se usa tal cual: la mitad de la reflexión sobraba.)
+3. **¿Manda de verdad?** Con el reloj falso enlazado, **60 ticks del reloj de render no movieron la transición ni un píxel** y las pulsaciones virtuales sí la avanzaron. Es decir: el tiempo real no decide nada y el asentado pasa a ser exacto.
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/AnimationClock.cs`**: el reloj virtual (`Advance(n)` / `AdvanceBy(delta)`) con su `Install()` **idempotente y verificado**. La verificación no es adorno: si Avalonia deja de resolver el reloj por el locator, el enlace se ignoraría **en silencio** y el suite volvería a medir tiempo real con fallos intermitentes tres hitos después; ahora `Install()` lanza con el diagnóstico y `IsInEffect` (que vuelve a preguntar por el reloj global, no se fía de haber enlazado) es la guardia.
+2. **`AvaloniaTestHelper.PrepareApplication`** instala el reloj antes que nada, de modo que cualquier animación que arranque un control de la sesión cuelga del virtual desde el primer instante.
+3. **`InputSimulator.Settle`** deja de esperar: bombea el dispatcher, avanza el reloj de render y **pulsa el reloj de animación** un fotograma virtual (16 ms) por vuelta. `SettleUntil` cambia su plazo de reloj del sistema a **presupuesto virtual**: antes podía rendirse por lentitud de la máquina, con el diagnóstico equivocado. Desaparece `SettleMilliseconds`.
+4. **La semántica del primer pulso** queda escrita: el reloj de cada animación consume su primer pulso como base, así que 12 fotogramas (192 ms) cubren la transición más larga del sistema de diseño (120 ms) con margen; el lint lo ata a las duraciones realmente declaradas.
+
+### 🧪 Pruebas (6 nuevas + 2 apaños retirados)
+
+- **`Unit/Views/AnimationClockTests.cs`**: el reloj de la sesión es el nuestro (y no `MediaContextClock`); **200 ticks de render no mueven una transición sin pulsación** (el testigo conductual: es lo que falla si el enlace se cae); un asentado la deja **exacta** en su valor final; un avance parcial la deja **a medio camino** (interpola, no salta); avanzar 960 ms de interfaz **no cuesta** 960 ms reales; y un lint sobre el XAML de disco —host <b>y</b> plugins— que falla si una transición declarada no cabe en un asentado, con barrido no vacío y anclaje a los ficheros conocidos.
+- **Los dos `Transitions = null` de `InputInteractionTests` desaparecen**: el ítem del cajón y el texto de la pestaña se afirman ahora en su valor **animado** (`SettleUntil(() => BackgroundOf(item) == Token("BgHoverBrush"))`), que era el propósito del hito. Ese apaño era la prueba de que la animación no se estaba probando.
+
+### ✅ Validación
+
+- **Mutaciones en dos rondas, las cinco mordidas**: **A** — el enlace al locator se cae *y su verificación también* (el fallo silencioso que hay que cazar) → **4 fallos** (`IsInEffect` falso, los ticks moviendo la transición, y sin valor final); **B** — el asentado deja de pulsar → los mismos más la pestaña del editor; **C** — presupuesto de asentado a 4 fotogramas → falla el lint y el valor final; **D** — una transición del producto a 400 ms → el lint la nombra (`FileFlow.App/Styles/Buttons.axaml: 400 ms`); **E** — `AdvanceBy` con `Thread.Sleep` real → `Expected watch.Elapsed to be less than 200ms … but found 967ms`.
+- **Lección de la ronda B**: `HoveringAToolboxItem_ShouldHighlightIt` **pasó** con el reloj roto, porque `SettleUntil` sondea y el reloj real acaba llegando. El sondeo es una red que puede tapar un reloj caído; quien muerde es su hermano (la pestaña) y la aserción con diagnóstico. Queda anotado para no confundir «pasa» con «mide».
+- **Lección de la restauración**: un script que reescribía el XAML le añadió un BOM; el fichero se restauró desde `HEAD` (`git diff` vacío) en vez de dejarlo con un cambio que nadie pidió.
+- `dotnet test` completo: **1540 superadas + 1 omitida de 1541 en 1 m 26 s, 1 m 10 s y 1 m 10 s** (tres corridas), con las **29 líneas base visuales intactas** —las capturas no cambian porque el reloj tampoco—; `AnimationClockTests` 6/6 en 1,2 s; `InputInteractionTests` 15/15 en **17,8 s** (antes 26 s: los 180 ms reales de cada asentado se han ido). Build 0 advertencias / 0 errores.
+
+### 📌 Notas para la siguiente sesión
+
+- En una corrida con **binarios mutados** (la mutación E dormía 192 ms por asentado) falló de forma intermitente `WorkflowExecutionThroughTheAppTests.RunningAWorkflowWithWorkToDo_ShouldDoTheWorkAndReportItOnTheCanvas`, sobre la línea de la consola (`LogStartingExecution`). No se reprodujo ni en solitario (3/3) ni en las tres corridas completas posteriores con el binario bueno, y esa prueba no toca ni el asentado ni el reloj de animación: queda como **sospecha de carrera preexistente** entre el latido de la consola y la aserción del test, que merece su propio hito (endurecerlo con el paso público del latido, patrón 173).
+- Lo que queda dependiendo del tiempo real son las esperas de diseño (backoff, sondeo del watcher, latencia simulada, nodo de retardo) y el `DispatcherTimer` del barrido de la splash. Con el reloj virtual ya instalado, el siguiente candidato natural es ese barrido y las dos esperas de la interfaz que aún se asientan a mano.
+
+## [2026-09-23] - Los Cuatro Latidos Sobre el Reloj Inyectable: Cadencia Medida (Hito 176)
+
+### 🎯 Objetivo
+
+Pasar los cuatro <b>latidos</b> de la aplicación de <c>DispatcherTimer</c> al <c>TimeProvider</c> inyectable y <b>medir su cadencia</b>, que era la única propiedad del contrato que no se podía afirmar: con el reloj del sistema, probar «un latido por periodo» exige esperar el periodo de verdad —y una espera real no prueba la cadencia, prueba que el tiempo pasa—. Era la deuda anotada en el hito 173.
+
+| Latido | Periodo | Antes | Ahora |
+| :--- | :--- | :--- | :--- |
+| Subflujos | 1 s | `DispatcherTimer(Background)` + manejador que reenviaba | `_timeProvider.CreateTimer(…)` entregando `RunSubflowWatchTick` |
+| Consola | 40 ms | `DispatcherTimer(Background)` | `clock.CreateTimer(…)` entregando `FlushAllPendingLogs` |
+| Rendimiento | 1 s | `DispatcherTimer` + `async void OnTimerTick` | `clock.CreateTimer(…)` entregando `SampleNowAsync` |
+| Visual | 33 ms | `DispatcherTimer(Normal)` local de `RunAsync` | `StartVisualHeartbeat()`, paso con nombre propio que `RunAsync` usa y desecha |
+
+### 🛠️ Implementación
+
+1. **`Heartbeat.Post(ui, step)`** (`App/Services/Heartbeat.cs`): la entrega del latido, protegida. No es una precaución teórica: al quitar el `try/catch` que tenía el despacho antiguo, el suite se cayó de verdad —host de pruebas muerto por un `NullReferenceException` dentro de `Avalonia.Threading.Dispatcher.RequestProcessing`, con `Task.Delay`/timer callback en el hilo del grupo de hilos, donde no hay bucle que recoja la excepción—. Un latido no es una tarea de la que dependa nada: si su entrega falla, se deja constancia y la aplicación sigue viva.
+2. **`IUiDispatcher` inyectable en los cuatro** (el coordinador ya lo tenía): el reloj entrega el tick en un hilo del grupo de hilos y el trabajo se lleva al hilo de la interfaz. En pruebas se inyectan dobles en línea (semántica de `NullUiDispatcher`), así que la medida es determinista y no depende de que exista una aplicación.
+3. **Los periodos pasan a ser públicos** (`SubflowWatchInterval`, `FlushInterval`, `SampleInterval`, `VisualFlushInterval`): la prueba de cadencia avanza el reloj contra el número declarado, no contra una copia.
+4. **`AvaloniaUiDispatcher` descarta lo que no tiene interfaz que lo reciba** (y `CheckAccess` responde `true` sin aplicación): con el latido entregando desde un hilo del grupo de hilos, un despacho contra una aplicación no arrancada <b>inicializaba el despachador de Avalonia —y su bucle de render— en ese hilo</b>, y la siguiente sesión headless moría al montar su compositor con «The calling thread cannot access this object because a different thread owns it» (11 capturas del shell en rojo). Tocar la interfaz desde el hilo equivocado es peor que no hacerlo.
+
+### 🧪 Pruebas (4 nuevas + lint reescrito)
+
+- **`HeartbeatCadenceTests`** (4): para cada latido — nada un tick antes del periodo, exactamente una entrega al cumplirlo, una por cada periodo siguiente, y ninguna después de desecharlo. El instrumento es `RecordingUiDispatcher` (TestHelpers), que ejecuta en línea y registra qué se despacha: cada vencimiento entrega un despacho, así que contarlos por el nombre del método es contar los latidos —contar el <i>efecto</i> no serviría para todos, porque el vigilante de subflujos sin nada que refrescar no deja rastro por diseño—.
+- **El cuarto se mide sin poner una ejecución en marcha**: por eso su programación es un paso con nombre propio (`StartVisualHeartbeat`), que `RunAsync` usa —el lint lo comprueba— y la prueba de cadencia ejerce directamente.
+- **`ApplicationHeartbeatContractTests` reescrito** a la forma del hito 176: paso público, programación sobre el reloj inyectable (y no un `DispatcherTimer`), el paso nombrado en la entrega, `Heartbeat.Post` presente y temporizador desechado. La comprobación del periodo mira <b>dentro</b> de la llamada de programación (`TimerProgramming`), no sólo que el archivo mencione la constante.
+
+### ✅ Validación
+
+- **Mutaciones (tres rondas, mordidas y restauradas)**: **A** — la programación usa 80 ms en vez de `FlushInterval` → **2 fallos** (la cadencia: «cumplido el periodo, el latido entrega su trabajo exactamente una vez, but found 0»; y el lint: «tiene que usar 'FlushInterval' como vencimiento y como periodo, no un número suelto»); **B** — la consola vuelve a `DispatcherTimer` → **2 fallos** (`PendingTimerCount to be 1, but found 0` y el lint: «tiene que colgar del reloj inyectable»); **C** — el latido de subflujos entrega sin `Heartbeat.Post` → **1 fallo** (el lint de la entrega protegida), y la prueba de cadencia <i>sigue pasando</i>, que es la atribución correcta: la protección es fontanería, no efecto.
+- **Tres regresiones medidas por el camino, todas arregladas**: el host de pruebas muriendo por la excepción no capturada; el compositor de la sesión headless envenenado por el despachador creado en un hilo del grupo de hilos; y el conteo de temporizadores del pulso de energía del hito 174 —que ahora comparte reloj con el vigilante del propio lienzo— convertido en <b>incremento</b> en lugar de número exacto.
+- `dotnet test` completo: **1534 superadas + 1 omitida de 1535 en 1 m 38 s y en 1 m 48 s** (dos corridas seguidas); build **0 advertencias / 0 errores**; y **arranque real** de la aplicación: viva 12 s con <b>0 bytes</b> de crecimiento en `crash.log`.
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que queda de «tiempo real»** son las esperas que por diseño lo quieren (backoff de reintentos, sondeo del vigilante de carpetas, latencia simulada del origen sintético, nodo de retardo) y dos sitios del inventario declarados así. Con `TimeProvider` ya en el repositorio y la cadencia medida, el siguiente paso natural es el <b>reloj en las animaciones de la interfaz</b> (el reloj de render headless avanza con el tiempo transcurrido, no con los fotogramas: lo medimos en el hito 172).
+- El inventario del hito 175 cambió de clave con este hito (`RunAsync::Timer` → `StartVisualHeartbeat::Timer`) y la guardía lo dijo antes que nadie; queda como ejemplo de por qué existe.
+
+## [2026-09-23] - La Guardia del Inventario: Ningún Temporizador ni Espera Sin Decisión (Hito 175)
+
+### 🎯 Objetivo
+
+Convertir en guardia la revisión que hasta ahora se hacía a mano hito tras hito. La capa que sólo corre con la aplicación en marcha o cuando pasa el tiempo es la que peor envejece, y cada vez se descubrió tarde: el barrido de la splash estuvo muerto varios hitos (169), los cuatro latidos no se ejercitaban en ninguna prueba (173) y los dos relojes con duración semántica no tenían vencimiento probado (174). Ahora el inventario de trabajo aplazado se recalcula del código en cada ejecución y <b>cada sitio tiene que estar ejercitado por una prueba nombrada o explicado con un motivo</b>: un temporizador nuevo sin decisión rompe el suite.
+
+### 🔎 Alcance: una decisión explícita, no un olvido
+
+| | Qué | Por qué |
+| :--- | :--- | :--- |
+| **Dentro** | `DispatcherTimer`, `PeriodicTimer`, `Timer`, `TimeProvider.CreateTimer` y `Task.Delay` | es el trabajo que se aplaza <i>en el tiempo</i>: o late, o vence, o espera |
+| **Fuera** | `Dispatcher.UIThread.Post`/`InvokeAsync` | es marshalado de hilo, no tiempo: en headless el despachador existe y ese trabajo <b>sí</b> corre en las pruebas. Meterlo llenaría el inventario de entradas sin riesgo y le quitaría filo a la guardia |
+| **Fuera** | `CancellationTokenSource.CancelAfter` | es una fecha límite de cancelación: al vencer no se ejecuta nada, se despierta un token |
+
+**Inventario real: 20 sitios** — 9 en la aplicación, 5 en Core, 6 en plugins. 17 <b>ejercitados</b> por una prueba nombrada y 3 declarados de tiempo real (la espera del arranque a que la interfaz esté pintada, el fundido de cierre de la splash y la latencia simulada del origen sintético, que las pruebas generan con `EmissionDelayMs = 0`).
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/DeferredWorkInventoryAnalyzer.cs`** (Roslyn): identifica cada sitio con una clave estable —`fichero::miembro::tipo`, con ordinal `#n` sólo cuando un mismo miembro aplaza más de una vez—, resuelve el miembro por el ancestro más cercano (un `Task.Delay` dentro de una función local pertenece a la función local, no al método que la contiene) y marca los retardos que cuelgan de un reloj inyectado (`Task.Delay(duración, timeProvider)`), que es la señal de que su vencimiento es probable. Añade `HasPublicMember`, la mitad estática del patrón del hito 173.
+2. **`PluginSourceLocator.ProductionProjectNames`**: el alcance del barrido sale de `FileFlow.slnx` menos el suite, así que el host, Core, el Sdk y los plugins entran solos y un proyecto nuevo queda cubierto al añadirlo a la solución. `PluginProjectNames` se reescribe encima de la misma lectura (mismo comportamiento).
+3. **`Unit/App/DeferredWorkInventoryGuardTests.cs`**: el <b>registro</b> de las 20 decisiones (una línea por sitio, con la evidencia citada o el motivo) y tres comprobaciones sobre el árbol real más seis auto-tests del analizador.
+
+### 🧪 Pruebas (9)
+
+- **Inventario**: un sitio sin decisión falla <i>volcando la lista completa</i> de lo que falta; una decisión sin sitio falla como huérfana (el sitio se movió, se renombró o desapareció).
+- **Evidencia verificable**: un `Exercised` exige que el paso sea un miembro <b>público</b> del fichero del sitio y que la clase de test citada lo nombre (o nombre el tipo, cuando la prueba maneja el nodo dentro de un flujo y no su método). Sin esto, el registro sería una lista de buenas intenciones.
+- **Alcance**: el barrido no puede ser vacío, tiene que ver App, Core y plugins, y tiene que encontrar cinco sitios conocidos —los cuatro latidos y los dos relojes del hito 174—, que es lo que delata un barrido que dejó de mirar donde debe.
+- **Auto-tests del analizador (6)**: temporizador y espera con miembro y línea exactos; reloj inyectado y `CreateTimer`; `CancelAfter`, despacho al hilo de UI y texto entre comillas quedan fuera; lo comentado no cuenta (lección del hito 165); una espera dentro de una función local se reporta por la función local; los ordinales aparecen sólo cuando el miembro aplaza más de una vez.
+
+### ✅ Validación (mutaciones en cuatro rondas, todas mordidas y restauradas)
+
+- **A — funcionalidad nueva**: un segundo `Task.Delay` en un miembro ya inventariado → falla nombrando el sitio nuevo <b>y</b> el cambio de clave del anterior (`Delay#1`/`Delay#2`).
+- **B — un sitio que desaparece** (quitar el `Task.Delay(16)` del fundido de cierre) → falla por decisión huérfana.
+- **C — la evidencia miente**: renombrar la clase de prueba citada (`ConnectionEnergyTests` → `…Suite`) → «la prueba citada no existe en el suite».
+- **D — el refactor que esconde una espera**: mover el aplazamiento del aviso de copiado a un ayudante privado → falla por clave nueva sin decisión, y el volcado marca `[reloj inyectado]`, que es justo la pista que necesita quien vaya a decidir.
+- **Lección anotada**: la primera versión del auto-test fue <b>rechazada por la guardia del contrato de colecciones</b>, porque su snippet contenía `Dispatcher.UIThread` literal y esa guardia mira el texto: no distingue una llamada de una cadena de ejemplo. El snippet usa ahora un alias (<c>using UiDispatcher = …</c>) y lo explica.
+- `dotnet test` completo: **1530 superadas + 1 omitida de 1531 en 1 m 36 s y en 1 m 28 s** (dos corridas seguidas); clase nueva **9/9 en 2 s**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Convivencia con `ApplicationHeartbeatContractTests`** (hito 173), deliberada: aquel lint verifica el <b>cableado</b> (que el temporizador llame a ese paso y que esté arrancado); éste verifica que el <b>inventario</b> no crezca en silencio. Un latido nuevo debería aparecer en los dos.
+- Los tres sitios de tiempo real son los candidatos naturales a pasar a `Exercised` cuando alguien toque esas rutas: el arranque (espera al primer fotograma), el fundido de la splash y el retardo del origen sintético (bastaría una prueba con `EmissionDelayMs` pequeño).
+
+## [2026-09-23] - Los Relojes con Semántica Bajo Prueba: Pulso de Energía y Aviso de Copiado (Hito 174)
+
+### 🎯 Objetivo
+
+Inyectar una fuente de tiempo (<c>TimeProvider</c>) en los dos relojes cuya <b>duración es semántica</b> —cuánto se queda encendido el pulso de energía de un cable y cuánto dura el aviso de «copiado»— para probar su <b>vencimiento</b> sin esperas reales. Hasta este hito se probaba el efecto (y la generación, pasada a mano) pero no el vencimiento programado, que es lo que apaga las cosas solo: con el reloj del sistema comprobarlo cuesta la espera entera por caso, y una espera real no prueba nada —prueba que el tiempo pasa—.
+
+| Reloj | Dónde | Duración | Antes | Ahora |
+| :--- | :--- | :--- | :--- | :--- |
+| **Vencimiento del pulso de energía** | `EditorViewModel` | 900 ms | `Task.Delay` del reloj del sistema; sólo se ejercitaba `CompleteConnectionPulse` con la generación inventada | `Task.Delay(…, _timeProvider)` y `PulseConnectionEnergy` **devuelve la tarea de su vencimiento** |
+| **Aviso de «copiado»** | `NodeParameterViewModel` | 1500 ms (`CopyFeedbackDuration`) | `Task.Delay(1500)` a secas, y el aviso de un primer clic apagaba el de un segundo (defecto latente, nadie lo había probado) | reloj inyectado **y generación**: un clic nuevo reabre la ventana del aviso |
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/ManualTimeProvider.cs`**: reloj manual — «el tiempo avanza cuando la prueba lo dice»— con `GetUtcNow`, `GetTimestamp`, `CreateTimer` (un disparo y periódico, con `Change`/`Dispose`) y `AdvanceBy`, que dispara los temporizadores vencidos **fuera del candado** y en orden de vencimiento, para que un callback pueda volver a programar sin bloquearse. Añade `PendingTimerCount`, el número de temporizadores vivos.
+2. **`EditorViewModel`**: parámetro opcional `TimeProvider? timeProvider = null` (por defecto `TimeProvider.System`, así el cableado de la aplicación no cambia) y `PulseConnectionEnergy` pasa a devolver el `Task` de su vencimiento. Nadie en la aplicación lo necesita —el cable se apaga solo—, pero el test sí: esperar esa tarea es lo que convierte «el vencimiento obsoleto no apagó el pulso nuevo» en una comprobación en lugar de una carrera.
+3. **`NodeParameterViewModel`**: mismo parámetro opcional en los dos constructores (el de descriptor lo reenvía), la duración pasa a constante pública `CopyFeedbackDuration` y el aviso se rige por una **generación**: un clic nuevo la incrementa y sólo el vencimiento que sigue siendo el vigente apaga `IsCopied`. Si el portapapeles falla, no se anuncia la copia (antes el aviso se encendía y el `Task.Delay` quedaba fuera del `try`: un reloj que falla dejaba el aviso encendido para siempre).
+4. **Doctrina de fallo seguro** (la misma en los dos relojes): si el reloj no puede programar, el pulso no puede quedarse encendido —el runtime del cable lo apagará al terminar la ejecución— y el aviso se apaga en el acto; en ambos casos la excepción se registra y no se propaga.
+
+### 🧪 Pruebas (5 nuevas)
+
+- **Pulso (2)**: el cable sigue encendido a los 899 ms y se apaga al llegar a 900 (con el reloj manual), y —la ráfaga de verdad— el vencimiento del primer pulso llega **con el segundo en marcha** y no lo apaga; el del último sí cierra el cable.
+- **Aviso de copiado (3)**: dura exactamente `CopyFeedbackDuration`, un segundo clic **reabre** su ventana (el vencimiento del primero no lo apaga) y sin valor no hay copia ni confirmación.
+- **Dos lecciones medidas en la primera versión, escritas en las pruebas**: (a) un test que sólo observa el estado final **pasa despacio con el reloj equivocado** (el de la duración esperó 1,5 s reales y aprobó), de modo que no medía la inyección sino la paciencia — ahora cada test comprueba además que el vencimiento quedó programado **en el reloj inyectado** (`PendingTimerCount`) y espera la tarea con un plazo **menor** que la duración del aviso; (b) comprobar que el vencimiento obsoleto no apaga nada exige **esperar ese vencimiento**, y eso sólo es posible porque el método devuelve su tarea.
+
+### ✅ Validación (mutaciones en tres rondas, todas mordidas y restauradas)
+
+- **Ronda A — guardia de generación fuera** (`CompleteConnectionPulse` apaga siempre) → **2 fallos**: el test estático que ya existía y el nuevo con el reloj manual.
+- **Ronda B — los dos relojes vuelven al sistema** → **4 fallos**, uno por cada prueba de reloj, con el diagnóstico exacto: `Expected clock.PendingTimerCount to be 1 because el vencimiento quedó programado en el reloj inyectado, no en el del sistema, but found 0`.
+- **Ronda C — generación del aviso fuera** → **1 fallo**: el segundo clic deja de reabrir su ventana.
+- `dotnet test` completo: **1521 superadas + 1 omitida de 1522 en 1 m 39 s y en 1 m 43 s** (dos corridas seguidas); clase nueva **21/21 en 744 ms**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que sigue sin cubrirse**: la **cadencia** de los cuatro latidos del hito 173 (que disparen cada 33/40 ms). El `TimeProvider` ya está en el repositorio y sirve para exactamente eso: el siguiente paso natural es que esos temporizadores dejen de ser `DispatcherTimer` y pasen a colgar del reloj inyectable.
+- Las esperas que quedan con `Task.Delay` en producción son las que **por diseño quieren tiempo real**: reintentos con backoff (`ExecutionRetryHelper`, cliente VLM), sondeo del `FolderWatcherService`, throttling del nodo de retardo y las de arranque/renderizado. Ahí el reloj inyectado no aporta: lo que hay que probar no es la duración sino la política (reintentos, cancelación), que se prueba sin esperar.
+
+## [2026-09-23] - Los Cuatro Latidos Bajo Prueba: Caminos que Sólo Corrían en la Aplicación (Hito 173)
+
+### 🎯 Objetivo
+
+Poner bajo prueba los cuatro <b>latidos</b> de la aplicación —los temporizadores cuyo camino no se ejecutaba en ninguna prueba porque el suite no bombea el bucle de mensajes— con el patrón ya validado en el hito 169 (el barrido de la splash): <b>el mismo método que llama el temporizador es público y sin argumentos</b>, de modo que lo que ejercita una prueba es exactamente lo que corre en el producto.
+
+| Latido | Dónde | Cadencia | Antes | Ahora |
+| :--- | :--- | :--- | :--- | :--- |
+| **Subflujos** | `EditorViewModel` | 1 s | tick privado; el suite probaba el refresco pero no que el lienzo se entere solo | `RunSubflowWatchTick()` público; el manejador sólo reenvía (se conserva la desuscripción determinista de `Dispose`) |
+| **Consola** | `LogViewModel` | 40 ms | todos los tests vaciaban a mano: el camino diferido no corría nunca | el temporizador llama al método público `FlushAllPendingLogs()`; `FlushPendingLogs` queda como cuerpo privado |
+| **Rendimiento** | `SystemPerformanceMonitor` | 1 s | sólo se probaba el formateo y que se pueda construir | `SampleNowAsync()` público y con `Task`; el tick reenvía con `await` |
+| **Visual** | `WorkflowExecutionCoordinator` | 33 ms | era una lambda con los diccionarios capturados dentro de `RunAsync` | colas a campos (vaciadas al arrancar cada ejecución), encolado por tres métodos públicos y `FlushVisualFrame()` como fotograma |
+
+### 🛠️ Implementación
+
+1. **Subflujos**: `public void RunSubflowWatchTick() => RefreshSubflowsChangedOnDisk();` y `OnSubflowWatchTick` reducido a un reenvío. El reenvío existe para conservar el `Tick -= OnSubflowWatchTick` del `Dispose`: con una lambda no se puede desuscribir.
+2. **Consola**: el latido llamaba a un privado que hacía lo mismo que el público, así que el paso se **unificó** en el público (menos superficie que añadir un alias). El cuerpo sigue en `FlushPendingLogs`, privado.
+3. **Rendimiento**: la guarda `_isSampling` se levanta <b>antes</b> del primer `await` a propósito —dos ticks solapados no pueden producir dos muestras— y la comprobación de desecho se mantiene en los dos puntos (entrada y antes de publicar). El `async void` del tick pasa a `async void → await SampleNowAsync()`, con el `try/catch` dentro del paso: una excepción transitoria del proceso se registra y se traga en lugar de tumbar la aplicación.
+4. **Visual**: las tres colas (`_pendingEdgeUpdates`, `_pendingStatusUpdates`, `_pendingNodeProgressUpdates`) pasan de locales de `RunAsync` a campos, porque un paso con nombre se puede ejercitar y una lambda con todo capturado dentro de una ejecución no. Los manejadores del motor encolan por `QueueNodeStatus`/`QueueNodeProgress`/`QueueEdgeDispatch` —los mismos métodos que usa la prueba—, el temporizador llama a `FlushVisualFrame()` y el `finally` **reutiliza ese mismo paso** en vez de la veintena de líneas duplicadas que tenía para el volcado final.
+5. **`TestHelpers/SourceText.cs`**: el limpiador de comentarios de los lints se extrae de `SplashScreenStartupTests` (`WithoutComments` + `CodeWithoutComments`) para que haya una sola implementación. Sin él, un lint se conforma con encontrar la línea **comentada** — la lección del hito 165.
+
+### 🧪 Pruebas (15 nuevas)
+
+- **Subflujos (2)**: el latido refresca el contenedor que cambió en disco (se llama al latido, no al refresco) y sus dos casos aburridos —nada cambió: no toca el grafo; el lienzo ya se desechó: no revienta—.
+- **Consola (3)**: el latido es lo que pone los registros en pantalla (el productor sólo encola), una ráfaga de 500 líneas llega entera **en un solo lote** y el latido **cuenta** lo que llega aunque el buscador no pinte la fila.
+- **Rendimiento (3)**: publica una muestra plausible (memoria > 0, CPU acotada), no se solapa cuando coinciden dos ticks (un solo evento) y calla después de `Dispose`.
+- **Visual (3)**: pinta lo que el motor publicó antes de que la ejecución termine (estado, progreso y pulso del cable), ignora las actualizaciones de nodos que ya no están y corre sin ejecución en marcha (el primer latido y el último caen fuera de la ejecución).
+- **`ApplicationHeartbeatContractTests` (4)**: lint que ata los cuatro —paso alcanzable, temporizador llamando a **ese** paso y `.Start()` presente— sobre el código real sin comentarios.
+
+### ✅ Validación (mutaciones en dos rondas)
+
+- **Ronda A — comportamiento (4 mutaciones simultáneas, una por latido)**: latido de subflujos vacío, consola sin pintar, guarda de reentrada del muestreo fuera y fotograma visual sin volcar → **11 fallos**, con dueño claro para cada latido. Atribución cruzada esperada y anotada: el mutante de la consola también tumba tres pruebas que **leen la consola** sin ser de este hito (el efecto es compartido). El lint **no** falla en esta ronda, y es correcto: vigila la fontanería, no el efecto.
+- **Ronda B — cableado (2 mutaciones)**: temporizador de subflujos sin `.Start()` (latido muerto en silencio) y temporizador de consola llamando otra vez al privado → **fallan 2 de 4 lints**, nombrando cada caso.
+- `dotnet test` completo: **1516 superadas + 1 omitida de 1517 en 1 m 44 s**; build **0 advertencias / 0 errores**. Los cuatro se detienen al desecharse (revisado: `Stop()` en `Dispose` de los tres view models/servicios y en el `finally` de la ejecución).
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que sigue sin cubrirse**: la <b>cadencia</b> real (que el temporizador dispare cada 33/40 ms) no se mide — el lint fija la suscripción y los intervalos viven en constantes del código—. Medirla exigiría un reloj inyectable (`TimeProvider`), que el repositorio aún no usa en ninguna parte.
+- El patrón «paso público y sin argumentos + lint de alcanzabilidad» ya está aplicado a cinco pasos (barrido de la splash y los cuatro latidos). Si aparece un sexto temporizador, la lista de este hito y el lint de `ApplicationHeartbeatContractTests` son el sitio donde añadirlo.
+
+## [2026-09-23] - La Capa de Interacción Bajo Prueba: Estados, Atajos, Arrastre y Buscador con Entrada Real (Hito 172)
+
+### 🎯 Objetivo
+
+Cubrir la mitad «viva» del rediseño: los **estados de estilo** (hover, pressed, focus, disabled), los **atajos de teclado**, el **arrastre de un nodo del cajón al lienzo** y el **foco del buscador rápido**. Hasta este hito el suite no simulaba ni un clic, ni una tecla, ni un arrastre: las 29 capturas visuales congelan estados quietos y los lints comprueban el texto de las reglas, así que un selector mal escrito, un atajo que no llega o un foco que no aterriza solo se veían usando la aplicación.
+
+### 🔎 El punto ciego, medido antes de escribir nada
+
+Búsqueda en el suite: **cero** `MouseDown`/`MouseMove`/`KeyPress`/`DragDrop` en todo el proyecto. La versión de `Avalonia.Headless` que ya usábamos (12.1.2) **sí** expone la simulación de entrada, en la misma clase que el `CaptureRenderedFrame` de las capturas: no hacía falta herramienta nueva.
+
+### 🛠️ Implementación
+
+1. **`TestHelpers/InputSimulator.cs`**: entrada real sobre la sesión headless — `Hover`, `Press`, `Release`, `Click`, `ClickAt`, `MovePointer`, `Key` (con modificadores), `Type` y `DropText` (el mismo `DataTransfer` con texto que envía el cajón). Dos piezas de tiempo: `Settle`, que bombea el dispatcher y avanza el reloj de render **y** espera tiempo real (el reloj de animación headless avanza con el tiempo transcurrido, no con los fotogramas), y `SettleUntil`, que sondea hasta que la condición se cumple, según el mismo criterio que `AsyncTestWaiter`.
+2. **`Unit/Views/InputInteractionTests.cs`** (15 pruebas, colección `VisualSnapshots`):
+   - **Estados**: hover y pressed de `Button.primary` contra sus tokens (`AccentHoverBrush`, `AccentPrimaryBrush` + opacidad 0.82), disabled (opacidad 0.45 **y** clic sin efecto), anillo de foco del `TextBox` (`AccentPrimaryBrush`, y vuelta al borde neutro al irse el foco), pestaña (carril `BgSurfaceBrush` al pasar el puntero; al hacer clic viaja el indicador `PART_SelectedPipe` y el texto sube a `TextPrimaryBrush`) y el ítem del cajón (`Border.nodeMenuItem` → `BgHoverBrush`).
+   - **Atajos**: `Delete` borra el nodo seleccionado —seleccionado con un **clic real** en su título— y `Ctrl+Z`/`Ctrl+Y` lo deshacen y rehacen; `F2` abre el renombrado en sitio y `Enter` confirma / `Escape` descarta.
+   - **Arrastre**: soltar un ítem del cajón crea el nodo **donde se suelta** (dos posiciones distintas, con la cuenta de zoom y desplazamiento del viewport replicada en la prueba) y soltar un texto que no es un tipo de nodo no crea nada ni toca los que ya estaban.
+   - **Buscador**: `Espacio` lo abre **donde está el puntero** con la caja enfocada, `Shift+A` también, teclear filtra, `↓` navega, `Enter` crea el tipo seleccionado y `Escape` cierra sin crear nada.
+3. **Defecto real encontrado y arreglado — el renombrado en sitio no confirmaba nunca**: los tres manejadores de la caja de título (`Enter` para confirmar, `Escape` para descartar, `LostFocus`) se enganchaban en el **constructor** de `NodeCardView` con `this.FindControl<TextBox>("TitleEditBox")`, y la caja vive dentro del `DataTemplate` de la cabecera de Nodify, que tiene **namescope propio**: `FindControl` devolvía `null`, los manejadores nunca se enganchaban y el nombre no se confirmaba ni con `Enter`, ni con `Escape`, ni al hacer clic fuera — el renombrado abría la caja y se quedaba ahí. Se enganchan ya en el **XAML**, sobre el propio `TextBox` (donde ocurre el evento), y se retira el bloque muerto. La sonda lo fijó antes de tocar: `card.FindControl('TitleEditBox') = null`, y tras `Enter` con «Sondeo» escrito, `IsEditingTitle=True` y `Title` intacto.
+4. **Aislamiento**: el fixture siembra un grafo de ejemplo (3 nodos), así que las pruebas de arrastre miden **deltas**, no totales absolutos; y el tema se **fija** antes de mostrar cada ventana, porque los estados se afirman contra tokens del tema activo y el tema es estado de proceso compartido con las capturas.
+
+### 🧪 Validación (tres rondas de mutación, todas mordidas y restauradas)
+
+- **Ronda A** (token del hover + foco del buscador): `Button.primary:pointerover` apuntando al acento base y `SpotlightSearchBox?.Focus()` retirado → **3 fallos** exactos (el token del hover y las dos pruebas del foco).
+- **Ronda B** (pareja del renombrado + posición del soltado): reponer el defecto original (sin manejadores en el XAML) y soltar siempre en `(0,0)` → **4 fallos** (las dos del renombrado y la de posición), lo que demuestra que la guardia ve el bug que arreglamos.
+- **Ronda C** (reglas de estado de las dos superficies nuevas): `Border.nodeMenuItem:pointerover` a `BgHeaderBrush` y `TabItem:selected` a `TextSecondaryBrush` → **2 fallos** exactos, uno por prueba.
+- `dotnet test` completo: **1501 superadas + 1 omitida de 1502 en 1 m 36 s** y **en 1 m 56 s** (dos corridas seguidas, las capturas intactas); build **0 advertencias / 0 errores**.
+
+### ⚠️ Fragilidad de la infraestructura, medida en el camino (costó más que las pruebas)
+
+Los estados se afirmaban contra el **valor final** de una propiedad animada y eso produjo un fallo intermitente que **solo** aparecía en la suite completa. Datos: una `BrushTransition` de 100 ms quedaba al **30 %** con las 12 primeras mediciones, llegaba al token exacto con ~42 fotogramas en una corrida en solitario y se quedaba al **80 %** con 64 bajo la carga de la suite; el sondeo de 3 s tampoco convergía, y el mensaje dejó el síntoma a la vista: `Expected BackgroundOf(item) to be #ff21262d [tema=dark_fluent variante=Dark tokenVentana=#ff21262d], but found #17f5f5f5` — el ítem al 9 % de una transición hacia un token **claro** mientras el tema activo era oscuro. Conclusión aplicada: donde el sistema de diseño anima la propiedad, la prueba mide el **estado aplicado sin la transición** (`Transitions = null`, medido entonces con exactitud) y deja la animación para las capturas y los hitos 169/171; el resto de aserciones son tokens exactos de propiedades que no se animan (cara del botón, anillo del campo, carril e indicador de la pestaña).
+
+### 📌 Notas para la siguiente sesión
+
+- **`PART_SelectedPipe` pinta el azul de Fluent**: el indicador de pestaña activa se ve `#ff0078d7`, no `AccentPrimaryBrush`, porque el valor viene fijado en la **plantilla** de `TabItem` y un `Setter` de estilo no puede ganarle. Es una regla del sistema de diseño que nunca se aplica. Cerrarlo exige un `ControlTheme` propio de `TabItem` (no un estilo) y revisar las líneas base visuales que muestren pestañas.
+- **`F2` no lleva el foco a la caja de renombrado**: la abre, pero el usuario todavía tiene que hacer clic en ella para escribir. Sonda: `caja: visible=True focused=False` inmediatamente después de `F2`.
+- **Residual del fallo intermitente**: no llegué a fijar la intercalación exacta que deja a un elemento animando contra un token de un tema que ya no está (ocurre solo bajo la suite completa). El trabajo se hizo inmune a ello, pero si reaparece en otra superficie, el diagnóstico ya está en el mensaje de la prueba del cajón.
+
+## [2026-09-23] - El Tema No Es del Código: Guardia del Patrón que Tumbó la Splash (Hito 171)
+
+### 🎯 Objetivo
+
+Convertir el hallazgo del hito 169 en una regla: que el código no pueda volver a **escribir en una propiedad que el tema posee y dar por hecho su valor**. Una propiedad enlazada con `{DynamicResource}` no es del código que la escribe — al republicarse el tema (`ThemeManager.ApplyResourceDictionary` reemplaza los recursos) Avalonia vuelve a evaluar el recurso y escribe por encima.
+
+### 🔎 Búsqueda (medida, no supuesta)
+
+Barrido del repositorio con dos preguntas: ¿quién castea un pincel de control? **Nadie** (el de la splash, arreglado en el 169, era el único). ¿Quién escribe en una propiedad de pincel? **Dos sitios**, y uno era el mismo defecto vivo: `ColorPickerButton` asignaba el color elegido a `SwatchBorder.Background`, que su XAML enlazaba a `AccentPrimaryBrush`. Cada aplicación de tema —arranque o cualquier paso por el Theme Studio— **revertía el muestrario al acento del tema en silencio**: el segundo damnificado del mismo patrón, invisible hasta ahora.
+
+### 🛠️ Implementación
+
+1. **Analizador** (`ThemeTokenOverwriteAnalyzer`, Roslyn + XDocument, como el de arquitectura de nodos): dos reglas. `Pincel-casteado-a-ciegas` —castear un tipo de pincel sobre una propiedad de control (`Foreground`, `Background`, `BorderBrush`, `Fill`, `Stroke`, `BoxShadow`, `CaretBrush`)— y `Escritura-sobre-propiedad-del-tema` —asignación en el code-behind a una propiedad que el XAML de esa misma vista enlaza con `{DynamicResource}`, sin ninguna lectura que compruebe el valor (`is`/`as`/`ReferenceEquals`)—. Análisis sintáctico: la línea es la real y no hay falsos positivos por comentarios o cadenas.
+2. **Guardia** (`ThemeTokenOverwriteGuardTests`, 8 pruebas): dos barridos sobre el árbol real —host y **todos** los plugins, con el alcance sacado de `FileFlow.slnx`—, una prueba de alcance que delata un barrido vacío (contiene vistas conocidas del host y de plugins; sin ella, no encontrar nada pasaría siempre) y auto-tests del analizador con snippets: marca el casteo original de la splash con fichero y línea, marca la escritura sobre una propiedad del tema, y **calla** ante el casteo de un valor de recurso (legítimo: `TryResolveThemeBrush`), ante la escritura comprobada con `ReferenceEquals` (lo que hace ahora el barrido de la splash) y ante una propiedad que el tema no posee.
+3. **Arreglo del muestrario**: el chrome (radio y borde) sigue en tokens y el color pasa a un relleno interior que **no** está enlazado al tema, de modo que el color es del control y el tema no puede revertirlo. Además, el muestrario refleja ahora el valor real del control en lugar del acento del tema.
+4. **Prueba de comportamiento** (`ColorPickerSwatchTests`): el color elegido sobrevive a republicar el tema. La regla estática detecta el patrón; esta prueba mide el efecto sobre el control real, buscando el color **por lo que se ve** (el borde más interno que pinta un color sólido) y no por su nombre, para que siga midiendo aunque el árbol se reorganice.
+
+### 🧪 Validación
+
+- **Tres mutaciones, todas mordidas y restauradas**: (1) reponer código+XAML del muestrario → falla el barrido citando `ColorPickerButton.axaml.cs(89): [Escritura-sobre-propiedad-del-tema] SwatchBorder.Background` **y** falla la prueba de comportamiento con la evidencia del daño (`expected #ff10b981, found #ff4f46e5`, el acento del tema claro); (2) reintroducir el casteo ciego en la splash → falla el barrido citando `SplashScreenWindow.axaml.cs(135): [Pincel-casteado-a-ciegas] Foreground`. Lección anotada: la primera mutación del muestrario **no** falló porque al arreglar yo también había quitado el enlace del XAML — la regla mide la pareja XAML+código, y hubo que reponer la pareja entera.
+- `dotnet test` completo: **1486 superadas + 1 omitida de 1487 en 1 m 46 s**; build **0 advertencias / 0 errores**. Ninguna línea base visual cambió: la captura del Theme Studio no distingue el color del muestrario en el estado congelado.
+
+### 📌 Notas para la siguiente sesión
+
+- **Límite declarado del analizador**: cubre los enlaces de **atributo** en el XAML de la vista. Un `<Setter Property="Background" Value="{DynamicResource …}">` con `Selector` que apunte a un elemento nombrado, o una propiedad que el diccionario del tema enlace desde fuera, quedan fuera. Es el siguiente paso natural si se quiere cerrar del todo.
+- El analizador está aislado y reutilizable: cualquier vista nueva (host o plugin) queda bajo las dos reglas en cuanto existe su pareja `.axaml`/`.axaml.cs`.
+
+## [2026-09-23] - La Splash Estrena Línea Base Visual (Hito 170)
+
+### 🎯 Objetivo
+
+La splash era la **única superficie principal del producto sin línea base visual**: los hitos 167 y 168 la señalaron dos veces como pendiente, y el rediseño de todas las demás (shell, paneles, modales) se había congelado píxel a píxel. El primer fotograma es determinista por diseño —el barrido no arranca en pruebas— y el hito 169 lo dejó además sin la excepción que lo mataba: era el momento de capturarla.
+
+### 🛠️ Implementación
+
+1. **Superficie nueva en el fixture de ventanas** (`ModalVisualFixture`): `ModalSurface.Splash` (540×350, el tamaño que declara la ventana) con fábrica `BuildSplash()`, que siembra el estado que se congela con **la misma API del arranque** —`UpdateStatus(70)` y `SetNodeCount(24)`— en lugar del estado en blanco: una splash vacía pasaría la comparación aunque su contenido hubiera desaparecido. El barrido **no** arranca (`StartShimmer` sigue siendo exclusivo de la aplicación real), así que la captura es el primer fotograma quieto. `CaptureWindow` normaliza el `Background="Transparent"` de la ventana al fondo del tema, como ya hacía con el resto.
+2. **Dos líneas base, no una**: `splash-dark` y `splash-light`. La regresión histórica de la splash fue **de tema claro** (11 colores literales que la dejaban ilegible cuando el tema activo era claro); congelar sólo el tema oscuro no la habría visto.
+3. **Sonda propia** (`TheSplash_ShouldBeThemed_AndNotABlankWindow`): la línea base congela la imagen pero no dice si el tema llegó a ella, de modo que una splash con el fondo correcto y el contenido sin pintar pasaría como falso verde. La sonda exige contenido real (>4 colores distintos con la heurística del suite) y que las capturas de los dos temas **difieran** en más de un 5 % de píxeles (helper `DifferenceRatio` nuevo).
+4. **Defecto corregido que la captura destapó**: la splash pintaba **«vv1.0.0-…»** — `TxtVersion` recibía `$"v{AppVersionInfo.DisplayVersion}"` cuando `DisplayVersion` **ya** trae su prefijo (es la misma cadena que usa «Acerca de»). Ahora muestra `AppVersionInfo.DisplayVersion` tal cual, con guardia `TheSplash_ShouldShowTheVersion_ExactlyOncePrefixed` (el texto del control es la versión del SDK y no empieza por «vv»).
+
+### 🧪 Validación
+
+- **Revisión de las imágenes, no sólo de las métricas**: las dos capturas se incrustaron en un HTML y se inspeccionaron a 1,5×. Se ve la marca con su icono, el título, la versión, «Inicializando Motor de Flujo DAG…», la insignia «24 nodos DAG» sobre el acento, el estado «Descubriendo módulos y plugins…» con el 70 % y la barra a media carga, y el pie. Es el defecto del prefijo duplicado lo que apareció al mirarlas (las métricas no lo habrían dicho).
+- **Robustez de la línea base**: contiene el número de build (`+build.4743`), y `Directory.Build.props` lo incrementa en **cada** compilación. La corrida completa posterior —con el número ya cambiado— pasó igual: el cambio cae en el 0,015 % de la tolerancia (1,5 %), como en «Acerca de». Comprobado, no supuesto.
+- **Higiene**: regenerar las líneas base reescribió también seis ajenas (diferencias por debajo de la tolerancia), que se restauraron con `git checkout` para no cambiar capturas que no eran de esta tarea.
+- `dotnet test` completo: **1477 superadas + 1 omitida de 1478 en 1 m 20 s** (las 15 capturas modales intactas salvo las dos nuevas); build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- La splash ya no es una superficie a ciegas: un cambio de espaciado, un color fuera de token o un panel recortado fallan ahora en la comparación, no en producción.
+- Lo que la captura **no** cubre: el **movimiento** del barrido (congela el primer fotograma quieto a propósito). De eso se ocupa `AdvanceShimmer_ShouldAdoptTheNewThemeAccent_AndKeepTheSweepMoving` (hito 169), que sí ejecuta el tick.
+
+## [2026-09-23] - El Barrido de la Splash Moría en su Primer Tick (Hito 169)
+
+### 🎯 Diagnóstico
+
+**Síntoma (medido, no supuesto)**: **cada** arranque de la aplicación escribía exactamente **711 bytes** en `crash.log` unos 2 segundos después de lanzarse —dos lanzamientos consecutivos, mismo delta— con `System.InvalidCastException: Unable to cast object of type 'Avalonia.Media.SolidColorBrush' to type 'Avalonia.Media.LinearGradientBrush'` en `SplashScreenWindow.AdvanceShimmer`. El proceso sobrevivía y no decía nada por consola: el fallo sólo era visible en el registro de incidentes, y la animación del barrido quedaba **muerta** para el resto de la pantalla (el tick que lanza deja de reprogramarse).
+
+**Causa raíz (medida con sonda, no deducida)**: la barra declara `Foreground="{DynamicResource AccentPrimaryBrush}"` y el constructor del splash impone encima el gradiente del barrido con `PbProgress.Foreground = shimmerBrush` + crea el temporizador de 40 ms. Pero la etapa `StartupPhase.Theme` del arranque republica el tema **con la splash ya en pantalla**: `ThemeManager.ApplyResourceDictionary` reemplaza las entradas de `Application.Resources` y Avalonia **vuelve a evaluar el `DynamicResource`**, escribiendo un pincel sólido sobre el gradiente. La sonda lo fijó en secuencia: tras `Show()` y `StartShimmer()` el pincel era `LinearGradientBrush` (3 paradas `#6366F1|#818CF8|#6366F1`); tras `SetThemeById("dark_fluent")` —lo que hace la fase de tema— pasaba a `SolidColorBrush #ff6366f1`, y a `#ff4f46e5` al aplicar `light_studio`. El siguiente tick hacía `((LinearGradientBrush)PbProgress.Foreground!)` → `InvalidCastException`.
+
+**Por qué ninguna prueba lo vio**: todas las guardias del splash lo **muestran sin llamar a `StartShimmer()`** —a propósito, para que las capturas headless sean el primer fotograma quieto—, así que el camino del tick **sólo se ejecutaba en la aplicación real**. Es la misma clase de punto ciego de los hitos 165/166: se verifica el camino que la aplicación no usa.
+
+### 🛠️ Implementación
+
+1. **El pincel se recupera, no se asume** (`SplashScreenWindow.axaml.cs`): nuevo `EnsureShimmerBrush()` que, antes de animar, comprueba si la barra lleva *nuestro* gradiente (`ReferenceEquals`); si el tema lo sustituyó, lo **reconstruye con los tokens vigentes** y lo reimpone. Si los tokens ya no existen, conserva el pincel anterior y detiene el temporizador en lugar de fallar en cada tick. Sin `new` por fotograma: el coste por tick es una comparación de referencias.
+2. **`AdvanceShimmer()` pasa a ser público y sin argumentos**: el tick ya no captura la parada del constructor (que quedaba obsoleta al reconstruir el pincel) ni castea la propiedad del control; anima el gradiente que él mismo garantiza. Ser alcanzable desde las pruebas es lo que cierra el punto ciego.
+3. **El barrido sigue el tema en caliente**: al republicarse el tema, el gradiente se reconstruye con el acento nuevo, de modo que un tema claro deja un barrido claro en lugar de conservar los colores del arranque.
+
+### 🧪 Validación
+
+- **Guardias nuevas (+2, `SplashScreenStartupTests`)**: (1) el escenario real —arrancar el barrido, republicar el tema (afirmando explícitamente que **el tema sustituye el pincel por uno sólido**, para que si deja de ser el escenario real la guardia se reescriba y no se relaje)— y el tick del barrido sobrevive y recupera un gradiente de 3 paradas; (2) el gradiente adopta el acento del tema **nuevo** y **avanza** (dos pasos separados 60 ms dan offsets distintos, y dentro de 0..1), más lint con comentarios fuera: el code-behind no puede volver a contener `(LinearGradientBrush)PbProgress.Foreground` y `AdvanceShimmer()` debe seguir siendo alcanzable.
+- **Mutación (dos rondas)**: reponer sólo el casteo ciego → falla la guardia (lint); reponer el código original entero (casteo + sin recuperación) → **fallan 2 de 11** (`TheShimmerStep_ShouldRecoverTheBrush_ThatTheThemePhaseReplaces` con `InvalidCastException` y la de adopción del tema). Restaurado el arreglo, verde.
+- **Medición en la aplicación real**: arranque con el arreglo, 18 s vivo, **consola vacía** y **delta 0 bytes** en `crash.log` —frente a los 711 B por arranque medidos antes.
+- `dotnet test` completo: **1475 superadas + 1 omitida de 1476 en 1 m 18 s**; build **0 advertencias / 0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **La splash sigue sin línea base visual** (el primer fotograma es determinista por diseño y ahora el barrido ni la ensucia ni la tumba): es la candidata ideal para su primera captura concreta.
+- **Patrón general a vigilar**: cualquier propiedad enlazada con `{DynamicResource}` que el código sobrescriba **puede ser recuperada por la publicación del tema**, porque la re-evaluación del recurso pisa el valor local. Si en otro sitio se asigna a mano un `Foreground`/`Background` enlazado a un token y luego se castea o se depende de ese valor, tiene el mismo reloj: conviene buscar casteos sobre propiedades de control enlazadas al tema.
+
 ## [2026-09-22] - El Archivo de Flujo: Versión, Reparación y Convergencia (Fases 2E-P8 → 3I)
 
 ### 🎯 Objetivo

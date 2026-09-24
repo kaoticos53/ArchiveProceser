@@ -1,11 +1,16 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
-namespace FileFlow.Sdk.Storage;
-
-/// <summary>
-/// Implementación mínima y fallback seguro para <see cref="IStorageService"/>.
-/// Realiza operaciones directas en el sistema de archivos local para entornos de prueba o ejecución sin DI.
-/// </summary>
+namespace FileFlow.Sdk.Storage;    /// <summary>
+    /// Implementación mínima y fallback seguro para <see cref="IStorageService"/>.
+    /// Realiza operaciones directas en el sistema de archivos local para entornos de prueba o ejecución sin DI.
+    ///
+    /// <para>Aunque el contrato trae implementaciones por defecto de la enumeración, aquí se declaran explícitas:
+    /// esta clase es la <b>referencia de lo que significa «físico»</b>, y una implementación que herede un
+    /// comportamiento sin decirlo es exactamente el tipo de sitio donde un cambio futuro pasa desapercibido.</para>
+    /// </summary>
 public class NullStorageService : IStorageService
 {
     private static readonly Lazy<NullStorageService> _instance = new(() => new NullStorageService());
@@ -25,6 +30,20 @@ public class NullStorageService : IStorageService
         }
         return ValueTask.CompletedTask;
     }
+
+    /// <summary>Subcarpetas inmediatas, leídas del disco (ver <see cref="IStorageService"/>).</summary>
+    public ValueTask<IReadOnlyList<string>> EnumerateDirectoriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)
+                ? [.. Directory.EnumerateDirectories(path).Order(StringComparer.OrdinalIgnoreCase)]
+                : []);
+
+    /// <summary>Contenido inmediato, leído del disco (ver <see cref="IStorageService"/>).</summary>
+    public ValueTask<IReadOnlyList<string>> EnumerateFileSystemEntriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)
+                ? [.. Directory.EnumerateFileSystemEntries(path).Order(StringComparer.OrdinalIgnoreCase)]
+                : []);
 
     private const int BufferSize = 131072; // 128 KB
 

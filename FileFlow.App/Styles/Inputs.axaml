@@ -3,9 +3,9 @@
 
     <!--
         Capa de campos del sistema de diseño.
-        Los estados se declaran sobre las partes reales de la plantilla Fluent:
-          TextBox  -> Border#PART_BorderElement
-          ComboBox -> Border#Background / Border#HighlightBackground
+        Los estados se declaran sobre las partes reales de la plantilla Fluent, que son las que el tema base pinta:
+          TextBox  -> Border#PART_BorderElement (cara y borde) · TextPresenter#PART_TextPresenter (la etiqueta)
+          ComboBox -> Border#Background / Border#HighlightBackground · ContentControl#ContentPresenter · PathIcon#DropDownGlyph
         Variantes de TextBox: search · mono · flush
     -->
 
@@ -42,8 +42,32 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
     </Style>
 
+    <!-- Deshabilitado: el mismo tratamiento que la capa de botones (ver Buttons.axaml «Deshabilitado») y por el
+         mismo defecto medido. La etiqueta se leía con el primer plano deshabilitado del tema base —que se declara en
+         el propio TextBox y al que un estilo de la capa no se lo sustituye— así que quedaba en 4,00:1 sobre el tema
+         oscuro y 3,30:1 sobre el claro, por debajo del AA de texto: lo midió el tablero de estados del suite en cuanto
+         sus celdas entraron en la guardia. Y la cara era la del tema base, ajena al sistema, atenuada con una
+         opacidad del 50 % que no tocaba la etiqueta pero dejaba la cara a merced de lo que hubiera detrás.
+
+         Ahora hay un solo nivel de atenuación y es explícito: cara y borde son tokens del tema, <b>opacos</b>, y el
+         primer plano se declara donde de verdad se pinta la etiqueta —el TextPresenter, que hereda el Foreground del
+         control y al que una declaración directa sí gana—. Medido por la guardia: 4,88:1 en el tema oscuro y 4,82:1
+         en el claro. La cara es BgSurface y no BgDark (la del campo habilitado) porque es el token cuya pareja con
+         TextMuted ya está garantizada a 4,5:1 en los 8 presets
+         (BuiltInThemes_TextMuted_ShouldMeetAaContrastOnSurfaces); con BgDark, pastel_spring daría 4,44:1.
+
+         El texto de reserva ya recibe TextMuted en cualquier estado por la regla de PART_Placeholder, así que no
+         hace falta declararlo otra vez aquí: es el mismo token. -->
     <Style Selector="TextBox:disabled /template/ Border#PART_BorderElement">
-        <Setter Property="Opacity" Value="0.5" />
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+    </Style>
+
+    <!-- El primer plano de la etiqueta se declara con TextElement.Foreground porque TextPresenter no expone la
+         propiedad (el compilador de XAML lo rechaza) y es esa propiedad heredada la que el presentador usa para
+         pintar el texto. -->
+    <Style Selector="TextBox:disabled /template/ TextPresenter#PART_TextPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
 
     <Style Selector="TextBox /template/ TextBlock#PART_Placeholder">
@@ -93,13 +117,46 @@
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
-    <Style Selector="ComboBox:pointerover">
+    <!-- El tema base pinta su propia capa sobre <c>Border#Background</c>, así que declarar el estado en las
+         propiedades del control no se ve: se declara sobre la parte que de verdad se pinta. Medido con el tablero
+         de estados del suite: en el tema oscuro el desplegable se <b>oscurecía</b> al pasar el puntero
+         (#131720 → #050709, porque el relleno del tema base es un velo negro translúcido) mientras que en claro
+         aclaraba; con estas reglas los dos temas hacen lo que el sistema de diseño declara. -->
+    <Style Selector="ComboBox /template/ Border#Background">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+    </Style>
+
+    <Style Selector="ComboBox:pointerover /template/ Border#Background">
         <Setter Property="Background" Value="{DynamicResource BgHoverBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource AccentGlowBrush}" />
     </Style>
 
-    <Style Selector="ComboBox:focus">
+    <Style Selector="ComboBox:focus /template/ Border#Background">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+    </Style>
+
+    <!-- Deshabilitado: el mismo contrato que los botones y que el campo de texto —cara, borde y primer plano
+         declarados, sin opacidad— y por el mismo defecto medido: el tema base declara el primer plano deshabilitado
+         <b>directamente sobre la parte que pinta la etiqueta</b> (ContentControl#ContentPresenter) y nuestra capa no
+         declaraba ninguno, así que se leía el suyo: 3,50:1 sobre el tema oscuro y 2,62:1 sobre el claro, por debajo
+         del AA de texto. Se declaran las tres partes que el tema base apaga: la etiqueta, el texto de reserva y el
+         glifo del desplegable —si el glifo conservara el color del tema, el píxel más claro de la celda no sería la
+         etiqueta y la guardia de contraste estaría midiendo otra cosa—. -->
+    <Style Selector="ComboBox:disabled /template/ Border#Background">
+        <Setter Property="Background" Value="{DynamicResource BgSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDarkBrush}" />
+    </Style>
+
+    <Style Selector="ComboBox:disabled /template/ ContentControl#ContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+
+    <Style Selector="ComboBox:disabled /template/ TextBlock#PlaceholderTextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+    </Style>
+
+    <Style Selector="ComboBox:disabled /template/ PathIcon#DropDownGlyph">
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
     </Style>
 
     <Style Selector="ComboBox /template/ Border#PopupBorder">

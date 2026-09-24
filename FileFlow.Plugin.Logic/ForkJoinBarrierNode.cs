@@ -26,8 +26,14 @@ public sealed class ForkJoinBarrierNode : FlowNodeBase
         Inputs =
         [
             new NodePort("In", typeof(FileItemContext), PortDirection.Input, "In"),
-            new NodePort("Branch1_Done", typeof(FileItemContext), PortDirection.Input, "Branch1_Done"),
-            new NodePort("Branch2_Done", typeof(FileItemContext), PortDirection.Input, "Branch2_Done")
+
+            // Estas dos son la vuelta de las ramas: el nodo es el que las bifurcó, así que la arista que las
+            // alimenta cierra la barrera y no es una restricción de precedencia. Sin marcarlas, el flujo que
+            // las usa es un ciclo para el validador y no llega a ejecutarse nunca (§NodePort.IsFeedbackSignal).
+            new NodePort("Branch1_Done", typeof(FileItemContext), PortDirection.Input, "Branch1_Done",
+                IsFeedbackSignal: true),
+            new NodePort("Branch2_Done", typeof(FileItemContext), PortDirection.Input, "Branch2_Done",
+                IsFeedbackSignal: true)
         ];
 
         Outputs =

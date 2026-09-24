@@ -62,7 +62,7 @@ Cada tarjeta de nodo en el lienzo cuenta con dos botones circulares rápidos:
 
 ### 🗜️ Archivos Comprimidos (`Archives`)
 13. **Descompresor Inteligente (`SmartUnpackNode`)**: Extrae archivos Zip, 7z, Rar, Tar, Gz y auto-aplana carpetas contenedor únicas redundantes.
-14. **Compresor de Archivos (`ArchiveCompressorNode`)**: Comprime elementos individuales o lotes en Zip, Tar, Gz o 7z con nivel de compresión configurable.
+14. **Compresor de Archivos (`ArchiveCompressorNode`)**: Comprime elementos individuales o lotes en Zip, Tar, Gz o 7z con nivel de compresión configurable. Por omisión escribe en la carpeta de salida del flujo (la que declara el flujo o, si no declara ninguna, la salida por defecto de los ajustes); declara la «Carpeta de Destino» para otra cosa —una subcarpeta, una ruta completa, o `{CurrentDir}` para dejarlo junto al archivo que comprime— y el registro lo indica.
 15. **Filtro de Partes de Archivo (`ArchiveFilterNode`)**: Detecta y procesa únicamente la primera parte de archivos multivolumen (`.part1.rar`, `.z01`).
 
 ### 🖼️ Procesamiento de Imágenes (`Images`)
@@ -77,7 +77,7 @@ Cada tarjeta de nodo en el lienzo cuenta con dos botones circulares rápidos:
 20. **Bifurcador Switch-Case (`SwitchCaseNode`)**: Enruta archivos a diferentes ramas según patrones de extensión, tamaño o variables.
 21. **Filtro de Expresiones (`ExpressionFilterNode`)**: Evalúa condiciones booleanas (`Size > 10MB`, `Ext == 'pdf'`).
 22. **Retardo y Control de Caudal (`ThrottleDelayNode`)**: Limita la tasa de procesamiento para no saturar APIs o discos.
-23. **Acumulador por Lotes (`BatchBufferNode`)**: Agrupa archivos en lotes por cantidad o tamaño total en MB antes de continuar.
+23. **Acumulador por Lotes (`BatchBufferNode`)**: Agrupa archivos en lotes por cantidad o tamaño total en MB antes de continuar. El último lote, aunque se quede incompleto, se entrega al terminar la ejecución.
 24. **Barrera de Sincronización (`ForkJoinBarrierNode`)**: Espera a que todas las ramas paralelas de un archivo se completen antes de proseguir.
 
 ### 🌐 Integraciones y Multimedia (`Integrations`)

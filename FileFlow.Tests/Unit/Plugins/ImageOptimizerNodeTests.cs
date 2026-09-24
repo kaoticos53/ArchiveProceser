@@ -478,6 +478,62 @@ public class ImageOptimizerNodeTests
             }
         }
     }
+
+    /// <summary>
+    /// El optimizado conserva la <b>identidad</b> del ítem que entró: cambia la ruta del archivo, no el elemento.
+    ///
+    /// <para>El nodo creaba un contexto nuevo para el archivo optimizado, y con él se iba el <c>Id</c>. Todo lo que
+    /// va detrás y se apoya en esa identidad —la barrera de sincronización, que empareja cada rama con el ítem que
+    /// bifurcó— dejaba de reconocerlo: el archivo desaparecía del flujo sin error y sin aviso. Lo destapó el
+    /// ejemplo 22 (de seis entradas llegaban cinco, y la que faltaba era la única imagen real del lote: las demás
+    /// pasan por la rama de no-imágenes, que reutiliza el ítem y conserva el <c>Id</c>).</para>
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_WithARealImage_ShouldKeepTheIdentityOfTheItemThatEntered()
+    {
+        // Arrange
+        string tempDir = Path.Combine(Path.GetTempPath(), "FileFlow_IdentityTest_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        string originalFile = Path.Combine(tempDir, "foto.png");
+
+        using (var img = new Image<Rgb24>(48, 48))
+        {
+            await img.SaveAsPngAsync(originalFile);
+        }
+
+        try
+        {
+            var node = new ImageOptimizerNode();
+            node.Parameters["TargetFormat"] = "WebP";
+            node.Parameters["OutputDirectory"] = Path.Combine(tempDir, "Out");
+
+            var item = new FileItemContext(originalFile, isDirectory: false);
+            var emittedItems = new List<FileItemContext>();
+
+            var mockContext = new Mock<IFlowExecutionContext>();
+            mockContext.Setup(c => c.EmitAsync("Out", It.IsAny<FileItemContext>()))
+                       .Callback<string, FileItemContext>((port, emItem) => emittedItems.Add(emItem))
+                       .Returns(Task.CompletedTask);
+
+            // Act
+            await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+            // Assert
+            emittedItems.Should().HaveCount(1);
+            FileItemContext output = emittedItems[0];
+            output.CurrentPath.Should().NotBe(originalFile, "el optimizado es otro archivo");
+            output.Id.Should().Be(item.Id,
+                "pero el mismo elemento: quien bifurcó este ítem tiene que reconocerlo al volver de la rama");
+            output.OriginalPath.Should().Be(item.OriginalPath);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+    }
 }
 
 

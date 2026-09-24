@@ -22,12 +22,21 @@ public sealed record RenamerPreset
 /// </summary>
 public static class RenamerPresetService
 {
+    /// <summary>
+    /// Opciones de lectura y escritura de los pasos de renombrado. El conversor de enumeraciones <b>por nombre</b>
+    /// es lo que hace legible un pipeline escrito a mano —un ejemplo del catálogo, un flujo editado fuera de la
+    /// aplicación—: sin él, <c>"methodType": "NewName"</c> no se puede leer, la lectura falla entera y el
+    /// renombrador cae en la plantilla por omisión (<c>{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}</c>),
+    /// renombrando a un nombre que nadie configuró. Acepta también los números que escribe la aplicación, así que
+    /// los dos dialectos conviven.
+    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
+        AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public static IReadOnlyList<RenamerPreset> GetBuiltinPresets()

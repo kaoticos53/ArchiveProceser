@@ -157,7 +157,19 @@ public sealed class WindowsPlatformService : IOsPlatformService
 
     #region Win32 P/Invoke Definitions
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode, Pack = 1)]
+    /// <summary>
+    /// <c>SHFILEOPSTRUCTW</c> tal y como lo declara el SDK, con la <b>alineación natural</b> del sistema: los
+    /// punteros van alineados a palabra.
+    ///
+    /// <para>Estuvo declarado con <c>Pack = 1</c>, que apila los campos sin relleno: <c>pFrom</c> quedaba en el
+    /// desplazamiento 12 en vez del 16, y <c>SHFileOperation</c> leía ahí un puntero formado por media dirección y
+    /// la primera mitad del campo siguiente. La llamada nativa moría con una violación de acceso
+    /// (<c>0xC0000005</c>) que <b>se lleva el proceso por delante</b>: ni excepción administrada ni el
+    /// <c>catch</c> de abajo — no hay nada que atrapar cuando el fallo es de la pila nativa. Se destapó
+    /// ejecutando de punta a punta el ejemplo 10 del catálogo (hito 204), porque ninguna prueba llamaba a la
+    /// papelera real. La guardia del diseño está en <c>WindowsShellFileOperationLayoutTests</c>.</para>
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEOPSTRUCT
     {
         public IntPtr hwnd;
