@@ -189,6 +189,7 @@ public class WorkflowExecutor
         foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
         _telemetryTracker.Reset();
+        _itemDispatcher.ResetDiagnostics();
         lock (_lock)
         {
             _concurrencyThrottle?.Dispose();
@@ -418,6 +419,7 @@ public class WorkflowExecutor
         foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
         _telemetryTracker.Reset();
+        _itemDispatcher.ResetDiagnostics();
         _isRunning = true;
 
         var validator = new GraphValidator();

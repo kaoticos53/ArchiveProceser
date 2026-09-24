@@ -1016,6 +1016,7 @@
   <data name="Log_WorkflowCompletedProgress" xml:space="preserve"><value>Workflow execution completed in {0:F2}s</value></data>
   <data name="Log_CheckpointSkippingFile" xml:space="preserve"><value>[Checkpoint] Skipping previously completed file: {0}</value></data>
   <data name="Log_ProcessingItemsProgress" xml:space="preserve"><value>⚡ Processing: {0:N0}/{1:N0} items ({2:F0}%)</value></data>
+  <data name="Log_UndeclaredOutputPort" xml:space="preserve"><value>[Engine] Node '{0}' emitted an item on port '{1}', which it does not declare: the item did not reach any downstream node. Declare the port on the node (or emit on the port it declares) to make the branch visible and connectable.</value></data>
   <data name="Log_ExecutionErrorsOccurred" xml:space="preserve"><value>Execution completed with errors: {0}</value></data>
 
   <!-- Variable Picker & Catalog -->

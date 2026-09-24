@@ -18,6 +18,12 @@ public sealed class WorkflowItemDispatcher
     private readonly ConcurrentDictionary<string, int> _edgeCounts = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _nodeConcurrencyThrottles = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Pares (nodo, puerto) ya avisados en esta ejecución. Un nodo puede emitir miles de ítems por el mismo
+    /// puerto mal escrito, y el aviso tiene que explicar el defecto una vez, no una vez por archivo.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, byte> _warnedUndeclaredPorts = new(StringComparer.OrdinalIgnoreCase);
+
     public event Action<string, string, int>? EdgeItemDispatched;
 
     public WorkflowItemDispatcher(
@@ -31,6 +37,12 @@ public sealed class WorkflowItemDispatcher
         _taskTracker = taskTracker;
         _checkpointHandler = checkpointHandler;
     }
+
+    /// <summary>
+    /// Olvida los avisos de puerto de la ejecución anterior: el mismo defecto vuelve a contarse en el siguiente
+    /// flujo, en lugar de quedar silenciado por la ejecución que ya terminó.
+    /// </summary>
+    public void ResetDiagnostics() => _warnedUndeclaredPorts.Clear();
 
     public Task DispatchEmitAsync(
         string sourceNodeId,
@@ -84,6 +96,8 @@ public sealed class WorkflowItemDispatcher
                 return Task.CompletedTask;
             }
         }
+
+        WarnIfEmitPortIsNotDeclared(sourceNodeId, outputPortName, nodeInstances);
 
         string edgeKey = $"{sourceNodeId}:{outputPortName}";
         if (!indexedPortEdges.TryGetValue(edgeKey, out var matchingEdges) || matchingEdges.Length == 0)
@@ -217,5 +231,40 @@ public sealed class WorkflowItemDispatcher
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Avisa cuando un nodo emite por un puerto que <b>no declara</b>. Es el defecto que dejaba una rama entera
+    /// muerta sin decir nada: la interfaz sólo puede dibujar cables desde los puertos declarados, así que un
+    /// nombre mal escrito en <c>EmitAsync</c> no tiene arista que lo recoja, y el motor lo trataba como si el
+    /// ítem hubiera terminado —sin error, sin log y sin nodos descendentes—. Ocurrió en producción con el nodo
+    /// Fan-Out, que emitía en <c>ItemOut</c> mientras declaraba <c>Out</c>.
+    ///
+    /// <para>Sólo se juzga a los nodos que declaran algún puerto: un nodo sin puertos de salida no tiene
+    /// contra qué compararse, y los puertos dinámicos (un switch, un subflujo) se consultan ya materializados
+    /// en la instancia, que es la que conoce sus nombres reales.</para>
+    /// </summary>
+    private void WarnIfEmitPortIsNotDeclared(
+        string sourceNodeId,
+        string outputPortName,
+        ConcurrentDictionary<string, IFlowNode> nodeInstances)
+    {
+        if (!nodeInstances.TryGetValue(sourceNodeId, out var sourceNode)) return;
+
+        var declaredOutputs = sourceNode.Outputs;
+        if (declaredOutputs == null || declaredOutputs.Count == 0) return;
+
+        if (declaredOutputs.Any(p => string.Equals(p.Name, outputPortName, StringComparison.OrdinalIgnoreCase))) return;
+
+        if (!_warnedUndeclaredPorts.TryAdd($"{sourceNodeId}:{outputPortName}", 0)) return;
+
+        _executor.NotifyLog(
+            sourceNodeId,
+            LocalizationManager.Instance.GetFormattedString(
+                "Log_UndeclaredOutputPort",
+                "[Engine] Node '{0}' emitted an item on port '{1}', which it does not declare: the item did not reach any downstream node.",
+                sourceNode.Name,
+                outputPortName),
+            LogLevel.Warning);
     }
 }

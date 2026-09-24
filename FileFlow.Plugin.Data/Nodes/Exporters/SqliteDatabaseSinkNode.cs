@@ -30,7 +30,8 @@ public sealed class SqliteDatabaseSinkNode : FlowNodeBase
 
         Outputs =
         [
-            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out")
+            new NodePort("Out", typeof(FileItemContext), PortDirection.Output, "Out"),
+            new NodePort("Error", typeof(FileItemContext), PortDirection.Output, "Error")
         ];
 
         Parameters["DatabasePath"] = @"{GlobalOutputDir}\fileflow_audit.db";

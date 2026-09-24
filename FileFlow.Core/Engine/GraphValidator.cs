@@ -35,6 +35,14 @@ public class GraphValidator
                 instance.Parameters[k] = v;
             }
 
+            // Los puertos calculados no salen del constructor sino de la configuración que se acaba de volcar
+            // (los casos de un switch, los nombres de un subflujo, la frontera de un contenedor). Sin este paso
+            // el validador compara las aristas contra los puertos de fábrica y rechaza un flujo que el lienzo
+            // dibujó correctamente: `Source node 'X' does not have output port 'Case 1'`. Es la misma pregunta
+            // —«¿qué puertos expone esta instancia recién configurada?»— que resuelven el cargador de un flujo,
+            // el portapapeles y el diagnóstico previo, y tiene que contestarse igual en los cuatro sitios.
+            DynamicPortMaterializer.Materialize(instance);
+
             nodeInstances[nodeDto.Id] = instance;
         }
 
