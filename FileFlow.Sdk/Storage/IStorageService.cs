@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace FileFlow.Sdk.Storage;
 
@@ -22,6 +25,39 @@ public interface IStorageService
     /// Crea el directorio en la ruta especificada si aún no existe.
     /// </summary>
     ValueTask CreateDirectoryAsync(string path, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rutas de las <b>subcarpetas inmediatas</b> de una carpeta, sin recursión, en orden determinista. Una
+    /// carpeta que no existe devuelve una lista vacía (no lanza).
+    ///
+    /// <para><b>Por qué está en el contrato</b>: sin enumeración, un nodo que recorre un árbol —el limpiador de
+    /// carpetas vacías es el caso— sólo puede hacerlo mirando el disco, y entonces una ejecución virtual no
+    /// funciona de verdad: el borrado pasa por el almacenamiento (así que se ejecuta el del sistema virtual) y el
+    /// recorrido mira el sistema de archivos del anfitrión, que en una ejecución virtual no tiene esas carpetas.
+    /// El resultado es un nodo que dice «no hay nada que limpiar» sobre un árbol que existe en su propio almacén.
+    /// Con esta pregunta en el contrato, el recorrido y el borrado miran el mismo sitio.</para>
+    ///
+    /// <para>Tiene implementación por defecto sobre el sistema de archivos para que añadirla no rompa a ninguna
+    /// implementación existente: una implementación que no la sobrescriba se comporta como el disco.</para>
+    /// </summary>
+    ValueTask<IReadOnlyList<string>> EnumerateDirectoriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)
+                ? [.. Directory.EnumerateDirectories(path).Order(StringComparer.OrdinalIgnoreCase)]
+                : []);
+
+    /// <summary>
+    /// Rutas de <b>todo el contenido inmediato</b> de una carpeta —archivos y subcarpetas—, sin recursión, en
+    /// orden determinista. Una carpeta que no existe devuelve una lista vacía (no lanza).
+    ///
+    /// <para>Es la mitad que contesta «¿está vacía esta carpeta?» sin fiarse de la del nodo: quien decide qué es
+    /// contenido es el almacén. Ver <see cref="EnumerateDirectoriesAsync"/> para por qué está en el contrato.</para>
+    /// </summary>
+    ValueTask<IReadOnlyList<string>> EnumerateFileSystemEntriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)
+                ? [.. Directory.EnumerateFileSystemEntries(path).Order(StringComparer.OrdinalIgnoreCase)]
+                : []);
 
     /// <summary>
     /// Abre un flujo de solo lectura para el archivo especificado.

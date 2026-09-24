@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FileFlow.Core.Platform;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Platform;
@@ -42,6 +45,23 @@ public class PhysicalStorageService : IStorageService
         }
         return ValueTask.CompletedTask;
     }
+
+    /// <summary>
+    /// Subcarpetas inmediatas del disco. Se declara explícita aunque el contrato traiga una implementación por
+    /// defecto: es la implementación que define qué significa «físico» para los nodos que recorren un árbol.
+    /// </summary>
+    public ValueTask<IReadOnlyList<string>> EnumerateDirectoriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)
+                ? [.. Directory.EnumerateDirectories(path).Order(StringComparer.OrdinalIgnoreCase)]
+                : []);
+
+    /// <summary>Contenido inmediato del disco: archivos y subcarpetas.</summary>
+    public ValueTask<IReadOnlyList<string>> EnumerateFileSystemEntriesAsync(string path, CancellationToken ct = default) =>
+        ValueTask.FromResult<IReadOnlyList<string>>(
+            !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)
+                ? [.. Directory.EnumerateFileSystemEntries(path).Order(StringComparer.OrdinalIgnoreCase)]
+                : []);
 
     public ValueTask<Stream> OpenReadAsync(string path, CancellationToken ct = default)
     {

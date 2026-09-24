@@ -139,6 +139,51 @@ public class VirtualFileSystemStore : IVirtualFileSystemStore
         }
     }
 
+    public IReadOnlyList<string> GetChildDirectories(string directoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath)) return [];
+        string normalized = NormalizeDirectoryPath(directoryPath);
+
+        lock (_lock)
+        {
+            return [.. _directories
+                .Where(d => SamePath(CrossPlatformGetDirectoryName(d), normalized))
+                .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)];
+        }
+    }
+
+    public IReadOnlyList<VirtualFileEntry> GetChildFiles(string directoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath)) return [];
+        string normalized = NormalizeDirectoryPath(directoryPath);
+
+        lock (_lock)
+        {
+            return [.. _files.Values
+                .Where(f => IsActive(f) && SamePath(CrossPlatformGetDirectoryName(f.VirtualPath), normalized))
+                .OrderBy(f => f.VirtualPath, StringComparer.OrdinalIgnoreCase)];
+        }
+    }
+
+    public bool DeleteDirectory(string directoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath)) return false;
+        string normalized = NormalizeDirectoryPath(directoryPath);
+
+        lock (_lock)
+        {
+            // Una carpeta con archivos activos dentro no está vacía: el almacén no borra contenido por su cuenta
+            // (los archivos tienen su propio ciclo de vida y saben si fueron borrados o reciclados).
+            if (_files.Values.Any(f => IsActive(f) && IsUnder(f.VirtualPath, normalized)))
+            {
+                return false;
+            }
+
+            bool existed = _directories.RemoveWhere(d => SamePath(d, normalized) || IsUnder(d, normalized)) > 0;
+            return existed;
+        }
+    }
+
     public bool RenameFile(string sourceVirtualPath, string targetVirtualPath, string sourceNodeName, string sourceNodeId)
     {
         if (string.IsNullOrWhiteSpace(sourceVirtualPath) || string.IsNullOrWhiteSpace(targetVirtualPath)) return false;
@@ -487,6 +532,32 @@ public class VirtualFileSystemStore : IVirtualFileSystemStore
         if (string.IsNullOrEmpty(path)) return string.Empty;
         int lastSep = Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'));
         return lastSep >= 0 ? path[..lastSep] : string.Empty;
+    }
+
+    /// <summary>
+    /// Ruta de carpeta sin separadores finales, para comparar sin depender de cómo la escribió quien la registró.
+    /// </summary>
+    private static string NormalizeDirectoryPath(string path) =>
+        NormalizePath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    /// <summary>
+    /// ¿Dos rutas de carpeta son la misma? El almacén guarda rutas de Windows y de Unix —el nodo que las registra
+    /// es el mismo en cualquier sistema—, así que la comparación no puede delegar en <see cref="Path"/> del
+    /// anfitrión ni en su separador.
+    /// </summary>
+    private static bool SamePath(string? left, string? right) =>
+        string.Equals(
+            left?.TrimEnd('/', '\\'),
+            right?.TrimEnd('/', '\\'),
+            StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>¿La ruta está <b>dentro</b> de esa carpeta? Se compara por frontera de separador, no por prefijo.</summary>
+    private static bool IsUnder(string path, string directory)
+    {
+        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(directory)) return false;
+        if (path.Length <= directory.Length || !path.StartsWith(directory, StringComparison.OrdinalIgnoreCase)) return false;
+
+        return path[directory.Length] is '/' or '\\';
     }
 
     private static string NormalizePath(string path)
