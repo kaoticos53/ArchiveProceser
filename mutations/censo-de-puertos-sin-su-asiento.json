@@ -1,0 +1,25 @@
+{
+  "id": "censo-de-puertos-sin-su-asiento",
+  "hito": 193,
+  "claim": "El censo no puede perder un asiento en silencio: si un puerto del producto deja de estar declarado, la guardia lo dice nombrandolo.",
+  "why": "El censo es una declaracion escrita a mano y su unico valor es que este completa. Una entrada que desaparece no rompe nada por si sola -el puerto sigue existiendo y sus pruebas siguen en verde-, asi que sin esta guardia la cobertura se degrada sin que nadie se entere.",
+  "edits": [
+    {
+      "file": "FileFlow.Tests/TestHelpers/NodePortInventory.cs",
+      "replacements": [
+        {
+          "old": "        new(\"FolderSourceNode\", \"Out\", Coverage.ByNamedTest,\n            \"EndToEnd_FolderSourceToFanOutToImageOptimizerToFanIn_ShouldRunEveryNodeAndRepackTheArchive\"),\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~NodePortCoverageGuardTests",
+    "why": "La guardia contrasta el censo contra los puertos que el arbol declara: el asiento que falta aparece como puerto ignorado."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~PhysicalStorageService_Enumeration_ShouldListImmediateContentOnly",
+    "why": "El censo es una declaracion de pruebas y no cambia el comportamiento del producto: el almacen sigue igual."
+  }
+}

@@ -35,10 +35,13 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 ## ⚡ Optimización de Tokens (Regla Estricta)
 
 > No leas archivos de código fuente completos de forma preventiva. Utiliza primero las herramientas del servidor MCP (memoria/búsqueda rápida, `ripgrep`) para ubicar funciones, clases o líneas exactas antes de abrir un archivo.
+| [`mutations/`](file:///mutations/README.md) y [`mutate.ps1`](file:///mutate.ps1) | Defectos deliberados declarados y el andamiaje que los ejecuta: **muerde** si la suite los detecta, y el ejecutor restaura, recompila y verifica por hash antes de terminar. | **Lectura:** al añadir o revisar cobertura de un comportamiento.<br>**Escritura:** una mutación nueva por comportamiento que importa, con testigo y control. |
+| [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) | Cobertura de mutaciones **publicada**: lo que declara cada mutación, los **subsistemas del producto sin ninguna** y las guardias que nadie ha demostrado que muerdan. **Generado** por `MutationDeclarationCoverageTests` y atado por esa guardia; no se edita a mano (regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`). | **Lectura:** al planificar qué cubrir o al añadir una guardia.<br>**Escritura:** ninguna manual (la guardia lo pone al día). |
 | [`.agents/nodes_catalog.md`](file:///.agents/nodes_catalog.md) | Catálogo de los nodos del producto: puertos, parámetros (clave y control) y enlace al fichero que declara cada uno. **Generado** desde el código y atado por `NodeCatalogGuardTests`; no se edita a mano (regenerar: `FILEFLOW_UPDATE_NODE_CATALOG=1 dotnet test --filter NodeCatalogGuardTests`). | **Lectura:** Al crear o modificar nodos o plugins. |
 | [`.agents/prompts/agent_prompts.md`](file:///.agents/prompts/agent_prompts.md) | Guías y secuencias de prompts especializadas para auditoría, refactorización y extensión. | **Lectura:** Para guiar auditorías por fases o tareas complejas. |
 | [`docs/architecture.md`](file:///docs/architecture.md) y [`docs/ARCHITECTURE_DEEP_DIVE.md`](file:///docs/ARCHITECTURE_DEEP_DIVE.md) | Documentación técnica profunda del diseño del sistema y flujo de datos. | **Lectura:** En tareas que involucren rediseño o extensiones mayores. |
 | [`docs/api_reference.md`](file:///docs/api_reference.md) | Referencia de interfaces públicas del SDK y Core. | **Lectura:** Al consultar contratos de interfaces (`IFlowNode`, `IFlowExecutionContext`, etc.). |
+| [`docs/notas_de_version.md`](file:///docs/notas_de_version.md) | Notas de versión para quien **usa** el producto: lo que ve, separado de lo que sostiene que eso no se rompa, más lo que sigue viéndose así. | **Lectura:** Al cerrar un tramo visible o al preparar una entrega.<br>**Escritura:** Al cerrar el tramo siguiente (apartado nuevo o notas nuevas si cambia la versión). Las cifras salen del walkthrough, no de la memoria. |
 
 ---
 
@@ -94,6 +97,10 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 ```powershell
 # Ejecutar todas las pruebas unitarias e integración
 .\test.ps1
+
+# Comprobar que la suite muerde los defectos declarados (mutations/*.json)
+.\mutate.ps1 -List             # qué hay declarado
+.\mutate.ps1 -All              # ejecuta todas (restaura, recompila y verifica antes de salir)
 
 # Ejecutar pruebas y generar reporte de cobertura de código
 .\coverage.ps1

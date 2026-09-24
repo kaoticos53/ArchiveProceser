@@ -1,0 +1,25 @@
+{
+  "id": "validador-sin-materializar-puertos",
+  "hito": 191,
+  "claim": "El validador de flujos materializa los puertos calculados de cada nodo antes de compararlos con las aristas.",
+  "why": "Los puertos calculados —los casos de un switch, los nombres de un subflujo, la frontera de un contenedor— no salen del constructor sino de la configuración que se acaba de volcar. Sin materializarlos, el validador compara contra los puertos de fábrica y rechaza como error de puerto un cable que el usuario dibujó bien: el flujo no arranca y el mensaje acusa a quien lo dibujó.",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/GraphValidator.cs",
+      "replacements": [
+        {
+          "old": "            DynamicPortMaterializer.Materialize(instance);\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~GraphValidatorDynamicPortTests",
+    "why": "Los tres casos de validación sin motor: switch, frontera configurada y contenedor con puertos renombrados."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~GraphValidatorTests",
+    "why": "La validación de flujos con puertos de fábrica no pasa por la materialización: sigue en verde, así que el mutante rompe sólo los puertos calculados."
+  }
+}

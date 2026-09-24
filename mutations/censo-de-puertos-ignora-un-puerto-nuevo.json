@@ -1,0 +1,25 @@
+{
+  "id": "censo-de-puertos-ignora-un-puerto-nuevo",
+  "hito": 193,
+  "claim": "El censo de puertos falla cuando un nodo declara un puerto que ninguna prueba cubre y el inventario no declara.",
+  "why": "Es el defecto que el censo existe para cazar, y el unico que no se ve mirando una sola prueba: un puerto nuevo sin testigo no rompe nada, sigue ahi y nadie lo nota hasta que un flujo intenta conectar con el.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.FileSystem/Nodes/Actions/EmptyDirectoryCleanerNode.cs",
+      "replacements": [
+        {
+          "old": "            new NodePort(\"Error\", typeof(FileItemContext), PortDirection.Output, \"Error\")\n        ];",
+          "new": "            new NodePort(\"Error\", typeof(FileItemContext), PortDirection.Output, \"Error\"),\n            new NodePort(\"Skipped\", typeof(FileItemContext), PortDirection.Output, \"Skipped\")\n        ];"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~NodePortCoverageGuardTests",
+    "why": "El censo declara los puertos del producto con su grado de cobertura: un puerto que no esta declarado es una infraccion."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~AnEmptyDirectoryCleanerWhoseStorageWorks_ShouldDeleteAndLeaveByItsHappyPort",
+    "why": "El nodo se comporta igual (el puerto nuevo no se emite nunca): el mutante rompe el censo, no el nodo."
+  }
+}

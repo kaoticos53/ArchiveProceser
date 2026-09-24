@@ -1,0 +1,25 @@
+{
+  "id": "limpiador-borra-por-su-cuenta",
+  "hito": 192,
+  "claim": "El limpiador de carpetas vacías borra a través del contrato del almacenamiento y lee el resultado, en vez de lanzar la excepción del sistema de archivos.",
+  "why": "El almacenamiento físico devuelve el fallo en el resultado en vez de lanzarlo. Borrando por su cuenta, un borrado que no se pudo hacer se convierte en un éxito silencioso: el nodo sale por Out y el fallo no se puede ni atribuir ni inyectar.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.FileSystem/Nodes/Actions/EmptyDirectoryCleanerNode.cs",
+      "replacements": [
+        {
+          "old": "var result = await storage.DeleteAsync(rootDir, permanent: true, cancellationToken).ConfigureAwait(false);\n                if (!result.IsSuccess)\n                {\n                    throw new IOException(result.ErrorMessage ?? $\"No se pudo borrar la carpeta vacía '{rootDir}'.\");\n                }",
+          "new": "Directory.Delete(rootDir, true);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~AnEmptyDirectoryCleanerWhoseStorageFailsToDelete",
+    "why": "Con el almacenamiento averiado, el borrado directo sí funciona en el disco: el nodo sale por Out donde tiene que salir por Error."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~AnEmptyDirectoryCleanerWhoseStorageWorks_ShouldDeleteAndLeaveByItsHappyPort",
+    "why": "El control negativo de la misma disposición con almacenamiento sano: borra y sale por Out, así que el mutante rompe el fallo, no el camino feliz."
+  }
+}

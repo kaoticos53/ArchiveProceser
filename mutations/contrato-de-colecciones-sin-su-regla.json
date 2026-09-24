@@ -1,0 +1,25 @@
+{
+  "id": "contrato-de-colecciones-sin-su-regla",
+  "hito": 196,
+  "claim": "Cada regla del analizador del contrato de colecciones tiene una prueba que la exige, no solo una declaracion que la menciona.",
+  "why": "Una regla sin patrones deja de vigilar y la guardia sigue en verde sobre el arbol real -porque en el arbol real nadie incumple-, asi que el estado global que esa regla confinaba vuelve a poder tocarse desde cualquier prueba en paralelo. Es el mismo agujero que un testigo renombrado: la declaracion suena bien y no mide nada.",
+  "edits": [
+    {
+      "file": "FileFlow.Tests/TestHelpers/TestCollectionContractAnalyzer.cs",
+      "replacements": [
+        {
+          "old": "            Patterns: [new(@\"\\bModelSessionRegistry\\s*\\.\", RegexOptions.Compiled)]),",
+          "new": "            Patterns: []),"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TestCollectionContractGuardTests",
+    "why": "Los casos del propio analizador con fuentes sinteticas exigen que la regla del registro de sesiones siga delatando su uso."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Analyzer_ShouldRequireLocalization_WhenClassUsesRealUserPreferences",
+    "why": "Otra regla del mismo analizador, con su propio patron: el mutante mata una regla, no el analizador."
+  }
+}
