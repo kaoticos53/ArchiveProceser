@@ -72,11 +72,17 @@ public static class SourceText
 
             if (current == '/' && next == '/')
             {
-                while (i < source.Length && source[i] != '\n')
+                while (i < source.Length && source[i] is not ('\r' or '\n'))
                 {
                     i++;
                 }
 
+                // El terminador de línea no forma parte del comentario: se devuelve al bucle exterior para que
+                // lo copie. Sin esto, la línea comentada se fundía con la siguiente —y un atributo con un
+                // comentario al lado dejaba de estar en su propia línea, que es justo la línea que el índice de
+                // pruebas lee para atribuir un caso a su método—: el texto seguía sin los comentarios, pero ya
+                // no era el mismo código.
+                i--;
                 continue;
             }
 
@@ -85,10 +91,20 @@ public static class SourceText
                 i += 2;
                 while (i + 1 < source.Length && !(source[i] == '*' && source[i + 1] == '/'))
                 {
+                    // Los saltos de línea de dentro del bloque se conservan, por el mismo motivo: una línea se
+                    // borra solo si todo su contenido es comentario, no porque lo sea parte.
+                    if (source[i] is '\r' or '\n')
+                    {
+                        output.Append(source[i]);
+                    }
+
                     i++;
                 }
 
-                i += 2;
+                // Queda en la barra de cierre, y el incremento del bucle exterior entra en el carácter siguiente
+                // al comentario. Con `i += 2` se comía uno de más: el error que ya costó una guardia en el hito
+                // 165, esta vez tras cada comentario de bloque.
+                i++;
                 continue;
             }
 
