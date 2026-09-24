@@ -15,7 +15,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Key}" 
+                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Help}" 
                            Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Medium" 
                            MinWidth="75" VerticalAlignment="Center" Margin="0,0,8,0" TextTrimming="CharacterEllipsis" />
 
@@ -275,7 +275,7 @@
             <!-- Multi-line / Rich parameter row (Only shown when IsMultilineRow is TRUE) -->
             <Grid IsVisible="{Binding IsMultilineRow}" RowDefinitions="Auto,Auto" Margin="0,3">
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,3">
-                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Key}" 
+                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}" ToolTip.Tip="{Binding Help}" 
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="{DynamicResource FontSizeMicro}" FontWeight="Medium" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                         <Button Command="{Binding OpenVariablePickerCommand}"

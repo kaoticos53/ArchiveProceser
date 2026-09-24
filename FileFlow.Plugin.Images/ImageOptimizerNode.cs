@@ -371,6 +371,15 @@ public sealed class ImageOptimizerNode : FlowNodeBase
 
                 outputItem = new FileItemContext(outputPath, isDirectory: false)
                 {
+                    // El optimizado sigue siendo el MISMO elemento, no uno nuevo: cambia su ruta, no su
+                    // identidad. Sin esto el ítem perdía el `Id` con el que había entrado al nodo, y todo lo que
+                    // va por detrás y se apoya en esa identidad dejaba de reconocerlo —la barrera de
+                    // sincronización, que empareja cada rama con el ítem que bifurcó, esperaba la vuelta de una
+                    // rama que ya había llegado con otro nombre: el archivo desaparecía del flujo sin error, sin
+                    // aviso y sin destino (destapado por el ejemplo 22, hito 204: de seis entradas llegaban
+                    // cinco, y la que faltaba era la única imagen de verdad del lote—las demás pasan por la
+                    // rama `PassThroughNonImages`, que reutiliza el ítem y conserva el `Id`).
+                    Id = item.Id,
                     OriginalPath = item.OriginalPath,
                     FileSizeBytes = newSizeBytes
                 };

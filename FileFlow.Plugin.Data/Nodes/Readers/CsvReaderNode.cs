@@ -48,9 +48,12 @@ public sealed class CsvReaderNode : FlowNodeBase
             : GetParameter("FilePath", string.Empty);
 
         targetPath = Environment.ExpandEnvironmentVariables(targetPath);
-        if (item.Metadata.TryGetValue("GlobalOutputDir", out var outDirObj) && outDirObj is string gOut)
+        // El patrón lo resuelve la regla única del SDK: expande la carpeta del flujo <b>y todos sus alias</b> y
+        // ancla toda ruta relativa, así que aquí no queda el texto de una plantilla ni una ruta que dependa de
+        // dónde corre el proceso (hitos 209 y 210).
+        if (!string.IsNullOrWhiteSpace(targetPath))
         {
-            targetPath = targetPath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
+            targetPath = ParameterHelper.ResolveOutputPath(targetPath, item);
         }
 
         if (string.IsNullOrWhiteSpace(targetPath) || !await storage.FileExistsAsync(targetPath, cancellationToken))

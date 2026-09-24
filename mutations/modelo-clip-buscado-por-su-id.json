@@ -1,0 +1,25 @@
+{
+  "id": "modelo-clip-buscado-por-su-id",
+  "hito": 203,
+  "claim": "El modelo CLIP se busca por el nombre de fichero con el que el catalogo lo descarga, no por su id de catalogo.",
+  "why": "El catalogo identifica el modelo por su id ('clip-vit-b32') y lo descarga con su nombre de fichero ('clip-vit-base-patch32.onnx'). Resolverlo concatenando el id daba una ruta que no existe nunca, asi que la rama del modelo real quedaba muerta: el peso descargado no se usaba jamas y los prompts de la deteccion de vocabulario abierto salian siempre de la proyeccion sintetica.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.AI/Inference/ClipEmbeddingDatabase.cs",
+      "replacements": [
+        {
+          "old": "        string path = AiModelManager.GetModelPath(modelInfo.FileName);",
+          "new": "        string path = AiModelManager.GetModelPath(ClipModelId);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~AFileNamedWithTheModelId_ShouldNotCountAsTheDownloadedModel",
+    "why": "Escribe el fichero con el id del catalogo y despues el que el catalogo descarga de verdad: solo el segundo es el modelo, y con la resolucion por id no se ve ninguno."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheSamePrompt_ShouldOnlyBeComputedOnce",
+    "why": "Sin modelo en disco los dos nombres resuelven a nada: el mutante rompe la resolucion, no el cacheo."
+  }
+}

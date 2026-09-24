@@ -1,0 +1,25 @@
+{
+  "id": "lote-incompleto-perdido-al-terminar",
+  "hito": 205,
+  "claim": "El lote que no llega a llenarse se entrega al terminar la ejecucion: sus elementos salen por itemOut con su marcador por batchCompleted, igual que un lote completo.",
+  "why": "El bufer acumula items hasta el umbral, asi que con menos archivos que el lote -seis con un lote de diez, que es el caso corriente- no se cierra ninguno durante la ejecucion. Sin el cierre de fin de flujo los pendientes mueren con la ejecucion y el flujo termina en verde sin entregar nada: medido en los ejemplos 21 y 34, que entregaban cero archivos con la entrada sembrada (hito 205).",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Logic/BatchBufferNode.cs",
+      "replacements": [
+        {
+          "old": "        await EmitBatchAsync(pending, context, incomplete: true);\n",
+          "new": "        pending!.Clear();\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~OnWorkflowCompleted_WhenTheBatchDidNotFill_ShouldDeliverItAndCloseItWithItsMarker",
+    "why": "Dos elementos en un lote de tres y el cierre de la ejecucion: con el defecto dentro no sale ninguno, ni su marcador."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ExecuteAsync_WhenBatchSizeReached_ShouldEmitBufferedItemsAndCompletionMarker",
+    "why": "El lote que si se llena sale por el umbral, sin pasar por el cierre de la ejecucion: el mutante pierde el lote pendiente, no la emision."
+  }
+}

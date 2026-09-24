@@ -49,16 +49,20 @@ public class NodePortCoverageGuardTests
             "los puertos del camino feliz son la mayoría del censo: es lo que esta guardia vino a vigilar");
 
         // Un puerto sin nadie que lo ejecute es un hueco y se paga declarándolo: los huecos del censo son un
-        // presupuesto. Hoy son cinco, los de los dos únicos nodos que ninguna prueba del suite pone a trabajar;
-        // un nodo nuevo sin pruebas tiene que venir con su motivo **y** con esta cifra subida a mano.
+        // presupuesto. Hoy son dos, los del único nodo que ninguna prueba del suite pone a trabajar; un nodo nuevo
+        // sin pruebas tiene que venir con su motivo **y** con esta cifra subida a mano.
+        //
+        // La barrera de sincronización estuvo aquí hasta el hito 204, con sus tres puertos declarados «nadie la
+        // ejecuta»: el nodo era inejecutable (la vuelta de las ramas era un ciclo para el validador) y por eso
+        // ninguna prueba podía ponerlo a trabajar. Arreglado el grafo, tiene sus dos casos y sale del presupuesto.
         var gaps = NodePortInventory.Entries
             .Where(e => e.Coverage == NodePortInventory.Coverage.WithoutExecution)
             .ToList();
 
         gaps.Select(g => g.NodeClass).Distinct().Should().BeEquivalentTo(
-            ["ForkJoinBarrierNode", "LocalOcrNode"],
-            "son los dos únicos nodos del producto cuyos puertos no ejecuta ninguna prueba");
-        gaps.Should().HaveCount(5, "cada puerto de esos dos nodos, declarado con su motivo");
+            ["LocalOcrNode"],
+            "es el único nodo del producto cuyos puertos no ejecuta ninguna prueba");
+        gaps.Should().HaveCount(2, "cada puerto de ese nodo, declarado con su motivo");
 
         NodePortInventory.Entries.Should().Contain(e => e.Coverage == NodePortInventory.Coverage.ByNamedTest);
         NodePortInventory.Entries.Should().Contain(e => e.Coverage == NodePortInventory.Coverage.ByExecutingTest);

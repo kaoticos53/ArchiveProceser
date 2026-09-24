@@ -42,6 +42,7 @@
       "isLoggingEnabled": true,
       "parameters": {
         "PipelineName": "Renombrado Corporativo",
+        "RenameMode": "DirectInPlace",
         "CollisionStrategy": "AutoIncrement",
         "MethodSteps": "[{\"id\":\"step_1\",\"name\":\"Plantilla Documental\",\"methodType\":\"NewName\",\"applyTo\":\"FullName\",\"pattern\":\"{Year}_DOC_{Guid}\",\"isEnabled\":true}]"
       }
@@ -64,7 +65,9 @@
       "y": 150,
       "hasBreakpoint": false,
       "isLoggingEnabled": true,
-      "parameters": {}
+      "parameters": {
+        "DestinationFolder": "{GlobalOutputDir}/Archivado"
+      }
     },
     {
       "id": "node-snk",
@@ -108,7 +111,7 @@
     {
       "id": "e5",
       "sourceNodeId": "node-buf",
-      "sourcePortName": "BatchCompleted",
+      "sourcePortName": "ItemOut",
       "targetNodeId": "node-zip",
       "targetPortName": "In"
     },

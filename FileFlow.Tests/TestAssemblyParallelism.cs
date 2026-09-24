@@ -18,6 +18,17 @@ using Xunit;
 //     MultimodalVlmClientEngine.RetryBackoffScalePercent, internal visible a los tests).
 //   · Unit.AI.AiModelDownloadSequentialCollection — descargas reales de modelos: red + escritura en
 //     el perfil del usuario.
+//   · Unit.Core.ExampleFlowBankCollection — el banco de los 40 ejemplos, que apunta el directorio de trabajo
+//     DEL PROCESO a una sala limpia suya mientras corre los flujos: es donde mide si algún ejemplo resolvió su
+//     destino contra «la carpeta donde corre». Si otra colección corriera a la vez y escribiera en una ruta
+//     relativa, caería dentro de la sala y el archivo se le atribuiría al ejemplo que estuviera corriendo; al
+//     revés, mover el directorio de trabajo bajo los pies de una colección paralela cambiaría dónde caen SUS
+//     rutas relativas. El estado (el directorio de trabajo del proceso) sólo puede tocarse desde ahí.
+//   · Performance.EngineFirstRunCollection — la prueba que MIDE la concurrencia que el motor alcanza en la
+//     primera ejecución de una sesión (cuántos nodos llega a tener a la vez, con qué reparto de CPU).
+//     No confina estado mutable: confina el grupo de hilos y la CPU del proceso, que son de todos. Una
+//     colección vecina ejecutando su propio flujo ensucia la medida (medido: 1 904 ms con vecino, 269 ms
+//     sola, y la concurrencia observada baja).
 //   · "Localization" → UNIFICADA en "VisualSnapshots" (2026-09-16): la cultura/idioma del proceso
 //     es estado global que las capturas headless también renderizan, y dos colecciones exclusivas
 //     distintas SÍ corren a la vez entre sí — la carrera culture-vs-captura era posible. Ahora cultura,

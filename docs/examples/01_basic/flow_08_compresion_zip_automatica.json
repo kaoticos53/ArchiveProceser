@@ -21,6 +21,7 @@
       "hasBreakpoint": false,
       "isLoggingEnabled": true,
       "parameters": {
+        "DestinationFolder": "{GlobalOutputDir}",
         "ArchiveFormat": "ZIP",
         "CompressionType": "Deflate"
       }

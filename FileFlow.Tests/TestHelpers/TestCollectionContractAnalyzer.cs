@@ -21,7 +21,10 @@ public enum ExclusiveTestState
     HeadlessUiSession,
 
     /// <summary>Tema activo del proceso y el diccionario de recursos de la aplicación (<c>ThemeManager</c>).</summary>
-    ActiveTheme
+    ActiveTheme,
+
+    /// <summary>Directorio de trabajo del proceso (<c>Directory.SetCurrentDirectory</c> y quienes leen de él).</summary>
+    ProcessWorkingDirectory
 }
 
 /// <summary>
@@ -57,7 +60,8 @@ public static class TestCollectionContractAnalyzer
     {
         "VisualSnapshots",
         "OnnxInference",
-        "AiModelDownloadSequential"
+        "AiModelDownloadSequential",
+        "ExampleFlowBank"
     };
 
     /// <summary>
@@ -123,7 +127,17 @@ public static class TestCollectionContractAnalyzer
                     "comparación falla en la prueba equivocada —y sólo a veces—; debe declararse la colección " +
                     "exclusiva que confina el tema (VisualSnapshots; ver TestAssemblyParallelism.cs), que es la " +
                     "misma que usan VisualSnapshot y las capturas para aplicarlo.",
-            Patterns: [new(@"\bThemeManager\s*\.\s*Instance\s*\.\s*SetTheme\w*\s*\(", RegexOptions.Compiled)])
+            Patterns: [new(@"\bThemeManager\s*\.\s*Instance\s*\.\s*SetTheme\w*\s*\(", RegexOptions.Compiled)]),
+
+        new(
+            ExclusiveTestState.ProcessWorkingDirectory,
+            CanonicalCollection: "ExampleFlowBank",
+            Reason: "El directorio de trabajo del proceso es de todos: apuntarlo a otro sitio mientras corre el " +
+                    "suite cambia dónde caen las rutas relativas de cualquier otra colección, y al revés —una " +
+                    "colección que escriba ahí contamina la ventana que el banco mide—. Sólo el banco de ejemplos " +
+                    "lo mueve, y lo hace en exclusividad (colección ExampleFlowBank; ver " +
+                    "TestAssemblyParallelism.cs). Para leer o escribir un directorio, usa una carpeta temporal propia.",
+            Patterns: [new(@"\bDirectory\s*\.\s*SetCurrentDirectory\s*\(", RegexOptions.Compiled)])
     ];
 
     /// <summary>Regla de un estado: patrones que lo delatan y colección canónica que lo confina.</summary>
@@ -259,7 +273,8 @@ public static class TestCollectionContractAnalyzer
     {
         ["VisualSnapshotsCollection"] = "VisualSnapshots",
         ["OnnxInferenceCollection"] = "OnnxInference",
-        ["AiModelDownloadSequentialCollection"] = "AiModelDownloadSequential"
+        ["AiModelDownloadSequentialCollection"] = "AiModelDownloadSequential",
+        ["ExampleFlowBankCollection"] = "ExampleFlowBank"
     };
 
     /// <summary>

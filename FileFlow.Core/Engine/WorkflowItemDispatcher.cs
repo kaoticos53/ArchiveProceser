@@ -39,10 +39,25 @@ public sealed class WorkflowItemDispatcher
     }
 
     /// <summary>
-    /// Olvida los avisos de puerto de la ejecución anterior: el mismo defecto vuelve a contarse en el siguiente
-    /// flujo, en lugar de quedar silenciado por la ejecución que ya terminó.
+    /// Olvida lo que el despacho recuerda de la ejecución anterior. Es todo perecedero y todo se decide otra vez
+    /// en el siguiente flujo:
+    /// <list type="bullet">
+    ///   <item>los <b>avisos de puerto</b>: el mismo defecto vuelve a contarse en el siguiente flujo, en lugar de
+    ///   quedar silenciado por la ejecución que ya terminó;</item>
+    ///   <item>los <b>contadores de aristas</b>: quien los pinta espera los ítems de <i>esta</i> ejecución, y
+    ///   acumulados empezaban la segunda en el número donde acabó la primera (medido: 6 donde debía haber 3);</item>
+    ///   <item>los <b>topes de concurrencia por nodo</b>: cada nodo tiene un semáforo con su <c>MaxConcurrency</c>, y
+    ///   el usuario puede cambiarlo entre ejecuciones — con el semáforo viejo, la ejecución nueva seguía
+    ///   respetando el tope anterior. No se liberan aquí (una tarea de una ejecución cancelada podría estar
+    ///   esperándolos): se dejan al recolector y el siguiente flujo crea los suyos.</item>
+    /// </list>
     /// </summary>
-    public void ResetDiagnostics() => _warnedUndeclaredPorts.Clear();
+    public void ResetForNewExecution()
+    {
+        _warnedUndeclaredPorts.Clear();
+        _edgeCounts.Clear();
+        _nodeConcurrencyThrottles.Clear();
+    }
 
     public Task DispatchEmitAsync(
         string sourceNodeId,

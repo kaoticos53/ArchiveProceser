@@ -53,9 +53,12 @@ public sealed class SqliteDatabaseSinkNode : FlowNodeBase
         string dbPath = GetParameter("DatabasePath", string.Empty);
         dbPath = Environment.ExpandEnvironmentVariables(dbPath);
 
-        if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
+        // El patrón lo resuelve la regla única del SDK: expande la carpeta del flujo <b>y todos sus alias</b> y
+        // ancla toda ruta relativa, así que el token no queda escrito dentro del camino ni la base de datos acaba
+        // donde corre el proceso (hitos 209 y 210).
+        if (!string.IsNullOrWhiteSpace(dbPath))
         {
-            dbPath = dbPath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
+            dbPath = ParameterHelper.ResolveOutputPath(dbPath, item);
         }
 
         if (string.IsNullOrWhiteSpace(dbPath))

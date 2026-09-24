@@ -1,0 +1,25 @@
+{
+  "id": "compresor-que-escribe-donde-corre",
+  "hito": 209,
+  "claim": "Un nodo resuelve su destino dentro de lo que se le dio: cuando el flujo no declara carpeta de destino, el comprimido sale en la salida del flujo -lo que el motor le entrega-, nunca en la carpeta donde corre el proceso.",
+  "why": "El compresor es el nodo del catalogo que decide su carpeta por si mismo cuando el usuario no le da una. Resolver esa ausencia contra el directorio de trabajo del proceso es la forma exacta del defecto del hito 204 -quince ejemplos escribieron su salida en 'bin/Debug/net10.0/...' porque una ruta relativa la resolvio el proceso- y deja el archivo fuera del area que el flujo declara: el usuario recibe los comprimidos en una carpeta de la aplicacion, y el flujo parece haber entregado cero. Hasta el hito 208 la ausencia significaba 'junto al archivo que comprime' -el respaldo del nodo, que el 208 escribio en el log y en la ayuda del parametro-; desde el 209 significa la salida del flujo, y el mutante devuelve el compresor al directorio del proceso, que no es ninguna de las dos cosas: ni junto al archivo ni en la salida que el motor le dio.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Archives/ArchiveCompressorNode.cs",
+      "replacements": [
+        {
+          "old": "        return (DefaultDestinationFolder, false);\n",
+          "new": "        return (Directory.GetCurrentDirectory(), false);\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ACompressorWithoutADestination_ShouldWriteInTheFlowsOutputFolder_AndSaySo|FullyQualifiedName~AFlowSavedWithoutADestination_ShouldWriteInTheOutputFolderTheLauncherHands",
+    "why": "Las dos caras de la salida por omision, y una de ellas con el motor de verdad. La primera ejecuta el nodo con la salida del flujo en la metadata y mira donde quedo el comprimido: con el destino en la carpeta donde corre el proceso, la prueba deja de ver lo que vigila. La segunda es su reverso exacto y ademas es la migracion medida: un flujo guardado con 'DestinationFolder' vacio -como quedaron todos los que guardo la aplicacion- corre en el motor con la salida que le da el lanzador, y el mutante lo lleva al directorio del proceso. Las dos quedan rojas por el sitio que nombra. La prueba del archivo que no cabe dentro de si mismo no entra en el testigo: declara '{CurrentDir}' y por tanto no pasa por el valor de fabrica que el mutante cambia."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ACompressorAskedForACombinationItsWriterAccepts_ShouldDeliverTheArchive|FullyQualifiedName~TheFactoryDefaultOfTheCompressor_ShouldBeTheOutputFolderOfTheFlow",
+    "why": "Un compresor al que SI le dan carpeta de destino sigue entregando el comprimido donde le dicen, y el valor de fabrica del parametro sigue prometiendo la salida del flujo: lo que rompe la mutacion es lo que el nodo hace cuando nadie declara nada, no comprimir ni lo que la ficha promete."
+  }
+}

@@ -31,7 +31,9 @@
       "y": 150,
       "hasBreakpoint": false,
       "isLoggingEnabled": true,
-      "parameters": {}
+      "parameters": {
+        "DestinationFolder": "{GlobalOutputDir}"
+      }
     },
     {
       "id": "node-snk",
@@ -54,7 +56,7 @@
     {
       "id": "e2",
       "sourceNodeId": "node-buf",
-      "sourcePortName": "BatchCompleted",
+      "sourcePortName": "ItemOut",
       "targetNodeId": "node-zip",
       "targetPortName": "In"
     },

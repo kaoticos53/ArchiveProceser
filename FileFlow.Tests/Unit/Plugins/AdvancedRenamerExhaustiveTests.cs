@@ -1,8 +1,10 @@
 using System.IO;
 using FluentAssertions;
+using FileFlow.Core.Storage;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Renaming;
+using FileFlow.Tests.TestHelpers;
 using Moq;
 using Xunit;
 
@@ -159,6 +161,71 @@ public class AdvancedRenamerExhaustiveTests : IDisposable
         // Assert
         item.FileName.Should().Be("FINAL_sample_2026.TXT");
         File.Exists(item.CurrentPath).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Los pasos que un flujo guarda en <c>MethodSteps</c> pueden venir con los <b>nombres</b> de las
+    /// enumeraciones —es lo que escribe el catálogo de ejemplos y lo que escribe cualquiera que retoque un flujo
+    /// fuera de la aplicación—, y esa forma tiene que leerse. Sin el conversor, la lectura fallaba entera, el nodo
+    /// caía en la plantilla por omisión (<c>{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}</c>) y
+    /// renombraba a un nombre que nadie había configurado, sin decirlo: el ejemplo 34 declaraba su plantilla
+    /// corporativa y el archivo salía con otra (destapado al ejecutarlo de punta a punta, hito 205).
+    /// </summary>
+    [Fact]
+    public async Task AdvancedRenamer_WhenTheStepsArriveWithEnumNames_ShouldApplyThemInsteadOfTheDefaultTemplate()
+    {
+        // Arrange
+        string sourceFile = Path.Combine(_tempDirectory, "factura.txt");
+        await File.WriteAllTextAsync(sourceFile, "contenido");
+
+        var node = new AdvancedRenamerNode();
+        node.Parameters["RenameMode"] = "DirectInPlace";
+        node.Parameters["PipelineName"] = "Renombrado Corporativo";
+        node.Parameters["MethodSteps"] =
+            "[{\"id\":\"step_1\",\"name\":\"Plantilla Documental\",\"methodType\":\"NewName\",\"applyTo\":\"FullName\",\"pattern\":\"{Year}_DOC_{FileNameNoExt}\",\"isEnabled\":true}]";
+
+        var context = new ProbeFlowContext { Storage = new PhysicalStorageService() };
+        var item = new FileItemContext(sourceFile);
+
+        // Act
+        await node.ExecuteAsync("In", item, context, CancellationToken.None);
+
+        // Assert
+        context.EmittedPorts.Should().ContainSingle().Which.Should().Be("Out");
+        // La plantilla se aplica sobre el nombre completo, así que sustituye también la extensión: lo que importa
+        // aquí es que salga ELLA —`2026_DOC_factura`— y no la de omisión, que antepone el nombre de la carpeta y
+        // la fecha (`FileFlow_RenamerTests_..._20260924_factura.txt`).
+        Path.GetFileName(item.CurrentPath).Should().Be($"{DateTime.Now:yyyy}_DOC_factura",
+            "manda la plantilla configurada en el flujo: la de omisión lleva delante el nombre de la carpeta y la fecha");
+        File.Exists(item.CurrentPath).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// El otro lado de lo mismo: si los pasos configurados no se pueden leer, el nodo no se calla. Renombrar con
+    /// la plantilla por omisión es exactamente el defecto que ya destapó la prueba del puerto <c>Skipped</c>; lo
+    /// que no puede repetirse es que ocurra sin decirlo.
+    /// </summary>
+    [Fact]
+    public async Task AdvancedRenamer_WhenTheStepsCannotBeRead_ShouldSaySoInsteadOfRenamingInSilence()
+    {
+        // Arrange
+        string sourceFile = Path.Combine(_tempDirectory, "albaran.txt");
+        await File.WriteAllTextAsync(sourceFile, "contenido");
+
+        var node = new AdvancedRenamerNode();
+        node.Parameters["RenameMode"] = "DirectInPlace";
+        node.Parameters["MethodSteps"] = "{ esto no es una lista de pasos }";
+
+        var context = new ProbeFlowContext { Storage = new PhysicalStorageService() };
+        var item = new FileItemContext(sourceFile);
+
+        // Act
+        await node.ExecuteAsync("In", item, context, CancellationToken.None);
+
+        // Assert: el flujo sigue —no se queda sin renombrar nada—, pero el log lo dice.
+        context.EmittedPorts.Should().ContainSingle().Which.Should().Be("Out");
+        context.Logs.Should().Contain(message => message.Contains("plantilla por omisión"),
+            "un nombre que nadie configuró no puede salir en silencio");
     }
 
     [Fact]

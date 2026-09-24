@@ -31,8 +31,8 @@
       "isLoggingEnabled": true,
       "parameters": {
         "Operator": ">=",
-        "ComparisonValue": "10",
-        "Property": "WordCount"
+        "ComparisonValue": "2",
+        "Property": "DocumentLineCount"
       }
     },
     {

@@ -1,0 +1,25 @@
+{
+  "id": "catalogo-sin-carpeta-de-destino",
+  "hito": 208,
+  "claim": "Todo compresor del catálogo de ejemplos declara dónde escribe el comprimido.",
+  "why": "El compresor tiene un respaldo -sin carpeta de destino declarada, el comprimido sale junto al archivo que comprime- y el respaldo es legitimo: es lo que hace un compresor de linea de ordenes. Lo que no puede es ser la unica respuesta para quien lee un ejemplo, porque el catalogo es documentacion y el diagrama no dice donde acaba el archivo. Cuatro de los cinco ejemplos que usan el compresor no lo declaraban (08, 12, 21 y 38) y el quinto tampoco (34): el usuario pulsaba Ejecutar y los comprimidos aparecian junto a sus originales sin que nada lo hubiera dicho. Medido con la guardia nueva: cinco avisos, uno por ejemplo.",
+  "edits": [
+    {
+      "file": "docs/examples/01_basic/flow_08_compresion_zip_automatica.json",
+      "replacements": [
+        {
+          "old": "        \"DestinationFolder\": \"{GlobalOutputDir}\",\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryCompressorInTheCatalog_ShouldSayWhereTheArchiveGoes",
+    "why": "Es la guardia del catalogo: recorre los ejemplos que se entregan y falla con el fichero y el nodo cuyo compresor no declara 'DestinationFolder'. Con el parametro borrado del ejemplo 08 (el mas basico, el que enseña a empaquetar) el aviso nombra ese fichero."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~AllExampleFlows_ShouldBeWrittenByTheProductWriter",
+    "why": "Quitar un parametro no rompe el formato del ejemplo: el fichero sigue siendo exactamente lo que el escritor del producto produce, asi que esa guardia -que mira el papel, no el destino- tiene que seguir verde."
+  }
+}

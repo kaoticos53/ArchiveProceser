@@ -214,6 +214,50 @@ public class WorkflowExamplesValidationTests
         problems.Should().BeEmpty(string.Join("\n", problems));
     }
 
+    /// <summary>
+    /// <b>Todo compresor del catálogo dice dónde escribe.</b> El nodo tiene una salida por omisión —sin carpeta de
+    /// destino declarada, el comprimido sale en la <i>salida del flujo</i>: la que el flujo declara como suya y, si
+    /// no declara ninguna, la salida por defecto de los ajustes— y esa regla está escrita en el nodo, en su log y en
+    /// la ayuda del parámetro; lo que no puede es ser la <b>única</b> respuesta para quien lee un ejemplo: el catálogo
+    /// es documentación, y «dónde acaba mi archivo» no se deduce de un diagrama. De los cinco ejemplos que usan el
+    /// compresor, cuatro no lo decían (08, 12, 21 y 38) y el quinto tampoco: el 34 lo callaba. La salida por omisión
+    /// sigue siendo la del nodo para los flujos del usuario que no declaren carpeta; el catálogo, que enseña, lo
+    /// declara (hitos 208 y 209).
+    /// </summary>
+    [Fact]
+    public void EveryCompressorInTheCatalog_ShouldSayWhereTheArchiveGoes()
+    {
+        var storage = new WorkflowStorageService();
+        var mute = new List<string>();
+        int compressors = 0;
+
+        foreach (string file in ExampleFiles())
+        {
+            var graph = storage.DeserializeGraph(File.ReadAllText(file));
+
+            foreach (var node in graph.Nodes.Where(n => n.NodeTypeName == "ArchiveCompressorNode"))
+            {
+                compressors++;
+
+                if (!DeclaresWhereToWrite(node.Parameters))
+                {
+                    mute.Add($"[{Path.GetFileName(file)}] el compresor '{node.Id}' no declara 'DestinationFolder': " +
+                        "el comprimido acabaría en la salida por omisión —la del flujo, o la de los ajustes— y el ejemplo no lo dice");
+                }
+            }
+        }
+
+        compressors.Should().BeGreaterThan(0, "la guardia sólo vale mientras el catálogo use el compresor");
+        mute.Should().BeEmpty(string.Join("\n", mute));
+    }
+
+    /// <summary>Carpeta de destino declarada, con el nombre vigente o con el heredado.</summary>
+    private static bool DeclaresWhereToWrite(IReadOnlyDictionary<string, object?> parameters) =>
+        Declares(parameters, "DestinationFolder") || Declares(parameters, "DestinationDirectory");
+
+    private static bool Declares(IReadOnlyDictionary<string, object?> parameters, string key) =>
+        parameters.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value?.ToString());
+
     /// <summary>Directorio de los ejemplos que se entregan, buscado desde la raíz del repositorio.</summary>
     private static string ExamplesDirectory() =>
         Path.Combine(TestRepositoryLocator.RepositoryRoot(), "docs", "examples");

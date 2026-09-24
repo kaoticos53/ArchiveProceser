@@ -68,6 +68,122 @@ public class DataExportersTests : IDisposable
         rows.Should().HaveCount(2);
     }
 
+    /// <summary>
+    /// <b>El token de la carpeta del flujo vale una carpeta, no el texto declarado.</b> Estos nodos sustituían
+    /// `{GlobalOutputDir}` por lo que hubiera en la metadata <i>tal cual</i>: con la salida declarada como plantilla
+    /// —`{RelativeDir}`, lo que declara el catálogo de ejemplos entero— el archivo acababa en una carpeta llamada
+    /// `{RelativeDir}` colgada del directorio de trabajo del proceso; y sin metadata, el token se quedaba escrito
+    /// dentro de la ruta. Ahora se sustituye por la carpeta terminada, que es la regla única del SDK (hito 210).
+    /// </summary>
+    [Fact]
+    public async Task CsvExportNode_WithTheFlowFolderToken_ShouldWriteInsideTheFolderTheFlowDeclares()
+    {
+        // Arrange: una entrada en `sub/` y un flujo que declara su salida como la estructura del origen.
+        string subFolder = Path.Combine(_tempDir, "sub");
+        Directory.CreateDirectory(subFolder);
+
+        var node = new CsvExportNode();
+        node.Parameters["DestinationPath"] = Path.Combine("{GlobalOutputDir}", "registros.csv");
+        node.Parameters["Columns"] = "FileName";
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Returns(Task.CompletedTask);
+
+        var item = new FileItemContext(Path.Combine(subFolder, "archivoA.zip")) { FileSizeBytes = 500 };
+        item.Metadata["SourceRootPath"] = _tempDir;
+        item.Metadata["GlobalOutputDir"] = "{RelativeDir}";
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        string expected = Path.Combine(subFolder, "registros.csv");
+        File.Exists(expected).Should().BeTrue(
+            "la carpeta del flujo declarada con plantilla es la del archivo dentro del origen, y ahí tiene que quedar el CSV");
+        Directory.Exists(Path.Combine(_tempDir, "{RelativeDir}")).Should().BeFalse(
+            "una plantilla sin expandir no puede acabar siendo el nombre de una carpeta");
+    }
+
+    /// <summary>
+    /// <b>Y sus alias valen la misma carpeta.</b> `{GlobalOutputDir}`, `{DefaultOutputDir}`, `{OutputDir}`,
+    /// `{GlobalOutputPath}` y `{DefaultOutputPath}` son el mismo sitio, pero estos nodos sustituían sólo el token
+    /// canónico a mano: con un alias, el texto se quedaba escrito dentro de la ruta. Ahora el patrón entero —alias
+    /// incluidos— lo resuelve la regla única del SDK (hitos 209 y 210).
+    /// </summary>
+    [Theory]
+    [InlineData("{DefaultOutputDir}")]
+    [InlineData("{OutputDir}")]
+    [InlineData("{GlobalOutputPath}")]
+    [InlineData("{DefaultOutputPath}")]
+    public async Task CsvExportNode_WithAnAliasOfTheFlowFolder_ShouldWriteWhereTheCanonicalTokenWrites(string alias)
+    {
+        // Arrange
+        string subFolder = Path.Combine(_tempDir, "sub");
+        Directory.CreateDirectory(subFolder);
+
+        var node = new CsvExportNode();
+        node.Parameters["DestinationPath"] = Path.Combine(alias, "alias.csv");
+        node.Parameters["Columns"] = "FileName";
+
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Returns(Task.CompletedTask);
+
+        var item = new FileItemContext(Path.Combine(subFolder, "archivoA.zip")) { FileSizeBytes = 500 };
+        item.Metadata["SourceRootPath"] = _tempDir;
+        item.Metadata["GlobalOutputDir"] = "{RelativeDir}";
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+
+        // Assert
+        File.Exists(Path.Combine(subFolder, "alias.csv")).Should().BeTrue(
+            $"'{alias}' vale la carpeta del flujo igual que '{{GlobalOutputDir}}'");
+        Directory.Exists(Path.Combine(_tempDir, alias)).Should().BeFalse(
+            "un alias sin resolver no puede acabar siendo el nombre de una carpeta");
+    }
+
+    /// <summary>
+    /// El reporte se escribe al terminar la ejecución, cuando ya no hay elemento del que leer la carpeta del flujo:
+    /// el nodo la resuelve mientras corre y la guarda. Con lo declarado sin expandir, el reporte acababa en una
+    /// carpeta con el nombre de la plantilla (hito 210).
+    /// </summary>
+    [Fact]
+    public async Task ExcelReportGeneratorNode_WithATemplateFlowFolder_ShouldWriteTheReportInsideTheOrigin()
+    {
+        // Arrange
+        string subFolder = Path.Combine(_tempDir, "sub");
+        Directory.CreateDirectory(subFolder);
+
+        var node = new ExcelReportGeneratorNode();
+        node.Parameters["OutputDirectory"] = "{GlobalOutputDir}";
+        node.Parameters["ReportFileName"] = "Resumen.xlsx";
+        node.Parameters["ColumnsToExport"] = "FileName";
+
+        var reportItems = new List<FileItemContext>();
+        var mockContext = new Mock<IFlowExecutionContext>();
+        mockContext.Setup(c => c.EmitAsync(It.IsAny<string>(), It.IsAny<FileItemContext>()))
+            .Callback<string, FileItemContext>((port, emitted) =>
+            {
+                if (port == "Report") reportItems.Add(emitted);
+            })
+            .Returns(Task.CompletedTask);
+
+        var item = new FileItemContext(Path.Combine(subFolder, "archivoA.zip")) { FileSizeBytes = 500 };
+        item.Metadata["SourceRootPath"] = _tempDir;
+        item.Metadata["GlobalOutputDir"] = "{RelativeDir}";
+
+        // Act
+        await node.ExecuteAsync("In", item, mockContext.Object, CancellationToken.None);
+        await node.OnWorkflowCompletedAsync(mockContext.Object, CancellationToken.None);
+
+        // Assert
+        reportItems.Should().HaveCount(1);
+        reportItems[0].CurrentPath.Should().Be(Path.Combine(subFolder, "Resumen.xlsx"),
+            "el reporte se escribe en la carpeta que el flujo declaró, resuelta con el elemento que sí estaba");
+    }
+
     [Fact]
     public async Task CsvExportNode_WritesAndAppendsRowsCorrectly()
     {

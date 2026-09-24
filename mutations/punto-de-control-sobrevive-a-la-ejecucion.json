@@ -1,0 +1,25 @@
+{
+  "id": "punto-de-control-sobrevive-a-la-ejecucion",
+  "hito": 200,
+  "claim": "Limpiar el punto de control olvida tambien el estado en memoria: una ejecucion terminada no deja nada que haga creer a la siguiente que el trabajo ya esta hecho.",
+  "why": "Limpiar solo el fichero deja el objeto vivo, y como InitializeCheckpoint solo crea uno nuevo si no hay ninguno, la siguiente ejecucion del mismo motor da cada archivo por completado y termina en verde sin hacer nada: es el sintoma reportado (flujos que acaban en milisegundos con cero archivos entregados).",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/WorkflowCheckpointHandler.cs",
+      "replacements": [
+        {
+          "old": "            Checkpoint = null;\n            _filesSinceLastSave = 0;",
+          "new": "            _filesSinceLastSave = 0;"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~WorkflowExecutor_ReusedForASecondRun_ShouldProcessEveryFileAgain",
+    "why": "Es el sintoma de punta a punta: la segunda ejecucion del mismo motor tiene que volver a entregar los tres archivos, y con el mutante entrega cero. El caso CheckpointHandler_ClearCheckpoint_ForgetsTheInMemoryState tambien se pone rojo, desde el contrato del handler."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~CheckpointHandler_PersistsInBatches_NotOncePerCompletedFile",
+    "why": "El lote no depende de limpiar: el mutante rompe el olvido, no el agrupamiento."
+  }
+}

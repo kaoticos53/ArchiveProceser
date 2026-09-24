@@ -44,6 +44,18 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public string DisplayName => _loc.GetString($"Param_{Key}", GetDefaultDisplayName(Key));
 
+    /// <summary>
+    /// Aclaración del parámetro: lo que no cabe en su nombre —qué significa dejarlo vacío, qué formato espera—.
+    /// Se resuelve del recurso <c>Param_{clave}_Help</c>, la convención con la que los plugins escriben la ayuda
+    /// (Archives, FileSystem, Network y AI). Sin recurso cae en la clave, que es lo que la ficha del parámetro
+    /// mostraba antes de esto: la ficha gana la aclaración donde la hay y no pierde nada donde no.
+    ///
+    /// <para>Deliberadamente <b>no</b> se pinta <c>NodeParameterDescriptor.HelpText</c>: son casi un centenar de
+    /// textos literales sin localizar, así que mostrarlos pondría castellano en la interfaz inglesa. La ayuda
+    /// visible vive en los recursos, en los dos idiomas (hito 208).</para>
+    /// </summary>
+    public string Help => _loc.GetString($"Param_{Key}_Help", Key);
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBooleanAndNoOptions))]
     [NotifyPropertyChangedFor(nameof(IsFolderPath))]
@@ -668,6 +680,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         _languageChangedHandler = (_, _) =>
         {
             OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(Help));
         };
         _loc.LanguageChanged += _languageChangedHandler;
     }

@@ -1,0 +1,25 @@
+{
+  "id": "ejecucion-pausada-heredada",
+  "hito": 201,
+  "claim": "Una ejecucion que termino pausada no deja pausada a la siguiente: el estado de pausa es de la ejecucion, no del motor.",
+  "why": "El usuario pausa y detiene la ejecucion: el semaforo queda consumido y _isPaused sigue en true, asi que la siguiente ejecucion del mismo motor se queda esperando a que alguien la reanude (medido: sin arrancar a los 10 s, con el reloj corriendo y ningun nodo activo).",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/WorkflowExecutor.cs",
+      "replacements": [
+        {
+          "old": "            // Y el estado de pausa: una ejecución que terminó pausada —el usuario pausó y detuvo— dejaba el\n            // semáforo consumido y la siguiente se quedaba esperando a que alguien la reanudara (medido: no\n            // arrancaba en 10 s, con el reloj corriendo y ningún nodo activo).\n            _isPaused = false;\n            if (_pauseSemaphore.CurrentCount == 0)\n            {\n                _pauseSemaphore.Release();\n            }\n\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ARunThatEndedWhilePaused_ShouldNotLeaveTheNextOneWaiting",
+    "why": "Reproduce el caso completo (pausar, detener, volver a ejecutar) y exige que la segunda ejecucion arranque sola."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Journal_ShouldOnlyContainTheOperationsOfTheCurrentRun",
+    "why": "El diario no depende del estado de pausa: el mutante rompe el arranque de la ejecucion siguiente, no lo que se registra."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "retroalimentacion-sin-avisos",
+  "hito": 204,
+  "claim": "Una arista de retroalimentacion que no viene de una rama del nodo, o un nodo al que solo le entran avisos de ramas, se avisan en vez de callarse.",
+  "why": "El puerto de vuelta es la unica forma de cerrar una barrera, y tambien la unica de escribir un flujo que espera para siempre: si el aviso llega de un nodo que la barrera no alimenta, o si al nodo no le entra nada mas que avisos (nadie lo arranca, nadie bifurca, los avisos no existen), el flujo termina en verde sin entregar nada. Es el mismo silencio que un puerto mal escrito, dicho por adelantado.",
+  "edits": [
+    {
+      "file": "FileFlow.Core/Engine/GraphValidator.cs",
+      "replacements": [
+        {
+          "old": "        ValidateFeedbackEdges(graph, nodeInstances, precedenceEdges, warnings);\n",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~Validate_ShouldWarnWhenANodeIsOnlyFedByFeedbackPorts",
+    "why": "El grafo del testigo no arranca a nadie: sin la comprobacion, el validador lo da por bueno y no dice nada."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Validate_ShouldAcceptABranchReturningToABarrierNode",
+    "why": "Un fork/join bien cableado sigue siendo valido: el defecto quita avisos, no aceptacion."
+  }
+}

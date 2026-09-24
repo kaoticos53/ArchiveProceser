@@ -1,0 +1,25 @@
+{
+  "id": "tabla-en-cache-sin-mirar-el-tamano",
+  "hito": 203,
+  "claim": "El indice de una tabla de datos solo se reutiliza si el fichero sigue siendo el mismo: misma fecha de escritura y mismo tamano.",
+  "why": "El indice de cada tabla vive en un estatico del plugin y sobrevive a la ejecucion a proposito —una tabla grande no se reparsea por volver a ejecutar—, asi que su unica defensa es la identidad del fichero. Con la fecha sola se colaba una tabla reescrita que conserva la marca de tiempo (una copia con marcas conservadas, una edicion en el mismo tick del sistema de ficheros): el cruce devolvia las filas de antes de escribirse.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Data/Nodes/Processing/DataLookupTableLoader.cs",
+      "replacements": [
+        {
+          "old": "        if (_cache.TryGetValue(cacheKey, out var entry) &&\n            entry.LastModifiedUtc == lastModified.UtcDateTime &&\n            entry.Length == length)",
+          "new": "        if (_cache.TryGetValue(cacheKey, out var entry) &&\n            entry.LastModifiedUtc == lastModified.UtcDateTime)"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheTableCache_ShouldNotAnswerWithRowsOfAFileThatChangedUnderTheSameTimestamp",
+    "why": "Reescribe la tabla con otro tamano y le devuelve la misma fecha: la segunda lectura tiene que traer el contenido nuevo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheLookupTableInMemory_ShouldBeTheOneOfThisRun",
+    "why": "La tabla de ese caso se reescribe con fecha nueva, asi que se relee con o sin el tamano en la clave."
+  }
+}

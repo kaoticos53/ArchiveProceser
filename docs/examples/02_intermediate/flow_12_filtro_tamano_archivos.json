@@ -33,7 +33,9 @@
       "y": 100,
       "hasBreakpoint": false,
       "isLoggingEnabled": true,
-      "parameters": {}
+      "parameters": {
+        "DestinationFolder": "{GlobalOutputDir}"
+      }
     },
     {
       "id": "node-snk",

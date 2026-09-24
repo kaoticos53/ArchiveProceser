@@ -48,6 +48,8 @@
   <data name="Param_ExtractionEngine_Help" xml:space="preserve"><value>Selects the decompression engine: Auto (intelligent multi-level fallback), SevenZip (7z.exe), DotNetZip (.NET 9 native) or SharpCompress (managed).</value></data>
   <data name="Param_CustomSevenZipPath" xml:space="preserve"><value>Custom 7z Executable</value></data>
   <data name="Param_CustomSevenZipPath_Help" xml:space="preserve"><value>Optional path to a custom or portable 7z.exe / 7za.exe executable.</value></data>
+  <data name="Param_DestinationFolder" xml:space="preserve"><value>Destination Folder</value></data>
+  <data name="Param_DestinationFolder_Help" xml:space="preserve"><value>Folder the archive is written to (the name is set by 'Archive Name'). By default it is the output folder of the flow: the one the flow declares as its own, and the default output folder from the settings when the flow declares none. To write the archive next to the file it compresses, set '{CurrentDir}'. Supports variables, for example '{GlobalOutputDir}/Archived'.</value></data>
 
   <!-- Password Manager Window -->
   <data name="PasswordManager_WindowTitle" xml:space="preserve"><value>Password Manager - SmartUnpack</value></data>

@@ -1,5 +1,691 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-24] - La Carpeta de Salida del Flujo Vale una Carpeta en Cualquier Parámetro (Hito 210)
+
+### 🎯 El encargo
+
+«Encuentra y arregla todos los sitios que resuelven la carpeta de salida del flujo (variable `GlobalOutputDir` y sus alias) fuera de `ParameterHelper.ResolveOutputPath`, de modo que valga una carpeta terminada en cualquier parámetro y no el texto declarado.» Es el pendiente que el hito 209 dejó escrito al cerrar: la cura de entonces vivía en `ResolveOutputPath`, así que **quien leyera la carpeta fuera de ahí seguía viendo la plantilla declarada**.
+
+### 🔎 El censo: cinco formas de leer la carpeta, y ninguna con la regla dentro
+
+Antes de tocar nada, el inventario (grep sobre todo el producto, no sobre lo que uno recuerda):
+
+| Dónde | Cómo lo leía | Qué pasaba |
+| :--- | :--- | :--- |
+| `SystemVariablesResolver` (la variable `{GlobalOutputDir}` y sus ocho alias) | la metadata, tal cual | **cualquier** parámetro —un mensaje de registro, un asunto de notificación, una expresión— recibía el texto declarado; y en las rutas, la plantilla dentro de la ruta |
+| `ParameterHelper.ResolveOutputPath` | expandida y anclada **sólo ahí** | el patrón del nodo salía bien y todo lo demás no (hito 209) |
+| 4 nodos de IA: síntesis de voz, detección de voz, anonimizador y transcripción (subtítulos) | la metadata, tal cual, **la misma regla copiada cuatro veces** | una salida declarada con plantilla acababa dentro de la ruta, y sin carpeta declarada el archivo caía en `Directory.GetCurrentDirectory()`: **dentro de la aplicación** |
+| 7 nodos de datos: CSV, Excel, SQLite, conversor, lookup y los dos lectores | `Replace("{GlobalOutputDir}", <valor crudo>)` | con la plantilla declarada, una carpeta llamada `{RelativeDir}` colgada del directorio de trabajo; y **sin metadata el token se quedaba escrito en la ruta** |
+| `ExcelReportGeneratorNode` y `PdfMergeNode` | guardaban el valor crudo (o resolvían contra un **elemento vacío**) porque escriben al terminar la ejecución | la carpeta del flujo no se veía —caía en la de los ajustes—, y en el PDF unido cualquier variable del nombre se quedaba sin valor |
+
+Y un detalle de interfaz: la barra de estado abría `C:\FileFlowOutput` —una ruta de Windows escrita a mano— cuando el editor no tenía carpeta.
+
+### 🧐 La regla, una sola vez y con su contrato
+
+Todo eso pasa a leerse en un solo sitio: **`ParameterHelper.FlowOutputFolder`**, que devuelve la carpeta declarada **expandida y anclada** (o `null` si el flujo no declara ninguna) y que ahora usan la variable del motor de plantillas, el anclaje de las rutas, la regla compartida de los nodos de IA y los escritores de datos. Tiene tres piezas que merecen decirse:
+
+- **El censo de alias vive dentro**: `GlobalOutputDir`, `DefaultGlobalOutputDir`, `DefaultOutputDir`, `GlobalOutputPath` y `DefaultOutputPath` —los que el resolutor aceptaba— se leen en un solo sitio, así que la variable y el anclaje contestan lo mismo. Antes el anclaje sólo miraba la clave vigente: un flujo que usara el alias histórico se anclaba en otro sitio que el que decía la variable.
+- **Guardia de reentrada**: un flujo puede declarar su salida en términos de sí misma (`{GlobalOutputDir}/sub`). Sin guardia, expandir el valor vuelve a pedir la carpeta del flujo y no termina; con ella, la referencia circular acaba en el último escalón (la salida por defecto).
+- **El API se encoge**: la costura que el hito 209 había añadido al resolutor (`globalOutputDirOverride`, un parámetro opcional que atravesaba `VariableTemplateResolver.Resolve` y `SystemVariablesResolver.GetVariableValue`) **se retira**. Con la variable resuelta en su sitio, ya no hay nada que inyectar: la regla está donde se lee, no en quien la llama.
+
+El fallback del proceso (`Directory.GetCurrentDirectory()`) desaparece de los cuatro nodos de IA, que pasan a una regla compartida y escrita (`FileFlow.Plugin.AI/Common/NodeOutputDirectory.cs`): lo declarado, si no la carpeta del flujo, si no la del propio archivo, y sólo en último extremo el temporal del producto.
+
+### 🐛 Lo que el arnés de mutaciones encontró mientras se declaraba cubierto
+
+Al declarar la mutación de la regla nueva (que le quita la expansión a `FlowOutputFolder`) y medirla, **sobrevivió**: la prueba del último escalón seguía verde porque en mi propia regla había un defecto. `Path.GetDirectoryName("voz.wav")` devuelve **cadena vacía, no nulo**, así que la cadena `?? Path.GetDirectoryName(...) ?? AppPaths.DefaultTempDirectory` se detenía en la cadena vacía y **el último escalón no se disparaba nunca**: el nodo habría escrito en la ruta vacía. La mutación no mentía; el defecto era del arreglo. Corregida la regla (comparar por `IsNullOrWhiteSpace`, con el porqué escrito al lado), la mutación muerde. Es el arnés haciendo su trabajo, y por eso la declaración de la mutación cuenta también esa medición.
+
+### 🔗 Los siete nodos de datos pasan por la regla (y con ellos los alias)
+
+El censo de arriba dejó anotado que los siete nodos de datos —CSV de entrada y de salida, Excel de entrada y de salida, SQLite, conversor y lookup— **sustituían el token canónico a mano**: `Replace("{GlobalOutputDir}", <la carpeta terminada>)`. Eso ya no era el defecto del hito 204, pero seguía siendo una regla copiada siete veces y, sobre todo, **no cubría los alias**: un flujo que escribiera `{DefaultOutputDir}/export.csv` —nombre que el resolutor acepta y que el anclaje del SDK honra— dejaba el alias escrito dentro de la ruta, porque la sustitución sólo conocía un nombre. Lo mismo en `{OutputDir}`, `{GlobalOutputPath}` y `{DefaultOutputPath}`.
+
+La sustitución se retira. Los siete entregan **el patrón entero** a `ParameterHelper.ResolveOutputPath`, que expande todos los nombres, ancla lo relativo y no deja el token en el camino, y cada uno conserva su propio respaldo para el caso de no haber patrón ninguno: el CSV y el reporte de Excel al temporal del producto, el conversor a la carpeta del archivo y los lectores avisando de que no hay archivo que leer. Dos detalles del barrido merecen quedar escritos:
+
+- **El reporte de Excel** se escribe al terminar el flujo y por eso guardaba la carpeta mientras corría; ahora guarda **la carpeta ya resuelta**, no el valor crudo: su `OutputDirectory` puede ser `{GlobalOutputDir}/reportes`, y el anclaje depende del elemento, así que resolverlo al vuelo cuando el flujo termina habría sido resolverlo sin elemento.
+- **`using FileFlow.Sdk.Storage` era carga, no ruido**: al retirar la sustitución quedó sin uso aparente y lo quité de los siete ficheros; el compilador lo devolvió con once errores, porque `GetStorage` es un método de extensión de ese espacio de nombres. Restaurado en los siete, sin más consecuencia que la lección: la limpieza se comprueba compilando.
+
+Del mismo censo quedaba un sitio de interfaz: el editor de plantillas mostraba `C:\Output` como muestra de `{GlobalOutputDir}` cuando el catálogo de variables no había respondido —una ruta de Windows escrita a mano, en un producto multiplataforma—; ahora muestra la carpeta real de los ajustes.
+
+### 🧬 Las mutaciones
+
+- [`salida-global-sin-expandir`](file:///mutations/salida-global-sin-expandir.json) **cambia de destino**: antes quitaba la expansión en `ParameterHelper` —donde la cura era local— y ahora se la quita a la **regla única**, que es la que usan los cinco lectores. Su testigo deja de ser dos pruebas de una ruta y pasa a ser **las cinco lecturas**, una por una: la variable en un parámetro que no es una ruta, el anclaje del SDK, el compresor con su destino por omisión, los nodos de IA por su costura y los dos escritores de datos —el CSV por su token **y por un alias suyo**—. **MUERDE** en **29,6 s**, testigo rojo **10 de 10**, control verde **3 de 3**.
+- [`carpeta-de-nodo-de-ia-donde-corre`](file:///mutations/carpeta-de-nodo-de-ia-donde-corre.json) es **nueva**: devuelve el último escalón de los nodos de IA al directorio de trabajo del proceso. **MUERDE** en **33,6 s**, testigo rojo **1 de 2** (la prueba del último escalón; su hermana —el elemento que trae carpeta— sigue verde, y por eso es control), control verde.
+- [`datos-solo-el-token-canonico`](file:///mutations/datos-solo-el-token-canonico.json) es **nueva**: devuelve la sustitución de un solo token al nodo de CSV, es decir, el defecto que este tramo retira. **MUERDE** en **28,8 s**, testigo rojo **4 de 4** (los cuatro alias, cada uno con su nombre) y control verde: el token canónico sigue escribiendo donde el flujo declara, así que lo que la mutación rompe es exactamente lo que el arreglo añade —los alias— y no la resolución de la carpeta. Con el mutante puesto quedan en el directorio de los binarios **cuatro carpetas** llamadas `{DefaultOutputDir}`, `{OutputDir}`, `{GlobalOutputPath}` y `{DefaultOutputPath}`: es la firma del defecto del hito 204, medida otra vez y recogida al terminar.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1737 superadas + 1 omitida de 1738** (+12: dos del SDK —la variable en cualquier parámetro y la salida que se nombra a sí misma—, cuatro de la regla de los nodos de IA —plantilla anclada, carpeta del archivo, último escalón y carpeta declarada en redondo/relativa—, dos de los escritores de datos —el CSV por el token canónico y el reporte de Excel, que la resuelve al vuelo— y **cuatro de los alias de la carpeta del flujo en un nodo de datos** (`{DefaultOutputDir}`, `{OutputDir}`, `{GlobalOutputPath}`, `{DefaultOutputPath}`), que es el hueco que este tramo cierra), **0 errores**, dos pasadas verdes (2 m 34 s y 2 m 40 s).
+- Cada nodo arreglado tiene su prueba **por su propia costura** (el método que el nodo llama de verdad), no por una copia paralela en el suite: la síntesis de voz y la detección de voz exponen su resolución como `internal` y el plugin ya tenía `InternalsVisibleTo` para el suite.
+- Las tres mutaciones, **MUERDEN**, con el árbol restaurado por bytes y recompilado.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **33 mutaciones**, **10 de 15 subsistemas** y **6 de 33 guardias** con mutación que las muerda.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado **8** suma lo que este hito cambia para quien usa la aplicación y sus cifras pasan a **1719 → 1733**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El hueco de los nodos de datos queda cerrado**: ya no sustituyen el token a mano, así que los alias valen y un camino **relativo** escrito en sus parámetros (`DestinationPath = "export.csv"`) se ancla por la misma regla que todo lo demás en vez de resolverse contra el directorio de trabajo del proceso. Queda por decidir, sí, **qué ancla manda en un lector**: hoy un `FilePath` relativo cae bajo la salida del flujo, y en un lector lo natural sería el origen del barrido.
+- **Censo pendiente**: cada plugin resuelve su carpeta de salida a su manera (Documents con `ResolveOutputPath` y el PDF unido con el elemento capturado, Data por la regla única, IA con su regla compartida, Archives con la suya). Ahora mismo la regla única es del SDK; unificar los caminos de lectura de los cuatro es el siguiente paso lógico, y el censo de este hito es el mapa.
+- **Migración pendiente**: los **98** `HelpText` literales de los plugins siguen sin pintarse; mudarlos a `Param_{clave}_Help` es mecánico y un lint que los prohíba lo cerraría del todo.
+- Sigue abierto, y es del producto: los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión del destino cuando la entrada no es media.
+
+---
+
+## [2026-09-24] - El Compresor Escribe en la Salida del Flujo: el Valor por Omisión y la Migración de lo Ya Guardado (Hito 209)
+
+### 🎯 El encargo
+
+«Decide si el compresor debe escribir por omisión en la carpeta de salida del flujo en vez de junto al archivo, con el plan de migración para los flujos ya guardados que no declaran carpeta. **Por defecto debería usar el directorio de salida por defecto definido en los ajustes.**» Es el pendiente que el hito 208 dejó escrito en su apartado de notas, y la decisión viene tomada: el valor por omisión cambia y hay que decir qué le pasa a lo ya guardado.
+
+### ✅ La decisión, y por qué es esa
+
+El valor de fábrica de `DestinationFolder` pasa a ser **`{GlobalOutputDir}`**, que es exactamente lo que el encargo pide y ya estaba definido en el producto: la carpeta que el flujo declara como su salida y, **cuando no declara ninguna, la salida por defecto de los ajustes**. No hay plumbing nuevo: el lanzador ya entrega esa carpeta al motor (`WorkflowExecutionCoordinator`: la que declara el grafo o, si no declara, la de las preferencias) y el resolutor ya sabía resolver la variable.
+
+«Junto al archivo que comprime» **deja de ser lo que pasa cuando no se declara nada** y pasa a ser algo que se declara: `{CurrentDir}`. Es una variable que ya existía (la carpeta del archivo que llega al nodo, que es literalmente lo que el respaldo calculaba por su cuenta), así que la salida vieja se conserva sin código nuevo —se lee en la ficha del parámetro— y sin que nadie tenga que adivinar de dónde salía.
+
+El valor de fábrica se declara en **un solo sitio** (`ArchiveCompressorNode.DefaultDestinationFolder`, público) y lo usan la instancia y el descriptor: la ficha muestra lo que el motor ejecuta, y una prueba lo fija (`TheFactoryDefaultOfTheCompressor_ShouldBeTheOutputFolderOfTheFlow`).
+
+### 🚚 La migración: no se reescribe ningún archivo
+
+Un flujo guardado por la aplicación **siempre trae la clave**: el escritor escribe los parámetros del nodo tal y como están en la instancia, y el valor de fábrica de antes era vacío, así que «un flujo que no declara carpeta» es, literalmente, `"DestinationFolder": ""`. Eso significa que cambiar el valor de fábrica del nodo **no toca** a ningún flujo ya guardado: el archivo guardado pisa la instancia al abrirse. La migración, por tanto, tenía que ser otra cosa que el valor por omisión, y es **una regla nueva que alcanza también a lo guardado**:
+
+| Lo que declara el flujo | Dónde escribe el comprimido |
+| :--- | :--- |
+| Una carpeta (`{GlobalOutputDir}/Archivado`, `{CurrentDir}`, una ruta completa) | Donde dice, sin cambios (hito 208) |
+| El nombre heredado `DestinationDirectory` | Donde decía su valor **heredado**, sin cambios |
+| Una carpeta vacía (`""`, como quedaron todos los guardados) | La **salida del flujo**, y el log lo dice con la carpeta exacta |
+| Nada declarado en absoluto | La **salida del flujo**, y el log lo dice |
+
+Tres decisiones sostienen ese cuadro, y las tres están escritas en el código:
+
+- **No se reescribe ningún flujo.** La alternativa era una migración que rellenase la clave vacía al cargar (y que el archivo convergiera al guardarse), y se descarta por dos razones medidas: reescribe el archivo del usuario sin que lo haya pedido, y **no puede prometer lo que promete un cambio de comportamiento** —para conservar el sitio viejo habría que escribir `{CurrentDir}`, que no es equivalente a lo que hacía el respaldo cuando un nodo anterior había cambiado la ruta del elemento: el respaldo usaba la carpeta del archivo *en ese momento*, y `{OriginalDir}` habría apuntado a la de origen—. La regla aplicada en el nodo alcanza a todos los flujos (también a los que nunca se vuelvan a guardar) y no toca ninguno.
+- **El nombre heredado manda sobre el valor de fábrica.** `DestinationDirectory` no aparece en la ficha del nodo, así que un valor ahí sólo puede venir de un flujo guardado con el nombre viejo: uno que **sí** declaró dónde escribe. Con el valor de fábrica puesto en la instancia, la comprobación «¿está vacío?» lo habría tapado y habría movido en silencio la salida de esos flujos. Ahora la comprobación es «¿está vacío **o** trae el valor de fábrica?», y una prueba fija las dos mitades (el heredado gana; el moderno declarado de verdad también).
+- **Nadie podía haber elegido el sitio viejo a propósito.** La aclaración «*si se deja vacía, junto al archivo*» se escribió en el hito 208 y **no se ha publicado**: el único documento que la decía es la ayuda del parámetro de este mismo tramo. Un usuario no puede haber vaciado el campo *porque se lo dijimos*, porque nunca se lo dijimos. Es lo que hace defendible mover el destino de todo flujo que no lo declara, y por eso se anuncia en el log al ejecutar y en las notas de versión.
+
+La prueba que ata la migración entera es de **motor**, no de nodo (`AFlowSavedWithoutADestination_ShouldWriteInTheOutputFolderTheLauncherHands`): un flujo con `"DestinationFolder": ""` y sin salida propia, cargado con el escritor del producto y ejecutado con el motor de verdad, deja el comprimido en la salida que el lanzador le da y **no** junto al archivo.
+
+### 🕳️ Antes de tocar el valor hubo que arreglar la salida del flujo
+
+Hacer que el destino por omisión sea `{GlobalOutputDir}` sólo es una buena idea si `{GlobalOutputDir}` vale una **carpeta**. Y no valía.
+
+El catálogo de ejemplos entero declara su salida como `"globalOutputDir": "{RelativeDir}"` —es su forma de decir «la estructura del origen»—, así que el valor que llegaba en la metadata era **una plantilla**, y `{GlobalOutputDir}` la devolvía tal cual: ninguna fase la expandía después. El anclaje de `ParameterHelper.ResolveOutputPath` la usaba como carpeta base **y** como patrón, así que la combinaba **consigo misma** (`{RelativeDir}\{RelativeDir}`) y `CrossPlatformPath.Combine`, al no tener un destino absoluto, absolutizaba esa ruta relativa contra el **directorio de trabajo del proceso**. Medido con una prueba de sondeo antes de tocar nada:
+
+```
+ResolveOutputPath('{GlobalOutputDir}') = '…\FileFlow.Tests\bin\Debug\net10.0\{RelativeDir}\{RelativeDir}'
+```
+
+Es la **forma exacta del defecto del hito 204** —quince ejemplos escribieron su salida entre los binarios— y estaba a punto de convertirse en el destino **por omisión** de todo compresor. Peor: los ejemplos 08, 12 y 21 ya declaraban `{GlobalOutputDir}` desde el 208, así que el defecto estaba vivo en el árbol de trabajo. El síntoma se dejó ver al ejecutar la mutación de este mismo hito: quedaba una carpeta `{RelativeDir}\{RelativeDir}` dentro de `FileFlow.Tests/bin/Debug/net10.0`.
+
+La cura está en el sitio donde vive la regla, y en este orden:
+
+1. **El anclaje del origen se decide antes de expandir el patrón** (`SourceAnchor`, extraído del propio método).
+2. **La salida declarada se expande una vez** (`ResolveGlobalOutputDir`): si es una plantilla, se resuelve; si sale absoluta se normaliza; si sale relativa (la plantilla relativa al origen, o una carpeta escrita a mano) **se ancla bajo el origen** —`{RelativeDir}` de un archivo en la raíz del barrido es vacío, y eso significa el origen mismo, no «sin carpeta»— y, sin origen, bajo **la salida por defecto de los ajustes**. Nunca bajo el directorio de trabajo del proceso.
+3. **El valor ya anclado se le pasa al resolutor** como valor de `{GlobalOutputDir}` (`globalOutputDirOverride`, opcional en `VariableTemplateResolver.Resolve` y en `SystemVariablesResolver.GetVariableValue`), para que el patrón del nodo expanda a un camino terminado y no vuelva a componerse consigo mismo.
+
+Después de la cura, lo mismo que antes daba `bin/Debug/net10.0/{RelativeDir}/{RelativeDir}` da `D:\Fuente\sub` (la carpeta del archivo dentro del origen) y `{GlobalOutputDir}/Archivado` da `D:\Fuente\sub\Archivado`. Y queda un último escalón escrito en el nodo por si un patrón se queda relativo pese a todo: no se escribe donde corre el proceso, se ancla en la salida por defecto de los ajustes y **se dice**.
+
+La cura está en el SDK, así que alcanza a **todos** los nodos que resuelven un destino, no sólo al compresor: un patrón relativo deja de poder acabar colgado del directorio de trabajo del proceso. En la práctica se nota en los flujos que declaran su salida con una plantilla relativa (`{RelativeDir}`) —el catálogo entero— y en la carpeta de origen por omisión de esos mismos ejemplos (`{RelativeDir}\Input`), que pasa de resolverse contra el directorio donde corre la aplicación a anclarse en la salida que el lanzador entrega al motor (lo que el banco viene midiendo con su `root/Input`). Ninguna ruta absoluta declarada cambia: eso sigue resolviéndose igual que siempre, y una prueba lo fija como control.
+
+### 📖 La ayuda y el catálogo dicen lo nuevo
+
+`Param_DestinationFolder_Help` (castellano e inglés) ya no describe el respaldo: dice que **por omisión es la carpeta de salida del flujo** —la del flujo, o la de los ajustes— y que para dejarlo junto al archivo se escribe `{CurrentDir}`. La prueba lee los dos idiomas del propio ensamblado del plugin. La guardia del catálogo (`EveryCompressorInTheCatalog_ShouldSayWhereTheArchiveGoes`) sigue exigiendo que todo compresor de un ejemplo declare su destino, con el motivo actualizado: sin declararlo, el comprimido acabaría en la salida por omisión, que el ejemplo no dice. Los `.md` de 08, 12, 21 y 34 y los tres manuales de usuario cuentan el destino nuevo.
+
+### 🧬 Las mutaciones
+
+- [`compresor-que-escribe-donde-corre`](file:///mutations/compresor-que-escribe-donde-corre.json) **se reescribe** a la regla nueva: el mutante devuelve el valor de fábrica del nodo al **directorio de trabajo del proceso** (antes le quitaba el respaldo «junto al archivo», que ya no existe). Sigue siendo el mismo defecto del hito 204, y sigue mordiendo: **MUERDE** en **38,7 s**, testigo rojo **2 de 2** (el nodo sin carpeta declarada y el flujo guardado sin carpeta, con el motor), control verde **2 de 2** (un compresor con destino declarado, y el valor de fábrica del parámetro, que el mutante no toca).
+- [`salida-global-sin-expandir`](file:///mutations/salida-global-sin-expandir.json) es **nueva** y declara el defecto que este hito encontró: la salida global que se queda sin expandir y sin anclar. Quita la expansión de `ParameterHelper`. **MUERDE** en **31 s**, testigo rojo **2 de 2** (el SDK y el compresor, los dos por el sitio que nombra), control verde **2 de 2**.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1725 superadas + 1 omitida de 1726** (+6: tres pruebas del compresor —la salida declarada como plantilla, el nombre heredado frente al valor de fábrica y el valor de fábrica que la ficha promete—, la que mide la migración **con el motor** y dos del SDK —la expansión y su caída a los ajustes—; la prueba del destino por omisión se **reescribe** —antes medía el respaldo— y no se suma), **0 errores**, **2 m 50 s**.
+- El banco de los 40 ejemplos, verde y con la sala limpia vacía (los archivos de ejemplo siguen entregándose donde prometen).
+- Las dos mutaciones, **MUERDEN**, con el árbol restaurado por bytes y recompilado. El arnés llegó a marcar **RECHAZO** en la mutación nueva por un detalle del testigo —comparaba el disco **antes y después**, y el propio mutante dejaba `{RelativeDir}\{RelativeDir}` entre los binarios, así que el árbol restaurado seguía viendo el resto—: se corrigió el testigo para que afirme por **su valor** (el camino emitido), que no depende de lo que quedara de la última vez que algo falló.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **31 mutaciones**, **10 de 15 subsistemas** y **6 de 33 guardias** con mutación que las muerda.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: apartado **8** nuevo (compilación 5305 → 5341), con la decisión, la migración, el defecto medido y las cifras **1719 → 1725**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El pendiente del 208 queda cerrado**: el valor por omisión es la salida del flujo y la migración está decidida, escrita y probada con el motor (no se reescribe ningún flujo; el heredado manda sobre el valor de fábrica; `{CurrentDir}` conserva el sitio viejo).
+- **Defecto encontrado y arreglado por el camino**: la salida global declarada como plantilla no se expandía, y acababa absolutizada contra el directorio de trabajo del proceso. Estaba vivo en el árbol (los ejemplos 08, 12 y 21 lo declaran desde el 208) y ahora tiene prueba y mutación propias. **Queda por mirar si hay más sitios que resuelvan la salida global fuera de `ResolveOutputPath`** (una variable usada en un parámetro que no sea una ruta, por ejemplo): allí la variable seguirá devolviendo la plantilla declarada.
+- **Migración pendiente**: los **98** `HelpText` literales de los plugins siguen sin pintarse; mudarlos a `Param_{clave}_Help` es mecánico y un lint que los prohíba lo cerraría del todo.
+- Sigue abierto, y es del producto: los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión del destino cuando la entrada no es media.
+
+---
+
+## [2026-09-24] - El Compresor Dice Dónde Escribe: la Regla, la Ayuda y el Catálogo (Hito 208)
+
+### 🎯 El encargo
+
+«Cierra el hueco del compresor: cuando el flujo no declara carpeta de destino, debe quedar claro y comprobado dónde escribe el comprimido, y los ejemplos que no la declaran han de decir su destino.»
+
+### 🕳️ El hueco: un respaldo correcto que nadie había dicho en voz alta
+
+`ArchiveCompressorNode` resuelve su destino con una regla de tres escalones: la carpeta declarada —anclada por `ParameterHelper.ResolveOutputPath`, así que una ruta relativa cae dentro de la salida del flujo y **nunca** donde corra el proceso—, el **respaldo** de comprimir junto al archivo que comprime, y el heredado `DestinationDirectory`. **El respaldo no era el defecto** —es lo que hace un compresor de línea de órdenes y deja el resultado donde el usuario mira—; el defecto era el **silencio**: el nodo no lo decía en el log, la ficha del parámetro no lo aclaraba, y de los **cinco** ejemplos que usan el compresor **ninguno** lo declaraba de verdad (08, 12, 21 y 38 no tenían el parámetro; el 34 tampoco). El hueco lo dejaron escrito los hitos 204 y 205, y el 207 lo volvió a encontrar desde el otro lado: sus flujos medidos escribían en el respaldo.
+
+### 🧐 La regla, en un solo sitio y contada
+
+La resolución se extrae a un método con su contrato escrito (`DeclaredDestinationFolder`), y cuando el respaldo entra en juego el nodo **lo dice**: `[Compresor] Sin carpeta de destino declarada: el comprimido se escribe junto al archivo que comprime, en '<carpeta>'`. El aviso sale **después** de comprobar que la entrada existe (no se anuncia un destino para un archivo que no está) y sólo cuando se va a escribir.
+
+### 👁️ La ayuda que existía y nadie pintaba
+
+La convención de los plugins para aclarar un parámetro es el recurso `Param_{clave}_Help` (Archives lo usaba en cuatro claves, y también FileSystem, Network y AI). **Ninguna interfaz la leía**: la fila del parámetro mostraba en su *tooltip* **la clave cruda** —dato de desarrollador— y el campo `NodeParameterDescriptor.HelpText` (98 declaraciones literales en los plugins) no lo pintaba nadie. Ahora la ficha del parámetro resuelve `Param_{clave}_Help` y lo enseña; sin recurso cae en la clave, que es lo que mostraba antes. `HelpText` se deja **deliberadamente sin pintar** y queda escrito el porqué: son textos literales sin localizar, y mostrarlos pondría castellano en la interfaz inglesa; la ayuda visible vive en los recursos, en los dos idiomas.
+
+El compresor estrena así `Param_DestinationFolder` («Carpeta de Destino») y `Param_DestinationFolder_Help` —«*Carpeta donde se escribe el comprimido… Si se deja vacía, el comprimido se escribe junto al archivo que comprime…*»— **en castellano e inglés**, y la prueba los lee del propio ensamblado del plugin, así que una traducción a medias falla.
+
+### 📚 El catálogo dice dónde, y una guardia lo exige
+
+| Ejemplo | `DestinationFolder` declarada |
+| :--- | :--- |
+| 08 (empaquetado ZIP, básico) | `{GlobalOutputDir}` |
+| 12 (filtro por tamaño) | `{GlobalOutputDir}` |
+| 21 (lotes) | `{GlobalOutputDir}` |
+| 34 (ingesta documental) | `{GlobalOutputDir}/Archivado` |
+| 38 (deduplicación y frío, 7Z) | `{GlobalOutputDir}/Frio` |
+
+Sus `.md` lo cuentan (parámetro y paso a paso) y los tres manuales de usuario estrenan la frase que faltaba en su ficha del compresor. La exigencia estructural es una guardia nueva del catálogo, `EveryCompressorInTheCatalog_ShouldSayWhereTheArchiveGoes`: recorre los ejemplos que se entregan y falla con el fichero y el nodo cuyo compresor no declara `DestinationFolder` (o el heredado). El respaldo sigue siendo el del nodo para los flujos del usuario que no declaren carpeta; **el catálogo, que enseña, lo declara**.
+
+### 🧬 Las mutaciones, y una medición que cambió de dueño
+
+- [`catalogo-sin-carpeta-de-destino`](file:///mutations/catalogo-sin-carpeta-de-destino.json) borra el `DestinationFolder` del ejemplo 08 (el más básico): la guardia nueva se pone roja nombrando ese fichero, y el formato del ejemplo sigue siendo el que produce el escritor (control verde). **MUERDE** en **27,6 s**.
+- [`compresor-que-escribe-donde-corre`](file:///mutations/compresor-que-escribe-donde-corre.json) gana un testigo: además de la prueba del compresor que se niega a comprimir sobre su entrada, ahora muerde la prueba del **respaldo** (hito 208), que es su reverso exacto. **MUERDE** en **30,6 s**, testigo rojo **2 de 2** y control verde.
+- **Medido, y cambia lo que cubre quién**: con el catálogo declarando sus destinos, el banco de los 40 ejemplos **ya no pasa por el respaldo** —sus compresores tienen carpeta— así que los **34 avisos** que ese mismo mutante publicaba en la sala limpia del banco (hito 207) son la medición de entonces y no lo que hoy cubre: bajo el mutante el banco queda **verde** y quien muerde son las dos pruebas del nodo. Queda escrito en la declaración de la mutación, que es donde se lee.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1719 superadas + 1 omitida de 1720** (+4: el respaldo del destino, la ayuda en los dos idiomas, la guardia del catálogo y la resolución de la ayuda en la ficha del parámetro), **0 errores**, **2 m 39 s**.
+- Los cinco ejemplos editados siguen pasando las guardias de papel (formato del escritor, apertura en el editor) y sus asientos del banco: el `.zip`/`.7z` que prometen llega igual, ahora desde la carpeta declarada.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **30 mutaciones**, **10 de 15 subsistemas** y **6 de 33 guardias** con mutación que las muerda.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado 7 cambia lo que decía de este hueco —ya no «sigue viéndose así»— y sus cifras pasan a **1706 → 1719** con **30 defectos declarados**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El hueco del compresor queda cerrado**: la regla está en un solo sitio del nodo, el log la anuncia cuando se usa, la ficha del parámetro la explica en los dos idiomas y el catálogo no la calla.
+- **Pendiente de decidir, no defecto**: si el valor por omisión del nodo debería ser `{GlobalOutputDir}` en vez del respaldo. No se toca porque mueve el destino de **todos** los flujos guardados que no declaren carpeta, y el respaldo ya no es silencioso.
+- **Migración pendiente**: los **98** `HelpText` literales de los plugins siguen sin pintarse. Mudarlos a `Param_{clave}_Help` es trabajo mecánico y su recompensa es la aclaración en la ficha, en los dos idiomas; un lint que prohíba `HelpText` en los descriptores lo cerraría del todo.
+- Sigue abierto, y es del producto: los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión del destino cuando la entrada no es media.
+
+---
+
+## [2026-09-24] - El Banco de Ejemplos Deja de Mirar los Binarios: Cada Flujo Corre en una Sala Limpia (Hito 207)
+
+### 🎯 El encargo (heredado del hito 206, escrito como hueco)
+
+«Una pasada completa dejó el banco en rojo y **su mensaje no se capturó**; el sospechoso principal es que `SnapshotProcessDirectory` compara el directorio de trabajo del proceso entero, así que un vecino escribiendo junto a los binarios se le atribuye al flujo medido. Hay que decidir entre **colección exclusiva** o **acotar la comprobación**.»
+
+### 🔬 Lo primero, medir (y la teoría del vecino no aguantó)
+
+Antes de tocar nada: pasada completa del suite **sin** el banco (`--filter "FullyQualifiedName!~ExampleFlowsEndToEndTests"`) con una foto del directorio de los binarios antes y después —`FileFlow.Tests/bin/Debug/net10.0`, el directorio de trabajo del proceso de pruebas—. Resultado: **399 archivos antes, 399 después, cero nuevos**. Ninguna prueba del suite escribe ahí, así que «un vecino de otra colección» no era el escritor. Lo que sí puede escribir ahí es algo que no es una prueba: **una compilación en marcha en el mismo árbol** (este checkout se comparte, y el propio arnés de mutaciones compila en ese directorio), o el propio flujo medido. La consecuencia para la decisión es directa: **la exclusividad sola no arregla nada** —aisla de vecinos *del proceso*, no de un compilador ajeno— y **acotar por contenido** habría perdido justo el caso que importa (un archivo *transformado* que cae fuera no se parece a nada de dentro).
+
+### 🧪 La decisión: una sala limpia, y el banco en su colección exclusiva
+
+El banco apunta el **directorio de trabajo del proceso** a una carpeta temporal suya —vacía y sólo suya— mientras corre los cuarenta flujos, y **exige que quede vacía**: un archivo ahí es la firma de un flujo que resolvió su destino contra «la carpeta donde corre». Con eso:
+
+- **La atribución es exacta**, porque nadie más escribe en esa carpeta; antes la ventana de cada flujo se medía sobre un directorio compartido con el suite entero y con cualquier proceso ajeno al suite.
+- **La exigencia no se afloja; se refuerza.** El directorio de trabajo del proceso se restaura en un `finally` (es del proceso, no de la prueba) y, al no haber ruido, la comprobación puede quedarse con lo que de verdad quiere decir: *ningún flujo deja nada donde corre*.
+- **Se retira la aserción de los binarios** (`SnapshotProcessDirectory().Should().BeEquivalentTo(...)`), que además de ser la parte ruidosa volcaba el árbol entero —miles de rutas— en el mensaje de un fallo: es exactamente el motivo por el que, en el hito 206, un rojo quedó sin mensaje legible.
+- Cambiar el directorio de trabajo es **estado global del proceso**, así que la clase pasa a una **colección exclusiva** (`ExampleFlowBankCollection`): si una colección vecina corriera a la vez y resolviera una ruta relativa, caería dentro de la sala y el archivo se le atribuiría al ejemplo que estuviera corriendo. Coste medido: **ninguno** (abajo, en la validación).
+
+### 🧬 La exigencia, atada a un defecto que la muerde
+
+Una guardia nueva —o reforzada— sin mutación que la muerda es una guardia que nadie ha demostrado que muerda. [`compresor-que-escribe-donde-corre`](file:///mutations/compresor-que-escribe-donde-corre.json) le quita al compresor su respaldo («sin carpeta de destino, junto al archivo que comprime») y lo deja caer en el directorio del proceso, que es la forma exacta del defecto del hito 204.
+
+**Medido, aplicando el mutante a mano**: el banco publica **34 avisos** de «escribió en la carpeta donde corre» con los nombres reales de lo que se escribió —`anidado.zip`, `nota.zip`, `<guid>.zip`— en los flujos **08, 21 y 34** (los del compresor con destino vacío), y sin la sala limpia ese aviso **no existiría**: el archivo habría caído entre los binarios y nadie sabría de quién era. En el arnés: **MUERDE** en **181,5 s** —testigo rojo (**2 de 5**: la prueba del nodo y el banco), control verde—.
+
+### 🧾 Contrato de colecciones, al día
+
+Estado nuevo en el analizador (`ProcessWorkingDirectory`, patrón `Directory.SetCurrentDirectory`), colección exclusiva nueva, dos auto-tests en la guardia del contrato (la clase paralela que mueve el directorio de trabajo infringe; la del banco no) y la entrada correspondiente en el mapa de [`TestAssemblyParallelism.cs`](file:///FileFlow.Tests/TestAssemblyParallelism.cs).
+
+### ✅ Validación
+
+- `dotnet test` completo → **1715 superadas + 1 omitida de 1716** (+2: los auto-tests del estado nuevo), **0 errores**, **2 m 43 s**. Las tres pasadas del tramo anterior midieron **2 m 42 s – 2 m 54 s** con **1713 + 1 de 1714**: la exclusividad del banco **no cuesta tiempo medible**, porque su ventana se solapaba con trabajo que ya se solapaba entre sí.
+- `ExampleFlowsEndToEndTests` (4 pruebas) verde con la sala limpia, y la sala **vacía** al terminar los cuarenta flujos: ningún ejemplo escribió donde corre (lo que se midió, no lo que se supone).
+- La mutación del hito, **MUERDE** (181,5 s), con el árbol restaurado por bytes y recompilado.
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **29 mutaciones**, **10 de 15 subsistemas** y **5 de 33 guardias** con mutación que las muerda (las cifras ya estaban sin regenerar de tramos anteriores).
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado 7 suma lo que no se ve del banco y sus cifras (**1706 → 1715**), y los defectos declarados pasan a **29**.
+
+### 📌 Notas para la siguiente sesión
+
+- **El hueco del hito 206 queda cerrado**: su rojo sin mensaje tenía dos mitades —una comprobación que miraba un directorio compartido y un mensaje que volcaba el árbol entero— y las dos están fuera. Si vuelve a aparecer un rojo en el banco, ahora se lee: los problemas van en el mensaje de la aserción, con el flujo que los causó y el archivo concreto.
+- **Queda abierto —y es del producto, no del banco—** que el compresor escriba junto a sus entradas cuando el flujo no declara carpeta de destino: ya no puede destruirlas, pero el valor por omisión sigue sin tocarse porque cambiarlo mueve el destino de todos los flujos que no lo declaran.
+- Los flujos que prometen vídeo, audio o GIF (02, 11, 24, 36, 39, 40) entregan copias con la extensión de destino cuando la entrada no es media: sigue pidiendo decidir qué debe hacer un transcodificador con una entrada que no puede decodificar.
+
+---
+
+## [2026-09-24] - El Banco de Ejemplos Mira la Entrada: Ningún Flujo la Toca Sin Declararlo (Hito 206)
+
+### 🎯 El encargo
+
+«Haz que el banco de ejemplos compruebe que ningún flujo modifica los archivos de entrada salvo cuando su asiento lo declare, con el caso del compresor que vaciaba el paquete como testigo.»
+
+### 🕳️ El agujero que lo motivaba
+
+El banco miraba **lo entregado**: enumeraba el área de trabajo, **excluía los archivos de entrada** de la cuenta y juzgaba lo demás. Quien tocara la entrada no lo delataba nadie, y el hito 205 lo pagó: el ejemplo 21 devolvía el `paquete.zip` sembrado con **22 bytes** donde tenía 148 —el compresor abría su propio archivo de entrada para escribir el destino encima— y el banco lo daba por bueno. Se destapó **depurando el flujo a mano**, no por una prueba.
+
+### 🧪 La exigencia nueva, y su omisión
+
+`Seat` estrena `InputPolicy`, con el caso corriente por omisión: **`Untouched`** —cada archivo sembrado en `Input/` sigue en su ruta, con los mismos bytes—. Antes de ejecutar se toma la **huella SHA-256** de cada entrada y después se compara; además se calcula qué huellas siguen presentes en algún lugar del área. Las otras dos políticas existen para los flujos que *de verdad* se llevan la entrada:
+
+- **`MovedButKept`**: puede salir de su ruta —renombrar en el sitio, cuarentena, organización por fecha— pero **no puede perder lo que traía**: sus bytes tienen que seguir en el área de trabajo. Es una afirmación más fuerte que «el flujo terminó bien»: un movimiento que pierde un archivo no la pasa.
+- **`MayBeDestroyed`**: la promesa del flujo es destruir la entrada (la papelera de reciclaje).
+
+Y una guardia nueva (`EverySeatThatLetsTheFlowTouchTheInput_ShouldSayWhy`) exige que todo asiento con política distinta de `Untouched` escriba **por qué** (`InputWhy`), y que ninguno que exija la entrada intacta lleve la excusa puesta: la excusa de más es una promesa que ya no se cumple —el día que el ejemplo deje de destruir la entrada, su asiento seguirá diciendo que puede—.
+
+### 📋 Los seis flujos que tocan la entrada (medido, no supuesto)
+
+La primera pasada con la guardia señaló **exactamente seis** ejemplos de los cuarenta:
+
+| Ejemplo | Qué le hace a la entrada | Política |
+| :--- | :--- | :--- |
+| 10 (papelera segura) | los seis archivos se van a la papelera del sistema | `MayBeDestroyed` |
+| 13 (deduplicación por hash) | el duplicado se mueve a cuarentena (de los dos idénticos queda uno) | `MovedButKept` |
+| 17 (cuarentena de originales) | los seis originales se mueven a cuarentena | `MovedButKept` |
+| 26 (organización cronológica) | los seis se mueven a carpetas por fecha | `MovedButKept` |
+| 34 (ingesta documental) | los seis se renombran en disco (`DirectInPlace`) | `MovedButKept` |
+| 38 (deduplicación y archivado) | el original descartado sale de su ruta | `MovedButKept` |
+
+Los otros **treinta y cuatro** no la tocan —sale de la ejecución, no de lo que uno supondría: el 05 renombra **virtual** (el nombre cambia en los metadatos) y el 33, que depura con la papelera, no borra lo sembrado— y por eso se les exige `Untouched`.
+
+### 🧬 La guardia, atada a un defecto que muerde
+
+Una guardia nueva sin una mutación que la muerda es una guardia que nadie ha demostrado que muerda —es justo lo que publica `mutations/COVERAGE.md`—. [`compresor-contra-su-propia-entrada`](file:///mutations/compresor-contra-su-propia-entrada.json) declara ahora **dos escalas del mismo defecto**: el testigo del nodo (los bytes del archivo que entra) y **el banco de los 40 ejemplos**, donde el flujo 21 entero devuelve el `paquete.zip` truncado. Medido: testigo rojo (**2 de 5**) y control verde. La consecuencia cae en el documento de cobertura: **5 de 33 guardias** del repositorio con mutación que las muerda (de 4), porque este banco entra en el conteo al auditar el árbol con `TestRepositoryLocator`.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1713 superadas + 1 omitida de 1714** (+1: la guardia nueva), build **0 errores**, tres pasadas seguidas en verde.
+- `ExampleFlowsEndToEndTests` (4 pruebas) verde: la tabla de asientos, la guardia de las excusas, la exigencia de que el motor acepte cada grafo y la ejecución de los 40 con sus promesas juzgadas.
+- La mutación, **182 s** —corre el banco dos veces, como testigo y en la comprobación final—, árbol restaurado por bytes y recompilado.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)**: el apartado 7 del tramo se amplía con la entrada vigilada (lo que ves) y la cabecera pasa a **5305**.
+- **Una pasada completa dejó el banco en rojo, y queda escrito sin disfrazar**: fue una de las cinco pasadas de este tramo, junto al fallo de entorno ya declarado de [`EngineFirstRunTests`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs). Duración de esa pasada del banco: **1 m 14 s**, la suya de siempre, así que **no** fue el tiempo de espera por flujo (30 s) y sí una comprobación de promesa. **Su mensaje no se capturó** —un hueco en este registro, escrito como hueco— y las tres pasadas siguientes quedaron verdes. El sospechoso principal queda anotado abajo, para la sesión siguiente.
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo más frágil del banco era su mirada al directorio de trabajo del proceso** (resuelto en el **hito 207**: el banco corre los flujos en una sala limpia propia y en colección exclusiva, y ya no mira los binarios).
+- Una pasada futura que falle **imprimirá el motivo entero** (el banco publica sus problemas en el informe de la prueba), así que el hueco de arriba no se repetirá.
+- La política `MovedButKept` es la costura para cualquier flujo que mueva o renombre en el sitio: su afirmación —«lo que la entrada traía sigue en el área»— es más fuerte que «terminó bien» y no cuesta nada declararla.
+
+---
+
+## [2026-09-24] - El Lote que No se Llenaba: Entrega al Terminar la Ejecución, y los Tres Defectos que Aparecieron Detrás (Hito 205)
+
+### 🎯 El encargo
+
+«Haz que los flujos que agrupan en lotes entreguen también el lote incompleto al terminar la ejecución, y verifica los ejemplos 21 y 34 de punta a punta.» El pendiente lo dejó escrito el hito 204 en el asiento de ambos ejemplos: agrupan en lotes de 10 y de 50, la entrada sembrada trae seis archivos, así que **no se cierra ningún lote durante la ejecución** y el flujo termina en verde sin entregar nada.
+
+### 📉 La línea base, medida antes de tocar nada
+
+`ExampleFlowsEndToEndTests` sobre el árbol tal y como estaba: `flow_21 -> OK (entregados 0)` y `flow_34 -> OK (entregados 0)`. Los dos flujos **aceptados** por el validador, ejecutados sin excepción, con **cero** archivos entregados. Ese es el defecto que el banco no podía ver con un asiento `Declared`.
+
+### 🐞 Los cuatro defectos (uno buscado, tres detrás de él)
+
+1. **El lote que no llega a llenarse muere con la ejecución.** `BatchBufferNode` sólo soltaba al alcanzar el umbral: no sobrescribía `OnWorkflowCompletedAsync`, y el motor ya llamaba a ese gancho (`WorkflowExecutor` lo invoca tras drenar los nodos de arranque, con un drenado posterior para las emisiones de esta fase). Cura: el nodo entrega lo pendiente —los elementos por `ItemOut` con su `BatchIndex`/`BatchSize` y el marcador por `BatchCompleted` con `BatchIncomplete = true`— por **el mismo camino** que un lote completo (`EmitBatchAsync`), precedente exacto de `ArchiveFanInNode` con sus sesiones a medias. La segunda pasada del banco seguía diciendo `entregados 0`, y ahí empezaba lo interesante.
+2. **Los dos flujos alimentaban el compresor con el marcador del lote, no con el lote.** La arista salía de `BatchCompleted`, que emite un ítem **sintético sin ruta** (`new FileItemContext(string.Empty)`): `ArchiveCompressorNode` sólo puede comprimir la ruta del ítem que recibe, así que registraba «Ruta de entrada no encontrada» y emitía por `Error`, sin nada aguas abajo. Los elementos del lote salían por `ItemOut`... **puerto que los dos ejemplos dejaban sin conectar**. Cura: la arista del ejemplo sale de `ItemOut` (`flow_21` e2, `flow_34` e5) y el `.md` de cada uno cuenta lo que el grafo hace —el búfer suelta la tanda y el compresor empaqueta cada elemento—, además de corregir tres nombres de papel que no existen: el parámetro `FlushTimeoutMs`, el puerto `BatchFlushed` del diagrama y el parámetro `NameTemplate` del renombrador.
+3. **El renombrador del ejemplo 34 no leía la plantilla que el ejemplo declaraba.** Los pasos viajan como JSON dentro de `MethodSteps`; el catálogo los escribe con los **nombres** de las enumeraciones (`"methodType":"NewName"`) y la aplicación con **números**. La lectura del nodo no aceptaba los nombres, así que fallaba entera, el `catch` la silenciaba y el nodo aplicaba la plantilla por omisión `{ParentDir}_{CreationDate:yyyyMMdd}_{FileNameNoExt}.{Ext}`: los archivos salían como `Input_20260924_nota` en vez de `2026_DOC_<guid>`. Cura doble: el conversor de enumeraciones por nombre en las opciones del SDK (`RenamerPresetService`, la lectura que ya usaba el editor) y el nodo leyendo por ahí, con **aviso en el log** cuando los pasos no se pueden leer, en vez del silencio. Y el ejemplo declara `RenameMode: DirectInPlace`: el modo por omisión es `Virtual` (el nombre cambia sólo en los metadatos) y el compresor de aguas abajo trabaja sobre rutas que tienen que existir.
+4. **El compresor destruía su propia entrada.** Con los valores de fábrica —carpeta de destino vacía (la del archivo) y nombre `{FileNameWithoutExtension}.zip`— comprimir `paquete.zip` apunta a `paquete.zip`. El destino se abre (y se trunca) **antes** de leer la entrada, así que el original del usuario quedaba vaciado sobre sí mismo: medido en el ejemplo 21, un `paquete.zip` de **148 bytes** salía del flujo convertido en un comprimido de **22 bytes**. El banco no lo ve —los archivos de entrada están excluidos de lo entregado— y lo destapó el volcado de los nodos al depurar el flujo. Cura: el nodo **se para** antes de tocar el disco cuando el destino es el propio archivo de entrada (un archivo no cabe dentro de sí mismo), con el motivo en el log. La prueba de la guardia compara los **bytes** de la entrada, no su tamaño.
+
+### 🧪 Pruebas nuevas (+6 → 1712 superadas)
+
+- [`BatchBufferNodeRuleTests`](file:///FileFlow.Tests/Unit/Plugins/BatchBufferNodeRuleTests.cs) (+3): el lote que no se llena **sale entero** al cerrar la ejecución (elementos, marcador, `BatchSize` y `BatchIncomplete`) y el búfer queda vacío —lo entregado no vuelve a salir ni viaja a la ejecución siguiente—; **sin pendientes no sale nada** (un lote vacío con su marcador sería una entrega que nadie pidió); y una **instancia reutilizada con otro `WorkflowExecutionId` no mezcla** el pendiente de la anterior (el reinicio por identidad de ejecución sólo es observable así: el motor materializa nodos nuevos en cada corrida).
+- [`PluginStateAcrossExecutionsTests`](file:///FileFlow.Tests/Unit/Core/PluginStateAcrossExecutionsTests.cs) (el caso del búfer, reescrito): los dos conteos pasan de **4** a **5** por ejecución. El «cuatro» era el defecto —el pendiente perdido— y el seis que se temía era el heredado; ahora el caso fija las dos mitades a la vez.
+- [`AdvancedRenamerExhaustiveTests`](file:///FileFlow.Tests/Unit/Plugins/AdvancedRenamerExhaustiveTests.cs) (+2): los pasos con los nombres de las enumeraciones se aplican —el nombre resultante es el configurado, no el de la plantilla por omisión— y unos pasos ilegibles **se dicen en el log** en vez de renombrar en silencio.
+- [`ArchiveCompressorNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ArchiveCompressorNodeTests.cs) (+1): un compresor cuyo destino es su propia entrada emite por `Error` y la entrada queda **byte a byte** como estaba.
+- Asientos del banco: el 21 y el 34 pasan de `Declared` a **juzgados** (`DeliversAKind .zip`). Con lotes de 10 y de 50 y seis archivos de entrada, lo que llegue al destino **sólo puede** venir del cierre de la ejecución: el asiento es, de paso, el testigo de punta a punta del gancho nuevo.
+
+### 🧬 Mutaciones (3 nuevas + 1 reescrita; catálogo: 28 declaradas, todas muerden)
+
+| Mutación | Defecto declarado | Testigo | Tiempo |
+| :--- | :--- | :--- | :--- |
+| [`lote-incompleto-perdido-al-terminar`](file:///mutations/lote-incompleto-perdido-al-terminar.json) | Descartar el lote pendiente al cerrar la ejecución | `OnWorkflowCompleted_WhenTheBatchDidNotFill_...` | 29,6 s |
+| [`pasos-de-renombrado-ilegibles`](file:///mutations/pasos-de-renombrado-ilegibles.json) | No aceptar los nombres de enumeración en los pasos | `AdvancedRenamer_WhenTheStepsArriveWithEnumNames_...` | 30,2 s |
+| [`compresor-contra-su-propia-entrada`](file:///mutations/compresor-contra-su-propia-entrada.json) | Comprimir sobre el propio archivo de entrada | `ACompressorWhoseDestinationIsItsOwnInput_...` | 29,4 s |
+| [`bufer-de-lotes-heredado`](file:///mutations/bufer-de-lotes-heredado.json) (testigo reescrito) | El búfer fuera del nodo, sin reinicio por ejecución | `ExecuteAsync_WhenTheSameInstanceSeesAnotherExecution_...` | 27,5 s |
+
+La cuarta merece una nota: desde este hito, el pendiente **se entrega** al terminar el flujo, así que el búfer queda vacío al acabar cada ejecución y el caso de dos ejecuciones completas ya no distingue un búfer heredado. El testigo que sí lo distingue es la instancia reutilizada con otra identidad de ejecución —que es justo lo que la defensa reinicia—, y el caso de dos ejecuciones completas se queda como regresión del conteo (cinco y cinco: ni cuatro por el pendiente perdido, ni seis por el heredado).
+
+### 📊 Cobertura publicada
+
+`mutations/COVERAGE.md` regenerado: **28 mutaciones** declaradas, **10 de 15 subsistemas** del producto con alguna y **4 de 33 guardias** del repositorio con mutación que las muerda —**5 de 33 desde el hito 206**, cuando el testigo del compresor pasó a incluir el banco de ejemplos—. Los subsistemas sin ninguna siguen siendo Documents, Integrations, Network, Scripting y Subflows.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1712 superadas + 1 omitida de 1713** (+6), build **0 errores**, 2 m 52 s.
+- Los dos ejemplos, medidos de punta a punta antes y después: `entregados 0` → `flow_21` **10** archivos (cinco `.zip` y las copias que el sumidero deja en su destino; la sexta entrada es un `.zip` y el compresor la rechaza antes de destruirla, ver el defecto 4) y `flow_34` **18** (seis archivos renombrados en el sitio con el nombre corporativo `2026_DOC_<guid>`, sus seis `.zip` y las seis copias del sumidero). El banco de los 40 sigue verde entero.
+- **Un fallo de entorno, declarado y medido**: de las cuatro pasadas completas de este hito, dos quedaron en verde entera y dos dejaron en rojo un único test, [`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs) —la primera ejecución alcanzó menos nodos simultáneos que las siguientes y la comparación relativa de la prueba no se cumple—. **No es del cambio**: ninguna de las piezas que toca este hito participa en ese grafo (origen con CPU pura, nodo de trabajo y sumidero), y en solitario el test da verde. Es la sensibilidad conocida de una medida de reparto de hilos a la carga de la máquina, con el mismo síntoma que el hito 204 dejó escrito, y aquí queda con su distribución en vez de pasarse por alto.
+- Las cuatro mutaciones, dos a dos con `mutate.ps1 -Name`: testigo rojo y control verde en las cuatro, árbol restaurado por bytes y recompilado antes de salir.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)** estrena el apartado **7** —«El tramo de los lotes que no entregaban (compilación 5277 → 5301)»— y la cabecera pasa a **5301**.
+- **Los tres manuales de usuario** ([`manual_de_usuario.md`](file:///docs/manual_de_usuario.md), [`user_manual.md`](file:///docs/user_manual.md) y [`user_guide.md`](file:///docs/user_guide.md)) describían el nodo con un **límite de tiempo** que no existe —no hay parámetro de tiempo en el nodo— y no decían qué pasa con el lote que no se llena: los tres quedan al día con lo que el nodo hace.
+
+### 📌 Notas para la siguiente sesión
+
+- **El defecto del hito 204 sobre los lotes queda cerrado** (21 y 34 entregan, con asiento juzgado). Sigue abierto el otro que dejó escrito: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) entregan, con entradas que no son media, **copias con la extensión del destino** en vez de fallar.
+- **Lo que el catálogo prometía de más sobre los lotes**: el 21 se titulaba «para Compresión Masiva» y el 34 «los agrupa en lotes comprimidos ZIP de 50 archivos», pero el producto **no tiene ningún nodo que empaquete varios elementos en un archivo**: `ArchiveCompressorNode` comprime la ruta del ítem que recibe y `ArchiveFanInNode` empaqueta una **sesión** de descompresión (necesita `Archive:SessionId`, que sólo produce el fan-out). Con esas piezas, el grafo sólo puede comprimir **elemento a elemento** y el lote sirve para soltarlos en tandas. Los tres textos ya dicen eso. Un «un ZIP por lote» de verdad pide decidir de quién es el contrato: o el marcador `BatchCompleted` lleva los elementos del lote, o el búfer materializa la tanda en una carpeta. Queda como candidato, no como defecto abierto.
+- **La costura de la identidad** sigue como estaba (hito 204): ~20 sitios construyen `new FileItemContext(...)` a partir de un ítem que entró, demostrado rompe-hilos sólo en el optimizador.
+- **El banco de ejemplos** sigue siendo el sitio natural: 12 asientos declarados podrían pasar a juzgados si la prueba puede sembrar lo que les falta. El webhook local sigue siendo el candidato más rentable (16, 27 y 30).
+- **`ArchiveCompressorNode` con los valores de fábrica escribe los comprimidos en la carpeta de sus entradas** (resuelto en el **hito 208** en lo que toca a que quede claro y comprobado: el nodo lo dice en el log, la ficha del parámetro lo explica en los dos idiomas, el catálogo declara su destino en los cinco ejemplos y una guardia lo exige). El valor por omisión sigue sin tocarse, a propósito: cambiarlo mueve el destino de todos los flujos guardados que no declaren carpeta.
+
+---
+
+## [2026-09-24] - Los 40 Ejemplos, Ejecutados de Punta a Punta: Cinco Defectos que Solo se Veían Corriendo (Hito 204)
+
+### 🎯 El encargo
+
+«Recorre los flujos que el producto documenta como ejemplos y comprueba de punta a punta que cada uno entrega los archivos que promete, no solo que termina en verde.» Los 40 flujos de [`docs/examples/`](file:///docs/examples/README.md) ya tenían guardia de **papel** ([`WorkflowExamplesValidationTests`](file:///FileFlow.Tests/Unit/Core/WorkflowExamplesValidationTests.cs): son del formato del producto, sus puertos existen, se abren enteros en el editor, el roundtrip es idéntico). Ninguna ejecutaba nada.
+
+### 🧪 El banco: 40 asientos, y tres exigencias que no dependen del asiento
+
+[`ExampleFlowsEndToEndTests`](file:///FileFlow.Tests/Unit/Core/ExampleFlowsEndToEndTests.cs) siembra un área de trabajo (`Input/` con `nota.txt`, **`nota-copia.txt` idénticos** —para la deduplicación—, `datos.csv` de 3 líneas, una `imagen.png` de verdad, un `paquete.zip` con `dentro.txt`, `sub/anidado.txt` y una carpeta vacía), ejecuta cada flujo con `GlobalOutputDir` dentro del área y mide **qué quedó**. La tabla de asientos es el contrato: una fila por archivo del catálogo (40) con la promesa que se le puede exigir de verdad —**26 juzgadas** (entregar cada entrada, entregar un tipo concreto, descomprimir el comprimido, poner el duplicado en cuarentena, vaciar la entrada, limpiar carpetas vacías, no escribir en disco) y **14 declaradas** con su motivo por escrito—. Tres exigencias valen para **cualquier** asiento, incluidas las declaradas: el motor tiene que **aceptar** el grafo (se pregunta a `GraphValidator` antes de correr, así «el motor rechaza este ejemplo» es un hecho propio y ningún asiento puede taparlo), la ejecución no puede reventar, y no se puede **escribir fuera del área de trabajo** ni dejar un archivo de **cero bytes**.
+
+### 🐞 Los cinco defectos reales (y un ejemplo que filtraba por un dato inexistente)
+
+1. **`SHFILEOPSTRUCT` con `Pack = 1` → el proceso moría con `0xC0000005`.** Lo destapó `flow_10_papelera_reciclaje_segura`, que fue el primer flujo que llamó de verdad a la papelera del sistema: `pFrom` quedaba en el desplazamiento 12 en vez del 16 y `SHFileOperation` leía ahí un puntero inventado. **No es una excepción administrada**: la violación de acceso se lleva el proceso por delante (ni consola, ni log, ni `catch`). Cura en [`WindowsPlatformService`](file:///FileFlow.Core/Platform/WindowsPlatformService.cs): alineación natural, con el porqué escrito; guardia propia en [`WindowsShellFileOperationLayoutTests`](file:///FileFlow.Tests/Unit/Core/WindowsShellFileOperationLayoutTests.cs) (compara los desplazamientos reales del struct contra un testigo con la forma de `shellapi.h`).
+2. **`FileRelocatorNode` resolvía el destino relativo contra el directorio de trabajo del proceso.** `VariableTemplateResolver.Resolve(destDirTemplate, item)` sin anclar el patrón: `{RelativeDir}\{Year}\{Month}` caía en `bin/Debug/net10.0/sub/2026/09/`. Quince ejemplos (26 a 40 en la primera pasada) escribieron fuera de su área. Cura: `ParameterHelper.ResolveOutputPath`.
+3. **El grafo de un fork/join era inejecutable: la vuelta de las ramas contaba como ciclo.** `flow_22` y `flow_30` declaraban `rama Out → barrera Branch1_Done/Branch2_Done`, y el orden topológico (Kahn **por nodo**) veía el ciclo: «Graph contains a cycle (DAG violation)», grafo rechazado entero. Es decir: **`ForkJoinBarrierNode` no se podía usar en ningún flujo** —existía, el editor lo dibujaba y el catálogo lo anunciaba—. Cura: [`NodePort.IsFeedbackSignal`](file:///FileFlow.Sdk/NodePort.cs) (un puerto que recibe el aviso de que una rama que el propio nodo bifurcó terminó, no un elemento «de delante»), los dos puertos de vuelta marcados y el validador excluyendo esas aristas del orden de precedencia. Con eso `flow_22` entrega sus **seis** archivos.
+4. **`ImageOptimizerNode` cambiaba la identidad del ítem.** El archivo optimizado se construía con `new FileItemContext(...)`, que estrena `Id`; la barrera empareja cada rama con el ítem que bifurcó, así que **no reconocía su vuelta y ese archivo nunca se liberaba**: `flow_22` entregaba **cinco de seis**, y el que faltaba era la única imagen real del lote (los demás pasan por la rama de no-imágenes, que reutiliza el ítem y conserva el `Id`). Cura: `Id = item.Id` (la ruta cambia, el elemento no), con el caso escrito en [`ImageOptimizerNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs).
+5. **`ArchiveCompressorNode` dejaba un archivo de cero bytes con la extensión del archivo prometido.** Abre (y trunca) el destino **antes** de construir el escritor, así que una combinación que el escritor rechaza dejaba un `nota.zip` vacío. Y el escritor de 7Z sólo admite `LZMA`/`LZMA2` mientras la compresión por defecto del nodo es `Deflate`: el **ejemplo 38** pedía 7Z con la compresión de fábrica, así que registraba el error y dejaba los archivos vacíos. Doble cura: el nodo **retira** el archivo cuando se quedó a cero bytes (`RemoveEmptyArchiveAsync`), y el ejemplo declara `CompressionType: LZMA` + `ArchiveName: {FileNameWithoutExtension}.7z`, con lo que **entrega el `.7z` que anuncia**. Su `.md` documenta la trampa.
+
+Y una **documentación que prometía lo que el producto no tiene**: `flow_15` filtraba por `WordCount` y su `.md` citaba un parámetro `ExtractWordCount`. **Ningún nodo del producto cuenta palabras**: `DocumentProcessorNode` publica `DocumentType`, `EstimatedPageCount` y `DocumentLineCount`. La condición no se cumplía nunca —el ejemplo terminaba en verde **sin archivar un solo documento**—. Cura: el ejemplo filtra por `DocumentLineCount >= 2` y entrega el CSV de tres líneas; el `.md`, el título del catálogo y su fila del README dicen lo que el flujo hace de verdad.
+
+### 🧪 Pruebas nuevas (+14 → 1706 superadas)
+
+- [`ExampleFlowsEndToEndTests`](file:///FileFlow.Tests/Unit/Core/ExampleFlowsEndToEndTests.cs) (3): el banco de los 40 asientos, la guardia **bidireccional** catálogo↔asientos (un ejemplo sin asiento rompe la suite; un asiento huérfano también) y la exigencia de que un asiento declare lo que espera o el motivo por el que no se juzga.
+- [`ForkJoinBarrierNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ForkJoinBarrierNodeTests.cs) (2): el fork/join **determinista y sin red** —dos ramas reales de vuelta y el ítem liberado **una vez por entrada** (medido contando emisiones de `AllCompleted`, porque dos liberaciones del mismo ítem se ven igual que una en el disco); y con **una sola** rama de vuelta el ítem **no sale**, que es el precio real de la barrera.
+- [`GraphValidatorTests`](file:///FileFlow.Tests/Unit/Core/GraphValidatorTests.cs) (+4): la vuelta de rama a la barrera **no** es ciclo; un ciclo que no entra por un puerto de retroalimentación **sí** se rechaza (la exención es por puerto, no por grafo); y los dos avisos nuevos —una vuelta que no viene de una rama del nodo, y un nodo al que **sólo** le entran avisos (nadie lo arranca, así que nunca bifurca)—.
+- [`ArchiveCompressorNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ArchiveCompressorNodeTests.cs) (2): la combinación que el escritor rechaza no deja rastro en el disco (y el log lo dice), y con `LZMA` entrega el archivo —el control que distingue «no deja basura» de «no comprime nunca»—.
+- [`ImageOptimizerNodeTests`](file:///FileFlow.Tests/Unit/Plugins/ImageOptimizerNodeTests.cs) (+1): el optimizado conserva el `Id` del ítem que entró.
+- [`WindowsShellFileOperationLayoutTests`](file:///FileFlow.Tests/Unit/Core/WindowsShellFileOperationLayoutTests.cs) (2, la guardia del defecto 1).
+
+### 📊 El censo de puertos: los huecos bajan de 5 a 2
+
+La barrera de sincronización era el único nodo, además del `LocalOcrNode`, cuyos puertos no ejecutaba ninguna prueba: era **inejecutable**, y el censo lo decía con esa excusa. Con el grafo arreglado, sus tres puertos salen del presupuesto con testigo que los **nombra y los ejecuta** (`NodePortInventory`, `NodePortCoverageGuardTests` y su cifra de huecos actualizados a mano, que es el trato de esa guardia).
+
+### 🧬 Mutaciones nuevas (5, todas MUERDE; catálogo: 25 declaradas, todas muerden)
+
+| Mutación | Defecto declarado | Testigo | Tiempo |
+| :--- | :--- | :--- | :--- |
+| [`struct-de-shell-desalineado`](file:///mutations/struct-de-shell-desalineado.json) | `Pack = 1` en el struct de la papelera | `WindowsShellFileOperationLayoutTests` | 28,0 s |
+| [`retroalimentacion-de-barrera-contada-como-ciclo`](file:///mutations/retroalimentacion-de-barrera-contada-como-ciclo.json) | Contar la vuelta de rama como precedencia | `Validate_ShouldAcceptABranchReturningToABarrierNode` | 26,9 s |
+| [`retroalimentacion-sin-avisos`](file:///mutations/retroalimentacion-sin-avisos.json) | Silenciar los avisos del fork/join mal cableado | `Validate_ShouldWarnWhenANodeIsOnlyFedByFeedbackPorts` | 26,1 s |
+| [`identidad-perdida-al-optimizar`](file:///mutations/identidad-perdida-al-optimizar.json) | El archivo optimizado pierde el `Id` del ítem | `ExecuteAsync_WithARealImage_ShouldKeepTheIdentityOfTheItemThatEntered` | 28,1 s |
+| [`archivo-vacio-dejado-atras`](file:///mutations/archivo-vacio-dejado-atras.json) | Dejar el archivo de cero bytes al fallar la compresión | `ACompressorAskedForAContainerItsWriterRejects_ShouldLeaveNoFileBehind` | 27,2 s |
+
+`mutations/COVERAGE.md` regenerado: **10 de 15 subsistemas** con alguna mutación (de 8) —entran **FileFlow.Plugin.Archives** y **FileFlow.Plugin.Images**— y **4 de 33 guardias** del repositorio con mutación que las muerda. Sin subsistema con mutación quedan cinco: Documents, Integrations, Network, Scripting y Subflows.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1706 superadas + 1 omitida de 1707** (+14), build **0 errores**, 2 m 20 s. Compendio: los 40 ejemplos se ejecutan en ~80 s.
+- Las cinco mutaciones nuevas, una a una con `mutate.ps1 -Name`: testigo rojo y control verde en las cinco, árbol restaurado por bytes y recompilado antes de salir.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)** estrena el apartado **6** —«El tramo de los ejemplos que no entregaban lo que prometían (compilación 5248 → 5277)»—, la cabecera pasa a **5277** y «Cómo verificarlo» se renumera a 7.
+- **Un fallo de entorno, declarado**: la primera pasada completa de este hito dejó en rojo [`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs) (25 nodos simultáneos donde las siguientes usaron 28 y se toleran 27). **No es del cambio** —no se toca el camino de ejecución—: el mismo test, solo (colección exclusiva) da 27/27/26, y la pasada completa siguiente quedó en verde. Es la sensibilidad conocida de una medida de reparto de hilos a la carga de la máquina, y queda escrito aquí en vez de pasarse por alto.
+
+### 📌 Notas para la siguiente sesión
+
+- **Cinco ejemplos salen del grupo de los que no entregaban nada**: el 10 (papelera, ya se juzga: vacía la entrada), el 15 (filtra por líneas y entrega), el 22 (fork/join completo), el 38 (7Z real) y el 30 (aceptado por el motor; su entrega depende del webhook).
+- **Dos defectos siguen abiertos y escritos en su asiento**, sin arreglar: los flujos que agrupan en lotes (21 y 34, lotes de 10 y 50) **no entregan nada** con menos archivos que el lote —el búfer pendiente muere con la ejecución, y la misma familia aparece en `BatchBufferNode`— *(cerrado en el hito 205: el nodo entrega el lote pendiente al terminar y los dos ejemplos pasaron a asiento juzgado)*, y los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) entregan, con entradas que no son media, **copias con la extensión del destino** en vez de fallar. Los segundos piden decidir qué debe hacer un transcodificador con una entrada que no puede decodificar.
+- **La costura de la identidad**: ~20 sitios del árbol construyen `new FileItemContext(...)` a partir de un ítem que entró. En el optimizador está demostrado que rompe el fork/join; en los demás (PdfSplitNode, PdfMetadataNode, SmartUnpackNode, ExcelReportGeneratorNode, los lectores de datos…) **no se ha demostrado nada**, y en varios es legítimo (un hijo nuevo de un comprimido, una fila, una página). Un barrido que distinga «elemento derivado del mismo archivo» de «elemento nuevo» tiene su mutación esperando.
+- **El banco de ejemplos es el sitio natural para seguir**: 14 asientos declarados podrían pasar a juzgados si la prueba puede sembrar lo que les falta (una imagen/vídeo de verdad, un servidor local que haga de webhook en lugar de un servicio de internet, un ejecutable de prueba en vez del CLI del autor). El webhook es el candidato más rentable: desbloquea los flujos 16, 27 y 30 y quita de en medio la dependencia de red.
+
+---
+
+## [2026-09-24] - Auditoría del Estado que Sobrevive en los Nodos: el Índice de Hashes y la Caché de Modelos (Hito 203)
+
+### 🎯 El encargo
+
+«Audita los nodos y plugins en busca de cachés propias que sobrevivan a una ejecución (índices de hashes, modelos cargados, listas de ya procesados) y añade la prueba que ejecute dos veces.» Es el hito 201 llevado una capa más abajo: allí se barrió el estado del **motor**; aquí, el que vive **dentro de los nodos y plugins**.
+
+### 📋 El dato que ordena el barrido
+
+Antes de buscar fugas hay que saber **qué estado puede sobrevivir**. Comprobado en el código, no supuesto: el motor **reconstruye cada nodo en cada ejecución** —`WorkflowExecutor.ExecuteAsync` hace `_nodeInstances.Clear()` y `GraphValidator.Validate` materializa los nodos con `PluginLoader.CreateNodeInstance` → `Activator.CreateInstance`—. Por tanto el estado de **instancia** de un nodo (índices, búferes, listas de ya procesados) **nace vacío cada vez**: `DeduplicationFilterNode._seenHashes`, `BatchBufferNode._buffer`, `ForkJoinBarrierNode._activeBarriers`, `ArchiveFanInNode._activeSessions`, `ExcelReportGeneratorNode._collectedRows`, `PdfMergeNode._collectedPdfPaths`, `AdvancedRenamerNode._claimedTargetPaths` y `OperationReportNode._accumulatedItems` no se heredan.
+
+Los que además se reinician al ver un `WorkflowExecutionId` distinto (`DeduplicationFilterNode`, `BatchBufferNode`, `ForkJoinBarrierNode`, `ExcelReportGeneratorNode`, `PdfMergeNode`) lo hacen como **segunda línea de defensa**: hoy no se nota —el nodo es nuevo— y sólo se notaría si un anfitrión reutilizara instancias. Eso se comprobó con el andamiaje de mutaciones: **una mutación sobre ese guard no puede morder** con el motor reconstruyendo nodos (el índice tendría que mudarse además a un estático), y así queda declarado más abajo.
+
+### 🔍 El inventario de lo que sí sobrevive (estáticos del plugin, vivos todo el proceso)
+
+| Caché | Qué decide | Veredicto |
+| :--- | :--- | :--- |
+| `ClipEmbeddingDatabase._embeddingCache` | El vector de cada descripción (detección de vocabulario abierto) | **Corregida** (abajo) |
+| `DataLookupTableLoader._cache` | El índice de la tabla que se cruza | **Corregida** (abajo) |
+| `OnnxSessionStore` (×3, vía `OnnxSessionRegistry` y `AudioSessionStore.Instance`) | Modelos cargados | Deliberada: clave por ruta y puerta de salida (`ClearAllSessions`/`UnloadSession`) |
+| `RoslynCSharpEngine.Instance._cachedRunners` | Scripts compilados | Deliberada: clave por **hash del código**, tope de 256 y desalojo del menos usado |
+| `MultimodalVlmClientEngine.s_endpointThrottles` / `s_unsupportedResponseFormatCache` / `s_unsupportedJsonSchemaCache` / `s_unreachableEndpoints` | Capacidades y cortocircuito por endpoint | Deliberada: clave por endpoint, enfriamiento de 15 s y `ResetUnreachableEndpoints` |
+| `AiModelCatalog.Catalog`, `HardwareCapabilityDetector._specs`, `VlmConfigurationStorageService.Instance`, `SyntheticDataSetStorageService.Instance` (devuelve copias), `RegexLibraryService`/`ScriptLibraryService`/`MediaPresetManagerService` (bibliotecas del usuario), `SevenZipCliRunner.s_cachedSevenZipPath`, `FileFlowFontResolver._initialized`, `AiPluginInitializer._isRegistered`, `WeakModelStatusRelay._liveSubscriptions`, `SyntheticDataSetStorageService._dataSets` | Configuración, rutas, bibliotecas persistidas, banderas y contadores | Sin cambios: **no es memoria de archivos de una ejecución** |
+
+También se revisó y no hace falta tocar: `AiModelDownloader.LastError` (informativo), `RenamerSampleDataProvider._inMemoryCustomSamples` (biblioteca del usuario) y `RoslynCSharpEngine.DefaultScriptOptions` / `TensorPreprocessors.CocoLabels` / los `Adapters[]` de las factorías (datos constantes, no estado).
+
+### 🐞 Las cuatro fugas corregidas
+
+1. **La caché de embeddings guardaba el vector sin decir de qué mundo salió.** El vector de una descripción se calcula con CLIP si el modelo está en disco y con una proyección determinista si no, y los dos caminos dan vectores distintos. La entrada creada «sin modelo» seguía contestando después de que el usuario descargara el modelo de 65 MB: **el flujo se ejecutaba con los vectores sintéticos hasta reiniciar la aplicación**, con el modelo ya en disco. Cura: la entrada guarda de qué entorno salió (`FromModel`) y sólo se reutiliza si coincide con el de ahora, más tres medidas (`CachedEmbeddingCount`, `CacheHits`, `EnvironmentInvalidations`) para poder afirmarlo.
+2. **El de al lado, muerto desde siempre: el modelo se buscaba por su id.** `GetClipTextEmbedding` resolvía el fichero con `GetModelPath("clip-vit-b32")` —el **id** del catálogo— mientras el descargador escribe `clip-vit-base-patch32.onnx`, así que `File.Exists(<dir>/clip-vit-b32)` **no es cierto nunca**: la rama del modelo real estaba muerta y **los 65 MB descargados no se usaban jamás**. Cura: resolver por `info.FileName` del catálogo.
+3. **El índice de la tabla de datos se validaba sólo por fecha.** La caché sobrevive a propósito (una tabla grande no se reparsea por volver a ejecutar), pero una tabla reescrita que **conserva la marca de tiempo** (una copia con timestamps conservados, una edición en el mismo tick del sistema de ficheros) se servía de la caché: el cruce devolvía las filas de antes de escribirse. Cura: la identidad del fichero es **fecha y tamaño**, y el **almacén** entra en la clave (el mismo camino puede ser un fichero del disco o uno del almacén virtual de una ejecución simulada).
+4. **La caché de tablas no tenía tope.** Vive en un estático, así que cada tabla que cruzaba un flujo se quedaba en memoria hasta cerrar el proceso. Cura: tope de **16** con desalojo de la que lleva más tiempo sin usarse, el mismo criterio que la caché de scripts compilados.
+
+### 🧪 Pruebas nuevas (+8), todas ejecutando dos veces
+
+- **[`PluginStateAcrossExecutionsTests`](file:///FileFlow.Tests/Unit/Core/PluginStateAcrossExecutionsTests.cs)** (5): es el gemelo de `EngineStateAcrossExecutionsTests` para los nodos, con **dos ejecuciones en el mismo proceso** y destinos distintos por ejecución para poder leer el resultado entero —el índice de hashes (2 únicos + 1 repetido **las dos veces**), el búfer de lotes (4 copias de 5 ficheros: el impar se queda dentro, y la segunda ejecución no hereda el pendiente), la tabla de datos (se reescribe entre ejecuciones y manda la nueva) y el contrato de la caché de tablas en pequeño (misma fecha y otro tamaño → relee; 24 tablas → la primera sale de la caché).
+- **[`ClipEmbeddingCacheTests`](file:///FileFlow.Tests/Unit/AI/ClipEmbeddingCacheTests.cs)** (3, en la colección exclusiva `OnnxInference`): el mismo prompt antes y después de que aparezca el fichero del modelo; el control de que sin cambios de mundo la caché sigue contestando (y que no invalida de más); y la resolución por nombre de fichero (un fichero con el id **no** es el modelo). El directorio de modelos se fija con la costura `AiModelCatalog.ModelsDirectoryOverride` (`internal`, sólo visible al ensamblado de pruebas) para reproducir el ciclo «descarga el modelo a mitad de sesión» sin tocar los datos del usuario.
+- Las **cuatro** pruebas de la caché de CLIP y de la tabla de datos se comprobaron **rojas con el defecto dentro** (una mutación por comportamiento), que es lo que demuestra que cubren la cura y no la acompañan.
+
+### 🧬 Mutaciones nuevas (6, todas MUERDE; catálogo: 20 declaradas, todas muerden)
+
+| Mutación | Defecto declarado | Testigo | Tiempo |
+| :--- | :--- | :--- | :--- |
+| [`indice-de-hashes-heredado`](file:///mutations/indice-de-hashes-heredado.json) | El índice de hashes en un estático y sin reset | `TheHashIndexOfOneRun_ShouldNotClassifyTheFilesOfTheNext` | 33,2 s |
+| [`bufer-de-lotes-heredado`](file:///mutations/bufer-de-lotes-heredado.json) | El búfer de lotes en un estático y sin reset | `TheBatchBuffer_ShouldNotKeepPendingItemsForTheNextRun` | 31,2 s |
+| [`cache-de-embeddings-sin-entorno`](file:///mutations/cache-de-embeddings-sin-entorno.json) | Reutilizar el vector sin mirar el entorno | `AVectorFromAWorldWithoutModel_ShouldNotAnswerOnceTheModelArrives` | 27,9 s |
+| [`modelo-clip-buscado-por-su-id`](file:///mutations/modelo-clip-buscado-por-su-id.json) | Resolver el modelo por el id del catálogo | `AFileNamedWithTheModelId_ShouldNotCountAsTheDownloadedModel` | 27,3 s |
+| [`tabla-en-cache-sin-mirar-el-tamano`](file:///mutations/tabla-en-cache-sin-mirar-el-tamano.json) | Validar la tabla sólo por fecha | `TheTableCache_ShouldNotAnswerWithRowsOfAFileThatChangedUnderTheSameTimestamp` | 30,0 s |
+| [`tabla-en-cache-sin-tope`](file:///mutations/tabla-en-cache-sin-tope.json) | Caché de tablas sin tope | `TheTableCache_ShouldNotGrowWithoutBoundAcrossRuns` | 28,1 s |
+
+Con estas, `mutations/COVERAGE.md` pasa de **5 a 8 subsistemas cubiertos de 15**: entran **FileFlow.Plugin.AI**, **FileFlow.Plugin.Data**, **FileFlow.Plugin.Hashing** y **FileFlow.Plugin.Logic** (la lista de trabajo baja a 7: Archives, Documents, Images, Integrations, Network, Scripting, Subflows). El andamiaje **rechazó** una declaración al principio (el fragmento citaba un comentario sin sus tildes) sin tocar el árbol, y lo avisó con la nota de mutación obsoleta.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1692 superadas + 1 omitida de 1693**, build **0 errores** (compilación **5248**).
+- Las seis mutaciones nuevas, una a una con `mutate.ps1 -Name`: testigo rojo y control verde en las seis, y el árbol restaurado por bytes y recompilado antes de salir.
+- **[`docs/notas_de_version.md`](file:///docs/notas_de_version.md)** actualizado: cabecera a compilación **5248**, el apartado 5 (que ahora va de 5129 a 5248) estrena el párrafo del modelo de texto que por fin se usa y sus cifras de pruebas (1626 → 1671 → **1692**) y de defectos declarados (**13 → 20**).
+
+### 📌 Notas para la siguiente sesión
+
+- **Lo que queda abierto de este barrido**: el inventario de estáticos vivos está escrito **en este registro, a mano**. No hay guardia que falle cuando un plugin estrene una caché estática nueva, y es exactamente lo que el hito 201 hizo con el motor (allí el reset sí es ejecutable y está cubierto). Un barrido por fuentes al estilo de [`NodeEmissionPortGuardTests`](file:///FileFlow.Tests/Unit/App/NodeEmissionPortGuardTests.cs) —analizador en `TestHelpers` con su auto-prueba y su tabla declarada— lo cerraría, y necesitaría su mutación.
+- **El guard por `WorkflowExecutionId` de los nodos es hoy defensa en profundidad, no corrección**: mientras el motor reconstruya los nodos no se nota, y por eso no hay mutación que lo muerda. Si algún día un anfitrión materializa los nodos una sola vez, esas cinco clases pasan a depender de él.
+- **El coste aceptado de la caché de tablas**: una reescritura que no cambie **ni la fecha ni el tamaño** sigue siendo invisible para sus metadatos (es el límite de cualquier caché por identidad de fichero; MSBuild y make tienen el mismo). Está escrito en el código para no prometer de más.
+- **Pendiente de medir**: cuánto cuesta de verdad no tener el modelo CLIP (`GenerateProjectedClipVector` por prompt, cacheado por proceso) frente a tenerlo — útil para saber qué gana quien descargue los 65 MB.
+
+---
+
+## [2026-09-24] - Las Notas de Versión del Tramo de los Flujos que se Creían Hechos (Hito 202)
+
+### 🎯 El encargo
+
+«Escribe las notas de versión del tramo para quien usa el producto, contando qué flujos terminaban en verde sin hacer nada y ahora se ejecutan de verdad.» Mismo trato que el hito 194 con el tramo 188–190: las notas son **de tramo, no de hito**, y las cifras se copian del registro técnico, no de la memoria.
+
+### 📄 Apartado nuevo en [`docs/notas_de_version.md`](file:///docs/notas_de_version.md)
+
+El documento pasa de **dos** tramos a **tres** (cabecera actualizada a compilación **5232**, 24-09-2026), y el apartado **5** —«El tramo de los flujos que se creían hechos (compilación 5129 → 5232)»— cuenta, en las dos mitades de siempre:
+
+- **Lo que ves**: el segundo «Ejecutar» que vuelve a hacer el trabajo (200); un flujo con archivos reales que ya no escribe en un almacén invisible (201, modo virtual heredado); el motor que arranca solo después de pausar y detener (201); «deshacer la última ejecución» que deshace sólo la última (201); el plan de una simulación que no arrastra el de la anterior (201); y las carpetas vacías que se limpian de verdad en una ejecución simulada (195).
+- **Lo que no se ve**: el punto de control por lotes con su medida (**2 000 archivos: 2 000 escrituras y 3 855 ms → 7 escrituras y 581 ms, ×6,6**); las **seis** pruebas que ejecutan el mismo motor dos veces (las cinco del barrido se pusieron rojas al escribirlas); los **13 defectos deliberados** que la suite tiene que cazar; los puertos calculados en ejecución y los fallos de entorno inyectados (191–192); y el censo de **154 salidas** de 69 nodos (193).
+- **Lo que sigue viéndose así**: el coste del optimizador de imágenes (**~450 ms de CPU por imagen** de 1600×1200 a WebP Q80; **~12,5 ms** redimensionando a 800 px), que es trabajo del codificador y no reparto de hilos; el reproceso de **hasta 256 archivos** tras una caída seca; y el punto de control todavía cuadrático dividido por 256, con su marca de tiempo sin actualizar.
+
+El apartado «Cómo verificarlo» pasa a ser el **6**. El encabezado del antiguo apartado 4 (5129) se conserva como frontera del tramo anterior.
+
+### ✅ Validación
+
+- **Ninguna prueba lee este documento** (comprobado por búsqueda en el suite, igual que en el hito 194), así que las notas no pueden mover el resultado: `dotnet test` completo → **1684 superadas + 1 omitida de 1685**, build **0 errores**.
+- Todas las cifras del apartado salen del walkthrough de los hitos 195 y 199–201, y las dos afirmaciones de comportamiento que se hacen sobre el borde (el volcado del lote al cancelar y el reproceso máximo de 256 archivos) están medidas o cubiertas por prueba de los hitos 199–200.
+
+### 📌 Notas para la siguiente sesión
+
+- Las notas tienen **tres tramos** con la misma estructura; el próximo apartado se añade igual mientras la versión no cambie, y **las cifras salen del walkthrough**. Sin rutas, nombres de clase ni detalle de implementación, a propósito.
+- Sigue pendiente lo de siempre en este documento: es la mitad que **cuenta** lo que se arregló, no la que lo sostiene. Lo que sostiene (pruebas, guardias, defectos declarados) se lee en el walkthrough.
+
+---
+
+## [2026-09-24] - Auditoría del Estado que Sobrevive a su Ejecución: Cinco Fugas en el Motor Reutilizado (Hito 201)
+
+### 🎯 El encargo
+
+«Busca en todo el motor objetos con memoria de lo hecho que sobrevivan a una ejecución (cachés de completados, índices acumulados) y añade la prueba que ejecute dos veces con el mismo objeto.» Es la lección del hito 200 convertida en barrido: el estado que sobrevive a su ejecución **miente**.
+
+### 📋 El barrido
+
+Se revisó el estado que vive en `WorkflowExecutor`, `WorkflowItemDispatcher`, la telemetría, el diario, el punto de control y los estáticos del motor, y se separó lo que **se decide otra vez** en cada ejecución (correcto) de lo que **se heredaba** (fuga). Cinco fugas, todas reales y todas medidas:
+
+| Estado que se heredaba | Qué hacía la segunda ejecución | Medido |
+| :--- | :--- | :--- |
+| `IsVirtualFileSystemEnabled` | Seguía en modo virtual: escribía en el almacén y **el disco quedaba vacío**, en verde | el archivo real no aparecía |
+| `_isPaused` + su semáforo | Se quedaba esperando a que alguien la reanudara | **no arrancó en 10 s**, sin un nodo activo |
+| `PlannedActions` | El plan de la simulación anterior se sumaba al nuevo | 2 acciones donde había 1 |
+| `JournalService.Entries` | **Deshacer** la última ejecución revertía también la anterior | 2 entradas donde había 1 |
+| Contadores de aristas (despacho) | El contador que pinta la interfaz continuaba donde acabó la anterior | 6 donde debía haber 3 |
+
+También se corrigió, en el mismo reset, el **tope de concurrencia por nodo**: cada nodo tenía un semáforo con su `MaxConcurrency` del primer flujo que lo usó, así que cambiarlo en el editor no surtía efecto hasta reiniciar la aplicación.
+
+### 🔍 Lo que se revisó y **no** era una fuga (escrito para no volver a buscarlo)
+
+`VirtualFileSystem` (se vacía en cada ejecución), la telemetría y el rastreador de tareas (ya se reseteaban), el punto de control (arreglado en el 199-200), `GlobalOutputDir`/`TemporaryDirectory` (**pegajosos a propósito**: sólo se rellenan si están vacíos), `DebugSession` (es la configuración de depuración del usuario, no memoria de la ejecución) y `ISubflowExecutionService.Instance` / `SqliteLogStore.Instance` (estáticos por diseño; su problema, si lo hubiera, sería de concurrencia entre motores, no de estado rancio).
+
+### 🛠️ La cura: un reset que dice lo que decide
+
+En el arranque de cada ejecución (normal y vigilante) el motor ahora **decide otra vez** sus modos y sus cuentas: modo virtual apagado, plan y diario vacíos, y estado de pausa limpio —este último bajo el mismo candado que el semáforo de concurrencia, con el permiso de pausa devuelto si quedó consumido—. En el despacho, `ResetDiagnostics` pasa a llamarse **`ResetForNewExecution`** (olvida avisos, contadores de aristas y topes por nodo) porque el nombre viejo ya no describía lo que hace.
+
+### ✅ Pruebas: cinco casos, cada uno con **el mismo motor dos veces**
+
+[`EngineStateAcrossExecutionsTests`](file:///FileFlow.Tests/Unit/Core/EngineStateAcrossExecutionsTests.cs) —los cinco **se pusieron rojos al escribirlos**, cada uno con su síntoma medido, y verdes con la cura—:
+
+1. `ASyntheticRun_ShouldNotLeaveTheNextOneInVirtualMode` — ejecución sintética y después archivos reales: el archivo tiene que estar **en el disco**.
+2. `ARunThatEndedWhilePaused_ShouldNotLeaveTheNextOneWaiting` — pausar, detener y volver a ejecutar: la segunda arranca sola (con desbloqueo explícito antes de juzgar, para no dejar nunca una tarea colgada en el proceso).
+3. `PlannedActions_ShouldNotAccumulateFromPreviousDryRuns`.
+4. `Journal_ShouldOnlyContainTheOperationsOfTheCurrentRun`.
+5. `EdgeItemCounts_ShouldStartFromZeroInEveryRun`.
+
+**Tres mutaciones declaradas y mordidas** (`mutations/COVERAGE.md` regenerado): [`modo-virtual-heredado`](file:///mutations/modo-virtual-heredado.json) (30,6 s, control: la activación en una sola ejecución sigue verde), [`ejecucion-pausada-heredada`](file:///mutations/ejecucion-pausada-heredada.json) (39,7 s) y [`diario-acumula-ejecuciones`](file:///mutations/diario-acumula-ejecuciones.json) (29,5 s). La tercera se declaró mal a la primera (el fragmento citaba una línea de comentario sin su `//`) y el andamiaje la **rechazó citando fichero y fragmento, sin tocar nada**: el rechazo funcionando es parte de la medición.
+
+### ✅ Validación
+
+- `dotnet test` completo → **1684 superadas + 1 omitida de 1685** (antes 1679 + 1; **+5**), build **0 errores**.
+- Catálogo de mutaciones: **13 declaradas**, todas `MUERDE` (10 anteriores + 3 de este hito).
+
+### 📌 Notas para la siguiente sesión
+
+- El patrón queda escrito: **cada vez que un objeto del motor gane memoria de lo hecho, la pregunta es «¿de esta ejecución o de la anterior?» y la prueba es ejecutarlo dos veces con el mismo objeto**. Los cinco casos de este hito son la plantilla.
+- Lo que el barrido **no** cubre: el estado que sobrevive en **los nodos** (un plugin que cachee por su cuenta, p. ej. un índice de hashes o un modelo cargado) y el estado compartido entre **dos motores a la vez** (los estáticos: ahí el riesgo es de concurrencia, no de rancio).
+- Y sigue apuntado desde el 199: el punto de control escribe O(N²/256) en total y su `Timestamp` no se actualiza al volcar.
+
+---
+
+## [2026-09-24] - El Punto de Control no Sobrevive a su Ejecución: el Segundo «Ejecutar» Vuelve a Hacer el Trabajo (Hito 200)
+
+### 🎯 El encargo
+
+«Corrige que reutilizar un `WorkflowExecutor` se crea todo hecho tras limpiar el checkpoint en disco, y añade la prueba que lo demuestra.» Era el tercero de los tres defectos del informe del 198 —el último que quedaba— y el síntoma que más se veía: **un flujo que termina en milisegundos sin entregar nada y en verde**.
+
+### 🐞 El defecto: el estado que sobrevive a su ejecución
+
+`WorkflowCheckpointHandler.ClearCheckpoint` borraba el **fichero** del punto de control y dejaba vivo el **objeto en memoria**. Como `InitializeCheckpoint` sólo construye uno nuevo si no hay ninguno, la **segunda ejecución del mismo motor** —el botón Ejecutar pulsado otra vez, sin cerrar la aplicación— se encontraba con las claves de la ejecución anterior: cada archivo entrante se daba por ya completado (`Log_CheckpointSkippingFile`), **ninguno llegaba a los nodos** y el flujo terminaba correctamente en cuestión de milisegundos.
+
+Nada lo veía porque el estado no se quedaba en disco —el fichero sí se borraba— y todas las pruebas del punto de control usaban **un ejecutor nuevo por ejecución**, que es justo lo que el defecto necesita para no aparecer.
+
+### 🛠️ La cura
+
+**Limpiar son dos mitades**: `ClearCheckpoint` ahora deja `Checkpoint = null` además de borrar el fichero. Una ejecución que **no** termina bien no pasa por ahí, así que su estado en memoria sobrevive y la siguiente ejecución **reanuda** donde se quedó: eso es lo que el punto de control existe para hacer, y sigue funcionando (hay prueba con un punto de control preexistente que salta el archivo ya completado).
+
+Una prueba que existía desde antes (`WorkflowExecutor_WithExistingCheckpoint_SkipsCompletedItems`) afirmaba el estado en memoria **después** de una ejecución terminada —es decir, afirmaba precisamente lo que era el defecto—; ahora afirma lo que importa: **qué llegó al nodo** (`GetNodeTelemetryStats()["th-1"].ProcessedCount == 1`: sólo el archivo nuevo pasó, el otro se saltó).
+
+### ✅ Pruebas
+
+- **[`WorkflowExecutor_ReusedForASecondRun_ShouldProcessEveryFileAgain`](file:///FileFlow.Tests/Unit/Core/WorkflowCheckpointTests.cs)**: tres archivos, un motor, dos ejecuciones con punto de control activo y gestor en directorio temporal. La segunda tiene que **volver a entregar los tres archivos** y el nodo sumidero tiene que **volver a procesar tres ítems**. Es el síntoma reportado, de punta a punta.
+- **`CheckpointHandler_ClearCheckpoint_ForgetsTheInMemoryState`**: el contrato en pequeño —limpiar deja `Checkpoint` en nulo y el fichero borrado—, para que el defecto no pueda volver a colarse sólo por la puerta del motor.
+- **Mutación declarada y mordida**: [`punto-de-control-sobrevive-a-la-ejecucion`](file:///mutations/punto-de-control-sobrevive-a-la-ejecucion.json) (quitar `Checkpoint = null;`) → testigo **rojo** (1 de 1, el de punta a punta), control **verde** (el lote no depende de limpiar), `MUERDE` en 30,3 s, árbol restaurado por bytes y recompilado. `mutations/COVERAGE.md` regenerado.
+- `dotnet test` completo → **1679 superadas + 1 omitida de 1680** (antes 1677 + 1; **+2**), build **0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- **Los tres defectos del informe del 198 quedan cerrados.** Lo que sigue apuntado en el punto de control, sin tocar: el total por lotes sigue siendo O(N²/256) (~390 volcados con 100.000 archivos, ~8 MB cada uno) y el `Timestamp` no se actualiza al volcar.
+- La lección que deja este defecto, escrita aquí porque es reutilizable: **el estado que sobrevive a su ejecución miente**. Cualquier objeto con memoria de lo hecho (cachés de completados, índices acumulados, «ya procesados») necesita una pregunta explícita —¿de esta ejecución o de la anterior?— y una prueba que ejecute dos veces con el **mismo** objeto. Reutilizar el motor es el caso normal en la interfaz, no el raro.
+
+---
+
+## [2026-09-24] - El Punto de Control, por Lotes: Miles de Archivos Ya no se Reescriben Uno a Uno (Hito 199)
+
+### 🎯 El encargo
+
+«Arregla el punto de control para que no serialice el conjunto completo de claves una vez por ítem completado, y mide el antes y el después con un flujo de miles de ficheros.» Era el primero de los tres defectos que quedaron escritos en el hito 198.
+
+### 🐞 El defecto
+
+`WorkflowCheckpointHandler.RecordCompletedFile` llamaba a `WorkflowCheckpointManager.SaveCheckpoint` en **cada archivo completado**: serializaba el **conjunto entero** de claves —con `WriteIndented`— y lo escribía a disco, todo **bajo el candado del punto de control**. Con N archivos son N escrituras de un conjunto que crece hasta N claves: **O(N²) en bytes** y un **punto de serialización por ítem** justo en el camino que reparte el trabajo entre hilos. El fichero además se abre, se trunca y se cierra N veces.
+
+### 🛠️ La cura
+
+- **El ítem completado sólo anota su clave.** El conjunto se persiste cuando se han acumulado `FilesPerCheckpointWrite` claves nuevas (**256 por omisión**), y la escritura se hace **fuera del candado** sobre una **copia** tomada dentro de él: mientras un hilo serializa, los demás ítems siguen anotando. `1` conserva el comportamiento anterior, que es lo que permite medirlo contra el arreglo.
+- **Volcado de cierre**: `FlushPendingSaves()` lo llama el motor en el `finally` de la ejecución (también en modo vigilante), así una ejecución **cancelada o fallida** deja en disco lo completado hasta el último archivo. En una ejecución que termina bien no hace nada, porque `ClearCheckpoint` **olvida lo pendiente** — sin eso, el volcado de cierre resucitaría el fichero que el final acaba de borrar (y hay prueba de ello).
+- **Escritura sincrónica a propósito**, no en segundo plano: una escritura en vuelo puede llegar después del borrado final y dejar el fichero vivo.
+- **Sin sangría** (`WriteIndented = false`): el punto de control lo lee el motor, no una persona, y la sangría casi triplicaba los bytes de cada volcado.
+- **Dos costuras nuevas en el ejecutor** (`CheckpointManager`, `CheckpointFilesPerWrite`): permiten medir en un directorio temporal — y de paso las pruebas de este tramo **ya no escriben en los puntos de control reales del usuario** en `%LOCALAPPDATA%` (el tercer defecto del informe del 198, cerrado para estas pruebas).
+
+### 📊 El antes y el después, con 2.000 archivos reales
+
+[`CheckpointWriteCostTests`](file:///FileFlow.Tests/Performance/CheckpointWriteCostTests.cs) corre **el mismo flujo real** (origen de carpeta → sumidero, punto de control activo, directorio temporal) sobre los mismos 2.000 archivos, en el mismo proceso, cambiando sólo el tamaño del lote:
+
+| | Volcados | Pared |
+| :--- | ---: | ---: |
+| **Antes** (una escritura por archivo) | 2 000 | **3 855 ms** |
+| **Después** (por lotes de 256) | 7 | **581 ms** |
+
+**x6,6 menos tiempo de pared y x286 menos escrituras**, con el mismo trabajo entregado (2.000 archivos en ambas). El coste del punto de control pasa de ~3,3 s a ~0,1 s: lo que queda en la balanza es el flujo.
+
+### ✅ Pruebas
+
+- **Contrato del lote** (+4 casos en [`WorkflowCheckpointTests`](file:///FileFlow.Tests/Unit/Core/WorkflowCheckpointTests.cs)): 1.000 archivos con lotes de 100 son **10 volcados** (y el estado en disco es el conjunto completo, sin huecos); con lote de 1 son **200 de 200** (el «antes», conservado a propósito); `FlushPendingSaves` saca lo que quedaba (250 archivos → 3 volcados); y `ClearCheckpoint` olvida lo pendiente (el cierre no resucita el fichero borrado).
+- **Las dos pruebas de ejecución del ejecutor** ahora usan un gestor en directorio temporal: ya no dejan checkpoints en el perfil real.
+- **Mutación declarada y mordida**: [`punto-de-control-vuelve-a-escribir-por-archivo`](file:///mutations/punto-de-control-vuelve-a-escribir-por-archivo.json) (`if (true)` en la condición del lote) → testigo **rojo** (1 de 1), control **verde**, `MUERDE` en 58,6 s, árbol restaurado por bytes y recompilado por el andamiaje. `mutations/COVERAGE.md` regenerado.
+- `dotnet test` completo → **1677 superadas + 1 omitida de 1678** (antes 1672 + 1; **+5**), build **0 errores**.
+
+### 📌 Notas para la siguiente sesión
+
+- Queda **uno** de los tres defectos del informe del 198: reutilizar un `WorkflowExecutor` **se cree todo hecho** tras limpiar el checkpoint en disco (limpiar borra el fichero pero no el objeto en memoria), así que la segunda ejecución con el mismo ejecutor omite todos los archivos. Aquí se cerró sólo un síntoma vecino: `ClearCheckpoint` olvida lo **pendiente** de persistir.
+- Lo que el lote **no** hace: escribir menos de O(N²/256) — con lotes de 256 el total sigue siendo cuadrático, sólo que dividido por 256 (con 100.000 archivos, ~390 volcados de un conjunto que llega a ~8 MB: asumible, medible si algún día estorba).
+- El `Timestamp` del punto de control sigue siendo el del inicio de la ejecución: el volcado no lo actualiza. Si alguna vez importa «cuándo se escribió», hay que decidirlo antes de tocarlo.
+
+---
+
+## [2026-09-24] - La Primera Ejecución de la Sesión, Medida por Tramos: el Motor ya Usa los 27 Hilos que se le Dan (Hito 198)
+
+### 🎯 El encargo
+
+«El motor no debe desperdiciar hilos en la primera ejecución de la sesión, midiendo el antes y el después con una prueba.» Venía del informe previo: tras arreglar los puertos de los nodos, los flujos tardaban más y «no se usaban todos los hilos del procesador».
+
+### 📊 El «antes», con las dos hipótesis que se probaron y no se sostienen
+
+Se instrumentó el arranque por tramos (marcas de reloj dentro de `ExecuteAsync`, el origen y el despacho, más el cronómetro del nodo sonda) y se corrieron **20 procesos nuevos** con 96 ítems de 50 ms de CPU pura, paralelismo pedido 28 (i7-14700KF, 28 hilos lógicos, mínimo de hilos de trabajo del grupo = 28).
+
+| Tramo de la primera ejecución (1163 ms de pared) | Medido |
+| :--- | :--- |
+| Validar, instanciar nodos, inicializar el punto de control | **12 ms** |
+| Hasta arrancar los nodos origen (primer registro del flujo) | **378 ms** |
+| Dentro del nodo origen, hasta el primer ítem despachado | **550 ms** |
+| El trabajo de los 96 ítems | **216 ms** (estado estable: 211-224 ms) |
+
+- **Hipótesis 1 (el suelo del grupo de hilos)**: falsa. El mínimo de hilos de trabajo **ya es `Environment.ProcessorCount`** (medido: 28), así que el grupo no esperaba hilos —los crea cuando hay trabajo—. Un `ThreadPoolWarmth` (subir el mínimo a 35 y crear los hilos de antemano) daba unas corridas en 264 ms y otras en 965-1066: no reproducible. Retirado.
+- **Hipótesis 2 (compilar el camino de antemano)**: falsa. Preparar **255 métodos** con `RuntimeHelpers.PrepareMethod` cuesta **5 ms** y, en un proceso recién compilado, dejaba la primera ejecución **igual de lenta** (973 ms, con los mismos dos tramos); en un proceso ya usado, **sin preparar nada**, sale igual de rápida (269 ms). Un `ExecutionPathWarmUp` llegó a existir y tampoco movía el número. Retirado. (La inicialización del almacén de registros se descartó igual: mide 14 ms y adelantarla no cambiaba la corrida de 976 ms.)
+
+### 🔬 Lo que sí es (y por qué no se puede «verificar» contra un umbral)
+
+La variable es **el primer proceso que corre justo después de una compilación**: en ese proceso el motor pasa **775-1 472 ms** antes de que el primer ítem llegue a la rejilla consumiendo sólo **~267 ms de CPU** —no está calculando, está esperando a que el sistema le entregue las bibliotecas recién escritas—, y el mismo binario, en un proceso siguiente, llega al primer ítem en **46-66 ms**. Como no es una propiedad del motor sino de la máquina que acaba de compilar, la prueba **no compara tiempos contra un umbral**.
+
+### ✅ Lo que se afirma, y la prueba que lo afirma
+
+[`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`](file:///FileFlow.Tests/Performance/EngineFirstRunTests.cs): la **concurrencia máxima** observada fue de **25-27 nodos simultáneos de 28 pedidos en las 20 ejecuciones medidas** —primera y siguientes, con el grupo frío o caliente—, y lo que se juzga es que la primera **no use menos hilos que las que vienen detrás** (mismo equipo, misma carga: comparable) más un techo sobre el **tramo de trabajo** (no sobre el arranque, que es lo único que la máquina decide). El nodo sonda ([`CpuBoundProbeNode`](file:///FileFlow.Tests/TestHelpers/CpuBoundProbeNode.cs), CPU pura) y la colección exclusiva [`EngineFirstRunCollection`](file:///FileFlow.Tests/Performance/EngineFirstRunCollection.cs) se quedan: la medida es una resta contra el estado estable y una colección vecina la ensucia (1 904 ms con vecino donde sola sale en 269 ms).
+
+### ✅ Validación
+
+- `dotnet test` completo → **1672 superadas + 1 omitida de 1673 en 1 m 14 s** (antes 1671 + 1; **+1**), build **0 errores**.
+- La prueba nueva se corrió **4 veces en procesos nuevos** (una de ellas la primera tras compilar: 1 696 ms de pared con 1 472 ms antes del primer ítem, y aun así **verde**) y en la corrida completa del suite.
+- Los ficheros de los dos intentos retirados (`ThreadPoolWarmth`, `ExecutionPathWarmUp` y sus pruebas) y las sondas temporales se borraron; `WorkflowExecutor` y `WorkflowItemDispatcher` quedan **idénticos a HEAD** (comprobado con `git diff`).
+
+### 📌 Notas para la siguiente sesión
+
+- **El número de pared de la primera ejecución no es una propiedad del motor** en un banco que compila y luego mide: si vuelve a aparecer la pregunta, el dato que la contesta es la **concurrencia** (25-27 de 28) y los tramos por fase, no el total.
+- Los tres defectos reales detectados antes de este tramo **siguen sin arreglar** y son los que sí cuestan tiempo con miles de ficheros: el punto de control que serializa el conjunto completo **una vez por ítem** (`RecordCompletedFile` → `SaveCheckpoint` con `WriteIndented` bajo `_checkpointLock`), reutilizar un `WorkflowExecutor` que **se cree todo hecho** (limpiar el checkpoint borra el fichero pero no el objeto en memoria) y las pruebas que escriben en los checkpoints reales del usuario en `%LOCALAPPDATA%`. El coste real del optimizador de imágenes (~450 ms por imagen 1600×1200 a WebP Q80, ~12,5 ms redimensionando a 800 px) es trabajo, no reparto.
+
+---
+
 ## [2026-09-23] - El Catálogo, Extendido a las Guardias de Cobertura, y la Lista de Huecos Publicada (Hito 197)
 
 ### 🎯 Objetivo

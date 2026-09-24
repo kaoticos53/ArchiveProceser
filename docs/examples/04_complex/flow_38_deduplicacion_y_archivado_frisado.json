@@ -41,7 +41,10 @@
       "hasBreakpoint": false,
       "isLoggingEnabled": true,
       "parameters": {
-        "ArchiveFormat": "7Z"
+        "DestinationFolder": "{GlobalOutputDir}/Frio",
+        "ArchiveFormat": "7Z",
+        "CompressionType": "LZMA",
+        "ArchiveName": "{FileNameWithoutExtension}.7z"
       }
     },
     {

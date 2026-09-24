@@ -1,0 +1,25 @@
+{
+  "id": "tabla-en-cache-sin-tope",
+  "hito": 203,
+  "claim": "La cache de tablas del plugin tiene tope y suelta la que lleva mas tiempo sin usarse.",
+  "why": "La cache vive en un estatico, asi que cada tabla que cruza un flujo se queda en memoria hasta cerrar el proceso: con ejecuciones que cruzan tablas distintas —una por carpeta, una por idioma— el proceso acaba reteniendo todas. El tope suelta la que nadie esta usando en vez de crecer sin gobierno.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Data/Nodes/Processing/DataLookupTableLoader.cs",
+      "replacements": [
+        {
+          "old": "        _cache[cacheKey] = new CacheEntry(lastModified.UtcDateTime, length, Environment.TickCount64, index);\n        EvictLeastRecentlyUsed();",
+          "new": "        _cache[cacheKey] = new CacheEntry(lastModified.UtcDateTime, length, Environment.TickCount64, index);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheTableCache_ShouldNotGrowWithoutBoundAcrossRuns",
+    "why": "Cruza veinticuatro tablas distintas y vuelve a pedir la primera: con tope tuvo que salir de la cache y releerse."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheTableCache_ShouldNotAnswerWithRowsOfAFileThatChangedUnderTheSameTimestamp",
+    "why": "Solo cruza una tabla: sin tope la invalidacion por identidad sigue funcionando igual."
+  }
+}

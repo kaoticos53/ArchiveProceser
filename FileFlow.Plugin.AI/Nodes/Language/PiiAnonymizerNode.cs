@@ -136,22 +136,8 @@ public sealed class PiiAnonymizerNode : AiFlowNodeBase
             string outputDirRaw = GetParameter("OutputDirectory", "{GlobalOutputDir}");
             bool skipIfExists = GetParameter("SkipIfExists", false);
 
-            string targetDir;
-            if (string.IsNullOrWhiteSpace(outputDirRaw) || string.Equals(outputDirRaw, "{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-            {
-                if (item.Metadata.TryGetValue("GlobalOutputDir", out var godVal) && !string.IsNullOrWhiteSpace(godVal?.ToString()))
-                {
-                    targetDir = godVal.ToString()!;
-                }
-                else
-                {
-                    targetDir = Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory();
-                }
-            }
-            else
-            {
-                targetDir = ParameterHelper.ResolveOutputPath(outputDirRaw, item);
-            }
+            // La carpeta la decide la regla compartida del plugin: ver NodeOutputDirectory.
+            string targetDir = NodeOutputDirectory.For(outputDirRaw, item);
 
             await storage.CreateDirectoryAsync(targetDir, cancellationToken).ConfigureAwait(false);
 

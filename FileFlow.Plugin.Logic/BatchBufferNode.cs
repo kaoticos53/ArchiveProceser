@@ -76,23 +76,74 @@ public sealed class BatchBufferNode : FlowNodeBase
 
         if (toEmit != null && toEmit.Count > 0)
         {
-            long totalBytes = toEmit.Sum(b => b.FileSizeBytes);
-            double totalMB = totalBytes / (1024.0 * 1024.0);
-            string detailsJson = $"{{\"batchCount\": {toEmit.Count}, \"totalSizeBytes\": {totalBytes}, \"totalMB\": {totalMB.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}}}";
-            
-            context.Log($"[Buffer Lotes] Emitiendo lote consolidado de {toEmit.Count:N0} elementos ({totalMB:F2} MB)", LogLevel.Information, item, durationMs: 0.0, detailsJson: detailsJson);
-
-            int idx = 1;
-            foreach (var bufferedItem in toEmit)
-            {
-                bufferedItem.Metadata["BatchIndex"] = idx++;
-                bufferedItem.Metadata["BatchSize"] = toEmit.Count;
-                await context.EmitAsync("ItemOut", bufferedItem);
-            }
-
-            var markerItem = new FileItemContext(string.Empty);
-            markerItem.Metadata["BatchSize"] = toEmit.Count;
-            await context.EmitAsync("BatchCompleted", markerItem);
+            await EmitBatchAsync(toEmit, context, incomplete: false);
         }
+    }
+
+    /// <summary>
+    /// <b>El último lote sale también cuando no llegó a llenarse.</b>
+    ///
+    /// <para>Un búfer que sólo suelta al alcanzar el umbral retiene todo lo que no llegue a llenarlo, y ese
+    /// pendiente muere con la ejecución: el flujo termina en verde sin haber entregado nada. Pasa en cuanto la
+    /// entrada es más pequeña que el lote —seis archivos con un lote de diez—, que es el caso normal, no el
+    /// raro: el umbral es un tope para no acumular sin fin, no un requisito para entregar.</para>
+    ///
+    /// <para>El motor invoca este gancho con todos los nodos aguas arriba ya drenados y su propia fase de
+    /// drenado posterior, así que lo que salga de aquí —los elementos pendientes por <c>ItemOut</c> y su
+    /// marcador <c>BatchCompleted</c>, igual que en un lote completo— recorre el resto del flujo y termina en su
+    /// destino (mismo patrón que <c>ArchiveFanInNode</c> con sus sesiones a medias).</para>
+    /// </summary>
+    public override async Task OnWorkflowCompletedAsync(
+        IFlowExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        List<FileItemContext>? pending;
+        lock (_lock)
+        {
+            pending = _buffer.Count > 0 ? [.. _buffer] : null;
+            _buffer.Clear();
+        }
+
+        if (pending is null)
+        {
+            return;
+        }
+
+        await EmitBatchAsync(pending, context, incomplete: true);
+    }
+
+    /// <summary>
+    /// Suelta un lote: los elementos por <c>ItemOut</c> (numerados dentro del lote) y un marcador por
+    /// <c>BatchCompleted</c> que dice cuántos salieron y si el lote se cerró por umbral o por fin de ejecución.
+    /// Un único camino de salida para el lote completo y para el incompleto: lo que se entrega no puede
+    /// depender de por qué se entregó.
+    /// </summary>
+    private async Task EmitBatchAsync(
+        List<FileItemContext> batch,
+        IFlowExecutionContext context,
+        bool incomplete)
+    {
+        long totalBytes = batch.Sum(b => b.FileSizeBytes);
+        double totalMB = totalBytes / (1024.0 * 1024.0);
+        string detailsJson = $"{{\"batchCount\": {batch.Count}, \"totalSizeBytes\": {totalBytes}, \"totalMB\": {totalMB.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, \"incomplete\": {(incomplete ? "true" : "false")}}}";
+
+        string message = incomplete
+            ? $"[Buffer Lotes] Lote incompleto entregado al terminar el flujo: {batch.Count:N0} elementos ({totalMB:F2} MB)"
+            : $"[Buffer Lotes] Emitiendo lote consolidado de {batch.Count:N0} elementos ({totalMB:F2} MB)";
+
+        context.Log(message, LogLevel.Information, batch[^1], durationMs: 0.0, detailsJson: detailsJson);
+
+        int idx = 1;
+        foreach (var bufferedItem in batch)
+        {
+            bufferedItem.Metadata["BatchIndex"] = idx++;
+            bufferedItem.Metadata["BatchSize"] = batch.Count;
+            await context.EmitAsync("ItemOut", bufferedItem);
+        }
+
+        var markerItem = new FileItemContext(string.Empty);
+        markerItem.Metadata["BatchSize"] = batch.Count;
+        markerItem.Metadata["BatchIncomplete"] = incomplete;
+        await context.EmitAsync("BatchCompleted", markerItem);
     }
 }

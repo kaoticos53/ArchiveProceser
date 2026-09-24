@@ -139,7 +139,12 @@ public sealed class LocalWhisperTranscriberNode : FlowNodeBase
 
                 if (generateSrt && segments.Count > 0)
                 {
-                    string srtPath = await GenerateSrtFileAsync(item, segments, context, cancellationToken).ConfigureAwait(false);
+                    string srtPath = await GenerateSrtFileAsync(
+                        item,
+                        segments,
+                        ResolveSubtitleDirectory(item),
+                        context,
+                        cancellationToken).ConfigureAwait(false);
                     item.Metadata["Transcript:SrtPath"] = srtPath;
                     Log(context, $"[Whisper] Subtítulos SRT generados: {Path.GetFileName(srtPath)}", LogLevel.Information, item);
                 }
@@ -208,15 +213,25 @@ public sealed class LocalWhisperTranscriberNode : FlowNodeBase
         return tempWav;
     }
 
+    /// <summary>
+    /// Dónde se escribe el archivo de subtítulos: el parámetro «Directorio de Salida» del nodo —que por omisión es
+    /// <c>{GlobalOutputDir}</c>, la carpeta del flujo— o, si se deja vacío, esa misma carpeta por la regla única del
+    /// SDK. El parámetro existía —con su ficha y su descripción— y <b>el nodo no lo leía</b>: el SRT caía siempre en
+    /// la carpeta del flujo, aunque el flujo pidiera otra cosa, y además se leía la metadata cruda, así que una
+    /// salida declarada con plantilla acababa siendo el texto de la plantilla dentro de una ruta (hitos 209 y 210).
+    /// </summary>
+    private string ResolveSubtitleDirectory(FileItemContext item)
+    {
+        return NodeOutputDirectory.For(GetParameter("OutputDirectory", "{GlobalOutputDir}"), item);
+    }
+
     private static async Task<string> GenerateSrtFileAsync(
         FileItemContext item,
         List<(TimeSpan Start, TimeSpan End, string Text)> segments,
+        string outDir,
         IFlowExecutionContext context,
         CancellationToken cancellationToken)
     {
-        string outDir = item.Metadata.TryGetValue("GlobalOutputDir", out var gOut) && gOut is string g && !string.IsNullOrWhiteSpace(g)
-            ? g
-            : Path.GetDirectoryName(item.CurrentPath) ?? Path.GetTempPath();
 
         var storage = context.GetStorage();
         await storage.CreateDirectoryAsync(outDir, cancellationToken).ConfigureAwait(false);

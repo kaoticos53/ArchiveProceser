@@ -1,0 +1,25 @@
+{
+  "id": "salida-global-sin-expandir",
+  "hito": 210,
+  "claim": "La carpeta de salida de un flujo es una carpeta: lo que el flujo declara se expande y se ancla (bajo el origen del barrido, o bajo la salida por defecto de los ajustes) antes de entregarlo, así que vale lo mismo en cualquier parámetro y en cualquier nodo que la lea, y nunca es el texto de una plantilla ni una ruta colgada del directorio de trabajo del proceso.",
+  "why": "El catálogo de ejemplos entero declara su salida como '{RelativeDir}', que es una plantilla y no una carpeta, y lo que el flujo declara llegaba sin expandir a todo el que lo leyera: la variable '{GlobalOutputDir}' devolvía el texto literal, los nodos que consultaban la metadata lo metían en una ruta tal cual, y con el anclaje combinándolo consigo mismo la ruta resultante acababa absolutizada contra el directorio de trabajo del proceso (medido en el hito 209: 'FileFlow.Tests/bin/Debug/net10.0/{RelativeDir}/{RelativeDir}'). Es la forma del defecto del hito 204 -quince ejemplos escribieron su salida entre los binarios- y estaba sostenida por cinco lecturas distintas: la variable del motor de plantillas, el anclaje de las rutas, la regla compartida de los nodos de IA y la sustitución del token que hacían los nodos de datos. Desde el hito 210 las cinco pasan por una sola regla (ParameterHelper.FlowOutputFolder) y este mutante le quita la expansión: devuelve lo declarado tal cual, que es lo que hacía cada lector por su cuenta.",
+  "edits": [
+    {
+      "file": "FileFlow.Sdk/ParameterHelper.cs",
+      "replacements": [
+        {
+          "old": "        string expanded;\n        _resolvingFlowOutputFolder = true;\n        try\n        {\n            expanded = TemplateEngine.VariableTemplateResolver.Resolve(declared, context, sourceRootPath);\n        }\n        finally\n        {\n            _resolvingFlowOutputFolder = false;\n        }\n",
+          "new": "        string expanded = declared;\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~VariableTemplateResolver_WithATemplateOutputFolder_ResolvesAFolderInAnyParameter|FullyQualifiedName~ResolveOutputPath_WithGlobalOutputDirDeclaredAsATemplate_ExpandsAndAnchorsItUnderTheSourceRoot|FullyQualifiedName~AFlowWhoseOutputFolderIsATemplate_ShouldAnchorTheArchiveInARealFolder|FullyQualifiedName~WithAFlowFolderDeclaredAsATemplate_ShouldAnchorItInsideTheOrigin|FullyQualifiedName~CsvExportNode_WithTheFlowFolderToken_ShouldWriteInsideTheFolderTheFlowDeclares|FullyQualifiedName~CsvExportNode_WithAnAliasOfTheFlowFolder_ShouldWriteWhereTheCanonicalTokenWrites|FullyQualifiedName~ExcelReportGeneratorNode_WithATemplateFlowFolder_ShouldWriteTheReportInsideTheOrigin",
+    "why": "Las cinco lecturas de la carpeta del flujo, una por una, porque el defecto estaba en las cinco y la regla única tiene que servir a todas: la variable del motor de plantillas en un parámetro que no es una ruta (SDK), el anclaje de las rutas (SDK), el compresor con su destino por omisión, la regla compartida de los nodos de IA por la costura del nodo -la síntesis de voz- y los dos escritores de datos, el CSV -por su token y por un alias suyo- y el reporte de Excel, que además la resuelve al vuelo porque se escribe al terminar. Con el mutante las siete quedan rojas nombrando, cada una, dónde esperaba la carpeta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ResolveOutputPath_WithRelativePath_AnchorsUnderGlobalOutputDir|FullyQualifiedName~ResolveOutputPath_WithoutGlobalOutputDir_AnchorsUnderSourceDirectory|FullyQualifiedName~VariableTemplateResolver_WithoutExplicitMetadata_FallsBackToAppPathsDefault",
+    "why": "Una salida declarada con una ruta completa no tiene nada que expandir y sigue resolviéndose igual; sin ninguna declarada, el anclaje sigue cayendo en la carpeta del archivo y la variable en la salida por defecto de los ajustes. Lo que rompe la mutación es expandir y anclar lo que el flujo declara, no el anclaje de toda la vida ni el valor por defecto."
+  }
+}

@@ -5,6 +5,7 @@ using FileFlow.App.ViewModels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FluentAssertions;
+using Moq;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.ViewModels;
@@ -50,6 +51,30 @@ public class NodeParameterViewModelTests : IDisposable
 
         // Reset
         AvaloniaTestHelper.SetCultureOnUI("es-ES");
+    }
+
+    /// <summary>
+    /// La ficha del parámetro enseña la <b>ayuda</b> del parámetro cuando existe —el recurso
+    /// <c>Param_{clave}_Help</c>, la convención con la que los plugins escriben aclaraciones— y cae en la clave
+    /// cuando no: gana la aclaración donde la hay y no pierde lo que mostraba antes donde no (hito 208; la
+    /// pregunta que cierra es «¿dónde acaba mi comprimido si no declaro carpeta?»).
+    /// </summary>
+    [Fact]
+    public void Help_ShouldComeFromTheParameterHelpResource_AndFallBackToTheKey()
+    {
+        // El contrato del servicio real: si nadie tiene la clave, devuelve el respaldo que le pasa quien
+        // pregunta. Aquí el respaldo es la propia clave (ver NodeParameterViewModel.Help).
+        var loc = new Mock<ILocalizationService>();
+        loc.Setup(l => l.GetString(It.IsAny<string>(), It.IsAny<string>()))
+           .Returns((string key, string fallback) =>
+               key == "Param_DestinationFolder_Help" ? "Carpeta donde se escribe el comprimido." : fallback);
+
+        using var explained = new NodeParameterViewModel("DestinationFolder", string.Empty, localizationService: loc.Object);
+        using var unexplained = new NodeParameterViewModel("UnParámetroSinAyuda", string.Empty, localizationService: loc.Object);
+
+        explained.Help.Should().Be("Carpeta donde se escribe el comprimido.");
+        unexplained.Help.Should().Be("UnParámetroSinAyuda", "sin recurso, la ficha muestra la clave, como antes");
+        explained.Help.Should().NotBe(explained.Key, "la aclaración sustituye a la clave cruda cuando existe");
     }
 
     [Fact]

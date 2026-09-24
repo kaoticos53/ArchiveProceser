@@ -44,14 +44,23 @@ public sealed class ExcelReportGeneratorNode : FlowNodeBase
         new("ColumnsToExport", ParameterEditorType.Text, DefaultValue: "FileName, FileSizeBytes, DurationMs, Status, HashSHA256", DisplayOrder: 3)
     ];
 
-    private string? _discoveredGlobalOutputDir;
+    /// <summary>
+    /// La carpeta donde se escribe el reporte, resuelta <b>mientras corre el flujo</b>: el reporte se escribe al
+    /// terminar y ahí ya no hay elemento del que leer la metadata. La resuelve la regla única del SDK, que expande
+    /// la carpeta del flujo <b>y todos sus alias</b> y ancla toda ruta relativa, de modo que no queda el texto de
+    /// una plantilla declarada ni una carpeta que dependa de dónde corre el proceso (hitos 209 y 210).
+    /// </summary>
+    private string? _reportOutputDir;
+
+    private string? ResolveReportOutputDir(FileItemContext item)
+    {
+        string pattern = Environment.ExpandEnvironmentVariables(GetParameter("OutputDirectory", "{GlobalOutputDir}"));
+        return string.IsNullOrWhiteSpace(pattern) ? null : ParameterHelper.ResolveOutputPath(pattern, item);
+    }
 
     public override async Task ExecuteAsync(string inputPortName, FileItemContext item, IFlowExecutionContext context, CancellationToken cancellationToken)
     {
-        if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut && !string.IsNullOrWhiteSpace(gOut))
-        {
-            _discoveredGlobalOutputDir = gOut;
-        }
+        _reportOutputDir = ResolveReportOutputDir(item);
 
         string colsConfig = GetParameter("ColumnsToExport", string.Empty);
         var selectedCols = string.IsNullOrWhiteSpace(colsConfig)
@@ -106,18 +115,9 @@ public sealed class ExcelReportGeneratorNode : FlowNodeBase
             return;
         }
 
-        string outDir = GetParameter("OutputDirectory", "{GlobalOutputDir}");
-        outDir = Environment.ExpandEnvironmentVariables(outDir);
-
-        if (!string.IsNullOrWhiteSpace(_discoveredGlobalOutputDir))
-        {
-            outDir = outDir.Replace("{GlobalOutputDir}", _discoveredGlobalOutputDir, StringComparison.OrdinalIgnoreCase);
-        }
-
-        if (string.IsNullOrWhiteSpace(outDir) || outDir.Contains("{GlobalOutputDir}", StringComparison.OrdinalIgnoreCase))
-        {
-            outDir = Path.GetTempPath();
-        }
+        // Sin carpeta declarada —o sin haber pasado ni un elemento, que es lo que la resuelve— el reporte va al
+        // directorio temporal del producto, nunca a donde corra el proceso.
+        string outDir = _reportOutputDir ?? Path.GetTempPath();
 
         var storage = context.GetStorage();
         if (!await storage.DirectoryExistsAsync(outDir, cancellationToken).ConfigureAwait(false))

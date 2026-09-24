@@ -3,6 +3,7 @@ using System.IO;
 using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
+using FileFlow.Plugin.Logic;
 using FileFlow.Sdk;
 using FluentAssertions;
 using Xunit;
@@ -21,6 +22,7 @@ public class GraphValidatorTests
     {
         _pluginLoader = new PluginLoader();
         _pluginLoader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        _pluginLoader.RegisterNodeTypesFromAssembly(typeof(ForkJoinBarrierNode).Assembly);
         _validator = new GraphValidator();
     }
 
@@ -196,5 +198,130 @@ public class GraphValidatorTests
         // Assert
         result.IsValid.Should().BeTrue();
         result.TopologicalOrder.Should().HaveCount(2);
+    }
+
+    /// <summary>
+    /// <b>La vuelta de una rama a la barrera no es un ciclo.</b> Es el grafo de un fork/join —los ejemplos 22 y 30
+    /// del catálogo— y el motor lo rechazaba entero («Graph contains a cycle») porque contaba la arista de vuelta
+    /// como precedencia: el nodo barrera quedaba inutilizable y los ejemplos no llegaban a ejecutarse (hito 204).
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldAcceptABranchReturningToABarrierNode()
+    {
+        var graph = new WorkflowGraph
+        {
+            Nodes = new List<WorkflowNode>
+            {
+                new WorkflowNode { Id = "source", NodeTypeName = typeof(FolderSourceNode).FullName! },
+                new WorkflowNode { Id = "barrier", NodeTypeName = typeof(ForkJoinBarrierNode).FullName! },
+                new WorkflowNode { Id = "branch1", NodeTypeName = typeof(LogOutputNode).FullName! },
+                new WorkflowNode { Id = "branch2", NodeTypeName = typeof(LogOutputNode).FullName! },
+                new WorkflowNode { Id = "sink", NodeTypeName = typeof(LogOutputNode).FullName! }
+            },
+            Edges = new List<WorkflowEdge>
+            {
+                new WorkflowEdge { Id = "e1", SourceNodeId = "source", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e2", SourceNodeId = "barrier", SourcePortName = "Fork1", TargetNodeId = "branch1", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e3", SourceNodeId = "barrier", SourcePortName = "Fork2", TargetNodeId = "branch2", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e4", SourceNodeId = "branch1", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "Branch1_Done" },
+                new WorkflowEdge { Id = "e5", SourceNodeId = "branch2", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "Branch2_Done" },
+                new WorkflowEdge { Id = "e6", SourceNodeId = "barrier", SourcePortName = "AllCompleted", TargetNodeId = "sink", TargetPortName = "In" }
+            }
+        };
+
+        var result = _validator.Validate(graph, _pluginLoader);
+
+        result.IsValid.Should().BeTrue(string.Join(" | ", result.Errors));
+        result.Errors.Should().BeEmpty();
+        result.TopologicalOrder.Should().HaveCount(5, "ningún nodo se pierde al excluir la vuelta del orden");
+        result.TopologicalOrder.Select(n => n.Id).Should().ContainInOrder("source", "barrier");
+    }
+
+    /// <summary>
+    /// La exención es <b>por puerto</b>, no «los grafos con barrera pueden tener ciclos». Un ciclo que entra por
+    /// una entrada normal se rechaza igual aunque haya una barrera en el grafo.
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldStillRejectACycleThatDoesNotEnterThroughAFeedbackPort()
+    {
+        var graph = new WorkflowGraph
+        {
+            Nodes = new List<WorkflowNode>
+            {
+                new WorkflowNode { Id = "barrier", NodeTypeName = typeof(ForkJoinBarrierNode).FullName! },
+                new WorkflowNode { Id = "node1", NodeTypeName = typeof(LogOutputNode).FullName! },
+                new WorkflowNode { Id = "node2", NodeTypeName = typeof(LogOutputNode).FullName! }
+            },
+            Edges = new List<WorkflowEdge>
+            {
+                new WorkflowEdge { Id = "e1", SourceNodeId = "node1", SourcePortName = "Out", TargetNodeId = "node2", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e2", SourceNodeId = "node2", SourcePortName = "Out", TargetNodeId = "node1", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e3", SourceNodeId = "node1", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "In" }
+            }
+        };
+
+        var result = _validator.Validate(graph, _pluginLoader);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.Contains("cycle"));
+    }
+
+    /// <summary>
+    /// Una arista que entra por <c>Branch1_Done</c> desde un nodo que la barrera no alimenta no es la vuelta de
+    /// ninguna rama: la barrera esperará para siempre un aviso que le llega de un sitio que no bifurcó. No es un
+    /// error —el grafo corre— sino el defecto silencioso que hay que decir en voz alta.
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldWarnWhenAFeedbackEdgeDoesNotComeFromABranchOfThatNode()
+    {
+        var graph = new WorkflowGraph
+        {
+            Nodes = new List<WorkflowNode>
+            {
+                new WorkflowNode { Id = "source", NodeTypeName = typeof(FolderSourceNode).FullName! },
+                new WorkflowNode { Id = "barrier", NodeTypeName = typeof(ForkJoinBarrierNode).FullName! },
+                new WorkflowNode { Id = "stranger", NodeTypeName = typeof(LogOutputNode).FullName! }
+            },
+            Edges = new List<WorkflowEdge>
+            {
+                new WorkflowEdge { Id = "e1", SourceNodeId = "source", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e2", SourceNodeId = "source", SourcePortName = "Out", TargetNodeId = "stranger", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e3", SourceNodeId = "stranger", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "Branch1_Done" }
+            }
+        };
+
+        var result = _validator.Validate(graph, _pluginLoader);
+
+        result.IsValid.Should().BeTrue("no es un ciclo que impida ejecutar, es una rama que nunca llegará");
+        result.Warnings.Should().ContainSingle(w => w.Contains("Branch1_Done") && w.Contains("not downstream"));
+    }
+
+    /// <summary>
+    /// Un nodo al que <b>sólo</b> le entran avisos de ramas no lo arranca nadie: no recibe el ítem, no bifurca, y
+    /// los avisos que espera no existen. Es el mismo silencio que un puerto mal escrito, dicho por adelantado.
+    /// </summary>
+    [Fact]
+    public void Validate_ShouldWarnWhenANodeIsOnlyFedByFeedbackPorts()
+    {
+        var graph = new WorkflowGraph
+        {
+            Nodes = new List<WorkflowNode>
+            {
+                new WorkflowNode { Id = "barrier", NodeTypeName = typeof(ForkJoinBarrierNode).FullName! },
+                new WorkflowNode { Id = "branch", NodeTypeName = typeof(LogOutputNode).FullName! }
+            },
+            Edges = new List<WorkflowEdge>
+            {
+                new WorkflowEdge { Id = "e1", SourceNodeId = "barrier", SourcePortName = "Fork1", TargetNodeId = "branch", TargetPortName = "In" },
+                new WorkflowEdge { Id = "e2", SourceNodeId = "branch", SourcePortName = "Out", TargetNodeId = "barrier", TargetPortName = "Branch2_Done" }
+            }
+        };
+
+        var result = _validator.Validate(graph, _pluginLoader);
+
+        result.IsValid.Should().BeTrue();
+        result.Warnings.Should().ContainSingle(w => w.Contains("only fed by feedback ports"));
+        result.Warnings.Should().NotContain(w => w.Contains("not downstream"),
+            "el aviso es que nadie lo arranca, no que la rama venga de otro sitio: son dos defectos distintos");
     }
 }

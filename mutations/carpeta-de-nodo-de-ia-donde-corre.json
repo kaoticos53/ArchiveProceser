@@ -1,0 +1,25 @@
+{
+  "id": "carpeta-de-nodo-de-ia-donde-corre",
+  "hito": 210,
+  "claim": "Cuando el flujo no declara carpeta para un nodo, el nodo escribe dentro de lo que se le dio —la carpeta de salida del flujo, o la del propio archivo— y nunca en el directorio de trabajo del proceso.",
+  "why": "Cuatro nodos del plugin de IA —síntesis de voz, detección de voz, anonimizador de datos y transcripción con subtítulos— compartían la misma regla copiada para decidir su carpeta, y su último escalón era 'Path.GetDirectoryName(item.CurrentPath) ?? Directory.GetCurrentDirectory()': con un elemento sin carpeta propia el archivo salía dentro de la aplicación, y el flujo parecía haber entregado cero. Es la forma exacta del defecto del hito 204 -quince ejemplos escribieron su salida entre los binarios- y la misma que el hito 207 persiguió en la sala limpia del banco de ejemplos. Desde el hito 210 la regla vive en un solo sitio (NodeOutputDirectory) y su último escalón es la carpeta temporal del producto, no la del proceso.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.AI/Common/NodeOutputDirectory.cs",
+      "replacements": [
+        {
+          "old": "        string? itemFolder = Path.GetDirectoryName(item.CurrentPath);\n        return string.IsNullOrWhiteSpace(itemFolder) ? AppPaths.DefaultTempDirectory : itemFolder;\n",
+          "new": "        string? itemFolder = Path.GetDirectoryName(item.CurrentPath);\n        return string.IsNullOrWhiteSpace(itemFolder) ? Directory.GetCurrentDirectory() : itemFolder;\n"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~WithNoFolderAtAll_ShouldUseTheProductsTempFolder_NotTheProcessWorkingDirectory|FullyQualifiedName~WithNothingDeclared_ShouldUseTheItemFolder",
+    "why": "Las dos caras del escalón final, por la costura de los nodos -detección de voz y síntesis de voz-: con un elemento que trae carpeta, la suya; con un nombre suelto, la carpeta temporal del producto. Con el mutante la primera sigue verde y la segunda se pone roja: antes de escribirlo yo mismo, la cadena encadenaba con '??' sobre 'Path.GetDirectoryName', que devuelve cadena vacía y no nulo, así que el último escalón no se disparaba nunca —lo destapó el arnés, que midió la mutación como superviviente y obligó a arreglar la regla antes de declararla cubierta—."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~WithAFlowFolderDeclaredAsATemplate_ShouldAnchorItInsideTheOrigin|FullyQualifiedName~WithADeclaredFolder_ShouldUseIt_AnchoringItInTheFlowFolderWhenRelative",
+    "why": "Con una carpeta declarada —con plantilla o en redondo— el nodo sigue escribiendo donde el flujo dice: lo que rompe la mutación es el último escalón de la regla, no la regla entera ni la resolución de lo declarado."
+  }
+}

@@ -77,14 +77,14 @@
       "sourceNodeId": "node-hash",
       "sourcePortName": "Out",
       "targetNodeId": "node-fork",
-      "targetPortName": "In"
+      "targetPortName": "Branch1_Done"
     },
     {
       "id": "e5",
       "sourceNodeId": "node-opt",
       "sourcePortName": "Out",
       "targetNodeId": "node-fork",
-      "targetPortName": "In"
+      "targetPortName": "Branch2_Done"
     },
     {
       "id": "e6",

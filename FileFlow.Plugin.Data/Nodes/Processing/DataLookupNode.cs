@@ -45,9 +45,12 @@ public sealed class DataLookupNode : FlowNodeBase
         string dataSourcePath = GetParameter("DataSourcePath", string.Empty);
         dataSourcePath = Environment.ExpandEnvironmentVariables(dataSourcePath);
 
-        if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
+        // El patrón lo resuelve la regla única del SDK: expande la carpeta del flujo <b>y todos sus alias</b> y
+        // ancla toda ruta relativa, así que aquí no queda el texto de una plantilla ni una ruta que dependa de
+        // dónde corre el proceso (hitos 209 y 210).
+        if (!string.IsNullOrWhiteSpace(dataSourcePath))
         {
-            dataSourcePath = dataSourcePath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
+            dataSourcePath = ParameterHelper.ResolveOutputPath(dataSourcePath, item);
         }
 
         var storage = context.GetStorage();

@@ -43,6 +43,26 @@ public class WorkflowExecutor
         set => _checkpointHandler.Checkpoint = value;
     }
 
+    /// <summary>
+    /// Dónde se persiste el punto de control. El valor por omisión es el gestor del proceso; se sustituye para
+    /// escribir en otro directorio (pruebas y mediciones, que así no tocan el perfil real del usuario).
+    /// </summary>
+    public WorkflowCheckpointManager CheckpointManager
+    {
+        get => _checkpointHandler.Manager;
+        set => _checkpointHandler.Manager = value;
+    }
+
+    /// <summary>
+    /// Cuántos archivos completados se acumulan antes de reescribir el punto de control. <c>1</c> es el
+    /// comportamiento que persistía una vez por archivo (el defecto que relata <c>CheckpointWriteCostTests</c>).
+    /// </summary>
+    public int CheckpointFilesPerWrite
+    {
+        get => _checkpointHandler.FilesPerCheckpointWrite;
+        set => _checkpointHandler.FilesPerCheckpointWrite = value;
+    }
+
     public bool EnableCheckpointing
     {
         get => _checkpointHandler.EnableCheckpointing;
@@ -188,12 +208,30 @@ public class WorkflowExecutor
         foreach (var disabledId in graph.DisabledLoggingNodeIds) _disabledLoggingNodeIds.Add(disabledId);
         foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
+        // Lo que la ejecución anterior dejó detrás no se hereda. El motor se reutiliza —la interfaz lo mantiene
+        // vivo entre pulsaciones de Ejecutar—, así que cada ejecución decide otra vez sus modos y sus cuentas:
+        // el modo virtual (lo activa sola un grafo con orígenes sintéticos), el plan de una simulación y el
+        // diario de operaciones (que es lo que revierte el botón Deshacer). Ver EngineStateAcrossExecutionsTests.
+        IsVirtualFileSystemEnabled = false;
+        PlannedActions.Clear();
+        JournalService.Clear();
+
         _telemetryTracker.Reset();
-        _itemDispatcher.ResetDiagnostics();
+        _itemDispatcher.ResetForNewExecution();
         lock (_lock)
         {
             _concurrencyThrottle?.Dispose();
             _concurrencyThrottle = new SemaphoreSlim(_maxDegreeOfParallelism);
+
+            // Y el estado de pausa: una ejecución que terminó pausada —el usuario pausó y detuvo— dejaba el
+            // semáforo consumido y la siguiente se quedaba esperando a que alguien la reanudara (medido: no
+            // arrancaba en 10 s, con el reloj corriendo y ningún nodo activo).
+            _isPaused = false;
+            if (_pauseSemaphore.CurrentCount == 0)
+            {
+                _pauseSemaphore.Release();
+            }
+
             _isRunning = true;
         }
         _taskTracker.Clear();
@@ -368,6 +406,11 @@ public class WorkflowExecutor
         }
         finally
         {
+            // Lo que quede sin persistir sale a disco al cerrar: una ejecución cancelada o fallida deja el punto
+            // de control al día para reanudar. Si terminó bien, el borrado ya olvidó lo pendiente y esto no hace
+            // nada (ver WorkflowCheckpointHandler.ClearCheckpoint).
+            _checkpointHandler.FlushPendingSaves();
+
             if (AutoCleanIntermediateTempFiles && WorkspaceManager != null)
             {
                 try
@@ -418,9 +461,24 @@ public class WorkflowExecutor
         foreach (var disabledId in graph.DisabledLoggingNodeIds) _disabledLoggingNodeIds.Add(disabledId);
         foreach (var nodeDto in graph.Nodes.Where(n => !n.IsLoggingEnabled)) _disabledLoggingNodeIds.Add(nodeDto.Id);
 
+        // El modo vigilante hereda el mismo problema que la ejecución normal si el motor viene de una ejecución
+        // anterior: se le aplica el mismo reset.
+        IsVirtualFileSystemEnabled = false;
+        PlannedActions.Clear();
+        JournalService.Clear();
+
         _telemetryTracker.Reset();
-        _itemDispatcher.ResetDiagnostics();
-        _isRunning = true;
+        _itemDispatcher.ResetForNewExecution();
+        lock (_lock)
+        {
+            _isPaused = false;
+            if (_pauseSemaphore.CurrentCount == 0)
+            {
+                _pauseSemaphore.Release();
+            }
+
+            _isRunning = true;
+        }
 
         var validator = new GraphValidator();
         var validation = validator.Validate(graph, loader);
@@ -521,6 +579,9 @@ public class WorkflowExecutor
         }
         finally
         {
+            // Igual que en la ejecución normal: el vigilante también deja su punto de control al día al parar.
+            _checkpointHandler.FlushPendingSaves();
+
             if (AutoCleanIntermediateTempFiles && WorkspaceManager != null)
             {
                 try

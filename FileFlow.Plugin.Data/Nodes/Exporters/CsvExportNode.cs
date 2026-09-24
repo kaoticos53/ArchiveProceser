@@ -47,9 +47,13 @@ public sealed class CsvExportNode : FlowNodeBase
         string destPath = GetParameter("DestinationPath", string.Empty);
         destPath = Environment.ExpandEnvironmentVariables(destPath);
 
-        if (item.Metadata.TryGetValue("GlobalOutputDir", out var gOutObj) && gOutObj is string gOut)
+        // El patrón lo resuelve la regla única del SDK: expande la carpeta del flujo <b>y todos sus alias</b>
+        // (`{GlobalOutputDir}`, `{DefaultOutputDir}`, `{OutputDir}`…) y ancla toda ruta relativa, de modo que aquí
+        // no queda el texto de una plantilla declarada ni una carpeta que dependa de dónde corre el proceso. Antes
+        // sólo se sustituía el token canónico por lo que hubiera en la metadata tal cual (hitos 209 y 210).
+        if (!string.IsNullOrWhiteSpace(destPath))
         {
-            destPath = destPath.Replace("{GlobalOutputDir}", gOut, StringComparison.OrdinalIgnoreCase);
+            destPath = ParameterHelper.ResolveOutputPath(destPath, item);
         }
 
         if (string.IsNullOrWhiteSpace(destPath))
