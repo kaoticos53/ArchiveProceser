@@ -10,6 +10,7 @@ using FileFlow.App.Models;
 using FileFlow.App.Services;
 using FileFlow.App.Views;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FileFlow.App;
@@ -32,6 +33,9 @@ public partial class App : Application
 
     /// <summary>Convierte un fallo de arranque en algo visible (log + ventana de error).</summary>
     private static readonly StartupFailureReporter s_startupFailures = new(s_crashLog);
+
+    /// <summary>Instala la ventana de error del host como superficie de fallos del núcleo portable.</summary>
+    private static bool s_reporterWindowInstalled;
 
     public override void Initialize()
     {
@@ -57,6 +61,16 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            if (!s_reporterWindowInstalled)
+            {
+                FileFlow.App.Services.StartupFailureReporter.ShowFailure = Views.StartupErrorWindow.ShowFailure;
+                s_reporterWindowInstalled = true;
+            }
+
+            // El puente de temas se instala antes de cualquier etapa: ApplySavedTheme (etapa Theme)
+            // publica la variante a través de él y sin instalación sería un no-op silencioso.
+            FileFlow.App.Services.AvaloniaThemeHost.Install();
+
             var startup = new StartupOrchestrator(s_startupFailures);
 
             // Los recursos del host van primero: la splash se construye inmediatamente después y así sus
@@ -164,6 +178,22 @@ public partial class App : Application
         var serviceCollection = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
         serviceCollection.AddFileFlowServices();
         Services = serviceCollection.BuildServiceProvider();
+        FileFlow.App.Services.ServiceHolders.WindowService = Services.GetRequiredService<IWindowService>();
+        FileFlow.App.Services.ServiceHolders.FileDialog = Services.GetRequiredService<IFileDialogService>();
+        FileFlow.App.Services.ServiceHolders.PopupMenu = Services.GetRequiredService<IPopupMenuService>();
+
+        // Bordes del host hacia el núcleo portable: despachado, portapapeles, selector de color,
+        // ventana anfitriona, diálogos para ViewModels construidos sin contenedor y el puente de
+        // temas (variante + tokens). Sin estas instalaciones el núcleo cae a sus no-ops seguros.
+        FileFlow.App.Core.HostUi.Install(
+            dispatcher: Services.GetRequiredService<IUiDispatcher>(),
+            clipboard: Services.GetRequiredService<IClipboardService>(),
+            colorPicker: Services.GetRequiredService<IColorPickerService>());
+        FileFlow.App.Core.CoreDialogHost.Services = Services;
+        FileFlow.App.Services.AvaloniaThemeHost.Install();
+
+        // Exportación de registros: el diálogo nativo de guardar es del host; la consola portable lo pide.
+        FileFlow.App.Core.HostUi.SetLogExporter(() => LogExportService.ExportLogsWithDialogAsync());
     }
 
     /// <summary>Carga las preferencias del usuario, normaliza el idioma guardado y fija la cultura de arranque.</summary>
@@ -245,6 +275,11 @@ public partial class App : Application
     private static Window CreateAndShowMainWindow(IClassicDesktopStyleApplicationLifetime desktop)
     {
         var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
+
+        // Ancla portable del ViewModel raíz: los ViewModels del núcleo que necesitan el editor activo
+        // lo consultan aquí en lugar de leer el DataContext de una ventana que no conocen.
+        FileFlow.App.Core.MainViewModelResolver.Current = mainVm;
+
         var mainWindow = new MainWindow
         {
             DataContext = mainVm

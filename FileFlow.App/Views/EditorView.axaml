@@ -3,10 +3,11 @@
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:nodify="using:Nodify.Avalonia"
              xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
-             xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
+             xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App.Core"
              xmlns:views="clr-namespace:FileFlow.App.Views;assembly=FileFlow.App"
              xmlns:loc="using:FileFlow.Sdk.Localization"
              xmlns:components="using:FileFlow.App.Views.Components"
+             xmlns:conv="using:FileFlow.App.Converters"
              xmlns:models="using:FileFlow.App.Models"
              x:Class="FileFlow.App.Views.EditorView"
              x:DataType="vm:EditorViewModel">
@@ -34,7 +35,7 @@
                              ConnectionCompletedCommand="{Binding FinishConnectionCommand}"
                              DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
-                             ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
+                             ViewportLocation="{Binding ViewportLocation, Mode=TwoWay, Converter={x:Static conv:SdkPointConverter.Instance}}"
                              MinViewportZoom="0.2"
                              MaxViewportZoom="2.5"
                              Background="Transparent">
@@ -42,13 +43,13 @@
             <!-- Item Container, Decorator & Connection Animation Styles -->
             <nodify:NodifyEditor.Styles>
                 <Style Selector="nodify|ItemContainer" x:DataType="vm:NodeViewModel">
-                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay, Converter={x:Static conv:SdkPointConverter.Instance}}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                     <Setter Property="Width" Value="{Binding Width, Mode=TwoWay}" />
                     <Setter Property="ZIndex" Value="{Binding ZIndex, Mode=TwoWay}" />
                 </Style>
                 <Style Selector="nodify|DecoratorContainer">
-                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay, Converter={x:Static conv:SdkPointConverter.Instance}}" />
                 </Style>
                 <Style Selector="nodifyConn|ConnectionContainer" x:DataType="vm:ConnectionViewModel">
                     <Setter Property="ContextMenu">
@@ -130,7 +131,7 @@
                 <DataTemplate x:DataType="vm:PendingConnectionViewModel">
                     <components:FlowPendingConnection IsVisible="{Binding IsVisible}"
                                                 Source="{Binding Source}"
-                                                SourceAnchor="{Binding Source.Anchor}"
+                                                SourceAnchor="{Binding Source.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}"
                                                 EnablePreview="True"
                                                 EnableSnapping="True"
                                                 AllowOnlyConnectors="True"
@@ -149,8 +150,8 @@
             <!-- Connection Wires -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
-                    <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                    Target="{Binding Target.Anchor}"
+                    <nodifyConn:Connection Source="{Binding Source.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}"
+                                    Target="{Binding Target.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}"
                                     Spacing="45"
                                     StrokeThickness="3.5"
                                     StrokeDashArray="{x:Null}"

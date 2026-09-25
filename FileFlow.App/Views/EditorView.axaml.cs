@@ -86,9 +86,9 @@ public partial class EditorView : UserControl
             var typeName = e.DataTransfer.TryGetText();
             if (!string.IsNullOrEmpty(typeName))
             {
-                Point screenPoint = e.GetPosition(NodifyCanvas);
+                var screenPoint = e.GetPosition(NodifyCanvas);
                 double zoom = vm.ViewportZoom > 0 ? vm.ViewportZoom : 1.0;
-                Point canvasPoint = new Point(
+                var canvasPoint = new Sdk.Point(
                     vm.ViewportLocation.X + (screenPoint.X / zoom),
                     vm.ViewportLocation.Y + (screenPoint.Y / zoom)
                 );
@@ -110,7 +110,7 @@ public partial class EditorView : UserControl
             _nodeDragStartPositions.Clear();
             foreach (var node in vm.Nodes)
             {
-                _nodeDragStartPositions[node] = node.Location;
+                _nodeDragStartPositions[node] = node.Location.ToAvalonia();
             }
         }
 
@@ -146,9 +146,9 @@ public partial class EditorView : UserControl
             var movedNodes = new List<FileFlow.App.Services.UndoRedo.NodeMoveItem>();
             foreach (var (node, oldPos) in _nodeDragStartPositions)
             {
-                if (node.Location != oldPos)
+                if (node.Location != oldPos.ToSdk())
                 {
-                    movedNodes.Add(new FileFlow.App.Services.UndoRedo.NodeMoveItem(node, oldPos, node.Location));
+                    movedNodes.Add(new FileFlow.App.Services.UndoRedo.NodeMoveItem(node, oldPos.ToSdk(), node.Location));
                 }
             }
 
@@ -180,7 +180,7 @@ public partial class EditorView : UserControl
             // Only open if double clicking editor background or canvas
             var point = e.GetPosition(NodifyCanvas);
             double zoom = vm.ViewportZoom > 0 ? vm.ViewportZoom : 1.0;
-            var canvasPoint = new Point(
+            var canvasPoint = new Sdk.Point(
                 vm.ViewportLocation.X + (point.X / zoom),
                 vm.ViewportLocation.Y + (point.Y / zoom)
             );
@@ -215,18 +215,18 @@ public partial class EditorView : UserControl
         // Blender / ComfyUI Quick-Add: Shift+A or Space
         if ((shift && e.Key == Key.A) || (e.Key == Key.Space && !ctrl))
         {
-            Point canvasPoint;
+            Sdk.Point canvasPoint;
             double zoom = vm.ViewportZoom > 0 ? vm.ViewportZoom : 1.0;
             if (_lastPointerPosition.HasValue)
             {
-                canvasPoint = new Point(
+                canvasPoint = new Sdk.Point(
                     vm.ViewportLocation.X + (_lastPointerPosition.Value.X / zoom),
                     vm.ViewportLocation.Y + (_lastPointerPosition.Value.Y / zoom)
                 );
             }
             else
             {
-                canvasPoint = new Point(
+                canvasPoint = new Sdk.Point(
                     vm.ViewportLocation.X + 250,
                     vm.ViewportLocation.Y + 200
                 );

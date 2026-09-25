@@ -58,6 +58,7 @@ public partial class ThemeCustomizerWindow : Window
         if (_viewModel != null)
         {
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+            _viewModel.LivePreviewUpdated += OnLivePreviewUpdated;
         }
 
         AttachPreviewResources();
@@ -72,6 +73,13 @@ public partial class ThemeCustomizerWindow : Window
         }
     }
 
+    private void OnLivePreviewUpdated()
+    {
+        // Los valores del diccionario portable cambiaron en el sitio; el ResourceDictionary de
+        // Avalonia no los ve (los structs se copiaron), así que se re-publican.
+        AttachPreviewResources();
+    }
+
     private void AttachPreviewResources()
     {
         if (_viewModel == null || PreviewHost == null)
@@ -79,7 +87,16 @@ public partial class ThemeCustomizerWindow : Window
             return;
         }
 
-        PreviewHost.Resources = _viewModel.LivePreviewResources;
+        var dict = new ResourceDictionary();
+        foreach (var (key, value) in _viewModel.LivePreviewResources)
+        {
+            if (value is Avalonia.Media.IBrush or Avalonia.Media.Color or string or double
+                or Avalonia.CornerRadius or Avalonia.Media.BoxShadows)
+            {
+                dict[key] = value;
+            }
+        }
+        PreviewHost.Resources = dict;
     }
 
     private void Close_Click(object? sender, RoutedEventArgs e)

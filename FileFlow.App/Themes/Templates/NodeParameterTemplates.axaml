@@ -1,8 +1,8 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-                    xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App"
-                    xmlns:models="clr-namespace:FileFlow.App.Models;assembly=FileFlow.App"
+                    xmlns:vm="clr-namespace:FileFlow.App.ViewModels;assembly=FileFlow.App.Core"
+                    xmlns:models="clr-namespace:FileFlow.App.Models;assembly=FileFlow.App.Core"
                     xmlns:loc="clr-namespace:FileFlow.Sdk.Localization;assembly=FileFlow.Sdk">
 
     <!-- Blender / ComfyUI Node Parameter Row DataTemplate -->

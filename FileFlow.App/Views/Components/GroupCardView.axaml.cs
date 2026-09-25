@@ -54,11 +54,11 @@ public partial class GroupCardView : UserControl
 
                 foreach (var node in nodesToMove)
                 {
-                    node.Location = new Point(node.Location.X + deltaX, node.Location.Y + deltaY);
+                    node.Location = new Sdk.Point(node.Location.X + deltaX, node.Location.Y + deltaY);
                 }
             }
 
-            vm.Location = new Point(vm.Location.X + deltaX, vm.Location.Y + deltaY);
+            vm.Location = new Sdk.Point(vm.Location.X + deltaX, vm.Location.Y + deltaY);
         }
     }
 

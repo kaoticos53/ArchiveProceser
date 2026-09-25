@@ -4,8 +4,28 @@ using Avalonia;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using AvaloniaPoint = Avalonia.Point;
 
 namespace FileFlow.App.Converters;
+
+/// <summary>
+/// Proyección de puntos para los enlaces del lienzo (Nodify) cuando los enlaces no son compilados:
+/// los ViewModels del grafo viven en FileFlow.App.Core y hablan en <see cref="FileFlow.Sdk.Point"/>,
+/// mientras que Nodify y el resto del framework hablan en <see cref="Avalonia.Point"/>.
+/// El conversor por defecto no sabe traducir entre tipos distintos de punto, así que cada enlace
+/// Location/Anchor/ViewportLocation entre un ViewModel y un control de Nodify pasa por aquí.
+/// El code-behind hace la misma traducción con las extensiones de <see cref="FileFlow.App.SdkPointProjection"/>.
+/// </summary>
+public class SdkPointConverter : IValueConverter
+{
+    public static readonly SdkPointConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is FileFlow.Sdk.Point p ? p.ToAvalonia() : AvaloniaProperty.UnsetValue;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is AvaloniaPoint p ? p.ToSdk() : AvaloniaProperty.UnsetValue;
+}
 
 public class NodeExecutionStatusToBrushConverter : IValueConverter
 {

@@ -16,7 +16,7 @@ public partial class AnnotationCardView : UserControl
     {
         if (DataContext is AnnotationViewModel vm)
         {
-            vm.Location = new Point(vm.Location.X + e.Vector.X, vm.Location.Y + e.Vector.Y);
+            vm.Location = new Sdk.Point(vm.Location.X + e.Vector.X, vm.Location.Y + e.Vector.Y);
         }
     }
 
