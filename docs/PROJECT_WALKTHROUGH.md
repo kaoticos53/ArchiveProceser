@@ -1,5 +1,479 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-25] - Cierre del Tramo: 41/41 Mordiendo y las Notas que lo Cuentan (Hito 223)
+
+### 🎯 El encargo
+
+«Cierra el tramo de mutaciones con una pasada completa del catálogo de 41 y una entrada en notas_de_version que lo cuente para quien usa el producto (40 defectos declarados → 41).»
+
+### 🧬 La re-certificación final del catálogo
+
+**41 de 41 MUERDE**, ejecutadas en 6 tandas de 6/6/6/6/6/11 (la `-All` entera excede el límite por comando; el arnés admite listas en `-Name`). Veredicto: 0 supervivientes, 0 imprecisas, 0 rechazos. Diario del arnés cerrado y árbol restaurado por bytes en cada mutación. Tiempos: la mayoría 26-40 s; la más pesada `compresor-contra-su-propia-entrada` (~173 s, flujos con motor real). Incluye la mutación del 217 **re-declarada** en el 221 (su fragmento cambió con el escáner; el arnés la rechazó y la re-declaración volvió a morder) — el catálogo se auto-corrige cuando el código que muta cambia.
+
+### 📝 La entrada para quien usa el producto
+
+`docs/notas_de_version.md` gana el **apartado 10, «El tramo de la defensa en profundidad»** (compilación 5517 → 5779, cifras medidas), escrito en la estructura de dos mitades del documento:
+
+- **Lo que ves**: nada cambió en el escritorio a propósito; el host multiplataforma pasó de ventana de sondeo a lienzo real (aún no llega al usuario — fase en curso).
+- **Lo que no se ve**: el catálogo 28 → **41 declaraciones, las 41 mordiendo** (la 41 — el dry-run de red — completó la cobertura de todos los plugins; quedan 3 de 17 subsistemas, lista de trabajo), los enlaces de geometría blindados en los dos hosts (incluido el hallazgo del framework que no evalúa enlaces en estilos), la geometría del cable/encuadre pura en el núcleo con sus valores calculados a mano, y el suite que dejó de mentir con fallos de carga (el flake cazado con nombre: 4,911 ms contra 5 ms; la séptima colección exclusiva).
+- El índice del documento ahora anuncia **ocho tramos** y las cifras citan hitos 169 a 222 del walkthrough. El «40 → 41» del encargo queda contado como el paso final: la declaración 41 es la que cerró la lista de plugins.
+
+### ✅ Validación
+
+- Suite completa → **1800 superadas + 1 omitida de 1801**, 0 errores, 2 m 22 s (pasada de sanidad para las cifras de la nota).
+- `.build_number` 5779 (contador automático); `notas_de_version.md` actualizado en cabecera (compilación y tramos) y apartado 10 nuevo; «Cómo verificarlo» pasa a apartado 11.
+
+### 📌 Notas para la siguiente sesión
+
+- El tramo de mutaciones queda **cerrado y re-certificado**: cualquier declaración nueva parte de un catálogo 41/41 vivo.
+- Fase 3.1 del plan Uno en curso (hitos 221): tarjeta visual completa y criterio de salida demostrado. Mutación de la regla `GetElapsedTime` posible y no declarada (anotada en el 222).
+- **Sin commits**: todo el trabajo de los hitos 198-223 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Tres Pasadas del Suite: el Flake de Carga, Cazado con Nombre y Encerrado (Hito 222)
+
+### 🎯 El encargo
+
+«Corre la suite tres veces seguidas para acotar los flakes de carga de las últimas pasadas y darles colección exclusiva si repiten con nombre.» Los flakes venían repitiéndose sin nombre desde el 213 (dos caídas que no se repetían en la pasada de confirmación); esta vez el protocolo fue cazar el nombre antes de tocar nada.
+
+### 🔬 La caza (tres pasadas + confirmación)
+
+| Pasada | Resultado | Fallos |
+| :--- | :--- | :--- |
+| 1 | 1797 + 1 omitida de 1798 | — |
+| 2 | 1797 + 1 omitida de 1798 | — |
+| 3 | 1796 + 1 omitida de 1798 | **`SyntheticDataSourceNode_EmissionLatency_ShouldPaceEveryEmission`** |
+| 4 (post-cura) | 1800 + 1 omitida de 1801 | — |
+
+El fallo con nombre y mensaje: *«Expected gaps to contain only items matching (gap >= FromMilliseconds(5)) ... but {4ms and 911.8µs} do(es) not match»* — un hueco de **4,911 ms contra el umbral de 5 ms** del `EmissionDelayMs`.
+
+### 🧬 Causa raíz: una colección implícita y una cota con margen cero
+
+El test mide **cotas inferiores de temporización** (los huecos entre emisiones, con `Stopwatch.GetElapsedTime`) y los afirma con **margen cero** contra el retardo que el nodo promete — correcto como contrato (`Task.Delay` garantiza el mínimo; si el aplazamiento desapareciera, los huecos caerían a microsegundos), pero la CPU que mide es del proceso y el resto de la suite competía por ella. Hallazgo estructural: su clase ya declaraba `[Collection("RenamerSampleDataTests")]`, pero la colección era **implícita** — sin clase de definición, xUnit la paraleliza como cualquier otra. Las siete colecciones exclusivas reales tienen definición; ésta no estaba entre ellas.
+
+Alcance medido antes de decidir: el patrón fino (`GetElapsedTime`) sólo existe en la clase flaky; `TestSuiteIndexTests` también usa `Stopwatch` pero sólo con cotas **superiores** holgadas (15 s para un lint) — no es candidato y la regla nueva no lo alcanza.
+
+### 🛠️ La cura: séptima colección exclusiva
+
+- **`RenamerSampleDataCollection`** (definición con `DisableParallelization = true`): confina dos cosas — el registro estático de muestras del `RenamerSampleDataProvider` (estado global del producto que las dos clases miembro ya ejercitaban) y **la CPU que mide el cronómetro**, la misma tesis de `EngineFirstRun`. Los atributos `[Collection("RenamerSampleDataTests")]` de las clases miembro no cambian: la definición les da la exclusividad que su contenido ya pedía.
+- **Contrato al día**: `TestAssemblyParallelism.cs` documenta la colección; el analizador (`TestCollectionContractAnalyzer`) gana el estado `TimingBoundsMeasurement`, la regla con patrón `\bGetElapsedTime\s*\(` y los anclajes (`ExclusiveCollections`, mapeo de definiciones).
+- **+3 auto-tests** en `TestCollectionContractGuardTests`: la regla delata la medición fuera de la colección canónica y la acepta dentro.
+
+### ✅ Validación
+
+- Enfocado: 48/48 (guardia del contrato + las dos clases miembro). Suite completa → **1800 superadas + 1 omitida de 1801**, 0 errores, 2 m 31 s (+3).
+- `docs/notas_de_version.md` no cambia (infraestructura de pruebas, invisible para quien usa el producto).
+
+### 📌 Notas para la siguiente sesión
+
+- Los flakes históricos «dos fallos que no se repitieron» del 213/216/220 eran casi seguro este mismo mecanismo (carga paralela); con la colección en exclusiva, el patrón de «pasada intermedia manchada» debería desaparecer — si reaparece, ya hay plantilla de caza.
+- Posible mutación nueva: neutralizar el patrón `GetElapsedTime` de la regla (testigo: los 3 auto-tests nuevos; control: `portapapeles-sin-vigilante`). No declarada en este hito.
+- Fase 3.1 del plan Uno sigue en curso (hito 221): tarjeta visual completa y criterio de salida demostrado.
+- **Sin commits**: todo el trabajo de los hitos 198-222 sigue en el árbol.
+
+---
+
+## [2026-09-25] - El Lienzo de Uno Existe: Tarjetas, Cables y la Decisión que Cambió la Guardia (Hito 221)
+
+### 🎯 El encargo
+
+«Arranca la fase 3.1 del plan de uno_canvas_plan.md: el EditorCanvasControl del host Uno con los enlaces de geometría llevando UnoPointConverter, como exige la guardia del hito 217.»
+
+### 🧪 La medición que cambió el diseño (y la guardia)
+
+El plan decía «nodos posicionados por Location proyectada» con `Setter` + binding — y WinUI **no puede**: el motor XAML de WinUI/Uno **no evalúa `{Binding}` dentro de `Setter.Value`** (el enlace no falla: no hace nada, la posición sería 0,0 en silencio). Confirmado por documentación antes de escribir el XAML. El rediseño: la posición la aplica el code-behind (`ApplyNodePosition`) leyendo la posición **ya proyectada** del adaptador (`NodeCardViewModel.Position`, que construye el punto pasando por `UnoPointConverter.Instance`), y la **guardia del 217 se amplió** para censar también el code-behind — dos cruces delatados: posicionar en el Canvas leyendo la Location cruda, y construir un punto del framework a mano desde `.X/.Y` sin pasar por `UnoPointProjection`. La lectura en espacio de grafo (`Sdk.Point`) para la matemática de cables sigue siendo legítima: el cruce explícito es lo censado.
+
+### 🖼️ Lo construido (todo en el host, cero líneas de geometría)
+
+- **`EditorCanvasControl`** (`Controls/`): grid de fondo, tarjetas del grafo (`ItemsControl` sobre `Editor.Nodes` con adaptador `NodeCardViewModel`), cables estáticos dibujados con **`ConnectionGeometry`** (la Bézier del núcleo, calculada en espacio de grafo y proyectada con `UnoPointProjection.ToUno` al dibujar), pan por arrastre, zoom por rueda/botones (0.2–2.5), y **encuadre con el mismo `EditorViewportCalculator` del núcleo** que usa el escritorio.
+- **`NodeCardView`** en modo lectura (título, categoría, descripción — la tarjeta de 559 líneas de Avalonia queda pendiente para el resto de la fase).
+- **`MainWindow`** monta `MainViewModel` del núcleo y carga el primer flujo de ejemplo de las carpetas canónicas (`LoadFromGraphModel`) para que el lienzo muestre un grafo real en el arranque.
+- Conversores del host: `UnoPointConverter` (ya del 217) y `HexColorToBrushConverter` (los tokens hex del tema pintan el lienzo).
+
+### 🛡️ La defensa ampliada
+
+- `UnoGeometryBindingScanner.FindCodeBehindViolations` reescrito con la regla de los dos cruces; **+3 auto-tests sintéticos** (delata los dos, acepta la lectura proyectada) y la prueba real del code-behind del lienzo.
+- Mutación **`proyeccion-uno-sin-guardia` actualizada** (el fragmento que mutaba cambió con el escáner; el arnés lo rechazó y la re-declaración volvió a **MUERDE**: testigo rojo 3/17, control verde 8/8).
+
+### ✅ Validación
+
+- Host Uno: **compila 0 errores** con el lienzo montado.
+- Suite completa → **1797 superadas + 1 omitida de 1798**, 0 errores, 2 m 28 s (+4).
+- `docs/notas_de_version.md` no cambia (el lienzo Uno aún no llega al usuario).
+
+### 📌 Notas para la siguiente sesión
+
+- **Fase 3.1 en curso**: falta la tarjeta visual completa (estados `connected`/`dragSource`/`compatible` a clases visuales WinUI) y demostrar el criterio de salida (arranque + captura comparada con Avalonia — requiere app corriendo).
+- La guardia del 217 ya vigila el XAML **y** el code-behind del lienzo: los siguientes controles nacen censados.
+- **Sin commits**: todo el trabajo de los hitos 198-221 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Network Entra al Mapa: el Dry-Run que Entrega el Disparador (Hito 220)
+
+### 🎯 El encargo
+
+«Declara la mutación de Network (por ejemplo el dry-run que deja de simular) con testigo y control, y verifica que muerde.» Tercer subsistema de la lista de trabajo de [`COVERAGE.md`](file:///mutations/COVERAGE.md) en tres sesiones — los plugins ya están todos cubiertos.
+
+### 🧬 La mutación: el plan que ensaya mal
+
+[`dry-run-que-entrega-el-disparador`](file:///mutations/dry-run-que-entrega-el-disparador.json) muta la **estrategia HTTP de descarga** (`HttpTransportStrategy.DownloadAsync`, plugin Network): en el dry-run, entrega el elemento **que entró** en vez del resultado simulado que `CreateDownloadResult` clona y enriquece (destino planificado, metadata de red, tamaño previsto). El defecto que declara es el más traicionero de los que puede tener una simulación: **todo sigue saliendo por `Out`** (el plan no se rompe en el log, la simulación «funciona»), pero el elemento que recorre el resto del flujo planificado es **el disparador** — su `CurrentPath` apunta al origen, no existe `DownloadedPath`, y los nodos posteriores planifican contra el archivo equivocado. Es exactamente para lo que sirve el dry-run — ensayar el flujo sin tocar la red y ver **dónde caerá** cada archivo — y su síntoma no es un fallo: es un plan que parece bien y ensaya mal.
+
+- **Testigo**: `NetworkDownloadNode_Http_DryRun_ShouldSimulateAndEmitOut` — afirma las tres mitades del resultado simulado: sale por `Out`, lleva `DownloadedPath` en la metadata y `CurrentPath` apunta al destino planificado.
+- **Control**: `CliExecutionNode_WhenExitCodeNonZero_ShouldEmitFailedAndCaptureStdErr` — el testigo de la mutación de Integrations (hito 219), en otro plugin sin transportes de red.
+- **Veredicto: MUERDE** — testigo rojo 1 de 1, control verde, árbol restaurado por bytes y recompilado.
+
+### 📊 Cobertura publicada
+
+`COVERAGE.md` regenerado por su guardia: **41 mutaciones**, **14 de 17 subsistemas** — `Plugin.Network` sale de la lista de huecos. **Todos los plugins están cubiertos**; quedan `App.Uno` (tras las fases del lienzo) y los dos hosts en cuanto tengan comportamiento propio que probar.
+
+### ✅ Validación
+
+- Suite completa → **1793 superadas + 1 omitida de 1794**, 0 errores, 2 m 24 s. Una pasada intermedia cayó en **dos fallos intermitentes** que no se repitieron (el patrón de carga paralela ya anotado en el 213); la pasada de confirmación fue limpia.
+- `docs/notas_de_version.md` no cambia: el candado no es visible para quien usa el producto.
+
+### 📌 Notas para la siguiente sesión
+
+- **La lista de trabajo de COVERAGE.md queda en un solo proyecto de producto**: `App.Uno` — su mutación natural llega cuando el lienzo de la fase 3.1 tenga comportamiento propio que probar.
+- Pendiente del tramo intacto: fase 3.1 del plan Uno con la guardia de proyección en pie (hito 217).
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-220 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Integrations Entra al Mapa: el Stderr del CLI que se Desvanece (Hito 219)
+
+### 🎯 El encargo
+
+«Declara la mutación de Integrations (candidato: `CliExecutionNode` y su captura de stderr en exit code no cero) con testigo y control, y verifica que muerde.» Segundo subsistema de la lista de trabajo de [`COVERAGE.md`](file:///mutations/COVERAGE.md) en dos sesiones.
+
+### 🧬 La mutación: el stderr que se desvanece
+
+[`stderr-del-cli-que-se-desvanece`](file:///mutations/stderr-del-cli-que-se-desvanece.json) muta el **`CliExecutionNode`** (plugin Integrations) quitándole la línea que guarda el stderr del proceso en la metadata del elemento (`item.Metadata["Cli:StdErr"]`). El defecto que declara es el de diagnóstico clásico: con la línea fuera, el nodo **sigue saliendo por `Failed`** (el fallo se ve), **sigue guardando el exit code** (el número se ve) y **sigue escribiendo el stderr en su registro** (el log lo dice en el momento) — pero la metadata del elemento queda **sin la causa**, y quien la consuma aguas abajo (una notificación, un reporte, un renombrado con el motivo) no tiene el porqué.
+
+- **Testigo**: `CliExecutionNode_WhenExitCodeNonZero_ShouldEmitFailedAndCaptureStdErr` — afirma las dos mitades del contrato de fallo: el elemento sale por `Failed` **y** la metadata lleva el stderr del proceso (`Cli:ExitCode=7`, `Cli:StdErr` contiene "fatal error").
+- **Control**: `PdfTextExtractorNode_ExtractsTextSuccessfully` — el testigo de la mutación de Documents (hito 218), en otro plugin y sin relación con el runner de procesos: el mutante rompe la captura del CLI, no la extracción de PDF.
+- **Veredicto: MUERDE** — testigo rojo 1 de 1, control verde, árbol restaurado por bytes y recompilado.
+
+### 📊 Cobertura publicada
+
+`COVERAGE.md` regenerado por su guardia: **40 mutaciones**, **13 de 17 subsistemas** — `Plugin.Integrations` sale de la lista de huecos; quedan `App.Uno` y `Network`.
+
+### ✅ Validación
+
+- Suite completa → **1793 superadas + 1 omitida de 1794**, 0 errores, 2 m 35 s.
+- `docs/notas_de_version.md` no cambia: el candado no es visible para quien usa el producto.
+
+### 📌 Notas para la siguiente sesión
+
+- Quedan **dos** proyectos sin mutación: `Network` (sus cinco protocolos en dry-run son testigos baratos) y `App.Uno` (natural tras las fases del lienzo, cuando tenga comportamiento propio).
+- Pendiente del tramo intacto: fase 3.1 del plan Uno con la guardia de proyección en pie (hito 217).
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-219 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Documents Entra al Mapa de Mutaciones: el Texto del PDF que se Olvida (Hito 218)
+
+### 🎯 El encargo
+
+«Cubre con mutación otro de los cuatro subsistemas restantes (Documents, Integrations, Network o App.Uno) con testigo que muerda.» La lista de trabajo de [`COVERAGE.md`](file:///mutations/COVERAGE.md) llevaba Documents sin ninguna mutación declarada desde que el mapa existe.
+
+### 🧬 La mutación: el texto que se olvida
+
+[`texto-del-pdf-que-se-olvida`](file:///mutations/texto-del-pdf-que-se-olvida.json) muta el **`PdfTextExtractorNode`** (plugin Documents) quitándole la línea que guarda el texto extraído en la metadata del elemento (`item.Metadata["PdfText"]`). El defecto que declara es el silencioso por antonomasia: el nodo sigue recorriendo el PDF **página a página** (coste real), sigue midiendo páginas y palabras, sigue emitiendo el elemento por `Out` — y la metadata queda **sin el texto**. La búsqueda semántica, la exportación y el `.txt` opcional que el nodo puede escribir salen vacíos de contenido, y **nadie se entera**: es un nodo que emite lo que toca pero con el equipaje a medias.
+
+- **Testigo**: `PdfTextExtractorNode_ExtractsTextSuccessfully` — ejecuta la extracción sobre un PDF real con texto conocido y afirma que la metadata del elemento lo lleva.
+- **Control**: `PdfSplitNode_SplitsMultiplePagePdf` — otro nodo del mismo plugin, que no depende de la línea mutada: el mutante rompe el extractor, no el corte.
+- **Veredicto: MUERDE** — testigo rojo 1 de 1, control verde, árbol restaurado por bytes y recompilado.
+
+### 📊 Cobertura publicada
+
+`COVERAGE.md` regenerado por su guardia: **39 mutaciones**, **12 de 17 subsistemas** — `FileFlow.Plugin.Documents` sale de la lista de huecos; quedan `App.Uno`, `Integrations` y `Network`.
+
+### ✅ Validación
+
+- Suite completa → **1793 superadas + 1 omitida de 1794**, 0 errores, 2 m 24 s.
+- `docs/notas_de_version.md` no cambia: el candado que esta mutación sostiene no cambia nada que quien usa el producto pueda ver.
+
+### 📌 Notas para la siguiente sesión
+
+- Quedan **tres** proyectos sin mutación: `App.Uno` (natural tras las fases del lienzo, cuando tenga comportamiento propio que probar), `Integrations` (candidato nítido: `CliExecutionNodeExhaustiveTests` tiene testigos de exit code no cero y de timeout, como el que ya muerde `CliExecutionNode_WhenExitCodeNonZero_ShouldEmitFailedAndCaptureStdErr`) y `Network` (sus cinco protocolos en dry-run).
+- Pendientes del tramo intactos: fase 3.1 del plan Uno con la guardia de proyección ya en pie (hito 217).
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-218 sigue en el árbol.
+
+---
+
+## [2026-09-25] - La Proyección del Host Uno, Blindada Antes de su Primer Enlace (Hito 217)
+
+### 🎯 El encargo
+
+«Extiende la defensa de proyección al host Uno desde ahora: la regla de [`uno_canvas_plan.md`](file:///docs/uno_canvas_plan.md) exige que cada enlace de geometría del XAML Uno lleve su conversor; escribe la guardia de literales equivalente **antes de que exista el XAML**.» La diferencia con el 211 es el orden: allí la guardia nació para curar ocho enlaces muertos; aquí nace cuando el host tiene **cero** enlaces de geometría — la única ventana para blindar una regla sin excepciones históricas.
+
+### 🧱 Lo que se escribió
+
+- **[`UnoPointProjection`](file:///FileFlow.App.Core/Services/UnoPointProjection.cs)** (Core, portable): la mitad de la traducción que no necesita WinUI — `ToUno` devuelve el par (X, Y) que el host envuelve en `Windows.Foundation.Point`, y `ToSdk` el viaje de vuelta. El núcleo sigue sin conocer tipos de ventana de ninguna plataforma.
+- **[`UnoPointConverter`](file:///FileFlow.App.Uno/Platform/UnoPointConverter.cs)** (host): el envoltorio `IValueConverter` de WinUI que cita el XAML (`conv:UnoPointConverter.Instance`), hermano del `SdkPointConverter` del host Avalonia; toda la matemática vive en el núcleo.
+- **[`UnoGeometryBindingScanner`](file:///FileFlow.Tests/TestHelpers/UnoGeometryBindingScanner.cs)** + **[`UnoGeometryBindingGuardTests`](file:///FileFlow.Tests/Unit/App/UnoGeometryBindingGuardTests.cs)**: el censo del XAML del host — 8 propiedades de geometría censadas (Location, Anchor, Source, Target, ViewportLocation, TargetLocation y las dos del spotlight), con la prueba del árbol real (hoy: cero enlaces, la regla sin excepciones) y 11 auto-tests sintéticos que delatan cada forma de escribir un enlace sin conversor y aceptan cada una con él. El escáner es por **propiedad**, no por fichero: un enlace nuevo en un XAML de la fase 3.1 cae en el censo esté donde esté.
+
+### 🧬 La mutación
+
+[`proyeccion-uno-sin-guardia`](file:///mutations/proyeccion-uno-sin-guardia.json) le cambia el literal del conversor al escáner por uno que nunca casa. **MUERDE**: testigo rojo **3 de 13** (las Theory de aceptación pasan a delatarse), control verde **8 de 8** (la regla del portapapeles del contrato de colecciones, que no comparte el escáner). Con ella, **38 mutaciones** declaradas.
+
+### ✅ Validación
+
+- 13 pruebas nuevas en verde; suite completa → **1793 superadas + 1 omitida de 1794** (+13), 0 errores.
+- `FileFlow.App.Uno` compila con el conversor (0 errores) — el host ya tiene a quién citar cuando la fase 3.1 escriba el primer enlace.
+- `COVERAGE.md` regenerado por su guardia; el plan tiene el riesgo #1 actualizado con su defensa activa.
+
+### 📌 Notas para la siguiente sesión
+
+- **Fase 3.1 lista para empezar con la regla ya en pie**: el primer enlace de geometría del `EditorCanvasControl` se escribe con su conversor o la suite sale roja en el árbol — nunca más un lienzo vacío como síntoma.
+- El censo cubre las propiedades conocidas; si la fase 3.1 introduce una propiedad de geometría nueva en un VM, hay que añadir la propiedad a `UnoGeometryBindingScanner.GeometryProperties` (la guardia del árbol real no la cazaría, pero las pruebas de bindings del estilo del 215 sí por su efecto).
+- Quedan sin mutación: `App.Uno`, Documents, Integrations, Network.
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-217 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Fase 3.0 del Plan Uno: la Geometría del Cable y del Encuadre, Pura y Probada (Hito 216)
+
+### 🎯 El encargo
+
+«Ejecuta la fase 3.0 del plan de [`uno_canvas_plan.md`](file:///docs/uno_canvas_plan.md): `ConnectionGeometry` en Core con sus pruebas y las que le faltan a `EditorViewportCalculator`.» Es la fase que no pinta nada y desbloquea todo lo demás: la matemática que el host Uno necesitará para dibujar **el mismo cable** que el escritorio y para encuadrar igual.
+
+### 🔎 La medición que corrigió el propio plan
+
+El plan decía «segmentos del cable en escalón (el estilo `Spacing=45, Direction=Forward`)» — y estaba **mal**: la fuente de Nodify (leída para no transcribir de memoria) muestra que la clase `Connection` que el XAML usa **no es un escalón sino una Bézier cúbica** (`GetBezierControlPoints`): cuello = `max(min(100, alto), ancho/2)`, con techo `100 + √(ancho·25)`, saliendo horizontal del socket. Un escalón habría sido la geometría de **otro** control (`StepConnection`), y el host Uno habría dibujado cables que no son los del escritorio. La clase transcribe el algoritmo real, con sus dos constantes privadas (`_baseOffset=100`, `_offsetGrowthRate=25`) y su porqué al lado.
+
+### 🧮 Lo que se escribió
+
+- **[`ConnectionGeometry`](file:///FileFlow.App.Core/Services/ConnectionGeometry.cs)** (nuevo, en Core): anclas de control de la curva, interpolación (`Interpolate`), tangente (`Tangent`, la derivada de la Bézier, para las flechas direccionales) e **hit-testing** (`DistanceTo` por muestreo uniforme — un clic no necesita la distancia exacta, sí no falsar ni el dentro ni el fuera). Puro, en `Sdk.Point`, cero dependencias de framework.
+- **13 pruebas** (`ConnectionGeometryTests`) con valores esperados **calculados a mano y clavados**, no re-transcritos (un espejo del código sólo probaría que el código es igual a sí mismo): horizontal, vertical, invertido (destino a la izquierda), `Backward`, nodos pegados (el cuello se suaviza), nodos lejanos (el cuello crece con la raíz), spacing propio, interpolación en los extremos y el medio de una simétrica, tangente en los dos cabos y hit-testing dentro/fuera de tolerancia en cables horizontales y verticales.
+- **11 pruebas** (`EditorViewportCalculatorTests`) para el calculador que desde el 211 no tenía ninguna: `CenterOn` (el centro exacto, el zoom actual, zoom cero, tarjeta sin medir) y `CalculateFitToScreen` (grafo vacío, grafo mínimo, ancho mandando, alto mandando con el suelo de 0.3, la **promesa de visibilidad** verificada en espacio de grafo, y la coherencia entre las dos mitades).
+
+### 💡 Los hallazgos que las pruebas fijaron
+- **El techo de zoom (1.8) es inalcanzable** para «ajustar a pantalla»: el alto de referencia de la tarjeta (220) fija el suelo del escalado vertical (380/220 ≈ 1.727). La prueba lo deja escrito: si algún día se quiere acercar más con la «Z», la cura está en el calculador, no en la prueba.- **La decisión de anclas quedó escrita en el plan** (era pendiente de la fase): en Uno, el lienzo calculará `PortViewModel.Anchor` en espacio de grafo con la misma regla que Nodify usa en Avalonia (socket medido → convertida con `ViewportLocation`/`ViewportZoom` → escrita OneWayToSource), sin redondeo — los redondeos del calculador son sólo de presentación. El write-back ya está demostrado vivo por `GeometryBindingProjectionTests` (hito 215).
+
+### 🧬 La mutación
+
+[`cable-con-la-curva-al-reves`](file:///mutations/cable-con-la-curva-al-reves.json) invierte el signo del cuello de salida: la curva se dobla hacia atrás sobre la tarjeta que la emite (el defecto clásico de los editores de nodos) y el hit-testing muerde en el sitio equivocado. **MUERDE**: testigo rojo **6 de 13** (las anclas clavadas y la tangente), control verde **11 de 11** (el encuadre, que no comparte ese cálculo). Con ella, **37 mutaciones** declaradas — y la clase nueva ya tiene demostrado que sus pruebas muerden.
+
+### ✅ Validación
+
+- Las 24 pruebas nuevas en verde (13 + 11, 381 ms).
+- Suite completa → **1780 superadas + 1 omitida de 1781** (+24), 0 errores. Una primera pasada cayó en **un fallo intermitente** (carga paralela, el patrón conocido de `EngineFirstRun`/`NodeClipboard`) que **no se repitió** en la pasada de confirmación; el nombre no llegó a capturarse, y queda anotado como flake aislado, no como regresión.
+- `mutations/COVERAGE.md` regenerado por su guardia: 37 mutaciones.
+- El plan queda con la fase 3.0 marcada **HECHA** y su criterio de salida cumplido (cero líneas en `FileFlow.App.Uno`: la geometría es del núcleo).
+
+### 📌 Notas para la siguiente sesión
+
+- **Fase 3.1 lista para empezar** (lienzo estático en el host Uno): `EditorCanvasControl` + la traducción de `NodeCardView.axaml` (559 líneas, el trozo más gordo) + cables dibujados con `ConnectionGeometry` — la clase que hoy sólo pinta Nodify.
+- El flake aislado de esta pasada suma al patrón ya anotado en el 213: si repite con nombre identificado, merece su colección exclusiva o su asentamiento.
+- Quedan sin mutación: `App.Uno`, Documents, Integrations, Network (lista de trabajo de COVERAGE.md).
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-216 sigue en el árbol.
+
+---
+
+## [2026-09-25] - La Prueba que Defiende la Cura del 211: los Bindings de Geometría Ejecutados, no leídos (Hito 215)
+
+### 🎯 El encargo
+
+«Añade un test que ejecute los bindings de geometría del editor y falle si algún `Sdk.Point` vuelve a quedarse sin convertir, para que la cura del hito 211 no se pueda romper en silencio.» El defecto de entonces —los ViewModels del grafo hablan `Sdk.Point`, Nodify habla `Avalonia.Point`, la app compila enlaces por reflexión y el conversor por defecto no traduce— mató **ocho enlaces en silencio**: las tarjetas se amontonaron en (0,0), los cables desaparecieron y el único síntoma fue una captura visual al 15 %. Esta prueba convierte ese silencio en rojo inmediato.
+
+### 🧪 La prueba: [`GeometryBindingProjectionTests`](file:///FileFlow.Tests/Unit/Views/GeometryBindingProjectionTests.cs) (5 casos, en la colección exclusiva de capturas)
+
+Monta el editor **de verdad** (dos nodos conectados cargados por `LoadFromGraphModel`, ventana headless con el `EditorView` completo) y ejecuta las **tres mitades del flujo de datos de geometría**:
+
+- **VM → control**: la `Location` de cada nodo aterriza convertida en su `ItemContainer` de Nodify.
+- **Control → VM**: el `ViewportLocation` viaja en los dos sentidos (TwoWay) y —el hallazgo de esta sesión— el **write-back de anclas es vivo**: el ancla que Nodify calcula aterriza en el `PortViewModel` convertida a `Sdk.Point` **y sigue al nodo cuando se mueve** (la primera versión del test intentaba escribir el ancla a mano y el binding se la pisaba al instante: la cura funciona tan bien que la prueba tuvo que plegarse a ella).
+- **Los extremos del cable**: `Source` y `Target` de la `Connection` de Nodify pintan las anclas convertidas de sus dos puertos.
+- **El censo estático**: los ocho enlaces del 211 deben llevar el conversor en su literal, y los dos estilos de `Location` del editor son exactamente dos.
+
+La expectativa se calcula con **el mismo conversor que el XAML usa** (`SdkPointConverter.Instance`), no con una copia: el test defiende la traducción del enlace, no su réplica.
+
+### 🧬 La mutación que lo demuestra
+
+[`enlace-de-geometria-sin-proyeccion`](file:///mutations/enlace-de-geometria-sin-proyeccion.json) quita el conversor a los dos estilos de `Location` (declara `count: 2` — el andamiaje rechazó la primera declaración por ambigüedad, que es lo que debe hacer). **MUERDE en 35,3 s**: testigo rojo **3 de 5** (las dos aserciones de posición y el censo estático), control verde (`TheConnectionTemplate_ShouldDefineStandardConnectionWire`, el contrato del cable, que exige su propio enlace con conversor). Con ella, **36 mutaciones** declaradas.
+
+### ✅ Validación
+
+- Suite completa → **1756 superadas + 1 omitida de 1757** (+5), 0 errores, 2 m 24 s.
+- `mutations/COVERAGE.md` regenerado por su guardia.
+- `docs/notas_de_version.md` no cambia: la defensa no es visible para quien usa el producto.
+
+### 📌 Notas para la siguiente sesión
+
+- El censo estático cubre los enlaces conocidos; un XAML **nuevo** con enlaces de geometría no estará en él — las pruebas en caliente de esta clase sí lo cazarían por su efecto, y el censo de la clase dice dónde añadirlo.
+- Pendientes del tramo intactos: fase 3.0 del plan Uno (`ConnectionGeometry` + pruebas del calculador) y las mutaciones de `App.Uno`/Documents/Integrations/Network.
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-215 sigue en el árbol.
+
+---
+
+## [2026-09-25] - La Primera Mutación del Núcleo Portable: el Latido que Rearrancado no Late (Hito 214)
+
+### 🎯 El encargo
+
+«Declara la primera mutación para `FileFlow.App.Core` en `mutations/`, con testigo que la muerda y control verde, y regenera `COVERAGE.md`.» Es la cabeza de la lista de trabajo que los hitos 211 y 213 dejaron escrita en la sección de huecos de [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md): el núcleo portable llevaba dos tramos sin ningún defecto declarado que demostrara que sus pruebas muerden.
+
+### 🧬 La mutación: el temporizador huérfano
+
+[`latido-rearrancado-que-no-late`](file:///mutations/latido-rearrancado-que-no-late.json) muta **`HeartbeatService.Beat.Stop()`** —la única fontanería de latidos del producto, en `FileFlow.App.Core`— quitándole la asignación a null tras desechar el temporizador. El defecto que declara es fino y real: `Stop()` **desecha** el temporizador pero lo deja en el campo, así que `IsRunning` sigue diciendo true sobre un temporizador muerto y el `??=` de `Start()` **nunca recrea el temporizador**: un latido parado y rearrancado queda **muerto para siempre**. En el producto, el latido visual de la ejecución se para y se rearranca en cada ejecución — la segunda ejecución no pintaría fotogramas, sin un solo error en el log.
+
+La elección del fragmento tiene su porqué escrito: la guardia de contratos (`ApplicationHeartbeatContractTests`) exige el literal `_timer?.Dispose();` en ese fichero, así que mutar **ese** literal habría convertido cualquier control de la misma guardia en una medición imprecisa. Mutar la **otra** línea del cuerpo deja el literal de la guardia intacto y el que muerde es la prueba de comportamiento — exactamente la historia que este andamiaje existe para contar.
+
+- **Testigo**: `AStoppedBeat_ShouldStopDelivering_AndResumeWhenStartedAgain` — afirma las dos mitades del defecto (`IsRunning` vuelve a false al parar; el rearrancado vuelve a entregar) con reloj manual y despachador de cuenta.
+- **Control**: `TheRegistry_ShouldNotAdmitTwoBeatsWithTheSameName` — otro camino del mismo servicio (la validación de `Declare`), que no pasa por `Stop`.
+- **Veredicto: MUERDE en 32,4 s**, testigo rojo 1 de 1, control verde, árbol restaurado por bytes y recompilado.
+
+### 📊 Cobertura publicada
+
+`COVERAGE.md` regenerado por su guardia: **35 mutaciones**, **11 de 17 subsistemas** — `FileFlow.App.Core` sale de la lista de proyectos sin ninguna; quedan `FileFlow.App.Uno`, Documents, Integrations y Network.
+
+### ✅ Validación
+
+- Suite completa → **1751 superadas + 1 omitida de 1752**, 0 errores, 2 m 22 s.
+- `mutations/COVERAGE.md` regenerado con el mecanismo sancionado (`FILEFLOW_UPDATE_MUTATION_COVERAGE=1`), no a mano.
+- `docs/notas_de_version.md` no cambia: el candado que esta mutación sostiene no es visible para quien usa el producto.
+
+### 📌 Notas para la siguiente sesión
+
+- La lista de trabajo de `COVERAGE.md` queda en **4 proyectos** sin mutación; el siguiente natural es `FileFlow.App.Uno` (cuando su host tenga comportamiento propio que probar, tras las fases del lienzo) o los plugins con hueco (Documents, Integrations, Network).
+- Pendientes del tramo intactos: fase 3.0 del plan Uno (`ConnectionGeometry` + pruebas del calculador).
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-214 sigue en el árbol.
+
+---
+
+## [2026-09-25] - El Portapapeles del Proceso Entra al Contrato de Colecciones (Hito 213)
+
+### 🎯 El encargo
+
+«Investiga el flakiness de paralelismo que apareció en `EngineFirstRunTests` y `NodeClipboardServiceTests` y aplícales colección exclusiva si procede, como el banco de ejemplos.» Es el pendiente que el hito 211 dejó escrito: dos fallos intermitentes durante el cierre de esa sesión, verdes en aislado y en la pasada final.
+
+### 🔎 La investigación: un diagnóstico se desmonta y otro se confirma midiendo
+
+- **`EngineFirstRunTests` ya estaba en colección exclusiva.** El encargo asumía que le faltaba; la medición dijo que no: declara `EngineFirstRunCollection` (`DisableParallelization = true`) desde el hito que la creó. Su flake ocurrió **dentro** de la exclusividad, así que «añadir la colección» no era una cura disponible. Lo que sí era real: la exclusividad impide que corran otras *pruebas*, no que el proceso termine de pagarse el residuo de la tormenta paralela del resto del suite (basura por recolectar, finalizadores, continuaciones en el grupo de hilos) — y la única aserción de reloj de pared de la prueba es exactamente lo que un residuo así puede torcer. Cura aplicada: **asentar antes de medir** (GC completo + pausa corta), sin debilitar ninguna aserción.
+- **El hallazgo colateral**: el analizador del contrato de colecciones **no conocía** `EngineFirstRunCollection` — no estaba en su censo de exclusivas ni en el mapa de definiciones. Una clase hipotética en esa colección que tocara otro estado global habría sido marcada como infractora por error. Corregido de paso.
+- **`NodeClipboardServiceTests` sí tenía el mecanismo, y no era el que parecía**: el servicio no tiene buffer estático — lo que tiene el proceso es **el portapapeles**. `NodeClipboardService.Copy` escribe el paquete vía `HostUi.SetClipboardText` (en pruebas, el singleton `NullClipboardService.Instance`: **estado global de proceso**) y `Paste` lo **lee primero del portapapeles global**, dejando la copia en memoria sólo como respaldo. Dos pruebas paralelas que copien y peguen a la vez pueden pegar el paquete de la vecina. El fallo capturado en vivo (quinta pasada de la investigación) lo dijo literalmente: `NodeTitleCustomizationTests` esperaba pegar **1 nodo y encontró 2** — el paquete de la vecina `MultipleConnectedNodes`, que copia 2.
+- **Alcance medido**: **cinco clases** ejercitan Copy/Paste sin colección (`NodeClipboardServiceTests`, `NodeTitleCustomizationTests`, `ClipboardDroppedConnectionsTests`, `DynamicPortsOnReloadTests`, `LostConnectionTracesTests`); ninguna prueba visual simula Ctrl+C/V, así que el cerco cierra con esas cinco.
+
+### 🧪 La cura, por el contrato que ya existe
+
+- **Colección exclusiva nueva** [`NodeClipboardCollection`](file:///FileFlow.Tests/Unit/App/NodeClipboardCollection.cs) (`DisableParallelization = true`) y las cinco clases dentro. El estado que confina es del mismo tipo que el del banco de ejemplos: un recurso del proceso que todos comparten.
+- **Regla nueva en el analizador** (`ExclusiveTestState.ProcessClipboard`) con siete patrones: las llamadas `Copy/Paste/CanPaste/Duplicate` en las dos formas que aparecen (`clipboard.*` y `ClipboardService.*`) y los comandos `PasteNodes`/`DuplicateSelectedNodes` del editor. La guardia barre el árbol: una clase nueva que empiece a copiar y pegar sin declarar la colección sale roja **en su fichero**, no como fallo ajeno a mitad del suite.
+- **Nueve auto-tests** en `TestCollectionContractGuardTests` (una Theory de 8 usos + el positivo de la colección): la lógica queda probada contra snippets sintéticos, como las cinco reglas anteriores.
+- **`TestAssemblyParallelism.cs`** documenta el sexto estado confinado.
+
+### 🧬 La mutación
+
+[`portapapeles-sin-vigilante`](file:///mutations/portapapeles-sin-vigilante.json) es **nueva**: le cambia el patrón a la regla del portapapeles por uno que nunca casa. **MUERDE** en **28,5 s**, testigo rojo **4 de 28** — exactamente los cuatro auto-tests que delatan por `clipboard.*`; los otros cuatro usos siguen delatados por sus patrones hermanos (`ClipboardService.*` y comandos), lo que hace al mutante **preciso**: rompe la regla, no el analizador—, control verde (otra regla del mismo analizador). Con ella, **34 mutaciones** declaradas y la guardia del contrato sostiene dos.
+
+### ✅ Validación
+
+- Suite completa → **1751 superadas + 1 omitida de 1752** (+9: los ocho auto-tests nuevos y el hueco del conteo que los trae), **0 errores**, 2 m 19 s.
+- Las cinco clases movidas: **67 pruebas verdes** junto a la guardia en la misma pasada.
+- `mutations/COVERAGE.md` regenerado por su guardia: **34 mutaciones**, 10 de 17 subsistemas, y las mutaciones de infraestructura de pruebas pasan de 4 a **5**.
+- **`docs/notas_de_version.md` no cambia**, decidido y escrito: este tramo no altera nada que quien usa el producto pueda ver ni tocar — es el candado que impide que el candado del suite se vuelva a abrir en silencio.
+
+### 📌 Notas para la siguiente sesión
+
+- **El diagnóstico de `EngineFirstRunTests` queda escrito en la propia prueba**: si vuelve a caer en suite completa, el sospechoso ya no es la colección (la tiene) sino el residuo del proceso — y el asentamiento puede necesitar subir la pausa, no tocar la aserción.
+- **`NodeClipboardService.Paste` leyendo primero el portapapeles global** es una decisión del producto que el suite ahora confina pero no juzga: en el host real, copiar en otra instancia de la aplicación y pegar en esta **es** el comportamiento deseado; el contracto de pruebas lo aísla porque en pruebas no hay «otra instancia», hay vecinas. Si algún día se quiere un portapapeles por-editor, el write-back de anclas del plan Uno (fase 3.3) es el sitio natural para discutirlo.
+- Quedan pendientes de este tramo: la fase 3.0 del plan Uno (`ConnectionGeometry` + pruebas del calculador) y las mutaciones de `FileFlow.App.Core`/`FileFlow.App.Uno` (siguen en la lista de trabajo de COVERAGE.md).
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-213 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Plan de la Rebanada 3 de la Migración a Uno: el Lienzo del Editor Decide su Camino (Hito 212)
+
+### 🎯 El encargo
+
+«Arranca la rebanada 3 de la migración Uno: decide cómo pintar el lienzo del editor en el host Uno —el control Nodify de Avalonia no existe ahí— y deja un plan escrito antes de tocar código.» Es la pendiente que el hito 211 escribió en sus notas: el host Uno ya tiene el núcleo vivo (descubre nodos, resuelve el `MainViewModel`), pero la vista donde el usuario edita el grafo no existe en ese host.
+
+### 🔎 Lo que se midió antes de decidir
+
+- **La superficie del contrato ya existe y está probada**: el inventario de lo que el lienzo consume (`Nodes`/`Location`/`Width`, `Connections` con el `Anchor` **escrito por la vista**, `PendingConnection`, `ViewportLocation/Zoom` TwoWay, `CanvasDecorators`, los comandos de conexión y de viewport) está en [`docs/uno_canvas_plan.md`](file:///docs/uno_canvas_plan.md) §2.1 — es la superficie pública de `EditorViewModel` y sus hijos en `FileFlow.App.Core`.
+- **Lo que Nodify hacía gratis** y habría que reemplazar: área infinita con pan/zoom, posición de contenedores, **cálculo de anclas de puertos** (el write-back `OneWayToSource`), enrutado de cables (`Spacing=45, Direction=Forward`), cable pendiente con snapping, hit-testing de cables y rubber band. Siete piezas (§2.2).
+- **Prior art, con búsqueda**: Nodify (WPF) y Nodify.Avalonia son MIT y no tienen puerto a WinUI/Uno; la búsqueda de un «node editor» para WinUI/Uno no devuelve ninguna librería mantenida. **No hay atajo de terceros**.
+- **Dos hallazgos de medición propios**: (1) `EditorViewportCalculator` —la geometría de encuadre que ya es portable— **no tiene una sola prueba** (el suite no lo referencia); (2) el lienzo consume ~20 tokens vía `DynamicResource`, que **no existe en WinUI/Uno** (`ThemeResource`/`CustomResource` no se refrescan solos): la republicación en caliente de temas necesita su equivalente Uno.
+
+### ✅ La decisión: lienzo propio en el host Uno (Opción B), con la geometría compartida en Core
+
+Las tres opciones, con su coste escrito en el plan: **(A) portar Nodify.Avalonia** a Uno —meses acoplados a las internas de un tercero, el coste de la B multiplicado por el acoplamiento—, **(B) lienzo propio** en el host sobre el contrato portable —`Canvas` + transforms + `ItemsControl`, con la lógica ya en Core— y **(C) todo en Skia** —control total pero tercera pila de render, hit-testing, IME y accesibilidad a mano; queda como **salida de emergencia de rendimiento**, no como camino. Gana la **B**: sin dependencia nueva, el host sólo hace render + input (que es lo que un host debe hacer), y el host Avalonia **no cambia una línea** — la rebanada no arriesga el escritorio que funciona. La matemática que el lienzo necesita (enrutado en escalón, anclas, encuadre) es pura y por tanto portable: va a Core con sus pruebas.
+
+### 📋 El plan
+
+[`docs/uno_canvas_plan.md`](file:///docs/uno_canvas_plan.md): contrato (sin interfaz nueva — extraer `IEditorCanvasView` hoy sería abstraer contra un solo consumidor; si la fricción lo pide, entonces), **seis fases** con criterio de salida medible cada una (3.0 geometría pura y pruebas del calculador → 3.1 lienzo estático → 3.2 selección/arrastre/teclado → 3.3 puertos y cables vivos con el write-back de anclas → 3.4 decoradores y servicios → 3.5 temas y localización → 3.6 cierre con rendimiento medido sobre el grafo de referencia), seis riesgos con mitigación (encabezado: **los bindings de geometría mueren en silencio** — la lección del 211 aplica por host, con su `UnoPointProjection` y guardia de literales) y lo que el plan **no** hace (no toca Avalonia, no añade dependencias a Core, no promete fechas).
+
+### ✅ Validación
+
+Cero líneas de código tocadas: la rebanada es una decisión y su documento. Suite intacta (**1742 + 1 omitida de 1743**, la del hito 211). El host Avalonia no cambia; sus baselines siguen intactas.
+
+### 📌 Notas para la siguiente sesión
+
+- **Fase 3.0 lista para empezar**: `ConnectionGeometry` en Core con sus pruebas + las pruebas que `EditorViewportCalculator` no tiene. Es la fase que no pinta nada y desbloquea todo lo demás.
+- **El font Material Design Icons** como recurso del host (los iconos de la tarjeta y la toolbox) es de las primeras decisiones de la 3.1.
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y la migración de los **98** `HelpText` literales.
+- **Sin commits**: todo el trabajo de los hitos 198-212 sigue en el árbol.
+
+---
+
+## [2026-09-25] - Rebanada 2 de la Migración a Uno Platform: el Núcleo Portable `FileFlow.App.Core` (Hito 211)
+
+### 🎯 El encargo
+
+«Continúa la migración a Uno Platform: extrae la capa portable —ViewModels y servicios sin Avalonia— a un nuevo proyecto `FileFlow.App.Core` compartido por los hosts Avalonia y Uno.» Es la segunda rebanada del tramo abierto en la rebanada 1 (proyecto `FileFlow.App.Uno` de pie): el host Uno no podía referenciar `FileFlow.App` entero porque dentro conviven la lógica del editor (portable) y las vistas (Avalonia).
+
+### ✂️ La extracción, por convención y no por heroísmo
+
+Los ficheros movidos **conservan sus namespaces** (`FileFlow.App.Services`, `FileFlow.App.ViewModels`, `FileFlow.App.Models`): ni los llamadores ni el XAML se enteran de que la DLL cambió. Se mueven ViewModels completos, los servicios sin Avalonia (ThemeManager, CustomThemeService, HeartbeatService, NodeClipboardService, WorkflowExecutionCoordinator, WorkflowGraphSerializer, PluginRegistryHelper, ServiceHolders, VariablePickerRequest, NodeCategoryStyling, EditorViewportCalculator…), Collections, Models, Messages, `Preview/FilePreviewContext`, `Themes/ThemeDefinition` y `Resources/builtin_themes.json`. Tres piezas merecen su porqué:
+
+- **`PluginRegistryHelper` no puede vivir en `FileFlow.Core`**: Core no referencia plugins (sería circular), así que vive en Core-App (`Services/PluginRegistryHelper.cs`) y se borra el duplicado que quedó en App y el `UnoPluginRegistry.cs` del host Uno.
+- **Los puentes portables**: `HostUi` (dispatcher, portapapeles, color picker, dueño de ventana, previsualización, exportación de logs), `ThemeHostBridge` (publica variante y genera tokens), `CoreDialogHost` (servicios de diálogo) y `MainViewModelResolver`. El núcleo **declara la necesidad**; cada host **instala la respuesta** en el arranque.
+- **`ThemeManager` pierde su dependencia de Avalonia**: el estado y `ResolveThemeId` quedan intactos; publica vía `ThemeHostBridge` y desaparecen `ApplyResourceDictionary` y `CustomThemeService.BuildResourceDictionary` — **los tokens ahora los genera el host**, porque los diccionarios de recursos son un tipo del framework.
+
+`LivePreviewResources` de `ThemeCustomizerViewModel` pasa a `Dictionary<string, object?>` portable con evento nuevo `LivePreviewUpdated`: los structs se copian al salir del diccionario, así que **el host re-publica sus propios tokens** cuando cambia la vista previa (la ventana del personalizador filtra `CornerRadius` y `BoxShadows`, que sin eso se perdían —`RadiusSm` es `CornerRadius`—).
+
+### 🎨 El host Avalonia instala la mitad que le toca
+
+`AvaloniaThemeHost.Install()` conecta el puente: publica la variante en `Application.RequestedThemeVariant`, **republica los tokens del tema activo** en `app.Resources` (es lo que un `DynamicResource` ya evaluado —el `Foreground` de la splash— necesita para ver el pincel nuevo) y aplica el tema a las ventanas abiertas vía `WindowThemeHelper`. `App.axaml.cs` instala además los demás puentes (dispatcher, portapapeles, color picker, diálogos, exportador de logs, `MainViewModelResolver`) y `StartupFailureReporter` vuelve a apuntar a la ventana de error de arranque. `DialogKeys.AiModelUrlsConfig` entra al SDK y `AiModelManagerViewModel`/`NodeInspectorViewModel` ganan un `IWindowService?` opcional para pedir el diálogo sin conocer la vista.
+
+### 🐛 El defecto que la suite cazó al final: los puntos que ya no hablan el idioma del framework
+
+Con la capa extraída, **las capturas del shell perdieron los nodos del lienzo** (la nota y el grupo se pintaban; las tarjetas amontonadas en (0,0) y las conexiones ausentes; `InputInteractionTests` en rojo porque sin nodo seleccionable no hay F2 ni Delete). El diagnóstico: `AvaloniaUseCompiledBindingsByDefault=false` en la app, así que los enlaces resuelven por reflexión, y **el conversor por defecto de Avalonia no convierte `FileFlow.Sdk.Point` en `Avalonia.Point`** — y los ViewModels del grafo ahora hablan en `Sdk.Point`. Los ocho enlaces de geometría (`ItemContainer.Location` ×2, `ViewportLocation`, `Connection.Source/Target`, `SourceAnchor` y los dos `Anchor` de los sockets) quedaban muertos en silencio. La cura es la proyección explícita que ya usaba el code-behind (`SdkPointProjection`), ahora también en el XAML: **`SdkPointConverter`** en `Converters/GraphConverters.cs` aplicado a los ocho enlaces. El contrato visual no cambió — `NodeCardVisualContractTests` actualiza sus literales a los enlaces con conversor y las **baseline visuales no se regeneraron**: era regresión de migración, no cambio de diseño.
+
+### 🧪 Guardias y cobertura
+
+- **`AppCoreFreeOfUiFrameworkGuardTests`** (nueva, 3 pruebas): el núcleo portable no referencia ni paquetes ni ensamblados de ningún framework de UI, y **los dos hosts** (Avalonia y Uno) lo referencian. Junto a la ya existente `UnoHostFreeOfAvaloniaGuardTests` cierra el triángulo: núcleo puro, host Uno sin Avalonia, host Avalonia sin Uno.
+- **`ThemeVariantPropagationTests`** fija la cadena de tres eslabones del puente de temas (núcleo → host → app/ventanas) con sus literales.
+- `AvaloniaTestHelper.PrepareApplication` instala `AvaloniaThemeHost` — sin eso, las pruebas visuales no reciben tokens (la causa raíz de muchos rojos intermedios).
+- **Rutas al día** en las guardias que leen fuentes: Heartbeat, DeferredWork, FlowFormat, NodeCard (`AppSourceFiles()` concatena ahora el árbol de Core).
+- [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado por su guardia: **33 mutaciones**, **10 de 17 subsistemas** — `FileFlow.App.Core` y `FileFlow.App.Uno` entran al mapa como los dos proyectos **sin ninguna mutación declarada todavía**; es la lista de trabajo del tramo.
+
+### ✅ Validación
+
+- Los cuatro proyectos compilan en verde: `FileFlow.App.Core`, `FileFlow.App`, `FileFlow.App.Uno`, `FileFlow.Tests`.
+- Suite completa → **1742 superadas + 1 omitida de 1743** (+5: las tres de la guardia del núcleo puro y las dos de la guardia del host Uno), **0 errores**, pasada final en 2 m 15 s.
+- Ocho rojos del arranque de sesión cerrados **uno a uno y con causa raíz**: `MutationDeclarationCoverageTests` (árbol nuevo → regenerar), las cuatro del shell (`SdkPointConverter`), las dos de interacción (la misma cura) y la de contrato de cables (literales al día). Las baselines visuales quedaron **intactas**.
+- Dos fallos intermitentes durante el cierre (`EngineFirstRunTests`, `NodeClipboardServiceTests`) **verdes en aislado y en la pasada final**: carga paralela, no regresión.
+- Host Uno verificado: `App.xaml.cs` con `AddFileFlowCoreServices()` + adaptadores Uno + `HostUi.Install(...)`; `MainWindow.xaml.cs` sondea la vida del núcleo (nodos descubiertos + `MainViewModel` resuelto, textos localizados con respaldo).
+
+### 📌 Notas para la siguiente sesión
+
+- **Rebanada 3 natural**: arrancar el host Uno en un SO real (Windows ya compila; faltan GTK/Linux y WebAssembly) y decidir qué hace falta para que `MainWindow` pinte el editor de verdad (el lienzo Nodify de Avalonia no existe en Uno: o se reescribe con los controles de Uno o se abstrae).
+- **Mutaciones pendientes en los proyectos nuevos**: `FileFlow.App.Core` y `FileFlow.App.Uno` están en la lista de trabajo de `COVERAGE.md` — un comportamiento que importe del núcleo portable (p. ej. la resolución de temas o el clip de nodos) merece su mutación con testigo.
+- **Flakiness de paralelismo observado dos veces** (`EngineFirstRunTests`, `NodeClipboardServiceTests`): vigilar; si repite, merece colección exclusiva como el banco de ejemplos.
+- Sigue abierto del producto: los flujos que prometen vídeo/audio/GIF (02, 11, 24, 36, 39, 40) y la migración de los **98** `HelpText` literales de los plugins.
+- **Sin commits**: todo el trabajo de los hitos 198-211 sigue en el árbol.
+
+---
+
 ## [2026-09-24] - La Carpeta de Salida del Flujo Vale una Carpeta en Cualquier Parámetro (Hito 210)
 
 ### 🎯 El encargo

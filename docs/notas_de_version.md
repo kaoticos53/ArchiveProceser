@@ -1,8 +1,8 @@
 # Notas de versión — FileFlow Studio
 
-**Versión 1.0.0 · compilación 5355 · 24 de septiembre de 2026**
+**Versión 1.0.0 · compilación 5779 · 25 de septiembre de 2026**
 
-Estas notas recogen **seis tramos**:
+Estas notas recogen **ocho tramos**:
 
 - **El del rediseño visual** (compilación 4743 → 5018): el aspecto, los estados de los controles, el arranque y
   la infraestructura de pruebas que lo sostiene. Son los apartados **1 a 3**.
@@ -25,10 +25,22 @@ Estas notas recogen **seis tramos**:
   declara ninguna—, qué pasa con los flujos que ya tenías guardados y qué se encontró al ir a hacerlo, incluida la
   carpeta de salida que no era una carpeta en manos de media docena de nodos. Cifras del tramo, medidas:
   **1719 → 1733 pruebas superadas** (1 omitida).
+- **El del núcleo portable** (apartado **9**): el que explica por qué **la aplicación se ve exactamente igual**
+  —y por qué eso es lo que se quería—: la lógica del editor vive ahora sin framework, en un núcleo compartido
+  por los dos hosts (escritorio y multiplataforma), con lo que se encontró al pasar (un lienzo que dejaba de
+  pintar los nodos y fallaba en silencio). Cifras del tramo, medidas: **1733 → 1742 pruebas superadas**
+  (1 omitida).
+- **El de la defensa en profundidad** (apartado **10**): el que explica por qué **la aplicación sigue viéndose
+  igual** y qué la sostiene ahora: cada comportamiento que importa tiene un defecto declarado que sus pruebas
+  matan — **28 → 41 declaraciones, las 41 mordiendo en la re-certificación final del catálogo** (la número 41,
+  el dry-run de red, completó la cobertura de todos los plugins) —, la geometría del editor vive en el núcleo
+  compartido y sus enlaces ya no pueden fallar en silencio en ninguno de los dos hosts, y el suite dejó de
+  mentir con fallos intermitentes de carga. Cifras del tramo, medidas: **1742 → 1800 pruebas superadas**
+  (1 omitida).
 
 Están escritas en dos mitades a propósito —**lo que ves** al usar la aplicación y **lo que no se ve** pero es lo
 que impide que lo primero se rompa sin que nadie se entere—. Todo lo que se afirma aquí está medido en el
-registro técnico ([`PROJECT_WALKTHROUGH.md`](PROJECT_WALKTHROUGH.md), hitos 169 a 205): las cifras salen de ahí,
+registro técnico ([`PROJECT_WALKTHROUGH.md`](PROJECT_WALKTHROUGH.md), hitos 169 a 222): las cifras salen de ahí,
 no de la memoria.
 
 ---
@@ -635,7 +647,90 @@ uno con ese nombre), y los archivos que comprimes no se tocan.
 
 ---
 
-## 9. Cómo verificarlo
+## 9. El tramo del núcleo portable (compilación 5362 → 5517)
+
+La aplicación **se ve exactamente igual** — y ese es el punto. Este tramo no cambia nada de lo que ves: separa
+**lo que la aplicación hace** de **con qué la pinta**, para que la misma aplicación pueda pintarse con otro
+framework (el trabajo multiplataforma hacia Uno Platform que empezó en la rebanada 1).
+
+### Lo que ves
+
+**Nada cambió a propósito.** El editor, los temas, el personalizador, el lienzo y sus cables se pintan píxel a
+píxel como antes — las capturas de referencia del producto **no se regeneraron**: siguieron siendo idénticas y
+las pruebas lo comprobaron. Si notas alguna diferencia, es un defecto y no una decisión.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **Un proyecto nuevo, `FileFlow.App.Core`, lleva ahora los ViewModels y los servicios sin framework.** Es la
+  lógica del editor —el grafo, los temas, el portapapeles de nodos, la coordinación de ejecución— viviendo sin
+  Avalonia, para que un segundo host (Uno) pueda montarla tal cual. Los hosts Avalonia y Uno comparten ese
+  núcleo, y una guardia impide que el núcleo vuelva a depender de un framework de ventanas.
+- **Donde la lógica necesita tocar la pantalla, declara la necesidad y el host responde**: un puente de temas
+  (la variante y los colores los publica quien pinta), un puente de interfaz (dispatcher, portapapeles,
+  selector de color, ventanas), un puente de diálogos. La aplicación de escritorio instala sus respuestas en el
+  arranque; el host Uno instala las suyas.
+- **Un defecto real cazado al pasar**: al separar la capa, el lienzo dejó de pintar los nodos — las tarjetas
+  quedaban amontonadas en una esquina y los cables desaparecían. La causa: los enlaces entre la lógica y el
+  lienzo no sabían traducir el punto del núcleo al punto del framework, y fallaban **en silencio**. Ahora la
+  traducción es explícita en los ocho enlaces, y una guardia de contrato la fija. Si usaste la aplicación en
+  este tramo y viste un lienzo vacío, era esto.
+
+### Lo que sigue viéndose así
+
+- **Tu flujos guardados, tus temas y tus ajustes no cambian**: el tramo no toca formato de archivo ni
+  comportamiento, solo dónde vive el código.
+- Quedan abiertos, escritos en el apartado anterior: los flujos que prometen vídeo, audio o GIF con entradas
+  que no son media, y el sitio que corresponde a un camino relativo en un nodo de lectura.
+
+---
+
+## 10. El tramo de la defensa en profundidad (compilación 5517 → 5779)
+
+La aplicación **sigue viéndose igual** — y eso es la mitad de la historia. Este tramo no añade una sola función
+visible: construye las pruebas de que lo construido **no se puede romper en silencio**.
+
+### Lo que ves
+
+- **En el escritorio, nada cambió a propósito** — si notas alguna diferencia, es un defecto y no una decisión.
+- **El host multiplataforma pasó de ventana de sondeo a lienzo real**: tarjetas de nodo en su posición, cables
+  con la misma curva que pinta el escritorio (misma matemática, extraída al núcleo compartido), arrastre para
+  moverse por el lienzo, zoom y encuadre con el mismo calculador. Todavía no llega a quien usa el producto: es
+  la fase en curso.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **Cada comportamiento que importa tiene un defecto declarado que sus pruebas matan.** El catálogo pasó de 28 a
+  **41 declaraciones**, y las 41 **muerden**: re-certificadas en una pasada completa, cada una con su testigo en
+  rojo y su control en verde, restaurando el árbol por bytes y recompilando antes de pasar a la siguiente. La
+  declaración número 41 — el dry-run de red que dejaba de simular y entregaba el disparador — fue la que
+  completó la cobertura de **todos los plugins**; quedan 3 de 17 subsistemas sin su primera declaración,
+  escritos como lista de trabajo, no como reproche.
+- **Los enlaces de geometría ya no pueden morir en silencio en ninguno de los dos hosts.** El defecto del tramo
+  anterior (el lienzo amontonado en una esquina) no puede repetirse: las pruebas ejecutan los enlaces contra el
+  editor real en las dos direcciones, y el censo del host multiplataforma nació *antes* de su primer enlace —
+  con cero enlaces en el árbol, la única manera de que la regla no tenga excepciones históricas. Donde ese
+  framework no puede enlazar (sus estilos no evalúan enlaces: no fallan, no hacen nada), la regla sigue al
+  código y delata el cruce hecho a mano.
+- **La geometría del cable y del encuadre es del núcleo, pura y probada**: la misma curva para los dos hosts,
+  con valores esperados calculados a mano — un espejo del código solo probaría que es igual a sí mismo — y una
+  mutación que muerde.
+- **El suite dejó de mentir con fallos intermitentes de carga.** El último flake sin dueño se cazó corriendo la
+  suite tres veces seguidas hasta ponerle nombre: un test de ritmo que afirma con margen cero que los huecos
+  entre emisiones duran al menos el retardo prometido, midió 4,911 ms contra el umbral de 5 ms porque el resto
+  de la suite le competía por la CPU. Su colección es ya la séptima exclusiva del suite — existía desde hacía
+  tramos, pero sin definición, así que se paralelizaba como cualquier otra —, y el contrato de paralelismo lo
+  fija: cualquier test futuro que mida tiempos así nace obligado a ella.
+
+### Lo que sigue viéndose así
+
+- **Tus flujos, tus temas y tus ajustes no cambian**: el tramo no toca formato de archivo ni comportamiento
+  visible; solo dónde vive el código y qué garantías lo rodean.
+- Quedan abiertos, escritos en el apartado anterior: los flujos que prometen vídeo, audio o GIF con entradas
+  que no son media, y el sitio que corresponde a un camino relativo en un nodo de lectura.
+
+---
+
+## 11. Cómo verificarlo
 
 ```powershell
 # La suite completa (pruebas unitarias, de integración y de aspecto)
