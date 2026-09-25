@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+  <Identity Name="FileFlow.Studio.Uno" Publisher="CN=FileFlow" Version="0.1.0.0" />
+  <Properties>
+    <DisplayName>FileFlow Studio</DisplayName>
+    <PublisherDisplayName>FileFlow</PublisherDisplayName>
+    <Logo>assets\FileFlow.ico</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="en" />
+    <Resource Language="es" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements DisplayName="FileFlow Studio" Description="Visual workflow engine" BackgroundColor="#1B1B1F" Square150x150Logo="assets\FileFlow.ico" Square44x44Logo="assets\FileFlow.ico" />
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

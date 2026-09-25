@@ -1,0 +1,47 @@
+<Project Sdk="Uno.Sdk/6.7.30">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-desktop</TargetFramework>
+    <UnoSingleProject>true</UnoSingleProject>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UnoFeatures>Hosting;Configuration;Toolkit;SkiaRenderer</UnoFeatures>
+    <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
+    <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FileFlow.App.Core\FileFlow.App.Core.csproj" />
+    <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
+    <ProjectReference Include="..\FileFlow.Core\FileFlow.Core.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.FileSystem\FileFlow.Plugin.FileSystem.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Archives\FileFlow.Plugin.Archives.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Images\FileFlow.Plugin.Images.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Logic\FileFlow.Plugin.Logic.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Hashing\FileFlow.Plugin.Hashing.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Integrations\FileFlow.Plugin.Integrations.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Scripting\FileFlow.Plugin.Scripting.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Documents\FileFlow.Plugin.Documents.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Network\FileFlow.Plugin.Network.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
+    <ProjectReference Include="..\FileFlow.Plugin.Subflows\FileFlow.Plugin.Subflows.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyPlugins" AfterTargets="Build;Publish">
+    <PropertyGroup>
+      <PluginsTargetFolder>$(TargetDir)Plugins\</PluginsTargetFolder>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginsTargetFolder)" />
+    <ItemGroup>
+      <PluginFiles Include="..\FileFlow.Plugin.*\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsTargetFolder)" SkipUnchangedFiles="false" />
+  </Target>
+</Project>
