@@ -146,8 +146,10 @@ public class NodeCardVisualContractTests
         string template = ExtractConnectionTemplate(editor);
 
         template.Should().Contain("<nodifyConn:Connection ", "el lienzo debe declarar la conexión Nodify");
-        template.Should().Contain("Source=\"{Binding Source.Anchor}\"", "el cable debe conectarse al ancla de origen");
-        template.Should().Contain("Target=\"{Binding Target.Anchor}\"", "el cable debe conectarse al ancla de destino");
+        // El ancla habla en Sdk.Point (los ViewModels viven en FileFlow.App.Core); el conversor proyecta
+        // al Avalonia.Point que Nodify espera — el contrato visual es el mismo, con la proyección explícita.
+        template.Should().Contain("Source=\"{Binding Source.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}\"", "el cable debe conectarse al ancla de origen");
+        template.Should().Contain("Target=\"{Binding Target.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}\"", "el cable debe conectarse al ancla de destino");
         template.Should().NotContain("Classes=\"energy\"", "las animaciones de guiones superpuestas fueron eliminadas");
     }
 
@@ -203,7 +205,7 @@ public class NodeCardVisualContractTests
 
         var keys = new List<string>();
 
-        foreach (string source in new[] { "FileFlow.App/ViewModels/PortViewModel.cs", "FileFlow.App/ViewModels/NodeViewModel.cs" })
+        foreach (string source in new[] { "FileFlow.App.Core/ViewModels/PortViewModel.cs", "FileFlow.App.Core/ViewModels/NodeViewModel.cs" })
         {
             keys.AddRange(ExtractLocalizationKeys(ReadRepositoryFile(source)));
         }

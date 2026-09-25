@@ -364,7 +364,7 @@ public class NetworkNodesTests
     {
         // Arrange
         var node = new NetworkDownloadNode();
-        var nodeVm = new NodeViewModel(node, new Avalonia.Point(0, 0));
+        var nodeVm = new NodeViewModel(node, new Point(0, 0));
 
         var protocolParam = nodeVm.Parameters.First(p => p.Key == "Protocol");
         var sourceUrlParam = nodeVm.Parameters.First(p => p.Key == "SourceUrl");

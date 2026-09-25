@@ -117,7 +117,7 @@ public sealed class RecordingDialogService : IDialogService
 }
 
 /// <summary>Diálogos de archivo que nunca se abren: devuelven «cancelado» y no bloquean la prueba.</summary>
-public sealed class NullFileDialogService : IFileDialogService
+public sealed class TestNullFileDialogService : IFileDialogService
 {
     public string? ShowOpenFileDialog(string title, string filter, string defaultExt = "") => null;
 

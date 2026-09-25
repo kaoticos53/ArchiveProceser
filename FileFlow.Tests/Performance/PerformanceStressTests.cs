@@ -72,7 +72,7 @@ public class PerformanceStressTests : IDisposable
     {
         // Arrange
         var mockNode = new MockFlowNode();
-        _nodeUnderTest = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new Avalonia.Point(0, 0));
+        _nodeUnderTest = new FileFlow.App.ViewModels.NodeViewModel(mockNode, new Sdk.Point(0, 0));
         var nodeVm = _nodeUnderTest;
 
         // Act - Add 1,000 snapshots (exceeding MaxRecordedSnapshots of 500)

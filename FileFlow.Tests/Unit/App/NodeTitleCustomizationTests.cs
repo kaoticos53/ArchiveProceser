@@ -1,5 +1,6 @@
 using System.IO;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
@@ -13,6 +14,7 @@ using Xunit;
 
 namespace FileFlow.Tests.Unit.App;
 
+[Collection(NodeClipboardCollection.Name)]
 public class NodeTitleCustomizationTests
 {
     private readonly PluginLoader _loader = new();

@@ -1,5 +1,7 @@
 using System.Linq;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
+using AvaloniaPoint = Avalonia.Point;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -314,12 +316,12 @@ public class EditorViewLayoutTests
             {
                 DataContext = editorVm.PendingConnection,
                 Source = editorVm.PendingConnection.Source,
-                SourceAnchor = outPort.Anchor,
-                TargetAnchor = new Point(400, 300)
+                SourceAnchor = outPort.Anchor.ToAvalonia(),
+                TargetAnchor = new AvaloniaPoint(400, 300)
             };
 
-            pc.SourceAnchor.Should().Be(new Point(250, 150));
-            pc.TargetAnchor.Should().Be(new Point(400, 300));
+            pc.SourceAnchor.Should().Be(new AvaloniaPoint(250, 150));
+            pc.TargetAnchor.Should().Be(new AvaloniaPoint(400, 300));
         });
     }
 
@@ -329,12 +331,12 @@ public class EditorViewLayoutTests
         AvaloniaTestHelper.RunOnUI(() =>
         {
             var fpc = new FlowPendingConnection();
-            fpc.TargetAnchor.Should().Be(default(Point));
+            fpc.TargetAnchor.Should().Be(default(AvaloniaPoint));
 
             // Setting SourceAnchor should immediately initialize TargetAnchor to the same point,
             // preventing the wire from pointing to (0,0) before mouse movement.
-            fpc.SourceAnchor = new Point(250, 180);
-            fpc.TargetAnchor.Should().Be(new Point(250, 180));
+            fpc.SourceAnchor = new AvaloniaPoint(250, 180);
+            fpc.TargetAnchor.Should().Be(new AvaloniaPoint(250, 180));
         });
     }
 
@@ -357,21 +359,21 @@ public class EditorViewLayoutTests
             {
                 DataContext = editorVm.PendingConnection,
                 Source = editorVm.PendingConnection!.Source,
-                SourceAnchor = outPort.Anchor
+                SourceAnchor = outPort.Anchor.ToAvalonia()
             };
-            fpc1.TargetAnchor.Should().Be(outPort.Anchor);
+            fpc1.TargetAnchor.Should().Be(outPort.Anchor.ToAvalonia());
 
             // Simulate drag movement
             var dragArgs1 = new Nodify.Avalonia.Events.PendingConnectionEventArgs(outPort)
             {
                 RoutedEvent = Nodify.Avalonia.Connections.Connector.PendingConnectionDragEvent,
-                Anchor = new Point(300, 220),
+                Anchor = new AvaloniaPoint(300, 220),
                 OffsetX = 50,
                 OffsetY = 70
             };
             // Target Anchor updates
-            fpc1.TargetAnchor = new Point(dragArgs1.Anchor.X + dragArgs1.OffsetX, dragArgs1.Anchor.Y + dragArgs1.OffsetY);
-            fpc1.TargetAnchor.Should().Be(new Point(350, 290));
+            fpc1.TargetAnchor = new AvaloniaPoint(dragArgs1.Anchor.X + dragArgs1.OffsetX, dragArgs1.Anchor.Y + dragArgs1.OffsetY);
+            fpc1.TargetAnchor.Should().Be(new AvaloniaPoint(350, 290));
 
             // Drag 1 Completes
             editorVm.FinishConnection((outPort, inPort));
@@ -384,15 +386,15 @@ public class EditorViewLayoutTests
             {
                 DataContext = editorVm.PendingConnection,
                 Source = editorVm.PendingConnection!.Source,
-                SourceAnchor = outPort.Anchor
+                SourceAnchor = outPort.Anchor.ToAvalonia()
             };
             // Initial position MUST be source anchor, NOT (0,0)
-            fpc2.TargetAnchor.Should().Be(outPort.Anchor);
+            fpc2.TargetAnchor.Should().Be(outPort.Anchor.ToAvalonia());
 
             // Subsequent drag movement MUST update target anchor
-            fpc2.TargetAnchor = new Point(420, 310);
-            fpc2.TargetAnchor.Should().Be(new Point(420, 310));
-            fpc2.TargetAnchor.Should().NotBe(default(Point));
+            fpc2.TargetAnchor = new AvaloniaPoint(420, 310);
+            fpc2.TargetAnchor.Should().Be(new AvaloniaPoint(420, 310));
+            fpc2.TargetAnchor.Should().NotBe(default(AvaloniaPoint));
 
             // Drag 2 Cancels
             editorVm.CancelConnection();
@@ -517,8 +519,8 @@ public class EditorViewLayoutTests
                 editorVm,
                 CreateLoader(),
                 log,
-                new NodeInspectorViewModel(editorVm, new NullFileDialogService(), log),
-                new NullFileDialogService(),
+                new NodeInspectorViewModel(editorVm, new TestNullFileDialogService(), log),
+                new TestNullFileDialogService(),
                 new InMemoryWorkflowStorageService());
             var statusBar = new StatusBarViewModel(editorVm, controlBar, new FrozenPerformanceMonitor(), log);
 

@@ -321,7 +321,7 @@ public static class ModalVisualFixture
             new InMemoryExternalToolsService(),
             ThemeManager.Instance,
             FileFlow.Sdk.Localization.LocalizationManager.Instance,
-            new NullFileDialogService(),
+            new TestNullFileDialogService(),
             new AvaloniaDialogService(),
             BuildDeterministicAiModelManager());
 

@@ -28,6 +28,7 @@ namespace FileFlow.Tests.Unit.App;
 /// lienzo no se señala —ese identificador no lleva a ninguna parte, y su nombre podría coincidir con el de otro
 /// nodo—, y una pérdida que el lienzo no puede arreglar no desaparece del recuento al arreglar las que sí.
 /// </summary>
+[Collection(NodeClipboardCollection.Name)]
 public class LostConnectionTracesTests
 {
     // ─────────────────────────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ public class LostConnectionTracesTests
     {
         var (editor, log, _, pasted) = PasteAfterTheFrontierChanged();
 
-        var inspector = new NodeInspectorViewModel(editor, new NullFileDialogService(), log);
+        var inspector = new NodeInspectorViewModel(editor, new TestNullFileDialogService(), log);
         inspector.InspectLogRecord(log.Logs.Single(logRecord => logRecord.Level == LogLevel.Warning));
 
         inspector.InspectedNode.Should().BeSameAs(pasted, "la fila de la consola abre el nodo del cable que se perdió");
@@ -102,7 +103,7 @@ public class LostConnectionTracesTests
         var lookalike = EditorFixtures.AddNode(editor, new SubflowNode());
         lookalike.Title = "Fantasma";
 
-        var inspector = new NodeInspectorViewModel(editor, new NullFileDialogService(), log);
+        var inspector = new NodeInspectorViewModel(editor, new TestNullFileDialogService(), log);
         inspector.InspectLogRecord(record);
 
         inspector.InspectedNode.Should().BeNull("un registro sin nodo no abre nada, ni siquiera al homónimo");
@@ -393,14 +394,14 @@ public class LostConnectionTracesTests
     private static StatusBarViewModel CreateStatusBar(EditorViewModel editor, LogViewModel log)
     {
         var loader = CreateLoader();
-        var inspector = new NodeInspectorViewModel(editor, new NullFileDialogService(), log);
+        var inspector = new NodeInspectorViewModel(editor, new TestNullFileDialogService(), log);
 
         var controlBar = new ControlBarViewModel(
             editor,
             loader,
             log,
             inspector,
-            new NullFileDialogService(),
+            new TestNullFileDialogService(),
             new InMemoryWorkflowStorageService());
 
         return new StatusBarViewModel(editor, controlBar, new FrozenPerformanceMonitor(), log);

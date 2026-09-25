@@ -151,8 +151,8 @@ public class CustomThemeServiceTests : IDisposable
             NodeShadowBlur = 30.0
         };
 
-        // Act
-        var dict = CustomThemeService.BuildResourceDictionary(theme);
+        // Act — los tokens los genera el host (ThemeResourceApplier), ya no CustomThemeService.
+        var dict = ThemeResourceApplier.BuildResourceDictionary(theme);
 
         // Assert
         dict.Should().NotBeNull();

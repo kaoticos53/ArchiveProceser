@@ -181,34 +181,78 @@ public class ThemeStudioVisualContractTests
 
             var viewModel = new ThemeCustomizerViewModel(new CustomThemeService(storage));
 
-            var host = new Border();
-            var descendant = new Border();
-            host.Child = descendant;
+            // Los tokens los genera el host: la prueba instala el puente con el generador real
+            // (ThemeResourceApplier), que es lo que el arranque de la aplicación instala.
+            FileFlow.App.Core.ThemeHostBridge.BuildResources = definition =>
+            {
+                var themeDict = ThemeResourceApplier.BuildResourceDictionary((ThemeDefinition)definition);
+                var tokens = new Dictionary<string, object?>();
+                foreach (var key in themeDict.Keys)
+                {
+                    if (key is string s) tokens[s] = themeDict[s];
+                }
+                return tokens;
+            };
+            try
+            {
+                viewModel.UpdateLivePreview();
+
+                var host = new Border();
+                var descendant = new Border();
+                host.Child = descendant;
 
             // Equivale a PreviewHost.Resources = viewModel.LivePreviewResources (ver el code-behind).
-            host.Resources = viewModel.LivePreviewResources;
+            var dict = new ResourceDictionary();
+            foreach (var (key, value) in viewModel.LivePreviewResources)
+            {
+                if (value is Avalonia.Media.IBrush or Avalonia.Media.Color or string or double
+                    or Avalonia.CornerRadius or Avalonia.Media.BoxShadows)
+                {
+                    dict[key] = value;
+                }
+            }
+                host.Resources = dict;
 
-            descendant.TryFindResource("BgCardBrush", out var cardBrush).Should().BeTrue(
-                "un descendiente de la previsualización debe resolver los tokens del tema en edición");
+                // El host se re-publica cuando el núcleo avisa de tokens nuevos (contrato de la ventana real).
+                viewModel.LivePreviewUpdated += () =>
+                {
+                    dict.Clear();
+                    foreach (var (key, value) in viewModel.LivePreviewResources)
+                    {
+                        if (value is Avalonia.Media.IBrush or Avalonia.Media.Color or string or double
+                            or Avalonia.CornerRadius or Avalonia.Media.BoxShadows)
+                        {
+                            dict[key] = value;
+                        }
+                    }
+                };
 
-            ((SolidColorBrush)cardBrush!).Color.Should().Be(
-                Color.Parse(viewModel.EditingTheme.BgCard),
-                "el valor debe ser el del tema EN EDICIÓN, no el del tema activo de la aplicación");
+                descendant.TryFindResource("BgCardBrush", out var cardBrush).Should().BeTrue(
+                    "un descendiente de la previsualización debe resolver los tokens del tema en edición");
 
-            descendant.TryFindResource("Elev3", out var elevation).Should().BeTrue();
-            elevation.Should().BeOfType<BoxShadows>();
+                ((SolidColorBrush)cardBrush!).Color.Should().Be(
+                    Color.Parse(viewModel.EditingTheme.BgCard),
+                    "el valor debe ser el del tema EN EDICIÓN, no el del tema activo de la aplicación");
 
-            // Mover un ajuste desde su fila debe cambiar lo que ya resuelve la previsualización.
-            var row = viewModel.Sections.SelectMany(s => s.Rows)
-                .OfType<ThemeNumberRowViewModel>()
-                .First(r => r.Property == nameof(ThemeDefinition.CornerRadius));
+                descendant.TryFindResource("Elev3", out var elevation).Should().BeTrue();
+                elevation.Should().BeOfType<BoxShadows>();
 
-            row.Value += 8;
+                // Mover un ajuste desde su fila debe cambiar lo que ya resuelve la previsualización.
+                var row = viewModel.Sections.SelectMany(s => s.Rows)
+                    .OfType<ThemeNumberRowViewModel>()
+                    .First(r => r.Property == nameof(ThemeDefinition.CornerRadius));
 
-            descendant.TryFindResource("RadiusSm", out var radius).Should().BeTrue();
-            ((CornerRadius)radius!).TopLeft.Should().Be(
-                viewModel.EditingTheme.CornerRadius,
-                "el diccionario enganchado se actualiza en el sitio: la previsualización sigue al editor sin reenganchar nada");
+                row.Value += 8;
+
+                descendant.TryFindResource("RadiusSm", out var radius).Should().BeTrue();
+                ((CornerRadius)radius!).TopLeft.Should().Be(
+                    viewModel.EditingTheme.CornerRadius,
+                    "el diccionario enganchado se actualiza en el sitio: la previsualización sigue al editor sin reenganchar nada");
+            }
+            finally
+            {
+                FileFlow.App.Core.ThemeHostBridge.BuildResources = null;
+            }
         }
         finally
         {

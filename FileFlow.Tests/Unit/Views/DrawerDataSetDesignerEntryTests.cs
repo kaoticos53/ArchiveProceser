@@ -165,7 +165,7 @@ public class DrawerDataSetDesignerEntryTests
         var monitor = new FrozenPerformanceMonitor();
         var logs = new LogViewModel(new InMemoryLogStore());
         var pluginLoader = PluginRegistryHelper.CreateConfiguredLoader();
-        var fileDialog = new NullFileDialogService();
+        var fileDialog = new TestNullFileDialogService();
         var storage = new InMemoryWorkflowStorageService();
 
         var editor = new EditorViewModel(pluginLoader, userPreferencesService: preferences);

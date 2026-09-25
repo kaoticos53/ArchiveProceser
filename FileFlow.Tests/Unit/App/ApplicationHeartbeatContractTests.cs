@@ -31,12 +31,14 @@ namespace FileFlow.Tests.Unit.App;
 /// </summary>
 public class ApplicationHeartbeatContractTests
 {
-    private const string Subflows = "FileFlow.App/ViewModels/EditorViewModel.cs";
-    private const string Console = "FileFlow.App/ViewModels/LogViewModel.cs";
-    private const string Performance = "FileFlow.App/Services/SystemPerformanceMonitor.cs";
-    private const string Visual = "FileFlow.App/Services/WorkflowExecutionCoordinator.cs";
-    private const string Registry = "FileFlow.App/Services/HeartbeatService.cs";
-    private const string Delivery = "FileFlow.App/Services/Heartbeat.cs";
+    // Los ViewModels, el registro de latidos y el coordinador visual viven en el núcleo portable
+    // (FileFlow.App.Core) desde la migración multiplataforma; las rutas del contrato lo siguen.
+    private const string Subflows = "FileFlow.App.Core/ViewModels/EditorViewModel.cs";
+    private const string Console = "FileFlow.App.Core/ViewModels/LogViewModel.cs";
+    private const string Performance = "FileFlow.App.Core/Services/SystemPerformanceMonitor.cs";
+    private const string Visual = "FileFlow.App.Core/Services/WorkflowExecutionCoordinator.cs";
+    private const string Registry = "FileFlow.App.Core/Services/HeartbeatService.cs";
+    private const string Delivery = "FileFlow.App.Core/Services/Heartbeat.cs";
 
     [Fact]
     public void TheSubflowHeartbeat_ShouldBeADeclarationOfItsPublicStep()
@@ -269,7 +271,10 @@ public class ApplicationHeartbeatContractTests
     {
         string root = TestRepositoryLocator.RepositoryRoot();
 
+        // El núcleo portable (FileFlow.App.Core) forma parte de la aplicación: los ViewModels y el
+        // registro de latidos viven ahí, y el lint de fontanería los barre igual que el host.
         return Directory.EnumerateFiles(Path.Combine(root, "FileFlow.App"), "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(Path.Combine(root, "FileFlow.App.Core"), "*.cs", SearchOption.AllDirectories))
             .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
             .Where(path => !path.Contains("/obj/", StringComparison.OrdinalIgnoreCase)
                 && !path.Contains("/bin/", StringComparison.OrdinalIgnoreCase))

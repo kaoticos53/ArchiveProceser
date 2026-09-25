@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
+using AvaloniaPoint = Avalonia.Point;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
@@ -385,8 +387,8 @@ public class InputInteractionTests
             var canvas = Canvas(view);
 
             // El puntero marca dónde nace el nodo: es el gesto real (colocar el ratón y pulsar el atajo).
-            var pointer = new Point(canvas.Bounds.Width * 0.35, canvas.Bounds.Height * 0.4);
-            Point windowPoint = canvas.TranslatePoint(pointer, window) ?? pointer;
+            var pointer = new AvaloniaPoint(canvas.Bounds.Width * 0.35, canvas.Bounds.Height * 0.4);
+            AvaloniaPoint windowPoint = canvas.TranslatePoint(pointer, window) ?? pointer;
             InputSimulator.MovePointer(window, windowPoint);
 
             InputSimulator.Key(window, Key.Space);
@@ -568,7 +570,7 @@ public class InputInteractionTests
 
         // El destino se calcula en coordenadas del lienzo con el zoom y el desplazamiento del viewport, así
         // que la comprobación replica esa cuenta en lugar de comparar con un número mágico.
-        Point canvasOrigin = canvas.TranslatePoint(new Point(0, 0), window) ?? new Point(0, 0);
+        AvaloniaPoint canvasOrigin = canvas.TranslatePoint(new AvaloniaPoint(0, 0), window) ?? new AvaloniaPoint(0, 0);
         double zoom = editor.ViewportZoom > 0 ? editor.ViewportZoom : 1.0;
 
         var expected = new Point(

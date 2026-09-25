@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
+using AvaloniaPoint = Avalonia.Point;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -156,7 +158,7 @@ public class DesignStateBaselinesTests
                 foreach (string cell in cells)
                 {
                     Control control = stateBoard.Cells[cell];
-                    Point? origin = control.TranslatePoint(new Point(LabelInset, LabelInset), window);
+                    AvaloniaPoint? origin = control.TranslatePoint(new AvaloniaPoint(LabelInset, LabelInset), window);
 
                     if (origin is not null)
                     {
@@ -485,12 +487,12 @@ public class DesignStateBaselinesTests
                     Control cell = board.Cells[probe.Cell ?? probe.Key];
                     Control element = probe.Element is null ? cell : probe.Element(cell);
 
-                    if (element.TranslatePoint(new Point(probe.Inset, element.Bounds.Height / 2), window) is not { } point)
+                    if (element.TranslatePoint(new AvaloniaPoint(probe.Inset, element.Bounds.Height / 2), window) is not { } point)
                     {
                         throw new InvalidOperationException($"La celda '{probe.Key}' no está en el árbol de la ventana.");
                     }
 
-                    points[probe.Key] = point;
+                    points[probe.Key] = point.ToSdkPoint();
                 }
             });
 

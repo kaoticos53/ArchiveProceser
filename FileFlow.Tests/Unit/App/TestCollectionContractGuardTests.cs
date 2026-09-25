@@ -140,6 +140,58 @@ public class TestCollectionContractGuardTests
         AnalyzeSnippet(source).Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("clipboard.Copy([node], editor.Connections);")]
+    [InlineData("clipboard.Paste(editor);")]
+    [InlineData("clipboard.CanPaste();")]
+    [InlineData("clipboard.Duplicate([node], connections, editor);")]
+    [InlineData("editor.PasteNodes();")]
+    [InlineData("editor.DuplicateSelectedNodes();")]
+    [InlineData("editor.ClipboardService.Paste(editor);")]
+    [InlineData("ClipboardService.Copy(nodes, connections);")]
+    public void Analyzer_ShouldRequireNodeClipboard_WhenClassExercisesTheProcessClipboard(string usage)
+    {
+        // El portapapeles del proceso es global: Copy escribe el paquete vía HostUi (el singleton
+        // NullClipboardService en pruebas) y Paste lo lee primero de ahí. Dos clases paralelas que copien y
+        // peguen a la vez pueden pegar el paquete de la vecina —el fallo que esta regla cierra—.
+        string source = Snippet("[Collection(\"ThemeTokens\")]", usage);
+
+        var violations = AnalyzeSnippet(source);
+
+        violations.Should().ContainSingle().Which.State.Should().Be(ExclusiveTestState.ProcessClipboard);
+    }
+
+    [Fact]
+    public void Analyzer_ShouldAcceptClipboardWorkFromTheNodeClipboardCollection()
+    {
+        string source = Snippet("[Collection(NodeClipboardCollection.Name)]", "clipboard.Copy([node], editor.Connections);");
+
+        AnalyzeSnippet(source).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("var gap = Stopwatch.GetElapsedTime(before, after);")]
+    [InlineData("gaps.Add(Stopwatch.GetElapsedTime(start, end));")]
+    public void Analyzer_ShouldRequireRenamerSampleData_WhenClassMeasuresLowerTimingBounds(string usage)
+    {
+        // Los huecos entre eventos medidos con Stopwatch.GetElapsedTime se afirman con margen cero contra el
+        // retardo que el producto promete: una colección vecina compitiendo por la CPU los recorta por debajo
+        // del retardo y el test miente — el flake medido de EmissionLatency (4,911 ms contra 5 ms).
+        string source = Snippet("[Collection(\"ThemeTokens\")]", usage);
+
+        var violations = AnalyzeSnippet(source);
+
+        violations.Should().ContainSingle().Which.State.Should().Be(ExclusiveTestState.TimingBoundsMeasurement);
+    }
+
+    [Fact]
+    public void Analyzer_ShouldAcceptTimingBoundsFromTheRenamerSampleDataCollection()
+    {
+        string source = Snippet("[Collection(RenamerSampleDataCollection.Name)]", "var gap = Stopwatch.GetElapsedTime(before, after);");
+
+        AnalyzeSnippet(source).Should().BeEmpty();
+    }
+
     [Fact]
     public void Analyzer_ShouldRequireVisualSnapshots_WhenClassUsesTheHeadlessSession()
     {

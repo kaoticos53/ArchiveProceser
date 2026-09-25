@@ -40,8 +40,8 @@ public class FlowFormatSerializationGuardTests
     private static readonly string[] FilesThatWriteOrReadAWorkflow =
     [
         FlowSerializationAnalyzer.CanonicalFile,
-        "FileFlow.App/Services/WorkflowStorageService.cs",
-        "FileFlow.App/Services/NodeClipboardService.cs",
+        "FileFlow.App.Core/Services/WorkflowStorageService.cs",
+        "FileFlow.App.Core/Services/NodeClipboardService.cs",
         "FileFlow.Core/Engine/WorkflowCliRunner.cs",
         "FileFlow.Core/Engine/WorkflowSubflowExecutionService.cs"
     ];

@@ -1,4 +1,5 @@
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
@@ -14,6 +15,7 @@ namespace FileFlow.Tests.Unit.App;
 /// Suite de pruebas unitarias para <see cref="NodeClipboardService"/> y las operaciones de
 /// copiado, pegado, corte y duplicación de nodos en el lienzo DAG con preservación íntegra de parámetros.
 /// </summary>
+[Collection(NodeClipboardCollection.Name)]
 public class NodeClipboardServiceTests
 {
     private readonly PluginLoader _loader = new();

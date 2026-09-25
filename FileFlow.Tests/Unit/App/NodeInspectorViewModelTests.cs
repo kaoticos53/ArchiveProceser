@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;

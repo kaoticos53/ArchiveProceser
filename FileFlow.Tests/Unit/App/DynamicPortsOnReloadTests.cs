@@ -22,6 +22,7 @@ namespace FileFlow.Tests.Unit.App;
 /// grafo como lo deja un archivo guardado (pasa por JSON, así que los parámetros vuelven como
 /// <see cref="System.Text.Json.JsonElement"/> y no como los objetos que se escribieron).
 /// </summary>
+[Collection(NodeClipboardCollection.Name)]
 public class DynamicPortsOnReloadTests
 {
     // ─────────────────────────────────────────────────────────────────────────────

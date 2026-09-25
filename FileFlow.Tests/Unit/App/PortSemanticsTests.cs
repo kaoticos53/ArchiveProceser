@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using FileFlow.App.ViewModels;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;

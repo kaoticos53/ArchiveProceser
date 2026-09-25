@@ -108,16 +108,31 @@ public class ThemeCustomizerViewModelTests : IDisposable
     [Fact]
     public void UpdateLivePreview_ShouldRegenerateLivePreviewResources()
     {
-        // Arrange
+        // Arrange — los tokens los genera el host a través del puente: la prueba instala un
+        // generador propio y comprueba que el view model los recoge en su diccionario portable.
         var vm = new ThemeCustomizerViewModel(_service);
         vm.EditingTheme.AppBackground = "#123456";
+        var calls = new List<object>();
+        FileFlow.App.Core.ThemeHostBridge.BuildResources = definition =>
+        {
+            calls.Add(definition);
+            return new Dictionary<string, object?> { ["AppBackgroundBrush"] = "token-de-prueba" };
+        };
+        try
+        {
+            // Act
+            vm.UpdateLivePreview();
 
-        // Act
-        vm.UpdateLivePreview();
-
-        // Assert
-        vm.LivePreviewResources.Should().NotBeNull();
-        vm.LivePreviewResources.ContainsKey("AppBackgroundBrush").Should().BeTrue();
+            // Assert
+            vm.LivePreviewResources.Should().NotBeNull();
+            calls.Should().ContainSingle().Which.Should().BeSameAs(vm.EditingTheme);
+            vm.LivePreviewResources.ContainsKey("AppBackgroundBrush").Should().BeTrue();
+            vm.LivePreviewResources["AppBackgroundBrush"].Should().Be("token-de-prueba");
+        }
+        finally
+        {
+            FileFlow.App.Core.ThemeHostBridge.BuildResources = null;
+        }
     }
 
     [Fact]

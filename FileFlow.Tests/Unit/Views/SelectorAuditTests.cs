@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using FileFlow.App.Services;

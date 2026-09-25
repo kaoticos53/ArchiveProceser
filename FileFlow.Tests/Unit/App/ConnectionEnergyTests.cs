@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Sdk;

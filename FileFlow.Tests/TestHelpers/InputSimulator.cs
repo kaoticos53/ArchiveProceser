@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Avalonia;
+using AvaloniaPoint = Avalonia.Point;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -8,7 +9,14 @@ using Avalonia.Input.Raw;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 
+
 namespace FileFlow.Tests.TestHelpers;
+
+internal static class InputSimulatorPointExtensions
+{
+    public static AvaloniaPoint ToAvalonia(this FileFlow.Sdk.Point p) => new(p.X, p.Y);
+    public static FileFlow.Sdk.Point ToSdkPoint(this AvaloniaPoint p) => new(p.X, p.Y);
+}
 
 /// <summary>
 /// Entrada <b>real</b> sobre la sesión headless: mueve el puntero, pulsa, escribe teclas y suelta datos, por
@@ -86,7 +94,10 @@ public static class InputSimulator
     }
 
     /// <summary>Mueve el puntero a un punto de la ventana, sin pulsar (deja el estado <c>:pointerover</c>).</summary>
-    public static void MovePointer(Window window, Point point)
+    public static void MovePointer(Window window, FileFlow.Sdk.Point point)
+        => MovePointer(window, point.ToAvalonia());
+
+    public static void MovePointer(Window window, AvaloniaPoint point)
     {
         window.MouseMove(point);
         Settle();
@@ -96,7 +107,10 @@ public static class InputSimulator
     public static void Hover(Window window, Visual target) => MovePointer(window, CenterOf(target, window));
 
     /// <summary>Clic completo en un punto de la ventana (lo que hace el usuario sobre el lienzo).</summary>
-    public static void ClickAt(Window window, Point point, MouseButton button = MouseButton.Left)
+    public static void ClickAt(Window window, FileFlow.Sdk.Point point, MouseButton button = MouseButton.Left)
+        => ClickAt(window, point.ToAvalonia(), button);
+
+    public static void ClickAt(Window window, AvaloniaPoint point, MouseButton button = MouseButton.Left)
     {
         window.MouseMove(point);
         window.MouseDown(point, button);
@@ -107,7 +121,7 @@ public static class InputSimulator
     /// <summary>Mueve el puntero sobre el control y pulsa (el botón queda presionado).</summary>
     public static void Press(Window window, Visual target, MouseButton button = MouseButton.Left)
     {
-        Point point = CenterOf(target, window);
+        AvaloniaPoint point = CenterOf(target, window);
         MovePointer(window, point);
         window.MouseDown(point, button);
         Settle();
@@ -145,7 +159,11 @@ public static class InputSimulator
     /// Suelta un texto en el punto indicado, por el mismo camino que usa el cajón de nodos
     /// (<c>DataTransfer</c> con un ítem de texto) y que el lienzo lee con <c>TryGetText</c>.
     /// </summary>
-    public static void DropText(Window window, Point point, string text,
+    public static void DropText(Window window, FileFlow.Sdk.Point point, string text,
+        DragDropEffects effects = DragDropEffects.Copy)
+        => DropText(window, point.ToAvalonia(), text, effects);
+
+    public static void DropText(Window window, AvaloniaPoint point, string text,
         DragDropEffects effects = DragDropEffects.Copy)
     {
         var data = new DataTransfer();

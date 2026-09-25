@@ -1,5 +1,7 @@
 using System.Globalization;
+using FluentAssertions;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Telemetry;
@@ -66,7 +68,7 @@ public class ModularArchitecturePhaseTwoTests
     {
         var (emptyZoom, emptyLoc) = EditorViewportCalculator.CalculateFitToScreen([]);
         Assert.Equal(1.0, emptyZoom);
-        Assert.Equal(new Point(0, 0), emptyLoc);
+        emptyLoc.Should().Be(new Point(0, 0));
     }
 
     [Fact]

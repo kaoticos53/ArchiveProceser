@@ -23,12 +23,23 @@ using Xunit;
 //     destino contra «la carpeta donde corre». Si otra colección corriera a la vez y escribiera en una ruta
 //     relativa, caería dentro de la sala y el archivo se le atribuiría al ejemplo que estuviera corriendo; al
 //     revés, mover el directorio de trabajo bajo los pies de una colección paralela cambiaría dónde caen SUS
-//     rutas relativas. El estado (el directorio de trabajo del proceso) sólo puede tocarse desde ahí.
-//   · Performance.EngineFirstRunCollection — la prueba que MIDE la concurrencia que el motor alcanza en la
+//     rutas relativas. El estado (el directorio de trabajo del proceso) sólo puede tocarse desde ahí.//   · Performance.EngineFirstRunCollection — la prueba que MIDE la concurrencia que el motor alcanza en la
 //     primera ejecución de una sesión (cuántos nodos llega a tener a la vez, con qué reparto de CPU).
 //     No confina estado mutable: confina el grupo de hilos y la CPU del proceso, que son de todos. Una
 //     colección vecina ejecutando su propio flujo ensucia la medida (medido: 1 904 ms con vecino, 269 ms
 //     sola, y la concurrencia observada baja).
+//   · Unit.App.NodeClipboardCollection — las clases que ejercitan el portapapeles de nodos del lienzo:
+//     Copy escribe el paquete en el portapapeles del proceso (HostUi → NullClipboardService.Instance en
+//     pruebas, un singleton global) y Paste lo LEE PRIMERO de ahí, dejando la memoria como respaldo. Dos
+//     pruebas paralelas que copien y peguen a la vez pueden pegar el paquete de la vecina (medido:
+//     NodeTitleCustomizationTests esperaba pegar 1 nodo y encontró 2, el paquete de la vecina).
+//   · Unit.Plugins.RenamerSampleDataCollection — las clases del proveedor de muestras del renombrador
+//     (RenamerSampleDataProvider, registro estático del proceso) y la medición de COTAS INFERIORES de
+//     temporización con margen cero: EmissionLatency afirma huecos >= EmissionDelayMs con
+//     Stopwatch.GetElapsedTime, y una colección vecina compitiendo por la CPU los recorta por debajo del
+//     retardo prometido (medido: 4,911 ms contra 5 ms, flake que no se repite en solitario). La colección
+//     existía implícita desde el confinamiento del proveedor; su definición exclusiva le da la exclusividad
+//     que su contenido ya pedía.
 //   · "Localization" → UNIFICADA en "VisualSnapshots" (2026-09-16): la cultura/idioma del proceso
 //     es estado global que las capturas headless también renderizan, y dos colecciones exclusivas
 //     distintas SÍ corren a la vez entre sí — la carrera culture-vs-captura era posible. Ahora cultura,

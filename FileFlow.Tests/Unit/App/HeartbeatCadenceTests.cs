@@ -103,7 +103,7 @@ public class HeartbeatCadenceTests
             editor,
             loader,
             log,
-            new NodeInspectorViewModel(editor, new NullFileDialogService(), log),
+            new NodeInspectorViewModel(editor, new TestNullFileDialogService(), log),
             uiDispatcher: ui,
             userPreferencesService: new InMemoryUserPreferencesService(),
             heartbeats: heartbeats);

@@ -234,6 +234,11 @@ public static class AvaloniaTestHelper
         // la sesión tienen que colgar del reloj virtual desde el primer instante, o se quedarían con el real.
         AnimationClock.Install();
 
+        // El puente de temas, igual que hace el arranque real (AvaloniaThemeHost): desde que el gestor
+        // de temas vive en el núcleo portable, publicar un tema sólo llega al runtime de Avalonia si
+        // alguien instaló el puente; sin instalación, las capturas no verían ningún token publicado.
+        FileFlow.App.Services.AvaloniaThemeHost.Install();
+
         DisableStyleAnimations(application.Styles);
         RegisterHostResources();
         _preparedApplication = application;

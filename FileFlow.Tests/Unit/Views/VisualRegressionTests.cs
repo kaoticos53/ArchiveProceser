@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;

@@ -1,5 +1,7 @@
 using System;
 using Avalonia;
+using Point = FileFlow.Sdk.Point;
+using AvaloniaPoint = Avalonia.Point;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -43,7 +45,7 @@ public class NodeCardInteractiveControlsPointerTests
 
             var pointer = new Pointer(1, PointerType.Mouse, true);
             var pointerProps = new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed);
-            var pointerArgs = new PointerPressedEventArgs(comboBox, pointer, cardView, new Point(10, 10), 0, pointerProps, KeyModifiers.None)
+            var pointerArgs = new PointerPressedEventArgs(comboBox, pointer, cardView, new AvaloniaPoint(10, 10), 0, pointerProps, KeyModifiers.None)
             {
                 RoutedEvent = InputElement.PointerPressedEvent
             };
@@ -70,7 +72,7 @@ public class NodeCardInteractiveControlsPointerTests
 
             var pointer = new Pointer(2, PointerType.Mouse, true);
             var pointerProps = new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed);
-            var pointerArgs = new PointerPressedEventArgs(autoCompleteBox, pointer, cardView, new Point(10, 10), 0, pointerProps, KeyModifiers.None)
+            var pointerArgs = new PointerPressedEventArgs(autoCompleteBox, pointer, cardView, new AvaloniaPoint(10, 10), 0, pointerProps, KeyModifiers.None)
             {
                 RoutedEvent = InputElement.PointerPressedEvent
             };
@@ -95,7 +97,7 @@ public class NodeCardInteractiveControlsPointerTests
 
             var pointer = new Pointer(3, PointerType.Mouse, true);
             var pointerProps = new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed);
-            var pointerArgs = new PointerPressedEventArgs(nonInteractiveBorder, pointer, cardView, new Point(10, 10), 0, pointerProps, KeyModifiers.None)
+            var pointerArgs = new PointerPressedEventArgs(nonInteractiveBorder, pointer, cardView, new AvaloniaPoint(10, 10), 0, pointerProps, KeyModifiers.None)
             {
                 RoutedEvent = InputElement.PointerPressedEvent
             };
@@ -132,7 +134,7 @@ public class NodeCardInteractiveControlsPointerTests
 
             var pointer = new Pointer(4, PointerType.Mouse, true);
             var pointerProps = new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed);
-            var pointerArgs = new PointerPressedEventArgs(comboBox, pointer, cardView1, new Point(10, 10), 0, pointerProps, KeyModifiers.None)
+            var pointerArgs = new PointerPressedEventArgs(comboBox, pointer, cardView1, new AvaloniaPoint(10, 10), 0, pointerProps, KeyModifiers.None)
             {
                 RoutedEvent = InputElement.PointerPressedEvent
             };
@@ -207,7 +209,7 @@ public class NodeCardInteractiveControlsPointerTests
             // Simular clic derecho en superficie no interactiva de la tarjeta
             var pointer = new Pointer(5, PointerType.Mouse, true);
             var pointerProps = new PointerPointProperties(RawInputModifiers.RightMouseButton, PointerUpdateKind.RightButtonPressed);
-            var pointerArgs = new PointerPressedEventArgs(nonInteractiveBorder, pointer, cardView, new Point(10, 10), 0, pointerProps, KeyModifiers.None)
+            var pointerArgs = new PointerPressedEventArgs(nonInteractiveBorder, pointer, cardView, new AvaloniaPoint(10, 10), 0, pointerProps, KeyModifiers.None)
             {
                 RoutedEvent = InputElement.PointerPressedEvent
             };

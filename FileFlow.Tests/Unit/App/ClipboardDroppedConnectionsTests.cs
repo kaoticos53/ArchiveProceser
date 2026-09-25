@@ -28,6 +28,7 @@ namespace FileFlow.Tests.Unit.App;
 /// (<c>DroppedConnectionsReportTests.LoadingACableToANodeThatCouldNotBeCreated_ShouldSayWhichNodeIsMissing</c>),
 /// porque la regla es una sola.
 /// </summary>
+[Collection(NodeClipboardCollection.Name)]
 public class ClipboardDroppedConnectionsTests
 {
     // ─────────────────────────────────────────────────────────────────────────────

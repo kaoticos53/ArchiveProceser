@@ -24,7 +24,16 @@ public enum ExclusiveTestState
     ActiveTheme,
 
     /// <summary>Directorio de trabajo del proceso (<c>Directory.SetCurrentDirectory</c> y quienes leen de él).</summary>
-    ProcessWorkingDirectory
+    ProcessWorkingDirectory,
+
+    /// <summary>Portapapeles del proceso (HostUi/NullClipboardService; Copy escribe y Paste lo lee primero).</summary>
+    ProcessClipboard,
+
+    /// <summary>
+    /// Medición de cotas inferiores de temporización con cronómetro (Stopwatch.GetElapsedTime): la CPU
+    /// que mide es del proceso, y las cotas con margen cero no perdonan una colección vecina compitiendo.
+    /// </summary>
+    TimingBoundsMeasurement
 }
 
 /// <summary>
@@ -61,7 +70,10 @@ public static class TestCollectionContractAnalyzer
         "VisualSnapshots",
         "OnnxInference",
         "AiModelDownloadSequential",
-        "ExampleFlowBank"
+        "ExampleFlowBank",
+        "EngineFirstRun",
+        "NodeClipboard",
+        "RenamerSampleDataTests"
     };
 
     /// <summary>
@@ -137,7 +149,37 @@ public static class TestCollectionContractAnalyzer
                     "colección que escriba ahí contamina la ventana que el banco mide—. Sólo el banco de ejemplos " +
                     "lo mueve, y lo hace en exclusividad (colección ExampleFlowBank; ver " +
                     "TestAssemblyParallelism.cs). Para leer o escribir un directorio, usa una carpeta temporal propia.",
-            Patterns: [new(@"\bDirectory\s*\.\s*SetCurrentDirectory\s*\(", RegexOptions.Compiled)])
+            Patterns: [new(@"\bDirectory\s*\.\s*SetCurrentDirectory\s*\(", RegexOptions.Compiled)]),
+
+        new(
+            ExclusiveTestState.TimingBoundsMeasurement,
+            CanonicalCollection: "RenamerSampleDataTests",
+            Reason: "La medición de cotas inferiores de temporización (huecos entre eventos medidos con " +
+                    "Stopwatch.GetElapsedTime y afirmados con margen cero) compite por la CPU del proceso con " +
+                    "cualquier colección vecina, y esa competición recorta los huecos por debajo del retardo " +
+                    "que el producto promete — el flake medido del test EmissionLatency (4,911 ms contra 5 ms, " +
+                    "suite completa del 2026-09-25), que no se repite en solitario. Es la tesis de " +
+                    "EngineFirstRun: no confina estado mutable, confina la CPU, que es de todos. Sólo puede " +
+                    "medirse bajo exclusividad (colección RenamerSampleDataTests; ver " +
+                    "TestAssemblyParallelism.cs).",
+            Patterns: [new(@"\bGetElapsedTime\s*\(", RegexOptions.Compiled)]),
+
+        new(
+            ExclusiveTestState.ProcessClipboard,
+            CanonicalCollection: "NodeClipboard",
+            Reason: "El portapapeles del proceso es de todos: NodeClipboardService.Copy escribe el paquete vía " +
+                    "HostUi.SetClipboardText —el singleton NullClipboardService.Instance cuando no hay host, que es " +
+                    "lo que corre en pruebas— y Paste lo lee primero del portapapeles global, dejando la copia en " +
+                    "memoria sólo como respaldo. Dos pruebas paralelas que copien y peguen a la vez pueden acabar " +
+                    "pegando el paquete de la vecina. Sólo puede ejercitarse bajo exclusividad (colección " +
+                    "NodeClipboard; ver TestAssemblyParallelism.cs).",
+            Patterns:
+            [
+                new(@"\bclipboard\s*\.\s*(Copy|Paste|CanPaste|Duplicate)\s*\(", RegexOptions.Compiled),
+                new(@"\bClipboardService\s*\.\s*(Copy|Paste|CanPaste|Duplicate)\s*\(", RegexOptions.Compiled),
+                new(@"\bPasteNodes\s*\(", RegexOptions.Compiled),
+                new(@"\bDuplicateSelectedNodes\s*\(", RegexOptions.Compiled)
+            ])
     ];
 
     /// <summary>Regla de un estado: patrones que lo delatan y colección canónica que lo confina.</summary>
@@ -274,7 +316,10 @@ public static class TestCollectionContractAnalyzer
         ["VisualSnapshotsCollection"] = "VisualSnapshots",
         ["OnnxInferenceCollection"] = "OnnxInference",
         ["AiModelDownloadSequentialCollection"] = "AiModelDownloadSequential",
-        ["ExampleFlowBankCollection"] = "ExampleFlowBank"
+        ["ExampleFlowBankCollection"] = "ExampleFlowBank",
+        ["EngineFirstRunCollection"] = "EngineFirstRun",
+        ["NodeClipboardCollection"] = "NodeClipboard",
+        ["RenamerSampleDataCollection"] = "RenamerSampleDataTests"
     };
 
     /// <summary>

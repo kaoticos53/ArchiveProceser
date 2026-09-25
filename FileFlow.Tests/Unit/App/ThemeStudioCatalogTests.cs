@@ -335,19 +335,28 @@ public class ThemeStudioCatalogTests
                 .Should().BeEquivalentTo(ThemeSettingCatalog.Settings.Select(s => s.Property),
                     "el editor debe mostrar exactamente los ajustes del catálogo");
 
-            // Cambiar un ajuste desde su fila debe regenerar los tokens de la vista previa.
-            var radiusRow = viewModel.Sections.SelectMany(s => s.Rows)
-                .OfType<ThemeNumberRowViewModel>()
-                .First(r => r.Property == nameof(ThemeDefinition.CornerRadius));
+            // Los tokens los genera el host por el puente; la prueba instala uno propio que cuenta
+            // cuántos tokens hay (la previsualización se alimenta del diccionario portable).
+            FileFlow.App.Core.ThemeHostBridge.BuildResources = _ =>
+                new Dictionary<string, object?> { ["RadiusSm"] = 12.0 };
+            try
+            {
+                // Cambiar un ajuste desde su fila debe regenerar los tokens de la vista previa.
+                var radiusRow = viewModel.Sections.SelectMany(s => s.Rows)
+                    .OfType<ThemeNumberRowViewModel>()
+                    .First(r => r.Property == nameof(ThemeDefinition.CornerRadius));
 
-            double before = RadiusOf(viewModel.LivePreviewResources["RadiusSm"]);
+                radiusRow.Value += 6;
 
-            radiusRow.Value += 6;
+                viewModel.LivePreviewResources["RadiusSm"].Should().Be(12.0,
+                    "editar una fila debe regenerar los tokens de la vista previa a través del puente");
 
-            RadiusOf(viewModel.LivePreviewResources["RadiusSm"])
-                .Should().NotBe(before, "editar una fila debe refrescar los tokens de la vista previa");
-
-            viewModel.EditingTheme.CornerRadius.Should().Be((double)radiusRow.Value, "la fila escribe sobre el tema en edición");
+                viewModel.EditingTheme.CornerRadius.Should().Be((double)radiusRow.Value, "la fila escribe sobre el tema en edición");
+            }
+            finally
+            {
+                FileFlow.App.Core.ThemeHostBridge.BuildResources = null;
+            }
         }
         finally
         {
@@ -371,7 +380,18 @@ public class ThemeStudioCatalogTests
                 "la vista previa engancha el diccionario una sola vez: si se reemplaza la instancia, los " +
                 "DynamicResource del panel dejan de reflejar los cambios");
 
-            attached.Should().ContainKey("AppBackgroundBrush");
+            // Con el puente instalado, el diccionario estable recibe los tokens del host.
+            FileFlow.App.Core.ThemeHostBridge.BuildResources = _ =>
+                new Dictionary<string, object?> { ["AppBackgroundBrush"] = "token-de-prueba" };
+            try
+            {
+                viewModel.UpdateLivePreview();
+                attached.Should().ContainKey("AppBackgroundBrush");
+            }
+            finally
+            {
+                FileFlow.App.Core.ThemeHostBridge.BuildResources = null;
+            }
         }
         finally
         {

@@ -50,11 +50,11 @@ public class DeferredWorkInventoryGuardTests
         // como evidencia: `HeartbeatCadenceTests` declara latidos y mide su cadencia una vez por el mecanismo
         // compartido, en lugar de cuatro veces por cuatro copias. Los pasos de cada latido siguen siendo públicos
         // y los vigila `ApplicationHeartbeatContractTests`.
-        Exercised("FileFlow.App/Services/HeartbeatService.cs::Start::Timer", "Start", "HeartbeatCadenceTests", "Declare"),
+        Exercised("FileFlow.App.Core/Services/HeartbeatService.cs::Start::Timer", "Start", "HeartbeatCadenceTests", "Declare"),
 
         // ── Los dos relojes con duración semántica del hito 174: reloj inyectado y vencimiento probado ──
-        Exercised("FileFlow.App/ViewModels/EditorViewModel.cs::ExpireConnectionPulseAsync::Delay", "PulseConnectionEnergy", "ConnectionEnergyTests"),
-        Exercised("FileFlow.App/ViewModels/NodeParameterViewModel.cs::CopyEvaluatedValueAsync::Delay", "CopyEvaluatedValueAsync", "NodeParameterViewModelTests"),
+        Exercised("FileFlow.App.Core/ViewModels/EditorViewModel.cs::ExpireConnectionPulseAsync::Delay", "PulseConnectionEnergy", "ConnectionEnergyTests"),
+        Exercised("FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs::CopyEvaluatedValueAsync::Delay", "CopyEvaluatedValueAsync", "NodeParameterViewModelTests"),
 
         // El aviso de cierre del arranque: espera a que el primer fotograma esté pintado antes de salir a la red
         // a buscar actualizaciones. No hay paso público y su duración sólo tiene sentido con una interfaz real
@@ -189,6 +189,10 @@ public class DeferredWorkInventoryGuardTests
             "la aplicación es donde viven los latidos de la interfaz");
 
         inventory.Select(site => site.File).Should().Contain(
+            path => path.StartsWith("FileFlow.App.Core/", StringComparison.Ordinal),
+            "el núcleo portable también aplaza trabajo (latidos, pulsos, avisos)");
+
+        inventory.Select(site => site.File).Should().Contain(
             path => path.StartsWith("FileFlow.Core/", StringComparison.Ordinal),
             "el motor también aplaza trabajo (reintentos, sondeos, planificador)");
 
@@ -197,12 +201,13 @@ public class DeferredWorkInventoryGuardTests
             "los plugins aplazan trabajo y no pueden quedar fuera del inventario");
 
         // Sitios conocidos: si alguien mueve o reescribe uno, el barrido deja de verlo en silencio y esto lo dice.
+        // Los ViewModels y el registro de latidos viven en el núcleo portable desde la migración multiplataforma.
         inventory.Select(site => site.Key).Should().Contain(
             [
-                "FileFlow.App/Services/HeartbeatService.cs::Start::Timer",
+                "FileFlow.App.Core/Services/HeartbeatService.cs::Start::Timer",
                 "FileFlow.App/Views/SplashScreenWindow.axaml.cs::.ctor::Timer",
-                "FileFlow.App/ViewModels/EditorViewModel.cs::ExpireConnectionPulseAsync::Delay",
-                "FileFlow.App/ViewModels/NodeParameterViewModel.cs::CopyEvaluatedValueAsync::Delay"
+                "FileFlow.App.Core/ViewModels/EditorViewModel.cs::ExpireConnectionPulseAsync::Delay",
+                "FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs::CopyEvaluatedValueAsync::Delay"
             ]);
     }
 

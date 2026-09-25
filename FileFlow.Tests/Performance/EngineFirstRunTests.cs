@@ -53,10 +53,12 @@ namespace FileFlow.Tests.Performance;
 /// Por eso esta prueba <b>no</b> compara tiempos contra un umbral: el «antes y después» del arranque no es una
 /// propiedad del motor sino de la máquina que acaba de compilar, y un umbral así sólo distingue «acabo de
 /// compilar» de «no acabo de compilar».</para>
-///
-/// <para>Corre en la colección exclusiva <see cref="EngineFirstRunCollection"/>: lo que se mide —la concurrencia
+//////<para>Corre en la colección exclusiva <see cref="EngineFirstRunCollection"/>: lo que se mide —la concurrencia
 /// alcanzada y los hilos que la sostienen— es un recurso de todo el proceso, y una colección vecina ejecutando su
-/// propio flujo la ensucia (medido: 1 904 ms con vecino donde sola sale en 269 ms).</para>
+/// propio flujo la ensucia (medido: 1 904 ms con vecino donde sola sale en 269 ms). La exclusividad no lo es todo:
+/// en suite completa la prueba falló una vez con la colección ya en exclusividad (2026-09-25) — el residuo del
+/// proceso tras la tormenta paralela del resto del suite es la única fuente de ruido que queda, y por eso la
+/// prueba se asienta (GC completo + pausa corta) antes de su primera medición.</para>
 /// </summary>
 [Collection(EngineFirstRunCollection.Name)]
 public class EngineFirstRunTests
@@ -83,6 +85,18 @@ public class EngineFirstRunTests
             {
                 await File.WriteAllTextAsync(Path.Combine(source, $"item_{i:D3}.txt"), "x");
             }
+
+            // La exclusividad de la colección impide que otras PRUEBAS corran a la vez, no que el proceso
+            // termine de pagarse lo que quedó pendiente de la tormenta paralela del resto del suite: basura
+            // por recolectar, finalizadores, continuaciones en el grupo de hilos. El fallo aislado de suite
+            // completa (2026-09-25) cayó aquí con la colección ya en exclusividad, y la única aserción de
+            // reloj de pared de la prueba —la ventana de trabajo de la primera ejecución— es la que un
+            // residuo así puede torcer. Asentar antes de medir no debilita nada: las aserciones siguen
+            // siendo las mismas (concurrencia y ventana de trabajo), sólo se les quita ruido ajeno.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            await Task.Delay(200);
 
             var loader = new PluginLoader();
             loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);

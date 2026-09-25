@@ -172,16 +172,27 @@ public class ThemeVariantPropagationTests
     [Fact]
     public void ThemeManager_ShouldKeepPublishingVariantAndReapplyingToOpenWindows()
     {
-        string path = Path.Combine(TestRepositoryLocator.RepositoryRoot(), "FileFlow.App/Services/ThemeManager.cs");
-        File.Exists(path).Should().BeTrue();
+        // Desde la migración multiplataforma la cadena es de tres eslabones: el ThemeManager del
+        // núcleo portable publica por el puente, el host Avalonia instala el puente y el host
+        // aplica la variante a su runtime. La guardia exige los tres eslabones: si se rompe
+        // cualquiera, los controles internos de Fluent vuelven a quedarse en la variante vieja
+        // (el bug de Fase 0 que esta cadena cura).
+        string corePath = Path.Combine(TestRepositoryLocator.RepositoryRoot(), "FileFlow.App.Core/Services/ThemeManager.cs");
+        File.Exists(corePath).Should().BeTrue();
+        string coreSource = File.ReadAllText(corePath);
+        coreSource.Should().Contain("ThemeHostBridge.PublishThemeVariant?.Invoke(isDark)",
+            "el ThemeManager portable debe publicar el cambio a través del puente de temas");
 
-        string source = File.ReadAllText(path);
-
-        source.Should().Contain("Application.RequestedThemeVariant",
-            "ThemeManager debe publicar la variante de FluentTheme al cambiar de tema (bug de Fase 0)");
-        source.Should().Contain("WindowThemeHelper.ApplyThemeToOpenWindows()",
+        string hostPath = Path.Combine(TestRepositoryLocator.RepositoryRoot(), "FileFlow.App/Services/AvaloniaThemeHost.cs");
+        File.Exists(hostPath).Should().BeTrue();
+        string hostSource = File.ReadAllText(hostPath);
+        hostSource.Should().Contain("ThemeHostBridge.PublishThemeVariant = PublishThemeVariant",
+            "el host Avalonia debe instalar el puente: sin instalación la publicación es un no-op silencioso");
+        hostSource.Should().Contain("Application.RequestedThemeVariant",
+            "el host debe publicar la variante de FluentTheme al cambiar de tema (bug de Fase 0)");
+        hostSource.Should().Contain("WindowThemeHelper.ApplyThemeToOpenWindows()",
             "las ventanas ya abiertas deben re-tematizarse al cambiar de tema (bug de Fase 0)");
-        source.Should().Contain("WindowThemeHelper.ResolveThemeVariant(",
+        hostSource.Should().Contain("WindowThemeHelper.ResolveThemeVariant(",
             "la decisión claro/oscuro debe pasar por el punto único de traducción a ThemeVariant");
     }
 

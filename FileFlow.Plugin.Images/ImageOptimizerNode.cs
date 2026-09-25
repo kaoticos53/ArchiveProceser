@@ -2,6 +2,7 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Storage;
 using SixLabors.ImageSharp;
+using Size = SixLabors.ImageSharp.Size;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;

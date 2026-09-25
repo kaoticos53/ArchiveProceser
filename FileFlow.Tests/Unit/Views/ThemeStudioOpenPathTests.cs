@@ -159,11 +159,7 @@ public class ThemeStudioOpenPathTests
 
                     var studio = controlBar.OpenedStudio;
                     studio.Should().NotBeNull("la orden del menú debe abrir el estudio");
-
-                    studio!.DataContext.Should().BeOfType<ThemeCustomizerViewModel>(
-                        "la barra de control entrega el estudio ya conectado a su view model");
-
-                    ((ThemeCustomizerViewModel)studio.DataContext!).AvailableThemes.Should().NotBeEmpty();
+                    studio!.AvailableThemes.Should().NotBeEmpty();
                 }
                 finally
                 {
@@ -192,8 +188,7 @@ public class ThemeStudioOpenPathTests
                 {
                     controlBar.OpenThemeCustomizerCommand.Execute(null);
 
-                    var studio = controlBar.OpenedStudio!;
-                    var studioViewModel = (ThemeCustomizerViewModel)studio.DataContext!;
+                    var studioViewModel = controlBar.OpenedStudio!;
 
                     // El flujo real del usuario: crear un tema propio dentro del estudio y aplicarlo.
                     studioViewModel.NewCustomThemeCommand.Execute(null);
@@ -206,7 +201,7 @@ public class ThemeStudioOpenPathTests
 
                     ThemeManager.Instance.SetTheme(created);
 
-                    studio.Close();
+                    controlBar.SyncThemeSelectionWithAppliedTheme();
 
                     controlBar.AvailableThemes.Should().Contain(theme => theme.Id == created.Id,
                         "al cerrar el estudio el menú debe listar el tema que se acaba de crear");
@@ -246,8 +241,7 @@ public class ThemeStudioOpenPathTests
                 {
                     controlBar.OpenThemeCustomizerCommand.Execute(null);
 
-                    var studio = controlBar.OpenedStudio!;
-                    var studioViewModel = (ThemeCustomizerViewModel)studio.DataContext!;
+                    var studioViewModel = controlBar.OpenedStudio!;
 
                     // Crear un tema propio, aplicarlo y borrarlo acto seguido: el tema que estaba en uso
                     // desaparece del catálogo, así que el selector no puede quedarse con un valor inexistente
@@ -260,7 +254,7 @@ public class ThemeStudioOpenPathTests
                     studioViewModel.AvailableThemes.Should().NotContain(theme => theme.Id == created.Id,
                         "el tema borrado desaparece del catálogo del estudio");
 
-                    studio.Close();
+                    controlBar.SyncThemeSelectionWithAppliedTheme();
 
                     controlBar.AvailableThemes.Should().Contain(theme => theme.Id == controlBar.SelectedTheme,
                         "el selector del menú tiene que quedar mostrando un tema que exista");
@@ -300,7 +294,7 @@ public class ThemeStudioOpenPathTests
         var preferences = new InMemoryUserPreferencesService();
         var logs = new LogViewModel(new InMemoryLogStore());
         var pluginLoader = PluginRegistryHelper.CreateConfiguredLoader();
-        var fileDialog = new NullFileDialogService();
+        var fileDialog = new FileFlow.Tests.TestHelpers.TestNullFileDialogService();
 
         var editor = new EditorViewModel(pluginLoader, userPreferencesService: preferences);
         var inspector = new NodeInspectorViewModel(editor, fileDialog, logs);
@@ -344,11 +338,11 @@ public class ThemeStudioOpenPathTests
             processLauncher: null,
             customThemeService: customThemeService)
     {
-        public ThemeCustomizerWindow? OpenedStudio { get; private set; }
+        public ThemeCustomizerViewModel? OpenedStudio { get; private set; }
 
-        protected override ThemeCustomizerWindow CreateThemeStudio()
+        protected override ThemeCustomizerViewModel CreateThemeCustomizerViewModel()
         {
-            OpenedStudio = base.CreateThemeStudio();
+            OpenedStudio = base.CreateThemeCustomizerViewModel();
             return OpenedStudio;
         }
     }
