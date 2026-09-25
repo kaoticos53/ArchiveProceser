@@ -1,0 +1,25 @@
+{
+  "id": "portapapeles-sin-vigilante",
+  "hito": 212,
+  "claim": "La regla del portapapeles del proceso (estado ProcessClipboard) delata el uso de NodeClipboardService y de los comandos PasteNodes/DuplicateSelectedNodes del editor, y exige la coleccion NodeClipboard.",
+  "why": "Sin la regla, las clases que copian y pegan vuelven a correr en paralelo y vuelve el defecto medido: Paste lee primero el portapapeles global del proceso (HostUi -> NullClipboardService.Instance en pruebas, un singleton) y la copia en memoria es solo respaldo, asi que una prueba paralela puede pegar el paquete de la vecina (medido: NodeTitleCustomizationTests esperaba pegar 1 nodo y encontro 2, el paquete de MultipleConnectedNodes). La declaracion de la coleccion sola, sin regla que la exija, es papel: nadie se entera de que una clase nueva empieza a copiar y pegar.",
+  "edits": [
+    {
+      "file": "FileFlow.Tests/TestHelpers/TestCollectionContractAnalyzer.cs",
+      "replacements": [
+        {
+          "old": "                new(@\"\\bclipboard\\s*\\.\\s*(Copy|Paste|CanPaste|Duplicate)\\s*\\(\", RegexOptions.Compiled),",
+          "new": "                new(@\"\\bnunca-casa\\s*\\.\\s*(Copy|Paste|CanPaste|Duplicate)\\s*\\(\", RegexOptions.Compiled),"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TestCollectionContractGuardTests",
+    "why": "Los casos del propio analizador con fuentes sinteticas exigen que la regla del portapapeles siga delatando clipboard.Copy y los comandos del editor."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Analyzer_ShouldRequireTheExampleFlowBank_WhenClassMovesTheProcessWorkingDirectory",
+    "why": "Otra regla del mismo analizador, con su propio patron: el mutante mata la regla del portapapeles, no el analizador entero."
+  }
+}

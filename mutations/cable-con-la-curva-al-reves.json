@@ -1,0 +1,25 @@
+{
+  "id": "cable-con-la-curva-al-reves",
+  "hito": 216,
+  "claim": "Las anclas de control de la curva salen del origen hacia el destino y llegan al destino desde el origen: el cuello abre en la direccion del flujo, no contra el nodo.",
+  "why": "Con el signo del cuello invertido, la curva se dobla hacia atras sobre la tarjeta que la emite: visualmente el cable entra y sale por el mismo lado (el defecto clasico de los editores de nodos) y el hit-testing por muestreo muerde en el sitio equivocado. Es matematica pura del nucleo portable que hoy solo pinta Nodify — y manana el host Uno con esta misma clase, asi que un defecto aqui se pinta dos veces.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/Services/ConnectionGeometry.cs",
+      "replacements": [
+        {
+          "old": "        Point exit = new(start.X + (offset * sign), start.Y);",
+          "new": "        Point exit = new(start.X - (offset * sign), start.Y);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ConnectionGeometryTests",
+    "why": "Las pruebas clavan las anclas de control calculadas a mano: con el cuello invertido, P1 sale con el signo cambiado y las aserciones de posici\u00f3n caen."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EditorViewportCalculatorTests",
+    "why": "La otra geometria del lienzo (encuadre y zoom), que no comparte el calculo del cuello: el mutante rompe la curva del cable, no el encuadre."
+  }
+}

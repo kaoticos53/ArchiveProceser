@@ -1,0 +1,25 @@
+{
+  "id": "latido-rearrancado-que-no-late",
+  "hito": 214,
+  "claim": "Parar un latido lo deja sin temporizador: IsRunning vuelve a false y arrancarlo de nuevo vuelve a latir. El latido visual de la ejecución se para y se rearranca en cada ejecución, así que un Stop que no olvida deja la segunda ejecución sin fotogramas.",
+  "why": "Sin la asignación a null, Stop() desecha el temporizador pero lo deja en el campo: IsRunning sigue diciendo true sobre un temporizador muerto y el ??= de Start() nunca recrea el temporizador, así que un latido parado y rearrancado queda muerto para siempre. Es un defecto silencioso en el producto (el latido visual deja de pintar en la segunda ejecución) y el literal que la guardia de contratos exige (_timer?.Dispose();) sigue presente: la declaración suena bien y solo la prueba de comportamiento lo caza.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/Services/HeartbeatService.cs",
+      "replacements": [
+        {
+          "old": "\n            _timer = null;",
+          "new": ""
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~AStoppedBeat_ShouldStopDelivering_AndResumeWhenStartedAgain",
+    "why": "La prueba del ciclo de vida afirma las dos mitades del defecto: IsRunning debe volver a false al parar y un latido rearrancado debe volver a entregar. Con el temporizador huérfano en el campo, las dos fallan."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheRegistry_ShouldNotAdmitTwoBeatsWithTheSameName",
+    "why": "Otro camino del mismo servicio (la validación de Declare), que no pasa por Stop: el mutante rompe el ciclo de vida del temporizador, no el registro."
+  }
+}

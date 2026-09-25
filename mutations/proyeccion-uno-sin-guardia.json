@@ -1,0 +1,25 @@
+{
+  "id": "proyeccion-uno-sin-guardia",
+  "hito": 217,
+  "claim": "El censo de enlaces de geometría del host Uno delata cualquier enlace XAML que mueva un Sdk.Point sin el conversor UnoPointConverter.Instance.",
+  "why": "Sin el censo, la fase 3.1 del plan Uno podría escribir el primer enlace de geometría sin conversor y el enlace moriría en silencio (el motor de enlaces de WinUI no traduce entre Sdk.Point y Windows.Foundation.Point): el síntoma sería un lienzo vacío en el producto en vez de un rojo en el árbol. La guardia nació antes del primer enlace justo para que no existan excepciones históricas; este mutante comprueba que el censo sigue delatando, no que existe.",
+  "edits": [
+    {
+      "file": "FileFlow.Tests/TestHelpers/UnoGeometryBindingScanner.cs",
+      "replacements": [
+        {
+          "old": "    public const string ConverterLiteral = \"UnoPointConverter\";",
+          "new": "    public const string ConverterLiteral = \"conv:NuncaCasa.Instance\";"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~UnoGeometryBindingGuardTests",
+    "why": "Los auto-tests del escáner con snippets sintéticos exigen que los enlaces CON conversor se acepten y los SIN conversor se delaten: con el literal que nunca casa, los aceptados pasan a delatarse y las aserciones caen en las dos direcciones."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Analyzer_ShouldRequireNodeClipboard_WhenClassExercisesTheProcessClipboard",
+    "why": "Otra guardia del mismo árbol de pruebas (el contrato de colecciones), que no comparte el escáner: el mutante rompe el censo del host Uno, no las reglas de colecciones."
+  }
+}

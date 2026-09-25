@@ -1,0 +1,25 @@
+{
+  "id": "stderr-del-cli-que-se-desvanece",
+  "hito": 219,
+  "claim": "Cuando un comando CLI termina con exit code distinto de cero, el nodo guarda el stderr devuelto por el proceso en la metadata del elemento (Cli:StdErr): es lo que el operador lee para saber por que fallo.",
+  "why": "Sin la linea que captura el stderr, el nodo sigue saliendo por el puerto Failed (el fallo se ve), sigue guardando el exit code (el numero se ve) y sigue escribiendo el stderr en su registro (el log lo dice en el momento) — pero la metadata del elemento queda sin el error, y quien consuma el elemento aguas abajo (un nodo de notificacion, un reporte, un renombrado con el motivo) no tiene el porque. Es el defecto de diagnostico clasico: el fallo se ve y la causa se desvanece.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/CliExecutionNode.cs",
+      "replacements": [
+        {
+          "old": "                item.Metadata[\"Cli:StdOut\"] = stdOut.Trim();\n                item.Metadata[\"Cli:StdErr\"] = stdErr.Trim();\n                item.Metadata[\"Cli:ExitCode\"] = exitCode;",
+          "new": "                item.Metadata[\"Cli:StdOut\"] = stdOut.Trim();\n                item.Metadata[\"Cli:ExitCode\"] = exitCode;"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~CliExecutionNode_WhenExitCodeNonZero_ShouldEmitFailedAndCaptureStdErr",
+    "why": "La prueba del exit code no cero afirma las dos mitades del contrato de fallo: el elemento sale por Failed y la metadata lleva el stderr del proceso."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~PdfTextExtractorNode_ExtractsTextSuccessfully",
+    "why": "El testigo de la mutacion de Documents, en otro plugin y sin relacion con el runner de procesos: el mutante rompe la captura del CLI, no la extraccion de PDF."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "dry-run-que-entrega-el-disparador",
+  "hito": 220,
+  "claim": "El dry-run de la descarga por HTTP entrega el RESULTADO simulado (el elemento clonado con la ruta donde caeria la descarga, su metadata de red y el tamano previsto), no el elemento que entro.",
+  "why": "Con el dry-run devolviendo el elemento de entrada en vez del clon enriquecido, la simulacion sigue saliendo por Out (la planificacion no se rompe en el log) pero el elemento que recorre el resto del flujo planificado es el disparador: CurrentPath apunta al origen, DownloadedPath no existe y los nodos posteriores planifican contra el archivo equivocado. Es exactamente para lo que sirve el dry-run — ensayar el flujo sin tocar la red y ver donde caera cada archivo — y su sintoma no es un fallo: es un plan que parece bien y ensaya mal.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Network/Transports/HttpTransportStrategy.cs",
+      "replacements": [
+        {
+          "old": "            var dryItem = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, 1024);\n            await context.EmitAsync(\"Out\", dryItem);",
+          "new": "            var dryItem = CreateDownloadResult(item, localFilePath, targetUrl, targetUrl, 1024);\n            await context.EmitAsync(\"Out\", item);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~NetworkDownloadNode_Http_DryRun_ShouldSimulateAndEmitOut",
+    "why": "La prueba del dry-run HTTP afirma las tres mitades del resultado simulado: sale por Out, lleva DownloadedPath en la metadata y CurrentPath apunta al destino planificado (no al elemento que entro)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~CliExecutionNode_WhenExitCodeNonZero_ShouldEmitFailedAndCaptureStdErr",
+    "why": "El testigo de la mutacion de Integrations, en otro plugin sin transportes de red: el mutante rompe la simulacion HTTP, no la captura del CLI."
+  }
+}

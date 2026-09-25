@@ -1,0 +1,25 @@
+{
+  "id": "texto-del-pdf-que-se-olvida",
+  "hito": 218,
+  "claim": "El extractor de texto de PDF guarda en la metadata del elemento el contenido textual extraido (PdfText), no solo los recuentos: la busqueda y la indexacion de la aplicacion viven de esa metadata.",
+  "why": "Sin la linea que guarda el texto, el nodo sigue recorriendo el PDF pagina a pagina (coste real, mediciones de paginas y palabras), sigue emitiendo el elemento por Out y la suite del producto nunca se entera: la metadata queda sin el texto y la busqueda semantica, la exportacion y el archivo .txt que el nodo puede escribir salen vacios de contenido. Es un defecto silencioso tipico de un nodo que emite lo que toca pero con el equipaje a medias.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Documents/PdfTextExtractorNode.cs",
+      "replacements": [
+        {
+          "old": "        string extractedText = sb.ToString();\n        item.Metadata[\"PdfText\"] = extractedText;\n        item.Metadata[\"PdfPageCount\"] = pageCount;",
+          "new": "        string extractedText = sb.ToString();\n        item.Metadata[\"PdfPageCount\"] = pageCount;"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~PdfTextExtractorNode_ExtractsTextSuccessfully",
+    "why": "La prueba del nodo ejecuta la extraccion sobre un PDF real con texto conocido y afirma que la metadata del elemento lo lleva."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~PdfSplitNode_SplitsMultiplePagePdf",
+    "why": "Otro nodo del mismo plugin, que no depende de la linea mutada: el mutante rompe el extractor de texto, no el corte de PDF."
+  }
+}
