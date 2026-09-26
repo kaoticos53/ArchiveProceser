@@ -730,7 +730,49 @@ visible: construye las pruebas de que lo construido **no se puede romper en sile
 
 ---
 
-## 11. Cómo verificarlo
+## 11. El tramo del lienzo Uno vivo (compilación 5779 → 6084)
+
+### Lo que ves
+
+- **El host multiplataforma pasó de lienzo estático a editor completo**: los nodos se seleccionan con un clic
+  (con su borde de selección), se arrastran solos o en grupo (con deshacer y rehacer), se borran con Delete, se
+  copian y pegan con los atajos de siempre, se renombran con F2 y se agrupan; el rubber band selecciona por
+  rectángulo; el spotlight (Shift+A o doble clic en el fondo) crea el nodo que escribas en el punto del cursor;
+  las notas y los grupos se crean, mueven, recolorean y borran; las migas navegan entre subflujos.
+- **Los puertos y los cables están vivos**: arrastrar desde un socket inicia el cable, que sigue al cursor y
+  salta al socket compatible cercano; soltar conecta; un clic derecho en el socket desconecta; y si un flujo
+  cargado trae cables que no pudieron anclarse, un aviso en el lienzo ofrece ir al nodo o reconectarlos.
+- **El lienzo sigue el tema**: cambiar de tema (incluido el claro) re-pinta fondo, tarjetas, cables y acentos
+  sin reiniciar, y los textos del marco siguen el idioma sin reiniciar.
+- **El host arrastra y se mueve sin tirones con grafos del tamaño del banco de ejemplos**: medido con 40 nodos
+  y 28 cables, un frame de arrastre del grafo entero cuesta ~1 ms — el margen contra 30 fps es de unas 30 veces.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **Una sola fuente de claves**: los atajos de teclado viven en una tabla del núcleo compartida por los dos
+  hosts — lo que se arregla en uno, se arregla en ambos, y una guardia compara que ninguno use teclas fuera de
+  la tabla.
+- **Anclas reales, no estimaciones**: los cables nacen del socket (calculado del árbol visual y proyectado por
+  la regla compartida), no del centro estimado de la tarjeta — la única divergencia que la comparación con el
+  escritorio midió, corregida y defendida por su mutación.
+- **45 mutaciones declaradas** cubren los defectos del tramo (cables que llegan tarde, tarjeta que no habla por
+  su color, anclas estimadas, decoradores que no llegan al árbol) con testigo que muerde y control en verde.
+- **La tabla de paridad**: 24 interacciones del lienzo, cada una con su prueba citada por nombre y verificada
+  contra el índice real de pruebas — la tabla no puede mentir sobre cobertura que no existe.
+- **El sondeo en runtime** (`--selfcheck`) inventaria el árbol real de la app viva por fases (53 comprobaciones)
+  y mide el rendimiento con el grafo de referencia.
+
+### Lo que sigue viéndose así (declarado)
+
+- El guion de los gestos puros (arrastre de cable a mano, rubber band, pan/zoom con el puntero) espera una
+  sesión de QA con puntero real: en el entorno automatizado, WinAppSDK descarta el puntero inyectado sin
+  UIAccess (el teclado sí llega); los métodos que ejecutan esos gestos están probados por las sondas.
+- Los pinceles del escritorio y del host provienen del mismo tema del núcleo; la comparación de píxel fino
+  entre hosts no se ha repetido desde el hito 226 (las divergencias que midió quedaron curadas y defendidas).
+
+---
+
+## 12. Cómo verificarlo
 
 ```powershell
 # La suite completa (pruebas unitarias, de integración y de aspecto)

@@ -1,5 +1,83 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-26] - La Mutación del Tema sin Repintado: la Lección del 233 queda Defendida (Hito 235)
+
+### 🎯 El encargo
+
+«Declara la mutación del tema sin repintado (que RepublishTokens deje de mutar los pinceles Canvas*) con testigo y control.»
+
+### 🧬 La declaración ([`tema-sin-repintado`](file:///mutations/tema-sin-repintado.json))
+
+Formaliza la lección central del hito 233: en WinUI la republicación por claves NO llega a los consumidores
+ vivos (el StaticResource captura la instancia y el ThemeResource de aplicación no re-evalúa) — la única vía
+ que repinta el lienzo al cambiar de tema es MUTAR el color del pincel singleton. El mutante deja la asignación
+ de `SetBrush` en un parseo sin efecto (`brush.Color = ParseHex(hex)` pasa a leer y descartar): el tema cambia
+ en el núcleo, la variante se publica, y el lienzo conserva los colores del tema anterior — el defecto vuelve
+ sin un solo crash. **Veredicto: MUERDE** — testigo rojo, control verde 1/1, árbol restaurado por bytes.
+
+- **Testigo** — [`UnoThemeRepaintGuardTests`](file:///FileFlow.Tests/Unit/App/UnoThemeRepaintGuardTests.cs)
+  (3 tests): la asignación del color como código vivo (`SourceText.CodeWithoutComments`, la técnica de los
+  mutantes del 227/232/233), el pipeline completo (cada variante termina en `RepublishTokens` y el cable es
+  uno de los pinceles aplicados) y el caso hermano como control.
+- **Control** — `ThemeHost_ShouldKeepCreatingMissingBrushes_AndThePortableGenerator`: el mutante cambia UNA
+  línea y deja intactas la creación del pincel ausente y el generador portable `BuildResources` que el Theme
+  Studio consume.
+
+### 📊 Catálogo y validación
+
+COVERAGE.md regenerado → **46 declaraciones**; `FileFlow.App.Uno` acumula **cuatro** (las cuatro curas de
+ las fases 3.2-3.5, cada una defendida por su defecto declarado). Suite completa → **1836 superadas + 1
+ omitida de 1837, 0 errores**.
+
+---
+
+## [2026-09-26] - Fase 3.6 del Lienzo Uno: el Rendimiento Medido, la Tabla que no Miente y el Cierre de la Rebanada (Hito 234)
+
+### 🎯 El encargo
+
+«Cierra la rebanada con la fase 3.6 del plan Uno: rendimiento medido con el grafo de referencia de 40 nodos y la tabla de paridad de interacciones».
+
+### 📊 El rendimiento, medido
+
+La sonda `ProbePerformanceGraph40` del selfcheck construye el grafo de referencia en rejilla 8x5 con cables
+encadenados y mide las tres magnitudes del plan:
+
+- **Build de 40 nodos + 28 cables: 31 ms** (umbral 5.000 ms — 160x de margen).
+- **Re-posicionado completo del grafo: 1,4 ms** — el coste por frame de arrastrar la selección entera
+  (umbral 60 ms).
+- **Frame de drag real (Location + Reposition + DrawWires): 1,0 ms** (umbral 33 ms = 30 fps — ~30x).
+
+**Veredicto: sin tirones con ~30x de margen.** La primera medida del plan (virtualizar contenedores) NO hace
+ falta y la opción C (Skia) queda definitivamente descartada. Las lecciones de la sonda: los clones del fuente
+ sin entrada reducen el encadenado a 28 pares válidos (conectar pares cualesquiera y documentarlo), y la
+ restauración es EXPLÍCITA (`RemoveNodeWithConnections`) porque el undo dejó nodos huérfanos que contaminaban
+ los reintentos. La sonda es ONE-SHOT y sólo corre con el árbol sano: el add/remove masivo de 40 tarjetas
+ deja la materialización WinUI frágil (la sonda 3.2 de un reintento lanzaba `COMException`).
+
+### 📋 La tabla que no miente
+
+[`UnoInteractionParityGuardTests`](file:///FileFlow.Tests/Unit/App/UnoInteractionParityGuardTests.cs) (4 tests):
+la tabla de **24 interacciones** del lienzo, cada fila con su prueba del SUITE citada por nombre y verificada
+contra el índice real de pruebas (`TestSuiteIndex.MethodNames` — una cita inexistente hace caer la guardia) y
+su cobertura del HOST (sonda del selfcheck, guardia de árbol, o el guion manual del hito 231 **declarado como
+pendiente**, no fingido).
+
+### 🐛 Los dos fallos de la validación, leídos y curados
+
+- La guardia de COVERAGE cayó porque la nueva guardia de paridad entra al censo de guardias del repositorio
+  (34 → 35): COVERAGE.md regenerado por su mecanismo.
+- El latido (`TheHeartbeat_ShouldPublishAPlausibleSample`) falló en la corrida completa y pasó en aislamiento:
+  el patrón de flake de timing documentado en el hito 222, no un defecto nuevo.
+
+### ✅ Validación
+
+- Host Uno 0 errores; selfcheck **EXIT 0 (53 OK)** con la sonda 3.6 y su línea de medición.
+- Suite completa → **1833 superadas + 1 omitida de 1834**, 0 errores.
+- La rebanada vertical del lienzo queda CERRADA: las seis fases del plan con su criterio demostrado o
+  implementado; la única deuda declarada es el guion manual de gestos (hito 231, esperando puntero real).
+
+---
+
 ## [2026-09-26] - Fase 3.5 del Lienzo Uno: la Re-tematización en Caliente y el Pincel que WinUI no Re-evalúa (Hito 233)
 
 ### 🎯 El encargo

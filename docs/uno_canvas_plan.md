@@ -340,12 +340,23 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 
 ### Fase 3.6 — Cierre de la rebanada
 
-- **Rendimiento medido**: el grafo de referencia (40 nodos + cables, como el banco de ejemplos)
-  se arrastra y se encuadra sin tirones perceptibles; si no llega, primera medida: virtualizar
-  contenedores (`ItemsControl` con reciclado) y segundo: evaluar la opción C acotada al cable.
-- Guardia de paridad: tabla de las ~20 interacciones del lienzo, cada una con dónde está probada
-  (suite: la lógica; host: el sondeo manual de cada fase).
-- Protocolo completo: hito, session_summary, notas de versión, COVERAGE si hay mutación nueva.
+- **Estado (hito 234): CERRADA — criterio cumplido con margen, sin virtualización ni opción C.**
+- **Rendimiento medido** (sonda del selfcheck, grafo de referencia 8x5): build de 40 nodos + 28 cables
+  encadenables en **31 ms** (umbral 5.000 ms), re-posicionado completo del grafo **1,4 ms** (el coste por
+  frame de arrastrar la selección entera; umbral 60 ms) y un frame de drag real **1,0 ms** (umbral 33 ms =
+  30 fps). El margen es ~30x sobre 30 fps: la primera medida del plan (virtualizar) NO hace falta; la
+  opción C queda definitivamente descartada. Las lecciones de la sonda: los 14 clones del fuente sin
+  entrada reducen el encadenado a 28 (la sonda conecta pares válidos y lo documenta), y la restauración
+  es EXPLÍCITA (RemoveNodeWithConnections) porque el undo dejó huérfanos que contaminaban los reintentos.
+- **Guardia de paridad**: [`UnoInteractionParityGuardTests`](file:///FileFlow.Tests/Unit/App/UnoInteractionParityGuardTests.cs)
+  (4 tests): la tabla de **24 interacciones**, cada fila con su prueba del SUITE (citada por nombre y
+  VERIFICADA contra el índice real de pruebas — una cita que no existe hace caer la guardia, la lección
+  de los filtros del 227) y su cobertura del HOST (sonda del selfcheck, guardia de árbol o el guion
+  manual pendiente de la sesión con puntero del hito 231, declarado como pendiente y no fingido).
+- **Protocolo completo**: hito 234, session_summary, notas de versión (el cierre de la rebanada visible)
+  y COVERAGE.md regenerado (el censo de guardias 34 → 35 con la de paridad).
+- El guion manual de los gestos (arrastre de cable, rubber band, pan/zoom a mano) sigue en espera de la
+  sesión con puntero real del hito 231: es lo único que la rebanada deja fuera, y está declarado.
 
 ---
 
@@ -390,7 +401,7 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 | 3.3 — Puertos y cables vivos | ✅ CRITERIO DEMOSTRADO (hito 229: anclas write-back reales del árbol, sockets vivos con cable pendiente y snapping, desconexión por socket, aviso de cables perdidos pintado; conectar/desconectar verificado por sonda en el selfcheck con restauración exacta) | 229 |
 | 3.4 — Decoradores y servicios del lienzo | 🔶 IMPLEMENTADA (hito 230: notas/grupos en capas proyectadas, spotlight con confirmación real, migas navegables, drag & drop del cajón; criterio demostrado por sonda —nota/grupo/spotlight/migas—; el gesto del cajón espera sesión con puntero) | 230 |
 | 3.5 — Temas y localización | ✅ CRITERIO DEMOSTRADO (hito 233: mitad Uno del puente con mutación in-place de pinceles singleton — la única vía que WinUI repinta; sonda: light_studio re-tematiza fondo y tarjetas en caliente con restauración; localización por LanguageChanged + textos del núcleo) | 233 |
-| 3.6 — Cierre de la rebanada | ⬜ Pendiente | — |
+| 3.6 — Cierre de la rebanada | ✅ CERRADA (hito 234: rendimiento medido —build 31 ms, re-posicionado 1,4 ms, frame de drag 1,0 ms: ~30x de margen, sin virtualizar— y guardia de paridad de 24 interacciones con citas verificadas contra el índice real; el guion de gestos queda pendiente de puntero real, declarado) | 234 |
 
 El plan se escribe antes de la primera fase y no se edita a mano por avance: la columna de estado se
 actualiza cuando cada fase mide su criterio de salida verde (la 3.1 quedó demostrada por sus dos mitades
