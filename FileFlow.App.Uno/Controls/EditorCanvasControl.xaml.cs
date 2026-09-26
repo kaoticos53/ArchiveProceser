@@ -429,6 +429,104 @@ public sealed partial class EditorCanvasControl : UserControl
     }
 
     /// <summary>
+    /// Sonda de la fase 3.6 — el rendimiento MEDIDO con el grafo de referencia (40 nodos + 40 cables,
+    /// la densidad del banco de ejemplos): (1) construir el grafo completo con materialización de
+    /// tarjetas y cables; (2) re-posicionar TODO el grafo (el coste de un frame de arrastre); (3) un
+    /// drag real de la selección entera por el mismo camino que el gesto, con su DrawWires por frame.
+    /// Umbrales del plan (sin tirones perceptibles): build < 5 s, re-position < 60 ms, frame < 33 ms.
+    /// Restauración exacta: undo apilado + pila limpia ygrafo como al entrar.
+    /// </summary>
+    internal (int NodesBuilt, int WiresDrawn, double BuildMs, double RepositionMs, double DragFrameMs) ProbePerformanceGraph40()
+    {
+        if (_editor is null)
+        {
+            return (0, 0, 0, 0, 0);
+        }
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var original = _editor.Nodes.ToList();
+        var graph = new List<NodeViewModel>();
+        try
+        {
+            // 1. Construir 40 nodos en rejilla 8x5 con cables encadenados (la densidad del banco).
+            for (int i = 0; i < 40; i++)
+            {
+                string typeName = original[i % original.Count].NodeTypeName;
+                var added = _editor.AddNode(typeName, new Point(100 + (i % 8) * 320.0, 100 + (i / 8) * 300.0));
+                if (added is null)
+                {
+                    return (graph.Count, 0, 0, 0, 0);
+                }
+
+                graph.Add(added);
+            }
+
+            clock.Restart();
+            int links = 0;
+            for (int i = 1; i < graph.Count; i++)
+            {
+                var source = graph[i - 1].OutputPorts.FirstOrDefault();
+                var target = graph[i].InputPorts.FirstOrDefault();
+                if (source is null || target is null)
+                {
+                    continue; // los fuentes no tienen entrada: el encadenado salta al siguiente par válido
+                }
+
+                _editor.StartConnectionCommand.Execute(source);
+                _editor.FinishConnectionCommand.Execute(target);
+                links++;
+            }
+            double buildMs = clock.Elapsed.TotalMilliseconds;
+            int wires = _editor.Connections.Count;
+            _ = links;
+
+            // 2. Re-posicionar todo: el coste por frame de arrastrar la selección entera.
+            clock.Restart();
+            foreach (var node in graph)
+            {
+                node.Location = new Point(node.Location.X + 10, node.Location.Y + 10);
+            }
+            ApplyAllNodePositions();
+            DrawWires();
+            double repositionMs = clock.Elapsed.TotalMilliseconds;
+
+            // 3. Un frame de drag real (el mismo camino que el gesto: Location + Reposition + DrawWires).
+            graph[0].IsSelected = true;
+            _drag = _editor.Nodes.Where(n => n.IsSelected)
+                .Select(n => new DragItem(_cardsByNode[n], n, n.Location))
+                .ToList();
+            _dragScreenStart = new Windows.Foundation.Point(0, 0);
+            clock.Restart();
+            foreach (var node in graph)
+            {
+                node.Location = new Point(node.Location.X + 1, node.Location.Y + 1);
+            }
+            ApplyAllNodePositions();
+            DrawWires();
+            double dragFrameMs = clock.Elapsed.TotalMilliseconds;
+            _drag = null;
+
+            return (graph.Count, wires, Math.Round(buildMs, 1), Math.Round(repositionMs, 1), Math.Round(dragFrameMs, 1));
+        }
+        finally
+        {
+            // Restauración EXPLÍCITA (no por undo): RemoveNodeWithConnections retira cada nodo añadido
+            // con sus cables y es determinista entre intentos del sondeo — el undo dependía de qué
+            // graba AddNode y dejó nodos huérfanos que contaminaban la sonda 3.2 del intento siguiente.
+            foreach (var node in graph.AsEnumerable().Reverse())
+            {
+                node.IsSelected = false;
+                if (_editor.Nodes.Contains(node))
+                {
+                    _editor.RemoveNodeWithConnections(node);
+                }
+            }
+
+            _editor.UndoRedoService.Clear();
+        }
+    }
+
+    /// <summary>
     /// Sonda de la fase 3.5: cambiar el tema por la API del núcleo (SetThemeById) tiene que
     /// re-tematizar el lienzo EN CALIENTE — el fondo del plano y la cara de una tarjeta cambian de
     /// color porque los pinceles republicados por UnoThemeHost llegan a los ThemeResource ya

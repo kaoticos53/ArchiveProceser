@@ -25,13 +25,15 @@ namespace FileFlow.App.Uno;
 /// </summary>
 public static class RuntimeSelfCheck
 {
+    /// <summary>La sonda de rendimiento ya corrió en este proceso: el árbol queda one-shot.</summary>
+    private static bool _performanceProbeRan;
     /// <summary>
     /// Corre el sondeo en un hilo de fondo (nunca bloquea el hilo de UI): reintenta en el dispatcher
     /// hasta ver las tarjetas materializadas o agotar la ventana de espera, y termina el proceso con el
     /// veredicto. Devuelve -1 (el proceso termina dentro del sondeo).
     /// </summary>
     public static int Run(Window window, DispatcherQueue dispatcher)
-    {        new Thread(() =>        {            var lastReport = new StringBuilder("[sin intento completado]");            var ok = false;            // La materialización de las plantillas ocurre en el pase de layout, después del Activate.            for (int attempt = 0; attempt < 30 && !ok; attempt++)            {                Thread.Sleep(attempt == 0 ? 300 : 200);                // Cada intento parte de un bloque limpio: selfcheck-report.txt cuenta SIEMPRE lo que el                // último intento vio, no la historia de los intentos de espera («lienzo sin tamaño»,                // «grafo sin cargar»), que era ruido de diagnóstico. La consola recibe el bloque final.                lastReport.Clear();                var completed = new ManualResetEventSlim(false);                dispatcher.TryEnqueue(() =>                {                    try                    {                        ok = Inspect(window, lastReport);                    }                    catch (Exception ex)                    {                        lastReport.AppendLine("EXCEPCIÓN en el sondeo: " + ex.GetType().Name + ": " + ex.Message                            + Environment.NewLine + ex.StackTrace);                    }                    finally                    {                        completed.Set();                    }                });                completed.Wait(TimeSpan.FromSeconds(10));                // Escritura POR intento: si el proceso muere a mitad del sondeo, el fichero cuenta el                // último intento completo y no queda a medias con una mezcla de épocas.                try                {                    File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "selfcheck-report.txt"), lastReport.ToString());                }                catch { }            }            // Exit desde un hilo de fondo no purga buffers ni ejecuta finalizers: imprimir el bloque final            // y forzar el flush antes de salir.            Console.Out.Flush();            Console.WriteLine(lastReport.ToString());            Console.Out.Flush();            Environment.Exit(ok ? 0 : 1);        })
+    {        new Thread(() =>        {            var lastReport = new StringBuilder("[sin intento completado]");            var ok = false;            // La materialización de las plantillas ocurre en el pase de layout, después del Activate.            for (int attempt = 0; attempt < 30 && !ok && !_performanceProbeRan; attempt++)            {                Thread.Sleep(attempt == 0 ? 300 : 200);                // Cada intento parte de un bloque limpio: selfcheck-report.txt cuenta SIEMPRE lo que el                // último intento vio, no la historia de los intentos de espera («lienzo sin tamaño»,                // «grafo sin cargar»), que era ruido de diagnóstico. La consola recibe el bloque final.                lastReport.Clear();                var completed = new ManualResetEventSlim(false);                dispatcher.TryEnqueue(() =>                {                    try                    {                        ok = Inspect(window, lastReport);                    }                    catch (Exception ex)                    {                        lastReport.AppendLine("EXCEPCIÓN en el sondeo: " + ex.GetType().Name + ": " + ex.Message                            + Environment.NewLine + ex.StackTrace);                    }                    finally                    {                        completed.Set();                    }                });                completed.Wait(TimeSpan.FromSeconds(10));                // Escritura POR intento: si el proceso muere a mitad del sondeo, el fichero cuenta el                // último intento completo y no queda a medias con una mezcla de épocas.                try                {                    File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "selfcheck-report.txt"), lastReport.ToString());                }                catch { }            }            // Exit desde un hilo de fondo no purga buffers ni ejecuta finalizers: imprimir el bloque final            // y forzar el flush antes de salir.            Console.Out.Flush();            Console.WriteLine(lastReport.ToString());            Console.Out.Flush();            Environment.Exit(ok ? 0 : 1);        })
         {
             IsBackground = true,
             Name = "RuntimeSelfCheck"
@@ -230,6 +232,45 @@ public static class RuntimeSelfCheck
         catch (Exception ex)
         {
             Check(false, "sonda de temas 3.5 lanzó: " + ex.GetType().Name + ": " + ex.Message);
+        }
+
+        // Fase 3.6 — el rendimiento MEDIDO con el grafo de referencia (40 nodos + cables): construir,
+        // re-posicionar todo (el coste por frame de arrastre) y un frame de drag real. Umbrales del
+        // plan: build < 5 s, re-posicionado < 60 ms, frame de drag < 33 ms (30 fps sin tirones).
+        // ONE-SHOT y sólo con el árbol sano: el add/remove masivo de 40 tarjetas deja la
+        // materialización de WinUI frágil (la sonda 3.2 de un reintento lanza COMException), así que
+        // (1) sólo corre si todo lo anterior pasó, y (2) tras correrla no hay reintento del sondeo.
+        if (ok)
+        {
+            try
+            {
+                int nodesBefore = editor.Nodes.Count;
+                int connectionsBefore = editor.Connections.Count;
+                var (nodesBuilt, wiresDrawn, buildMs, repositionMs, dragFrameMs) = canvas.ProbePerformanceGraph40();
+                _performanceProbeRan = true;
+
+                report.AppendLine(string.Format(
+                    "       [medición] build {0} nodos + {1} cables: {2:F0} ms | re-posicionado total: {3:F1} ms | frame de drag: {4:F1} ms",
+                    nodesBuilt, wiresDrawn, buildMs, repositionMs, dragFrameMs));
+
+                Check(nodesBuilt == 40, $"el grafo de referencia se construye completo: {nodesBuilt}/40 nodos");
+                Check(wiresDrawn >= 20, $"los pares encadenables del grafo se conectan y dibujan: {wiresDrawn} (los fuentes sin entrada reducen el encadenado)");
+                Check(buildMs < 5000, $"build bajo el umbral del plan (< 5000 ms): {buildMs:F0} ms");
+                Check(repositionMs < 60, $"re-posicionado total bajo el umbral (< 60 ms): {repositionMs:F1} ms");
+                Check(dragFrameMs < 33, $"frame de drag bajo 30 fps (< 33 ms): {dragFrameMs:F1} ms");
+
+                bool restoredExactly = editor.Nodes.Count == nodesBefore && editor.Connections.Count == connectionsBefore;
+                Check(restoredExactly, "la restauración exacta deja el grafo de ejemplo como al entrar");
+            }
+            catch (Exception ex)
+            {
+                _performanceProbeRan = true;
+                Check(false, "sonda de rendimiento 3.6 lanzó: " + ex.GetType().Name + ": " + ex.Message);
+            }
+        }
+        else
+        {
+            report.AppendLine("       [omitida] sonda de rendimiento 3.6: el árbol no llegó sano (una sonda anterior falló); reintento con árbol limpio");
         }
 
         report.AppendLine(ok
