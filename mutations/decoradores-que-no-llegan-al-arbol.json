@@ -1,0 +1,26 @@
+{
+  "id": "decoradores-que-no-llegan-al-arbol",
+  "hito": 230,
+  "claim": "La capa de decoradores del lienzo Uno (notas y grupos) se reconstruye cuando CanvasDecorators.CollectionChanged cambia: sin escuchar esa colección, AddAnnotation/AddGroup del núcleo escriben el VM y las notas jamás llegan al árbol visual.",
+  "why": "El defecto que la propia sonda 3.4 del hito 230 cazó en su primera corrida: el lienzo escuchaba Nodes y Connections pero no CanvasDecorators, así que AddAnnotation/AddGroup añadían al núcleo y la capa no se reconstruía — noteRendered/groupRendered salieron en FALLO y las notas existían en el VM sin existir en el árbol. La cura fue la suscripción con handler con nombre en el setter de Editor (más la simetría del -= que el contrato de vida del 225 ya exigía a las otras dos colecciones). Este mutante invierte UNA línea del setter (+= a -=) como el hermano cables-que-no-llegan-tarde; el lienzo es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia que exige la suscripción en el árbol de fuentes (código vivo, no la línea comentada: lección del 165).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "                ((INotifyCollectionChanged)_editor.CanvasDecorators).CollectionChanged += OnDecoratorsChanged;\n",
+          "new": "                ((INotifyCollectionChanged)_editor.CanvasDecorators).CollectionChanged -= OnDecoratorsChanged;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~UnoCanvasDecoratorsGuardTests",
+    "why": "La guardia nueva exige la suscripción de CanvasDecorators como código vivo (retira comentarios antes de buscar): con el mutante, la línea sustituida deja de existir y Canvas_ShouldSubscribeToDecoratorsCollectionChanged cae. Es la prueba de árbol para un código que el suite no puede materializar (WinUI), la misma técnica de los mutantes del setter del 227 y del ancla del 232."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Canvas_ShouldKeepTheNodeAndWireSubscriptionsAlongsideDecorators",
+    "why": "El caso hermano del mismo bloque: el mutante cambia UNA línea (la suscripción de CanvasDecorators, que es lo que la tesis afirma) y deja intactas las de Nodes y Connections — el Rebuild de tarjetas y el redibujado de cables siguen cubiertos. Si un defecto tocara el bloque entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}

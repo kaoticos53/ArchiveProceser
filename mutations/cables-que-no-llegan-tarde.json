@@ -1,0 +1,26 @@
+{
+  "id": "cables-que-no-llegan-tarde",
+  "hito": 225,
+  "claim": "El lienzo Uno redibuja los cables cuando la colección de conexiones cambia después de la de nodos: sin escuchar Connections.CollectionChanged, un flujo cargado de disco dibuja tarjetas pero cero cables.",
+  "why": "El defecto (1) del hito 225: el importador añade TODOS los nodos antes que las aristas (WorkflowGraphSerializer.Import, dos bucles), así que el último Rebuild del lienzo corría con Connections aún vacía — el síntoma no era un fallo: era la app corriendo sin cables. La cura fue una línea de suscripción en el setter de Editor; este mutante la quita para comprobar que la cura está defendida. El lienzo es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia que exige la suscripción en el árbol de fuentes (código vivo, no la línea comentada: lección del 165).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "                ((INotifyCollectionChanged)_editor.Connections).CollectionChanged += OnConnectionsChanged;\n            }",
+          "new": "                ((INotifyCollectionChanged)_editor.Connections).CollectionChanged -= OnConnectionsChanged;\n            }",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~UnoCanvasConnectionsGuardTests",
+    "why": "La guardia exige la suscripción de Connections como código vivo (retira comentarios antes de buscar): con el mutante, la línea sustituida deja de existir y Canvas_ShouldSubscribeToConnectionsCollectionChanged cae. Es la prueba de árbol para un código que el suite no puede materializar (WinUI)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Canvas_ShouldKeepTheNodesSubscriptionAlongsideConnections",
+    "why": "El caso hermano del mismo bloque: el mutante cambia UNA línea (la suscripción de Connections, que es lo que la tesis afirma) y deja intactas las otras tres — el Rebuild de tarjetas sigue colgado de Nodes.CollectionChanged y las desuscripciones siguen cubriendo Nodes. Si un defecto tocara el bloque entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}
