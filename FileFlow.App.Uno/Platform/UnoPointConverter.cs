@@ -20,7 +20,17 @@ public sealed class UnoPointConverter : IValueConverter
     public static UnoPointConverter Instance { get; } = new();
 
     public object Convert(object value, Type targetType, object parameter, string language)
-        => value is Sdk.Point point ? UnoPointProjection.ToUno(point) : DependencyProperty.UnsetValue;
+    {
+        if (value is not Sdk.Point point)
+        {
+            return DependencyProperty.UnsetValue;
+        }
+
+        // ToUno devuelve el par (X, Y) portable; el host lo envuelve en el punto nativo de WinUI.
+        // Devolver la tupla tal cual no compila como enlace: el motor XAML no la convierte a Point.
+        (double x, double y) = UnoPointProjection.ToUno(point);
+        return new Windows.Foundation.Point(x, y);
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)
         => value is Windows.Foundation.Point point ? UnoPointProjection.ToSdk(point.X, point.Y) : DependencyProperty.UnsetValue;

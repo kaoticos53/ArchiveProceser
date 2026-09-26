@@ -1,16 +1,29 @@
 <Project Sdk="Uno.Sdk/6.7.30">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-desktop</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
     <UnoSingleProject>true</UnoSingleProject>
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UnoFeatures>Hosting;Configuration;Toolkit;SkiaRenderer</UnoFeatures>
+    <UnoFeatures>Hosting;Configuration;Toolkit</UnoFeatures>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
     <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.250903001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -40,8 +53,11 @@
     </PropertyGroup>
     <MakeDir Directories="$(PluginsTargetFolder)" />
     <ItemGroup>
-      <PluginFiles Include="..\FileFlow.Plugin.*\bin\$(Configuration)\$(TargetFramework)\FileFlow.Plugin.*.dll" />
+      <!-- Los plugins son librerías net10.0 puras: su salida no sigue el TFM del host (windows10.0.19041.0). -->
+      <PluginFiles Include="..\FileFlow.Plugin.*\bin\$(Configuration)\net10.0\FileFlow.Plugin.*.dll" />
     </ItemGroup>
+    <!-- Junto al exe: PluginRegistryHelper.RegisterBuiltInAssemblies los JIT-carga por nombre desde la base de la app. -->
+    <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(PluginFiles)" DestinationFolder="$(PluginsTargetFolder)" SkipUnchangedFiles="false" />
   </Target>
 </Project>

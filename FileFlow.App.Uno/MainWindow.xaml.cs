@@ -42,6 +42,8 @@ public sealed partial class MainWindow : Window
                 "Núcleo portable listo: {0} nodos, MainViewModel resuelto.",
                 nodes);
 
+            Console.WriteLine("[UnoHost] nodos descubiertos: " + nodes);
+
             engineStatus.Text = core
                 + Environment.NewLine
                 + loc.GetFormattedString(
@@ -50,6 +52,11 @@ public sealed partial class MainWindow : Window
                     mainVm.Editor.Nodes.Count);
 
             Title = "FileFlow Studio — Uno Platform";
+
+            // Localización en caliente (fase 3.5): los textos del marco se rescriben al cambiar el idioma.
+            // El lienzo ya reconstruye los suyos al reasignar Editor (el selector de idioma vive en los
+            // ajustes del escritorio; cuando el núcleo cambie la cultura, LanguageChanged notifica).
+            LocalizationManager.Instance.LanguageChanged += (_, _) => RefreshLocalizedTexts(nodes, mainVm.Editor.Nodes.Count);
         }
         catch (Exception ex)
         {
@@ -57,16 +64,45 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    /// <summary>Los dos textos localizados del marco del host, re-escritura del idioma vigente.</summary>
+    private void RefreshLocalizedTexts(int nodes, int canvasNodes)
+    {
+        var loc = LocalizationManager.Instance;
+        engineStatus.Text = loc.GetFormattedString(
+            "Uno_HostCoreReady",
+            "Núcleo portable listo: {0} nodos, MainViewModel resuelto.",
+            nodes)
+            + Environment.NewLine
+            + loc.GetFormattedString(
+            "Uno_HostViewModel",
+            "Lienzo montado: {0} nodos en el grafo.",
+            canvasNodes);
+    }
+
+    /// <summary>El error del último intento de carga del ejemplo (vacío si no hubo): visible para el sondeo.</summary>
+    public string? SampleLoadError { get; private set; }
+
     /// <summary>
     /// Carga el primer flujo de ejemplo que encuentre en las carpetas canónicas del producto, para que el
-    /// lienzo muestre un grafo real en el arranque. Sin ejemplos en disco, el lienzo arranca vacío.
+    /// lienzo muestre un grafo real en el arranque. Sin ejemplos en disco, el lienzo arranca vacío; un
+    /// error de carga no impide el arranque pero SE REPORTA (consola y <see cref="SampleLoadError"/>).
     /// </summary>
     private void TryLoadSampleFlow(EditorViewModel editor)
     {
+        // Del bin del host al repositorio: caminar hacia arriba hasta un directorio que contenga
+        // docs\examples (el marcador del banco). En instalación publicada, la copia local Examples/ manda.
+        string? repoRoot = AppContext.BaseDirectory;
+        while (repoRoot is not null && !Directory.Exists(Path.Combine(repoRoot, "docs", "examples")))
+        {
+            repoRoot = Path.GetDirectoryName(repoRoot.TrimEnd(Path.DirectorySeparatorChar));
+        }
+
+        // Sin rastro paso a paso (BaseDirectory, candidatos, primer json): el RESULTADO informa y el
+        // error, si lo hay, se reporta. La barra de estado de la ventana ya dice cuántos nodos quedaron.
         foreach (var candidate in new[]
                  {
                      Path.Combine(AppContext.BaseDirectory, "Examples"),
-                     Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "examples")
+                     repoRoot is null ? "" : Path.Combine(repoRoot, "docs", "examples")
                  })
         {
             if (!Directory.Exists(candidate))
@@ -84,10 +120,16 @@ public sealed partial class MainWindow : Window
                     var json = File.ReadAllText(first);
                     var graph = FileFlow.Core.Engine.WorkflowGraph.FromJson(json);
                     editor.LoadFromGraphModel(graph);
+                    Console.WriteLine("[UnoHost] ejemplo cargado: " + graph.Nodes.Count + " nodos ("
+                        + Path.GetFileName(first) + ")");
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Un ejemplo que no se puede leer no impide el arranque: el lienzo queda vacío.
+                    // Un ejemplo que no se puede leer no impide el arranque, pero el error no se traga:
+                    // queda visible en consola y para el sondeo en runtime (--selfcheck).
+                    SampleLoadError = ex.GetType().Name + ": " + ex.Message
+                        + (ex.InnerException is null ? "" : " | " + ex.InnerException.Message);
+                    Console.Error.WriteLine("[TryLoadSampleFlow] " + SampleLoadError);
                 }
 
                 return;

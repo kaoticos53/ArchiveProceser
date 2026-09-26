@@ -11,7 +11,16 @@ namespace FileFlow.App.Uno.Platform;
 /// </summary>
 public sealed class UnoUiDispatcher : IUiDispatcher
 {
+    /// <summary>
+    /// Marcado por Program.cs en modo <c>--selfcheck</c>: el sondeo en runtime lo consume para correr
+    /// tras el Activate y terminar el proceso con el código del veredicto.
+    /// </summary>
+    public static bool SelfCheckLaunch { get; set; }
+
     private readonly DispatcherQueue _queue;
+
+    /// <summary>La cola subyacente, para el sondeo en runtime (--selfcheck).</summary>
+    public DispatcherQueue Queue => _queue;
 
     public UnoUiDispatcher()
     {

@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using FileFlow.App.Core;
 using FileFlow.App.Uno.Platform;
 using FileFlow.Core.Telemetry;
@@ -6,6 +8,7 @@ using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Platform;
 using FileFlow.Sdk.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
 namespace FileFlow.App.Uno;
@@ -32,10 +35,33 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        // El sondeo en runtime debe poder decir la verdad: una excepción stowed de WinRT (0xC000027B)
+        // mata el proceso sin rastro; aquí queda escrita en fichero antes de decidir el veredicto.
+        UnhandledException += (_, e) =>
+        {
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(AppContext.BaseDirectory, "selfcheck-crash.txt"),
+                    DateTime.Now.ToString("HH:mm:ss.fff") + " " + e.Message + Environment.NewLine
+                    + (e.Exception?.StackTrace ?? "<sin pila>") + Environment.NewLine + Environment.NewLine);
+            }
+            catch
+            {
+            }
+
+            e.Handled = true; // el sondeo reintenta y fallará por su cuenta si el árbol quedó roto
+        };
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Puente de temas (fase 3.5): ANTES de aplicar cualquier tema — el ThemeManager del núcleo
+        // notifica por ThemeHostBridge y este host responde republicando los tokens Canvas* en
+        // Application.Resources (los pinceles de WinUI no se re-evalúan solos). La ventana llega por
+        // proveedor diferido: WinUI 3 no expone la lista de ventanas en Application.
+        Platform.UnoThemeHost.Install(() => s_mainWindow);
         var services = new ServiceCollection();
         ConfigureServices(services);
         s_services = services.BuildServiceProvider();
@@ -49,6 +75,17 @@ public partial class App : Application
 
         s_mainWindow = new MainWindow();
         s_mainWindow.Activate();
+
+        // Sondeo en runtime (--selfcheck en la línea de comandos): monta la app real y confirma el
+        // árbol de la tarjeta sin interacción, terminando el proceso con el veredicto.
+        if (Environment.GetCommandLineArgs().Contains("--selfcheck", StringComparer.Ordinal))
+        {
+            RuntimeSelfCheck.Run(
+                s_mainWindow,
+                s_services.GetRequiredService<IUiDispatcher>() is UnoUiDispatcher d
+                    ? d.Queue
+                    : DispatcherQueue.GetForCurrentThread());
+        }
     }
 
     /// <summary>

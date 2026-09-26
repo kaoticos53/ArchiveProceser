@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 
 namespace FileFlow.App.Views;
@@ -237,59 +238,86 @@ public partial class EditorView : UserControl
             return;
         }
 
-        if (ctrl && !shift && e.Key == Key.Z)
+        // La tabla compartida del núcleo (fase 3.2) resuelve la combinación y ejecuta el comando canónico:
+        // el switch de aquí abajo era la tercera copia de las mismas claves (y el host Uno la cuarta).
+        // La posición de referencia de pegar sigue siendo la del último clic derecho, como siempre aquí.
+        if (TryResolveShortcut(e, ctrl, shift, out var command))
         {
-            if (vm.UndoCommand.CanExecute(null))
+            Sdk.Point? pastePosition = null;
+            if (command == EditorKeyboardShortcuts.ShortcutKey.Paste && _lastRightClickPosition.HasValue)
             {
-                vm.UndoCommand.Execute(null);
+                pastePosition = GraphPointFromScreen(_lastRightClickPosition.Value);
             }
-            e.Handled = true;
-            return;
-        }
-        else if ((ctrl && e.Key == Key.Y) || (ctrl && shift && e.Key == Key.Z))
-        {
-            if (vm.RedoCommand.CanExecute(null))
-            {
-                vm.RedoCommand.Execute(null);
-            }
-            e.Handled = true;
-            return;
-        }
 
-        if (ctrl && e.Key == Key.C)
-        {
-            vm.CopySelectedNodesCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (ctrl && e.Key == Key.V)
-        {
-            vm.PasteNodesCommand.Execute(_lastRightClickPosition);
-            e.Handled = true;
-        }
-        else if (ctrl && e.Key == Key.X)
-        {
-            vm.CutSelectedNodesCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (ctrl && e.Key == Key.D)
-        {
-            vm.DuplicateSelectedNodesCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Delete || e.Key == Key.Back)
-        {
-            vm.DeleteSelectedNodesCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (e.Key == Key.F2)
-        {
-            var selected = vm.Nodes.FirstOrDefault(n => n.IsSelected);
-            if (selected != null)
+            if (EditorKeyboardShortcuts.Execute(command, vm, pastePosition))
             {
-                selected.StartRenaming();
                 e.Handled = true;
             }
+
+            return;
         }
+    }
+
+    /// <summary>
+    /// Resuelve la combinación física contra la tabla compartida. Devuelve false para las que la vista
+    /// sigue consumiendo a su manera (el spotlight con posición del cursor) o que no están en la tabla.
+    /// </summary>
+    private bool TryResolveShortcut(KeyEventArgs e, bool ctrl, bool shift, out EditorKeyboardShortcuts.ShortcutKey command)
+    {
+        command = default;
+
+        EditorKeyboardShortcuts.PhysicalKey? key = e.Key switch
+        {
+            Key.A => EditorKeyboardShortcuts.PhysicalKey.A,
+            Key.Z => EditorKeyboardShortcuts.PhysicalKey.Z,
+            Key.Y => EditorKeyboardShortcuts.PhysicalKey.Y,
+            Key.C => EditorKeyboardShortcuts.PhysicalKey.C,
+            Key.V => EditorKeyboardShortcuts.PhysicalKey.V,
+            Key.X => EditorKeyboardShortcuts.PhysicalKey.X,
+            Key.D => EditorKeyboardShortcuts.PhysicalKey.D,
+            Key.Delete => EditorKeyboardShortcuts.PhysicalKey.Delete,
+            Key.Back => EditorKeyboardShortcuts.PhysicalKey.Back,
+            Key.F2 => EditorKeyboardShortcuts.PhysicalKey.F2,
+            Key.Escape => EditorKeyboardShortcuts.PhysicalKey.Escape,
+            _ => null
+        };
+
+        if (key is null)
+        {
+            return false;
+        }
+
+        var modifiers = EditorKeyboardShortcuts.Modifiers.None;
+        if (ctrl) modifiers |= EditorKeyboardShortcuts.Modifiers.Control;
+        if (shift) modifiers |= EditorKeyboardShortcuts.Modifiers.Shift;
+
+        var resolved = EditorKeyboardShortcuts.Resolve(key.Value, modifiers);
+        if (resolved is null)
+        {
+            return false;
+        }
+
+        // El spotlight lo abre la vista (necesita la posición real del cursor, que no viaja en la tabla).
+        if (resolved == EditorKeyboardShortcuts.ShortcutKey.Spotlight)
+        {
+            return false;
+        }
+
+        command = resolved.Value;
+        return true;
+    }
+
+    private Sdk.Point GraphPointFromScreen(Avalonia.Point screenPoint)
+    {
+        if (DataContext is not EditorViewModel vm)
+        {
+            return new Sdk.Point(screenPoint.X, screenPoint.Y);
+        }
+
+        double zoom = vm.ViewportZoom > 0 ? vm.ViewportZoom : 1.0;
+        return new Sdk.Point(
+            vm.ViewportLocation.X + (screenPoint.X / zoom),
+            vm.ViewportLocation.Y + (screenPoint.Y / zoom));
     }
 
     private void SpotlightSearchBox_KeyDown(object? sender, KeyEventArgs e)

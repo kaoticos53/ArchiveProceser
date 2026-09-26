@@ -7,6 +7,27 @@
       <ResourceDictionary.MergedDictionaries>
         <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
       </ResourceDictionary.MergedDictionaries>
+
+      <!-- Tokens del lienzo (fase 3.5): valores del preset dark_fluent (builtin_themes.json del núcleo).
+           Son los valores de ARRANQUE; UnoThemeHost los REPUBLICA con el tema activo al cambiar de tema
+           (los pinceles de WinUI no se re-evalúan solos: un ThemeResource conserva su instancia). -->
+      <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#10131B" />
+      <SolidColorBrush x:Key="CanvasBgDarkBrush" Color="#0D1117" />
+      <SolidColorBrush x:Key="CanvasGridBrush" Color="#1A202C" />
+      <SolidColorBrush x:Key="CanvasSurfaceBrush" Color="#131720" />
+      <SolidColorBrush x:Key="CanvasCardBrush" Color="#161B22" />
+      <SolidColorBrush x:Key="CanvasBorderBrush" Color="#30363D" />
+      <SolidColorBrush x:Key="CanvasTextBrush" Color="#F0F6FC" />
+      <SolidColorBrush x:Key="CanvasSecondaryBrush" Color="#8B949E" />
+      <SolidColorBrush x:Key="CanvasMutedBrush" Color="#7C8698" />
+      <SolidColorBrush x:Key="CanvasOnAccentBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="CanvasAccentPrimaryBrush" Color="#6366F1" />
+      <SolidColorBrush x:Key="CanvasAccentGlowBrush" Color="#818CF8" />
+      <SolidColorBrush x:Key="CanvasSuccessBrush" Color="#10B981" />
+      <SolidColorBrush x:Key="CanvasWarningBrush" Color="#F59E0B" />
+      <SolidColorBrush x:Key="CanvasPurpleBrush" Color="#A855F7" />
+      <SolidColorBrush x:Key="CanvasWireBrush" Color="#818CF8" />
+      <x:Double x:Key="CanvasGridStep">25</x:Double>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

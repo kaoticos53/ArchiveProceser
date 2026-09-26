@@ -2,23 +2,22 @@
     x:Class="FileFlow.App.Uno.Controls.EditorCanvasControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:FileFlow.App.Uno.Controls">
+    xmlns:controls="using:FileFlow.App.Uno.Controls"
+    xmlns:conv="using:FileFlow.App.Uno.Platform">
 
   <!-- Tokens medidos del tema oscuro (builtin_themes.json / DarkTheme.axaml del escritorio) -->
   <UserControl.Resources>
-    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#10131B" />
-    <SolidColorBrush x:Key="CanvasGridBrush" Color="#21262D" />
-    <SolidColorBrush x:Key="CanvasCardBrush" Color="#161B22" />
-    <SolidColorBrush x:Key="CanvasBorderBrush" Color="#30363D" />
-    <SolidColorBrush x:Key="CanvasTextBrush" Color="#F0F6FC" />
-    <SolidColorBrush x:Key="CanvasMutedBrush" Color="#7C8698" />
-    <SolidColorBrush x:Key="CanvasWireBrush" Color="#818CF8" />
-    <x:Double x:Key="CanvasGridStep">25</x:Double>
+    <!-- El icono del ítem del spotlight: el enum portable del núcleo a geometría del paquete Material.Icons.
+         Los tokens Canvas* viven en App.xaml (fase 3.5): los resuelve la app y UnoThemeHost los republica. -->
+    <conv:MaterialIconKindToGeometryConverter x:Key="SpotlightIcon" />
   </UserControl.Resources>
 
   <Grid x:Name="RootGrid" Background="{StaticResource CanvasBackgroundBrush}"
         PointerPressed="OnCanvasPressed" PointerReleased="OnCanvasReleased"
-        PointerMoved="OnCanvasMoved" PointerCaptureLost="OnCanvasReleased">
+        PointerMoved="OnCanvasMoved" PointerCaptureLost="OnCanvasReleased"
+        DoubleTapped="OnCanvasDoubleTapped"
+        DragOver="OnCanvasDragOver" Drop="OnCanvasDrop" AllowDrop="True"
+        KeyDown="OnKeyDown">
 
     <!-- Grid de fondo dibujado por el code-behind (paso 25, el doble drenado del editor) -->
     <Canvas x:Name="GridLayer" IsHitTestVisible="False" />
@@ -29,10 +28,39 @@
         <CompositeTransform x:Name="CanvasTransform" ScaleX="1" ScaleY="1" TranslateX="0" TranslateY="0" />
       </Canvas.RenderTransform>
 
-      <!-- Cables: debajo de las tarjetas; los calcula el code-behind con ConnectionGeometry -->
-      <Canvas x:Name="WireLayer" IsHitTestVisible="False" />
+    <!-- Cables: debajo de las tarjetas; los calcula el code-behind con ConnectionGeometry -->
+    <Canvas x:Name="WireLayer" IsHitTestVisible="False" />
 
-      <!-- Tarjetas de nodo: la POSICIÓN la aplica NodeLayoutApplier (con el conversor del 217) -->
+    <!-- Migas de subflujos (fase 3.4): la ruta de graphs abiertos, con navegación por clic -->
+    <Border x:Name="BreadcrumbsBar" HorizontalAlignment="Left" VerticalAlignment="Top"
+            Margin="20,16,0,0" Background="{StaticResource CanvasCardBrush}"
+            BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
+            CornerRadius="8" Padding="8,4"
+            Visibility="Collapsed">
+      <ItemsControl x:Name="BreadcrumbsHost">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="4" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Button Content="{Binding Name}" Click="OnBreadcrumbClicked"
+                      Background="Transparent" BorderThickness="0" Padding="6,2"
+                      Foreground="{StaticResource CanvasTextBrush}" FontSize="11" FontWeight="SemiBold" />
+              <TextBlock Text="›" Foreground="{StaticResource CanvasSecondaryBrush}"
+                         VerticalAlignment="Center" FontSize="11" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+      <!-- Decoradores (fase 3.4): grupos al fondo, notas delante; las crea el code-behind desde el VM -->
+    <Canvas x:Name="DecoratorLayer" IsHitTestVisible="True" />
+
+    <!-- Tarjetas de nodo: la POSICIÓN la aplica NodeLayoutApplier (con el conversor del 217) -->
       <ItemsControl x:Name="NodesHost" ItemsSource="{Binding Nodes}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
@@ -46,6 +74,92 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </Canvas>
+
+    <!-- Selección por rectángulo (rubber band): capa superior, nunca interactiva -->
+    <Canvas x:Name="RubberLayer" IsHitTestVisible="False" />
+
+    <!-- Aviso del lienzo (fase 3.3): los cables que no se pudieron reconstruir, con su arreglo a un clic.
+         El VM del núcleo ya traía las filas (DroppedConnectionFixViewModel); el host las pinta. -->
+    <Border x:Name="CanvasNoticeBanner" HorizontalAlignment="Center" VerticalAlignment="Top"
+            MaxWidth="640" Margin="0,16,0,0" Padding="12,8"
+            Background="{StaticResource CanvasCardBrush}" BorderBrush="{StaticResource CanvasBorderBrush}"
+            BorderThickness="1" CornerRadius="8"
+            Visibility="Collapsed">
+      <StackPanel Spacing="6">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="⚠" Foreground="#F59E0B" FontWeight="Bold" />
+          <TextBlock x:Name="CanvasNoticeText" TextWrapping="Wrap" MaxWidth="560"
+                     Foreground="{StaticResource CanvasTextBrush}" FontSize="12" />
+          <Button Content="✕" Click="OnDismissCanvasNotice" Background="Transparent"
+                  BorderThickness="0" Padding="4,1" Foreground="{StaticResource CanvasTextBrush}" />
+        </StackPanel>
+        <ItemsControl x:Name="CanvasNoticeFixes">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                <TextBlock Text="{Binding Description}" MaxWidth="420" TextWrapping="Wrap"
+                           Foreground="{StaticResource CanvasSecondaryBrush}" FontSize="11"
+                           VerticalAlignment="Center" />
+                <Button Content="{Binding GoToNodeText}" Click="OnGoToFixNode"
+                        Padding="8,2" Background="{StaticResource CanvasSurfaceBrush}"
+                        Foreground="{StaticResource CanvasTextBrush}" BorderThickness="0" />
+                <Button Content="{Binding ReconnectText}" Click="OnReconnectFix"
+                        Padding="8,2" Background="#373B7E"
+                        Foreground="{StaticResource CanvasOnAccentBrush}" BorderThickness="0"
+                        Visibility="{Binding CanReconnect, Converter={StaticResource BoolToVis}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <!-- Spotlight (fase 3.4): añadir nodo por teclado; el VM del núcleo filtra y confirma -->
+    <Border x:Name="SpotlightPopup" HorizontalAlignment="Center" VerticalAlignment="Center"
+            Width="360" MaxHeight="440" Background="{StaticResource CanvasCardBrush}"
+            BorderBrush="{StaticResource CanvasAccentPrimaryBrush}" BorderThickness="1.5"
+            CornerRadius="10" Padding="10" Visibility="Collapsed">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <TextBox Grid.Row="0" x:Name="SpotlightSearchBox" Margin="0,0,0,8"
+                 PlaceholderText="Buscar nodo por nombre o categoría…"
+                 Background="{StaticResource CanvasSurfaceBrush}"
+                 Foreground="{StaticResource CanvasTextBrush}"
+                 BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
+                 CornerRadius="6" Padding="8,6" FontSize="12"
+                 KeyDown="OnSpotlightBoxKeyDown" />
+        <ListBox Grid.Row="1" x:Name="SpotlightList" ItemsSource="{Binding}" MaxHeight="290"
+                 Background="Transparent" BorderThickness="0" CornerRadius="6"
+                 SelectedItem="{Binding Mode=OneWay}"
+                 DoubleTapped="OnSpotlightListDoubleTapped"
+                 KeyDown="OnSpotlightListKeyDown">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="8" Padding="2,3">
+                <Border Width="24" Height="24" CornerRadius="4"
+                        Background="{StaticResource CanvasSurfaceBrush}">
+                  <PathIcon Data="{Binding Icon, Converter={StaticResource SpotlightIcon}}" Width="13" Height="13"
+                            Foreground="{StaticResource CanvasTextBrush}" />
+                </Border>
+                <StackPanel VerticalAlignment="Center" MaxWidth="250">
+                  <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12"
+                             Foreground="{StaticResource CanvasTextBrush}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Description}" FontSize="10"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="4" Padding="5,1.5"
+                        VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasAccentGlowBrush}" />
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Grid.Row="2" Text="↑↓ navegar · Enter añadir · Esc cerrar" FontSize="10"
+                   Foreground="{StaticResource CanvasSecondaryBrush}" Margin="4,8,4,0"
+                   HorizontalAlignment="Right" />
+      </Grid>
+    </Border>
 
     <!-- Barra de zoom (el estándar del editor) -->
     <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,16"
