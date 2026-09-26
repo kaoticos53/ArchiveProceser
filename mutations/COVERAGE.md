@@ -4,9 +4,9 @@
 > **No se edita a mano.**
 > Regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`.
 
-Mutaciones declaradas: 45
+Mutaciones declaradas: 46
 Subsistemas del producto con alguna mutación: 15 de 17
-Guardias que auditan el repositorio con mutación que las muerda: 7 de 34
+Guardias que auditan el repositorio con mutación que las muerda: 7 de 35
 
 ## Qué declara cada mutación
 
@@ -54,6 +54,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 7 de 34
 | `tabla-en-cache-sin-mirar-el-tamano` | `FileFlow.Plugin.Data/Nodes/Processing/DataLookupTableLoader.cs` | `TheTableCache_ShouldNotAnswerWithRowsOfAFileThatChangedUnderTheSameTimestamp` | `TheLookupTableInMemory_ShouldBeTheOneOfThisRun` |
 | `tabla-en-cache-sin-tope` | `FileFlow.Plugin.Data/Nodes/Processing/DataLookupTableLoader.cs` | `TheTableCache_ShouldNotGrowWithoutBoundAcrossRuns` | `TheTableCache_ShouldNotAnswerWithRowsOfAFileThatChangedUnderTheSameTimestamp` |
 | `tarjeta-que-no-habla-por-su-color` | `FileFlow.App.Core/Services/PortPalette.cs` | `SocketMatrixTests` | `UnoGeometryBindingGuardTests` |
+| `tema-sin-repintado` | `FileFlow.App.Uno/Platform/UnoThemeHost.cs` | `UnoThemeRepaintGuardTests` | `ThemeHost_ShouldKeepCreatingMissingBrushes_AndThePortableGenerator` |
 | `texto-del-pdf-que-se-olvida` | `FileFlow.Plugin.Documents/PdfTextExtractorNode.cs` | `PdfTextExtractorNode_ExtractsTextSuccessfully` | `PdfSplitNode_SplitsMultiplePagePdf` |
 | `token-de-tema-que-desaparece` | `FileFlow.App/Services/ThemeResourceApplier.cs` | `ThemeTokenCompletenessTests` | `DisabledStateLintTests` |
 | `validador-sin-materializar-puertos` | `FileFlow.Core/Engine/GraphValidator.cs` | `GraphValidatorDynamicPortTests` | `GraphValidatorTests` |
@@ -66,7 +67,7 @@ defecto declarado demuestra que sus pruebas muerdan. Es la lista de trabajo, no 
 - `FileFlow.Plugin.Scripting`
 - `FileFlow.Plugin.Subflows`
 
-## Guardias del repositorio sin ninguna mutación que las muerda (27 de 34)
+## Guardias del repositorio sin ninguna mutación que las muerda (28 de 35)
 
 Las guardias que auditan el árbol (usan `SourceTree`, `TestRepositoryLocator` o `TestSuiteIndex`) y no
 aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostrado que muerdan.
@@ -84,6 +85,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 - `FileFlow.Tests/Unit/App/UiIconographyTests.cs`
 - `FileFlow.Tests/Unit/App/UiStyleContractTests.cs`
 - `FileFlow.Tests/Unit/App/UiStyleLintTests.cs`
+- `FileFlow.Tests/Unit/App/UnoInteractionParityGuardTests.cs`
 - `FileFlow.Tests/Unit/Core/FlowFormatSerializationGuardTests.cs`
 - `FileFlow.Tests/Unit/Core/WorkflowFormatShapeTests.cs`
 - `FileFlow.Tests/Unit/Plugins/NodeArchitectureGuardTests.cs`
@@ -103,7 +105,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 
 - **FileFlow.App**: `enlace-de-geometria-sin-proyeccion`, `token-de-tema-que-desaparece`
 - **FileFlow.App.Core**: `cable-con-la-curva-al-reves`, `latido-rearrancado-que-no-late`, `tarjeta-que-no-habla-por-su-color`
-- **FileFlow.App.Uno**: `cable-con-anclas-estimadas`, `cables-que-no-llegan-tarde`, `decoradores-que-no-llegan-al-arbol`
+- **FileFlow.App.Uno**: `cable-con-anclas-estimadas`, `cables-que-no-llegan-tarde`, `decoradores-que-no-llegan-al-arbol`, `tema-sin-repintado`
 - **FileFlow.Core**: `diario-acumula-ejecuciones`, `ejecucion-pausada-heredada`, `modo-virtual-heredado`, `punto-de-control-sobrevive-a-la-ejecucion`, `punto-de-control-vuelve-a-escribir-por-archivo`, `retroalimentacion-de-barrera-contada-como-ciclo`, `retroalimentacion-sin-avisos`, `struct-de-shell-desalineado`, `validador-sin-materializar-puertos`
 - **FileFlow.Plugin.AI**: `cache-de-embeddings-sin-entorno`, `carpeta-de-nodo-de-ia-donde-corre`, `modelo-clip-buscado-por-su-id`
 - **FileFlow.Plugin.Archives**: `archivo-vacio-dejado-atras`, `compresor-contra-su-propia-entrada`, `compresor-que-escribe-donde-corre`

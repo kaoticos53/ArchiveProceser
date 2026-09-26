@@ -1,0 +1,26 @@
+{
+  "id": "tema-sin-repintado",
+  "hito": 233,
+  "claim": "Cambiar el tema re-pinta el lienzo del host Uno en caliente porque SetBrush MUTA el color del pincel singleton que todos los consumidores ya capturaron: si la asignación desaparece, el tema deja de repintar en silencio.",
+  "why": "La lección central del hito 233: en WinUI la republicación por claves (app.Resources[key] = nuevo pincel) NO llega a los consumidores vivos — el StaticResource captura la instancia en la carga del XAML y el ThemeResource de aplicación no re-evalúa (probado en todas las corridas de la fase). La cura robusta es mutar el COLOR de cada pincel singleton de App.xaml: la notificación del SolidColorBrush repinta a todos los consumidores vivos sin reconstruir nada, y es lo que la sonda 3.5 del selfcheck demostró (light_studio re-tematiza fondo y tarjetas medidos del árbol real). Este mutante deja la asignación en un parseo sin efecto (brush.Color = ParseHex(hex) pasa a leer y descartar): el tema cambia en el núcleo, la variante se publica, y el lienzo conserva los colores del tema anterior — el defecto vuelve sin un solo crash. El host es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia que exige la asignación como código vivo.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Platform/UnoThemeHost.cs",
+      "replacements": [
+        {
+          "old": "        brush.Color = NodeCardViewModel.ParseHex(hex);",
+          "new": "        _ = NodeCardViewModel.ParseHex(hex);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~UnoThemeRepaintGuardTests",
+    "why": "La guardia exige la asignación del color como código vivo (retira comentarios antes de buscar): con el mutante, la línea sustituida deja de existir y ThemeHost_ShouldMutateTheBrushColorInPlace cae. Es la prueba de árbol para un código que el suite no puede materializar (WinUI), la misma técnica de los mutantes del 227, 232 y 233."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ThemeHost_ShouldKeepCreatingMissingBrushes_AndThePortableGenerator",
+    "why": "El caso hermano del mismo fichero: el mutante cambia UNA línea (la asignación del color, que es lo que la tesis afirma) y deja intactas la creación del pincel ausente y el generador portable BuildResources que el Theme Studio consume. Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}
