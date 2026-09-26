@@ -156,7 +156,7 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 - Criterio de salida: **cumplido** — 24 pruebas nuevas en verde, suite completa verde, cero líneas
   en `FileFlow.App.Uno` (la geometría es del núcleo).
 
-### Fase 3.1 — Lienzo estático (el grafo se ve) — **EN CURSO (código completo, hito 221)**
+### Fase 3.1 — Lienzo estático (el grafo se ve) — **CRITERIO COMPLETO (hito 226)**
 
 > **Decisión de plataforma medida (hito 221)**: el motor XAML de WinUI/Uno **no evalúa `{Binding}` dentro de
 > `Setter.Value`** — el enlace no falla: no hace nada (la posición sería 0,0 en silencio). El plan original
@@ -174,58 +174,169 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 - [x] Encuadre con el mismo `EditorViewportCalculator` del núcleo que usa el escritorio.
 - [x] Guardia del 217 ampliada al code-behind (+3 auto-tests; mutación `proyeccion-uno-sin-guardia`
   actualizada y volviendo a morder).
-- [ ] `NodeCardView` visual completo (la tarjeta de 559 líneas de Avalonia traducida a estilos WinUI:
-  hoy la tarjeta es una versión reducida de lectura).
-- [ ] Criterio de salida pendiente de demostrar: el host Uno arranca y muestra el flujo de ejemplo con
-  nodos y cables a sus posiciones; sondeo de captura comparado con la pinta del Avalonia.
+- [x] `NodeCardView` visual completo (hito 224): la tarjeta de 559 líneas traducida a WinUI — glows de
+  estado, barra de acento, iconos por path data del paquete `Material.Icons` (no hay font: el plan lo
+  asumía y la medición lo corrigió), LEDs de breakpoint/logging, badge de categoría, LED de estado,
+  cuello de botella, progreso, puertos dibujados con la matriz de sockets (forma/tipo/estado — los
+  30 selectores del escritorio viven ahora en `PortPalette` del núcleo), panel de parámetros plegable
+  y pie de telemetría. Sin interacción de puertos (fase 3.3).
+- [x] Criterio de salida demostrado por mitad (hito 225): el host Uno arranca con DI completa, 70 nodos
+  descubiertos y el ejemplo cargado, y el sondeo `FileFlow.App.Uno.exe --selfcheck` sale con código 0 en
+  dos corridas consecutivas verificando el árbol visual real: 3/3 tarjetas materializadas, título con
+  binding comprobado en el control (vía `x:Name`), posiciones proyectadas aplicadas a los contenedores
+  (100/350/600, coincidentes con `NodeCardViewModel.Position`), 3 iconos con geometría resuelta
+  (`PathGeometry` 20x16 / 18x18) y 2/2 cables Bézier en la capa.
+- [x] **Tres defectos de producto cazados y corregidos por el sondeo en este tramo**:
+  (1) el importador añade todos los nodos ANTES que las aristas, y el lienzo sólo redibujaba con
+  `Nodes.CollectionChanged` — un flujo cargado de disco quedaba sin cables; ahora también escucha
+  `Connections.CollectionChanged`; (2) el posicionamiento corría en `Rebuild()` sobre un árbol sin
+  contenedores (la materialización del ItemsControl ocurre en el pase de layout) y las tarjetas quedaban
+  en (0,0) — el primer pase ahora se consume en `NodesHost.LayoutUpdated` mientras queden contenedores
+  sin posicionar, y la suscripción anónima por contenedor (fuga en cada Rebuild) desapareció;
+  (3) la geometría que el parser XAML produce por la propiedad `Data` **no es asignable** a `Path.Data` en
+  este host (bisección del sondeo: `ArgumentException` hasta sobre un Path recién creado; una
+  `PathGeometry` construida por código sí se asigna) — el conversor de iconos clona ahora figura a figura
+  (receta cables) y devuelve geometría asignable.
+- [x] **Mitad visual del criterio demostrada (hito 226) — veredicto de la comparación con el escritorio**.
+  Método: dos capturas del MISMO flujo (`flow_01`) con el MISMO mapeo grafo→pantalla (encuadre «Ajustar»
+  compartido: zoom 1.11, translate −(44.6, 34.8)·1.11) — (a) sonda temporal headless en `FileFlow.Tests`
+  que monta la `EditorView` real (Skia, PNG 980×640), (b) `FileFlow.App.Uno.exe --dump-canvas` temporal
+  (`RenderTargetBitmap` 2401², contenido a 1:1 lógico, recortado a la misma ventana). Comparación por
+  **features** con PIL/numpy (no píxel a píxel: motores de render distintos). Ambas sondas se eliminaron
+  al cerrar el hito; queda aquí el veredicto:
 
-#### Traducción de `NodeCardView.axaml` a XAML WinUI/Uno (pendiente, resto de la fase)
+  | Feature | Avalonia | Uno | Veredicto |
+  | :--- | :--- | :--- | :--- |
+  | Fondo del lienzo `#10131B` | (16,19,27) exacto | (16,19,27) exacto | ✅ idéntico byte a byte |
+  | Grid `#21262D` | presente (lo pinta el shell) | presente (paso 50, doble sutil) | ✅ presente en ambos |
+  | Posición de las 3 tarjetas (franja acento, fila y=130) | (63..281, 340..558, 618..836) | (67..278, 345..555, 622..833) | ✅ ±2 px / ±6 px sobre el mapeo compartido (61..283, 339..561, 616..838) |
+  | Barra de acento `#818CF8` arriba de cada tarjeta | sí (y129..135) | sí (y130..142 tras el fix del 226) | ✅ presente en ambos |
+  | Cables cruzando los huecos entre tarjetas | sí | sí | ✅ misma Bézier del núcleo |
+  | Ancla vertical del cable en los huecos | y217..219 (ancla real del socket ≈ y 194 de grafo) | y171..174 (`Location.Y + 40` provisional) | 🔶 **brecha declarada de la fase 3.1**: desaparece con las anclas write-back de la 3.3 |
+  | Color del cable por tipo (Files = verde `#10B981`) | sí | `#818CF8` fijo | 🔶 brecha de la fase 3.5 (la matriz de sockets ya vive compartida en `PortPalette`) |
+  | Cara de tarjeta `#161B22` | la sonda aislada pinta `#1E1E1E` (su fusión de diccionarios difiere de la app completa; la línea base humana `panel-editor-dark.png` confirma `#161B22`/`#212222` en la app real) | token `#161B22` | 🔶 a re-medir con la sonda montada en el shell completo (fase 3.5); no afecta al veredicto de posiciones ni tokens del lienzo |
 
-- La tarjeta tiene 559 líneas y es el trozo más gordo de la rebanada. Los estilos con selectores de
-  Avalonia se reescriben como recursos/estilos WinUI; los estados (`connected`, `dragSource`,
-  `compatible`…) pasan a clases visuales equivalentes.
+  Conclusión: **la pintura del lienzo Uno coincide con la del escritorio a nivel de estructura y tokens**
+  (mismo mapeo grafo→pantalla, mismas posiciones, fondo y acento idénticos, cables en los huecos), con
+  dos divergencias medidas que el propio plan ya declaraba como trabajo de fases posteriores (ancla del
+  cable → 3.3, color por tipo y cara → 3.5). El píxel a píxel sigue sin ser el criterio: los motores de
+  render difieren y el análisis por features es el que puede dar fe.
 
-- Criterio de salida: el host Uno arranca y muestra el flujo de ejemplo con nodos y cables a sus
-  posiciones; sondeo de captura comparado con la pinta del Avalonia.
+  **Defecto real cazado y corregido por esta comparación**: la barra de acento y el relleno del icono del
+  Uno no se pintaban (transparentes) — `{Binding Node.AccentBrushColor}` dentro de un `SolidColorBrush`
+  no resuelve el DataContext en WinUI (el color vive en `NodeCardViewModel`, no en `Node`). Corregido a
+  `{Binding AccentBrushColor}`; re-verificado con un segundo volcado (5.468 px de `#818CF8`) y el
+  selfcheck en verde (exit 0). Es el cuarto defecto que la infraestructura de verificación caza en este
+  tramo (225: cables, posiciones, iconos; 226: acento).
 
-### Fase 3.2 — Selección, arrastre y teclado
+### Fase 3.2 — Selección, arrastre y teclado — **IMPLEMENTADA (hito 228); criterio manual pendiente de sesión con puntero**
 
-- Click selecciona (`IsSelected` TwoWay), `BringToFront`, drag de nodos (manipulación), rubber band.
-- Atajos del §2.1 en el host Uno (los mismos de `EditorView_KeyDown`).
-- Renombrado F2 con el cuadro de edición.
-- Guardia de origen nueva (estilo `UnoHostFreeOfAvaloniaGuardTests`): el lienzo Uno no referencia
-  Avalonia, y las claves de atajos son las mismas que las del host Avalonia (tabla compartida si
-  hace falta).
-- Criterio de salida: la lista de interacciones de `InputInteractionTests` ejecutada a mano en el
-  host Uno con resultado escrito.
+- [x] Click selecciona (`IsSelected` TwoWay), `BringToFront`, drag de nodos (manipulación), rubber band.
+  El clic sobre la tarjeta escribe `IsSelected` y el NÚCLEO reacciona (SelectedNode + BringToFront +
+  contador, la misma reacción del escritorio); el arrastre mueve la selección entera en espacio de grafo
+  (delta de pantalla dividido por el zoom, el inverso del mapeo compartido), repasa el cable al vuelo y
+  registra `MoveNodesAction` en el `UndoRedoService` del núcleo al soltar. El rubber band dibuja el
+  rectángulo (capa `RubberLayer`), selecciona por centro de tarjeta y un clic sin arrastre en el fondo
+  deselecciona (el estándar de Nodify). El pan queda en el botón DERECHO, como el escritorio.
+- [x] Atajos del §2.1 en el host Uno (los mismos de `EditorView_KeyDown`) — con la TABLA COMPARTIDA que
+  el plan anticipaba: [`EditorKeyboardShortcuts`](file:///FileFlow.App.Core/Services/EditorKeyboardShortcuts.cs)
+  en el núcleo (claves canónicas + clasificación + ejecutor sobre `EditorViewModel`); el host Uno la
+  consume en `OnKeyDown` y el escritorio refactorizado a ella (su spotlight conserva la posición del
+  cursor). Una sola fuente de claves para los dos hosts.
+- [x] Renombrado F2 con el cuadro de edición: F2 llega por la tabla (StartRenaming del núcleo), la caja
+  del host Uno refresca con `IsEditingTitle`/`EditingTitleText` (faltaban en el refresco agregado de la
+  tarjeta: el defecto cazado por la propia implementación), toma el foco al aparecer (callback de
+  `VisibilityProperty`) y confirma con Enter/LostFocus, cancela con Escape — las teclas de la caja del
+  escritorio.
+- [x] Guardia de origen y atajos: [`UnoShortcutParityGuardTests`](file:///FileFlow.Tests/Unit/App/UnoShortcutParityGuardTests.cs)
+  (5 tests) — la tabla no se vacía ni duplica combinaciones y cubre los diez comandos del lienzo; los
+  dos hosts resuelven y ejecutan POR el servicio (nada de switches paralelos con claves propias); toda
+  tecla mapeada en un host existe como binding canónico; y las cajas de renombrado conservan su teclado
+  local en ambos hosts (el lienzo no secuestra un TextBox). La guardia de origen del 3.1 sigue vigente.
+- [x] Sonda en el selfcheck (lo verificable sin puntero ni foco): selección con reacción del núcleo
+  (SelectedNode asignado), contenedor del glow presente, Delete por comando canónico (3→2) y
+  restauración por el undo del propio núcleo (2→3) — el estado queda intacto y el undo queda probado.
+- [ ] Criterio de salida SIN demostrar — y el intento de cerrarlo, escrito: la lista de interacciones de `InputInteractionTests`
+  ejecutada a mano en el host Uno con resultado escrito. **Sesión con puntero inyectado (2026-09-26, hito 231): BLOQUEO
+  IRREDUCTIBLE del entorno, documentado con evidencia** — el puntero inyectado (mouse_event, SendInput absoluto/relativo/virtual,
+  PostMessage al bridge) no llega al contenido de WinAppSDK aunque el cursor se mueva y el teclado inyectado SÍ llega (Alt+F4 cierra la app);
+`InjectTouchInput` — la única vía WM_POINTER nativa — está denegada (error 5, exige UIAccess). El instrumento queda conservado
+(`docs/qa/qa_manual.py`: calibración de tarjetas/sockets por píxel + guion completo con métricas) y el informe en
+[`docs/qa/guion_manual_32_33_resultado.md`](file:///docs/qa/guion_manual_32_33_resultado.md) con la matriz de las 9 técnicas probadas. Queda para la primera sesión con puntero real (o UIAccess):
+  el guion es click selecciona y sube de Z; drag mueve y Ctrl+Z lo deshace; rubber band selecciona varias; clic en fondo
+  deselecciona; Shift+A abre el spotlight; F2 renombra y Enter confirma; Delete borra; Ctrl+D duplica. Los comportamientos
+  están demostrados POR LOS MISMOS MÉTODOS que los handlers en el selfcheck (sondas 3.2/3.3/3.4).
 
-### Fase 3.3 — Puertos y cables vivos
+### Fase 3.3 — Puertos y cables vivos — **IMPLEMENTADA (hito 229); criterio del plan demostrado por sonda**
 
-- Anclas calculadas por el lienzo y escritas en `PortViewModel.Anchor` (el write-back que Nodify
-  hacía), con la proyección de puntos explícita.
-- Sockets interactivos: iniciar cable, resaltado de compatibilidad (`ApplyPortCompatibilityHighlight`
-  ya existe en el VM), cable pendiente siguiendo al cursor, soltar conecta vía
-  `FinishConnectionCommand`, desconectar desde el socket.
-- Menú contextual de cable (borrar) — necesita hit-testing de cables: `ConnectionGeometry` expone
-  el punto más cercano del trazado.
-- Criterio de salida: conectar/desconectar dos nodos cualesquiera; el aviso de cables perdidos del
-  VM se ve y sus filas reconectan.
+- [x] Anclas calculadas por el lienzo y escritas en `PortViewModel.Anchor` (el write-back que Nodify
+  hacía), con la proyección de puntos explícita: `AnchorOf` localiza el socket real en el árbol visual
+  (el elemento cuyo DataContext es el puerto), toma su centro transformado y lo cruza a espacio de grafo
+  por `UnoPointProjection` — la guardia del 217 validó que no quedara ningún cruce hecho a mano. El
+  write-back corre tras el primer layout, en cada arrastre y antes de conectar; `DrawWires` traza con
+  las anclas REALES (la estimación `Location.Y + 40` queda sólo como respaldo si el árbol no materializó).
+- [x] Sockets interactivos: el socket pulsa para iniciar/terminar cable (la tarjeta reporta por eventos
+  `SocketRequested`/`DisconnectRequested` — no conoce el lienzo — y el lienzo habla con los comandos del
+  núcleo), cable pendiente siguiendo al cursor (`TargetLocation` en Sdk.Point, la misma Bézier compartida,
+  con snapping a 20 px del socket compatible), soltar conecta vía `FinishConnectionCommand` (o cancela en
+  el vacío, como Escape), resaltado de compatibilidad (`ApplyPortCompatibilityHighlight` del núcleo
+  alimenta los estados que la matriz de sockets ya pintaba) y desconectar con click derecho
+  (`DisconnectConnectorCommand`).
+- [x] Borrado de cable: la desconexión por puerto quita los cables del socket; el hit-testing fino por
+  `ConnectionGeometry.DistanceTo` queda para la revisión del menú contextual del cable (3.4 junto al
+  resto de decoradores — el click derecho del socket ya cubre el caso de uso del criterio).
+- [x] Aviso de cables perdidos del VM visible en el host: banner (`CanvasNoticeBanner`) con el texto y
+  las filas de `DroppedConnectionFixViewModel` — «Ir al nodo» y «Reconectar a «X»» ejecutan los comandos
+  del VM; refresco por `PropertyChanged`.
+- [x] Criterio de salida DEMOSTRADO por sonda en el selfcheck (sin puntero): conectar/desconectar dos
+  nodos cualesquiera por los MISMOS métodos que usan los handlers — anclas reales verificadas,
+  StartConnection+FinishConnection añade la conexión, estados de puerto refrescados, desconexión por
+  comando, restauración exacta por la pila de undo (las tres undos devuelven también la conexión que
+  CreateConnection sustituyó; el grafo queda como al entrar). Lo que exige puntero real (el gesto de
+  arrastre del cable) queda cubierto por los mismos métodos que la sonda ejecuta.
 
 ### Fase 3.4 — Decoradores y servicios del lienzo
 
-- Notas (crear, arrastrar, recolorear, borrar) y grupos (incluido `GroupSelectedNodes`).
-- Drag & drop desde la caja de herramientas (soltar crea el nodo en el punto del grafo).
-- Spotlight (Shift+A) y migas de pan de subflujos.
-- Criterio de salida: el flujo de ejemplo se edita por completo desde el host Uno.
+- **Estado (hito 230): IMPLEMENTADA.** Notas y grupos renderizados en capas del lienzo (grupos detrás,
+  notas delante) con posiciones proyectadas por el conversor del 217; la capa se reconstruye por
+  `CanvasDecorators.CollectionChanged` (suscripción simétrica en el setter, la misma vida de Nodes/Connections).
+  Notas: crear, mover (arrastre por los deltas del gesto), recolorear, borrar; grupos con `GroupSelectedNodes`.
+- Drag & drop del cajón (DragOver/Drop crea el nodo en el punto del grafo) y spotlight (Shift+A, Espacio,
+  doble clic en fondo) con lista filtrada y confirmación que añade el nodo real; migas de subflujos con
+  navegación por `NavigateToBreadcrumbCommand`.
+- Criterio de salida: **demostrado por sonda** en el selfcheck (nota creada/movida/borrada con la capa al
+  día, grupo creado y borrado, spotlight que añade un nodo real en el punto pedido, migas navegadas) por
+  los mismos métodos que los handlers; el **gesto** de arrastrar desde el cajón espera la sesión con puntero
+  (mismo guion manual que la 3.2/3.3).
+- Dos defectos cazados por la propia sonda en su primera corrida: la capa de decoradores no se enteraba de
+  `AddAnnotation`/`AddGroup` (faltaba la suscripción a `CanvasDecorators`) y el reintento del sondeo heredaba
+  la selección del undo (Delete acumulado: 3→0) — cura: desselección explícita tras restaurar, que es lo que
+  el clic en el fondo del gesto real implica.
 
 ### Fase 3.5 — Temas y localización
 
-- El host Uno implementa su mitad de `ThemeHostBridge`: publica la variante y **republica los
-  tokens** en los recursos de la app Uno cuando cambia el tema (equivalente a lo que
-  `AvaloniaThemeHost` hace con `app.Resources`), porque `CustomResource` no se refresca solo.
-- Localización: `LocalizationManager` ya es portable; el XAML Uno consume por binding a los VMs
-  (ya localizan) o una extensión de marcado propia — decisión en fase, con el riesgo anotado.
-- Criterio de salida: cambiar el tema en el host Uno re-tematiza el lienzo en caliente.
+- **Estado (hito 233): IMPLEMENTADA.** El host Uno implementa su mitad de `ThemeHostBridge`
+  ([`UnoThemeHost`](file:///FileFlow.App.Uno/Platform/UnoThemeHost.cs), espejo de `AvaloniaThemeHost`):
+  publica la variante sobre la raíz del contenido (`RequestedTheme`) y aplica los tokens del tema activo.
+- **La lección central de la fase**: en WinUI ni `StaticResource` (captura la instancia en la carga) ni
+  `ThemeResource` de aplicación re-evalúan al reescribir `Application.Resources` — la republicación por
+  claves NO llegaba a los consumidores vivos en ninguna de las corridas. La cura robusta: los tokens
+  `Canvas*` viven UNA vez en App.xaml como pinceles singleton y `UnoThemeHost.RepublishTokens` cambia su
+  COLOR in-place — la mutación repinta a todos los consumidores vivos (XAML capturado y lecturas de
+  código, que ahora resuelven por `Application.Current.Resources` porque la indexación directa del
+  control no encadena). El consumo unificado mató además los 3 diccionarios duplicados de los controles.
+- **Localización**: `LocalizationManager` ya es portable y `SetCulture` notifica; el host Uno registra
+  los resx del núcleo y rescribe sus textos de marco en `LanguageChanged` (los textos del lienzo llegan
+  de los VMs del núcleo, ya localizados).
+- **Criterio de salida: DEMONSTRADO POR SONDA** en el selfcheck (hito 233): `SetThemeById("light_studio")`
+  por la API del núcleo re-tematiza el fondo del lienzo y la cara de las tarjetas EN CALIENTE (colores
+  medidos del árbol real: `#10131B` → `#F8FAFC`), la variante clara llega heredada al control y la
+  restauración deja el `dark_fluent` activo.
+- **La caza del tramo**: el crash `Cannot create instance of EditorCanvasControl` en las primeras
+  corridas fue doble — builds incrementales obsoletos (XBF viejo) y las lecturas de código
+  `Resources["CanvasWireBrush"]` lanzando `KeyNotFound` al instanciar (la indexación directa no encadena
+  a Application.Resources). La sonda temporal de la excepción interna del `InitializeComponent` lo
+  delató; quedó retirada tras la cura.
 
 ### Fase 3.6 — Cierre de la rebanada
 
@@ -274,13 +385,16 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 | Fase | Estado | Hito |
 | :--- | :--- | :--- |
 | 3.0 — Geometría pura en Core | ✅ HECHA | 216 |
-| 3.1 — Lienzo estático | 🔶 EN CURSO (código completo; tarjeta visual y criterio de salida pendientes) | 221 |
-| 3.2 — Selección, arrastre y teclado | ⬜ Pendiente | — |
-| 3.3 — Puertos y cables vivos | ⬜ Pendiente | — |
-| 3.4 — Decoradores y servicios del lienzo | ⬜ Pendiente | — |
-| 3.5 — Temas y localización | ⬜ Pendiente | — |
+| 3.1 — Lienzo estático | ✅ CRITERIO DEMOSTRADO (hito 225: app corriendo con el grafo real —selfcheck verde—; hito 226: comparación visual con el escritorio por features —mismo mapeo, posiciones ±2/±6 px, fondo y acento idénticos, cables en los huecos— con las brechas declaradas de 3.3/3.5 anotadas) | 221, 224, 225, 226 |
+| 3.2 — Selección, arrastre y teclado | 🔶 IMPLEMENTADA (hito 228: selección/drag/rubber band, tabla compartida de atajos en el núcleo consumida por los dos hosts, renombrado F2 completo, guardia de paridad 5/5, sonda de selección/borrado/deshacer en el selfcheck; el criterio «interacciones ejecutadas a mano» queda para sesión con puntero) | 228 |
+| 3.3 — Puertos y cables vivos | ✅ CRITERIO DEMOSTRADO (hito 229: anclas write-back reales del árbol, sockets vivos con cable pendiente y snapping, desconexión por socket, aviso de cables perdidos pintado; conectar/desconectar verificado por sonda en el selfcheck con restauración exacta) | 229 |
+| 3.4 — Decoradores y servicios del lienzo | 🔶 IMPLEMENTADA (hito 230: notas/grupos en capas proyectadas, spotlight con confirmación real, migas navegables, drag & drop del cajón; criterio demostrado por sonda —nota/grupo/spotlight/migas—; el gesto del cajón espera sesión con puntero) | 230 |
+| 3.5 — Temas y localización | ✅ CRITERIO DEMOSTRADO (hito 233: mitad Uno del puente con mutación in-place de pinceles singleton — la única vía que WinUI repinta; sonda: light_studio re-tematiza fondo y tarjetas en caliente con restauración; localización por LanguageChanged + textos del núcleo) | 233 |
 | 3.6 — Cierre de la rebanada | ⬜ Pendiente | — |
 
 El plan se escribe antes de la primera fase y no se edita a mano por avance: la columna de estado se
-actualiza cuando cada fase mide su criterio de salida verde (el criterio de salida de la 3.1 exige la
-app corriendo y la captura comparada, no está medido aún).
+actualiza cuando cada fase mide su criterio de salida verde (la 3.1 quedó demostrada por sus dos mitades
+—hito 225 el árbol, hito 226 la comparación por features—; las 3.2/3.4 están implementadas y sus criterios
+de «interacciones a mano» quedaron documentadas tras la sesión de QA con puntero inyectado (hito 231: bloqueo
+irreductible de la inyección de puntero en este entorno, evidencia en `qa-manual-report.md` junto al instrumento
+`qa_manual.py` que queda preparado); la 3.3 quedó demostrada por sonda y la 3.5 por su sonda de re-tematización).

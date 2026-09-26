@@ -1,5 +1,498 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-09-26] - Fase 3.5 del Lienzo Uno: la Re-tematización en Caliente y el Pincel que WinUI no Re-evalúa (Hito 233)
+
+### 🎯 El encargo
+
+«Arranca la fase 3.5 del plan Uno: republicación de tokens del puente de temas y localización en caliente».
+
+### 🧱 Lo construido
+
+- **[`UnoThemeHost`](file:///FileFlow.App.Uno/Platform/UnoThemeHost.cs)** — la mitad Uno del
+  `ThemeHostBridge`, espejo de `AvaloniaThemeHost`: instala `PublishThemeVariant` y `BuildResources`, publica la
+  variante sobre la raíz del contenido (`RequestedTheme`, vía proveedor diferido de ventana porque WinUI 3 no
+  expone la lista de ventanas) y aplica los tokens del tema activo.
+- **Tokens unificados**: los 16 pinceles `Canvas*` viven UNA vez en App.xaml (los tres diccionarios duplicados
+  de los controles desaparecieron) y 124+49 consumos del XAML los referencian.
+- **Localización en caliente**: `LanguageChanged` rescribe los textos del marco; los del lienzo llegan de los
+  VMs del núcleo, ya localizados.
+
+### 🐛 La lección central: WinUI no re-evalúa recursos, y la indexación directa no encadena
+
+- La republicación por claves (`app.Resources[key] = nuevoPincel`) NO llegó a los consumidores vivos en
+  NINGUNA corrida: `StaticResource` captura la instancia en la carga y un `ThemeResource` de aplicación
+  conservó el pincel viejo. La cura robusta: **mutación in-place del COLOR** de cada pincel singleton —
+  la notificación del `SolidColorBrush` repinta a todos los consumidores vivos sin reconstruir nada.
+- Las lecturas de código `Resources["CanvasWireBrush"]` (indexación directa) NO encadenan a
+  Application.Resources como el markup `{StaticResource}`: lanzaban `KeyNotFound` al instanciar el control
+  y el crash `Cannot create instance of EditorCanvasControl` ocultaba el error real tras la pila stowed del
+  crash. Cura: helper `CanvasBrush(key)` que resuelve desde App. La sonda temporal que registró la excepción
+  interna del `InitializeComponent` hizo visible el error; quedó retirada tras la cura.
+- El ruido del tramo (dos horas de corridas con resultados contradictorios) era **builds incrementales
+  obsoletos** de XAML: la bisección por fuentes dio FALSOS hasta que la limpieza obj+bin devolvió la verdad.
+  Y un `git show HEAD:` pisó la versión no commiteada de `NodeCardView.xaml` — recuperada íntegra del stash
+  dropeado (`git fsck --unreachable`), la lección de trabajo en árboles con hitos sin commitear.
+
+### 🔬 El criterio, demostrado por sonda
+
+`SetThemeById("light_studio")` por la API del núcleo re-tematiza el lienzo EN CALIENTE: el fondo del plano y
+ la cara de las tarjetas cambian de `#10131B`/`#161B22` a los valores de `light_studio`, la variante clara
+ llega heredada al control (`ActualTheme`), y la restauración deja el `dark_fluent` activo. Selfcheck **EXIT 0
+ (47 OK)**.
+
+### ✅ Validación
+
+- Host Uno 0 errores; selfcheck **EXIT 0 (47 OK)** con la sonda 3.5.
+- Suite completa → **1829 superadas + 1 omitida de 1830**, 0 errores.
+- Guardias enfocadas **78/78** (geometría, host libre de Avalonia, cables, decoradores, atajos, contratos,
+  auditoría y cobertura de mutaciones).
+
+---
+
+## [2026-09-26] - La Mutación del Cable con Anclas Estimadas: la Brecha del 226 queda Defendida (Hito 232)
+
+### 🎯 El encargo
+
+«Declara la mutación que hace que DrawWires ignore las anclas write-back y vuelva a la estimación Y+40, con testigo y control.»
+
+### 🧬 La declaración ([`cable-con-anclas-estimadas`](file:///mutations/cable-con-anclas-estimadas.json))
+
+Formaliza la regresión que la comparación visual del 226 midió y la fase 3.3 curó: `DrawWires` pide el ancla real
+ de cada cabo (`AnchorOf(connection.Source/Target)` — el centro del socket calculado del árbol y proyectado por la
+ regla del 217) y deja la estimación `Location.Y + 40` SOLO como respaldo por coalescencia (`??`). El mutante
+ sustituye UNA llamada por `(Sdk.Point?)null`: el cabo origen cae siempre en la estimación y el cable vuelve a
+ y171 en vez de y217. **Veredicto: MUERDE** (29,1 s) — testigo rojo 1/1, control verde 1/1, árbol restaurado por
+ bytes. Primer borrador cazado por la propia redacción: el reemplazo contenía el fragmento vigilado (el testigo
+ no habría caído jamás) — el mutante mínimo y correcto es `null` puro.
+
+- **Testigo** — `DrawWires_ShouldConsumeTheWrittenBackAnchors` (en `UnoCanvasConnectionsGuardTests`, la guardia del
+  227, que pasa a 7 tests): exige las DOS llamadas `AnchorOf(connection.Source/Target)` como código vivo vía
+  `SourceText.CodeWithoutComments`. Su hermana `DrawWires_ShouldKeepTheEstimationAsFallbackOnly` fija el respaldo
+  (el `?? new Sdk.Point(` y las dos estimaciones Y+40) para que el mutante de UNA mitad no sea impreciso.
+- **Control** — `Canvas_ShouldSubscribeToConnectionsCollectionChanged`: el caso hermano del mismo fichero. El
+  mutante toca DrawWires y no el setter de Editor — el redibujado por `Connections.CollectionChanged` sigue cubierto.
+
+### 📊 Catálogo
+
+COVERAGE.md regenerado → **44 declaraciones**; `FileFlow.App.Uno` acumula dos (`cables-que-no-llegan-tarde` del
+227 y esta). Suite completa → **1825 + 1 omitida de 1826, 0 errores** (+2).
+
+### 🧬 Ampliación del hito: la segunda mutación del tramo
+
+La misma pasada declaró y ejecutó [`decoradores-que-no-llegan-al-arbol`](file:///mutations/decoradores-que-no-llegan-al-arbol.json)
+(hito del defecto: **230**): el que la sonda 3.4 cazó — la capa de notas/grupos sin su suscripción a
+`CanvasDecorators.CollectionChanged`. El mutante invierte UNA línea del setter (`+=` → `-=`) y el testigo es la
+**guardia nueva** [`UnoCanvasDecoratorsGuardTests`](file:///FileFlow.Tests/Unit/App/UnoCanvasDecoratorsGuardTests.cs)
+(4 tests): la suscripción, la desuscripción simétrica, el evento terminando en `RebuildDecorators` y el caso
+hermano (Nodes/Connections intactos) como control del mutante. **Veredicto: MUERDE** — testigo rojo 1/4 (sólo
+cayó la aserción de la suscripción: preciso), control verde 1/1. COVERAGE.md → **45 declaraciones**; suite →
+**1829 + 1 omitida de 1830, 0 errores** (+4). `FileFlow.App.Uno` acumula **tres** mutaciones: los tres defectos
+de suscripción/consumo que las fases 3.2-3.4 cazaron, cada uno con su testigo que muerde.
+
+---
+
+## [2026-09-26] - El Guion Manual 3.2/3.3 contra el Entorno: Bloqueo Irreductible Documentado con Evidencia (Hito 231)
+
+### 🎯 El encargo
+
+«Ejecuta el guion manual de interacciones de las fases 3.2 y 3.3 en el host Uno y deja el resultado escrito.»
+
+### 🔬 Lo que la sesión probó (nueve técnicas, una conclusión)
+
+La sesión construyó un instrumento de QA real — `qa_manual.py` junto al bin del host: calibrador que segmenta
+ tarjetas/sockets por píxel (bandas de barra de acento, huecos de ~69 px, sockets In/Out a ambos lados) y guion
+ completo con métricas de selección (anillo), posición, cable y spotlight — y probó ENTREGAR el gesto al host vivo:
+
+- `mouse_event` (down/up, absoluto, relativo con fotograma previo, VIRTUALDESK para el monitor de origen negativo):
+ el cursor llega (verificado con `GetCursorPos`) y el contenido no reacciona — 0 px cambiados en todas las corridas.
+- `SendInput` + `PostMessage` sintético al `DesktopChildSiteBridge` de WinUI: 0 px.
+- `InjectTouchInput` (la única vía WM_POINTER nativa que WinUI consume): **denegada con error 5** — exige UIAccess
+ que este entorno no puede conceder.
+- **El teclado inyectado SÍ llega**: NumLock cambia el estado del sistema (sonda) y **Alt+F4 cierra la app** (exit 0) —
+ el bloqueo es del PUNTERO, no de la ventana.
+- La primera corrida con veredictos PASS/FAIL mixtos quedó **invalidada por esta auditoría**: medía ruido
+ (cable estático contado como pendiente, cluster de tarjetas fusionado por cables-puente, métrica del glow dentro
+ de la tarjeta cuando el anillo vive fuera ±2 px).
+
+### 📌 El veredicto escrito
+
+El guion NO es ejecutable en este entorno: bloqueo irreductible de inyección de puntero sobre WinAppSDK desde un
+proceso sin UIAccess. Informe completo con la matriz de técnicas en [`docs/qa/guion_manual_32_33_resultado.md`](file:///docs/qa/guion_manual_32_33_resultado.md)
+y el instrumento conservado en [`docs/qa/qa_manual.py`](file:///docs/qa/qa_manual.py), listo para la primera sesión con puntero real. Los comportamientos siguen demostrados por los
+MISMOS métodos que los handlers en el selfcheck (sondas 3.2/3.3/3.4; EXIT 0, 44 OK). El plan §3.2 queda con el criterio
+sin demostrar y el intento escrito; ninguna fase cambia de estado.
+
+### ✅ Aporte positivo de la sesión
+
+- Calibrador funcional: 3 tarjetas, sockets y fondo localizados y medibles por píxel sobre la app viva.
+- La app viva verificada en pantalla (barras de acento visibles y segmentables; ventana maximizable a 3860×2120).
+- Instrumento y guion listos para la sesión humana: `--calibrate` + `--run` escriben el informe con resultados.
+
+---
+
+## [2026-09-26] - Fase 3.4 del Lienzo Uno: Decoradores, Spotlight y Migas — el Flujo se Edita por Completo (Hito 230)
+
+### 🎯 El encargo
+
+«Arranca la fase 3.4 del plan Uno: notas, grupos, drag & drop del cajón, spotlight y migas de subflujos»
+
+### 🧱 Lo construido
+
+- **Decoradores en capas** (`EditorCanvasControl`): `RebuildDecorators` pinta grupos AL FONDO (insert en 0)
+  y notas delante, con posiciones proyectadas por el conversor del 217. La capa se reconstruye por
+  suscripción a `CanvasDecorators.CollectionChanged`, añadida con la misma simetría del contrato de vida
+  (hito 225) en el setter de `Editor` — y cuidando el fragmento literal que la mutación
+  `cables-que-no-llegan-tarde` vigila: el `+=` de decoradores entra ANTES de las líneas Nodes/Connections
+  para no partir el bloque contiguo que el catálogo censura.
+- **Notas**: crear, mover (arrastre por los mismos deltas del gesto), recolorear, borrar; **grupos** con
+  `GroupSelectedNodes`. **Spotlight**: Shift+A/Espacio y doble clic en fondo, lista filtrada del núcleo y
+  confirmación que añade el nodo real en el punto del grafo. **Migas**: `RefreshBreadcrumbs` +
+  `NavigateToBreadcrumbCommand`. **Drag & drop del cajón**: DragOver/Drop crea el nodo en el punto del grafo.
+
+### 🐛 Dos defectos que la propia sonda cazó en su primera corrida
+
+- **La capa de decoradores no se enteraba de `AddAnnotation`/`AddGroup`**: la sonda salió en FALLO
+  (`noteRendered`/`groupRendered`) porque el lienzo escuchaba Nodes/Connections pero no `CanvasDecorators` —
+  notas y grupos existían en el núcleo y jamás llegaban al árbol. Cura: suscripción simétrica nueva.
+- **Contaminación entre intentos del sondeo**: el undo de la sonda 3.2 restaura el nodo CON
+  `IsSelected=true`; el reintento hereda la selección acumulada y el Delete borra más de lo suyo (3→0 en los
+  reintentos). Cura: desselección explícita tras restaurar — exactamente el clic en el fondo que el gesto
+  real implica después del Delete.
+
+### 🔬 El criterio, demostrado por sonda
+
+El flujo se edita por completo por los MISMOS métodos que los handlers: nota creada/movida/borrada con la
+ capa al día, grupo creado y borrado, spotlight que añade un nodo real en el punto pedido, migas navegadas.
+ Selfcheck EXIT 0 (44 OK).
+
+### ✅ Validación
+
+- Host Uno 0 errores; selfcheck **EXIT 0** (44 OK, con la sonda 3.4).
+- Suite completa → **1823 superadas + 1 omitida de 1824**, 0 errores.
+- Guardias enfocadas **76/76** (geometría, host libre de Avalonia, sockets, cables, atajos, contratos,
+  auditoría de mutaciones).
+
+### 📚 Nota del entorno
+
+El árbol fue consolidado en commits por otra sesión en paralelo (`498c214` «estado consolidado para la
+siguiente sesión», sobre el estado ANTERIOR a la 3.2) mientras esta fase estaba en curso; el binario del
+host quedó intermitente entre compilaciones (el exe «no se reconoce» y DLLs de Avalonia mezcladas en el
+directorio WinUI) hasta reconstruir y ejecutar en el MISMO comando. El trabajo de los hitos 225-230 sigue
+en el árbol de trabajo sin commitear.
+
+---
+
+## [2026-09-26] - Fase 3.3 del Lienzo Uno: Puertos Vivos, Anclas Reales y la Sonda que Exige Honestidad (Hito 229)
+
+### 🎯 El encargo
+
+«Arranca la fase 3.3 del plan Uno: anclas write-back de puertos, sockets vivos y cable pendiente.»
+
+### 🧱 Lo construido
+
+- **Anclas write-back reales**: `AnchorOf` localiza el socket en el árbol visual (el elemento cuyo
+  DataContext es el `PortViewModel`), toma su centro transformado y lo cruza a espacio de grafo por
+  `UnoPointProjection`. El write-back corre tras el primer layout, en cada arrastre y antes de conectar;
+  `DrawWires` traza con las anclas REALES — la estimación `Location.Y + 40` del 3.1 queda como respaldo y
+  la brecha anotada en la comparación del 226 (cable a y171 vs y217 del escritorio) desaparece.
+- **Sockets vivos**: el socket pulsa para iniciar/terminar cable; la tarjeta reporta por eventos
+  (`SocketRequested`/`DisconnectRequested`) sin conocer el lienzo, y el lienzo habla con los comandos del
+  núcleo (`StartConnection`/`FinishConnection`/`DisconnectConnector`). Cable pendiente siguiendo al
+  cursor (`TargetLocation` en Sdk.Point, misma Bézier compartida, snapping a 20 px del socket compatible),
+  soltar conecta o cancela, Escape cancela, resaltado de compatibilidad alimentado por el núcleo
+  (`ApplyPortCompatibilityHighlight` → los estados que la matriz del 224 ya pintaba).
+- **Aviso de cables perdidos**: banner del lienzo con el texto del VM y las filas de
+  `DroppedConnectionFixViewModel` («Ir al nodo» / «Reconectar a «X»»), refrescado por PropertyChanged.
+
+### 🐛 Dos cazas de la propia verificación en esta fase
+
+- **La sonda 3.3 salió 5/5 en FALLO la primera vez** y tenía razón dos veces: (1) tras el delete+undo de
+  la sonda 3.2 el `Rebuild` deja los contenedores vacíos hasta el siguiente layout — la sonda fuerza
+  `UpdateLayout()` antes de medir anclas; (2) mi par «libre» no existía (las dos entradas del ejemplo
+  están ocupadas) — la sonda usa un par cualquiera y documenta que `CreateConnection` SUSTITUYE la
+  entrada ocupada por diseño del núcleo, con restauración exacta por tres undos.
+- **La guardia del 217 y la auditoría de mutaciones cazaron mis propios cruces**: `ScreenPointOfAnchor`
+  y `TransformToVisualCenter` construían puntos del framework con `.X/.Y` crudos (ahora pasan por la
+  proyección), y una edición del setter de `Editor` había destruido el fragmento exacto que la mutación
+  `cables-que-no-llegan-tarde` vigila (restaurado; la suscripción de PropertyChanged vive fuera del
+  bloque que el catálogo censura literalmente).
+
+### 🔬 El criterio, demostrado por sonda
+
+Conectar/desconectar dos nodos cualesquiera por los MISMOS métodos que usan los handlers del gesto:
+anclas reales verificadas, StartConnection+FinishConnection añade la conexión, estados de puerto
+refrescados (`IsConnected` en ambos extremos), desconexión por comando, restauración exacta por la pila
+(grafo y pila como al entrar). Selfcheck EXIT 0 (39 OK).
+
+### ✅ Validación
+
+- Host Uno 0 errores; selfcheck **EXIT 0** (39 OK, con la sonda 3.3).
+- Suite completa → **1823 superadas + 1 omitida de 1824**, 0 errores.
+- Guardias del host (geometría, mutaciones, atajos, cables, origen): **26/26 en la pasada enfocada**,
+  y la completa en verde.
+
+## [2026-09-26] - Fase 3.2 del Lienzo Uno: Selección, Arrastre y la Tabla que Unifica los Atajos (Hito 228)
+
+### 🎯 El encargo
+
+«Empieza la fase 3.2 del plan Uno: selección, arrastre y teclado del lienzo, con su guardia de origen y atajos compartidos.»
+
+### 🧱 Lo construido
+
+- **Selección y arrastre** (`EditorCanvasControl`): el clic sobre la tarjeta escribe `IsSelected` y el
+  NÚCLEO reacciona (SelectedNode + BringToFront + contador — la misma reacción que el escritorio);
+  el arrastre mueve la selección entera en espacio de grafo (delta de pantalla / zoom: el inverso del
+  mapeo compartido, cruzado por `UnoPointProjection`), repasa los cables al vuelo y registra
+  `MoveNodesAction` en el `UndoRedoService` del núcleo al soltar (mismo undo que el escritorio).
+- **Rubber band**: capa `RubberLayer` con el rectángulo, selección por centro de tarjeta y clic sin
+  arrastre en el fondo que deselecciona (el estándar de Nodify). El pan queda en el botón DERECHO.
+- **La tabla compartida que el plan anticipaba** («tabla compartida si hace falta»):
+  [`EditorKeyboardShortcuts`](file:///FileFlow.App.Core/Services/EditorKeyboardShortcuts.cs) en el núcleo
+  portable — claves canónicas (`Binding`: tecla física + modificadores → comando del producto),
+  clasificación (`Resolve`) y ejecutor sobre `EditorViewModel` (`Execute`, posición de pegado/spotlight
+  como `Sdk.Point`). El host Uno la consume en `OnKeyDown`; el AVALONIA quedó refactorizado a ella
+  (su `EditorView_KeyDown` delega la clasificación y ejecución; el spotlight conserva su posición del
+  cursor porque la vista la conoce). Una sola fuente de claves para los dos hosts.
+- **Renombrado F2**: F2 llega por la tabla (StartRenaming del núcleo); la caja del host Uno refresca con
+  `IsEditingTitle`/`EditingTitleText`, toma el foco al aparecer (`RegisterPropertyChangedCallback` sobre
+  `VisibilityProperty` — WinUI no tiene `IsVisibleChanged` de WPF) y confirma Enter/LostFocus, cancela
+  Escape — las teclas de la caja del escritorio.
+
+### 🐛 El sexto defecto que la verificación caza en el tramo
+
+- El refresco agregado de la tarjeta Uno no incluía `IsEditingTitle`/`EditingTitleText`: F2 habría
+  cambiado el estado en el núcleo y **la caja de edición NUNCA habría aparecido** (binding correcto,
+  refresco ausente — el patrón silencioso de WinUI). Cazado al implementar la pieza, curado en
+  `NodeCardViewModel.OnNodePropertyChanged`.
+
+### 🛡️ La guardia de atajos compartidos
+
+[`UnoShortcutParityGuardTests`](file:///FileFlow.Tests/Unit/App/UnoShortcutParityGuardTests.cs) (5 tests):
+la tabla no se vacía ni duplica combinaciones y cubre los diez comandos del lienzo; los dos hosts
+resuelven y ejecutan POR el servicio (nada de switches paralelos con claves propias); toda tecla mapeada
+en un host existe como binding canónico; y las cajas de renombrado conservan su teclado local (el lienzo
+no secuestra un TextBox). La guardia de origen del 3.1 sigue en pie.
+
+### 🔬 El selfcheck, extendido a lo verificable sin puntero
+
+Sonda de la 3.2 (selección con reacción del núcleo, contenedor del glow presente, Delete por comando
+canónico **3→2** y restauración por el undo del propio núcleo **2→3** — el estado queda intacto y el
+undo queda probado). Lo que necesita puntero/foco reales (drag, rubber band, atajos) queda declarado
+como la primera tarea de una sesión de QA, con el guion escrito en el plan.
+
+### ✅ Validación
+
+- Host Uno y host Avalonia: 0 errores; selfcheck **EXIT 0** (34 OK, con la sonda 3.2).
+- Suite completa → **1823 superadas + 1 omitida de 1824**, 0 errores (+5: la guardia de atajos).
+- Guardias Uno (geometría, atajos, cables, origen): **29/29 en verde**.
+- **Higiene del instrumento (misma pasada)**: `selfcheck-report.txt` escribe ahora **un bloque por intento**
+  (el fichero cuenta lo que el ÚLTIMO intento vio; la historia de los «[espera]» de los intentos de
+  materialización era ruido de diagnóstico, y una corrida muerta a medias ya no deja una mezcla de épocas);
+  y las trazas `[UnoHost]` del arranque bajan de 7 a **2 líneas** (resultado, no paso a paso: «ejemplo
+  cargado: 3 nodos» y «nodos descubiertos: 70»; el error de carga sigue reportándose por stderr).
+
+## [2026-09-26] - La Mutación que Muerde el Redibujado de Cables y la Cura que le Faltaba Simetría (Hito 227)
+
+### 🎯 El encargo
+
+«Declara la mutación que muerda el redibujado de cables por Connections.CollectionChanged del lienzo Uno, con testigo y control.»
+
+### 🧬 La mutación [`cables-que-no-llegan-tarde`](file:///mutations/cables-que-no-llegan-tarde.json)
+
+- Formaliza el defecto (1) del hito 225: el importador añade TODOS los nodos antes que las aristas, y el
+  lienzo que sólo escucha `Nodes.CollectionChanged` corre su último Rebuild con `Connections` vacía — el
+  síntoma no es un fallo: es la app corriendo sin cables. El mutante invierte UNA línea del setter de
+  `Editor` (`Connections.CollectionChanged +=` → `-=`): la suscripción desaparece sin que compile nada
+  distinto.
+- **Veredicto: MUERDE** (28,4 s) — testigo rojo **1/5** (sólo `Canvas_ShouldSubscribeToConnectionsCollectionChanged`
+  cae), control verde **1/1** (el caso hermano: la suscripción de `Nodes` sigue intacta), árbol restaurado
+  por bytes y recompilado, y el testigo en verde con `--no-build` al terminar (los binarios son los del
+  árbol restaurado).
+- **Testigo por árbol de fuentes, y por qué**: el lienzo es WinUI (host Uno) y no se materializa en la
+  sesión de pruebas, así que ningún test de runtime puede ejecutar el setter. El testigo es la guardia
+  nueva [`UnoCanvasConnectionsGuardTests`](file:///FileFlow.Tests/Unit/App/UnoCanvasConnectionsGuardTests.cs)
+  (5 tests) que exige las CUATRO líneas del contrato de vida (suscripción y desuscripción de `Nodes` y de
+  `Connections`, con handlers con nombre, y el evento terminando en `DrawWires`) como **código vivo**:
+  `SourceText.CodeWithoutComments` retira los comentarios antes de buscar — la lección del 165, con
+  auto-prueba incluida de que la línea comentada no cuenta como código.
+
+### 🐛 El quinto defecto que la verificación caza en el tramo
+
+- Al escribir la guardia, su aserción de desuscripción cayó sobre el producto REAL: el setter del 225
+  añadió la suscripción entrante de `Connections` pero la simetría del `-=`, que `Nodes` ya tenía, no
+  se extendió — cada reasignación del `Editor` habría dejado un lienzo fantasma redibujando cables sobre
+  el VM anterior (hoy el host sólo asigna una vez, pero el contrato de vida era la mitad de la cura).
+  Cura: simetrizar el setter (desuscribir `Connections` junto a `Nodes`, con comentario del 225); host
+  Uno recompilado con 0 errores.
+
+### 📊 El catálogo, tras la declaración
+
+- `mutations/COVERAGE.md` regenerado: **42 → 43 declaraciones** y `FileFlow.App.Uno` **sale de los
+  huecos** — quedan 2 de 17 subsistemas (`FileFlow.Plugin.Scripting`, `FileFlow.Plugin.Subflows`).
+- La auditoría de declaraciones (`MutationDeclarationGuardTests`) cazó el primer borrador: un filtro de
+  control no se cita como `Clase.Método` — el índice del suite contiene métodos y clases, no rutas
+  punteadas, y un filtro que no casa se leería como «control verde» sobre una medición vacía. Corregido
+  al nombre del método (único en el suite) y `COVERAGE.md` regenerado.
+- La guardia nueva NO entra en el censo de «guardias del repositorio» de `COVERAGE.md` (27/34 se
+  mantiene): el censo reconoce las que auditan el árbol por los marcadores `SourceTree.`,
+  `TestRepositoryLocator.` y `TestSuiteIndex.`, y esta llega a las fuentes vía `SourceText` directamente.
+
+### ✅ Validación
+
+- `mutate.ps1 -Name cables-que-no-llegan-tarde` → **MUERDE** (1 ejecutada, 1 mordida, 0 supervivientes,
+  0 imprecisas, 0 rechazos; árbol restaurado por bytes y recompilado).
+- Suite completa → **1818 superadas + 1 omitida de 1819**, 0 errores (+5: la guardia nueva).
+- Guardias de auditoría del catálogo en verde (`MutationDeclarationGuardTests` 8/8, `MutationDeclarationCoverageTests` 3/3).
+
+## [2026-09-26] - La Mitad Visual del Criterio 3.1: Dos Pinturas Comparadas por Features (Hito 226)
+
+### 🎯 El encargo
+
+«Ejecuta el host Uno con run-fast.ps1, compara la pintura del lienzo con el escritorio Avalonia y deja por escrito el veredicto de la mitad visual del criterio 3.1.»
+
+### 🔬 La adaptación honesta del encargo
+
+- **run-fast.ps1 (y run.ps1) lanzan la app AVALONIA** (`FileFlow.App\bin\Debug\net10.0\FileFlow.App.exe`, sin build) — no existe script para el host Uno; el exe Uno se lanza directamente
+  (`FileFlow.App.Uno\bin\Debug\net10.0-windows10.0.19041.0\FileFlow.App.Uno.exe`). Y el Avalonia **vivo**
+  no sirve de referencia comparable: pasarle un `.json` lo mete en modo CLI headless
+  (`WorkflowCliOptions.Parse`/`WorkflowCliRunner`), no en el lienzo, y el escritorio no auto-carga ejemplos.
+- La vía reproducible: **dos sondas temporales con el MISMO mapeo grafo→pantalla** (encuadre «Ajustar» del
+  calculador compartido: zoom 1.11, translate −(44.6, 34.8)·1.11). (a) Sonda headless en `FileFlow.Tests`
+  que monta la `EditorView` real con flow_01 y captura el fotograma Skia (PNG 980×640, vía
+  `VisualSnapshot.Capture`); (b) modo `--dump-canvas` temporal en el host Uno (`RenderTargetBitmap` 2401²,
+  `IBuffer`→`DataReader`→`SetPixelData`; `GetPixelsAsync` devuelve `IBuffer`, no `SoftwareBitmap`).
+- Dos lecciones de hilo del dumper: un `Task.Wait` **en el dispatcher** con una continuación que necesita
+  ese mismo dispatcher es un interbloqueo (15 s por intento) — la fase de UI nunca se bloquea y el hilo de
+  fondo sondea el resultado; y resetear el resultado al inicio de cada intento **pierde** el que llegó
+  durante la espera del intento anterior — sólo se consume al guardar.
+- El RTB del Uno sale 2401² pero su **contenido está a 1:1 lógico** (el grid se pinta cada 50 px): el DPI
+  de la ventana no multiplica el contenido del RTB. Ambas capturas se recortan a la misma ventana 980×640.
+- La sonda Avalonia con loader parcial (FileSystem+Logic) cargaba **2/3 nodos**: `ImageOptimizerNode` vive
+  en el plugin Images — el grafo cargado sería otro. Vía correcta:
+  `PluginRegistryHelper.CreateConfiguredLoader()` (la misma de la fixture visual de la app).
+
+### 🐛 El cuarto defecto que la verificación caza en el tramo
+
+- La barra de acento y el relleno del icono del Uno **no se pintaban** (transparentes):
+  `{Binding Node.AccentBrushColor}` dentro de un `SolidColorBrush` no resuelve el DataContext en WinUI
+  (y el color vive en `NodeCardViewModel`, no en `Node`). Con `{Binding AccentBrushColor}` la franja
+  aparece (5.468 px de `#818CF8` en el segundo volcado); selfcheck re-verificado EXIT 0.
+
+### 📊 El veredicto (por features; no píxel a píxel: los motores de render difieren)
+
+| Feature | Avalonia | Uno | Veredicto |
+| :--- | :--- | :--- | :--- |
+| Fondo `#10131B` | (16,19,27) | (16,19,27) | ✅ idéntico byte a byte |
+| Grid `#21262D` | presente | presente (paso 50) | ✅ |
+| Posición de las 3 tarjetas (franja acento, y=130) | (63..281, 340..558, 618..836) | (67..278, 345..555, 622..833) | ✅ ±2 px / ±6 px del mapeo compartido (61..283, 339..561, 616..838) |
+| Barra de acento `#818CF8` | sí (y129..135) | sí (y130..142, tras el fix) | ✅ |
+| Cables en los huecos | sí | sí | ✅ misma Bézier del núcleo |
+| Ancla vertical del cable | y217..219 (socket real ≈ y194 de grafo) | y171..174 (`Location.Y + 40`) | 🔶 brecha declarada → anclas write-back (3.3) |
+| Color del cable por tipo (Files=verde) | sí (`wireFiles` #10B981) | `#818CF8` fijo | 🔶 → matriz compartida (3.5) |
+| Cara de tarjeta `#161B22` | la sonda aislada pinta #1E1E1E (fusión de diccionarios de la vista sola; la línea base humana `panel-editor-dark.png` confirma #161B22/#212222 en la app real) | token `#161B22` | 🔶 re-medir en el shell completo (3.5) |
+
+**Conclusión**: la pintura del lienzo Uno **coincide con la del escritorio a nivel de estructura y tokens**
+(mismo mapeo, mismas posiciones, fondo y acento idénticos, cables en los huecos), con dos divergencias
+medidas que el plan ya declaraba como trabajo de 3.3/3.5. El veredicto completo quedó en el plan (§3.1 y
+§9): fase 3.1 con su criterio **demostrado por las dos mitades**. Las sondas y los scripts de análisis se
+borraron al cerrar el hito; en el árbol queda sólo el fix del binding.
+
+### ✅ Validación
+
+- Suite completa → **1813 superadas + 1 omitida de 1814**, 0 errores. (Una primera pasada dejó dos fallos
+  de carga —`TheHeartbeat_ShouldNotOverlap` y `FirstRun_ShouldUseEveryThread`— no repetidos: 10/10 en
+  aislamiento, el patrón de flakes de carga del 222.)
+- Guardias (geometría, origen, contrato, sockets): **63/63 en verde**.
+- Selfcheck del host Uno: **EXIT 0** tras el fix del binding.
+
+## [2026-09-26] - El Selfcheck Dice Verdad: Tres Defectos de Producto Cazados en Runtime (Hito 225)
+
+### 🎯 El encargo
+
+«Termina el selfcheck que quedó a mitad de vuelo: ejecuta el exe con --selfcheck en el bucle de correr-arreglar-correr hasta que salga con código 0 y sus aserciones del árbol visual confirmadas (tarjetas, cables, estados, iconos en el árbol real) o hasta tener el bloqueo exacto e irreductible escrito; nada de nuevas capacidades — sólo lo que el selfcheck necesita para decir verdad. Cierra con la suite completa y las guardias en verde, y deja en el plan el resultado exacto: criterio de salida de la 3.1 demostrado, o qué queda sin demostrar y por qué.»
+
+### 🐛 Los tres defectos de producto que el sondeo cazó (y su arreglo)
+
+- **Cables en cero por orden de importación**: `LoadFromGraphModel` añade TODOS los nodos primero y las
+  aristas después (`WorkflowGraphSerializer.Import`, dos bucles), y el lienzo sólo reconstruía con
+  `Nodes.CollectionChanged` — el último Rebuild corría con `Connections` vacío y un flujo cargado de
+  disco quedaba sin cables. El lienzo escucha ahora también `Connections.CollectionChanged`
+  (`EditorCanvasControl.OnConnectionsChanged` → `DrawWires`).
+- **Tarjetas en (0,0) por orden de materialización**: `ApplyAllNodePositions()` corría dentro de
+  `Rebuild()` sobre un árbol sin contenedores (el ItemsControl materializa en el pase de layout, después
+  de cualquier síncrono). El primer pase ahora se consume en `NodesHost.LayoutUpdated` mientras queden
+  contenedores sin posicionar (`_positionsPending`), y de paso desapareció la suscripción anónima por
+  contenedor a `LayoutUpdated` — una fuga que crecía en cada Rebuild.
+- **Geometría parseada NO asignable**: la sonda medía 6/6 iconos con `Data=null`; bisección en runtime:
+  la geometría que el parser XAML produce por la propiedad `Data` lanza `ArgumentException` («Value does
+  not fall within the expected range») al asignarla — hasta sobre un `Path` recién creado — mientras una
+  `PathGeometry` construida por código se asigna bien (A=OK) y una raíz `<PathGeometry>` con hijo
+  `PathFigure` explícito también (C2=OK); una raíz con el mini-lenguaje en `Figures` ni siquiera parsea
+  (C1=XamlParseException). El binding no fallaba: se tragaba la excepción. Arreglo: el conversor clona
+  ahora figura a figura (la receta de los cables) y devuelve geometría asignable; el binding declarativo
+  del XAML se queda, y el sondeo lo verifica en el árbol (`Data=PathGeometry, bounds=20x16`).
+
+### 🔬 El sondeo, para que diga verdad
+
+- Sonda de iconos en dos niveles: (a) conversor — la path data del paquete se resuelve a geometría con
+  bounds (`GetData` verificado fuera del host: Folder=93 chars; el paquete nunca fue el problema); (b)
+  control — el `Path` del árbol tiene `Data` real. Además, binding de título comprobado EN el control
+  (vía `x:Name="TitleText"`): casi todos los [OK] previos leían el ViewModel, no el árbol.
+- Conteo de cables con respaldo por `Name` de framework (no sólo reflejo del campo) y `-1` explícito
+  cuando la capa no aparece; stack trace en las excepciones del sondeo.
+
+### 🧹 Cierre del tramo
+
+- `FileFlow.Tools.SampleProbe/` borrado (era diagnóstico temporal del hito 224); tras borrarlo, el censo
+  de mutaciones dejó de contar ese proyecto como subsistema sin cobertura.
+- `mutations/COVERAGE.md` regenerado por su guardia (42 declaraciones: entra
+  `tarjeta-que-no-habla-por-su-color`, pendiente de publicar del hito 224).
+
+### ✅ Validación
+
+- **Selfcheck: EXIT 0 en dos corridas consecutivas** — 3/3 tarjetas, título en el control, posiciones
+  proyectadas (100/350/600) coincidentes con `NodeCardViewModel.Position`, 3 iconos con geometría
+  (20x16 / 18x18 / 18x18), Paths con geometría 7/7 y 9/9 por tarjeta, cables 2/2, crash file ausente.
+- Suite completa → **1813 superadas + 1 omitida de 1814**, 0 errores, 2 m 19 s.
+- Guardias (geometría, origen, contrato, sockets): **63/63 en verde**.
+
+## [2026-09-25] - La Tarjeta Completa del Lienzo Uno y la Paleta que Subió al Núcleo (Hito 224)
+
+### 🎯 El encargo
+
+«Cierra el bloque de código de la fase 3.1: traduce la NodeCardView del host Avalonia (la referencia de 559 líneas) al host Uno con sus estados visuales — connected, dragSource, compatible y los demás — como clases visuales/estilos WinUI y los iconos vía la font Material Design Icons. Cero cálculo de geometría en el host y los cruces de posición por la proyección, con la guardia de 17 tests en verde.»
+
+### 🔬 La medición que corrigió el plan otra vez
+
+El plan decía «el font Material Design Icons como recurso del host + FontIcon/glyph» — y estaba **mal**: ni `Material.Icons` ni `Material.Icons.Avalonia` traen un TTF (verificado en los nupkg). El paquete guarda cada icono como **path data SVG** resuelta vía `MaterialIconDataProvider.GetData(kind)`. La mitigación real es mejor: **cero paquetes nuevos, cero TTF** — un conversor del host resuelve el path del enum portable que el VM ya expone y lo pinta con un `PathIcon` de WinUI, con los **mismos datos** que el escritorio. La tabla del plan se corrigió.
+
+### 🧱 Lo construido
+
+- **`NodeCardView.xaml` completa**: la jerarquía entera de la referencia — glows de selección/ejecución/error, barra de acento de categoría, icono del tipo sobre su fondo, título con caja de renombrado, LEDs de breakpoint/logging, badge de categoría, LED y texto de estado de ejecución, badge de cuello de botella, barra de progreso, fila de puertos dibujados (inputs/outputs), panel de parámetros plegable con acciones rápidas, pie de telemetría (procesados, latencia, memoria, GPU). Los iconos fijos van como geometrías del adaptador; los del tipo, por binding al enum.
+- **La matriz de sockets subió al núcleo**: los 30 selectores de clase del escritorio (`Ports.axaml`) son **decisión de producto** (qué color habla cada tipo, cómo se comporta el arrastre), no del framework — `PortPalette` (Core) los fija en tuplas RGB puras; el host sólo traduce a `Windows.UI.Color` (`SocketMatrix` + conversores, porque WinUI no puede seleccionar estilos por combinación de bools). El testigo (`SocketMatrixTests`, 13 pruebas) vive contra el núcleo y muere 8/13 si la paleta se sustituye por un color fijo.
+- **`MaterialIconKindToGeometryConverter`**: path data → `StreamGeometry` por `XamlReader.Load` (WinUI no expone `Geometry.Parse`), con cache por icono y escape del fragmento.
+- **Conversores de presentación** con los mismos RGB del escritorio (estado de ejecución, breakpoint, logging, duración µs/ms/s/min, bytes B/KB/MB/GB) y `BoolToVisibility` para los bindings de WinUI.
+
+### 🛡️ Las reglas de la migración, sostenidas
+
+- **Cero cálculo de geometría en el host**: la única `Location` leída sigue siendo la del `ProjectLocation()` del adaptador, que pasa por `UnoPointConverter` — la guardia de 17 tests quedó verde sin tocar nada.
+- **La guardia de origen cazó un defecto real del tramo**: el literal `"Avalonia."` en un comentario del host Uno (`!IsVisible de Avalonia.`) disparó `UnoHost_HasNoAvaloniaInCsharp`. Prosa corregida — el censo funciona.
+- **Mutación `tarjeta-que-no-habla-por-su-color`**: MUERDE (testigo rojo 8/13, control verde 17/17); quedó obsoleta al reescribir el host (el arnés la rechazó) y se re-declaró al fragmento real de la paleta. **42 mutaciones** en el catálogo.
+
+### ✅ Validación
+
+- Host Uno: **compila 0 errores** con la tarjeta completa.
+- Suite completa → **1813 superadas + 1 omitida de 1814**, 0 errores, 2 m 20 s (+13).
+- `COVERAGE.md` regenerado por su guardia (42 declaraciones; los 3 subsistemas sin cobertura no cambian).
+
+### 📌 Notas para la siguiente sesión
+
+- Fase 3.1: sólo falta **demostrar el criterio de salida** (arranque + captura comparada — requiere la app corriendo).
+- Los puertos se dibujan con su forma/tipo/estado pero **sin interacción**: el write-back de anclas, los sockets vivos y el cable pendiente son la fase 3.3.
+- **Sin commits**: el tramo de la tarjeta (hito 224) sigue en el árbol encima de los 7 commits del tramo anterior.
+
+---
+
 ## [2026-09-25] - Cierre del Tramo: 41/41 Mordiendo y las Notas que lo Cuentan (Hito 223)
 
 ### 🎯 El encargo
