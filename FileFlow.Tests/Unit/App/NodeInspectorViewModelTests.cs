@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services;
@@ -108,6 +109,36 @@ public class NodeInspectorViewModelTests
         inspectorVm.ActiveEvaluationContextFileName.Should().Be("test_data.zip");
         customParam.HasExpression.Should().BeTrue();
         customParam.EvaluatedValue.Should().Be(@"D:\Projects\FileFlow\Backup_test_data.zip");
+    }
+
+    [Fact]
+    public async Task TestNodeWithCustomFileAsync_ShouldPickThroughTheAsyncDialogVariant()
+    {
+        // Arrange: el mock de la variante asíncrona entrega el fichero de prueba; la síncrona se
+        // vigila con Times.Never — el «Probar» no puede volver al bloqueo que el guard del host Uno
+        // abortaría con null (el defecto que el hito 240 cura).
+        var mockFileDialog = new Mock<IFileDialogService>();
+        mockFileDialog
+            .Setup(s => s.ShowOpenFileDialogAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync("test-input.txt");
+        var editorVm = new EditorViewModel(new PluginLoader());
+        var inspectorVm = new NodeInspectorViewModel(editorVm, mockFileDialog.Object);
+
+        var node = new FolderSourceNode();
+        var nodeVm = new NodeViewModel(node, new Point(0, 0));
+        inspectorVm.InspectNode(nodeVm, autoOpen: true);
+
+        // Act
+        await inspectorVm.TestNodeWithCustomFileCommand.ExecuteAsync(null);
+
+        // Assert: el camino del usuario pasó POR la variante asíncrona y jamás por la síncrona.
+        mockFileDialog.Verify(
+            s => s.ShowOpenFileDialogAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+            Times.Once);
+        mockFileDialog.Verify(
+            s => s.ShowOpenFileDialog(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+            Times.Never);
+        nodeVm.ExecutionStatusText.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
