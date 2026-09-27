@@ -137,9 +137,15 @@ public class UnoInspectorPanelGuardTests
         string code = PanelCode();
 
         code.Should().Contain(
-            "_inspected.InputSnapshots.Concat(_inspected.OutputSnapshots)",
-            "las tarjetas materializan las colecciones del NODO (las mismas que el motor llena): " +
-            "una colección local del host duplicaría el estado y mentiría al usuario");
+            "foreach (var snapshot in _inspected.InputSnapshots)",
+            "las tarjetas materializan las colecciones del NODO (las mismas que el motor llena): una " +
+            "colección local del host duplicaría el estado y mentiría al usuario — desde el 245 cada " +
+            "bucle canta también el AutomationId de su colección para la paridad observable");
+
+        code.Should().Contain(
+            "foreach (var snapshot in _inspected.OutputSnapshots)",
+            "el par de bucles (entradas, salidas) mantiene el orden del 241 y las anclas por colección " +
+            "del 245: InspectorSnapshotCard_in_*/out_<puerto>_<i>");
 
         code.Should().Contain(
             "_vm?.PreviewSpecificSnapshotCommand.Execute(snapshot)",
@@ -153,7 +159,7 @@ public class UnoInspectorPanelGuardTests
 
         code.Should().Contain(
             "_inspected.InputSnapshots.CollectionChanged += _inputsSub;",
-            "la pestaña de snapshots sigue las colecciones del nodo por CollectionChanged (simetría " +
+            "las pestañas de snapshots siguen las colecciones del nodo por CollectionChanged (simetría " +
             "del contrato de vida, la lección del 227/232)");
 
         string selfcheck = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
@@ -162,6 +168,64 @@ public class UnoInspectorPanelGuardTests
             "insp.ProbeSnapshotTabs()",
             "el selfcheck corre la sonda de las pestañas: sin esa línea, las pestañas podrían " +
             "quedar vacías sin que el sondeo se enterara");
+    }
+
+    [Fact]
+    public void InspectorPanel_ShouldSeparateInputsAndOutputs_WithParityOfData()
+    {
+        string code = PanelCode();
+
+        code.Should().Contain(
+            "foreach (var snapshot in _inspected.InputSnapshots)",
+            "la pestaña de ENTRADAS consume la colección de entradas del nodo: la separación es de " +
+            "vista, no de datos — no hay copia ni filtro del host que pueda divergir");
+
+        code.Should().Contain(
+            "foreach (var snapshot in _inspected.OutputSnapshots)",
+            "la pestaña de SALIDAS consume la colección de salidas del nodo (la MISMA tarjeta del " +
+            "241: paridad de presentación entre la combinada y las separadas)");
+
+        code.Should().Contain(
+            "RebuildAllSnapshotViews()",
+            "un cambio en las colecciones reconstruye las TRES vistas: la combinada y las " +
+            "separadas comparten dato y ninguna puede quedar congelada respecto de otra");
+
+        code.Should().Contain(
+            "AutomationProperties.SetAutomationId(inputsTab, \"InspectorTabInputs\")",
+            "las pestañas separadas cantan su ancla para la observación UIA externa (InspectorTabInputs)");
+
+        code.Should().Contain(
+            "AutomationProperties.SetAutomationId(outputsTab, \"InspectorTabOutputs\")",
+            "la pestaña de Salidas con su ancla (InspectorTabOutputs)");
+    }
+
+    [Fact]
+    public void TheUnoHost_ShouldExposeTheCanonicalExecuteCommand_AsAnObservableChannel()
+    {
+        string window = SourceText.CodeWithoutComments("FileFlow.App.Uno/MainWindow.xaml.cs");
+
+        window.Should().Contain(
+            "controlBar.ExecuteWorkflowCommand.ExecuteAsync(null)",
+            "el Ejecutar del host Uno es el MISMO comando del ControlBar del núcleo que el botón " +
+            "del escritorio: una segunda vía de ejecución duplicaría la orquestación (coordinador, " +
+            "dry-run, checkpoint) que la suite ya defiende");
+
+        window.Should().Contain(
+            "AutomationProperties.SetAutomationId(runButton, \"ExecuteButton\")",
+            "el botón canta su AutomationId para la observación UIA externa (el guion del ciclo " +
+            "completo lo localiza por ancla estable, no por título)");
+
+        window.Should().Contain(
+            "StatusLineWriter.Padded(line)",
+            "la línea de ejecución vive en el canal del writer (renglón padded, escritura " +
+            "atómica): el estado de la ejecución es legible desde fuera sin fragmentado");
+
+        string writer = SourceText.CodeWithoutComments("FileFlow.App.Uno/StatusLineWriter.cs");
+
+        writer.Should().Contain(
+            "File.WriteAllText(CurrentExecutionStatusFile, line)",
+            "el fichero espejo es la segunda vía de lectura del ciclo para un observador externo " +
+            "(la que no depende del fragmentado del TextBlock en el árbol UIA)");
     }
 
     [Fact]
@@ -205,6 +269,10 @@ public class UnoInspectorPanelGuardTests
         ("Las pestañas de snapshots y diff pintan los datos del nodo y del VM",
             "InspectNode_ShouldHandleEmptySnapshots_WithoutThrowing",
             "selfcheck: tarjetas materializadas (1 = entradas+salidas), diff 2 filas, Pivot conmuta"),
+        ("El ciclo completo es observable desde fuera (Ejecutar + canal)",
+            "TheUnoHost_ShouldExposeTheCanonicalExecuteCommand_AsAnObservableChannel",
+            "guion QA 243: superficie UIA viva, botón expuesto, ciclo del motor por CLI (1 ítem, " +
+            "3 nodos con stats) y canal del proceso legible"),
     ];
 }
 

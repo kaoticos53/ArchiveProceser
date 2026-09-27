@@ -81,6 +81,48 @@ public class UnoToolboxPanelGuardTests
     }
 
     [Fact]
+    public void ToolboxPanel_ShouldWireTheCompactDetailedToggle_ToTheViewModelCommand()
+    {
+        string code = PanelCode();
+        string xaml = SourceText.CodeWithoutComments("FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml");
+
+        xaml.Should().Contain(
+            "AutomationProperties.AutomationId=\"ToolboxViewModeToggle\"",
+            "el botón del toggle canta su AutomationId: la observación UIA y el sondeo lo alcanzan por " +
+            "nombre, no por descifrar la cabecera");
+
+        xaml.Should().Contain(
+            "Tag=\"ToolboxItemDetails\"",
+            "el bloque detallado (insignia + descripción) se identifica por Tag: el x:Name dentro de una " +
+            "DataTemplate no es fiable fuera de su namescope (la lección del 246)");
+
+        code.Should().Contain(
+            "_vm?.ToggleViewModeCommand.Execute(null);",
+            "el toggle pasa por el MISMO comando del VM del núcleo que el botón del escritorio: conmutar " +
+            "la vista por su cuenta duplicaría el estado y burlaría la persistencia en preferencias");
+
+        code.Should().Contain(
+            "_vm.PropertyChanged -= OnVmPropertyChanged;",
+            "la vista reacciona al IsCompactMode del VM por PropertyChanged (el x:Bind de una DataTemplate " +
+            "de WinUI no alcanza la página — la lección que dejó el pendiente declarado)");
+
+        code.Should().Contain(
+            "_vm.PropertyChanged += OnVmPropertyChanged;",
+            "la suscripción al PropertyChanged con su desuscripción simétrica en Dispose: un panel que " +
+            "escucha eternamente a un VM liberado es la familia del defecto que el 230 cazó");
+
+        code.Should().Contain(
+            "OnToolboxItemDetailsLoading",
+            "cada bloque que se materialice después (scroll, regeneración del catálogo) toma SU estado en " +
+            "su Loading: sin esto, los ítems que entran tarde nacen visibles en compacto");
+
+        code.Should().Contain(
+            "internal (int Total, int Hidden, int Visible) ProbeDetailsBlocks()",
+            "la sonda del modo vive en el panel: el selfcheck recorre el MISMO árbol que la vista pinta " +
+            "y el veredicto del toggle es medido, no declarado");
+    }
+
+    [Fact]
     public void ThePanelParityTable_ShouldCiteRealSuiteTests()
     {
         var suiteNames = TestSuiteIndex.MethodNames(TestRepositoryLocator.RepositoryRoot());
@@ -98,9 +140,10 @@ public class UnoToolboxPanelGuardTests
     [Fact]
     public void ThePanelParityTable_ShouldCoverThePanelWorkflow()
     {
-        PanelParity().Should().HaveCount(6,
-            "el flujo del panel es encontrar → filtrar → añadir → favorito → inspeccionar → restaurar; " +
-            "una tabla más corta declararía menos superficie de la que la rebanada promete");
+        PanelParity().Should().HaveCount(7,
+            "el flujo del panel es encontrar → filtrar → añadir → favorito → conmutar el modo → " +
+            "inspeccionar → restaurar; una tabla más corta declararía menos superficie de la que la " +
+            "rebanada promete (el toggle del 246 entra en la paridad)");
     }
 
     /// <summary>
@@ -128,5 +171,9 @@ public class UnoToolboxPanelGuardTests
         ("El filtro de búsqueda reduce el catálogo (testigo de la mutación)",
             "ToolboxViewModel_SearchText_ShouldExpandMatchingCategories",
             "guardia: el SearchText del VM ata el filtro; mutación toolbox-sin-filtro"),
+        ("El toggle compacto/detallado conmuta por el comando del VM (hito 246)",
+            "ToolboxViewModel_ToggleViewMode_ShouldPersistCompactMode",
+            "selfcheck: la sonda conmuta por ToggleViewModeCommand y cuenta los bloques detallados " +
+            "(ocultos en compacto, visibles en detallado, restaurados al volver)"),
     ];
 }

@@ -143,9 +143,10 @@ public class UnoAutomationSurfaceGuardTests
             "argumento muerto y nadie puede pedir la observación externa");
 
         app.Should().Contain(
-            "SelfCheckUia.Run();",
+            "SelfCheckUia.Run(s_mainWindow);",
             "la rama lanza el sondeo externo — y ANTES del if de --selfcheck, para que un argumento " +
-            "--selfcheck-uia jamás entre en el sondeo interno (el add/remove masivo lo deja frágil)");
+            "--selfcheck-uia jamás entre en el sondeo interno (el add/remove masivo lo deja frágil); " +
+            "desde el 245 recibe la ventana para montar la escena del inspector antes del hijo");
 
         string mode = SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckUia.cs");
 
@@ -167,6 +168,79 @@ public class UnoAutomationSurfaceGuardTests
     }
 
     [Fact]
+    public void TheExternalUiaProbe_ShouldObserveTheInspectorTabs_WithTheAppMountedFixture()
+    {
+        string probe = SourceText.CodeWithoutComments("docs/qa/selfcheck_uia_probe.py");
+
+        probe.Should().Contain(
+            "\"InspectorTabParams\", \"InspectorTabSnapshots\", \"InspectorTabInputs\"",
+            "las cinco pestañas del Pivot del inspector son anclas del sondeo externo: sin ellas el " +
+            "observador no distingue qué pestaña vive en el árbol (el 244 las separó con AID propio)");
+
+        probe.Should().Contain(
+            "FILEFLOW_UIA_FIXTURE_SIGNAL",
+            "la escena la monta la app y la señal la canta el fichero (S0): el observador llega a " +
+            "escena quieta y el veredicto declara si el fixture cayó en vez de fingir");
+
+        probe.Should().Contain(
+            "UIA_SelectionItemPatternId",
+            "la conmutación de pestaña es por el patrón SelectionItem: el Invoke de UIA no dispara el " +
+            "cambio del Pivot de WinUI (la frontera medida del 231/243) — fingir un click no es observar");
+
+        probe.Should().Contain(
+            "\"InspectorDiffKey_Category\"",
+            "la fila de diff del fixture es observable por su AutomationId: la clave con peer es la " +
+            "fila viva del árbol, y el switch de Diff es el ÚNICO del sondeo (la pestaña ligera " +
+            "sobrevive a la frontera medida)");
+
+        probe.Should().Contain(
+            "LATENTE",
+            "el contenido de snapshots se declara LATENTE para el canal externo: la frontera medida " +
+            "del 245 (materializado y en pie tumba al proveedor UIA) se declara en el veredicto — " +
+            "honestidad medida, no cobertura fingida");
+    }
+
+    [Fact]
+    public void TheInspector_ShouldMountTheUiaExternalFixture_WithRealSnapshots()
+    {
+        string runtime = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
+        string app = SourceText.CodeWithoutComments("FileFlow.App.Uno/App.xaml.cs");
+        string panel = SourceText.CodeWithoutComments("FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs");
+        string mode = SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckUia.cs");
+
+        runtime.Should().Contain(
+            "public static bool MountUiaExternalScene(Window? window)",
+            "el fixture lo monta la APP antes de lanzar al hijo: el observador externo observa, no " +
+            "manipula — su ventana al árbol es la lectura, no la escritura");
+
+        runtime.Should().Contain(
+            "NodeDataSnapshot.CreateInput(firstNode.Id, \"In\", probeItem)",
+            "el snapshot del fixture es de la vía de producción (la misma fábrica que usa el motor): son " +
+            "los datos reales que el observador va a contar, no una escena falsificada");
+
+        runtime.Should().Contain(
+            "Thread.Sleep(4000);",
+            "el asentamiento SIN cliente: la materialización del contenido con Expander dispara la " +
+            "tormenta de eventos UIA que, con cliente conectado, tumba el proceso (la muerte medida " +
+            "del 245) — el hijo llega a escena quieta");
+
+        app.Should().Contain(
+            "SelfCheckUia.Run(s_mainWindow);",
+            "el modo monta la escena ANTES de lanzar el sondeo: sin escena, las pestañas del inspector " +
+            "nacerían vacías y el veredicto sería falso");
+
+        mode.Should().Contain(
+            "RuntimeSelfCheck.MountUiaExternalScene(mainWindow);",
+            "el orden que la medición impuso vive dentro del modo: app → escena → observador");
+
+        panel.Should().Contain(
+            "AutomationProperties.SetAutomationId(expander,",
+            "cada tarjeta canta su colección y su índice EN EL EXPANDER (con peer): un StackPanel raíz " +
+            "sin peer no materializa en el árbol UIA (la lección del 238) — el selfcheck interno " +
+            "verifica la paridad y el AID es el contrato para cuando la plataforma abra la frontera");
+    }
+
+    [Fact]
     public void TheUiAnchorTable_ShouldCiteRealSuiteTests()
     {
         var suiteNames = TestSuiteIndex.MethodNames(TestRepositoryLocator.RepositoryRoot());
@@ -184,10 +258,10 @@ public class UnoAutomationSurfaceGuardTests
     [Fact]
     public void TheUiAnchorTable_ShouldCoverTheObservableSurface()
     {
-        AnchorParity().Should().HaveCount(7,
+        AnchorParity().Should().HaveCount(8,
             "la superficie expuesta es: raíz enfocable, superficie de gestos, plano, barra, nivel, " +
-            "botones y el modo de observación externa con veredicto — una tabla más corta declararía " +
-            "menos de lo que el hito expone");
+            "botones, el modo de observación externa con veredicto y el inspector observable con sus " +
+            "pestañas, tarjetas y diff (hito 245) — una tabla más corta declararía menos de lo que el hito expone");
     }
 
     /// <summary>
@@ -222,5 +296,11 @@ public class UnoAutomationSurfaceGuardTests
             "TheExternalUiaProbeMode_ShouldBeWired_WithTheHouseInstrumentAndHonestVerdicts",
             "guardia: la rama, el pid pasado, el hilo de fondo y el instrumento de la casa como " +
             "código vivo — el modo CI-ready de la observación"),
+        ("El inspector observable desde fuera: 5 pestañas, señal de escena y diff (hito 245)",
+            "TheExternalUiaProbe_ShouldObserveTheInspectorTabs_WithTheAppMountedFixture",
+            "sondeos S0/S6/S7 del instrumento: la señal del fixture lista, las 5 cabeceras por su AID " +
+            "y el switch seguro de Diff por SelectionItem; el contenido de snapshots se declara " +
+            "LATENTE (frontera medida: en pie tumba al proveedor UIA) y sus tarjetas las verifica el " +
+            "selfcheck interno — observación honesta, no cobertura fingida"),
     ];
 }

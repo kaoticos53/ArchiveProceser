@@ -285,6 +285,54 @@ public class ToolboxViewModelTests
     }
 
     /// <summary>
+    /// OBJETO: El toggle compacto/detallado vive en el VM y su estado PERSISTE en preferencias.
+    /// QUÉ:    ToggleViewModeCommand conmuta IsCompactMode y el cambio escribe IsCompactToolbox en
+    ///         el servicio de preferencias — el mismo camino que el botón del escritorio y el toggle
+    ///         del host Uno (hito 246) consumen. Es el testigo de la mutación
+    ///         toggle-que-no-persiste: si OnIsCompactModeChanged deja de escribir, el modo elegido
+    ///         se olvida al reiniciar y la preferencia del usuario se burla.
+    /// CÓMO:  Registra el plugin FileSystem, conmuta el comando dos veces y compara el valor de la
+    ///         preferencia con el del VM en cada paso; deja la preferencia como estaba.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_ToggleViewMode_ShouldPersistCompactMode()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        using var toolbox = new ToolboxViewModel(loader);
+        var prefs = FileFlow.App.Services.UserPreferencesService.Instance;
+        bool originalPreference = prefs.Preferences.IsCompactToolbox;
+
+        try
+        {
+            // Normaliza el punto de partida (la preferencia puede venir true de otra prueba)
+            toolbox.IsCompactMode = originalPreference;
+
+            // Act - primer toggle: conmuta el VM y persiste el valor conmutado
+            toolbox.ToggleViewModeCommand.Execute(null);
+
+            // Assert
+            toolbox.IsCompactMode.Should().Be(!originalPreference, "el comando conmuta el modo");
+            prefs.Preferences.IsCompactToolbox.Should().Be(toolbox.IsCompactMode,
+                "el cambio del modo se escribe en preferencias: el modo elegido sobrevive al reinicio");
+
+            // Act - segundo toggle: la vuelta también persiste
+            toolbox.ToggleViewModeCommand.Execute(null);
+
+            // Assert
+            toolbox.IsCompactMode.Should().Be(originalPreference);
+            prefs.Preferences.IsCompactToolbox.Should().Be(originalPreference,
+                "la vuelta al modo original restaura también la preferencia");
+        }
+        finally
+        {
+            // El sondeo no deja preferencia a medio camino
+            prefs.UpdatePreferences(p => p.IsCompactToolbox = originalPreference);
+        }
+    }
+
+    /// <summary>
     /// OBJETO: El filtro de búsqueda REDUCE el catálogo a los nodos coincidentes.
     /// QUÉ:    Con un término que sólo un tipo cumple, los grupos visibles dejan de contener los nodos
     ///         que no coinciden — no basta con que las categorías se expandan: el filtro tiene que quitar
