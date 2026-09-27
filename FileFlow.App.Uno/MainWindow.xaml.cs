@@ -9,6 +9,8 @@ using FileFlow.Core.Plugins;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
 
 namespace FileFlow.App.Uno;
 
@@ -64,6 +66,8 @@ public sealed partial class MainWindow : Window
 
             Title = "FileFlow Studio — Uno Platform";
 
+            BuildStatusBar(mainVm);
+
             // Localización en caliente (fase 3.5): los textos del marco se rescriben al cambiar el idioma.
             // El lienzo ya reconstruye los suyos al reasignar Editor (el selector de idioma vive en los
             // ajustes del escritorio; cuando el núcleo cambie la cultura, LanguageChanged notifica).
@@ -76,6 +80,86 @@ public sealed partial class MainWindow : Window
             engineStatus.Text = $"Fallo al arrancar el núcleo portable: {ex.Message}";
         }
     }
+
+    /// <summary>
+    /// El botón Ejecutar (hito 243): el comando canónico del ControlBar del núcleo — el MISMO que
+    /// el botón del escritorio. El guion UIA externo lo invoca por su AutomationId para el ciclo
+    /// completo (ejecutar → snapshot nuevo → diff recalculado). La barra de estado expone el
+    /// estado de ejecución y los contadores de snapshots/diff del nodo fuente: el legible del
+    /// ciclo para un observador sin acceso al árbol de VMs.
+    /// </summary>
+    private void BuildStatusBar(MainViewModel mainVm)
+    {
+        var loc = LocalizationManager.Instance;
+        var controlBar = mainVm.ControlBar;
+
+        var runButton = new Button
+        {
+            Padding = new Thickness(12, 4, 12, 4),
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Content = loc.GetString("Uno_RunExecute", "Ejecutar")
+        };
+        AutomationProperties.SetAutomationId(runButton, "ExecuteButton");
+        int clicksReceived = 0;
+        runButton.Click += async (_, _) =>
+        {
+            // La marca del clic (latch del canal): distingue «el botón no recibió el gesto» de
+            // «el comando corrió y fue rechazado por el diagnóstico» — ambas acaban en idle.
+            clicksReceived++;
+            engineStatus.Text = StatusLineWriter.Padded($"run: click #{clicksReceived} recibido");
+            try
+            {
+                if (controlBar.ExecuteWorkflowCommand.CanExecute(null))
+                {
+                    await controlBar.ExecuteWorkflowCommand.ExecuteAsync(null);
+                }
+                else
+                {
+                    engineStatus.Text = StatusLineWriter.Padded("run: RECHAZADO por CanExecute (IsRunning="
+                        + controlBar.IsRunning + ")");
+                }
+            }
+            catch (Exception ex)
+            {
+                // El veredicto del ciclo no puede morir en silencio: la excepción del comando
+                // queda en la línea del canal para el observador externo.
+                engineStatus.Text = StatusLineWriter.Padded("run: EXCEPCION " + ex.GetType().Name
+                    + ": " + ex.Message);
+            }
+        };
+
+        controlBar.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ControlBarViewModel.IsRunning) or nameof(ControlBarViewModel.IsDryRun))
+            {
+                RefreshExecutionStatus(controlBar);
+            }
+        };
+
+        StatusBarHost.Children.Add(runButton);
+        RefreshExecutionStatus(controlBar);
+    }
+
+    /// <summary>La línea legible del ciclo: estado del ControlBar y contadores del nodo fuente.</summary>
+    private void RefreshExecutionStatus(ControlBarViewModel controlBar)
+    {
+        var source = controlBar.Editor.Nodes.FirstOrDefault(n => n.Title.Contains("Source", StringComparison.OrdinalIgnoreCase))
+                     ?? controlBar.Editor.Nodes.FirstOrDefault();
+        var inspector = controlBar.NodeInspector;
+        string counters = source is null
+            ? "sin grafo"
+            : $"node={source.Title} snapshots={source.InputSnapshots.Count + source.OutputSnapshots.Count} diff={inspector.MetadataDiffs.Count}";
+        string line = $"run: {(controlBar.IsRunning ? (controlBar.IsDryRun ? "dry-run" : "running") : "idle")} | "
+            + counters;
+
+        // El renglón padded es el CANAL del ciclo (hito 243): la UI lo pinta y un observador
+        // externo (el guion UIA del ciclo completo) lo lee atómicamente por el writer.
+        engineStatus.Text = StatusLineWriter.Padded(line);
+    }
+
+    /// <summary>El renglón del ciclo para lectores externos (la sonda de la superficie UIA).</summary>
+    public static string ExecutionStatusLine => StatusLineWriter.Current;
 
     /// <summary>Los textos localizados del marco del host, re-escritura del idioma vigente.</summary>
     private void RefreshLocalizedTexts(int nodes, int canvasNodes, int catalogue)

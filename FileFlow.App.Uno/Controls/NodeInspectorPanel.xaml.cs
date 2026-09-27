@@ -39,10 +39,14 @@ public sealed class NodeInspectorPanel : UserControl
     private readonly TextBlock _telemetryHeader;
     private readonly StackPanel _paramsHost = new() { Spacing = 4 };
     private readonly StackPanel _snapshotsHost = new() { Spacing = 6 };
+    private readonly StackPanel _inputsHost = new() { Spacing = 6 };
+    private readonly StackPanel _outputsHost = new() { Spacing = 6 };
     private readonly StackPanel _diffHost = new() { Spacing = 2 };
     private readonly Pivot _tabs = new();
     private PivotItem? _paramsTabItem;
     private PivotItem? _snapshotsTabItem;
+    private PivotItem? _inputsTabItem;
+    private PivotItem? _outputsTabItem;
     private PivotItem? _diffTabItem;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _inputsSub;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _outputsSub;
@@ -179,6 +183,22 @@ public sealed class NodeInspectorPanel : UserControl
         };
         AutomationProperties.SetAutomationId(snapshotsTab, "InspectorTabSnapshots");
 
+        // Entradas y Salidas como pestañas separadas (hito 244): la MISMA tarjeta de snapshot
+        // del 241, cada una alimentada por su propia colección del nodo.
+        var inputsTab = new PivotItem
+        {
+            Header = loc.GetString("Uno_InspectorTabInputs", "Entradas"),
+            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _inputsHost }
+        };
+        AutomationProperties.SetAutomationId(inputsTab, "InspectorTabInputs");
+
+        var outputsTab = new PivotItem
+        {
+            Header = loc.GetString("Uno_InspectorTabOutputs", "Salidas"),
+            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _outputsHost }
+        };
+        AutomationProperties.SetAutomationId(outputsTab, "InspectorTabOutputs");
+
         var diffTab = new PivotItem
         {
             Header = loc.GetString("Uno_InspectorTabDiff", "Diff"),
@@ -188,9 +208,13 @@ public sealed class NodeInspectorPanel : UserControl
 
         _paramsTabItem = paramsTab;
         _snapshotsTabItem = snapshotsTab;
+        _inputsTabItem = inputsTab;
+        _outputsTabItem = outputsTab;
         _diffTabItem = diffTab;
         _tabs.Items.Add(paramsTab);
         _tabs.Items.Add(snapshotsTab);
+        _tabs.Items.Add(inputsTab);
+        _tabs.Items.Add(outputsTab);
         _tabs.Items.Add(diffTab);
         _tabs.SelectionChanged += (_, _) => RebuildDiff();
 
@@ -273,6 +297,16 @@ public sealed class NodeInspectorPanel : UserControl
             _snapshotsTabItem.Header = loc.GetString("Uno_InspectorTabSnapshots", "Snapshots");
         }
 
+        if (_inputsTabItem is not null)
+        {
+            _inputsTabItem.Header = loc.GetString("Uno_InspectorTabInputs", "Entradas");
+        }
+
+        if (_outputsTabItem is not null)
+        {
+            _outputsTabItem.Header = loc.GetString("Uno_InspectorTabOutputs", "Salidas");
+        }
+
         if (_diffTabItem is not null)
         {
             _diffTabItem.Header = loc.GetString("Uno_InspectorTabDiff", "Diff");
@@ -315,6 +349,8 @@ public sealed class NodeInspectorPanel : UserControl
             _paramsHost.Children.Clear();
             _telemetryRows.Children.Clear();
             _snapshotsHost.Children.Clear();
+            _inputsHost.Children.Clear();
+            _outputsHost.Children.Clear();
             _diffHost.Children.Clear();
             RefreshHeaderTexts();
             UpdateVisibility();
@@ -335,8 +371,8 @@ public sealed class NodeInspectorPanel : UserControl
             _inspected.OutputSnapshots.CollectionChanged -= _outputsSub;
         }
 
-        _inputsSub = (_, _) => RebuildSnapshots();
-        _outputsSub = (_, _) => RebuildSnapshots();
+        _inputsSub = (_, _) => RebuildAllSnapshotViews();
+        _outputsSub = (_, _) => RebuildAllSnapshotViews();
         _inspected.InputSnapshots.CollectionChanged += _inputsSub;
         _inspected.OutputSnapshots.CollectionChanged += _outputsSub;
 
@@ -350,7 +386,7 @@ public sealed class NodeInspectorPanel : UserControl
         _inspected.PropertyChanged += _nodePropsSub;
 
         RebuildParameters();
-        RebuildSnapshots();
+        RebuildAllSnapshotViews();
         RebuildTelemetry();
         RefreshHeaderTexts();
         UpdateVisibility();
@@ -362,8 +398,22 @@ public sealed class NodeInspectorPanel : UserControl
     /// original, tamaño, metadatos, tags, error) y el botón «Ver» por el comando canónico del VM
     /// (<c>PreviewSpecificSnapshotCommand</c> — la misma vista previa del escritorio).
     /// </summary>
+    /// <summary>
+    /// Un cambio en las colecciones reconstruye las TRES vistas que comparten el dato (la
+    /// combinada del 241 y las separadas del 244): la pestaña separada no puede quedar al día
+    /// mientras la combinada se queda congelada, ni al revés.
+    /// </summary>
+    private void RebuildAllSnapshotViews()
+    {
+        RebuildSnapshots();
+        RebuildInputCards();
+        RebuildOutputCards();
+    }
+
     private void RebuildSnapshots()
     {
+        // La pestaña combinada (el orden del 241: entradas y luego salidas) y las dos
+        // separadas del 244 comparten tarjeta y fuente — tres vistas, UNA colección por dato.
         _snapshotsHost.Children.Clear();
         if (_inspected is null)
         {
@@ -371,13 +421,59 @@ public sealed class NodeInspectorPanel : UserControl
         }
 
         var loc = LocalizationManager.Instance;
-        foreach (var snapshot in _inspected.InputSnapshots.Concat(_inspected.OutputSnapshots))
+        // Las tarjetas cantan su colección e índice para la observación UIA externa (hito 245):
+        // la MISMA familia de anclas en las tres vistas, así el árbol expone la paridad de datos
+        // sin descifrar jerarquías de contenedores.
+        int inputIndex = 0;
+        foreach (var snapshot in _inspected.InputSnapshots)
         {
-            _snapshotsHost.Children.Add(BuildSnapshotCard(snapshot, loc));
+            _snapshotsHost.Children.Add(BuildSnapshotCard(snapshot, loc, "InspectorSnapshotCard_in_" + inputIndex++));
+        }
+
+        int outputIndex = 0;
+        foreach (var snapshot in _inspected.OutputSnapshots)
+        {
+            _snapshotsHost.Children.Add(BuildSnapshotCard(snapshot, loc,
+                "InspectorSnapshotCard_out_" + snapshot.PortName + "_" + outputIndex++));
         }
     }
 
-    private FrameworkElement BuildSnapshotCard(NodeDataSnapshot snapshot, LocalizationManager loc)
+    /// <summary>La pestaña de ENTRADAS (hito 244): sólo InputSnapshots del nodo.</summary>
+    private void RebuildInputCards()
+    {
+        _inputsHost.Children.Clear();
+        if (_inspected is null)
+        {
+            return;
+        }
+
+        var loc = LocalizationManager.Instance;
+        int inputIndex = 0;
+        foreach (var snapshot in _inspected.InputSnapshots)
+        {
+            _inputsHost.Children.Add(BuildSnapshotCard(snapshot, loc, "InspectorSnapshotCard_in_" + inputIndex++));
+        }
+    }
+
+    /// <summary>La pestaña de SALIDAS (hito 244): sólo OutputSnapshots del nodo.</summary>
+    private void RebuildOutputCards()
+    {
+        _outputsHost.Children.Clear();
+        if (_inspected is null)
+        {
+            return;
+        }
+
+        var loc = LocalizationManager.Instance;
+        int outputIndex = 0;
+        foreach (var snapshot in _inspected.OutputSnapshots)
+        {
+            _outputsHost.Children.Add(BuildSnapshotCard(snapshot, loc,
+                "InspectorSnapshotCard_out_" + snapshot.PortName + "_" + outputIndex++));
+        }
+    }
+
+    private FrameworkElement BuildSnapshotCard(NodeDataSnapshot snapshot, LocalizationManager loc, string? anchorKey = null)
     {
         var root = new StackPanel { Spacing = 4, Margin = new Thickness(0, 2, 0, 2) };
 
@@ -481,10 +577,20 @@ public sealed class NodeInspectorPanel : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         expander.Header = header;
+
+        // La tarjeta canta su colección e índice para la observación UIA externa (hito 245): el
+        // AID vive en el Expander (con peer) porque un StackPanel raíz sin peer no materializa en
+        // el árbol — la lección del 238.
+        AutomationProperties.SetAutomationId(expander,
+            anchorKey ?? "InspectorSnapshotCard_" + (snapshot.IsInput ? "in" : "out_" + snapshot.PortName)
+                + "_" + snapshot.SnapshotId.ToString("N")[..8]);
         root.Children.Add(expander);
 
         return root;
     }
+
+    /// <summary>Contador de claves repetidas para el AutomationId de fila de diff (hito 245).</summary>
+    private static int _diffKeyCounter;
 
     /// <summary>
     /// La pestaña de diff (hito 242): las filas de <c>MetadataDiffs</c> que el VM del núcleo
@@ -505,7 +611,7 @@ public sealed class NodeInspectorPanel : UserControl
         }
     }
 
-    private static FrameworkElement BuildDiffRow(MetadataDiffItem diff)
+    private FrameworkElement BuildDiffRow(MetadataDiffItem diff)
     {
         var changeColor = diff.ChangeType switch
         {
@@ -539,6 +645,18 @@ public sealed class NodeInspectorPanel : UserControl
         Grid.SetColumn(values, 1);
         grid.Children.Add(key);
         grid.Children.Add(values);
+
+        // La clave canta su AutomationId para la observación UIA externa (hito 245): el TextBlock
+        // con peer es la fila viva del árbol — un StackPanel raíz sin peer no materializa (la
+        // lección del 238). Con claves repetidas, un sufijo mantiene el AID único.
+        string aid = "InspectorDiffKey_" + diff.Key;
+        if (_diffHost.Children.OfType<FrameworkElement>().Any(existing =>
+                AutomationProperties.GetAutomationId(existing) == aid))
+        {
+            aid += "#" + _diffKeyCounter++;
+        }
+
+        AutomationProperties.SetAutomationId(key, aid);
         return new StackPanel { Children = { grid } };
     }
 
@@ -886,13 +1004,31 @@ public sealed class NodeInspectorPanel : UserControl
         int cards = _snapshotsHost.Children.Count;
         int diffRows = _diffHost.Children.Count;
 
-        int previousIndex = _tabs.SelectedIndex;
-        _tabs.SelectedIndex = _tabs.Items.IndexOf(_snapshotsTabItem);
-        bool switchOk = _tabs.SelectedIndex == _tabs.Items.IndexOf(_snapshotsTabItem)
-            && _snapshotsHost.Children.Count == cards;
-        _tabs.SelectedIndex = previousIndex;
+        // Las separadas (hito 244) se verifican por CONTENIDO y cableado, sin conmutar: los
+        // hosts se construyen fuera del pase de selección y cada PivotItem lleva el suyo — tres
+        // conmutaciones encadenadas en el mismo tick dejan el Pivot frágil (COMException, la
+        // lección de materialización del 3.6).
+        bool separatedOk = _inputsTabItem is not null && _outputsTabItem is not null
+            && _inputsHost.Children.Count == _inspected.InputSnapshots.Count
+            && _outputsHost.Children.Count == _inspected.OutputSnapshots.Count
+            && AutomationProperties.GetAutomationId(_inputsTabItem) == "InspectorTabInputs"
+            && AutomationProperties.GetAutomationId(_outputsTabItem) == "InspectorTabOutputs"
+            && _inputsTabItem.Content is ScrollViewer inScroll && ReferenceEquals(inScroll.Content, _inputsHost)
+            && _outputsTabItem.Content is ScrollViewer outScroll && ReferenceEquals(outScroll.Content, _outputsHost);
 
-        return (cards, diffRows, switchOk);
+        int previousIndex = _tabs.SelectedIndex;
+        try
+        {
+            // La pestaña combinada conmuta y conserva sus tarjetas (el check probado del 241).
+            _tabs.SelectedIndex = _tabs.Items.IndexOf(_snapshotsTabItem);
+            bool switchOk = _tabs.SelectedIndex == _tabs.Items.IndexOf(_snapshotsTabItem)
+                && _snapshotsHost.Children.Count == cards;
+            return (cards, diffRows, switchOk && separatedOk);
+        }
+        finally
+        {
+            _tabs.SelectedIndex = previousIndex;
+        }
     }
 
     /// <summary>Cierra el panel por el comando del VM (el botón de la cabecera).</summary>

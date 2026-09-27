@@ -37,8 +37,13 @@
     </Grid>
 
     <Border Grid.Row="2" Background="#161B22" Padding="16,8">
-      <TextBlock x:Name="engineStatus" Opacity="0.7" TextWrapping="Wrap" FontSize="11"
-                 Foreground="#F0F6FC" />
+      <!-- El botón Ejecutar (hito 243): el comando canónico del ControlBar del núcleo (el mismo
+           del escritorio), montado por código en StatusBarHost para que el guion UIA externo
+           pueda invocar el ciclo completo del flujo. -->
+      <StackPanel x:Name="StatusBarHost" Spacing="4">
+        <TextBlock x:Name="engineStatus" Opacity="0.7" TextWrapping="Wrap" FontSize="11"
+                   Foreground="#F0F6FC" />
+      </StackPanel>
     </Border>
   </Grid>
 </Window>
