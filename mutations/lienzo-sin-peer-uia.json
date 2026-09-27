@@ -1,0 +1,26 @@
+{
+  "id": "lienzo-sin-peer-uia",
+  "hito": 238,
+  "claim": "La observación UIA externa del host Uno alcanza el foco del lienzo porque EditorCanvasControl expone su peer de automatización enfocable: si el peer desaparece, el lienzo deja de existir para las sondas (nadie puede darle foco ni leerlo) sin un solo crash.",
+  "why": "La lección del hito 237 acotó el bloqueo del 231: el teclado inyectado SÍ llega con foco bien puesto — lo que faltaba era a quién entregárselo. Este hito da al lienzo la ancla explícita (AutomationId CanvasRoot), IsTabStop y el override de OnCreateAutomationPeer: sin peer, un UserControl contenedor no expone NADA por UIA (el árbol del 237 llegaba a las tarjetas pero no a la superficie que recibe el foco y el teclado). El mutante devuelve null en el override: la app pinta igual, los gestos internos funcionan igual, y la observación externa (pywinauto sin UIAccess) pierde el lienzo entero — el SetFocus de UIA no tiene a quién entregarle el foco y la mitad física del guion vuelve a quedar acotada al puntero. El host es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia que exige el override como código vivo (la misma técnica de los mutantes del 227, 232, 233 y 235).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "    protected override AutomationPeer OnCreateAutomationPeer() => new CanvasAutomationPeer(this);",
+          "new": "    protected override AutomationPeer? OnCreateAutomationPeer() => null;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~UnoAutomationSurfaceGuardTests",
+    "why": "La guardia de la superficie UIA exige el override del peer como código vivo (retira comentarios antes de buscar): con el mutante, la línea sustituida deja de existir y TheCanvas_ShouldExposeItsExplicitAnchor_AndAFocusableAutomationPeer cae. Es la prueba de árbol para un código que el suite no puede materializar (WinUI)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheZoomBar_ShouldExposeItsAnchor_ItsLevel_AndItsThreeButtons",
+    "why": "El caso hermano de la misma guardia: el mutante cambia UNA línea del code-behind (el peer, que es lo que la tesis afirma) y deja intactas las anclas del XAML de la barra de zoom. Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}

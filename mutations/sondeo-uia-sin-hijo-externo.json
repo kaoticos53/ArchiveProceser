@@ -1,0 +1,26 @@
+{
+  "id": "sondeo-uia-sin-hijo-externo",
+  "hito": 239,
+  "claim": "El modo --selfcheck-uia observa la app publicada desde fuera del proceso porque la app le pasa su pid al instrumento externo (FILEFLOW_UIA_TARGET_PID): si el pid deja de entregarse, la sonda no puede conectar al proceso vivo y el veredicto deja de ser una observación real.",
+  "why": "La lección central del hito 239: la observación externa CI-ready exige un canal de identidad — la app arranca sola (no la lanza la sonda), así que el pid es lo único que distingue el proceso a observar de cualquier otra instancia. El mutante deja de entregarlo: la sonda recibe un pid vacío y su política de honestidad (sin pid no hay veredicto) la termina con fallo 'sin FILEFLOW_UIA_TARGET_PID' — el modo devolvería FALLO (3) en un host sano: un falso negativo en CI, el defecto exacto que el modo debe evitar. El host es WinUI y el instrumento es python: el testigo es la guardia que exige el pid como código vivo (la misma técnica de los mutantes del 227-238).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/SelfCheckUia.cs",
+      "replacements": [
+        {
+          "old": "        start.EnvironmentVariables[\"PYTHONIOENCODING\"] = \"utf-8\";\n        start.EnvironmentVariables[\"FILEFLOW_UIA_TARGET_PID\"] = Process.GetCurrentProcess().Id.ToString();",
+          "new": "        start.EnvironmentVariables[\"PYTHONIOENCODING\"] = \"utf-8\";\n        _ = Process.GetCurrentProcess().Id;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheExternalUiaProbeMode_ShouldBeWired_WithTheHouseInstrumentAndHonestVerdicts",
+    "why": "La guardia del modo exige el pid como código vivo (retira comentarios antes de buscar): con el mutante, la línea sustituida deja de existir y el testigo cae. Es la prueba de árbol para un cableado que la suite no puede materializar (python + app viva)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheUiAnchorTable_ShouldCoverTheObservableSurface",
+    "why": "El caso hermano de la misma guardia: el mutante cambia UNA línea (la entrega del pid, que es lo que la tesis afirma) y deja intacta la tabla de anclas. Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}

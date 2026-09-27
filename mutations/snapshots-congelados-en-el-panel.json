@@ -1,0 +1,26 @@
+{
+  "id": "snapshots-congelados-en-el-panel",
+  "hito": 242,
+  "claim": "La pestaña de snapshots del inspector del host Uno muestra los datos vivos del nodo porque el panel se suscribe a InputSnapshots/OutputSnapshots.CollectionChanged: si la suscripción desaparece, las tarjetas quedan congeladas en lo que había al inspeccionar y el usuario ejecuta el flujo sin ver los snapshots nuevos.",
+  "why": "El mismo defecto de suscripción que el hito 230 cazó en los decoradores y el 227 en los cables: una capa que se construye una vez y no escucha la colección que la alimenta. El flujo de ejemplo trae cero snapshots — las tarjetas nacen vacías y SOLO la suscripción las mantiene al día cuando el motor (o el «Probar») añade snapshots después de abrir la ficha. El mutante invierte UNA línea (+= → -=) de la suscripción de entradas: la app no crashea, la ficha pinta, y los snapshots nuevos jamás aparecen — la pestaña promete datos vivos y entrega datos viejos. El host es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia que exige las suscripciones como código vivo (la técnica del 227/232).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "        _inspected.InputSnapshots.CollectionChanged += _inputsSub;",
+          "new": "        _inspected.InputSnapshots.CollectionChanged -= _inputsSub;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~InspectorPanel_ShouldBuildSnapshotTabsFromTheNodeCollectionsAndTheCoreDiff",
+    "why": "La guardia de las pestañas exige las suscripciones de ambas colecciones como código vivo (retira comentarios antes de buscar): con el mutante, la línea invertida deja de existir y el testigo cae. Es la prueba de árbol para un código que la suite no puede materializar (WinUI)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~InspectorPanel_ShouldWireTheTestButtonThroughTheCanonicalCoreCommand",
+    "why": "El caso hermano del mismo fichero: el mutante cambia UNA línea (la suscripción de las entradas, que es lo que la tesis afirma) y deja intacto el cableado del «Probar». Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}
