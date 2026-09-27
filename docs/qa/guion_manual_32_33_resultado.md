@@ -11,6 +11,15 @@
 > DISEÑO (su `OnKeyDown` ignora TextBox y la tecla no está en el lienzo): la puerta que falta es el
 > **foco del lienzo**, que en producción entrega el clic. Resultado del guion por esta vía: **5/5
 > pasos observados en verde**, con la mitad física (selección, arrastre, cable) pendiente del puntero.
+>
+> **ACTUALIZACIÓN (2026-09-27, superficie UIA del 238)**: el lienzo tiene ahora ancla explícita
+> (`AutomationId="CanvasRoot"`), `IsTabStop` y **peer de automatización enfocable** (hito 238) — la
+> Sonda C (`qa_uia_anchors.py` + `qa_uia_anchors_report.md` en este directorio) entrega el foco del
+> lienzo por `set_focus` UIA **SIN puntero** y el atajo Shift+A **SE DISPARA** (spotlight abierto):
+> el canal de teclado del lienzo queda ABIERTO. La mitad física que sigue pendiente del puntero es
+> el GESTO DEL RATÓN (selección por clic, arrastre, cable por click-drag del socket, rubber band).
+> El estado del zoom ya es observable sin puntero: Invoke de los botones y nivel leído por su
+> AutomationId (`ZoomLevelText`).
 
 ## Qué intentó esta sesión (y qué demostró cada intento)
 

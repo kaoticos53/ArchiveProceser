@@ -1,4 +1,4 @@
-## [2026-09-26] - La Rebanada 4 del Host Uno: la Caja de Herramientas y el Inspector con Paridad al Escritorio (Hito 236)
+﻿## [2026-09-26] - La Rebanada 4 del Host Uno: la Caja de Herramientas y el Inspector con Paridad al Escritorio (Hito 236)
 
 ### 🎯 El encargo
 
@@ -85,6 +85,233 @@ verificado** (`'Width' = '__probe__'` llega al `NodeInstance`) y cierre por `Clo
 ---
 
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
+
+## [2026-09-27] - Las Pestañas de Entradas, Salidas y Diff en el Inspector Uno (Hito 241)
+
+### 🎯 El encargo
+
+«Monta las pestañas de Entradas, Salidas y Diff en el inspector del host Uno con los snapshots del
+nodo, con paridad al escritorio».
+
+### 🧱 Lo construido
+
+- **El cuerpo del panel pasa a un Pivot de tres pestañas** (Parámetros | Snapshots | Diff), la
+  estructura del escritorio: los parámetros conservan su tabla de editores (la del 236), los
+  snapshots y el diff entran al lado. Los `PivotItem` llevan AutomationId (`InspectorTabParams`,
+  `InspectorTabSnapshots`, `InspectorTabDiff`) para la observación UIA de los hitos 238/239, y sus
+  cabeceras se rescriben con el idioma.
+- **La pestaña de snapshots**: tarjetas materializadas de `_inspected.InputSnapshots.Concat(OutputSnapshots)`
+  — las colecciones del NODO, las mismas que llena el motor y el «Probar». Cada tarjeta: cabecera
+  del escritorio (▼ In / ▲ Out + puerto, timestamp `HH:mm:ss.fff`, ruta actual), Expander con la
+  ruta original, tamaño, metadatos (monoespaciada), tags y el error si lo hay, y el botón **«Ver»**
+  por `PreviewSpecificSnapshotCommand` — el comando canónico del VM (la vista previa es del
+  núcleo), con AutomationId por snapshot.
+- **La pestaña de diff**: filas de `MetadataDiffs` del VM (Added/Removed/Modified con los colores
+  del escritorio). El diff lo computa el NÚCLEO (`UpdateMetadataDiff` al inspeccionar y al
+  seleccionar un snapshot); la pestaña lo sigue en vivo por `CollectionChanged`.
+- **Suscripciones simétricas** (la lección del 227/230/232): la pestaña de snapshots escucha
+  `InputSnapshots/OutputSnapshots.CollectionChanged` con desuscripción del nodo anterior en el
+  cambio de selección; la de diff, la colección del VM; el deseleccionado limpia las tres.
+
+### 🔬 La sonda que cazó el vacío del diff
+
+La primera corrida de la sonda dio **0 tarjetas y 0 filas y tenía razón ×2**: el flujo de ejemplo
+no trae snapshots (nacen con la ejecución), y el diff del VM exige un snapshot seleccionado para
+casar entrada con salida. La cura de la sonda es la vía de producción: `CreateInput` con un
+`FileItemContext` de prueba + re-inspección → 1 tarjeta, **2 filas de diff de verdad** (Added +
+Modified de los metadatos de la sonda), Pivot conmutado y restaurado, snapshot de prueba retirado.
+Selfcheck → **70 comprobaciones** (EXIT 0).
+
+### 🛡️ Guardia y mutación que muerde
+
+- **`UnoInspectorPanelGuardTests`** → 7: las colecciones del nodo como fuente (no una copia del
+  host), el «Ver» por el comando canónico, el diff vivo por `CollectionChanged`, y la sonda citada
+  por el selfcheck. La tabla de paridad sube a **7 filas** (cita verificada contra el índice real).
+- **[`snapshots-congelados-en-el-panel`](file:///mutations/snapshots-congelados-en-el-panel.json)**,
+  **MUERDE** (testigo rojo, control verde, árbol restaurado por bytes): la suscripción de las
+  entradas invertida (`+=` → `-=`) — la pestaña quedaría congelada en lo que había al inspeccionar
+  y el usuario ejecutaría el flujo sin ver los snapshots nuevos, sin un crash. El mismo defecto que
+  el 230 cazó en los decoradores. COVERAGE → **52 declaraciones**; `FileFlow.App.Uno` acumula **8**.
+
+### ✅ Validación
+
+Host 0 errores; selfcheck **EXIT 0 (70 OK)**; suite → **1860 superadas + 1 omitida de 1861, 0
+errores**; el latido falló una vez en la corrida completa y pasó 26/26 en aislamiento (el flake de
+timing documentado del 222, no un defecto nuevo); mutación MUERDE; COVERAGE 52.
+
+---
+
+## [2026-09-27] - La Variante Asíncrona del IFileDialogService y el «Probar» del Inspector (Hito 240)
+
+### 🎯 El encargo
+
+«Añade la variante asíncrona del IFileDialogService y activa el botón Probar del inspector en el
+host Uno».
+
+### 🧱 Lo construido
+
+- **El contrato** ([`IFileDialogService`](file:///FileFlow.App.Core/Services/IFileDialogService.cs)):
+  tres variantes `*Async` con **implementación por defecto** (DIM) que delega en las síncronas —
+  los otros VMs que consumen el síncrono (ControlBar, WorkflowSettings, ThemeCustomizer) y los
+  dobles de prueba NO cambian. [`NullFileDialogService`](file:///FileFlow.App.Core/Services/ServiceHolders.cs)
+  hereda el DIM: el nulo no necesita override.
+- **Las implementaciones reales**: el Avalonia con los `*Async` nativos del `StorageProvider`
+  (sin el `GetAwaiter().GetResult()` de las síncronas); el Uno con
+  [`EnqueueOnUiAsync`](file:///FileFlow.App.Uno/Platform/UnoFileDialogService.cs) — pickers WinRT
+  encolados al `DispatcherQueue` con `TaskCompletionSource`: **nunca bloquea** el hilo llamador y
+  funciona TAMBIÉN desde el hilo de UI (donde el síncrono aborta con null).
+- **El VM del núcleo** (`TestNodeWithCustomFileAsync`): consume `ShowOpenFileDialogAsync` — la
+  prueba aislada completa (estados Running/Completed/PausedOnError, snapshot de entrada, diff de
+  metadatos, diálogos de resultado) sigue viviendo en el núcleo, ahora servible desde un click de
+  UI en los dos hosts.
+- **El panel Uno**: botón **«Probar»** en la cabecera (título + «Probar» + «Cerrar»), atado a
+  `TestNodeWithCustomFileCommand` (el comando canónico: el host no abre pickers por su cuenta),
+  localizado (`Uno_InspectorTest`, fallback «Probar»), con su `AutomationId`
+  `InspectorTestButton` para la observación UIA externa (los hitos 238/239 ya tienen la vía).
+
+### 🔬 La verificación, en capas
+
+- **Testigo del camino del usuario**
+  ([`NodeInspectorViewModelTests`](file:///FileFlow.Tests/Unit/App/NodeInspectorViewModelTests.cs)):
+  el mock async entrega el fichero, el comando se ejecuta por `ExecuteAsync`, y se verifica
+  async UNA vez y síncrono JAMÁS (Times.Never) — el defecto exacto que el hito cura, cazado por
+  la mutación.
+- **Guardia** ([`UnoInspectorPanelGuardTests`](file:///FileFlow.Tests/Unit/App/UnoInspectorPanelGuardTests.cs))
+  llega a 7: el botón como código vivo (comando canónico, AutomationId, localización) y el
+  servicio async del host Uno (EnqueueOnUiAsync); la tabla de paridad sube a 6 filas con la
+  prueba del testigo citada contra el índice real.
+- **Mutación [`prueba-sincrona-en-hilo-de-ui`](file:///mutations/prueba-sincrona-en-hilo-de-ui.json)**,
+  **MUERDE** (testigo rojo, control verde, árbol restaurado por bytes): el comando devuelto al
+  diálogo síncrono — el botón quedaría MUDO en el host Uno (el guard devuelve null) sin un crash.
+  COVERAGE regenerado → **51 declaraciones**.
+- **Selfcheck** → **67 comprobaciones** (EXIT 0): `HasWiredTestButton` verifica en la app viva que
+  el botón existe, canta su AutomationId y está atado al comando del núcleo.
+
+### 📌 El pendiente queda resuelto, no fingido
+
+La rebanada 4 lo había declarado pendiente con su razón exacta: el contrato síncrono exige
+bloquear FUERA del hilo de UI y una llamada desde el click devolvería null antes que interbloquear.
+La cura no toca el síncrono ni sus consumidores: la variante async convive con él por DIM, y el
+pendiente del plan queda resuelto con la misma disciplina (guardia + mutación que muerde + sonda).
+
+### ✅ Validación
+
+Host 0 errores; suite → **1859 superadas + 1 omitida de 1860, 0 errores** (+1 testigo); selfcheck
+**EXIT 0 (67 OK)**; mutación MUERDE; COVERAGE 51.
+
+---
+
+## [2026-09-27] - El Modo --selfcheck-uia: la Observación Externa CI-ready con Veredicto Propio (Hito 239)
+
+### 🎯 El encargo
+
+«Monta el modo --selfcheck-uia que sondee la app publicada desde fuera del proceso usando las
+anclas UIA descubiertas».
+
+### 🧱 Lo construido
+
+- **[`SelfCheckUia`](file:///FileFlow.App.Uno/SelfCheckUia.cs)** (`--selfcheck-uia` en
+  [`App.xaml.cs`](file:///FileFlow.App.Uno/App.xaml.cs), ANTES de la rama de `--selfcheck`): la app
+  arranca completa y normal, escribe la señal de listo (`selfcheck-uia-ready.txt`), lanza un **HIJO
+  EXTERNO** (python + pywinauto, la vía sin UIAccess probada por las sondas del 237/238) pasándole
+  su pid en `FILEFLOW_UIA_TARGET_PID`, y termina con el código del hijo. Reporte en
+  `selfcheck-uia-report.txt`. La espera corre en **hilo de fondo** — UIA responde por los mensajes
+  de la ventana (WM_GETOBJECT): un proceso bloqueado no despacha y la observación moriría con
+  timeout. El modo **no** corre el selfcheck interno (el add/remove masivo del 3.6 deja la
+  materialización frágil y contaminaría la observación). Python obligatorio: sin observador no hay
+  veredicto (fallo honesto, código 3). Instrumento de la casa con `FILEFLOW_UIA_PROBE` para
+  apuntar a otro.
+- **El instrumento** ([`selfcheck_uia_probe.py`](file:///docs/qa/selfcheck_uia_probe.py)): conecta
+  por pid, confirma la app por sus anclas con peer y sondea: **S1** anclas del lienzo y la barra
+  (5/5), **S2** foco del lienzo por `set_focus` UIA, **S3** zoom observable y restaurado por
+  Invoke, **S4** Shift+A abre el spotlight y Escape lo cierra (restaurado), **S5** teclado
+  UIA-inyectado escribe en el buscador del cajón y lo restaura. Veredicto: 0 verificado, 2 fallo,
+  3 la app nunca apareció.
+- **🐛 La lección aplicada en contra**: la primera versión quiso anclar la ventana con
+  `AutomationId="FileFlowMainWindow"` — pero la lección A1 del 238 dice que **ni la ventana ni un
+  Grid raíz sin peer materializan en el árbol UIA**. Revertido antes del primer run: la identidad
+  honesta es `CanvasRoot` (el ancla con peer). La ventana guarda el AID fuera del árbol UIA…
+  tampoco: se retiró limpio.
+
+### 🛡️ Guardia, tabla y mutación
+
+- **`UnoAutomationSurfaceGuardTests`** llega a **8** (+1): el test nuevo del modo — la rama antes
+  del selfcheck interno, el pid entregado, el hilo de fondo y el instrumento de la casa como
+  código vivo. La tabla de anclas crece a **7 filas** (la fila 6, que se citaba a sí misma, pasa
+  a citar el test de los botones): la observación externa con veredicto propio entra en la
+  superficie declarada.
+- **[`sondeo-uia-sin-hijo-externo`](file:///mutations/sondeo-uia-sin-hijo-externo.json)**,
+  **MUERDE** (testigo rojo 1/1, control verde 1/1, árbol restaurado por bytes): el pid deja de
+  entregarse — la sonda sin identidad no puede conectar al proceso vivo y el modo devolvería un
+  falso negativo en CI. COVERAGE regenerado → **50 declaraciones**; `FileFlow.App.Uno` acumula
+  **6**.
+
+### ✅ Validación
+
+Host 0 errores; **`--selfcheck-uia` EXIT 0 al primer intento** (5/5 sondeos en verde, pid 40880);
+suite → **1857 superadas + 1 omitida de 1858, 0 errores** (+1); mutación MUERDE; COVERAGE 50.
+
+---
+
+## [2026-09-27] - La Superficie UIA del Lienzo: el Foco Externo Entra y el Canal de Teclado se Abre (Hito 238)
+
+### 🎯 El encargo
+
+«Añade AutomationIds explícitos al lienzo del host Uno y a la barra de zoom para que la observación
+UIA externa alcance su foco y estado».
+
+### 🧱 Lo construido
+
+- **Lienzo** ([`EditorCanvasControl.xaml`](file:///FileFlow.App.Uno/Controls/EditorCanvasControl.xaml)):
+  `AutomationProperties.AutomationId="CanvasRoot"` + `IsTabStop="True"` en el UserControl,
+  `CanvasSurface` en el Grid de gestos, `CanvasGraphPlane` en el plano con el transform de la cámara;
+  anclas como recursos nombrados (`UiAnchorCanvas`, `UiAnchorZoomLevel`) — renombrar una es tocar UNA
+  línea. **Barra de zoom**: `ZoomBar`, `ZoomLevelText`, `ZoomInButton`, `ZoomOutButton`,
+  `FitToScreenButton`. El primer AutomationId explícito de todo el host (los x:Name llegaban como
+  automation_id desde el 237; los AIDs son el contrato estable que un renombrado no rompe).
+- **Peer de automatización** (code-behind): `OnCreateAutomationPeer` override con
+  `CanvasAutomationPeer : FrameworkElementAutomationPeer` (control + contenido). Sin peer, un
+  contenedor (UserControl + Grid) no expone NADA por UIA — el árbol del 237 llegaba a las tarjetas
+  pero NO a la superficie que recibe el foco y el teclado.
+- **Selfcheck** → 66 comprobaciones (EXIT 0): sonda de superficie UIA nueva (`ProbeUiAccessibility`)
+  verificada desde dentro — ancla + peer expuestos, foco programático aceptado, estado del zoom
+  observable (cambiado por la vía de la barra y restaurado).
+
+### 🛡️ La guardia y la mutación que muerde
+
+- **[`UnoAutomationSurfaceGuardTests`](file:///FileFlow.Tests/Unit/App/UnoAutomationSurfaceGuardTests.cs)**
+  (7): anclas y peer como código vivo (la lección del 232), la sonda citada por el selfcheck, y la
+  tabla de 6 anclas con citas verificadas contra `TestSuiteIndex.MethodNames` (la lección del 227).
+- **[`lienzo-sin-peer-uia`](file:///mutations/lienzo-sin-peer-uia.json)**, **MUERDE** (testigo rojo
+  1/7, control verde 1/1, árbol restaurado por bytes): el override devuelto a `null` — la app pinta
+  igual y la observación externa pierde el lienzo entero (SetFocus sin a quién). COVERAGE regenerado →
+  **49 declaraciones**; `FileFlow.App.Uno` acumula **5**.
+
+### 🔬 La Sonda C y el hallazgo que reabre el 237
+
+[`qa_uia_anchors.py`](file:///docs/qa/qa_uia_anchors.py) +
+[`qa_uia_anchors_report.md`](file:///docs/qa/qa_uia_anchors_report.md) (pywinauto, sin UIAccess):
+
+- **A1: 5/8 anclas** en el árbol — `CanvasRoot`, `ZoomLevelText` y los 3 botones presentes;
+  `CanvasSurface`/`CanvasGraphPlane`/`ZoomBar` (Grid/Canvas/Border sin peer) **no materializan**:
+  WinUI solo expone elementos con peer. Declaradas y medidas, no fingidas — la tabla de la guardia
+  lo declara.
+- **A2 PASS**: `set_focus` UIA sobre `CanvasRoot` **ENTRA sin puntero** — el paso que el acotamiento
+  del 237 dejó en el clic del usuario.
+- **A3 PASS**: Invoke de `ZoomInButton` (InvokePattern, la vía que el 237 no encontró en un Text)
+  cambia el nivel `'100 %' → '110 %'` y la ancla lo refleja; restaurado.
+- **B1 HALLAZGO**: **Shift+A con el foco EN el lienzo SE DISPARA** (spotlight abierto) — el canal de
+  teclado del lienzo, acotado al puntero desde el 231, queda ABIERTO. La cadena: el 231 bloqueó el
+  input; el 237 probó que el teclado llega (foco UIA al buscador) pero acotó el lienzo al puntero;
+  el 238 da al lienzo el peer enfocable y la mitad FÍSICA de 3.2.3 gana su vía sin UIAccess. Lo que
+  sigue pendiente del puntero: el GESTO DEL RATÓN (selección por clic, arrastre, cable, rubber band).
+
+### ✅ Validación
+
+Host 0 errores; selfcheck **EXIT 0 (66 OK)**; suite → **1856 superadas + 1 omitida de 1857, 0
+errores** (+7); mutación MUERDE; COVERAGE 49. Cross-referencia en el guion manual 3.2/3.3.
+
+---
 
 ## [2026-09-27] - El Guion 3.2/3.3 vía UIA: el Teclado Sí Llega y el Bloqueo del 231 queda Acotado (Hito 237)
 

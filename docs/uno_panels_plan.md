@@ -102,15 +102,17 @@ VM, se añade al VM (portable, probada por ambos hosts).
 - **Fase 4.3** — Mutaciones: **CUMPLIDA**. `toolbox-sin-filtro` y `inspector-sin-write-back`, las
   dos MUERDEN (testigo rojo + control verde, árbol restaurado por bytes); COVERAGE.md → 48.
 - **Fase 4.4** — Cierre: **CUMPLIDA**. Selfcheck EXIT 0 con la sonda de paneles; suite 1849 + 1
-  omitida de 1850, 0 errores; walkthrough y notas al día.
+  omitida de 1850, 0 errores; walkthrough y notas al día. El «Probar» resuelto en el hito 240
+  (variante asíncrona del contrato + botón activado; selfcheck 67 comprobaciones).
 
 **Declarado pendiente (no fingido):**
 
 - El toggle compacto/detallado del cajón: `x:Bind` dentro de una `DataTemplate` de WinUI no alcanza
   la página (sólo ve el ítem) — la insignia de rol va siempre visible.
-- El botón «Probar» del inspector (prueba aislada con fichero): el contrato síncrono del
-  `IFileDialogService` exige bloquear FUERA del hilo de UI; una llamada hecha desde el hilo de UI
-  del click devolvería null antes que interbloquear — requiere la variante asíncrona del contrato.
+- El botón «Probar» del inspector (prueba aislada con fichero): **RESUELTO en el hito 240** — la
+  variante asíncrona del `IFileDialogService` (DIM por delegación en el síncrono, implementación
+  real en los dos hosts) y el comando del núcleo consumiéndola; el botón del panel ejecuta
+  `TestNodeWithCustomFileCommand` con su AutomationId para la observación UIA.
 - El picker de variables y los diálogos de nodo (`ServiceHolders.WindowService`/`PopupMenu` siguen
   en Null en este host): los botones existen, caen a su no-op seguro del núcleo.
 - El gesto de arrastre fino desde el cajón (sesión con puntero real, el pendiente del hito 231).
