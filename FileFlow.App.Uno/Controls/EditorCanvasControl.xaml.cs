@@ -11,6 +11,8 @@ using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 
@@ -84,6 +86,23 @@ public sealed partial class EditorCanvasControl : UserControl
                 DrawWires();
             }
         }
+    }
+
+    /// <summary>
+    /// El peer de automatización del lienzo: sin él, un contenedor (UserControl + Grid) no expone
+    /// nada por UIA — el árbol del hito 237 llegaba a las tarjetas pero NO a la superficie que recibe
+    /// el foco y el teclado. Con peer enfocable, la observación externa (sondas UIA sin UIAccess)
+    /// encuentra el lienzo por su AutomationId y puede entregarle el foco real — el paso que el
+    /// acotamiento del 237 dejó en el puntero del usuario.
+    /// </summary>
+    protected override AutomationPeer OnCreateAutomationPeer() => new CanvasAutomationPeer(this);
+
+    /// <summary>El peer del lienzo: control y contenido, para que la observación externa lo vea.</summary>
+    private sealed class CanvasAutomationPeer(EditorCanvasControl owner) : FrameworkElementAutomationPeer(owner)
+    {
+        protected override bool IsControlElementCore() => true;
+
+        protected override bool IsContentElementCore() => true;
     }
 
     /// <summary>El ViewModel del editor que el lienzo pinta.</summary>
@@ -1810,6 +1829,36 @@ public sealed partial class EditorCanvasControl : UserControl
         CanvasTransform.TranslateX = -location.X * zoom;
         CanvasTransform.TranslateY = -location.Y * zoom;
         ZoomText.Text = $"{Math.Round(zoom * 100)} %";
+    }
+
+    /// <summary>
+    /// La sonda de la superficie UIA (hito 238): lo que una observación EXTERNA (pywinauto, sin
+    /// UIAccess) puede alcanzar del lienzo. Tres medidas en la app viva: la ancla explícita llega al
+    /// árbol con su valor y el peer está expuesto; el foco programático (la vía del SetFocus de UIA,
+    /// misma API que llama el peer) entra sin puntero y deja IsFocused en el árbol; y el estado del
+    /// zoom es OBSERVABLE — cambiarlo por la vía de los botones deja el nivel escrito en la ancla de
+    /// la barra, restaurando el 100 % al salir.
+    /// </summary>
+    /// <returns>(la ancla expuesta, el foco entró, el estado observado y restaurado)</returns>
+    internal (bool AnchorExposed, bool FocusEntered, bool ZoomStateObservable) ProbeUiAccessibility()
+    {
+        string? anchor = AutomationProperties.GetAutomationId(this);
+        bool anchorExposed = anchor == "CanvasRoot"
+            && FrameworkElementAutomationPeer.CreatePeerForElement(this) is not null;
+
+        bool focusEntered = this.Focus(FocusState.Programmatic);
+
+        double before = CanvasTransform.ScaleX;
+        string beforeLabel = ZoomText.Text;
+        ZoomBy(1.25);
+        double after = CanvasTransform.ScaleX;
+        string afterLabel = ZoomText.Text;
+        ZoomBy(before / after);
+        bool zoomStateObservable = Math.Abs(after - before * 1.25) < 0.001
+            && afterLabel != beforeLabel
+            && ZoomText.Text == beforeLabel;
+
+        return (anchorExposed, focusEntered, zoomStateObservable);
     }
 
     private void DrawBackgroundGrid()

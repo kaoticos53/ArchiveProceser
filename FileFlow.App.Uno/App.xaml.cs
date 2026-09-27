@@ -81,6 +81,14 @@ public partial class App : Application
         s_mainWindow = new MainWindow();
         s_mainWindow.Activate();
 
+        // Sondeo UIA externo (--selfcheck-uia): la app vive, un hijo externo la observa por UIA
+        // con las anclas del 238 y el veredicto llega por su código de salida (hilo de fondo: el
+        // hilo de UI sigue bombeando mensajes, que es por donde UIA responde).
+        if (Environment.GetCommandLineArgs().Contains("--selfcheck-uia", StringComparer.Ordinal))
+        {
+            SelfCheckUia.Run();
+        }
+
         // Sondeo en runtime (--selfcheck en la línea de comandos): monta la app real y confirma el
         // árbol de la tarjeta sin interacción, terminando el proceso con el veredicto.
         if (Environment.GetCommandLineArgs().Contains("--selfcheck", StringComparer.Ordinal))
