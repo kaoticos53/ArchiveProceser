@@ -2,9 +2,12 @@ using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using FileFlow.App.ViewModels;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
@@ -22,8 +25,9 @@ namespace FileFlow.App.Uno.Controls;
 /// estilos de Avalonia sobre los flags del VM; WinUI no tiene un equivalente directo (los DataTemplate
 /// de WinUI no seleccionan por propiedad del ítem), así que la tabla de editores vive aquí como el
 /// mismo orden de flags que el escritorio — la guardia de la rebanada compara esa tabla contra el VM.
-/// El botón «Probar» del escritorio (prueba aislada con fichero) queda DECLARADO pendiente: depende
-/// del diálogo de fichero síncrono que el host Uno no puede servir desde el hilo de UI.</para>
+/// El botón «Probar» del escritorio (prueba aislada con fichero) está ACTIVADO desde el hito 240:
+/// ejecuta TestNodeWithCustomFileAsync del núcleo, que consume la variante asíncrona del
+/// IFileDialogService — el picker se abre desde el click de UI sin bloquear el hilo de UI.</para>
 /// </summary>
 public sealed class NodeInspectorPanel : UserControl
 {
@@ -34,8 +38,17 @@ public sealed class NodeInspectorPanel : UserControl
     private readonly TextBlock _paramsHeader;
     private readonly TextBlock _telemetryHeader;
     private readonly StackPanel _paramsHost = new() { Spacing = 4 };
+    private readonly StackPanel _snapshotsHost = new() { Spacing = 6 };
+    private readonly StackPanel _diffHost = new() { Spacing = 2 };
+    private readonly Pivot _tabs = new();
+    private PivotItem? _paramsTabItem;
+    private PivotItem? _snapshotsTabItem;
+    private PivotItem? _diffTabItem;
+    private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _inputsSub;
+    private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _outputsSub;
     private readonly StackPanel _telemetryRows = new() { Spacing = 2 };
     private readonly Button _resetMetricsButton;
+    private readonly Button _testButton;
     private readonly FrameworkElement _body;
     private readonly Grid _root = new();
 
@@ -58,8 +71,22 @@ public sealed class NodeInspectorPanel : UserControl
         };
         closeButton.Click += (_, _) => _vm?.ClosePanelCommand.Execute(null);
 
+        // El «Probar» del escritorio (hito 240): el comando canónico del núcleo abre el picker con
+        // la variante asíncrona del IFileDialogService — desde el click de UI sin interbloqueo —
+        // y ejecuta el nodo con el fichero elegido (estados Running/Completed/PausedOnError,
+        // snapshot de entrada, diff de metadatos y diálogos de resultado viven en el núcleo).
+        _testButton = new Button
+        {
+            Padding = new Thickness(8, 2, 8, 2),
+            FontSize = 11,
+            Content = loc.GetString("Uno_InspectorTest", "Probar")
+        };
+        AutomationProperties.SetAutomationId(_testButton, "InspectorTestButton");
+        _testButton.Click += (_, _) => _vm?.TestNodeWithCustomFileCommand.Execute(null);
+
         var header = new Grid { ColumnSpacing = 8 };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _titleText = new TextBlock
         {
@@ -70,8 +97,9 @@ public sealed class NodeInspectorPanel : UserControl
             Foreground = Brush("CanvasTextBrush")
         };
         Grid.SetColumn(_titleText, 0);
-        Grid.SetColumn(closeButton, 1);
+        Grid.SetColumn(closeButton, 2);
         header.Children.Add(_titleText);
+        header.Children.Add(_testButton);
         header.Children.Add(closeButton);
 
         _emptyText = new TextBlock
@@ -122,21 +150,53 @@ public sealed class NodeInspectorPanel : UserControl
             }
         };
 
-        var bodyStack = new StackPanel { Spacing = 0 };
-        bodyStack.Children.Add(_descriptionText);
-        bodyStack.Children.Add(_paramsHeader);
-        bodyStack.Children.Add(_paramsHost);
-        bodyStack.Children.Add(_telemetryHeader);
-        bodyStack.Children.Add(_telemetryRows);
-        bodyStack.Children.Add(_resetMetricsButton);
+        // Las tres pestañas del escritorio (hito 242): Parámetros, Snapshots (los snapshots del
+        // nodo con su vista) y Diff (el diff de metadatos que el VM del núcleo computa al
+        // seleccionar un snapshot). Los AIDs dan anclas a la observación UIA externa.
+        var paramsGrid = new Grid { RowSpacing = 0 };
+        paramsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        paramsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        paramsGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(_descriptionText, 0);
+        Grid.SetRow(_paramsHeader, 1);
+        var paramsScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _paramsHost };
+        Grid.SetRow(paramsScroll, 2);
+        paramsGrid.Children.Add(_descriptionText);
+        paramsGrid.Children.Add(_paramsHeader);
+        paramsGrid.Children.Add(paramsScroll);
+
+        var paramsTab = new PivotItem
+        {
+            Header = loc.GetString("Uno_InspectorTabParams", "Parámetros"),
+            Content = paramsGrid
+        };
+        AutomationProperties.SetAutomationId(paramsTab, "InspectorTabParams");
+
+        var snapshotsTab = new PivotItem
+        {
+            Header = loc.GetString("Uno_InspectorTabSnapshots", "Snapshots"),
+            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _snapshotsHost }
+        };
+        AutomationProperties.SetAutomationId(snapshotsTab, "InspectorTabSnapshots");
+
+        var diffTab = new PivotItem
+        {
+            Header = loc.GetString("Uno_InspectorTabDiff", "Diff"),
+            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _diffHost }
+        };
+        AutomationProperties.SetAutomationId(diffTab, "InspectorTabDiff");
+
+        _paramsTabItem = paramsTab;
+        _snapshotsTabItem = snapshotsTab;
+        _diffTabItem = diffTab;
+        _tabs.Items.Add(paramsTab);
+        _tabs.Items.Add(snapshotsTab);
+        _tabs.Items.Add(diffTab);
+        _tabs.SelectionChanged += (_, _) => RebuildDiff();
 
         _body = new Border
         {
-            Child = new ScrollViewer
-            {
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = bodyStack
-            }
+            Child = _tabs
         };
 
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -182,6 +242,8 @@ public sealed class NodeInspectorPanel : UserControl
             if (_vm is not null)
             {
                 _vm.PropertyChanged += OnVmPropertyChanged;
+                // El diff vive en el VM (la lógica es del núcleo): la pestaña lo sigue en vivo.
+                _vm.MetadataDiffs.CollectionChanged += (_, _) => RebuildDiff();
             }
 
             RefreshNode();
@@ -200,6 +262,22 @@ public sealed class NodeInspectorPanel : UserControl
         _paramsHeader.Text = loc.GetString("Uno_InspectorParams", "Parámetros");
         _telemetryHeader.Text = loc.GetString("Uno_InspectorTelemetry", "Telemetría");
         _resetMetricsButton.Content = loc.GetString("Uno_InspectorResetMetrics", "Vaciar métricas");
+        _testButton.Content = loc.GetString("Uno_InspectorTest", "Probar");
+        if (_paramsTabItem is not null)
+        {
+            _paramsTabItem.Header = loc.GetString("Uno_InspectorTabParams", "Parámetros");
+        }
+
+        if (_snapshotsTabItem is not null)
+        {
+            _snapshotsTabItem.Header = loc.GetString("Uno_InspectorTabSnapshots", "Snapshots");
+        }
+
+        if (_diffTabItem is not null)
+        {
+            _diffTabItem.Header = loc.GetString("Uno_InspectorTabDiff", "Diff");
+        }
+
         RefreshHeaderTexts();
     }
 
@@ -236,6 +314,8 @@ public sealed class NodeInspectorPanel : UserControl
         {
             _paramsHost.Children.Clear();
             _telemetryRows.Children.Clear();
+            _snapshotsHost.Children.Clear();
+            _diffHost.Children.Clear();
             RefreshHeaderTexts();
             UpdateVisibility();
             return;
@@ -243,6 +323,22 @@ public sealed class NodeInspectorPanel : UserControl
 
         _paramsSub = (_, _) => RebuildParameters();
         _inspected.Parameters.CollectionChanged += _paramsSub;
+
+        // Las colecciones de snapshots del nodo (hito 242): las dos pestañas nuevas viven de ellas.
+        if (_inputsSub is not null)
+        {
+            _inspected.InputSnapshots.CollectionChanged -= _inputsSub;
+        }
+
+        if (_outputsSub is not null)
+        {
+            _inspected.OutputSnapshots.CollectionChanged -= _outputsSub;
+        }
+
+        _inputsSub = (_, _) => RebuildSnapshots();
+        _outputsSub = (_, _) => RebuildSnapshots();
+        _inspected.InputSnapshots.CollectionChanged += _inputsSub;
+        _inspected.OutputSnapshots.CollectionChanged += _outputsSub;
 
         _nodePropsSub = (_, e) =>
         {
@@ -254,9 +350,196 @@ public sealed class NodeInspectorPanel : UserControl
         _inspected.PropertyChanged += _nodePropsSub;
 
         RebuildParameters();
+        RebuildSnapshots();
         RebuildTelemetry();
         RefreshHeaderTexts();
         UpdateVisibility();
+    }
+
+    /// <summary>
+    /// La pestaña de snapshots (hito 242): los snapshots del NODO (entradas y salidas), con la
+    /// cabecera del escritorio (puerto, timestamp, ruta actual), el contenido desplegable (ruta
+    /// original, tamaño, metadatos, tags, error) y el botón «Ver» por el comando canónico del VM
+    /// (<c>PreviewSpecificSnapshotCommand</c> — la misma vista previa del escritorio).
+    /// </summary>
+    private void RebuildSnapshots()
+    {
+        _snapshotsHost.Children.Clear();
+        if (_inspected is null)
+        {
+            return;
+        }
+
+        var loc = LocalizationManager.Instance;
+        foreach (var snapshot in _inspected.InputSnapshots.Concat(_inspected.OutputSnapshots))
+        {
+            _snapshotsHost.Children.Add(BuildSnapshotCard(snapshot, loc));
+        }
+    }
+
+    private FrameworkElement BuildSnapshotCard(NodeDataSnapshot snapshot, LocalizationManager loc)
+    {
+        var root = new StackPanel { Spacing = 4, Margin = new Thickness(0, 2, 0, 2) };
+
+        var header = new Grid { ColumnSpacing = 6 };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var headerLines = new StackPanel { Spacing = 1 };
+        var line1 = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        line1.Children.Add(new TextBlock
+        {
+            Text = (snapshot.IsInput ? "▼ In: " : "▲ Out: ") + snapshot.PortName,
+            FontSize = 11,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = Brush(snapshot.IsInput ? "CanvasAccentGlowBrush" : "CanvasWireBrush")
+        });
+        line1.Children.Add(new TextBlock
+        {
+            Text = " • " + snapshot.Timestamp.ToString("HH:mm:ss.fff", CultureInfo.CurrentCulture),
+            FontSize = 10,
+            Opacity = 0.7,
+            Foreground = Brush("CanvasSecondaryBrush")
+        });
+        headerLines.Children.Add(line1);
+        headerLines.Children.Add(new TextBlock
+        {
+            Text = snapshot.ItemSnapshot.CurrentPath,
+            FontSize = 10,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Foreground = Brush("CanvasTextBrush")
+        });
+        Grid.SetColumn(headerLines, 0);
+        header.Children.Add(headerLines);
+
+        // El «Ver» del escritorio: el comando canónico del VM (la vista previa vive en el núcleo).
+        var viewButton = new Button
+        {
+            Padding = new Thickness(8, 2, 8, 2),
+            FontSize = 10,
+            Content = loc.GetString("Preview_InspectFileBtn", "Ver")
+        };
+        AutomationProperties.SetAutomationId(viewButton, "SnapshotViewButton_" + snapshot.SnapshotId);
+        viewButton.Click += (_, _) => _vm?.PreviewSpecificSnapshotCommand.Execute(snapshot);
+        Grid.SetColumn(viewButton, 1);
+        header.Children.Add(viewButton);
+
+        root.Children.Add(header);
+
+        // El contenido desplegable: la misma información que el Expander del escritorio.
+        var details = new StackPanel { Spacing = 3, Margin = new Thickness(12, 2, 0, 0) };
+        details.Children.Add(new TextBlock
+        {
+            Text = loc.GetString("Inspector_OriginalPath", "Original Path:") + " " + snapshot.ItemSnapshot.OriginalPath,
+            FontSize = 10,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("CanvasSecondaryBrush")
+        });
+        details.Children.Add(new TextBlock
+        {
+            Text = loc.GetString("Inspector_SizeLabel", "Size:") + " " + snapshot.ItemSnapshot.FileSizeBytes + " "
+                + loc.GetString("Inspector_BytesLabel", "bytes"),
+            FontSize = 10,
+            Foreground = Brush("CanvasSecondaryBrush")
+        });
+
+        foreach (var kv in snapshot.ItemSnapshot.Metadata)
+        {
+            details.Children.Add(new TextBlock
+            {
+                Text = kv.Key + " = " + kv.Value,
+                FontSize = 10,
+                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Code, Consolas"),
+                Foreground = Brush("CanvasTextBrush")
+            });
+        }
+
+        if (snapshot.ItemSnapshot.Tags.Count > 0)
+        {
+            details.Children.Add(new TextBlock
+            {
+                Text = loc.GetString("Inspector_Tags", "Tags:") + " " + string.Join(", ", snapshot.ItemSnapshot.Tags),
+                FontSize = 10,
+                Foreground = Brush("CanvasSecondaryBrush")
+            });
+        }
+
+        if (snapshot.HasError)
+        {
+            details.Children.Add(new TextBlock
+            {
+                Text = "⚠ " + snapshot.ErrorMessage,
+                FontSize = 10,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 245, 158, 11))
+            });
+        }
+
+        var expander = new Expander
+        {
+            Content = details,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        expander.Header = header;
+        root.Children.Add(expander);
+
+        return root;
+    }
+
+    /// <summary>
+    /// La pestaña de diff (hito 242): las filas de <c>MetadataDiffs</c> que el VM del núcleo
+    /// computa (al inspeccionar y al seleccionar un snapshot) — Added/Removed/Modified con los
+    /// colores del escritorio.
+    /// </summary>
+    private void RebuildDiff()
+    {
+        _diffHost.Children.Clear();
+        if (_vm is null)
+        {
+            return;
+        }
+
+        foreach (var diff in _vm.MetadataDiffs)
+        {
+            _diffHost.Children.Add(BuildDiffRow(diff));
+        }
+    }
+
+    private static FrameworkElement BuildDiffRow(MetadataDiffItem diff)
+    {
+        var changeColor = diff.ChangeType switch
+        {
+            "Added" => Windows.UI.Color.FromArgb(255, 16, 185, 129),
+            "Removed" => Windows.UI.Color.FromArgb(255, 239, 68, 68),
+            _ => Windows.UI.Color.FromArgb(255, 245, 158, 11)
+        };
+
+        var key = new TextBlock
+        {
+            Text = diff.Key,
+            FontSize = 10,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(changeColor),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var values = new TextBlock
+        {
+            Text = diff.ChangeType == "Added" ? "→ " + diff.NewValue
+                : diff.ChangeType == "Removed" ? diff.OldValue + " →"
+                : diff.OldValue + " → " + diff.NewValue,
+            FontSize = 10,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = Brush("CanvasTextBrush")
+        };
+
+        var grid = new Grid { ColumnSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(key, 0);
+        Grid.SetColumn(values, 1);
+        grid.Children.Add(key);
+        grid.Children.Add(values);
+        return new StackPanel { Children = { grid } };
     }
 
     private void RefreshHeaderTexts()
@@ -574,6 +857,42 @@ public sealed class NodeInspectorPanel : UserControl
     internal void InspectForProbe(NodeViewModel node)
     {
         _vm?.InspectNode(node, autoOpen: true);
+    }
+
+    /// <summary>
+    /// La sonda del «Probar» (hito 240): el botón existe en la cabecera, canta su AutomationId para
+    /// la observación UIA externa y está atado al comando canónico del núcleo (la variante async
+    /// del diálogo vive en el VM; el host no abre pickers por su cuenta).
+    /// </summary>
+    internal bool HasWiredTestButton()
+    {
+        return _testButton is not null
+            && AutomationProperties.GetAutomationId(_testButton) == "InspectorTestButton"
+            && _vm?.TestNodeWithCustomFileCommand is not null;
+    }
+
+    /// <summary>
+    /// La sonda de las pestañas nuevas (hito 242): tarjetas de snapshots materializadas desde las
+    /// colecciones del nodo, filas de diff pintadas desde el VM (el VM computa al seleccionar un
+    /// snapshot), y la conmutación del Pivot dejando las tarjetas en el árbol.
+    /// </summary>
+    internal (int SnapshotCards, int DiffRows, bool TabSwitch) ProbeSnapshotTabs()
+    {
+        if (_vm?.InspectedNode is null || _snapshotsTabItem is null)
+        {
+            return (0, 0, false);
+        }
+
+        int cards = _snapshotsHost.Children.Count;
+        int diffRows = _diffHost.Children.Count;
+
+        int previousIndex = _tabs.SelectedIndex;
+        _tabs.SelectedIndex = _tabs.Items.IndexOf(_snapshotsTabItem);
+        bool switchOk = _tabs.SelectedIndex == _tabs.Items.IndexOf(_snapshotsTabItem)
+            && _snapshotsHost.Children.Count == cards;
+        _tabs.SelectedIndex = previousIndex;
+
+        return (cards, diffRows, switchOk);
     }
 
     /// <summary>Cierra el panel por el comando del VM (el botón de la cabecera).</summary>

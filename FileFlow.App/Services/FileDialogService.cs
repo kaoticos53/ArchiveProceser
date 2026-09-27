@@ -71,4 +71,49 @@ public class FileDialogService : IFileDialogService
         var result = task.GetAwaiter().GetResult();
         return result?.FirstOrDefault()?.TryGetLocalPath();
     }
+
+    // ── La variante asíncrona (hito 240): la vía nativa del StorageProvider de Avalonia, sin el
+    // bloqueo GetAwaiter().GetResult() de las síncronas. El «Probar» del inspector (click de UI)
+    // puede consumirlas sin riesgo de interbloqueo; las síncronas siguen para los VMs que bloquean
+    // fuera de UI (ControlBar, WorkflowSettings). ──
+
+    public async Task<string?> ShowOpenFileDialogAsync(string title, string filter, string defaultExt = "")
+    {
+        var sp = GetStorageProvider();
+        if (sp == null) return null;
+
+        var result = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false
+        }).ConfigureAwait(false);
+        return result?.FirstOrDefault()?.TryGetLocalPath();
+    }
+
+    public async Task<string?> ShowSaveFileDialogAsync(string title, string filter, string defaultExt = "", string defaultFileName = "")
+    {
+        var sp = GetStorageProvider();
+        if (sp == null) return null;
+
+        var result = await sp.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = title,
+            DefaultExtension = defaultExt.TrimStart('.'),
+            SuggestedFileName = defaultFileName
+        }).ConfigureAwait(false);
+        return result?.TryGetLocalPath();
+    }
+
+    public async Task<string?> ShowFolderBrowserDialogAsync(string title)
+    {
+        var sp = GetStorageProvider();
+        if (sp == null) return null;
+
+        var result = await sp.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false
+        }).ConfigureAwait(false);
+        return result?.FirstOrDefault()?.TryGetLocalPath();
+    }
 }

@@ -40,6 +40,9 @@ public sealed class NullFileDialogService : IFileDialogService
     public string? ShowOpenFileDialog(string title, string filter, string defaultExt = "") => null;
     public string? ShowSaveFileDialog(string title, string filter, string defaultExt = "", string defaultFileName = "") => null;
     public string? ShowFolderBrowserDialog(string title) => null;
+
+    // La variante asíncrona hereda el DIM del contrato (delegación en la síncrona): el nulo no
+    // necesita override — las Async devuelven null sin bloquear, como sus hermanas.
 }
 
 /// <summary>Servicio de menús nulo: sin ancla no hay menú, igual que el comportamiento actual.</summary>

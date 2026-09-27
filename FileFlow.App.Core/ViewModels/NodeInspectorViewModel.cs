@@ -324,7 +324,10 @@ public partial class NodeInspectorViewModel : ObservableObject, IRecipient<NodeS
     {
         if (InspectedNode == null) return;
 
-        var filePath = _fileDialogService.ShowOpenFileDialog("Seleccionar archivo para prueba aislada del nodo", "Todos los archivos (*.*)|*.*");
+        // La variante asíncrona (hito 240): el picker se abre desde el click de UI SIN bloquear el
+        // hilo de UI — el síncrono devolvía null en el host Uno (el guard anti-interbloqueo) y en
+        // el escritorio exigía bloquear. Los otros consumidores del síncrono no cambian.
+        var filePath = await _fileDialogService.ShowOpenFileDialogAsync("Seleccionar archivo para prueba aislada del nodo", "Todos los archivos (*.*)|*.*");
         if (!string.IsNullOrEmpty(filePath))
         {
             try

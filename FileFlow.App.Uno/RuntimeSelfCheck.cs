@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using FileFlow.App.Uno.Controls;
 using FileFlow.App.ViewModels;
+using FileFlow.Sdk;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -298,12 +299,55 @@ public static class RuntimeSelfCheck
 
                     bool closed = insp.CloseViaCommand();
                     Check(closed, "el comando de cierre oculta el inspector (ClosePanelCommand del VM)");
+
+                    // Hito 240: el botón «Probar» existe, canta su AutomationId para la observación
+                    // UIA externa, está atado al comando canónico del núcleo y queda localizado.
+                    bool testButtonOk = insp.HasWiredTestButton();
+                    Check(testButtonOk,
+                        "el botón Probar existe y ejecuta TestNodeWithCustomFileCommand (variante async del diálogo)");
+
+                    // Hito 242: las pestañas de snapshots y diff, con los datos del NODO y del VM.
+                    // El flujo de ejemplo no trae snapshots: la sonda crea uno de ENTRADA por la vía
+                    // de producción (CreateInput con un FileItemContext, la misma fábrica que usa el
+                    // motor) y re-inspecciona — el diff del VM exige un snapshot seleccionado.
+                    var probeItem = new FileItemContext(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "__selfcheck_probe__.txt"));
+                    probeItem.Metadata["Category"] = "Probe";
+                    probeItem.Metadata["Status"] = "Selfcheck";
+                    firstNode.InputSnapshots.Add(NodeDataSnapshot.CreateInput(firstNode.Id, "In", probeItem));
+                    insp.InspectForProbe(firstNode);
+
+                    var (snapshotCards, diffRows, tabSwitch) = insp.ProbeSnapshotTabs();
+                    Check(snapshotCards == firstNode.InputSnapshots.Count + firstNode.OutputSnapshots.Count,
+                        $"las tarjetas de snapshots materializan las colecciones del nodo ({snapshotCards} = entradas + salidas)");
+                    Check(diffRows > 0,
+                        $"la pestaña de diff pinta las filas que el VM computa ({diffRows}, Added/Removed/Modified)");
+                    Check(tabSwitch,
+                        "el Pivot conmuta a la pestaña de snapshots y las tarjetas quedan en el árbol");
+
+                    firstNode.InputSnapshots.Clear();
+                    insp.InspectForProbe(firstNode);
                 }
             }
         }
         catch (Exception ex)
         {
             Check(false, "sonda de paneles (rebanada 4) lanzó: " + ex.GetType().Name + ": " + ex.Message);
+        }
+
+        // Superficie UIA (hito 238): lo que una observación EXTERNA (pywinauto, sin UIAccess) puede
+        // alcanzar del lienzo — la ancla explícita con su peer expuestos, el foco programático (la vía
+        // del SetFocus UIA) entrando sin puntero, y el estado del zoom observable en la barra. Es la
+        // sonda interna de las mismas anclas que las sondas UIA externas van a citar.
+        try
+        {
+            var (anchorExposed, focusEntered, zoomStateObservable) = canvas.ProbeUiAccessibility();
+            Check(anchorExposed, "la ancla 'CanvasRoot' del lienzo llega al árbol UIA con su peer expuesto");
+            Check(focusEntered, "el lienzo acepta el foco programático (la vía del SetFocus UIA externo, sin puntero)");
+            Check(zoomStateObservable, "el estado del zoom es observable: la barra refleja el nivel cambiado y restaurado");
+        }
+        catch (Exception ex)
+        {
+            Check(false, "sonda de superficie UIA (238) lanzó: " + ex.GetType().Name + ": " + ex.Message);
         }
 
         // Fase 3.5 (sin puntero): cambiar el tema por la API del núcleo tiene que re-tematizar el
