@@ -127,4 +127,36 @@ public class NodeParameterManagerTests
         // Assert
         pipelineParam.Value.Should().Be("0️⃣1️⃣ Rellenar Números (1, 2... 10 -> 01, 02... 10)");
     }
+
+    /// <summary>
+    /// OBJETO: La edición del parámetro por el VM ESCRIBE al NodeInstance (el write-through).
+    /// QUÉ:    Asignar p.Value (el mismo setter que la ficha usa al editar) tiene que terminar en
+    ///         NodeInstance.Parameters — es lo que el motor ejecuta y lo que el flujo guarda. Es el
+    ///         testigo de la mutación inspector-sin-write-back (rebanada 4 del host Uno): si la cadena
+    ///         p.Value -> OnValueChanged -> OnParameterValueChanged -> NodeParameterManager se corta,
+    ///         el VM mantiene su valor observable pero el nodo jamás se entera.
+    /// CÓMO:  Crea el ImageOptimizerNode, toma el parámetro Quality del VM, edita por el setter y
+    ///         exige el valor nuevo leído del diccionario del NodeInstance (el mismo camino que el
+    ///         selfcheck del host Uno verifica en runtime con 'Width' = '__probe__').
+    /// </summary>
+    [Fact]
+    public void EditingParameterThroughTheViewModel_ShouldWriteThroughToTheNodeInstance()
+    {
+        // Arrange
+        var node = new ImageOptimizerNode();
+        using var nodeVm = new NodeViewModel(node, new Point(0, 0));
+
+        var quality = nodeVm.Parameters.First(p => p.Key == "Quality");
+        object? before = node.Parameters.TryGetValue("Quality", out var v0) ? v0 : null;
+        before.Should().NotBeNull("el nodo inicializa Quality en su constructor");
+
+        // Act - la edición del usuario (el setter del VM, el mismo que el panel Uno invoca)
+        quality.Value = 42;
+
+        // Assert - el valor nuevo vive en el nodo (no sólo en el VM)
+        node.Parameters.TryGetValue("Quality", out var v1).Should().BeTrue();
+        v1?.ToString().Should().Be("42",
+            "la edición del parámetro tiene que escribir al NodeInstance: es lo que ejecuta el motor " +
+            "y lo que guarda el flujo — un write-back cortado dejaría el nodo con valores viejos");
+    }
 }

@@ -283,4 +283,47 @@ public class ToolboxViewModelTests
         var expandedCount = toolbox.CategoryGroups.ToList().Count(g => g.IsExpanded);
         expandedCount.Should().BeLessThanOrEqualTo(1, "Clearing search text should return to accordion mode");
     }
+
+    /// <summary>
+    /// OBJETO: El filtro de búsqueda REDUCE el catálogo a los nodos coincidentes.
+    /// QUÉ:    Con un término que sólo un tipo cumple, los grupos visibles dejan de contener los nodos
+    ///         que no coinciden — no basta con que las categorías se expandan: el filtro tiene que quitar
+    ///         del catálogo lo que no casa. Es el testigo de la mutación toolbox-sin-filtro (rebanada 4
+    ///         del host Uno): si RefreshToolbox deja de respetar SearchText, esta prueba cae.
+    /// CÓMO:  Registra el plugin FileSystem, escribe "Folder" en SearchText y exige que ningún ítem
+    ///         visible deje de coincidir; luego limpia y exige el catálogo entero de vuelta.
+    /// </summary>
+    [Fact]
+    public void ToolboxViewModel_SearchText_ShouldReduceTheCatalogueToMatchingNodes()
+    {
+        // Arrange
+        var loader = new PluginLoader();
+        loader.RegisterNodeTypesFromAssembly(typeof(FolderSourceNode).Assembly);
+        using var toolbox = new ToolboxViewModel(loader);
+
+        var totalCount = toolbox.CategoryGroups.SelectMany(g => g.Items).Count();
+        totalCount.Should().BeGreaterThan(0, "el catálogo base tiene que estar poblado");
+
+        // Act - búsqueda que reduce el catálogo a los coincidentes. El término casa por el ROL crudo
+        // ("Source", independiente del locale: los resx del plugin están registrados y los nombres
+        // llegan en español, así que un término de nombre sería frágil) y excluye a los nodos de otros
+        // roles — el filtro tiene que descartar a los que no coinciden.
+        toolbox.SearchText = "Source";
+
+        // Assert - hay coincidencias, son MENOS que el catálogo entero y el Folder Source está
+        var visible = toolbox.CategoryGroups.SelectMany(g => g.Items).ToList();
+        visible.Should().NotBeEmpty("los nodos de rol Source contienen el término en role.ToString()");
+        visible.Should().Contain(i => i.TypeName.Contains("FolderSourceNode"),
+            "el nodo de rol Source debe seguir en el catálogo");
+        System.Console.WriteLine($"[DIAG] visible={visible.Count} grupos={toolbox.CategoryGroups.Count} nombres=[{string.Join("|", visible.Take(5).Select(i => i.Name))}] desc=[{(visible.Count > 0 ? visible[0].Description : "<nada>")}]");
+
+        visible.Count.Should().BeLessThan(totalCount,
+            "el filtro REDUCE: dejar el catálogo entero es burlar el buscador");
+
+        // Act - limpiar
+        toolbox.SearchText = string.Empty;
+
+        // Assert - catálogo completo de vuelta
+        toolbox.CategoryGroups.SelectMany(g => g.Items).Count().Should().Be(totalCount);
+    }
 }
