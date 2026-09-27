@@ -105,11 +105,24 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 # Ejecutar pruebas y generar reporte de cobertura de código
 .\coverage.ps1
 
-# Compilar y ejecutar la aplicación WPF
+# Compilar y ejecutar la aplicación WPF (escritorio Avalonia)
 .\run.ps1
 
 # Ejecutar la aplicación WPF directamente sin compilar
 .\run-fast.ps1   # o .\run.ps1 -NoBuild
+
+# ─── Host Uno Platform (WinUI 3) ───
+# Compilar (SOLO MSBuild de Visual Studio: los targets de WinAppSDK no corren con dotnet build)
+# y lanzar el host Uno
+.\run-uno.ps1
+
+# Lanzar el host Uno directamente sin compilar
+.\run-uno-fast.ps1
+
+# Sondeos del host Uno (el script espera y hereda el exit code: 0 = verificado)
+.\run-uno.ps1 -SelfCheck        # sondeo interno en runtime (70 comprobaciones)
+.\run-uno.ps1 -SelfCheckUia     # sondeo UIA EXTERNO (hijo python; exige python + pywinauto)
+.\run-uno-fast.ps1 -SelfCheck   # ídem sin compilar
 
 # Limpiar todos los artefactos de compilación, binarios y temporales
 .\clean.ps1
