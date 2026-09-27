@@ -31,10 +31,15 @@ public sealed partial class MainWindow : Window
             var loader = services.GetRequiredService<PluginLoader>();
             int nodes = loader.DiscoveredNodesCount;
 
-            var mainVm = services.GetRequiredService<MainViewModel>();
-
-            Canvas.Editor = mainVm.Editor;
+            var mainVm = services.GetRequiredService<MainViewModel>();            Canvas.Editor = mainVm.Editor;
             TryLoadSampleFlow(mainVm.Editor);
+
+            // Rebanada 4: los dos paneles del editor, consumiendo los VM del núcleo (los mismos que
+            // el escritorio): el cajón añade nodos al MISMO editor que pinta el lienzo, el inspector
+            // sigue la selección que el lienzo escribe.
+            Toolbox.Vm = mainVm.Toolbox;
+            Toolbox.Editor = mainVm.Editor;
+            Inspector.Vm = mainVm.NodeInspector;
 
             var loc = LocalizationManager.Instance;
             var core = loc.GetFormattedString(
@@ -44,19 +49,27 @@ public sealed partial class MainWindow : Window
 
             Console.WriteLine("[UnoHost] nodos descubiertos: " + nodes);
 
+            int catalogue = mainVm.Toolbox.CategoryGroups.SelectMany(g => g.Items).Count();
             engineStatus.Text = core
                 + Environment.NewLine
                 + loc.GetFormattedString(
-                    "Uno_HostViewModel",
-                    "Lienzo montado: {0} nodos en el grafo.",
-                    mainVm.Editor.Nodes.Count);
+                "Uno_HostViewModel",
+                "Lienzo montado: {0} nodos en el grafo.",
+                mainVm.Editor.Nodes.Count)
+                + Environment.NewLine
+                + loc.GetFormattedString(
+                "Uno_HostPanels",
+                "Paneles montados: cajón con {0} tipos de nodo, inspector conectado a la selección.",
+                catalogue);
 
             Title = "FileFlow Studio — Uno Platform";
 
             // Localización en caliente (fase 3.5): los textos del marco se rescriben al cambiar el idioma.
             // El lienzo ya reconstruye los suyos al reasignar Editor (el selector de idioma vive en los
             // ajustes del escritorio; cuando el núcleo cambie la cultura, LanguageChanged notifica).
-            LocalizationManager.Instance.LanguageChanged += (_, _) => RefreshLocalizedTexts(nodes, mainVm.Editor.Nodes.Count);
+            LocalizationManager.Instance.LanguageChanged += (_, _) => RefreshLocalizedTexts(
+                nodes, mainVm.Editor.Nodes.Count,
+                mainVm.Toolbox.CategoryGroups.SelectMany(g => g.Items).Count());
         }
         catch (Exception ex)
         {
@@ -64,8 +77,8 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Los dos textos localizados del marco del host, re-escritura del idioma vigente.</summary>
-    private void RefreshLocalizedTexts(int nodes, int canvasNodes)
+    /// <summary>Los textos localizados del marco del host, re-escritura del idioma vigente.</summary>
+    private void RefreshLocalizedTexts(int nodes, int canvasNodes, int catalogue)
     {
         var loc = LocalizationManager.Instance;
         engineStatus.Text = loc.GetFormattedString(
@@ -76,7 +89,12 @@ public sealed partial class MainWindow : Window
             + loc.GetFormattedString(
             "Uno_HostViewModel",
             "Lienzo montado: {0} nodos en el grafo.",
-            canvasNodes);
+            canvasNodes)
+            + Environment.NewLine
+            + loc.GetFormattedString(
+            "Uno_HostPanels",
+            "Paneles montados: cajón con {0} tipos de nodo, inspector conectado a la selección.",
+            catalogue);
     }
 
     /// <summary>El error del último intento de carga del ejemplo (vacío si no hubo): visible para el sondeo.</summary>

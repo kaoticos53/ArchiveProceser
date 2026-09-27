@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using FileFlow.App.Core;
+using FileFlow.App.Services;
 using FileFlow.App.Uno.Platform;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk.Localization;
@@ -73,6 +74,10 @@ public partial class App : Application
             clipboard: s_services.GetRequiredService<IClipboardService>(),
             mainWindowOwner: null); // la ventana aún no existe; el dialog service la resuelve él mismo
 
+        // Los titulares de servicios que el VM de parámetros consulta por su estático (ventana para
+        // diálogos de nodo, menú de variables): el host los deja en Null pero DEBE existir el setter.
+        FileFlow.App.Services.ServiceHolders.FileDialog = s_services.GetRequiredService<FileFlow.App.Services.IFileDialogService>();
+
         s_mainWindow = new MainWindow();
         s_mainWindow.Activate();
 
@@ -102,5 +107,9 @@ public partial class App : Application
         services.AddSingleton<IDialogService, UnoDialogService>();
         services.AddSingleton<IClipboardService, UnoClipboardService>();
         services.AddSingleton<IUiDispatcher, UnoUiDispatcher>();
+
+        // Rebanada 4: los pickers de Windows para el explorar de rutas del inspector (el registro
+        // portátil trae el nulo; sin uno real, el botón «explorar» de la ficha no haría nada).
+        services.AddSingleton<FileFlow.App.Services.IFileDialogService, UnoFileDialogService>();
     }
 }

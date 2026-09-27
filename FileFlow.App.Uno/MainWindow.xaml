@@ -14,12 +14,27 @@
     <Border Grid.Row="0" Background="#161B22" Padding="16,10">
       <StackPanel Orientation="Horizontal" Spacing="12">
         <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="SemiBold" Foreground="#F0F6FC" />
-        <TextBlock Text="Uno Platform — lienzo (fase 3.1)" Opacity="0.7" VerticalAlignment="Center"
+        <TextBlock Text="Uno Platform — editor (rebanada 4)" Opacity="0.7" VerticalAlignment="Center"
                    FontSize="12" Foreground="#F0F6FC" />
       </StackPanel>
     </Border>
 
-    <controls:EditorCanvasControl x:Name="Canvas" Grid.Row="1" />
+    <!-- Las tres zonas del editor de escritorio: cajón de herramientas | lienzo | inspector -->
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="280" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <controls:NodeToolboxPanel x:Name="Toolbox" Grid.Column="0"
+                                 Background="{StaticResource CanvasSurfaceBrush}" />
+
+      <controls:EditorCanvasControl x:Name="Canvas" Grid.Column="1" />
+
+      <controls:NodeInspectorPanel x:Name="Inspector" Grid.Column="2" Width="300"
+                                   VerticalAlignment="Stretch" />
+    </Grid>
 
     <Border Grid.Row="2" Background="#161B22" Padding="16,8">
       <TextBlock x:Name="engineStatus" Opacity="0.7" TextWrapping="Wrap" FontSize="11"

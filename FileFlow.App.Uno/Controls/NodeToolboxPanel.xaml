@@ -1,0 +1,90 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.NodeToolboxPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:FileFlow.App.Uno.Platform">
+
+  <UserControl.Resources>
+    <conv:MaterialIconKindToGeometryConverter x:Key="IconToGeometry" />
+  </UserControl.Resources>
+
+  <Grid RowSpacing="8" Padding="10,10,8,8">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- Título (el toggle compacto/detallado del escritorio queda pendiente, declarado en el plan) -->
+    <TextBlock x:Name="TitleText" Grid.Row="0" FontSize="13" FontWeight="SemiBold"
+               Foreground="{StaticResource CanvasTextBrush}" />
+
+    <!-- Buscador + chips de categoría -->
+    <StackPanel Grid.Row="1" Spacing="6">
+      <TextBox x:Name="SearchBox" Text="{x:Bind Vm.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+               PlaceholderText="Buscar nodo… (Ctrl+F)" FontSize="12" />
+      <ItemsControl x:Name="CategoryChips" ItemsSource="{x:Bind Vm.AvailableCategories}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="4" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <ToggleButton Click="OnCategoryChipClicked" Content="{Binding DisplayName}"
+                          FontSize="11" Padding="8,2"
+                          Tag="{Binding Key}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <!-- Grupos acordeón del VM (expansión exclusiva gestionada por HandleGroupExpanded) -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+      <ItemsControl x:Name="GroupsHost" ItemsSource="{x:Bind Vm.CategoryGroups}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <StackPanel>
+              <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0" Padding="4,3" Margin="0,1">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <PathIcon Data="{Binding Icon, Converter={StaticResource IconToGeometry}}"
+                            Width="14" Height="14"
+                            Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <TextBlock Text="{Binding CategoryName}" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <TextBlock Text="{Binding Items.Count}" FontSize="11" Opacity="0.6"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                </StackPanel>
+              </ToggleButton>
+              <ItemsControl ItemsSource="{Binding Items}" Visibility="{Binding IsExpanded}"
+                            Margin="14,0,0,4">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border x:Name="ToolboxItemRoot" DoubleTapped="OnItemDoubleTapped"
+                            Background="Transparent" BorderThickness="0" CornerRadius="4"
+                            Padding="4,3" Margin="0,1" ToolTipService.ToolTip="{Binding Description}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{Binding Icon, Converter={StaticResource IconToGeometry}}"
+                                  Width="16" Height="16"
+                                  Foreground="{StaticResource CanvasAccentGlowBrush}" />
+                        <StackPanel Spacing="0">
+                          <TextBlock Text="{Binding Name}" FontSize="12"
+                                     Foreground="{StaticResource CanvasTextBrush}"
+                                     TextTrimming="CharacterEllipsis" MaxLines="1" />
+                          <TextBlock Text="{Binding RoleBadge}" FontSize="10"
+                                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

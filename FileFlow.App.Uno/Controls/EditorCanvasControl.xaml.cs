@@ -429,6 +429,16 @@ public sealed partial class EditorCanvasControl : UserControl
     }
 
     /// <summary>
+    /// El punto del grafo en el centro del viewport (rebanada 4): es donde el cajón de herramientas
+    /// añade con doble clic — el mismo espacio de pantalla que consume el ratón (RootGrid llena el
+    /// control y el cursor que el lienzo traduce con <see cref="GraphPointFromScreen"/>).
+    /// </summary>
+    internal Sdk.Point GraphPointAtViewportCenter()
+    {
+        return GraphPointFromScreen(new Windows.Foundation.Point(ActualWidth / 2, ActualHeight / 2));
+    }
+
+    /// <summary>
     /// Sonda de la fase 3.6 — el rendimiento MEDIDO con el grafo de referencia (40 nodos + 40 cables,
     /// la densidad del banco de ejemplos): (1) construir el grafo completo con materialización de
     /// tarjetas y cables; (2) re-posicionar TODO el grafo (el coste de un frame de arrastre); (3) un

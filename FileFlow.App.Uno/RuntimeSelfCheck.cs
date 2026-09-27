@@ -217,6 +217,95 @@ public static class RuntimeSelfCheck
             Check(false, "sonda de decoradores 3.4 lanzó: " + ex.GetType().Name + ": " + ex.Message);
         }
 
+        // Rebanada 4 — los dos paneles: catálogo poblado, filtro que reduce, añadir por el método del
+        // handler, favorito por comando, inspector por selección con parámetros del nodo y write-through
+        // al NodeInstance (el mismo camino que la edición del usuario). La restauración deja el grafo y
+        // el favorito como al entrar.
+        try
+        {
+            var toolbox = Find<NodeToolboxPanel>(window.Content);
+            var inspector = Find<NodeInspectorPanel>(window.Content);
+            Check(toolbox is not null, "panel del cajón de herramientas montado en la ventana");
+            Check(inspector is not null, "panel del inspector montado en la ventana");
+
+            if (toolbox is { } tb && inspector is { } insp && editor is { })
+            {
+                // 1. Catálogo poblado desde el VM del núcleo.
+                int visible = tb.VisibleItemCount;
+                Check(visible > 0, $"catálogo del cajón poblado desde el ToolboxViewModel: {visible} ítems");
+
+                // 2. Filtro de búsqueda que reduce el catálogo (el mismo setter que el binding).
+                int beforeFilter = tb.VisibleItemCount;
+                tb.SearchForProbe("Folder");
+                int afterFilter = tb.VisibleItemCount;
+                tb.SearchForProbe(string.Empty);
+                Check(afterFilter > 0 && afterFilter < beforeFilter,
+                    $"el filtro reduce el catálogo: {beforeFilter} -> {afterFilter} con 'Folder' (restaurado)");
+
+                // 3. Añadir el primer ítem por el método del doble clic, con undo de restauración.
+                int nodesBefore = tb.EditorNodeCount;
+                bool added = tb.TryAddFirstItemOfGroupForProbe();
+                int nodesAfter = tb.EditorNodeCount;
+                if (added)
+                {
+                    editor.UndoRedoService.Undo();
+                }
+
+                Check(added && nodesAfter == nodesBefore + 1,
+                    $"doble clic añade el nodo por EditorViewModel.AddNode: {nodesBefore} -> {nodesAfter} (undo restaurado)");
+
+                // 4. Favorito por el comando del VM (el toggle de la estrella), reportando el estado.
+                // El segundo toggle RESTAURA el estado original: el sondeo no puede dejar una
+                // preferencia persistida del usuario a medio camino.
+                bool favOk = tb.ToggleFavoriteViaCommand();
+                bool favRestored = favOk && tb.ToggleFavoriteViaCommand();
+                Check(favOk && favRestored, "favorito conmutado por ToggleFavoriteCommand (y restaurado)");
+
+                // 5. Inspector: abrir sobre un nodo real de la ventana (el flujo cargado) — la ficha
+                // con parámetros materializados, el write-through al NodeInstance y el cierre por comando.
+                var firstNode = editor.Nodes.FirstOrDefault();
+                if (firstNode is null)
+                {
+                    Check(false, "inspector: sin nodo para inspeccionar (el ejemplo no cargó)");
+                }
+                else
+                {
+                    insp.InspectForProbe(firstNode);
+                    Check(insp.Visibility == Visibility.Visible, "la selección abre el inspector (IsOpen del VM)");
+
+                    int paramEditors = insp.ParameterEditorCount;
+                    Check(paramEditors == firstNode.Parameters.Count,
+                        $"editores de parámetros materializados: {paramEditors} de {firstNode.Parameters.Count} parámetros");
+
+                    // Write-through: el mismo camino que la edición del usuario (p.Value = ...), una
+                    // pareja parámetro/instancia con la MISMA clave.
+                    var param = firstNode.Parameters.FirstOrDefault(p => !p.IsVariableInjectorNode);
+                    if (param is null)
+                    {
+                        Check(false, "sin parámetro editable para el write-through");
+                    }
+                    else
+                    {
+                        var inst = firstNode.NodeInstance.Parameters;
+                        string key = param.Key;
+                        string beforeValue = inst.TryGetValue(key, out var v0) ? v0?.ToString() ?? "" : "<sin clave>";
+                        param.Value = "__probe__";
+                        string afterValue = inst.TryGetValue(key, out var v1) ? v1?.ToString() ?? "" : "<sin clave>";
+                        param.Value = beforeValue == "<sin clave>" ? null : beforeValue;
+                        Check(afterValue == "__probe__",
+                            $"la edición escribe al NodeInstance (write-through): '{key}' = '{afterValue}'");
+                    }
+
+                    bool closed = insp.CloseViaCommand();
+                    Check(closed, "el comando de cierre oculta el inspector (ClosePanelCommand del VM)");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Check(false, "sonda de paneles (rebanada 4) lanzó: " + ex.GetType().Name + ": " + ex.Message);
+        }
+
         // Fase 3.5 (sin puntero): cambiar el tema por la API del núcleo tiene que re-tematizar el
         // lienzo EN CALIENTE — fondo y tarjetas con los valores del tema nuevo (los pinceles que los
         // ThemeResource del XAML consumen, republicados por UnoThemeHost). La restauración deja el
