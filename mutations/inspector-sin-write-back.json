@@ -1,0 +1,26 @@
+{
+  "id": "inspector-sin-write-back",
+  "hito": 236,
+  "claim": "La edición de un parámetro en el inspector llega al nodo: NodeParameterViewModel.OnValueChanged propaga a NodeViewModel.OnParameterValueChanged (NodeParameterManager escribe el NodeInstance.Parameters). El panel del host Uno escribe p.Value — el write-back NO es del host: es del setter del VM compartido.",
+  "why": "En la rebanada 4 el panel inspector del host Uno edita por p.Value = texto; la cadena setter → OnValueChanged → OnParameterValueChanged → NodeParameterManager escribe el diccionario del NodeInstance es lo que hace que el flujo se EJECUTE con lo que el usuario vio en pantalla (y lo que el flujo guarda). El mutante corta la primera llamada de la cadena: el VM mantiene su valor observable (la UI seguiría pintándolo) pero el nodo jamás se entera — guardar y ejecutar usarían valores viejos. El defecto es de la clase más cara: invisible en la ficha, catastrófico en el flujo. El testigo lee el NodeInstance a través de la misma cadena (el patrón del write-through que el selfcheck verifica en runtime); el control es el test del VM que sólo toca el valor observable y no el nodo.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs",
+      "replacements": [
+        {
+          "old": "        NodeOwner?.OnParameterValueChanged(Key, newValue);",
+          "new": "        _ = newValue;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EditingParameterThroughTheViewModel_ShouldWriteThroughToTheNodeInstance",
+    "why": "La prueba edita por el setter del VM (p.Value = 42, el mismo camino que el panel Uno) y exige el valor nuevo leído del diccionario del nodo: con el mutante el VM mantiene su valor observable pero el diccionario del nodo conserva el valor de construcción y la prueba cae. Es el mismo camino que el selfcheck del host Uno verifica en runtime con 'Width' = '__probe__'."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ToolboxViewModel_SearchText_ShouldExpandMatchingCategories",
+    "why": "Una prueba del catálogo que no toca la cadena de write-back del parámetro: sigue verde con el mutante y separa el veredicto (si cayera, el defecto estaría en otra zona y la ejecución sería IMPRECISA)."
+  }
+}

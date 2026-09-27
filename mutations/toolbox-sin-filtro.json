@@ -1,0 +1,26 @@
+{
+  "id": "toolbox-sin-filtro",
+  "hito": 236,
+  "claim": "ToolboxViewModel.RefreshToolbox respeta SearchText: el catálogo visible se reduce a los nodos que coinciden con el término (nombre, categoría, descripción, rol o etiquetas). El panel del host Uno ata su buscador a esa propiedad del VM del núcleo — si el filtro deja de aplicarse, el buscador del usuario es decorado y la rebanada de los paneles pierde su paridad con el escritorio.",
+  "why": "La rebanada 4 del host Uno monta la caja de herramientas sobre el ToolboxViewModel compartido y su buscador es un binding TwoWay a SearchText: el filtrado NO vive en el host, vive en RefreshToolbox. El mutante convierte la disyunción de coincidencias en siempre verdadera (true ||), así que ningún ítem se descarta NUNCA y el buscador pinta el catálogo entero siempre — el buscador queda decorado. Es invisible para las pruebas de descubrimiento y acordeón (la expansión con búsqueda activa no pasa por la disyunción) pero exactamente el defecto que rompería la paridad del panel. El testigo es la prueba nueva de reducción (la que antes no existía: la del acordeón sólo exigía expansión, no reducción), y el control es la prueba del acordeón que no depende de la comparación.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/ToolboxViewModel.cs",
+      "replacements": [
+        {
+          "old": "bool matches = name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||",
+          "new": "bool matches = true ||",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ToolboxViewModel_SearchText_ShouldReduceTheCatalogueToMatchingNodes",
+    "why": "La prueba exige que con 'Folder' el catálogo visible sea MENOS que el entero y que el Folder Source siga dentro: con el mutante ningún ítem se descarta, el catálogo nunca se reduce y el BeLessThan cae."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ToolboxViewModel_SearchText_ShouldExpandMatchingCategories",
+    "why": "La prueba hermana del mismo fichero sólo aserta el ESTADO DE EXPANSIÓN de los grupos (que no pasa por la disyunción de coincidencias): sigue verde con el mutante, de modo que si la suite entera cayera por otra zona, el veredicto de la mutación sería IMPRECISA."
+  }
+}
