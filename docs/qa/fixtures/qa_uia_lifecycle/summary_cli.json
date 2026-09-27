@@ -1,0 +1,83 @@
+{
+  "WorkflowPath": "E:\\Users\\kaoti\\Documentos\\GitHub\\FileFlow.WT\\Uno-Platform\\docs\\qa\\fixtures\\qa_uia_lifecycle\\qa_uia_lifecycle.json",
+  "Succeeded": true,
+  "IsDryRun": true,
+  "IsWatchMode": false,
+  "DurationMs": 2921,
+  "TotalItemsProcessed": 1,
+  "ProcessedBytes": 146,
+  "ItemsPerSecond": 0.4011475547870282,
+  "MegabytesPerSecond": 5.585436153307544E-05,
+  "ErrorMessage": null,
+  "NodeStats": {
+    "node-src": {
+      "NodeId": "node-src",
+      "ProcessedCount": 1,
+      "TotalTimeMs": 29.4747,
+      "AverageTimeMs": 29.4747,
+      "RelativeBottleneckRatio": 0.6284892436089616,
+      "IsBottleneck": false,
+      "HeatLevel": 1,
+      "RollingAvgDurationMs": 29.4747,
+      "RollingAvgAllocatedBytes": 614792,
+      "PeakAllocatedBytes": 614792,
+      "AvgCpuPercentage": 0,
+      "IsGpuAccelerated": false,
+      "RecentSamples": [
+        {
+          "DurationMs": 29.4747,
+          "AllocatedBytes": 614792,
+          "CpuPercentage": 0,
+          "GpuAccelerated": false,
+          "Timestamp": "2026-09-27T12:28:25.6516009Z"
+        }
+      ]
+    },
+    "node-opt": {
+      "NodeId": "node-opt",
+      "ProcessedCount": 1,
+      "TotalTimeMs": 8.0032,
+      "AverageTimeMs": 8.0032,
+      "RelativeBottleneckRatio": 0.17065229211667096,
+      "IsBottleneck": false,
+      "HeatLevel": 1,
+      "RollingAvgDurationMs": 8.0032,
+      "RollingAvgAllocatedBytes": 14536,
+      "PeakAllocatedBytes": 14536,
+      "AvgCpuPercentage": 0,
+      "IsGpuAccelerated": false,
+      "RecentSamples": [
+        {
+          "DurationMs": 8.0032,
+          "AllocatedBytes": 14536,
+          "CpuPercentage": 0,
+          "GpuAccelerated": false,
+          "Timestamp": "2026-09-27T12:28:25.6595521Z"
+        }
+      ]
+    },
+    "node-snk": {
+      "NodeId": "node-snk",
+      "ProcessedCount": 1,
+      "TotalTimeMs": 9.4198,
+      "AverageTimeMs": 9.4198,
+      "RelativeBottleneckRatio": 0.2008584642743674,
+      "IsBottleneck": false,
+      "HeatLevel": 1,
+      "RollingAvgDurationMs": 9.4198,
+      "RollingAvgAllocatedBytes": 24944,
+      "PeakAllocatedBytes": 24944,
+      "AvgCpuPercentage": 0,
+      "IsGpuAccelerated": false,
+      "RecentSamples": [
+        {
+          "DurationMs": 9.4198,
+          "AllocatedBytes": 24944,
+          "CpuPercentage": 0,
+          "GpuAccelerated": false,
+          "Timestamp": "2026-09-27T12:28:25.6689848Z"
+        }
+      ]
+    }
+  }
+}

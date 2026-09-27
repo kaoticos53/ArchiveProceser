@@ -107,8 +107,12 @@ VM, se añade al VM (portable, probada por ambos hosts).
 
 **Declarado pendiente (no fingido):**
 
-- El toggle compacto/detallado del cajón: `x:Bind` dentro de una `DataTemplate` de WinUI no alcanza
-  la página (sólo ve el ítem) — la insignia de rol va siempre visible.
+- El toggle compacto/detallado del cajón: **RESUELTO en el hito 246** — el `x:Bind` de una
+  DataTemplate de WinUI no alcanza la página (la lección que dejó el pendiente), así que la reacción
+  vive en código: PropertyChanged del VM (el mismo `ToggleViewModeCommand` y la misma persistencia
+  `IsCompactToolbox` que el escritorio), re-aplicación en cada regeneración del catálogo, `Loading`
+  por bloque detallado y la sonda del selfcheck midiendo el árbol (ocultos en compacto, visibles en
+  detallado, restaurados al volver).
 - El botón «Probar» del inspector (prueba aislada con fichero): **RESUELTO en el hito 240** — la
   variante asíncrona del `IFileDialogService` (DIM por delegación en el síncrono, implementación
   real en los dos hosts) y el comando del núcleo consumiéndola; el botón del panel ejecuta

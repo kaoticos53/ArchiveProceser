@@ -1,4 +1,174 @@
-﻿## [2026-09-26] - La Rebanada 4 del Host Uno: la Caja de Herramientas y el Inspector con Paridad al Escritorio (Hito 236)
+﻿## [2026-09-27] - El Toggle Compacto/Detallado del Cajón: el Último Pendiente de Código de la Rebanada 4 (Hito 246)
+
+### 🎯 El encargo
+
+«Resuelve el toggle compacto/detallado del cajón del host Uno, el último pendiente de código de la rebanada 4».
+
+### 🧱 Lo construido
+
+- **El botón en la cabecera** ([`NodeToolboxPanel.xaml`](file:///FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml)): con `AutomationId` `ToolboxViewModeToggle`, atado al **MISMO `ToggleViewModeCommand` del VM del núcleo** que el botón del escritorio — conmutar la vista por su cuenta habría duplicado el estado y burlado la persistencia en preferencias.
+- **La reacción en código, no en bindings** ([`NodeToolboxPanel.xaml.cs`](file:///FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml.cs)): la lección que dejó el pendiente era real — el `x:Bind` de una DataTemplate de WinUI no alcanza la página. La vista escucha `IsCompactMode` del VM por `PropertyChanged` (con desuscripción simétrica en `Dispose`), re-aplica tras cada regeneración del catálogo (`CollectionChanged`), y cada bloque detallado toma SU estado en su `Loading` (los ítems que entran por scroll o regeneración nacen con el modo vigente). El bloque detallado (insignia de rol + descripción) se identifica por `Tag`: el `x:Name` dentro de una DataTemplate no es fiable fuera de su namescope.
+- **La sonda del selfcheck** (`ProbeDetailsBlocks` + `ToggleViewModeViaCommand`): el veredicto del toggle es MEDIDO en el árbol, no declarado — la sonda conmuta por el comando del VM y cuenta los bloques: ocultos en compacto, visibles en detallado, restaurados al volver.
+
+### 🐛 Las dos mediciones que curaron la sonda (honestidad antes que promesa)
+
+- **COMException en plena regeneración**: recorrer el árbol mientras el refresco del favorito regenera el catálogo tumba el recorrido — los recorridos van blindados por rama y la sonda reintenta con pausas. La retroalimentación del VM (Save → PreferencesChanged → RefreshToolbox) regenera los 81 ítems en CADA toggle.
+- **Los contenedores nacidos en colapso no materializan solos**: el dump del árbol lo mostró — 10 ContentPresenters vacíos tras expandir el grupo (las plantillas nunca fabrican su contenido si el contenedor se preparó con el ItemsControl colapsado; por eso la app viva funciona: su layout corre libre, la sonda bloquea el hilo de UI con sus esperas). La cura: `ForceItemTemplates()` mide cada contenedor vacío con tamaño infinito y el pase de layout despierta — la sonda vio 0 → 20 bloques.
+
+### 🛡️ La guardia y la mutación
+
+- **`UnoToolboxPanelGuardTests`** → 7 tests (+1: el toggle atado al comando canónico, el AID, el Tag, la reacción por PropertyChanged, el Loading, la sonda como código vivo); tabla de paridad del cajón → 7 filas (el toggle entra con la cita al test del VM).
+- **Test nuevo del VM** (`ToolboxViewModel_ToggleViewMode_ShouldPersistCompactMode`): conmuta dos veces y compara `IsCompactToolbox` de preferencias con el VM en cada paso, restaurando la preferencia original — la persistencia es lógica del núcleo y SÍ se materializa en la sesión de pruebas.
+- **Mutación `toggle-que-no-persiste`**: **MUERDE** (testigo rojo 1/1, control verde 1/1, árbol restaurado) — `OnIsCompactModeChanged` vaciado: el toggle conmuta igual y la preferencia muere al reiniciar. COVERAGE → **53 declaraciones**.
+
+### 📌 El plan queda sin pendientes de código
+
+El plan de paneles del host Uno ([`docs/uno_panels_plan.md`](file:///docs/uno_panels_plan.md)) cierra su lista: el «Probar» cayó en el 240, el toggle en el 246; quedan declarados los pendientes que NO son código (el gesto de arrastre fino espera puntero real, los pickers de variables esperan el cableado de sus servicios del host).
+
+### ✅ Validación
+
+- Host 0 errores; selfcheck **EXIT 0 (74 OK**, +4 del toggle**)**; suite → **1866 + 1 omitida de 1867, 0 errores** (corrida limpia, sin flakes); mutación MUERDE; COVERAGE 53.
+- En el árbol SIN commitear junto a 243-245 (el 242 consolidado en `611384f`).
+
+---
+
+## [2026-09-27] - El Sondeo Externo del Inspector: la Frontera UIA Medida y Declarada (Hito 245)
+
+### 🎯 El encargo
+
+«Extiende el instrumento --selfcheck-uia con sondeos de las pestañas de snapshots y diff del inspector».
+
+### 🧱 Lo construido
+
+- **La escena que monta la app** ([`RuntimeSelfCheck.MountUiaExternalScene`](file:///FileFlow.App.Uno/RuntimeSelfCheck.cs)): con `--selfcheck-uia` el inspector queda abierto sobre el primer nodo con snapshots REALES — 1 entrada + 3 salidas (una por puerto), vía de producción (`CreateInput`/`CreateOutput`), con `Category` como primera clave — montados con REINTENTOS en hilo de fondo y ASENTADOS 4 s SIN cliente antes de lanzar al observador. La señal `selfcheck-uia-fixture-ready.txt` canta `ready`/`FAILED` y viaja al instrumento por `FILEFLOW_UIA_FIXTURE_SIGNAL`. El orden lo impuso la medición: app → escena → observador.
+- **Las anclas nuevas del panel** ([`NodeInspectorPanel.xaml.cs`](file:///FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs)): tarjetas con `InspectorSnapshotCard_in_<i>` / `out_<puerto>_<i>` en las TRES vistas (el Expander es el portador: el StackPanel raíz sin peer no materializa, la lección del 238) y filas de diff con `InspectorDiffKey_<clave>` en el TextBlock de la clave (con peer), sufijo `#n` ante claves repetidas.
+- **Los sondeos S0/S6/S7 del instrumento** ([`selfcheck_uia_probe.py`](file:///docs/qa/selfcheck_uia_probe.py)): S0 la señal de escena; S6 las 5 cabeceras del Pivot por su AID (Parámetros | Snapshots | Entradas | Salidas | Diff); S7 el switch a Diff por el PATRÓN SelectionItem (comtypes `GetPattern` desde `element_info`, fallback `.select()`), la fila `InspectorDiffKey_Category` leída y vuelta a Parámetros. **EXIT 0, 8/8 sondeos.**
+- **Guardias al día** (`UnoAutomationSurfaceGuardTests` 9 con los 2 nuevos + fila 8 de la tabla de anclas; `UnoInspectorPanelGuardTests` con la paridad por bucles y el AID en el Expander).
+
+### 🐛 La frontera medida: el contenido de snapshots EN PIE tumba al proveedor UIA
+
+- **La secuencia de la caza** (bisect con progreso a fichero, sobrevive a la muerte): (1) contar sin conmutar → 0 tarjetas (el Pivot virtualiza); (2) switch por SelectionItem a Inputs/combinada → **exit 127 silencioso** (sin WER, sin excepción gestionada), el hijo supervive y completa su log; (3) pre-selección programática de la app → muerte ANTES de lanzar al hijo; (4) con la traza temporal: **montado=True y muerte durante el asentamiento SIN cliente** — el contenido materializado mata solo, con retardo de ~2-4 s.
+- **El contraste que la sostiene**: el selfcheck interno conmuta la misma pestaña con try/finally y VERIFICA; el cliente UIA conectado durante la tormenta de eventos de materialización tumba el proceso; la conmutación a pestañas ligeras (Diff, Parámetros) sobrevive. **Declaración honesta**: el contenido de snapshots queda LATENTE para el canal externo (sus tarjetas las verifica el selfcheck interno, que desmonta al restaurar); el switch externo se reserva a Diff. Como la frontera del Invoke del 231: medida, no fingida.
+
+### ✅ Validación
+
+- Host 0 errores; **--selfcheck-uia EXIT 0 (8/8 sondeos)**, con el mensaje de S6 declarando la frontera; selfcheck interno **VERIFICADO** (tarjetas y diff del fixture en el árbol); suite → **1863 + 1 omitida de 1865, 0 errores** (el latido falló una vez en corrida completa: el flake del 222, 9/9 en aislamiento).
+- En el árbol SIN commitear junto a 243-244 (el 242 ya consolidado en `611384f`).
+
+---
+
+## [2026-09-27] - Las Pestañas Separadas de Entradas y Salidas en el Inspector Uno (Hito 244)
+
+### 🎯 El encargo
+
+«Separa las pestañas de Entradas y Salidas en el inspector del host Uno como pestañas distintas con paridad de datos».
+
+### 🧱 Lo construido
+
+- **El Pivot pasa de 3 a 5 pestañas** ([`NodeInspectorPanel.xaml.cs`](file:///FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs)): Parámetros | Snapshots | **Entradas** | **Salidas** | Diff. Las dos nuevas con `AutomationId` `InspectorTabInputs` / `InspectorTabOutputs`, cabeceras por `LocalizationManager` (`Uno_InspectorTabInputs` / `Uno_InspectorTabOutputs`) y **localización en caliente** reescrita junto a las existentes. La combinada del 241 queda intacta: paridad con el escritorio.
+- **Paridad de datos por construcción**: hosts propios (`_inputsHost` / `_outputsHost`) alimentados por `RebuildInputCards()` / `RebuildOutputCards()`, que iteran SOLO su colección del nodo (`InputSnapshots` / `OutputSnapshots`) con la MISMA `BuildSnapshotCard` del 241 (cabecera ▼ In / ▲ Out, Expander y «Ver» canónico con AID por snapshot). Las tarjetas y cabeceras son idénticas a las de la combinada.
+- **Una sola fuente de reconstrucción**: `RebuildAllSnapshotViews()` reconstruye las TRES vistas (combinada + Entradas + Salidas); las suscripciones de colección y el reset por deselección pasan por ella, así cualquier cambio del nodo llega vivo a las tres.
+
+### 🔬 La sonda cazó dos curas (medir antes que prometer)
+
+- **COMException del pivot encadenado**: la primera versión conmutaba las 3 pestañas en el mismo tick — el mismo pivot de WinUI que ya mordió en el 241. Cura: las separadas se verifican **por contenido y cableado, sin conmutar** (counts == sus colecciones, AIDs de ambas, `ReferenceEquals` del `ScrollViewer.Content` con su host); solo la combinada conmuta, como en 241, con try/finally.
+- **Un Add sin reconstrucción**: un Add en las colecciones no reconstruía la combinada (0 tarjetas en la sonda). Cura: el cambio pasa por `RebuildAllSnapshotViews()` también en el `Add`.
+
+### 🛡️ La guardia
+
+`UnoInspectorPanelGuardTests` → **9 tests** (nuevo `InspectorPanel_ShouldSeparateInputsAndOutputs_WithParityOfData`: cada pestaña separada recorre su colección propia, cita `RebuildAllSnapshotViews` como código vivo y exige los AIDs de ambas); tabla de paridad del inspector → 8 filas.
+
+### ✅ Validación
+
+- Host compila con MSBuild de VS: 0 errores; selfcheck **EXIT 0 (70 OK**, con el check del 244 en el reporte**)**; suite → **1862 + 1 omitida de 1863, 0 errores** (el latido falló una vez en corrida completa y pasó 26/26 en aislamiento: el flake documentado del 222).
+- En el árbol SIN commitear junto a 242-243 (pendientes de consolidación cuando se pida).
+
+---
+
+## [2026-09-27] - El Guion UIA del Ciclo Completo: Ejecutar, Snapshot Nuevo y Diff Recalculado (Hito 243)
+
+### 🎯 El encargo
+
+«Extiende el guion UIA para verificar el ciclo completo: ejecutar el flujo, ver el snapshot nuevo
+aparecer en la pestaña y el diff recalculado».
+
+### 🧱 Lo construido
+
+- **El botón Ejecutar en el host Uno** ([`MainWindow.xaml.cs`](file:///FileFlow.App.Uno/MainWindow.xaml.cs)):
+  el comando canónico `ExecuteWorkflowCommand` del ControlBar del núcleo (el MISMO del escritorio,
+  con el coordinador, el dry-run y el checkpoint que la suite ya defiende), con su AutomationId
+  `ExecuteButton` para la observación externa. Con `DefaultDryRunState=true` corre en dry-run:
+  sin escrituras reales ni diálogo de checkpoint.
+- **El canal del ciclo** ([`StatusLineWriter`](file:///FileFlow.App.Uno/StatusLineWriter.cs)):
+  renglón de longitud fija con padding, escritura volátil sin tearing y **fichero espejo**
+  (`execution-status.txt` junto al ejecutable) — el estado de la ejecución y los contadores
+  (snapshots/diff del nodo fuente) legibles desde fuera sin depender del fragmentado del
+  TextBlock en el árbol UIA.
+- **El guion** ([`qa_uia_lifecycle.py`](file:///docs/qa/qa_uia_lifecycle.py) + informe): fixture
+  autocontenido (`docs/qa/fixtures/qa_uia_lifecycle/`, un PNG 1x1 — fuera del catálogo de
+  ejemplos: la primera ubicación violaba 4 guards del catálogo y la suite lo cazó) y 4 sondeos:
+  C0 superficie UIA viva (CanvasRoot + foco + zoom), C1 el `ExecuteButton` expuesto e invocable,
+  C2 el ciclo del motor por el CLI del producto (`--run --dryrun --summary`: **1 elemento
+  procesado, los 3 nodos con stats**), C3 el canal del proceso legible. **4/4 PASS**.
+
+### 🐛 Las dos mediciones que sostienen el guion (honestidad antes que promesa)
+
+- **La frontera, medida otra vez**: el Invoke de UIA sobre `ExecuteButton` no dispara el Click de
+  WinUI (marca latch en el canal: sin «click recibido» con Invoke OK, y Espacio tras `set_focus`
+  UIA tampoco) — la misma frontera del 231 para el puntero, ahora medida en un botón. El guion NO
+  finge el clic: el ciclo del motor se verifica por el **CLI del producto**, el punto de entrada
+  de la casa para el mismo motor (`--run ... --dryrun --summary` trae los contadores del ciclo).
+- **La primera corrida del guion cazó dos cosas**: el volcado de la línea partía el match
+  (`run:` con text-wrap) — cura: el canal del writer — y el fixture vivía en `docs/examples` —
+  cura: `docs/qa/fixtures/` con la suite cazando la violación (4 tests) antes del commit.
+
+### ✅ Validación
+
+Host 0 errores; selfcheck **EXIT 0 (70 OK)**; guion **4/4 PASS**; suite → **1861 superadas + 1
+omitida de 1862, 0 errores**; fixture fuera del catálogo (los guards del catálogo vuelven a
+verde).
+
+---
+
+## [2026-09-27] - Los Scripts Propios del Host Uno: run-uno, run-uno-fast y la Limpieza de los Dos Hosts (Hito 242)
+
+### 🎯 El encargo
+
+«Los scripts de run y demás compilan la versión de Avalonia; crea otros o modifica estos para
+ejecutar la versión de Uno Platform».
+
+### 🧱 Lo construido
+
+- **[`run-uno.ps1`](file:///run-uno.ps1)**, el gemelo de `run.ps1` con las dos diferencias del
+  host: compila con **MSBuild de Visual Studio** (`-MsBuildPath` configurable; los targets de
+  WinAppSDK no corren con `dotnet build` — la lección del tramo Uno) y lanza
+  `FileFlow.App.Uno/bin/.../net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe` con fallback
+  Debug/Release como su hermano. Dos switches de sondeo que **esperan el proceso y heredan su
+  exit code**: `-SelfCheck` (el sondeo interno) y `-SelfCheckUia` (el hijo externo del 239).
+- **[`run-uno-fast.ps1`](file:///run-uno-fast.ps1)**, el gemelo de `run-fast.ps1`: sin compilar,
+  con los mismos switches de sondeo. El aviso de la casa: compilar y lanzar en el MISMO comando
+  cuando el XAML haya cambiado (los builds incrementales obsoletos mintieron a la bisección del
+  233).
+- **`clean.ps1`** cierra ahora también las instancias activas de `FileFlow.App.Uno` (los bloqueos
+  de DLL del host Uno entraban por la misma puerta que los del Avalonia).
+- **AGENTS.md** documenta los comandos nuevos en la sección de validación.
+
+### 🔬 La verificación, end-to-end
+
+- `run-uno-fast.ps1 -SelfCheck` → **VERIFICADO, exit 0** (sondeo interno sobre el binario existente).
+- `run-uno.ps1 -SelfCheckUia` → compila con MSBuild de VS y el sondeo externo da **VERIFICADO 5/5,
+  exit 0** (anclas, foco, zoom, spotlight, buscador — pid 66968).
+- La primera prueba del fast **cazó una trampa del scripting**: `-SelfCheck` sin switch declarado
+  caía a `$AppArgs`, la app arrancaba viva con un argumento muerto y el script devolvía exit 0 sin
+  veredicto. Cura: switches declarados en los DOS scripts y el aviso de que los sondeos heredan el
+  exit code — el mismo contrato que el modo ya imprimía.
+
+### ✅ Validación
+
+Los dos scripts con sus dos modos en exit 0; `clean.ps1` con los dos procesos; sin tocar código de
+producto ni tests (infraestructura de lanzamiento).
+
+## [2026-09-26] - La Rebanada 4 del Host Uno: la Caja de Herramientas y el Inspector con Paridad al Escritorio (Hito 236)
 
 ### 🎯 El encargo
 
