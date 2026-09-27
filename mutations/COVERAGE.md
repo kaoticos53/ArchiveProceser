@@ -4,7 +4,7 @@
 > **No se edita a mano.**
 > Regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`.
 
-Mutaciones declaradas: 52
+Mutaciones declaradas: 53
 Subsistemas del producto con alguna mutación: 15 de 17
 Guardias que auditan el repositorio con mutación que las muerda: 9 de 38
 
@@ -61,6 +61,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 9 de 38
 | `tarjeta-que-no-habla-por-su-color` | `FileFlow.App.Core/Services/PortPalette.cs` | `SocketMatrixTests` | `UnoGeometryBindingGuardTests` |
 | `tema-sin-repintado` | `FileFlow.App.Uno/Platform/UnoThemeHost.cs` | `UnoThemeRepaintGuardTests` | `ThemeHost_ShouldKeepCreatingMissingBrushes_AndThePortableGenerator` |
 | `texto-del-pdf-que-se-olvida` | `FileFlow.Plugin.Documents/PdfTextExtractorNode.cs` | `PdfTextExtractorNode_ExtractsTextSuccessfully` | `PdfSplitNode_SplitsMultiplePagePdf` |
+| `toggle-que-no-persiste` | `FileFlow.App.Core/ViewModels/ToolboxViewModel.cs` | `ToolboxViewModel_ToggleViewMode_ShouldPersistCompactMode` | `ToolboxViewModel_SearchText_ShouldExpandMatchingCategories` |
 | `token-de-tema-que-desaparece` | `FileFlow.App/Services/ThemeResourceApplier.cs` | `ThemeTokenCompletenessTests` | `DisabledStateLintTests` |
 | `toolbox-sin-filtro` | `FileFlow.App.Core/ViewModels/ToolboxViewModel.cs` | `ToolboxViewModel_SearchText_ShouldReduceTheCatalogueToMatchingNodes` | `ToolboxViewModel_SearchText_ShouldExpandMatchingCategories` |
 | `validador-sin-materializar-puertos` | `FileFlow.Core/Engine/GraphValidator.cs` | `GraphValidatorDynamicPortTests` | `GraphValidatorTests` |
@@ -111,7 +112,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 ## Dónde muta cada declaración
 
 - **FileFlow.App**: `enlace-de-geometria-sin-proyeccion`, `token-de-tema-que-desaparece`
-- **FileFlow.App.Core**: `cable-con-la-curva-al-reves`, `inspector-sin-write-back`, `latido-rearrancado-que-no-late`, `prueba-sincrona-en-hilo-de-ui`, `tarjeta-que-no-habla-por-su-color`, `toolbox-sin-filtro`
+- **FileFlow.App.Core**: `cable-con-la-curva-al-reves`, `inspector-sin-write-back`, `latido-rearrancado-que-no-late`, `prueba-sincrona-en-hilo-de-ui`, `tarjeta-que-no-habla-por-su-color`, `toggle-que-no-persiste`, `toolbox-sin-filtro`
 - **FileFlow.App.Uno**: `cable-con-anclas-estimadas`, `cables-que-no-llegan-tarde`, `decoradores-que-no-llegan-al-arbol`, `lienzo-sin-peer-uia`, `snapshots-congelados-en-el-panel`, `sondeo-uia-sin-hijo-externo`, `tema-sin-repintado`
 - **FileFlow.Core**: `diario-acumula-ejecuciones`, `ejecucion-pausada-heredada`, `modo-virtual-heredado`, `punto-de-control-sobrevive-a-la-ejecucion`, `punto-de-control-vuelve-a-escribir-por-archivo`, `retroalimentacion-de-barrera-contada-como-ciclo`, `retroalimentacion-sin-avisos`, `struct-de-shell-desalineado`, `validador-sin-materializar-puertos`
 - **FileFlow.Plugin.AI**: `cache-de-embeddings-sin-entorno`, `carpeta-de-nodo-de-ia-donde-corre`, `modelo-clip-buscado-por-su-id`
