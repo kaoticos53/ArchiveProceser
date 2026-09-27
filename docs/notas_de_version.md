@@ -772,7 +772,51 @@ visible: construye las pruebas de que lo construido **no se puede romper en sile
 
 ---
 
-## 12. Cómo verificarlo
+## 12. El tramo de los paneles del editor Uno (compilación 6084 → 6131)
+
+### Lo que ves
+
+- **El host multiplataforma ya es un editor de tres zonas como el escritorio**: a la izquierda la caja
+  de herramientas (buscador, chips de categoría, grupos acordeón, insignia de rol); en el centro el lienzo
+  de la rebanada anterior; a la derecha el inspector del nodo seleccionado, que se abre con la selección
+  y se cierra con su botón.
+- **Encontrar y añadir un nodo**: escribe en el buscador y el catálogo se queda con lo que coincide;
+  un doble clic en el nodo lo crea en el centro del lienzo — con su deshacer de siempre, su conteo de uso
+  y su selección. El filtro de búsqueda y las categorías son las mismas que en el escritorio, traducidas
+  a los dos idiomas y sensibles al cambio sin reiniciar.
+- **Editar un nodo**: cada parámetro muestra el editor que le toca (interruptor, deslizador, desplegable,
+  ruta con botón de explorar que abre los pickers de Windows, texto de varias líneas, texto corto), y lo
+  que escribes llega al nodo — no sólo a la ficha: es lo que el flujo ejecuta y guarda. Bajo el campo,
+  el valor evaluado con su botón de copiar cuando el parámetro lleva expresiones.
+- **La telemetría del nodo**: estado, procesados, latencia media, tiempo total y pico de memoria, con el
+  botón de vaciar métricas.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **Cero lógica duplicada en el host**: el catálogo, el filtro, el acordeón y la ficha son los view models
+  compartidos del núcleo (los mismos del escritorio); el host Uno sólo escribió vistas. Dos guardias de
+  árbol exigen ese consumo y una tabla de paridad por panel cuyas citas se verifican contra el índice
+  real de pruebas — la tabla no puede mentir.
+- **El write-through defendido por su mutación**: si la cadena que lleva la edición del parámetro al nodo
+  se corta, un testigo rojo cae (el valor observable seguiría pintándose con el nodo usando valores
+  viejos — el defecto más caro de la ficha). Y el filtro del buscador tiene el suyo: un mutante que
+  pinta el catálogo entero siempre muere en la prueba de reducción.
+- **48 mutaciones declaradas** cubren ya los defectos de las dos rebanadas del host Uno, con testigo que
+  muerde y control en verde.
+- **El sondeo en runtime** (`--selfcheck`) verifica la rebanada en la app viva (63 comprobaciones):
+  catálogo poblado, filtro que reduce y restaura, añadir con deshacer, favorito conmutado y restaurado,
+  inspector con sus editores, la edición llegando al nodo y el cierre del panel.
+
+### Lo que sigue viéndose así (declarado)
+
+- El conmutador de vista compacta/detallada del cajón y el botón «Probar» aislado del inspector esperan
+  su variante (el segundo, un diálogo de fichero asíncrono); los pickers de variables y los diálogos de
+  nodo caen a su no-op seguro. El gesto de arrastre fino desde el cajón espera la sesión con puntero real
+  del tramo anterior; el doble clic ya cubre el añadido.
+
+---
+
+## 13. Cómo verificarlo
 
 ```powershell
 # La suite completa (pruebas unitarias, de integración y de aspecto)

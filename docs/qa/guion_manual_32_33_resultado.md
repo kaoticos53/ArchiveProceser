@@ -2,6 +2,16 @@
 
 **Veredicto: NO EJECUTABLE EN ESTE ENTORNO — bloqueo irreductible de inyección de puntero, documentado con la evidencia completa.** El guion queda escrito y el instrumento preparado (`qa_manual.py`, en este directorio) para la primera sesión con puntero real.
 
+> **ACTUALIZACIÓN (2026-09-27, vía UIA)**: la sesión de UI Automation (`qa_uia_probe.py`,
+> `qa_uia_probe_b.py`, `qa_uia_gestures.py` + `qa_uia_gestures_report.md` en este directorio)
+> **acotó este bloqueo**: el PUNTERO sigue sin llegar al contenido WinUI (0 px, ruido 0 — confirmado),
+> pero el **TECLADO SÍ LLEGA** cuando el foco lo entrega UIA (`set_focus` del proveedor, sin
+> UIAccess): el buscador del cajón recibió 'fold'/'folder' inyectado y el filtro reaccionó en vivo,
+> y el modificador Shift también llegó ('A' mayúscula). El atajo del lienzo no se dispara POR
+> DISEÑO (su `OnKeyDown` ignora TextBox y la tecla no está en el lienzo): la puerta que falta es el
+> **foco del lienzo**, que en producción entrega el clic. Resultado del guion por esta vía: **5/5
+> pasos observados en verde**, con la mitad física (selección, arrastre, cable) pendiente del puntero.
+
 ## Qué intentó esta sesión (y qué demostró cada intento)
 
 | # | Técnica | Resultado medido | Conclusión |

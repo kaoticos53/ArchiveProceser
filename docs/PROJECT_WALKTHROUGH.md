@@ -1,4 +1,132 @@
+## [2026-09-26] - La Rebanada 4 del Host Uno: la Caja de Herramientas y el Inspector con Paridad al Escritorio (Hito 236)
+
+### 🎯 El encargo
+
+«Abre el siguiente tramo del host Uno: la caja de herramientas y el inspector de nodos con paridad al escritorio».
+
+### 📜 El plan escrito antes de tocar código
+
+[`docs/uno_panels_plan.md`](file:///docs/uno_panels_plan.md) fija la decisión tras medir: los dos
+view models (`ToolboxViewModel`, `NodeInspectorViewModel`) ya viven SOLO en `FileFlow.App.Core` y el
+host Avalonia los consume de ahí — el host Uno no porta NADA del núcleo, sólo escribe **vistas**.
+El contrato no se extrae: es la superficie pública de los VMs, la misma regla de la rebanada 3.
+
+### 🧱 Lo construido (fases 4.1)
+
+- **`MainWindow` en tres columnas**: cajón (280) | lienzo | inspector (300, visible según `IsOpen`).
+- **`NodeToolboxPanel`** (WinUI, XAML + `x:Bind`): buscador atado por binding TwoWay a `SearchText`,
+  chips de categoría desde `AvailableCategories` (contadores en vivo), grupos acordeón de
+  `CategoryGroups` (la expansión exclusiva la gestiona el VM), iconos por el conversor del paquete
+  `Material.Icons` (los mismos datos que el escritorio), insignia de rol (`RoleBadge` compartido) y
+  **doble clic para añadir** en el centro del viewport por el `EditorViewModel.AddNode` canónico
+  (preferencias de uso, undo y selección llegan por el núcleo).
+- **`NodeInspectorPanel`** (WinUI, construido por código — WinUI no selecciona DataTemplates por
+  propiedad del ítem): la tabla de editores decide con los MISMOS flags del `NodeParameterViewModel`
+  que el Selector de estilos del escritorio (toggle → slider → desplegable → ruta con explorar →
+  multilínea → texto/número), el valor evaluado con su copia por comando del VM, y el bloque de
+  telemetría del `NodeViewModel` (estado, procesados, latencia media, tiempo total, pico de memoria)
+  con el vaciado por `UpdateTelemetryStats(Empty)`.
+- **`UnoFileDialogService`**: pickers de `Windows.Storage.Pickers` con el contrato SÍNCRONO del
+  núcleo, ejecutados en el hilo de UI y bloqueados fuera de él (el guard declara lo que no puede:
+  una llamada síncrona desde UI devolvería null antes que interbloquear). Registrado sobre el nulo
+  del registro portátil — el botón «explorar» de la ficha funciona.
+- **Localización en caliente**: títulos y placeholders del panel por claves `Uno_*` en `App.xaml`
+  (el catálogo en sí hereda la localización del núcleo: recursos de plugins, sin copiar cadenas).
+
+### 🔎 La sonda del selfcheck (la rebanada medida en la app viva)
+
+`--selfcheck` EXIT 0 con la rebanada nueva verificada en el árbol real: catálogo poblado (81 ítems
+con todos los plugins), filtro que reduce (81 → 5 con «Folder», restaurado), doble clic que añade
+por `AddNode` con undo de restauración, favorito conmutado por `ToggleFavoriteCommand` (y
+restaurado), inspector abierto por selección con 10/10 editores materializados, **write-through
+verificado** (`'Width' = '__probe__'` llega al `NodeInstance`) y cierre por `ClosePanelCommand`.
+
+### 🛡️ Las guardias (fases 4.2) y las mutaciones que muerden (fase 4.3)
+
+- **`UnoToolboxPanelGuardTests`** (6 tests): el panel consume el VM del núcleo, añade por
+  `AddNode`, busca por `SearchText` y filtra por las colecciones del VM (guardia de árbol, la
+  lección del 232) + la tabla de paridad del panel (6 filas) con citas verificadas contra
+  `TestSuiteIndex.MethodNames` (la lección del 227).
+- **`UnoInspectorPanelGuardTests`** (5 tests): la tabla de flags completa (los mismos criterios de
+  editor que el escritorio), la edición por el setter del VM (el write-back es del NÚCLEO, no del
+  host), la telemetría desde `CurrentStats` + tabla de paridad (5 filas).
+- **Dos mutaciones nuevas, MUERDEN** (testigo rojo + control verde, árbol restaurado por bytes):
+  - `toolbox-sin-filtro`: la disyunción de coincidencias siempre verdadera — el buscador queda
+    decorado y pinta el catálogo entero siempre. Testigo: la prueba NUEVA de reducción
+    (`ToolboxViewModel_SearchText_ShouldReduceTheCatalogueToMatchingNodes` — la que antes no
+    existía: la del acordeón sólo exigía expansión, no reducción).
+  - `inspector-sin-write-back`: la cadena `p.Value → OnValueChanged → OnParameterValueChanged →
+    NodeParameterManager` cortada — el VM mantiene su valor observable y el nodo jamás se entera
+    (guardar y ejecutar usarían valores viejos). Testigo:
+    `EditingParameterThroughTheViewModel_ShouldWriteThroughToTheNodeInstance` (edita por el setter
+    y lee del diccionario del nodo).
+- COVERAGE.md regenerado → **48 declaraciones**; `FileFlow.App.Core` suma dos mutaciones.
+
+### 🐛 Las lecciones del camino
+
+- El término del testigo del filtro: en el entorno de pruebas los resx de plugins SÍ están
+  registrados (los nombres llegan en español), así que un término de nombre («Folder») es frágil;
+  el término por ROL («Source», `role.ToString()` crudo) es independiente del locale. Dos
+  sobrevivencias enseñaron esto antes del MUERDE.
+- El testigo del write-back: los tests existentes escriben el diccionario del nodo DIRECTAMENTE
+  (sin pasar por la cadena del VM), así que no pueden ver el corte — hizo falta la prueba que
+  recorra exactamente el camino del usuario.
+- `x:Bind` dentro de una `DataTemplate` de WinUI no alcanza la página (sólo ve el ítem): el toggle
+  compacto/detallado del escritorio queda DECLARADO pendiente en el plan (la insignia de rol va
+  siempre visible).
+
+### ✅ Validación
+
+- Host Uno: 0 errores; selfcheck **EXIT 0** con la rebanada nueva (63 comprobaciones, las 10 de
+  paneles incluidas) y la medición de 3.6 intacta (build 25 ms, re-posicionado 1,5 ms, drag 1,2 ms).
+- Suite completa → **1849 superadas + 1 omitida de 1850, 0 errores** (las 12 nuevas: 1 testigo de
+  reducción, 1 testigo de write-through, 6 + 5 de guardias).
+
+---
+
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
+
+## [2026-09-27] - El Guion 3.2/3.3 vía UIA: el Teclado Sí Llega y el Bloqueo del 231 queda Acotado (Hito 237)
+
+### 🎯 El encargo
+
+«Ejecuta el guion de gestos 3.2/3.3 del host Uno vía UI Automation (UIA), la vía que no exige UIAccess, y deja el resultado escrito».
+
+### 🔬 Las dos sondas previas
+
+- **Sonda A** ([`qa_uia_probe.py`](file:///docs/qa/qa_uia_probe.py)): el árbol UIA de la app WinUI SÍ se
+  expone sin UIAccess (57 textos, tarjetas por título, automation_id de x:Name: `SearchBox`, `TitleText`,
+  `ZoomText` — anclas estables para el sondeo futuro); ni Invoke ni SelectionItem sobre un Text; el click
+  físico sobre el elemento UIA cambia 0 px (ruido base 0): **el PUNTERO sigue bloqueado** (coherente con el
+  231). pywinauto 0.6.9 (user site): `descendants()` no acepta `automation_id` en esta versión — filtrar en
+  Python.
+- **Sonda B** ([`qa_uia_probe_b.py`](file:///docs/qa/qa_uia_probe_b.py)): **set_focus UIA + keybd_event
+  LLEGAN** — teclear 'fold' con el foco entregado por el proveedor UIA escribió el buscador del cajón y el
+  filtro reaccionó en vivo (57→43 textos, grupos 7→3). El hallazgo que refina el 231: el teclado inyectado
+  SÍ llega al contenido WinUI; lo que falló en el 231 fue el FOCO (nada lo tenía).
+
+### 🎬 El guion, 5/5 en verde
+
+[`qa_uia_gestures.py`](file:///docs/qa/qa_uia_gestures.py) + informe
+[`qa_uia_gestures_report.md`](file:///docs/qa/qa_uia_gestures_report.md): 3.2.0 tarjetas expuestas por título
+(Folder Source=2, Destination Sink=1); 3.2.1 'folder' con foco UIA filtra el catálogo; 3.2.2 'a' entra al
+cuadro con el foco residual del TextBox (el foco no se mueve con backspaces — lección de instrumento);
+3.2.3 Shift+A escribe 'A' MAYÚSCULA (el modificador también llega); el atajo del LIENZO no se dispara POR
+DISEÑO (su OnKeyDown ignora TextBox y la tecla no está en el lienzo); 3.3.0 estado de conexión observable.
+
+### 📌 El acotamiento (el veredicto del guion)
+
+El bloqueo del 231 NO es el teclado (llega, con y sin Shift, con foco UIA): es el **foco del lienzo**, que
+en producción entrega el clic del usuario (puntero). La mitad física del guion (selección, arrastre, cable)
+sigue esperando puntero real o UIAccess; la lógica sigue demostrada por las sondas del selfcheck. Dar foco
+programático al lienzo sería fingir el gesto: otro canal, no el gesto.
+
+### ✅ Validación
+
+Sin tocar código de producto (instrumento QA únicamente); informe escrito y cross-referencia añadida en
+[`guion_manual_32_33_resultado.md`](file:///docs/qa/guion_manual_32_33_resultado.md).
+
+---
 
 ## [2026-09-26] - La Mutación del Tema sin Repintado: la Lección del 233 queda Defendida (Hito 235)
 
