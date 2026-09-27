@@ -15,9 +15,27 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <!-- Título (el toggle compacto/detallado del escritorio queda pendiente, declarado en el plan) -->
-    <TextBlock x:Name="TitleText" Grid.Row="0" FontSize="13" FontWeight="SemiBold"
-               Foreground="{StaticResource CanvasTextBrush}" />
+    <!-- Título + toggle compacto/detallado (hito 246): el MISMO comando ToggleViewModeCommand del
+         VM del núcleo que el escritorio. La reacción vive en código (el x:Bind de una DataTemplate
+         de WinUI no alcanza la página — la lección que dejó el pendiente declarado). -->
+    <Grid Grid.Row="0" ColumnSpacing="6">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="TitleText" Grid.Column="0" FontSize="13" FontWeight="SemiBold"
+                 VerticalAlignment="Center"
+                 Foreground="{StaticResource CanvasTextBrush}" />
+      <Button x:Name="ViewModeToggle" Grid.Column="1" Click="OnViewModeToggleClicked"
+              AutomationProperties.AutomationId="ToolboxViewModeToggle"
+              Background="Transparent" BorderThickness="1" BorderBrush="{StaticResource CanvasSecondaryBrush}"
+              Padding="6,2" VerticalAlignment="Center">
+        <PathIcon x:Name="ViewModeIcon"
+                  Data="M3,2.5 H21 V4.5 H3 Z M3,7.5 H21 V9.5 H3 Z M3,12.5 H21 V14.5 H3 Z M3,17.5 H13 V19.5 H3 Z"
+                  Width="12" Height="12"
+                  Foreground="{StaticResource CanvasSecondaryBrush}" />
+      </Button>
+    </Grid>
 
     <!-- Buscador + chips de categoría -->
     <StackPanel Grid.Row="1" Spacing="6">
@@ -73,8 +91,18 @@
                           <TextBlock Text="{Binding Name}" FontSize="12"
                                      Foreground="{StaticResource CanvasTextBrush}"
                                      TextTrimming="CharacterEllipsis" MaxLines="1" />
-                          <TextBlock Text="{Binding RoleBadge}" FontSize="10"
-                                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+                          <!-- El bloque detallado (insignia de rol + descripción) vive sólo en modo
+                               detallado: la visibilidad la aplica el código — al conmutar el VM y al
+                               materializarse el contenedor (Loading; el recorrido del árbol en
+                               plena regeneración de ítems lanza COMException, la medición del 246)
+                               — en compacto queda el nombre, como en el escritorio. -->
+                          <StackPanel x:Name="ToolboxItemDetails" Tag="ToolboxItemDetails" Loading="OnToolboxItemDetailsLoading">
+                            <TextBlock Text="{Binding RoleBadge}" FontSize="10"
+                                       Foreground="{StaticResource CanvasSecondaryBrush}" />
+                            <TextBlock Text="{Binding Description}" FontSize="10"
+                                       Foreground="{StaticResource CanvasSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" MaxLines="2" Opacity="0.85" />
+                          </StackPanel>
                         </StackPanel>
                       </StackPanel>
                     </Border>

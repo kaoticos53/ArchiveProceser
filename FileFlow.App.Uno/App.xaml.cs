@@ -86,7 +86,11 @@ public partial class App : Application
         // hilo de UI sigue bombeando mensajes, que es por donde UIA responde).
         if (Environment.GetCommandLineArgs().Contains("--selfcheck-uia", StringComparer.Ordinal))
         {
-            SelfCheckUia.Run();
+            // La escena del inspector (hito 245) se monta y asienta ANTES de lanzar al hijo: el
+            // observador (cliente UIA) llega a escena quieta — la materialización del contenido
+            // con Expander dispara una tormenta de eventos UIA que, con cliente conectado, tumba
+            // el proceso (medido: exit 127 sin WER ni excepción).
+            SelfCheckUia.Run(s_mainWindow);
         }
 
         // Sondeo en runtime (--selfcheck en la línea de comandos): monta la app real y confirma el

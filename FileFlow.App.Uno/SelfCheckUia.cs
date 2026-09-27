@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using Microsoft.UI.Xaml;
 
 namespace FileFlow.App.Uno;
 
@@ -32,15 +33,19 @@ public static class SelfCheckUia
     /// <summary>Timeout del hijo: el sondeo completo de las sondas QA corre en menos de un minuto.</summary>
     private static readonly TimeSpan ChildTimeout = TimeSpan.FromSeconds(180);
 
+    /// <summary>La señal de escena lista del fixture del inspector (hito 245), junto al ejecutable.</summary>
+    private static string FixtureSignalPath => Path.Combine(AppContext.BaseDirectory, "selfcheck-uia-fixture-ready.txt");
+
     private static string ReadySignalPath => Path.Combine(AppContext.BaseDirectory, "selfcheck-uia-ready.txt");
 
     private static string ReportPath => Path.Combine(AppContext.BaseDirectory, "selfcheck-uia-report.txt");
 
     /// <summary>
-    /// Corre el sondeo UIA: señal de listo, hijo externo, veredicto por su código de salida.
-    /// Devuelve -1 (el proceso termina dentro del sondeo, por <see cref="Environment.Exit"/>).
+    /// Corre el sondeo UIA: escena del inspector montada y ASENTADA sin cliente, señal de listo,
+    /// hijo externo, veredicto por su código de salida. Devuelve -1 (el proceso termina dentro
+    /// del sondeo, por <see cref="Environment.Exit"/>).
     /// </summary>
-    public static int Run()
+    public static int Run(Window? mainWindow)
     {
         // Hilo de fondo: el hilo de UI tiene que seguir bombeando mensajes para que el proveedor
         // UIA del proceso (WM_GETOBJECT) responda a la observación externa — un proceso bloqueado
@@ -55,6 +60,12 @@ public static class SelfCheckUia
             {
                 // La señal es una conveniencia de diagnóstico; su falta no decide el veredicto.
             }
+
+            // La escena ANTES del hijo (hito 245): la materialización del contenido con Expander
+            // dispara una tormenta de eventos UIA que, CON un cliente conectado, tumba el proceso
+            // (medido: exit 127 sin WER ni excepción). Montar y asentar sin cliente, lanzar al
+            // observador a escena quieta.
+            RuntimeSelfCheck.MountUiaExternalScene(mainWindow);
 
             int exitCode = RunChildProbe(out string output);
 
@@ -104,6 +115,10 @@ public static class SelfCheckUia
         };
         start.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
         start.EnvironmentVariables["FILEFLOW_UIA_TARGET_PID"] = Process.GetCurrentProcess().Id.ToString();
+
+        // La ruta de la señal del fixture (hito 245): el observador espera el fichero antes del
+        // primer switch — conmutar el Pivot dentro de su propia reconstrucción tumba el proceso.
+        start.EnvironmentVariables["FILEFLOW_UIA_FIXTURE_SIGNAL"] = FixtureSignalPath;
 
         using var child = new Process { StartInfo = start };
         try

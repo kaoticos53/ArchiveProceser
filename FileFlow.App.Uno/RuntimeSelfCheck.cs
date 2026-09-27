@@ -43,6 +43,150 @@ public static class RuntimeSelfCheck
         return -1; // el proceso termina por Environment.Exit dentro del sondeo
     }
 
+    /// <summary>
+    /// El fixture de la observación externa (hito 245): con <c>--selfcheck-uia</c> la app deja el
+    /// inspector ABIERTO sobre el primer nodo con snapshots REALES — 1 entrada y 3 salidas (una por
+    /// puerto del nodo), todos por la vía de producción (CreateInput/CreateOutput con un
+    /// FileItemContext, la misma fábrica que usa el motor). El instrumento externo no puede montar
+    /// el fixture — su ventana al árbol es la observación, no la manipulación — así que la escena la
+    /// prepara la app antes de lanzar al hijo. Los snapshots quedan VIVOS (no se retiran): son los
+    /// datos que el observador va a contar, y el proceso vive solo para ser observado.
+    /// </summary>
+    /// <param name="window">La ventana principal ya materializada (tras el Activate).</param>
+    /// <param name="dispatcher">La cola del hilo de UI: el fixture corre dentro de ella.</param>
+    /// <summary>
+    /// Monta la escena de la observación externa (hito 245) BLOQUEANDO al hilo llamador (el de
+    /// fondo de <see cref="SelfCheckUia"/>, nunca el de UI): con REINTENTOS (la lección de
+    /// materialización del 3.6) el inspector queda abierto sobre el primer nodo con sus snapshots
+    /// reales — 1 entrada y 3 salidas, vía de producción (CreateInput/CreateOutput) — y la
+    /// combinada pre-seleccionada por la vía programática.
+    ///
+    /// <para><b>El orden que la medición impuso</b>: la materialización del contenido con Expander
+    /// dispara una tormenta de eventos UIA que TUMBA el proceso si un cliente observador está
+    /// conectado (medido: switch + cliente = exit 127 sin WER ni excepción; switch sin cliente =
+    /// el selfcheck interno sobrevive; cliente sin switch = sobrevive). Por eso la escena se
+    /// monta y ASENTE (4 s) SIN cliente, y solo entonces el modo lanza al hijo.</para>
+    ///
+    /// <para>Devuelve true si la escena quedó montada. La señal SIEMPRE se escribe (ready/FAILED):
+    /// el observador no espera de más y el reporte cuenta lo que hubo — una escena caída canta
+    /// los sondeos como FALLO honesto.</para>
+    /// </summary>
+    public static bool MountUiaExternalScene(Window? window)
+    {
+        // Señal STALE fuera ANTES de montar (hito 245): el fichero solo existe entre el fin del
+        // fixture y el próximo arranque.
+        try
+        {
+            File.Delete(FixtureSignalPath);
+        }
+        catch
+        {
+        }
+
+        bool sceneMounted = false;
+        string mountError = "sin intento completado";
+        DispatcherQueue dispatcher = window?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();            for (int attempt = 0; attempt < 30 && !sceneMounted; attempt++)
+            {
+                Thread.Sleep(attempt == 0 ? 1500 : 500);
+                var completed = new ManualResetEventSlim(false);
+                dispatcher.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        sceneMounted = TryMountUiaScene(window!);
+                    }
+                    catch (Exception ex)
+                    {
+                        mountError = ex.GetType().Name + ": " + ex.Message;
+                    }
+                    finally
+                    {
+                        completed.Set();
+                    }
+                });
+
+                completed.Wait(TimeSpan.FromSeconds(10));
+            }
+
+        if (sceneMounted)
+        {
+            // El asentamiento SIN cliente: la tormenta de materialización del contenido con
+            // Expander pasa aquí — el hijo (cliente UIA) llega después, a escena quieta.
+            Thread.Sleep(4000);
+        }
+
+        try
+        {
+            File.WriteAllText(FixtureSignalPath, sceneMounted
+                ? "ready " + DateTime.Now.ToString("HH:mm:ss.fff")
+                : "FAILED " + mountError);
+        }
+        catch
+        {
+        }
+
+        return sceneMounted;
+    }
+
+    /// <summary>La señal de escena lista del fixture (hito 245), junto al ejecutable.</summary>
+    private static string FixtureSignalPath => Path.Combine(AppContext.BaseDirectory, "selfcheck-uia-fixture-ready.txt");
+
+    /// <summary>
+    /// Un intento de montaje de la escena (idempotente): el inspector abierto sobre el primer nodo
+    /// con sus snapshots reales y la combinada pre-seleccionada. Devuelve false si el árbol aún no
+    /// está listo (reintento).
+    /// </summary>
+    private static bool TryMountUiaScene(Window window)
+    {
+        var canvas = Find<EditorCanvasControl>(window.Content);
+        var inspector = Find<NodeInspectorPanel>(window.Content);
+        if (canvas?.Editor is not { } editor || inspector is null)
+        {
+            return false;
+        }
+
+        var firstNode = editor.Nodes.FirstOrDefault();
+        if (firstNode is null)
+        {
+            return false;
+        }
+
+        // La escena determinista: 1 entrada + 3 salidas (el primer nodo del ejemplo tiene 3
+        // puertos de salida; con menos, los que haya). «Category» es la PRIMERA clave de cada
+        // metadato: la fila Added 'InspectorDiffKey_Category' nace en el orden del Dictionary y el
+        // observador la busca por nombre sin descifrar el orden.
+        if (firstNode.InputSnapshots.Count == 0)
+        {
+            var probeItem = new FileItemContext(Path.Combine(Path.GetTempPath(), "__uia_probe__.txt"));
+            probeItem.Metadata["Category"] = "Probe";
+            firstNode.InputSnapshots.Add(NodeDataSnapshot.CreateInput(firstNode.Id, "In", probeItem));
+        }
+
+        if (firstNode.OutputSnapshots.Count == 0)
+        {
+            int outputPorts = Math.Max(firstNode.OutputPorts.Count, 1);
+            for (int i = 0; i < Math.Min(outputPorts, 3); i++)
+            {
+                string portName = i < firstNode.OutputPorts.Count
+                    ? firstNode.OutputPorts[i].Name
+                    : "Out";
+                var outItem = new FileItemContext(Path.Combine(Path.GetTempPath(), "__uia_probe_out_" + i + ".txt"));
+                outItem.Metadata["Category"] = "Out" + i;
+                firstNode.OutputSnapshots.Add(NodeDataSnapshot.CreateOutput(firstNode.Id, portName, outItem));
+            }
+        }
+
+        inspector.InspectForProbe(firstNode);
+
+        // La pestaña activa queda en PARÁMETROS (la ligera por defecto): el contenido de snapshots
+        // EN PIE —cabecera con Expander materializada— tumba al proveedor UIA del proceso con
+        // retardo (la frontera medida del 245: montado=True y muerte ~2-4 s después, sin WER ni
+        // excepción; el selfcheck interno sobrevive porque su try/finally DESMONTA al restaurar).
+        // La combinada la conmuta el selfcheck interno (vía segura probada) — nunca en pie para el
+        // observador externo.
+        return true;
+    }
+
     private static bool Inspect(Window window, StringBuilder report)
     {
         bool ok = true;
@@ -262,6 +406,44 @@ public static class RuntimeSelfCheck
                 bool favRestored = favOk && tb.ToggleFavoriteViaCommand();
                 Check(favOk && favRestored, "favorito conmutado por ToggleFavoriteCommand (y restaurado)");
 
+                // Hito 246: el toggle compacto/detallado del cajón — el ÚLTIMO pendiente de código
+                // de la rebanada 4. La sonda conmuta por el MISMO comando del VM que el botón y
+                // compara el estado del árbol. El ritmo lo impone el diseño del VM: cada toggle
+                // persiste en preferencias y el refresco REGENERA el catálogo (Save ->
+                // PreferencesChanged -> RefreshToolbox) — entre pasos, asentar el dispatcher.
+                // La sonda expande el primer grupo: con el acordeón colapsado no hay contenedores
+                // que contar (medido: 0 de 0).
+                var firstGroup = tb.FirstGroupWithItemsForProbe();
+                Check(firstGroup is not null, "el cajón trae grupos con ítems para la sonda del modo");
+
+                if (firstGroup is { } group)
+                {
+                    group.IsExpanded = true;
+                    Thread.Sleep(400);
+
+                    var (detTotal, detHidden, detVisible) = tb.ProbeDetailsBlocks();
+                    bool compactOk = tb.IsCompact && detVisible == 0;
+                    Check(compactOk,
+                        $"el cajón arranca en compacto: {detTotal} bloques detallados materializados y {detVisible} visibles (0 esperados)");
+
+                    tb.ToggleViewModeViaCommand();
+                    Thread.Sleep(600);
+                    var (d2, h2, v2) = tb.ProbeDetailsBlocks();
+                    bool detailedOk = !tb.IsCompact && v2 > 0;
+                    Check(detailedOk,
+                        $"el toggle conmuta a detallado por ToggleViewModeCommand: {v2} de {d2} bloques visibles (>0)");
+
+                    tb.ToggleViewModeViaCommand();
+                    Thread.Sleep(600);
+                    var (d3, h3, v3) = tb.ProbeDetailsBlocks();
+                    bool restoredOk = tb.IsCompact && v3 == 0;
+                    Check(restoredOk,
+                        $"la vuelta a compacto oculta los detalles otra vez: {v3} de {d3} visibles (0 esperados)");
+
+                    group.IsExpanded = false;
+                    Thread.Sleep(200);
+                }
+
                 // 5. Inspector: abrir sobre un nodo real de la ventana (el flujo cargado) — la ficha
                 // con parámetros materializados, el write-through al NodeInstance y el cierre por comando.
                 var firstNode = editor.Nodes.FirstOrDefault();
@@ -322,7 +504,8 @@ public static class RuntimeSelfCheck
                     Check(diffRows > 0,
                         $"la pestaña de diff pinta las filas que el VM computa ({diffRows}, Added/Removed/Modified)");
                     Check(tabSwitch,
-                        "el Pivot conmuta a la pestaña de snapshots y las tarjetas quedan en el árbol");
+                        "el Pivot conmuta: la combinada conserva sus tarjetas y Entradas/Salidas " +
+                        "separadas (hito 244) llevan EXACTAMENTE su colección del nodo");
 
                     firstNode.InputSnapshots.Clear();
                     insp.InspectForProbe(firstNode);

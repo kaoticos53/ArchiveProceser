@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using FileFlow.App.Models;
 using FileFlow.App.ViewModels;
 using FileFlow.Sdk.Localization;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -44,7 +47,19 @@ public sealed partial class NodeToolboxPanel : UserControl
             }
 
             _vm = value;
+            if (_vm is not null)
+            {
+                // El modo compacto/detallado vive en el VM (con persistencia en preferencias); la
+                // vista reacciona por PropertyChanged — el x:Bind de una DataTemplate de WinUI no
+                // alcanza la página (la lección que dejó el pendiente declarado en el plan).
+                _vm.PropertyChanged -= OnVmPropertyChanged;
+                _vm.PropertyChanged += OnVmPropertyChanged;
+                _vm.CategoryGroups.CollectionChanged -= OnGroupsChanged;
+                _vm.CategoryGroups.CollectionChanged += OnGroupsChanged;
+            }
+
             Bindings.Update();
+            ApplyViewMode();
         }
     }
 
@@ -63,11 +78,13 @@ public sealed partial class NodeToolboxPanel : UserControl
         }
     }
 
-    /// <summary>Vista compacta (sólo nombre) o detallada (con insignia de rol). El toggle del
-    /// escritorio queda pendiente: el x:Bind de una DataTemplate de WinUI no alcanza la página.</summary>
-    public bool IsCompact { get; private set; } = true;
+    /// <summary>Vista compacta (sólo nombre) o detallada (con insignia de rol y descripción), la
+    /// propiedad del VM del núcleo con su persistencia en preferencias (hito 246).</summary>
+    public bool IsCompact => _vm?.IsCompactMode ?? true;
 
-    /// <summary>Fija la clave del título y aplica la localización vigente.</summary>
+    /// <summary>
+    /// Fija la clave del título y aplica la localización vigente.
+    /// </summary>
     public void ApplyLocalization(string? titleKey = null)
     {
         _titleKey = string.IsNullOrWhiteSpace(titleKey) ? "Uno_ToolboxTitle" : titleKey!;
@@ -79,9 +96,36 @@ public sealed partial class NodeToolboxPanel : UserControl
         var loc = LocalizationManager.Instance;
         TitleText.Text = loc.GetString(_titleKey, "Nodes");
         SearchBox.PlaceholderText = loc.GetString("Uno_ToolboxSearch", "Buscar nodo… (Ctrl+F)");
+        var toggle = FindDescendantByName(this, "ViewModeToggle") as FrameworkElement;
+        if (toggle is not null)
+        {
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(toggle,
+                loc.GetString("Uno_ToolboxViewMode", "Compact / detailed view"));
+        }
     }
 
     private void OnLanguageChanged(object? sender, System.Globalization.CultureInfo e) => ApplyLocalization();
+
+    /// <summary>El conmutador del modo por el MISMO comando del VM que el botón del escritorio.</summary>
+    private void OnViewModeToggleClicked(object sender, RoutedEventArgs e)
+    {
+        _vm?.ToggleViewModeCommand.Execute(null);
+    }
+
+    /// <summary>El VM conmuta IsCompactMode (con persistencia); la vista reacciona por PropertyChanged.</summary>
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is "IsCompactMode" or "")
+        {
+            _ = DispatcherQueue.TryEnqueue(ApplyViewMode);
+        }
+    }
+
+    /// <summary>El refresco del catálogo reemplaza los grupos: re-aplicar el modo a lo nuevo.</summary>
+    private void OnGroupsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _ = DispatcherQueue.TryEnqueue(ApplyViewMode);
+    }
 
     private void OnCategoryChipClicked(object sender, RoutedEventArgs e)
     {
@@ -106,6 +150,99 @@ public sealed partial class NodeToolboxPanel : UserControl
         {
             TryAddItem(item);
         }
+    }
+
+    /// <summary>
+    /// Aplica el modo del VM al árbol de ítems: en compacto, el bloque detallado (insignia de rol
+    /// + descripción) de cada ítem colapsa a <see cref="Visibility.Collapsed"/> — el x:Bind de la
+    /// DataTemplate no alcanza la página, así que es el recorrido del árbol el que reacciona
+    /// (hito 246). Los contenedores que se materialicen DESPUÉS (scroll, regeneración) se aplican
+    /// solos en su <c>Loading</c>. Sin VM (deselección) aplica compacto, el valor de fábrica.
+    /// </summary>
+    private void ApplyViewMode()
+    {
+        bool compact = _vm?.IsCompactMode ?? true;
+        Visibility detailsVisibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        try
+        {
+            int affected = 0;
+            ApplyToDetailsBlocks(this, detailsVisibility, ref affected);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            // El recorrido en plena regeneración de contenedores (el refresco del catálogo) lanza
+            // COMException — la medición del 246 lo cazó. Los bloques ya cargados toman su estado
+            // en el próximo Loading; los vivos, en el reintento.
+        }
+    }
+
+    /// <summary>El recorrido del árbol que aplica la visibilidad a cada bloque detallado.</summary>
+    private static void ApplyToDetailsBlocks(DependencyObject root, Visibility visibility, ref int affected)
+    {
+        int count;
+        try
+        {
+            count = VisualTreeHelper.GetChildrenCount(root);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return; // la rama se invalidó (generación en curso): se abandona este subtree
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child;
+            try
+            {
+                child = VisualTreeHelper.GetChild(root, i);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                continue;
+            }
+
+            if (child is StackPanel { Tag: "ToolboxItemDetails" } details)
+            {
+                details.Visibility = visibility;
+                affected++;
+                continue; // el bloque no contiene otros bloques: rama terminada
+            }
+
+            ApplyToDetailsBlocks(child, visibility, ref affected);
+        }
+    }
+
+    /// <summary>
+    /// Cada bloque detallado toma SU estado al materializarse el contenedor: los ítems que entran
+    /// por scroll o regeneración nacen con la visibilidad del modo vigente, sin esperar al
+    /// siguiente recorrido (hito 246).
+    /// </summary>
+    private void OnToolboxItemDetailsLoading(FrameworkElement sender, object args)
+    {
+        if (sender is StackPanel details)
+        {
+            details.Visibility = (_vm?.IsCompactMode ?? true) ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
+
+    private static DependencyObject? FindDescendantByName(DependencyObject root, string name)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement { Name: var n } && n == name)
+            {
+                return child;
+            }
+
+            if (FindDescendantByName(child, name) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -169,6 +306,11 @@ public sealed partial class NodeToolboxPanel : UserControl
     public void Dispose()
     {
         LocalizationManager.Instance.LanguageChanged -= OnLanguageChanged;
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+            _vm.CategoryGroups.CollectionChanged -= OnGroupsChanged;
+        }
     }
 
     // ── Superficie interna para el sondeo en runtime (--selfcheck), sin tocar el árbol visual ──
@@ -196,6 +338,184 @@ public sealed partial class NodeToolboxPanel : UserControl
     /// <summary>Cuenta de ítems visibles del catálogo con el filtro vigente (la sonda compara).</summary>
     internal int VisibleItemCount =>
         (_vm?.CategoryGroups.Sum(g => g.Items.Count) ?? 0);
+
+    /// <summary>Conmuta el modo por el MISMO comando que el botón (la sonda del selfcheck, hito 246).</summary>
+    internal void ToggleViewModeViaCommand()
+    {
+        _vm?.ToggleViewModeCommand.Execute(null);
+    }
+
+    /// <summary>El primer grupo con ítems para expandirlo desde la sonda (los acordeones colapsados no materializan).</summary>
+    internal ToolboxCategoryGroup? FirstGroupWithItemsForProbe()
+    {
+        return _vm?.CategoryGroups.FirstOrDefault(g => g.Items.Count > 0);
+    }
+
+    /// <summary>
+    /// Los bloques detallados del árbol con el modo aplicado (compacto = ocultos). Reintenta tras
+    /// asentar el dispatcher: el recorrido en plena regeneración de contenedores lanza
+    /// COMException (la medición del 246) — con el asentamiento, los contadores son los reales.
+    /// </summary>
+    internal (int Total, int Hidden, int Visible) ProbeDetailsBlocks()
+    {
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            int total = 0, hidden = 0, visible = 0;
+            var walked = 0;
+            int stackPanels = 0, itemRoots = 0;
+            try
+            {
+                // La cura medida del 246: los contenedores preparados mientras el ItemsControl del
+                // grupo estaba COLAPSADO no materializan su contenido de plantilla ni al hacerse
+                // visibles (la medición: 10 ContentPresenters vacíos tras expandir) — el empuje
+                // explícito de materialización (medir cada contenedor vacío) los despierta.
+                try
+                {
+                    ForceItemTemplates();
+                    UpdateLayout();
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                }
+
+                CountDetailsBlocks(this, ref total, ref hidden, ref visible, ref walked, ref stackPanels, ref itemRoots);
+
+                if (total > 0)
+                {
+                    return (total, hidden, visible);
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // regeneración de contenedores en curso: la pausa breve deja pasar el pase
+            }
+
+            System.Threading.Thread.Sleep(200);
+        }
+
+        int lastTotal = 0, lastHidden = 0, lastVisible = 0;
+        int lastWalked = 0, lastPanels = 0, lastRoots = 0;
+        try
+        {
+            CountDetailsBlocks(this, ref lastTotal, ref lastHidden, ref lastVisible, ref lastWalked, ref lastPanels, ref lastRoots);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+        }
+
+        return (lastTotal, lastHidden, lastVisible);
+    }
+
+    /// <summary>
+    /// El empuje de materialización: cada ContentPresenter de ítem que no tenga contenido, fuerza
+    /// su ApplyTemplate (los contenedores preparados en colapso no materializan solos al
+    /// visibilizarse — la medición del 246). Devuelve los contenedores empujados.
+    /// </summary>
+    internal int ForceItemTemplates()
+    {
+        int forced = 0;
+        ForceTemplatesRecursive(this, ref forced);
+        return forced;
+    }
+
+    private static void ForceTemplatesRecursive(DependencyObject node, ref int forced)
+    {
+        int count;
+        try
+        {
+            count = VisualTreeHelper.GetChildrenCount(node);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child;
+            try
+            {
+                child = VisualTreeHelper.GetChild(node, i);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                continue;
+            }
+
+            if (child is ContentPresenter presenter && presenter.Content is not null && presenter.ContentTemplate is not null)
+            {
+                try
+                {
+                    int before = VisualTreeHelper.GetChildrenCount(presenter);
+                    if (before == 0)
+                    {
+                        // No hay ApplyTemplate en ContentPresenter: medir (no materializa el pase
+                        // de layout no lo hará si el contenedor nació sin medir) fuerza la fábrica.
+                        presenter.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+                        forced++;
+                    }
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                }
+            }
+
+            ForceTemplatesRecursive(child, ref forced);
+        }
+    }
+
+    private static void CountDetailsBlocks(DependencyObject root, ref int total, ref int hidden, ref int visible, ref int walked, ref int stackPanels, ref int itemRoots)
+    {
+        int count;
+        try
+        {
+            count = VisualTreeHelper.GetChildrenCount(root);
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child;
+            try
+            {
+                child = VisualTreeHelper.GetChild(root, i);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                continue;
+            }
+
+            walked++;
+            if (child is StackPanel)
+            {
+                stackPanels++;
+            }
+
+            if (child is FrameworkElement { Name: "ToolboxItemRoot" })
+            {
+                itemRoots++;
+            }
+            if (child is StackPanel { Tag: "ToolboxItemDetails" } details)
+            {
+                total++;
+                if (details.Visibility == Visibility.Collapsed)
+                {
+                    hidden++;
+                }
+                else if (details.Visibility == Visibility.Visible)
+                {
+                    visible++;
+                }
+
+                continue;
+            }
+
+            CountDetailsBlocks(child, ref total, ref hidden, ref visible, ref walked, ref stackPanels, ref itemRoots);
+        }
+    }
 
     /// <summary>
     /// Conmuta el favorito de un ítem por el MISMO comando que la estrella (la sonda). Devuelve el
