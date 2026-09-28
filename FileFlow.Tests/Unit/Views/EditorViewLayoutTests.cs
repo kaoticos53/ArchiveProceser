@@ -355,7 +355,7 @@ public class EditorViewLayoutTests
                     new Point(240, 160),
                     new Point(120, 300),
                     ConnectionGeometry.FlowDirection.Backward);
-                var figure = wire.DefiningGeometry.Should().BeOfType<PathGeometry>().Subject.Figures.Single();
+                var figure = wire.DefiningGeometry.Should().BeOfType<PathGeometry>().Subject.Figures!.Single();
                 var curve = figure.Segments!.Single().Should().BeOfType<BezierSegment>().Subject;
 
                 figure.StartPoint.Should().Be(expected.Source.ToAvalonia());
