@@ -1,0 +1,26 @@
+{
+  "id": "pregunta-destructiva-escrita-en-el-codigo",
+  "hito": 265,
+  "claim": "El texto de la pregunta de una orden destructiva viene del DICCIONARIO (clave y texto de reserva), no de un literal escrito en el código: la pregunta se lee en el idioma del usuario como el resto de la superficie. Las ocho órdenes destructivas cumplen la regla, y la guardia lo ata por el método de cada una.",
+  "why": "El borrado de un modelo descargado era el único de los ocho que llevaba su pregunta escrita en el código —«¿Estás seguro de que deseas eliminar el modelo 'X' del disco local?», en español, cambiara el idioma o no—, y se encontró al revisar el tramo: los otros siete ya pasaban por el diccionario. El defecto no destruye nada, así que no lo ve ninguna medición de datos: lo ve la guardia, que exige que el método de cada orden destructiva lea al menos un texto del diccionario. Sin el mutante, esa exigencia es una frase; con él, una prueba.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/AiModelManagerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        bool confirm = await _dialogService.ConfirmAsync(\n            _loc.GetFormattedString(\n                \"AiModelManager_ConfirmDeleteMsg\",\n                \"¿Estás seguro de que deseas eliminar el modelo '{0}' del disco local?\",\n                item.Name),\n            _loc.GetString(\"AiModelManager_ConfirmDeleteTitle\", \"Eliminar Modelo\"));\n",
+          "new": "        // mutante: la pregunta de la orden destructiva vuelve a estar escrita en el código\n        bool confirm = await _dialogService.ConfirmAsync(\n            $\"¿Estás seguro de que deseas eliminar el modelo '{item.Name}' del disco local?\",\n            \"Eliminar Modelo\");\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryDestructiveOrder_ShouldAskByTheAsyncPath_NotByTheSilentSyncOne",
+    "why": "La tabla de las ocho órdenes exige, para cada una, que su método lea al menos un texto del diccionario. El mutante deja el borrado de modelo sin ninguna lectura y el caso cae nombrando la orden que falta, aunque la llamada asíncrona siga en pie (que es el punto: la pregunta llega, pero no se puede traducir)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheSixSections_ShouldBeDeclared_WithTheirPaneAndTheirButton",
+    "why": "Esa guardia lee la superficie de ajustes y las órdenes del gestor de modelos (entre ellas DeleteModelCommand): con el mutante sigue verde, que es lo que demuestra que el mutante sólo cambia de dónde sale el TEXTO y no desarma la orden ni su superficie."
+  }
+}

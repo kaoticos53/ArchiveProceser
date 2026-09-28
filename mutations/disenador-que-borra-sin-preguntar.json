@@ -1,0 +1,26 @@
+{
+  "id": "disenador-que-borra-sin-preguntar",
+  "hito": 265,
+  "claim": "Quitar un dataset sintético propio depende de la respuesta REAL del usuario: el diseñador pregunta por la vía asíncrona del contrato y sólo borra si el usuario dijo que sí. Los datasets del sistema no se tocan en ningún caso.",
+  "why": "El dataset propio es contenido del usuario y el borrado es permanente. La orden preguntaba por la vía SÍNCRONA, que en un host WinUI contesta «no» desde el hilo de UI (no borraba y tampoco avisaba) y que en el doble nulo contesta «sí» sin enseñar nada (borraba en silencio). La medición es el CATÁLOGO: con el mutante el dataset desaparece del almacén sin que nadie lo haya autorizado.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.FileSystem/UI/ViewModels/SyntheticDataSetDesignerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        bool confirm = await _dialogService.ConfirmAsync(\n            LocalizationManager.Instance.GetFormattedString(\"Msg_ConfirmDeleteDataSet\", \"¿Deseas eliminar de forma permanente el dataset '{0}'?\", SelectedDataSet.Name),\n            LocalizationManager.Instance.GetString(\"Title_ConfirmDelete\", \"Confirmar Eliminación\"));\n",
+          "new": "        // mutante: se borra sin esperar la respuesta del usuario\n        bool confirm = true;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~DeleteDataSetCommand_WhenRefused_ShouldLeaveTheDataSetAlone",
+    "why": "El caso contesta «no» por la vía asíncrona (con la síncrona en «sí», que es lo que contesta el doble nulo) y exige que el dataset siga en el catálogo y en el almacén, y que no se haya preguntado por la vía síncrona. Con el mutante el dataset desaparece sin pregunta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~DeleteDataSetCommand_WhenConfirmed_ShouldRemoveTheCustomDataSet",
+    "why": "El caso hermano contesta «sí» y exige que el dataset desaparezca del catálogo y del almacén: el mutante no lo toca. Si cayera, el mutante estaría rompiendo el borrado entero y no sólo la pregunta."
+  }
+}

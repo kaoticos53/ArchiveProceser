@@ -1,0 +1,25 @@
+{
+  "id": "ancla-que-ignora-la-escala",
+  "hito": 254,
+  "claim": "El centro dibujado de un socket se mide transformando su centro LOCAL (w/2, h/2) por la cadena al árbol: el ancla no depende del zoom con el que se mire, porque la escala entra en la cuenta una sola vez.",
+  "why": "Es la segunda mitad del reporte del usuario («al ajustar el zoom las líneas de conexión se desplazan»). La sonda ProbeWireTracking midió el descuadre en la app viva: con el plano al 100 % y con un pan el ancla no se movía (0,0 px), pero tras ZoomBy(1,25) la misma ancla medida se corría 3–4 px en espacio de grafo (542→538) mientras la tarjeta no se movía (350,0→350,0), y el cable —dibujado con la medida anterior— quedaba a 6,1 px de su socket. La aritmética lo delata: sumar la mitad del tamaño DESPUÉS de transformar el vértice olvida la escala, y el error es 0,25 · (w/2) con el socket de 39 px de este árbol, que es justo lo medido. El mutante devuelve esa forma. El lienzo es WinUI y no se materializa en la sesión de pruebas, así que el testigo censa la medida y la sonda la mide en la app viva.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "        var localCenter = UnoPointProjection.ToSdk(element.ActualWidth / 2, element.ActualHeight / 2);\n        (double lx, double ly) = UnoPointProjection.ToUno(localCenter);\n\n        var center = element.TransformToVisual(relativeTo).TransformPoint(new Windows.Foundation.Point(lx, ly));\n        var projected = UnoPointProjection.ToSdk(center.X, center.Y);\n        (double cx, double cy) = UnoPointProjection.ToUno(projected);",
+          "new": "        var topLeft = element.TransformToVisual(relativeTo).TransformPoint(new Windows.Foundation.Point(0, 0));\n        var center = UnoPointProjection.ToSdk(topLeft.X + (element.ActualWidth / 2), topLeft.Y + (element.ActualHeight / 2));\n        (double cx, double cy) = UnoPointProjection.ToUno(center);"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheAnchorMeasurement_ShouldTransformTheCenter_NotSumIt",
+    "why": "La guardia exige el centro local transformado y censura el patrón viejo (topLeft.X + (element.ActualWidth / 2)): con el mutante el fuente vuelve a la suma posterior a la transformación y el caso cae."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor",
+    "why": "La otra mitad del arreglo (la figura del cable, que dibujaba el rulo y luego la Z) no comparte código con la medida del ancla: el mutante sólo cambia cómo se calcula el centro de un elemento y deja la construcción de la figura intacta, así que este control tiene que seguir verde."
+  }
+}

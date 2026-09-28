@@ -1,0 +1,26 @@
+{
+  "id": "menu-sin-el-estado-de-su-contexto",
+  "hito": 257,
+  "claim": "El estado de cada entrada del menú principal del host Uno —visible o no, habilitada o no— sale del view model portable: Deshacer y Rehacer se apagan cuando el editor dice CanUndo/CanRedo en falso, y la isla del ciclo enseña Ejecutar/Depurar en reposo y Pausar/Detener mientras corre.",
+  "why": "Un botón que se puede pulsar cuando su orden no puede ejecutarse es una promesa falsa: el usuario lo pulsa, no pasa nada y culpa a la aplicación. En el host Uno el deshabilitado no lo decide el botón por su cuenta, lo decide el enlace con el view model del núcleo — el MISMO que gobierna los atajos del lienzo, así que una copia local del estado se desincronizaría de las dos cosas a la vez y sin ruido. El mutante deja Deshacer habilitado siempre: la entrada sigue dibujada, sigue anclada y sigue pulsándose, pero ha dejado de contar la verdad sobre su contexto. Es el defecto más silencioso de la superficie y el único que no se ve mirando la barra, sólo mirando lo que dice de sí misma. La guardia lo lee en el bloque XAML del propio control (no en cualquier parte del fichero) para que el estado no pueda venir de un enlace que no es el suyo, y la sonda del menú lo mide además contra CanUndo/CanRedo en runtime.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/ControlBar.xaml",
+      "replacements": [
+        {
+          "old": "IsEnabled=\"{Binding CanUndo}\"",
+          "new": "IsEnabled=\"True\"",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryEntry_ShouldExistInItsViewWithItsAnchorAndItsState",
+    "why": "El caso exige que cada fila del censo cuyo estado es por contexto nombre la propiedad del view model en el bloque XAML de SU PROPIO control: para ControlBarUndoButton la fila declara IsEnabled=CanUndo. Con el mutante el bloque deja de citar CanUndo y el caso cae. La sonda del menú (--selfcheck-controlbar) lee el mismo par en runtime —entries[\"ControlBarUndoButton\"].Enabled == model.Editor.CanUndo— y es la segunda red, porque el enlace sólo se demuestra con el árbol montado."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost",
+    "why": "El caso hermano audita la PARIDAD de entradas y órdenes contra el escritorio (qué está dibujado, qué declarado pendiente y qué cumplido por el host), no el estado por contexto: el mutante cambia de dónde sale un habilitado y deja intactas las tablas de declaración. Si cayera, el mutante estaría alcanzando entradas que su tesis no menciona."
+  }
+}

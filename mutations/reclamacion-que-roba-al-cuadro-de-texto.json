@@ -1,0 +1,25 @@
+{
+  "id": "reclamacion-que-roba-al-cuadro-de-texto",
+  "hito": 253,
+  "claim": "La reclamación del teclado que el lienzo Uno hace tras un clic respeta a los otros dueños: no se lo quita a un cuadro de texto (el buscador del cajón, la caja de renombrado, un editor de parámetros), ni a un control del propio lienzo, ni a un panel del editor.",
+  "why": "La reclamación existe porque el rastro con puntero real midió que un envoltorio de scroll de la plantilla de ventana del framework se lleva el foco 78–141 ms después del clic —tanto clicando una tarjeta como el fondo— y que con él se iba el teclado del lienzo. Es una reclamación acotada (ventana de propiedad de 700 ms, se dispara en el tick siguiente a perder el foco) y su riesgo es el contrario del que arregla: si se saltara la cortesía del cuadro de texto, escribir en el buscador del cajón o en un editor de parámetros se volvería imposible porque el lienzo le quitaría el foco a media palabra, sin ningún error visible. El mutante quita SÓLO esa cortesía: la reclamación sigue funcionando contra un dueño ajeno (que es su razón de ser) y el defecto aparece únicamente cuando el teclado pertenece a un cuadro de texto.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "        if (IsTextInput(owner) || IsInsideSelf(owner) || IsInsideEditorPanel(owner))",
+          "new": "        if (IsInsideSelf(owner) || IsInsideEditorPanel(owner))"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheCanvas_ShouldReclaimTheKeyboard_FromAForeignOwnerAfterAClick_WithItsCourtesies",
+    "why": "La guardia exige la condición completa ('IsTextInput(owner) || IsInsideSelf(owner) || IsInsideEditorPanel(owner)') y censa las llamadas de la reclamación; con el mutante la cortesía del cuadro de texto no está en el fuente y el caso cae. Es un defecto que no se puede ver por comportamiento en este entorno —el puntero no se inyecta y el robo del framework sólo aparece con dedos de verdad—, por eso se censa el cableado y la sonda lo mide en la app viva con objetivos reales de la ventana."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheCanvas_ShouldResolveEveryShortcutInOnePlace",
+    "why": "La prueba hermana de la misma guardia audita la OTRA mitad del arreglo del 253 (el enrutado de la ventana y el resolver único), que no depende de las cortesías de la reclamación: el mutante quita una condición de la reclamación y deja el enrutado intacto, así que este control tiene que seguir verde. Si cayera, el mutante no estaría rompiendo lo que la tesis dice."
+  }
+}

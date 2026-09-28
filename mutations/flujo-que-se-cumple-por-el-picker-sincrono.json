@@ -1,0 +1,26 @@
+{
+  "id": "flujo-que-se-cumple-por-el-picker-sincrono",
+  "hito": 258,
+  "claim": "Las tres órdenes de FLUJO del menú del host Uno (Nuevo, Cargar y Guardar) se cumplen por el canal PROPIO del host: sus diálogos ASÍNCRONOS (la confirmación y los pickers de WinRT) más los métodos del view model portable que ya no piden diálogo (CreateNewWorkflow, LoadWorkflowFromFileAsync, SaveWorkflowToFileAsync). El comando del núcleo NO puede usarse aquí: su mitad de diálogo pide el contrato SÍNCRONO, que desde el hilo de UI devuelve nulo/falso (medido y declarado en UnoFileDialogService y UnoDialogService).",
+  "why": "Es el modo de fallo exacto de un portado a medias y es invisible para la compilación: la entrada se dibuja, el comando canónico se ejecuta y NO pasa nada — el picker síncrono devuelve nulo desde el hilo de UI, el flujo no se carga y el usuario no ve ni un error. El mutante cambia UNA línea del manejador de la ventana: en vez de elegir la ruta con el picker asíncrono y llamar al método portable, ejecuta el comando del núcleo, que es justo lo que el host no puede cumplir. Todo lo demás (la tabla del cajón, el evento, la orden declarada, el servicio asíncrono) queda intacto, así que la firma es exactamente «la orden de flujo se cumple por la vía muda».",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/MainWindow.xaml.cs",
+      "replacements": [
+        {
+          "old": "            await _controlBar.LoadWorkflowFromFileAsync(filePath);",
+          "new": "            // mutante: la orden canónica del núcleo, cuya mitad de diálogo pide el contrato SÍNCRONO\n            _controlBar.LoadWorkflowCommand.Execute(null);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheFlowOrders_ShouldBeFulfilledByTheHostsOwnAsyncChannel_NotByTheSilentSyncOne",
+    "why": "El caso exige las dos mitades: que la ventana use las APIs asíncronas y los métodos portables, y que NO ejecute los comandos del núcleo (NewWorkflowCommand.Execute / LoadWorkflowCommand.Execute / SaveWorkflowCommand.Execute). Con el mutante, la segunda mitad falla y el caso cae nombrando la línea."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryEntry_ShouldRunACanonicalOrder_NotACopyOfIt",
+    "why": "El caso hermano audita que cada entrada declarada del censo ejecute su orden en el artefacto que la posee (el comando en el code-behind, el enlace en el XAML). El mutante toca el manejador de la ventana y no el censo: si cayera, el defecto estaría rompiendo la paridad entera del menú y no sólo la vía de las órdenes de flujo."
+  }
+}

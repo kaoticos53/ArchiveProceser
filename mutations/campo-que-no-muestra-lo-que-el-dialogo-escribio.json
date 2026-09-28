@@ -1,0 +1,26 @@
+{
+  "id": "campo-que-no-muestra-lo-que-el-dialogo-escribio",
+  "hito": 258,
+  "claim": "La caja de texto de una fila de parámetro sigue al parámetro en LOS DOS SENTIDOS: la caja escribe el valor y el valor actualiza la caja, porque el editor de texto y el catálogo de variables devuelven lo elegido por el view model portable (SaveResult, InsertVariableToken) y no por el teclado.",
+  "why": "Con sólo la ida, insertar «{FileName}» desde el catálogo cambiaba el parámetro del nodo y dejaba el campo con el texto viejo: el usuario veía que no había pasado nada y volvía a insertarlo. Es el defecto que la sesión con la app abierta del hito 258 encontró al medir el valor escrito leyendo el CAMPO (y no la memoria del proceso), y el mutante lo reproduce quitando la vuelta — la firma exacta «el campo no muestra lo que el diálogo escribió». Las filas de casilla y desplegable no entran: su enlace ya es bidireccional.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "        p.PropertyChanged += OnParameterChanged;\n        _rowValueSubscriptions.Add((p, OnParameterChanged));",
+          "new": "        // mutante: la caja sólo escribe el valor; lo que escriben los diálogos ya no llega al campo\n        _ = OnParameterChanged;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryTextRow_ShouldFollowTheParameter_BothWays",
+    "why": "El caso exige las dos direcciones del atado («box.Text = value;» y la escucha de Value) y que las suscripciones se suelten al reconstruir. Con el mutante la vuelta deja de existir y el caso cae nombrando la mitad que hace visible lo que el diálogo escribió."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryRowAction_ShouldBeDrawnOnTheSameRowsAsTheDesktop",
+    "why": "El caso hermano audita en qué filas se dibuja cada acción y con qué flags del view model. El mutante quita la escucha del valor y deja intactas las filas y sus botones: si cayera, el defecto estaría moviendo la tabla de editores y no sólo el retorno del valor al campo."
+  }
+}

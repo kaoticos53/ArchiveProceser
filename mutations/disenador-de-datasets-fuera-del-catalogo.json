@@ -1,0 +1,26 @@
+{
+  "id": "disenador-de-datasets-fuera-del-catalogo",
+  "hito": 261,
+  "claim": "El DISEÑADOR DE DATASETS del host Uno está en el CENSO del catálogo de diálogos: ImplementedDialogs con su vista (DataSetDesignerBody). El censo del servicio tiene que cubrir TODAS las claves de DialogKeys —servidas o declaradas con su razón—, así que una clave nueva sin destino cae en la guardia en vez de cerrarse en silencio.",
+  "why": "Es el modo de fallo de una ventana portada a medias: la entrada del cajón se dibuja, la superficie se abre, el nodo declara la clave… y el censo ya no la reconoce. Sin la comprobación de cobertura, quitar la fila de ImplementedDialogs dejaría la aplicación funcionando igual —la superficie se sirve por su `case` del `switch`— y el censo mintiendo: la guardia que exige «servida o declarada» dejaría de cubrir esa clave. El mutante borra la fila del Diseñador de Datasets, que es la ventana de este tramo, y el censo deja de contarla. La medición es de declaración, no de comportamiento: se comparan las dos tablas del host contra las claves del contrato del SDK.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Platform/UnoWindowService.cs",
+      "replacements": [
+        {
+          "old": "        (DialogKeys.DataSetDesigner, nameof(DataSetDesignerBody)),\n",
+          "new": "        // mutante: la ventana se sirve, pero el censo ya no la reconoce\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWindowEntries_ShouldBeServedByTheHostsDialogCatalogue",
+    "why": "El caso lee las dos tablas del servicio de ventanas y exige que toda clave del catálogo canónico (leído del SDK) esté servida o declarada, y que las claves de este tramo estén entre las servidas. Con el mutante, DataSetDesigner no está en ninguna de las dos y el caso cae nombrándola; además comprueba que las tablas no se solapen, así que declararla y servirla a la vez tampoco colaría."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost",
+    "why": "El caso hermano audita la paridad de ÓRDENES contra el escritorio (dibujada, pendiente o cumplida por el host), que el mutante no toca: borra una fila del censo de DIÁLOGOS del servicio, no una orden del menú. Si cayera, el mutante estaría rompiendo el menú y no sólo el censo del catálogo. (El caso del contrato del diseñador NO sirve de control: lee la misma tabla que el mutante edita, así que caería con él y la mutación sería imprecisa.)"
+  }
+}

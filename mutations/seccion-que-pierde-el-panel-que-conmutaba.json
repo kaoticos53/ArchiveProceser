@@ -1,0 +1,26 @@
+{
+  "id": "seccion-que-pierde-el-panel-que-conmutaba",
+  "hito": 261,
+  "claim": "La superficie de AJUSTES del host tiene SEIS secciones —almacenamiento, apariencia, rendimiento, herramientas externas y las dos del hito 261: modelos de IA y actualizaciones—, y los cuerpos y los botones viven en la MISMA tabla que comparten el conmutador y el sondeo. Al quitar un cuerpo de esa tabla, su botón sigue ahí y su sección deja de tener destino.",
+  "why": "La tabla es la que empareja botón y cuerpo: con un cuerpo fuera, pulsar esa pestaña no enseña nada y la superficie queda mintiendo con un control que parece funcionar. Es el modo de fallo silencioso de una sección nueva —el XAML está, el botón está, la sección no— y no se ve desde dentro: el resto de la superficie funciona igual. El mutante quita UpdatesPane de la tabla, que es una de las dos secciones portadas en este tramo.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/SettingsPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "        [StoragePane, AppearancePane, PerformancePane, ToolsPane, AiModelsPane, UpdatesPane];",
+          "new": "        [StoragePane, AppearancePane, PerformancePane, ToolsPane, AiModelsPane];",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheSixSections_ShouldBeDeclared_WithTheirPaneAndTheirButton",
+    "why": "El caso exige las seis secciones con su cuerpo y su botón, y lee las dos tablas del control (cuerpos y botones) para que la conmutación siga emparejada. Con el mutante falta UpdatesPane en la tabla y el caso cae nombrando la sección que perdió su cuerpo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ThePersistence_ShouldBeTheViewModelsOwnCommands",
+    "why": "El caso hermano audita que guardar y cancelar sean los comandos del view model portable, que el mutante no toca: quita un cuerpo de la tabla de secciones, no el camino de guardado. Si cayera, el mutante estaría rompiendo la persistencia y no sólo la conmutación."
+  }
+}

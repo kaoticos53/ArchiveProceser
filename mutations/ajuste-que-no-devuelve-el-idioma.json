@@ -1,0 +1,26 @@
+{
+  "id": "ajuste-que-no-devuelve-el-idioma",
+  "hito": 255,
+  "claim": "El sondeo de la superficie de ajustes devuelve la máquina del usuario al idioma GUARDADO (storedLanguage), no a una constante ni al idioma de la prueba: el selector de idioma se pone con el idioma del usuario DESPUÉS de haber cambiado a probeLanguage, y la guardia exige esa línea como código vivo.",
+  "why": "El sondeo mide cambiando el idioma del proceso a mitad de la corrida (cultura global, textos del marco reescritos por el diccionario del host). Si la vuelta no escribe el idioma guardado del usuario, la medición deja la aplicación en el idioma que el sondeo eligió: el usuario abre la app y la lee en un idioma que no pidió, y la preferencia escrita por el guardado del pie —que sí sale del view model— cuenta otra cosa que lo que el marco tiene aplicado. Es el defecto que la guardia mide contra 'una constante': exigir la línea del idioma guardado es lo que separa medir de configurar. El mutante sustituye la vuelta por el idioma de la prueba: el sondeo sigue verde en su comparación de ida y el marco se queda cambiado. La guardia del censo es el testigo (el host es WinUI y no se materializa en la sesión de pruebas: el mismo recurso de los mutantes del 227, 232 y 233).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/SettingsPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "            LanguageCombo.SelectedValue = storedLanguage;",
+          "new": "            LanguageCombo.SelectedValue = probeLanguage;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheRestore_ShouldReturnWhatTheUserHad_NotAConstant",
+    "why": "La guardia exige la vuelta al idioma GUARDADO (LanguageCombo.SelectedValue = storedLanguage) como código vivo, retirando comentarios antes de buscar: con el mutante esa asignación deja de existir y el caso cae. Es la prueba de árbol para una superficie que la suite no puede materializar (WinUI), la misma técnica de los mutantes del 227, 232 y 233."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ThePersistence_ShouldBeTheViewModelsOwnCommands",
+    "why": "El caso hermano del mismo fichero: el mutante cambia UNA línea (la vuelta del idioma, que es lo que la tesis afirma) y deja intacta la persistencia por los comandos canónicos del view model. Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}

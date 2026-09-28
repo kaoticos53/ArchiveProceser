@@ -1,0 +1,26 @@
+{
+  "id": "vista-del-disenador-con-su-propio-modelo",
+  "hito": 261,
+  "claim": "La vista del DISEÑADOR DE DATASETS del host es una vista del view model PORTABLE del plugin: lo recibe construido (lo declara el nodo por el contrato del SDK) y sus órdenes son sus comandos. La vista no construye el view model del diseñador ni habla con el almacén de datasets ni con el parser del DSL. Dos diseñadores vivos serían dos verdades sobre los mismos datasets almacenados.",
+  "why": "Es la tentación exacta de una vista escrita a mano sobre el modelo de otro: cuando algo no encaja, se construye uno propio al lado. El resultado se ve igual —la superficie abre, el árbol se pinta— pero el estado deja de ser el mismo que el que declara el nodo: lo que el usuario edite ahí no es lo que el nodo lee al ejecutar. El mutante añade la construcción propia a la vista del host; la guardia la prohíbe justamente por eso.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/DataSetDesignerBody.xaml.cs",
+      "replacements": [
+        {
+          "old": "    /// <summary>El view model portable en uso (la sonda cuenta datasets, nodos y métricas desde aquí).</summary>",
+          "new": "    private readonly SyntheticDataSetDesignerViewModel _propio = new SyntheticDataSetDesignerViewModel();\n\n    /// <summary>El view model portable en uso (la sonda cuenta datasets, nodos y métricas desde aquí).</summary>",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheDataSetDesigner_ShouldBeDeclaredByTheNode_AndServedByTheHost",
+    "why": "El caso prohíbe que la vista del host construya el view model del diseñador (habría dos diseñadores con el mismo almacén detrás) y que hable directamente con el almacén o con el parser del DSL. Con el mutante, la vista trae el suyo y el caso cae nombrando la línea."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryEntry_ShouldExistInItsViewWithItsAnchorAndItsState",
+    "why": "El caso hermano audita que las entradas del menú existan con su ancla y su estado en sus vistas, que el mutante no toca: añade una línea a un cuerpo, no quita una entrada ni su enlace. Si cayera, el mutante estaría rompiendo el menú y no sólo la propiedad del diseñador."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "gestor-de-presets-que-guarda-solo-en-su-copia",
+  "hito": 263,
+  "claim": "El GESTOR DE PRESETS guarda a través del almacén que lee el nodo que transcodifica: su view model pide `SavePreset` al almacén, refresca el catálogo y vuelve a elegir el preset editado. «Guardar» no escribe en una lista propia de la vista ni del view model.",
+  "why": "Es el modo de fallo que hace desaparecer el trabajo del usuario sin decir nada: la superficie se ve igual —la lista, el formulario, el aviso de guardado— pero lo editado se quedó en el objeto que el gestor tiene en la mano y el nodo sigue transcodificando con el preset viejo. La medición es por el RECADO recibido (lo que el almacén anotó que le guardaron), no por el objeto compartido: si la prueba mirara la referencia, un guardado olvidado pasaría igual, porque el objeto cambia aunque nadie lo persista.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        _presetService.SavePreset(preset);\n        Refresh();\n",
+          "new": "        // mutante: el guardado se queda en la copia del gestor y no llega al almacén\n        Refresh();\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~Saving_ShouldWriteThroughTheStore_NotOnlyInTheList",
+    "why": "El caso edita la descripción y los argumentos y exige que el almacén haya RECIBIDO un guardado con esos valores y que su catálogo quede con ellos. Con el mutante el almacén no anota nada y el caso cae diciendo que el guardado se quedó en la copia."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheManager_ShouldOpenWithTheStoreCatalog_AndTheFirstOneChosen",
+    "why": "El caso hermano sólo comprueba con qué se abre el gestor (catálogo y preset elegido), que el mutante no toca: quita la llamada al almacén al guardar, no la lectura del catálogo al abrir. Si cayera, el mutante estaría rompiendo la apertura y no el guardado."
+  }
+}

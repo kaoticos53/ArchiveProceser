@@ -1,0 +1,26 @@
+{
+  "id": "arranque-que-no-aplica-el-tema-guardado",
+  "hito": 255,
+  "claim": "El arranque del host Uno aplica el tema GUARDADO del usuario: ApplySavedPreferences traduce la preferencia (ThemeManager.ResolveThemeId) y la aplica por el gestor de temas (IThemeService.SetThemeById) antes de crear la ventana, igual que hace el escritorio.",
+  "why": "La superficie de ajustes tiene dos mitades y la de dentro sólo cubre una: al guardar, el tema y el idioma elegidos se aplican en caliente; al ABRIR la aplicación, quien tiene que aplicar lo guardado es el host — una preferencia es un dato y el núcleo no aplica el tema ni la cultura por su cuenta. Medido con la sonda (renglón de arranque, antes del arreglo): con `light_studio` guardado y el host recién abierto el tema aplicado era `dark_fluent` (el de por defecto), y el sondeo lo cantó en rojo. Es un defecto sin crash y sin error en pantalla: el usuario elige un tema, la app lo aplica, la preferencia queda escrita y al volver a abrirla ve otro tema — el ajuste se guarda y no se aplica. El mutante quita sólo la aplicación del tema (deja la traducción y la reescritura de la preferencia): la firma de la mutación es exactamente 'el tema guardado no se aplica'. El host es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia del arranque, la misma técnica de los mutantes del 227, 232, 233 y 255.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/App.xaml.cs",
+      "replacements": [
+        {
+          "old": "        services.GetRequiredService<FileFlow.App.Services.IThemeService>().SetThemeById(themeId);",
+          "new": "        _ = themeId;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheStartup_ShouldApplyTheSavedThemeAndLanguage",
+    "why": "La guardia exige la aplicación del tema guardado como código vivo (`SetThemeById(themeId);`) y el orden (aplicar antes de crear la ventana): con el mutante esa línea deja de existir y el caso cae nombrando el arranque. Es la prueba de árbol para un arranque que la suite no puede materializar (WinUI)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheHostSurface_ShouldBeWiredToThePortableSettingsViewModel",
+    "why": "El caso hermano del mismo fichero: el mutante cambia UNA línea del arranque (la aplicación del tema) y deja intacto el montaje de la superficie sobre el view model portable y su punto de entrada. Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "panel-de-nodo-sin-su-servicio-de-ventanas",
+  "hito": 258,
+  "claim": "Las filas de parámetro del inspector del host Uno alcanzan el CATÁLOGO DE DIÁLOGOS REAL: el arranque ancla en ServiceHolders.WindowService el IWindowService del contenedor (UnoWindowService), que es de donde lo leen los NodeParameterViewModel que el inspector construye sin pasarles servicios por constructor.",
+  "why": "El host registraba el catálogo de diálogos en su contenedor y las filas del inspector seguían cayendo al Nulo declarado: el servicio existía y nadie se lo pasaba a los parámetros, así que los botones «✎» y «{x}» eran botones que no hacían nada — sin crash y sin error en pantalla, el usuario pulsaba y no pasaba nada. Es el modo de fallo exacto de un portado a medias y es invisible para la compilación. El mutante borra sólo el anclaje del arranque (el registro en el contenedor, el catálogo entero y las dos vistas quedan intactos): la firma es exactamente «las filas del panel no alcanzan su servicio», y el testigo es la guardia del censo, que exige ese anclaje como código vivo. El host es WinUI y no se materializa en la sesión de pruebas, así que el testigo es la guardia del host, la misma técnica de los mutantes del 227, 232, 233, 255 y 257.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/App.xaml.cs",
+      "replacements": [
+        {
+          "old": "        FileFlow.App.Services.ServiceHolders.WindowService = s_services.GetRequiredService<IWindowService>();",
+          "new": "        // mutante: el contenedor tiene el catálogo, pero las filas del inspector no lo alcanzan",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared",
+    "why": "El caso exige el anclaje `ServiceHolders.WindowService = s_services.GetRequiredService<IWindowService>();` como código vivo: con el mutante esa línea deja de existir y el caso cae nombrando la frontera. Es la prueba de árbol para un anclaje que la suite no puede materializar (WinUI)."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheDialogs_ShouldBeViewsOfThePortableViewModels_NotCopiesOfThem",
+    "why": "El caso hermano audita que los dos diálogos sean vistas de los view models portables y que el valor salga de sus métodos. El mutante toca UNA línea del arranque y deja intactos el catálogo y las dos vistas: si cayera, el defecto estaría rompiendo los diálogos enteros y no sólo su anclaje."
+  }
+}

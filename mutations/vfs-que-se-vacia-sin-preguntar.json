@@ -1,0 +1,26 @@
+{
+  "id": "vfs-que-se-vacia-sin-preguntar",
+  "hito": 265,
+  "claim": "Vaciar el registro del Sistema de Archivos Virtual depende de la respuesta REAL del usuario: la orden pregunta por la vía asíncrona del contrato y sólo vacía si el usuario dijo que sí. Un «no» no toca el registro.",
+  "why": "El registro del VFS es del usuario y no tiene vuelta atrás sin él. El modo de fallo era doble y mudo a la vez: la vía SÍNCRONA del contrato contesta «no» desde el hilo de UI en un host WinUI (el botón no haría nada y tampoco avisaría) y «sí» desde un servicio sin diálogos (vaciaría sin preguntar). La medición no puede ser el diálogo —un vaciado sin pregunta no deja rastro en pantalla—, así que es el ALMACÉN: con el mutante recibe el vaciado que el usuario nunca autorizó.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/VirtualFileSystemExplorerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        bool confirm = await _dialogService.ConfirmAsync(\n            _loc.GetString(\"VfsExplorer_ConfirmClear\", \"¿Deseas limpiar todos los archivos registrados en el Sistema de Archivos Virtual?\"),\n            _loc.GetString(\"VfsExplorer_Title\", \"Explorador de Archivos Virtual\"));\n",
+          "new": "        // mutante: se vacía sin esperar la respuesta del usuario\n        bool confirm = true;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ClearVirtualFileSystemCommand_WhenRefused_ShouldLeaveTheStoreAlone",
+    "why": "El caso contesta «no» por la vía asíncrona (y pone la síncrona en «sí», que es justo lo que contesta el doble nulo) y exige dos cosas: que la pregunta haya llegado por el contrato asíncrono y que el registro siga con sus archivos. Con el mutante no hay pregunta y el vaciado sí llega, así que el caso cae por las dos mitades a la vez."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ClearVirtualFileSystemCommand_WhenConfirmed_ClearsStore",
+    "why": "El caso hermano contesta «sí» y exige que el registro quede vacío: el mutante no lo toca —el vaciado sigue ocurriendo—, así que si cayera el mutante estaría rompiendo la operación entera y no sólo la pregunta."
+  }
+}

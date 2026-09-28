@@ -1,0 +1,26 @@
+{
+  "id": "orden-destructiva-que-vuelve-a-la-via-sincrona",
+  "hito": 265,
+  "claim": "NINGUNA orden destructiva del producto pregunta ya por la vía SÍNCRONA del contrato (ShowConfirmation): todas esperan la respuesta real por ConfirmAsync, porque la síncrona contesta «no» desde el hilo de UI en un host WinUI (la orden no hace nada y no avisa) y «sí» sin preguntar en un servicio sin diálogos (destruye en silencio).",
+  "why": "El defecto no vivía en un fichero: vivía en el contrato mal usado, en seis sitios a la vez, y por eso la medición es un BARRIDO del árbol de fuentes del producto en vez de un caso por orden. Con una sola orden vuelta a la vía síncrona la regla deja de ser una regla y el host que no puede contestar en síncrono falla en mudo. Se muta la más pública de las seis (la de «Nuevo Flujo», la que un usuario pulsa en el menú y por Ctrl+N).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/ControlBarViewModel.cs",
+      "replacements": [
+        {
+          "old": "            if (!await _dialogService.ConfirmAsync(confirmMsg, confirmTitle))\n            {\n                return;\n            }\n",
+          "new": "            // mutante: la pregunta vuelve a la vía SÍNCRONA, la que contesta por su cuenta\n            if (!_dialogService.ShowConfirmation(confirmMsg, confirmTitle))\n            {\n                return;\n            }\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryDestructiveOrder_ShouldAskByTheAsyncPath_NotByTheSilentSyncOne",
+    "why": "La guardia recorre el árbol de fuentes del producto y exige que nadie pregunte por la vía síncrona; con el mutante «Nuevo Flujo» vuelve a hacerlo y la guardia nombra el fichero. La tabla de las ocho órdenes se cubre además por sí sola: la misma guardia exige el «await _dialogService.ConfirmAsync(» en cada una."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheFlowOrders_ShouldBeFulfilledByTheHostsOwnAsyncChannel_NotByTheSilentSyncOne",
+    "why": "La paridad de las tres órdenes de flujo no cambia con el mutante: la ventana sigue ejecutando el comando CANÓNICO del núcleo y el cajón sigue declarando lo pedido. Si cayera, el mutante estaría rompiendo el reparto de las órdenes de flujo y no sólo por dónde viaja la pregunta."
+  }
+}

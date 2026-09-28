@@ -1,0 +1,26 @@
+{
+  "id": "gestor-que-borra-sin-preguntar",
+  "hito": 263,
+  "claim": "La orden DESTRUCTIVA del gestor de presets depende de la respuesta REAL del usuario: pregunta primero (por la vía asíncrona, la única que un modal del host puede contestar sin bloquear el hilo de UI) y sólo borra si el usuario dijo que sí. Se pregunta SIEMPRE —incluido un «no»— y borrar es la excepción, no el camino por defecto.",
+  "why": "Es la regla que separa «deshacer un preset» de «perderlo»: sin la pregunta, el pulsar de un botón vacía el catálogo del usuario y no hay vuelta atrás. El modo de fallo además era mudo: la puerta de la fila resolvía el servicio Nulo (que contesta «sí» sin enseñar nada) y borraba en silencio, mientras la de la tarjeta no borraba y tampoco avisaba. La medición no puede ser el diálogo —un borrado sin pregunta no deja rastro en pantalla—, así que es el ALMACÉN: con el mutante recibe el borrado que el usuario nunca autorizó.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        if (!await _dialogService.ConfirmAsync(question, _loc.GetString(\"PresetManager_DeleteBtn\", \"Eliminar\")))\n        {\n            return;\n        }\n\n",
+          "new": "        // mutante: se borra sin esperar la respuesta del usuario\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~DeletingAUserPreset_ShouldNotDelete_WhenNotConfirmed",
+    "why": "El caso contesta «no» y exige dos cosas: que la pregunta haya llegado (con su nombre dentro) y que el almacén no reciba ningún borrado. Con el mutante no hay pregunta y el borrado sí llega, así que el caso cae justo por la mitad que el mutante rompe: la operación deja de depender de la respuesta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~DeletingASystemPreset_ShouldWarn_AndNotDelete",
+    "why": "El caso hermano no llega a la pregunta: la protección de los presets del sistema va ANTES y devuelve con su aviso, así que el mutante no lo toca. Si cayera, el mutante estaría rompiendo el borrado entero (o el aviso) y no sólo la confirmación."
+  }
+}

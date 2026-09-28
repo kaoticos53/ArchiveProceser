@@ -1,0 +1,26 @@
+{
+  "id": "ventana-servida-que-no-esta-en-el-catalogo",
+  "hito": 259,
+  "claim": "Las cuatro ventanas del menú que el host Uno sirve (Estudio de temas, Métricas, Explorador VFS y aviso de actualización) están en el CENSO del catálogo de diálogos: ImplementedDialogs con su vista, y las claves que no se sirven —ajustes del flujo y configuración de URLs de modelos de IA— declaradas con su razón. La guardia exige que TODA clave de DialogKeys esté en una de las dos tablas, así que una clave nueva sin destino cae allí en vez de cerrarse en silencio.",
+  "why": "Es el modo de fallo de una ventana portada a medias: la entrada se dibuja, el comando canónico se ejecuta, la clave se pide... y el censo ya no la reconoce. Sin la comprobación de cobertura, quitar una fila de ImplementedDialogs dejaría la aplicación funcionando igual —el diálogo se sirve por su `case` del `switch`— y el censo mintiendo: la guardia que exige «servida o declarada» pasaría a no cubrir esa clave. El mutante borra la fila del Estudio de temas, que es justo la ventana que más creció en este tramo, y el censo deja de contarla. La medición es de declaración, no de comportamiento: se comparan las dos tablas del host contra las claves del contrato del SDK.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Platform/UnoWindowService.cs",
+      "replacements": [
+        {
+          "old": "        (DialogKeys.ThemeCustomizer, nameof(ThemeCustomizerBody)),\n",
+          "new": "        // mutante: la ventana se sirve, pero el censo ya no la reconoce\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared",
+    "why": "El caso lee las dos tablas del servicio de ventanas y exige que toda clave del catálogo canónico (leído del SDK) esté servida o declarada. Con el mutante, ThemeCustomizer no está en ninguna de las dos y el caso cae nombrándola; además comprueba que las tablas no se solapen, así que declararla y servirla a la vez tampoco colaría."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryEntry_ShouldExistInItsViewWithItsAnchorAndItsState",
+    "why": "El caso hermano audita que cada entrada del menú exista en su vista con su ancla y su estado, que el mutante no toca: borra una fila del CENSO de diálogos, no una entrada dibujada ni su enlace. Si cayera, el mutante estaría rompiendo la paridad de las vistas y no sólo el censo del catálogo."
+  }
+}

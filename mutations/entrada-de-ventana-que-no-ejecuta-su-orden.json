@@ -1,0 +1,26 @@
+{
+  "id": "entrada-de-ventana-que-no-ejecuta-su-orden",
+  "hito": 259,
+  "claim": "Cada una de las cuatro entradas del menú que abren una ventana ejecuta el COMANDO CANÓNICO del núcleo (OpenThemeCustomizerCommand, OpenMetricsDashboardCommand, OpenVirtualFileSystemExplorerCommand, OpenUpdateDialogCommand): la vista no reimplementa nada —ni construye el view model de la ventana ni pide el diálogo por su cuenta—, y la tabla ServedWindowEntries del control deja escrito dónde vive cada una.",
+  "why": "Una entrada dibujada cuyo manejador se queda sin su orden es el fallo más silencioso de un portado: el botón está, se pulsa, no pasa nada, y ni la compilación ni el arranque dicen nada. El mutante vacía el manejador de las Métricas —la entrada sigue dibujada, el cajón sigue abriéndose y cerrándose— y la única señal es que su orden canónica ya no aparece en el code-behind del cajón. La guardia lo mide por los dos lados: la tabla de lo servido tiene que nombrar la orden Y la orden tiene que estar en la vista que la dibuja.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/MainMenuDrawer.xaml.cs",
+      "replacements": [
+        {
+          "old": "        _vm?.OpenMetricsDashboardCommand.Execute(null);\n",
+          "new": "        // mutante: la entrada sigue dibujada y ya no ejecuta su orden\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWindowEntries_ShouldBeServedByTheHostsDialogCatalogue",
+    "why": "El caso lee la tabla ServedWindowEntries y exige que cada orden servida esté DIBUJADA en la barra o en el cajón —la tabla no sustituye a la entrada—, y que su clave esté en el catálogo. Con el mutante, OpenMetricsDashboardCommand desaparece del cajón y el caso cae nombrándola."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared",
+    "why": "El caso hermano audita el censo del catálogo de diálogos (qué claves sirve el host y cuáles declara), no el code-behind de las vistas: el mutante vacía un manejador y deja intactas las dos tablas del servicio. Si cayera, el mutante estaría tocando el catálogo y no sólo el dispatch de una entrada."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "menu-que-ejecuta-la-orden-de-otro",
+  "hito": 257,
+  "claim": "Cada entrada del menú principal del host Uno despacha SU orden canónica del view model portable: el botón «Ejecutar» de la barra llama a ExecuteWorkflowCommand (el mismo comando del núcleo que el escritorio ata por Command=), no a la orden de la entrada de al lado.",
+  "why": "El menú principal es la superficie donde una orden equivocada no se nota: el botón pulsa, la app responde y el flujo arranca — sólo que arranca en el modo de la entrada vecina, en silencio y sin error en pantalla. El host Uno no dibuja la barra con Command= sino con manejadores Click= que despachan el comando del view model (para poder respetar CanExecute y para llevar el ciclo al renglón de estado), así que el emparejamiento entrada→orden es CÓDIGO del host y puede torcerse sin que nada lo delate. La guardia lo censa entrada por entrada (19 filas: AutomationId, vista, dónde vive la orden y estado por contexto) y el mutante cambia una sola flecha: «Ejecutar» pasa a ejecutar el comando de «Depurar». La app compila, el botón pulsa y el sondeo del menú seguiría viendo el ciclo correr: por eso la firma del defecto es «la entrada despacha la orden de al lado», y el testigo es el caso que empareja cada entrada con la suya.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/ControlBar.xaml.cs",
+      "replacements": [
+        {
+          "old": "private void OnRunClicked(object sender, RoutedEventArgs e) => Run(_vm?.ExecuteWorkflowCommand);",
+          "new": "private void OnRunClicked(object sender, RoutedEventArgs e) => Run(_vm?.DebugWorkflowCommand);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryEntry_ShouldRunACanonicalOrder_NotACopyOfIt",
+    "why": "El caso exige, fila por fila del censo, que la entrada «Ejecutar» (ControlBarRunButton, home Code) declare ExecuteWorkflowCommand en el code-behind de su vista. Con el mutante esa orden desaparece del fichero y el caso cae nombrando la entrada. Es la prueba de árbol de un emparejamiento que la suite no puede pulsar (WinUI no se materializa en las pruebas), y la sonda del menú —que sí pulsa el botón real— es la segunda red."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryEntry_ShouldExistInItsViewWithItsAnchorAndItsState",
+    "why": "El caso hermano de la misma guardia audita los anclajes de automatización y el estado por contexto (visibilidad y habilitación colgadas del view model), que el mutante no toca: cambia a qué comando llama un manejador, no qué dibuja la vista ni de dónde lee su estado. Si este control cayera, el mutante estaría rompiendo más de lo que su tesis dice y el veredicto sería IMPRECISA."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "extension-de-preset-sin-punto-al-guardar",
+  "hito": 263,
+  "claim": "Al guardar, la extensión de salida se NORMALIZA: un «mp4» escrito a mano se guarda como «.mp4», que es lo que el motor de transcodificación espera para nombrar la salida.",
+  "why": "Es la clase de regla que no se ve en pantalla y se descubre en el archivo de salida: con la extensión sin punto, el nombre del fichero generado sale mal y el preset «funciona» hasta que alguien mira el disco. El mutante deja el valor tal cual lo escribió el usuario —que es exactamente lo que hacía la vista antes de que esta regla viviera en el view model portable— y por eso la medición tiene que ser el valor GUARDADO, no el que se enseña en el cuadro.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        return trimmed.StartsWith('.') ? trimmed : \".\" + trimmed;",
+          "new": "        // mutante: la extensión se guarda tal cual la escribió el usuario\n        return trimmed;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~Saving_ShouldNormalizeTheExtension",
+    "why": "El caso escribe «mp4» en el formulario, guarda y exige que el almacén haya recibido «.mp4» (y que el cuadro lo enseñe normalizado). Con el mutante el almacén recibe «mp4» y el caso cae nombrando la extensión guardada."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Saving_ShouldWriteThroughTheStore_NotOnlyInTheList",
+    "why": "El caso hermano guarda un preset cuya extensión ya traía el punto (.mp3), así que la normalización no cambia nada de lo que comprueba: descripción y argumentos llegan igual al almacén. Si cayera, el mutante estaría rompiendo el guardado entero y no sólo la normalización."
+  }
+}

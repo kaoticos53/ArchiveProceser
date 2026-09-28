@@ -1,0 +1,29 @@
+{
+  "id": "cable-que-no-toca-su-socket",
+  "hito": 254,
+  "claim": "La figura del cable del lienzo Uno nace en el ANCLA de salida y muere en el ANCLA de llegada: la Bézier tiene sus dos cuellos como puntos de control, así que el cable toca sus dos sockets en vez de quedar separado de ellos.",
+  "why": "El usuario reportó que al mover o ajustar el zoom las líneas de conexión se desplazaban quedando fuera de su sitio, con rulos con forma de «2» entre tarjetas. La sonda ProbeWireTracking lo midió en la app viva: el extremo dibujado del cable estaba a 45,0 px del centro de su socket. La causa es la forma del trazo: el control de Nodify retira las puntas spacing y une las anclas con dos tramos rectos, y la primera versión del host sólo copió la Bézier —queda separada del socket—; la segunda copió también los tramos y el resultado se leía como una Z. El arreglo deja la curva naciendo en el ancla y sin tramos rectos. El mutante devuelve el defecto original: la figura abre en el cuello de salida y cierra en el de llegada. Es un defecto que el suite no puede ver por comportamiento —el lienzo es WinUI y no se materializa—, así que el testigo censa cómo se construye la figura, la sonda lo mide en la app viva y la prueba de comportamiento vive en el núcleo portable (ConnectionGeometry.WirePath).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "            StartPoint = ToWindowsPoint(wire.Source),",
+          "new": "            StartPoint = ToWindowsPoint(wire.Exit),"
+        },
+        {
+          "old": "            Point3 = ToWindowsPoint(wire.Target)",
+          "new": "            Point3 = ToWindowsPoint(wire.Arrival)"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor",
+    "why": "La guardia exige que el primer punto de control sea wire.Exit y el último wire.Arrival (con la curva naciendo en wire.Source y muriendo en wire.Target): con el mutante el cuello de salida se sustituye por el ancla, el de llegada desaparece y el caso cae. Es la firma del cable despegado de su socket."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheAnchorMeasurement_ShouldTransformTheCenter_NotSumIt",
+    "why": "La otra mitad del arreglo del 254 (la medida del ancla, que es la que descuadraba al tocar el zoom) no comparte ni una línea con la construcción de la figura: el mutante cambia los puntos de control del trazo y deja la medida del centro intacta, así que este control tiene que seguir verde."
+  }
+}

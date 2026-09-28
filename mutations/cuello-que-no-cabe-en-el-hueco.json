@@ -1,0 +1,25 @@
+{
+  "id": "cuello-que-no-cabe-en-el-hueco",
+  "hito": 254,
+  "claim": "El cuello del cable cabe en el hueco entre las dos anclas: su largo es la mitad del hueco como máximo, así que los dos cuellos no se cruzan y la curva se cierra dentro del espacio que hay entre los sockets en vez de doblarse hacia atrás.",
+  "why": "Es la segunda mitad del reporte del usuario («al mover un nodo la parte recta es demasiado grande y se ve mal»), que llegó después de que los cables ya tocaran sus sockets. La regla del control no miraba el hueco: dejaba el punto de control hasta 100 px por fuera de dos anclas que podían estar a 30 px, y con eso la curva salía invertida —el rulo con forma de «2»—. El mutante devuelve esa regla sin tope: es el defecto que la sonda mide en la app viva con el caso del hueco estrecho (anchas a 70 px, 120 de caída).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/Services/ConnectionGeometry.cs",
+      "replacements": [
+        {
+          "old": "        double offset = Math.Min(ceiling, width / 2d);",
+          "new": "        double offset = ceiling;"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheNeck_ShouldNeverOvershootTheHueco_EvenWhenTheNodesAreCupped",
+    "why": "El caso mide justo lo que el mutante deshace: con las anclas a 30 px, el cuello tiene que ser la mitad del hueco (15) y no puede salirse. Sin el tope, el techo sube el cuello a 100 + sqrt(750) ≈ 127,4 y tanto las aserciones del cuello como las de los cuellos de control caen."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheTrace_ShouldStartAndEndAtTheAnchors_WithoutStraightBars",
+    "why": "El trazado sigue empezando y terminando en las anclas y sin tramos rectos con o sin el tope (esa es la otra mitad del arreglo del 254): el mutante toca el LARGO del cuello, no los extremos del trazo, así que este control tiene que seguir verde. Si cayera, el mutante no estaría rompiendo lo que su tesis dice."
+  }
+}

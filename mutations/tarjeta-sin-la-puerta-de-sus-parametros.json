@@ -1,0 +1,26 @@
+{
+  "id": "tarjeta-sin-la-puerta-de-sus-parametros",
+  "hito": 263,
+  "claim": "La tarjeta del nodo del host tiene su conmutador de parámetros en la cabecera (AutomationId NodeCardExpandToggle), cableado al estado desplegado del NÚCLEO: sin él, el panel de parámetros —y con él las acciones rápidas del nodo, donde vive el «🎬 Presets...»— está dibujado y sin puerta.",
+  "why": "Es el defecto que esta rebanada encontró midiendo: el view model del núcleo tenía el estado, la vista tenía el panel, y faltaba justo lo que los une — el escritorio conmuta sus parámetros con un ToggleButton de la cabecera y este host no tenía ninguno, así que la acción de la tarjeta no se podía alcanzar con el ratón. Se veía verde por partes (la acción existe, el panel existe, la sonda de la fila pasa) y sólo la sesión con puntero lo destapó. La guardia mide el conmutador por su ancla y por el estado que conmuta, para que volver a dejarlo sin puerta la haga caer.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeCardView.xaml",
+      "replacements": [
+        {
+          "old": "              <ToggleButton x:Name=\"ParametersToggle\" Grid.Column=\"4\"\n                            IsChecked=\"{Binding Node.IsExpanded, Mode=TwoWay}\"\n                            AutomationProperties.AutomationId=\"NodeCardExpandToggle\"\n                            AutomationProperties.Name=\"{Binding ParametersToggleToolTip}\"\n                            ToolTipService.ToolTip=\"{Binding ParametersToggleToolTip}\"\n                            Background=\"Transparent\" BorderThickness=\"0\" Padding=\"3,0\" Margin=\"3,0,0,0\"\n                            VerticalAlignment=\"Center\">\n                <Path x:Name=\"ParametersIcon\" Width=\"10\" Height=\"10\" Stretch=\"Uniform\"\n                      Data=\"{Binding ExpandIconGeometry}\"\n                      Fill=\"{StaticResource CanvasSecondaryBrush}\" />\n              </ToggleButton>\n",
+          "new": "              <!-- mutante: la tarjeta se queda sin su conmutador de parámetros -->\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheNodeCard_ShouldBeAbleToShowThePanelWhereTheQuickActionsLive",
+    "why": "El caso exige el conmutador por su ancla y el enlace de dos vías con Node.IsExpanded, que es lo que hace alcanzable el bloque de acciones rápidas. Con el mutante el ancla desaparece de la tarjeta y el caso cae nombrando la pieza que falta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryTextUsedByTheDialogs_ShouldExistInBothHostDictionaries",
+    "why": "El caso hermano audita los textos de las superficies en los dos diccionarios del host, que el mutante no toca: quita un control del XAML, no una clave de idioma (el rótulo se sigue citando desde el adaptador). Si cayera, el mutante estaría rompiendo los textos y no la puerta del panel."
+  }
+}

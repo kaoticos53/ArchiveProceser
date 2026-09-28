@@ -1,0 +1,26 @@
+{
+  "id": "superficie-de-presets-sin-la-accion-que-sustituye",
+  "hito": 263,
+  "claim": "El nodo de transcodificación no sólo declara su superficie: dice QUÉ acción personalizada sustituye («ManageMediaPresets»), que es el hilo que une los dos botones de la misma puerta —el «🎬» de la fila del preset y el de la tarjeta del nodo— con la superficie que el host sabe servir.",
+  "why": "Sin ese nombre, la declaración existe pero nadie puede casarla con la acción que el usuario pulsa: el host no tiene forma de saber que ese botón corresponde a la superficie declarada, y los dos botones vuelven a caer en la ventana del toolkit —la que este host no puede montar—. El fallo se ve como un botón sin efecto, y por eso la medición es de declaración: la clave de la superficie y el nombre de la acción, juntos, en el nodo.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/MediaTranscoderNode.cs",
+      "replacements": [
+        {
+          "old": "    /// <summary>La acción personalizada que esta superficie sustituye: el mismo «🎬» de la tarjeta del nodo.</summary>\n    public string? ReplacesCustomActionId => \"ManageMediaPresets\";\n\n",
+          "new": "    // mutante: la superficie se declara pero no dice qué acción sustituye\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheMediaPresetManager_ShouldBeDeclaredByTheNode_AndPaintedByBothHosts",
+    "why": "El caso lee el nodo y exige la declaración completa (contrato, clave del catálogo, acción que sustituye y view model portable). Con el mutante falta el nombre de la acción y el caso cae nombrando lo que falta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheManager_ShouldOpenWithTheStoreCatalog_AndTheFirstOneChosen",
+    "why": "El caso hermano ejerce el view model portable del gestor, que el mutante no toca: quita un miembro del nodo, no la regla del producto ni el catálogo del almacén. Si cayera, el mutante estaría rompiendo el gestor y no sólo su declaración."
+  }
+}

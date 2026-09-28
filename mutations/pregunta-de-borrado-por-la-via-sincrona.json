@@ -1,0 +1,26 @@
+{
+  "id": "pregunta-de-borrado-por-la-via-sincrona",
+  "hito": 263,
+  "claim": "La pregunta del borrado viaja por la vía ASÍNCRONA del contrato (ConfirmAsync): es la única que un modal del host puede contestar sin bloquear el hilo de UI, y por eso las dos puertas —la fila del parámetro y la acción de la tarjeta— se comportan igual en cualquier host.",
+  "why": "La vía síncrona es la que hacía que la MISMA orden tuviera dos comportamientos según quién la sirviera: en un servicio sin diálogos contesta «sí» (borrado en silencio, sin aviso) y en un host WinUI contesta «no» desde el hilo de UI (no borra y tampoco avisa). Ninguna de las dos es la respuesta del usuario, y por eso el mutante no se mide por el diálogo sino por lo que se le PREGUNTA al servicio: la pregunta tiene que llegar por la vía que espera la respuesta real.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        if (!await _dialogService.ConfirmAsync(question, _loc.GetString(\"PresetManager_DeleteBtn\", \"Eliminar\")))\n        {\n            return;\n        }\n\n",
+          "new": "        // mutante: la pregunta se hace por la vía SÍNCRONA, la que contesta por su cuenta\n        if (!_dialogService.ShowConfirmation(question, _loc.GetString(\"PresetManager_DeleteBtn\", \"Eliminar\")))\n        {\n            return;\n        }\n\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~DeletingAUserPreset_ShouldNotDelete_WhenNotConfirmed",
+    "why": "El caso exige que la pregunta haya llegado por ConfirmAsync (es donde el doble la anota). Con el mutante la llamada se va por la vía síncrona, el doble no la anota y el caso cae nombrando la pregunta que falta, aunque el resultado del borrado parezca el mismo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Resetting_ShouldAsk_AndResetTheStore",
+    "why": "El caso hermano ejercita el RESTABLECIMIENTO, que el mutante no toca: sigue preguntando por la vía asíncrona y sigue llegando al almacén. Si cayera, el mutante estaría rompiendo la confirmación entera y no sólo por dónde viaja."
+  }
+}

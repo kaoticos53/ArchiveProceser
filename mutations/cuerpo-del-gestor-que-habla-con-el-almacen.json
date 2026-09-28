@@ -1,0 +1,26 @@
+{
+  "id": "cuerpo-del-gestor-que-habla-con-el-almacen",
+  "hito": 263,
+  "claim": "El cuerpo del gestor en el host es una VISTA del view model portable del plugin: recibe el view model construido (lo declara el nodo) y sus órdenes son sus comandos. La vista no habla con el almacén de presets.",
+  "why": "Es la tentación exacta de una vista escrita a mano sobre el modelo de otro: cuando algo no encaja, se pide el almacén desde la vista y se hace allí. El resultado se ve igual —la lista se pinta, el formulario se llena— pero la regla del producto empieza a vivir en dos sitios: lo que edite el host deja de pasar por las mismas comprobaciones que la ventana del escritorio, y las dos superficies pueden divergir sin que nadie lo note. El mutante mete el almacén en la vista; la guardia lo prohíbe justamente por eso.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/MediaPresetManagerBody.xaml.cs",
+      "replacements": [
+        {
+          "old": "    private readonly MediaPresetManagerViewModel _vm;",
+          "new": "    // mutante: la vista se pide el almacén para sí\n    private readonly FileFlow.Plugin.Integrations.UI.Services.MediaPresetManagerService _store\n        = FileFlow.Plugin.Integrations.UI.Services.MediaPresetManagerService.Instance;\n\n    private readonly MediaPresetManagerViewModel _vm;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheMediaPresetManager_ShouldBeDeclaredByTheNode_AndPaintedByBothHosts",
+    "why": "El caso exige que la vista del host pinte el view model del plugin y prohíbe que hable con el almacén de presets o que construya el view model por su cuenta. Con el mutante la vista trae el almacén y el caso cae nombrando la línea."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryTextUsedByTheDialogs_ShouldExistInBothHostDictionaries",
+    "why": "El caso hermano audita los textos de los diálogos en los dos diccionarios del host, que el mutante no toca: añade una línea a un cuerpo, no una clave de idioma. Si cayera, el mutante estaría rompiendo los textos y no sólo la propiedad de la vista."
+  }
+}

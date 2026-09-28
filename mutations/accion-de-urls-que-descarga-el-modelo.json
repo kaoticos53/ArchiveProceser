@@ -1,0 +1,26 @@
+{
+  "id": "accion-de-urls-que-descarga-el-modelo",
+  "hito": 262,
+  "claim": "La fila del catálogo de modelos de IA tiene su rama de URLs propia, y esa rama ejecuta la orden CANÓNICA del gestor (ConfigureUrlsCommand) que pide el diálogo por el catálogo del host. Existe la ventana, existe el punto de entrada y el botón hace lo que dice.",
+  "why": "Es el modo de fallo que el tramo anterior dejó declarado al revés —«esta ventana no tiene punto de entrada»— y el que más importa ahora que sí lo tiene: si la rama de la acción desaparece, el `default` del switch se la traga y pulsar «URLs» DESCARGA el modelo en vez de abrir su editor. Un botón que hace otra cosa es peor que un botón que no hace nada, porque el usuario ya no puede distinguir un fallo de su propia intención. La medición es de declaración: la fila dibujada y su rama contra la vista que el censo del host declara servida.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/SettingsPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "                case \"urls\":\n                    // La orden canónica del gestor: pide el diálogo por el catálogo del host, que ahora SÍ lo\n                    // sirve (hito 262). La vista no edita URLs por su cuenta; el cambio lo escribe el view\n                    // model del editor en el mismo sitio que el escritorio.\n                    await manager.ConfigureUrlsCommand.ExecuteAsync(model);\n                    RefreshAiModelsSection();\n                    break;\n\n",
+          "new": "                // mutante: la rama de URLs desaparece y el `default` la sustituye por la descarga\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheModelUrlAction_ShouldOpenTheServedEditor_AndWriteWhereTheDesktopWrites",
+    "why": "El caso lee la fila dibujada, la rama del manejador, el censo de diálogos del host y el cuerpo del editor, y exige que la acción de URLs tenga su rama y que esa rama ejecute ConfigureUrlsCommand. Con el mutante la rama desaparece y el caso cae nombrando lo que falta; además el mismo caso habría caído si la clave dejara de estar servida en ImplementedDialogs."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheSixSections_ShouldBeDeclared_WithTheirPaneAndTheirButton",
+    "why": "El caso hermano audita las seis secciones de la superficie (cuerpo, botón, tabla compartida y que las dos del hito 261 sean VISTAS del view model portable), que el mutante no toca: quita una rama del manejador de una fila, no una sección ni su conmutador. Si cayera, el mutante estaría rompiendo la superficie y no la acción de la fila."
+  }
+}

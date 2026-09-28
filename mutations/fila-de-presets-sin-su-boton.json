@@ -1,0 +1,31 @@
+{
+  "id": "fila-de-presets-sin-su-boton",
+  "hito": 263,
+  "claim": "La fila del preset del inspector del host dibuja su botón («🎬», con su AutomationId ParamPreset_) y lo cablea a la orden que abre el gestor: la fila del escritorio que abre este diálogo tiene aquí su puerta.",
+  "why": "Es el modo de fallo clásico de un portado a medias: el censo declara la orden como servida, el servicio sabe servir la superficie y la sonda la mide… pero el botón que el usuario pulsa ya no está, así que la entrada desaparece de la pantalla sin que ninguna tabla lo note. La medición cuelga del propio censo —el inspector declara esa orden servida y tiene que ejecutarla— para que quitar el botón obligue a tocar la tabla, que es lo que la guardia protege.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "        // El GESTOR DE PRESETS: la misma fila que el escritorio marca con su «Presets» (la del editor de\n        // presets de medios). La orden es la de la fila —la misma que el escritorio—, y la cumple la\n        // superficie que declara el nodo: el host no reimplementa el gestor, lo sirve.\n        if (wantsPresets)\n        {\n            actions.Children.Add(RowActionButton(\n                \"ParamPreset_\" + p.Key,\n                \"🎬\",\n                \"Node_Param_OpenPresetManager\",\n                \"Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)\",\n                p.OpenMediaPresetManagerCommand));\n        }\n",
+          "new": "        // mutante: la fila del preset se queda sin su botón\n",
+          "count": 1
+        },
+        {
+          "old": "        bool wantsPresets = p.IsMediaPreset;\n        if (!wantsEditor && !wantsVariables && !wantsPresets)",
+          "new": "        if (!wantsEditor && !wantsVariables)",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryDesktopRowDialog_ShouldBeServedHere_OrDeclaredPending",
+    "why": "El caso exige que cada orden de fila del escritorio esté dibujada en el host o declarada pendiente, y que lo declarado servido esté de verdad cableado en el inspector. Con el mutante la orden sigue en la tabla de servidas pero ya nadie la ejecuta, y el caso cae nombrando el botón que falta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared",
+    "why": "El caso hermano audita el catálogo de diálogos del host —cada clave de DialogKeys servida o declarada—, que el mutante no toca: quita un botón del inspector, no una clave del servicio. Si cayera, el mutante estaría rompiendo el catálogo de ventanas y no la fila."
+  }
+}

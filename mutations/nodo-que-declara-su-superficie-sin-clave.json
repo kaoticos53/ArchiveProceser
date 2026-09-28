@@ -1,0 +1,26 @@
+{
+  "id": "nodo-que-declara-su-superficie-sin-clave",
+  "hito": 261,
+  "claim": "El DISEÑADOR DE DATASETS lo declara el NODO al SDK (INodeDialogSurfaceProvider): dice QUÉ diálogo quiere —DialogKeys.DataSetDesigner, la misma clave para todos los hosts— y QUÉ contiene (su view model portable). El host pregunta al nodo y sirve esa clave con su propia vista, así que la identidad del diálogo no la decide el host.",
+  "why": "Es la frontera que el tramo anterior dejó escrita («esa ventana la monta el PROPIO plugin con Avalonia: este host no puede montarla») y la manera de cruzarla sin reimplementar el diseñador: el nodo declara la superficie, el host la pinta. El mutante cambia la clave que declara el nodo por una inventada: el host sigue funcionando —pregunta al nodo, recibe una clave y abre la superficie con ella— y sin embargo la identidad del diálogo deja de ser la del catálogo compartido, que es exactamente el fallo que deja a un host futuro sin saber qué está abriendo. La guardia lee la declaración del nodo y la exige contra las claves del SDK.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.FileSystem/Nodes/Sources/SyntheticDataSourceNode.cs",
+      "replacements": [
+        {
+          "old": "    public string DialogKey => FileFlow.Sdk.Services.DialogKeys.DataSetDesigner;",
+          "new": "    public string DialogKey => \"DataSetDesignerDelPlugin\";",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheDataSetDesigner_ShouldBeDeclaredByTheNode_AndServedByTheHost",
+    "why": "El caso comprueba que el nodo declara la clave del catálogo (DialogKeys.DataSetDesigner) y que su carga útil es el view model portable. Con el mutante, la clave deja de ser la del contrato del SDK y el caso cae nombrando la línea que falta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWindowEntries_ShouldBeServedByTheHostsDialogCatalogue",
+    "why": "El caso hermano audita el censo del servicio de ventanas del host (qué claves sirve con qué vista), que el mutante no toca: cambia lo que declara el nodo, no lo que el host tiene en su catálogo. Si cayera, el mutante estaría rompiendo el censo del host y no la declaración del nodo."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "menu-que-no-declara-un-atajo",
+  "hito": 257,
+  "claim": "Los ATAJOS del menú principal del escritorio tienen destino escrito en el host: los seis que el escritorio liga a las órdenes de la barra (F5 / F10 / Shift+F5 / Ctrl+N / Ctrl+O / Ctrl+S) están ENRUTADOS desde el hito 258 en la tabla RoutedShortcuts —que es la que recorre el manejador de la ventana— y lo que no llegara tendría que estar declarado en DeclaredUnroutedShortcuts con su tecla y su razón. La guardia exige que cada (gesto, orden) del escritorio esté en una de las dos tablas.",
+  "why": "Un atajo que no llega es el defecto más difícil de reportar y el más fácil de no ver: la tecla no hace nada, no hay error, no hay botón que se quede gris — el usuario concluye que la aplicación va mal y no sabe por qué. Y una tabla de atajos que no es la que enruta es una declaración que no se cumple: por eso la tabla que despacha es la MISMA que la guardia lee. El mutante borra una fila de RoutedShortcuts (F5 → ContinueWorkflowCommand): la aplicación sigue funcionando igual, la tecla del escritorio deja de llegar y deja de estar declarada —la firma exacta del hueco mudo—. La guardia lo mide en las dos direcciones: lo que el escritorio liga tiene que estar en alguna de las dos tablas, ninguna puede contradecir a la otra, y ninguna tecla enrutada puede disputarse con la tabla canónica del lienzo.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/ControlBar.xaml.cs",
+      "replacements": [
+        {
+          "old": "        (\"F5\", \"F5\", false, false, \"ContinueWorkflowCommand\", \"el comando del ciclo del núcleo, el mismo del botón Continuar\"),\n",
+          "new": "        // mutante: el atajo del escritorio vuelve a no estar enrutado NI declarado\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryDesktopShortcut_ShouldBeRoutedHere_OrDeclaredUnrouted",
+    "why": "El caso lee los KeyBinding del escritorio que ligan una orden del ControlBar y exige que cada (gesto, orden) esté en la tabla del host; con el mutante (F5, ContinueWorkflowCommand) queda huérfano y el caso cae nombrándolo. El mismo caso ata las dos direcciones contra el vacío: la lectura del escritorio tiene que encontrar atajos y la tabla canónica del lienzo tiene que leerse, así que no puede pasar por no haber mirado."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost",
+    "why": "El caso hermano audita las ÓRDENES dibujadas del menú (qué entrada ejecuta qué, y qué queda pendiente o a cargo del host), no la tabla de atajos: el mutante borra una fila de la declaración de teclas y deja intactas las dos de órdenes. Si cayera, el mutante estaría tocando la paridad de entradas y no sólo la de los atajos."
+  }
+}

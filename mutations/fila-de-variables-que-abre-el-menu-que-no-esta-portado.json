@@ -1,0 +1,26 @@
+{
+  "id": "fila-de-variables-que-abre-el-menu-que-no-esta-portado",
+  "hito": 258,
+  "claim": "El botón «{x}» de una fila de parámetro ejecuta la orden que este host SÍ sirve (OpenVariableCatalogCommand, el catálogo completo del núcleo), y la orden que el host declaró pendiente (OpenVariablePickerCommand, el menú emergente agrupado del escritorio) no está cableada en ninguna fila.",
+  "why": "El escritorio abre sus variables por un menú emergente y el host no tiene menú emergente: la salida honesta fue abrir directamente la primera entrada de aquel menú —el catálogo completo— y DECLARAR el menú como no portado. El mutante cablea el botón del host a la orden declarada pendiente: desde dentro no cambia nada (el botón existe, tiene su ancla y su comando), pero el usuario pulsaría «{x}» y no pasaría nada, porque el menú emergente de este host no existe. Es la firma de una tabla de deuda que miente, y sólo se ve exigiendo las dos direcciones: lo declarado no puede estar cableado y todo lo cableado tiene que estar censado.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "                p.OpenVariableCatalogCommand));",
+          "new": "                p.OpenVariablePickerCommand));",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryDesktopRowDialog_ShouldBeServedHere_OrDeclaredPending",
+    "why": "El caso lee las dos tablas del inspector y las dos direcciones: la orden declarada pendiente no puede estar ejecutada por una fila (`p.OpenVariablePickerCommand`) y todo «Open…» que el inspector ejecute tiene que estar censado. Con el mutante las dos comprobaciones caen nombrando la orden."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~EveryRowAction_ShouldBeDrawnOnTheSameRowsAsTheDesktop",
+    "why": "El caso hermano audita en qué FILAS se dibuja cada acción (los flags del view model: el editor en el valor largo, el catálogo en las de texto). El mutante cambia el destino de un botón, no las filas donde aparece: si cayera, el defecto estaría moviendo las acciones de fila y no sólo su destino."
+  }
+}

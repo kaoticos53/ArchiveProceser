@@ -1,0 +1,26 @@
+{
+  "id": "ajuste-sin-su-texto",
+  "hito": 255,
+  "claim": "Ningún texto que la superficie de ajustes del host Uno pinta puede faltar en el diccionario del host: cada clave Uno_* citada por el código o el XAML de FileFlow.App.Uno tiene entrada en Strings.resx (neutro/inglés) y en Strings.es.resx (español), y las dos declaraciones tienen que tener las mismas claves.",
+  "why": "Sin entrada en el diccionario, GetString resuelve el fallback incrustado en el código: el proceso cambia de cultura, el idioma se aplica de verdad y los textos se quedan en el idioma del fallback. Es exactamente el defecto que la superficie de ajustes mide en runtime (el botón de guardar pasa de 'Guardar ajustes' a 'Save settings' porque la cadena sale del resx, no de un literal del código), y es un defecto que no rompe nada: no hay excepción, no hay crash, sólo una mitad de la interfaz en el idioma equivocado. El mutante borra la entrada de Uno_Settings_Save del diccionario: la clave la sigue citando el panel y el host sigue arrancando, con el texto del fallback.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Resources/Strings.resx",
+      "replacements": [
+        {
+          "old": "  <data name=\"Uno_Settings_Save\" xml:space=\"preserve\"><value>Save settings</value></data>\n",
+          "new": "",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryCitedUnoKey_ShouldExistInBothDictionaries",
+    "why": "La guardia recorre el código y el XAML del host, extrae las claves Uno_* citadas y exige entrada en los dos diccionarios: con el mutante Uno_Settings_Save la cita el panel y no la declara el resx, así que la guardia cae nombrando la clave huérfana. Cae también el caso que ata los literales del sondeo al diccionario, que es la segunda cara del mismo defecto."
+    },
+  "control": {
+    "filter": "FullyQualifiedName~TheProbe_ShouldHaveItsOwnMode_OutsideTheCanvasProbes",
+    "why": "El caso hermano del mismo fichero: el mutante borra UNA entrada del diccionario del host y deja intacto el reparto de modos de sondeo (el lienzo no corre la sonda de ajustes y la sonda de ajustes tiene su propio modo). Si un defecto tocara el fichero entero, este control caería y el veredicto sería IMPRECISA."
+  }
+}

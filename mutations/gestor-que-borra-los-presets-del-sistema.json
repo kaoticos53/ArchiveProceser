@@ -1,0 +1,26 @@
+{
+  "id": "gestor-que-borra-los-presets-del-sistema",
+  "hito": 263,
+  "claim": "El gestor NO borra los presets del sistema: su view model lo comprueba antes de preguntar nada y lo explica con un aviso («no se pueden eliminar los presets predeterminados del sistema»), en vez de dejar un botón que no hace nada.",
+  "why": "Es la regla que separa «el catálogo del producto» de «mis presets»: los del sistema son el contrato que el nodo usa de fábrica y el usuario no puede vaciarlo por accidente. Y el modo de fallo es mudo por partida doble: sin la comprobación no hay aviso, y como el almacén sí los protege, el botón tampoco borra —el usuario se queda pulsando algo que no responde y sin saber por qué—. La medición es el AVISO: la protección de abajo ya la hace el almacén, así que lo que distingue al gestor correcto del mutante es que explica la negativa.",
+  "edits": [
+    {
+      "file": "FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs",
+      "replacements": [
+        {
+          "old": "        if (preset.IsSystemDefault)\n        {\n            _dialogService.ShowWarning(\n                _loc.GetString(\"PresetManager_MsgDefaultCannotDelete\", \"No se pueden eliminar los presets predeterminados del sistema.\"),\n                _loc.GetString(\"Warning\", \"Aviso\"));\n            return;\n        }\n\n",
+          "new": "        // mutante: desaparece la comprobación del preset del sistema y su aviso\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~DeletingASystemPreset_ShouldWarn_AndNotDelete",
+    "why": "El caso pide borrar un preset del sistema y exige dos cosas: que el almacén no reciba ningún borrado y que el usuario reciba el aviso. Con el mutante el aviso no llega (y el borrado lo sigue impidiendo el almacén), así que el caso cae exactamente por la mitad que el mutante rompe: la explicación."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~DeletingAUserPreset_ShouldAskFirst_AndDeleteWhenConfirmed",
+    "why": "El caso hermano borra un preset PROPIO del usuario: ese camino no pasa por la comprobación del sistema, así que el mutante no lo toca. Si cayera, el mutante estaría rompiendo el borrado entero y no sólo la protección de los del sistema."
+  }
+}

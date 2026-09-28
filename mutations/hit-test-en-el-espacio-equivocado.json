@@ -1,0 +1,25 @@
+{
+  "id": "hit-test-en-el-espacio-equivocado",
+  "hito": 249,
+  "claim": "El área de clic de las tarjetas del lienzo Uno coincide con la geometría DIBUJADA porque el punto del gesto cruza al espacio de la raíz (PointInHostSpace) antes de entrar en el hit-testing de WinUI: si el cruce desaparece, el área de clic cae desplazada la posición del lienzo en la ventana (el cajón de 280 px y la barra superior) y clicar la cara de una tarjeta selecciona OTRA — o ninguna, y entonces deselecciona todo.",
+  "why": "FindElementsInHostCoordinates espera el punto en el espacio de la RAÍZ del contenido, no el del subárbol que se inspecciona, y el lienzo vive en la columna 1 y la fila 1 de MainWindow.xaml. La sesión con puntero real del hito 247 lo midió como un desplazamiento de (280, 41): clic en el centro de la tarjeta del medio seleccionaba la de la izquierda, y clic sobre la de la izquierda caía al fondo. El mutante quita SOLO el cruce de la llamada de CardAt —el camino que usan la selección, el arrastre, el doble clic y la sonda— para que la sonda del área de clic y la guardia del espacio del hit-testing sean lo que lo muerda: ninguna prueba de unidad materializa el árbol visual del lienzo (el lienzo es WinUI y no vive en la sesión de pruebas, lección del 232), así que lo que se censa es que ninguna llamada de hit-testing entre con el espacio equivocado. El PLAN de la rebanada citaba la sonda del selfcheck como testigo; no puede serlo: el andamiaje mide con `dotnet test` y la sonda corre dentro de la app. Lo que sí muerde aquí es la guardia que censa el espacio, y la sonda es lo que dejó el defecto MEDIDO en rojo antes del arreglo (0/3 tarjetas).",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "        return VisualTreeHelper.FindElementsInHostCoordinates(PointInHostSpace(position), this)\n            .OfType<NodeCardView>()\n            .FirstOrDefault()?.DataContext as NodeCardViewModel;",
+          "new": "        return VisualTreeHelper.FindElementsInHostCoordinates(position, this)\n            .OfType<NodeCardView>()\n            .FirstOrDefault()?.DataContext as NodeCardViewModel;"
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryHitTestCall_ShouldCrossToTheHostSpace_ThroughTheSingleConversionHelper",
+    "why": "La guardia censa todas las llamadas de hit-testing del control y exige que cada una cruce al espacio de la raíz por el único helper: con el mutante, la llamada de CardAt entra con el punto del lienzo y el censo cae. Es la clase de defecto que la suite no podía ver por comportamiento —el hit-testing vive en el árbol visual— y por eso se guarda la fuente."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheClickAreaProbe_ShouldMeasureTheDrawnGeometry_ThroughTheHandlersOwnHitTest",
+    "why": "La prueba hermana de la misma guardia audita la SONDA (que mida el centro dibujado y que entre por el mismo CardAt), no el argumento de la llamada: el mutante quita el cruce y deja la sonda intacta, así que este control tiene que seguir verde. Si cayera, el mutante no estaría rompiendo lo que la tesis dice."
+  }
+}
