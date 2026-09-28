@@ -9,9 +9,9 @@ Este documento (`AGENTS.md`) define el protocolo operativo, los estándares téc
 Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE DEBE CONSULTAR** los siguientes ficheros en orden de prioridad:
 
 1. **Estado y Memoria Reciente:**
-   - 📄 [`.antigravity/knowledge/session_summary.md`](file:///.antigravity/knowledge/session_summary.md): Estado actual de la última sesión, hitos completados, tareas pendientes y decisiones de diseño activas.
+   - 📄 [`.antigravity/knowledge/session_summary.md`](file:///.antigravity/knowledge/session_summary.md): Estado actual de la última sesión, hitos completados, tareas pendientes y decisiones de diseño activas. Es la **ventana viva**: los hitos que ya no son el día a día están archivados, enteros, en `knowledge/history/`.
 2. **Historial Cronológico de Cambios:**
-   - 📄 [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md): Bitácora histórica completa con registro de cambios por fecha, resultados de tests unitarios y cobertura.
+   - 📄 [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md): Bitácora histórica completa con registro de cambios por fecha, resultados de tests unitarios y cobertura. Es la **ventana viva** del tramo en curso: el índice de su cabecera dice qué hito vive en cada archivo frío de `docs/history/`.
 3. **Arquitectura y Topología del Repositorio:**
    - 📄 [`.antigravity/knowledge/repo_architecture.md`](file:///.antigravity/knowledge/repo_architecture.md): Mapeo completo de proyectos, contratos de interfaz, flujo DAG y dependencias.
 4. **Reglas y Estándares de Codificación:**
@@ -24,7 +24,8 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 | Fichero / Directorio | Propósito | Cuándo consultarlo / actualizarlo |
 | :--- | :--- | :--- |
 | [`.antigravity/knowledge/session_summary.md`](file:///.antigravity/knowledge/session_summary.md) | Resumen ejecutivo de la última sesión de desarrollo y siguientes pasos. | **Lectura:** Al iniciar sesión.<br>**Escritura:** Al finalizar cada sesión o cambio significativo. |
-| [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md) | Bitácora cronológica exhaustiva de avances, refactorizaciones y métricas de tests. | **Lectura:** Contexto histórico.<br>**Escritura:** Registro obligatorio con fecha tras cada modificación. |
+| [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md) | Bitácora cronológica de avances, refactorizaciones y métricas de tests: la **ventana viva** (el tramo en curso) más el índice del archivo frío. | **Lectura:** Contexto histórico.<br>**Escritura:** Registro obligatorio con fecha tras cada modificación. |
+| [`docs/history/`](file:///docs/history/) y [`.antigravity/knowledge/history/`](file:///.antigravity/knowledge/history/) | El **archivo frío**: las entradas de la bitácora y del resumen de sesión que dejaron de ser el día a día —**enteras, sin resumir**—, más los planes cerrados y los manuales superados. | **Lectura:** Cuando haga falta un dato de un hito viejo (el índice de la bitácora dice qué hay en cada archivo).<br>**Escritura:** Al hacer un corte de la ventana viva (protocolo de cierre, paso 4). |
 | [`.antigravity/knowledge/repo_architecture.md`](file:///.antigravity/knowledge/repo_architecture.md) | Documento vivo de la arquitectura de la solución, puertos y modelos. | **Lectura:** Antes de modificar contratos o estructuras de módulos.<br>**Escritura:** Al alterar contratos o añadir componentes estructurales. |
 | [`.agents/rules/rules.md`](file:///.agents/rules/rules.md) | Reglas técnicas de .NET 9, C# 13, threading, asincronía y desacoplamiento. | **Lectura:** Antes de escribir código en cualquier módulo. |
 | [`.agents/architecture.md`](file:///.agents/architecture.md) | Síntesis arquitectónica rápida (Microkernel, DAG Engine, FileItemContext). | **Lectura:** Consulta rápida de patrones del motor. |
@@ -148,3 +149,4 @@ Al terminar cualquier tarea o sesión de trabajo, el agente **DEBE**:
 1. **Actualizar [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md):** Añadir una entrada cronológica con la fecha actual, resumen de cambios realizados y estado de pruebas.
 2. **Actualizar [`.antigravity/knowledge/session_summary.md`](file:///.antigravity/knowledge/session_summary.md):** Reflejar el estado actual del repositorio, decisiones de diseño y próximos pasos para la siguiente sesión.
 3. **Verificar que la suite de tests pasa al 100% (`dotnet test` o `.\test.ps1`).**
+4. **Hacer el corte de la ventana viva cuando toque:** si la bitácora o el resumen de sesión han vuelto a crecer, mover **enteras** (sin resumir) las entradas que ya no sean el día a día a `docs/history/` / `knowledge/history/`, con su cabecera de periodo y su rango de hitos, y dejar el índice de la ventana viva apuntando a ellas. El archivo no se comprime: lo que se comprime es lo que se lee al arrancar.

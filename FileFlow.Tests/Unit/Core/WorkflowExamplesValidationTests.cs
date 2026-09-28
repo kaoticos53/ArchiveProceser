@@ -263,8 +263,9 @@ public class WorkflowExamplesValidationTests
         Path.Combine(TestRepositoryLocator.RepositoryRoot(), "docs", "examples");
 
     /// <summary>
-    /// Los flujos de ejemplo que se entregan, tal y como los enumera el catálogo. El `docs/flujo_test.json` de
-    /// la raíz de la documentación no entra: es un archivo de prueba con parámetros que ningún nodo declara hoy
+    /// Los flujos de ejemplo que se entregan, tal y como los enumera el catálogo. El `flujo_test.json` de la
+    /// raíz de la documentación —**archivado** en `docs/history/` el 2026-09-28, cuando dejó de ser el único
+    /// superviviente de un formato viejo— no entra: es un archivo de prueba con parámetros que ningún nodo declara hoy
     /// (`DestinationFolder`, `CleanWrapper`) y una ruta absoluta de otra máquina, así que validarlo obligaría a
     /// inventarle la traducción a los nombres vigentes.
     /// </summary>

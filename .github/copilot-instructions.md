@@ -53,7 +53,7 @@ Todos los tests (178+) deben pasar al 100%.
 - Arquitectura y diagramas: `docs/architecture.md`
 - Contratos SDK completos: `docs/api_reference.md`
 - Guía de contribución completa: `docs/contributing.md`
-- Manual de usuario: `docs/user_guide.md`
+- Manual de usuario: `docs/manual_de_usuario.md` (ES) y `docs/user_manual.md` (EN)
 - Instalación/despliegue: `docs/setup_and_deployment.md`
 
 ## Paquete npm para búsqueda

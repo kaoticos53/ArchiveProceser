@@ -1,6 +1,7 @@
 # Plan de la rebanada 5 — El host Uno como producto: gestos con puntero real, pickers de variables y empaquetado
 
-> **Estado**: decisión tomada, **sin código tocado**. A diferencia de las rebanadas 3 y 4 —escritas
+> **Estado (actualizado el 2026-09-28)**: casi toda la rebanada **está hecha** —gestos con puntero real, hit-test, teclado, barra de control y su cajón, ajustes, paneles de nodo, ventanas y superficies declaradas llegaron entre los hitos 247 y 271— y lo que queda es el **empaquetado y la entrega** (fases 5.4-5.6). El §10 «Estado de ejecución» es el que manda sobre esta cabecera.
+> **Estado (al escribirlo)**: decisión tomada, **sin código tocado**. A diferencia de las rebanadas 3 y 4 —escritas
 > antes de empezar— esta se escribe **después de la primera medición de su primera fase**: la sesión
 > manual del hito 247 ya ejecutó el guion con puntero real, certificó el canal del gesto físico y midió
 > el defecto de *hit-test* que hay que arreglar antes de certificar nada más
